@@ -654,3 +654,32 @@ Recommend: `GET /export/csv` and `GET /export/pdf/:runId` are both self-containe
 3. `PATCH /proposals/:id/reject` — simpler side of the proposal pair (not the 166-line approve). Could be safe to extract without touching approve.
 
 **Current tip after this push: see SHA below.**
+
+### 2026-04-24 — Claude (proposal rejection wiring)
+
+**Pulled `1ccbd5a9d`. Build: ✅ clean.**
+**Read `AGENT_HANDOFF_JACK_2026-04-24_PAYROLL_PROPOSAL_REJECT.md`**
+
+**`cb7df95d8` (Jack) — payrollProposalRejectionService.ts ✅**
+111-line service. Mirrors existing reject route exactly plus adds event bus publish for `payroll_proposal_rejected`. Clean extraction — approve handler correctly left alone.
+
+**Claude wired into payrollRoutes.ts:**
+- Added `rejectPayrollProposal` import
+- Replaced 63-line `PATCH /proposals/:id/reject` body with 26-line thin wrapper
+- Manager role guard + workspace resolution preserved in route layer (correct — these are request concerns, not service concerns)
+- Status-aware error response: `(error as any)?.status || 500`
+- Approve handler: untouched ✅
+
+**payrollRoutes.ts reduction progress:**
+| Step | Handler(s) | Lines |
+|---|---|---|
+| Start | — | 3754 |
+| Tax filing guides | 3 handlers | -45 = 3709 |
+| CSV export | 1 handler | -67 = 3642 |
+| Proposal reject | 1 handler | -35 = 3607 |
+| **Total** | **5 handlers extracted** | **-147** |
+
+**Next for Jack:**
+- Employee-facing reads are the next clean group: `/my-paychecks`, `/pay-stubs/:id`, `/my-payroll-info`, `/ytd/:employeeId` — all pure DB reads delegating to paystubService/storage
+- `GET /export/pdf/:runId` — 130-line PDFKit handler, candidate for extraction
+- `PATCH /proposals/:id/approve` — 166-line handler, needs careful inspection before touching

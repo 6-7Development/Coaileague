@@ -136,6 +136,7 @@ import { createLogger } from '../lib/logger';
 import { isTerminalPayrollStatus, isDraftPayrollStatus, isValidPayrollTransition, PAYROLL_TERMINAL_STATUSES, PAYROLL_DRAFT_STATUSES } from '../services/payroll/payrollStatus';
 import { getPayrollTaxFilingDeadlines, getPayrollTaxFilingGuide, getPayrollStatePortals } from '../services/payroll/payrollTaxFilingGuideService';
 import { buildPayrollCsvExport } from '../services/payroll/payrollCsvExportService';
+import { rejectPayrollProposal } from '../services/payroll/payrollProposalRejectionService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -392,58 +393,22 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const { reason } = req.body;
       const userId = req.user?.id;
       const userWorkspace = await storage.getWorkspaceMemberByUserId(userId!);
-      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
-      
-      const { payrollProposals } = await import("@shared/schema");
-      const [proposal] = await db.select().from(payrollProposals).where(
-        and(
-          eq(payrollProposals.id, id),
-          eq(payrollProposals.workspaceId, userWorkspace.workspaceId),
-          eq(payrollProposals.status, 'pending')
-        )
-      ).limit(1);
-      
-      if (!proposal) {
-        return res.status(404).json({ message: "Proposal not found or already processed" });
-      }
-      
-      await db.update(payrollProposals).set({
-        status: 'rejected',
-        rejectedBy: userId,
-        rejectedAt: new Date(),
-        rejectionReason: reason || 'No reason provided',
-        updatedAt: new Date(),
-      }).where(and(
-        eq(payrollProposals.id, id),
-        eq(payrollProposals.workspaceId, userWorkspace.workspaceId)
-      ));
+      if (!userWorkspace) return res.status(404).json({ message: 'Workspace not found' });
 
-      storage.createAuditLog({
-        workspaceId: userWorkspace.workspaceId,
+      const result = await rejectPayrollProposal({
+        proposalId: id,
+        reason,
         userId: userId!,
+        workspaceId: userWorkspace.workspaceId,
         userEmail: req.user?.email || 'unknown',
         userRole: req.user?.role || 'user',
-        action: 'update',
-        entityType: 'payroll_proposal',
-        entityId: id,
-        actionDescription: `Payroll proposal ${id} rejected`,
-        changes: { before: { status: 'pending' }, after: { status: 'rejected', rejectedBy: userId, reason: reason || 'No reason provided' } },
-        isSensitiveData: true,
-        complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err?.message }));
-
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { broadcastToWorkspace: bcastProposalReject } = await import('../services/websocketService');
-      bcastProposalReject(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_rejected', proposalId: id });
-
-      res.json({
-        success: true,
-        proposalId: id,
-        message: 'Payroll proposal rejected.',
       });
+
+      res.json(result);
     } catch (error: unknown) {
-      log.error("[PayrollRoute] Failed to reject payroll:", error);
-      res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to reject payroll" });
+      log.error('[PayrollRoute] Failed to reject payroll:', error);
+      const status = (error as any)?.status || 500;
+      res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to reject payroll' });
     }
   });
 
