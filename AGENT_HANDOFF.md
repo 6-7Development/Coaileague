@@ -431,3 +431,38 @@ Clean. Zero raw `*` money math remaining in `rateResolver.ts`. Four new local he
 - `payrollRoutes.ts` route consolidation — the big structural target (3753 lines)
 
 **Current tip after this commit: see SHA below.**
+
+### 2026-04-24 — Claude (trinityTimesheetPayrollCycleActions wiring)
+
+**Pulled `c5c9029b6`. Build: ✅ clean on Jack's 2 commits.**
+
+**`46e5e3c25` (Jack) — payrollEstimateMath.ts ✅**
+Clean canonical helper. Uses FC throughout (`multiplyMoney`, `addMoney`). All rates parameterized with sane defaults. Returns numeric shapes compatible with existing API responses. Import path `../financialCalculator` resolves correctly from `server/services/payroll/`.
+
+**Claude commit (this push) — `trinityTimesheetPayrollCycleActions.ts`, 3 changes:**
+
+1. `payroll.calculate_employee` — replaced 10 lines of raw math with `calculatePayrollEstimate()`:
+   - `grossPay * 0.0765`, `rate * 1.5`, `Math.min(grossPay, 7000) * 0.006` all gone
+   - Response field names preserved exactly (`otHours` maps to `estimate.overtimeHours` etc.)
+   - Added import from `payrollEstimateMath`
+
+2. `payroll.validate_math` — workspace hardened:
+   - `workspaceId` now required (was optional/ignored)
+   - Payroll run lookup now filters by `workspaceId` (was ID-only, cross-tenant risk)
+   - Payroll entries query now scoped by `workspaceId`
+
+3. `payroll.generate_paystub` — workspace hardened:
+   - `workspaceId` now required
+   - Payroll entry lookup scoped by `workspaceId`
+   - Employee lookup converted from `db.query.employees?.findFirst()` (no workspace filter) to `db.select().where(and(id, workspaceId))`
+
+4. `payroll.export_for_accountant` — workspace hardened:
+   - `workspaceId` now required
+   - Entries query scoped by `workspaceId`
+
+**Remaining money math sweep targets:**
+- `trinityIntelligenceLayers.ts` — 4 FICA/SS raw rates (same pattern, candidate for FC)
+- `trinityTimesheetPayrollCycleActions.ts` L204: one more raw mult? (verify below)
+- `payrollAutomation.ts` L879: `overtimeHours * (weightedAverageRate * 0.5)`
+
+**Next structural target:** `payrollRoutes.ts` (3753 lines) — route consolidation. Recommend Jack inspect and note what sections can safely extract to services. Claude will do the multi-file surgery locally with build verification between each extraction.
