@@ -22,7 +22,14 @@ import {
   employeeBankAccounts,
   timeEntries,
   billingAuditLog,
-  payrollRunLocks} from '@shared/schema';
+  payrollRunLocks,
+  invoices,
+  clients,
+  employeeTaxForms,
+  employees as employeesTable,
+  users,
+  workspaces,
+} from '@shared/schema';
 import { employeeOnboardingProgress } from '@shared/schema/domains/workforce/extended';
 import { encryptToken, decryptToken } from '../security/tokenEncryption';
 import * as taxCalculator from "../services/taxCalculator";
@@ -148,6 +155,12 @@ import { processPayrollRunState } from '../services/payroll/payrollRunProcessSta
 import { voidPayrollRun } from '../services/payroll/payrollRunVoidService';
 import { createPayrollRunForPeriod } from '../services/payroll/payrollRunCreationService';
 import { listBankAccounts, addBankAccount, updateBankAccount, deactivateBankAccount, verifyBankAccount } from '../services/payroll/payrollBankAccountService';
+import { approvePayrollRun } from '../services/payroll/payrollRunApprovalService';
+import { tokenManager } from '../services/billing/tokenManager';
+import { taxFilingAssistanceService } from '../services/taxFilingAssistanceService';
+import { executeInternalPayroll, amendPayrollEntry } from '../services/payrollAutomation';
+import { startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, format as dateFnsFormat } from 'date-fns';
+import { generateNachaFile } from '../services/payroll/payrollNachaService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -383,146 +396,41 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const roleCheck = checkManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
-      const authReq = req as AuthenticatedRequest;
-      const userId = authReq.user?.id;
-      
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-      const workspaceId = req.workspaceId!;
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
+      const workspaceId = req.workspaceId!;
       const workspaceTier = await getWorkspaceTier(workspaceId);
       if (!hasTierAccess(workspaceTier, 'professional')) {
-        return res.status(402).json({ error: 'This feature requires professional plan or higher', currentTier: workspaceTier, minimumTier: 'professional', requiresTierUpgrade: true });
-      }
-
-      const { id } = req.params;
-
-      const run = await storage.getPayrollRun(id, workspaceId);
-      if (!run) {
-        return res.status(404).json({ message: "Payroll run not found" });
-      }
-
-      // ── WRITE-PROTECT: Paid payroll runs are closed accounting records ──────────
-      if (run.status === 'paid') {
-        return res.status(403).json({
-          message: "This record has been closed and cannot be modified",
-          code: 'RECORD_CLOSED',
-          currentStatus: run.status,
-        });
-      }
-      // ─────────────────────────────────────────────────────────────────────────────
-
-      const currentStatus = run.status ?? 'draft';
-      if (!isValidPayrollTransition(currentStatus, 'approved')) {
-        const lifecycleStatus = resolvePayrollLifecycleStatus(currentStatus);
-        return res.status(422).json({
-          message: "Only payroll runs pending review can be approved",
-          currentStatus: lifecycleStatus || currentStatus,
+        return res.status(402).json({
+          error: 'This feature requires professional plan or higher',
+          currentTier: workspaceTier,
+          minimumTier: 'professional',
+          requiresTierUpgrade: true,
         });
       }
 
-      // FIX [GAP-11 FOUR-EYES RUN APPROVAL]: The manager who created the payroll run
-      // (processedBy) must not be the same person who approves it. Without this check,
-      // a single manager can create and immediately approve their own payroll run,
-      // bypassing the two-person authorization requirement entirely.
-      // This mirrors the same guard already in place for payroll proposals (line ~219).
-      if (run.processedBy && run.processedBy === userId) {
-        return res.status(403).json({
-          message: "You cannot approve a payroll run that you created. A different authorized manager must approve it.",
-          code: 'SELF_APPROVAL_FORBIDDEN',
-        });
-      }
-
-      const updated = await storage.updatePayrollRunStatus(id, 'approved', userId, workspaceId);
-
-      // GAP-42 FIX: Audit log write is now awaited, not fire-and-forget.
-      // Previously, createAuditLog was called with .catch() — if the DB write failed,
-      // the payroll run was approved with zero SOC2 audit trail. For a complianceTag:soc2
-      // operation, a missing audit entry during an audit is a critical finding.
-      // Now we await the write; on failure we log loudly but do NOT block the approval —
-      // the payroll run IS correctly approved and the error is surfaced in structured logs
-      // where it can be caught by the log monitoring pipeline for SOC2 audit alerting.
-      try {
-        await storage.createAuditLog({
-          workspaceId,
-          userId,
-          userEmail: req.user?.email || 'unknown',
-          userRole: req.user?.role || 'user',
-          action: 'update',
-          entityType: 'payroll_run',
-          entityId: id,
-          actionDescription: `Payroll run ${id} approved`,
-          changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
-          isSensitiveData: true,
-          complianceTag: 'soc2',
-        });
-      } catch (err: unknown) {
-        log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll approval', {
-          runId: id,
-          workspaceId,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-
-      // FIX-2: Financial audit log for payroll approval
-      try {
-        await db.insert(billingAuditLog).values({
-          workspaceId,
-          eventType: 'payroll_run_approved',
-          eventCategory: 'payroll',
-          actorType: 'user',
-          actorId: userId,
-          actorEmail: req.user?.email || null,
-          description: `Payroll run ${run.id} approved for period ${run.periodStart} to ${run.periodEnd}`,
-          relatedEntityType: 'payroll_run',
-          relatedEntityId: id,
-          previousState: { status: 'pending' },
-          newState: { status: 'approved', approvedBy: userId, approvedAt: new Date().toISOString() },
-          ipAddress: req.ip || null,
-          userAgent: req.get('user-agent') || null,
-        });
-      } catch (err: unknown) {
-        log.error('[BillingAudit] billing_audit_log write failed for payroll approval', {
-          runId: id,
-          workspaceId,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-
-      let qbSyncResult = null;
-      try {
-        const { onPayrollApproved } = await import('../services/financialPipelineOrchestrator');
-        qbSyncResult = await onPayrollApproved(id, workspaceId, userId);
-        log.info(`[PayrollApproval] QB sync result for payroll ${id}:`, qbSyncResult.action);
-      } catch (syncError: unknown) {
-        log.warn('[PayrollApproval] QB sync after approval failed (non-blocking):', (syncError instanceof Error ? syncError.message : String(syncError)));
-      }
-
-      // Real-time: update payroll dashboard for all managers in this workspace
-      try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        // broadcastToWorkspace — now static import at top
-        broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'approved', runId: run.id });
-      } catch (_wsErr: any) {
-        log.warn('[Payroll] Failed to broadcast WebSocket update', { error: _wsErr.message });
-      }
-
-      platformEventBus.publish({
-        type: 'payroll_run_approved',
-        category: 'automation',
-        title: `Payroll Run Approved`,
-        description: `Payroll run ${run.id} approved by manager — ready for processing`,
+      const result = await approvePayrollRun({
         workspaceId,
+        payrollRunId: req.params.id,
         userId,
-        metadata: { payrollRunId: run.id, approvedBy: userId, runPeriod: run.periodStart + ' – ' + run.periodEnd },
-        visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        userEmail: req.user?.email || null,
+        userRole: req.user?.role || null,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+      });
 
-      res.json({ ...updated, qbSync: qbSyncResult ? { synced: qbSyncResult.success, details: qbSyncResult.details } : undefined });
+      res.json({ ...result.run, qbSync: result.qbSync });
     } catch (error: unknown) {
-      log.error("Error approving payroll run:", error);
-      res.status(500).json({ message: "Failed to approve payroll run" });
+      const status = (error as any)?.status || 500;
+      const extra = (error as any)?.extra || {};
+      const code = (error as any)?.code;
+      log.error('Error approving payroll run:', error);
+      res.status(status).json({
+        message: error instanceof Error ? sanitizeError(error) : 'Failed to approve payroll run',
+        ...(code ? { code } : {}),
+        ...extra,
+      });
     }
   });
 
@@ -716,7 +624,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
           // CHANNEL 2: Resend email to each employee
           try {
-            const { users, workspaces } = await import('@shared/schema');
+            // @shared/schema symbols — now static import at top
             const { sendPayStubEmail } = await import('../services/emailCore');
             const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
             const orgName = ws?.name || 'Your Organization';
@@ -1030,7 +938,7 @@ router.get('/tax-center', async (req: AuthenticatedRequest, res) => {
     }
 
     // 3. Generated forms for the tax year
-    const { employeeTaxForms } = await import('@shared/schema');
+    // @shared/schema symbols — now static import at top
     const forms = await db
       .select()
       .from(employeeTaxForms)
@@ -1044,7 +952,7 @@ router.get('/tax-center', async (req: AuthenticatedRequest, res) => {
     const form1099sGenerated = forms.filter(f => f.formType === '1099').length;
 
     // 4. Deadlines
-    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    // taxFilingAssistanceService — now static import at top
     const deadlines = taxFilingAssistanceService.getFilingDeadlines(taxYear);
 
     // 5. Fees — pull tier discount and compute
@@ -1419,7 +1327,7 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { tokenManager } = await import('../services/billing/tokenManager');
+      // tokenManager — now static import at top
       await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
@@ -1530,7 +1438,7 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { tokenManager } = await import('../services/billing/tokenManager');
+      // tokenManager — now static import at top
       const creditKey = formType === 'w2' ? 'tax_prep_w2' : 'tax_prep_1099';
       const formLabel = formType === 'w2' ? 'W-2 Employee Tax Form' : '1099-NEC Contractor Tax Form';
       await tokenManager.recordUsage({
@@ -1621,7 +1529,7 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { tokenManager } = await import('../services/billing/tokenManager');
+      // tokenManager — now static import at top
       await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
@@ -1734,12 +1642,12 @@ router.post('/runs/:id/execute-internal', async (req: AuthenticatedRequest, res)
         return res.status(400).json({ message: `Payroll run status is '${run.status}', must be 'approved' or 'pending' to execute internally` });
       }
 
-      const { executeInternalPayroll } = await import('../services/payrollAutomation');
+      // executeInternalPayroll — now static import at top
       const result = await executeInternalPayroll(workspaceId, id, userId);
 
       if (result.processedEntries > 0) {
         try {
-          const { tokenManager } = await import('../services/billing/tokenManager');
+          // tokenManager — now static import at top
           await tokenManager.recordUsage({
             workspaceId,
             userId: userId || 'system',
@@ -1873,7 +1781,7 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
     // ACH transfer retries are a Professional-tier feature
-    const { getWorkspaceTier, hasTierAccess } = await import('../tierGuards');
+    // getWorkspaceTier, hasTierAccess — now static import at top
     const tier = await getWorkspaceTier(workspaceId);
     if (!hasTierAccess(tier, 'professional')) {
       return res.status(402).json({ error: 'ACH payroll requires the Professional plan or higher', currentTier: tier, minimumTier: 'professional', requiresTierUpgrade: true });
@@ -2010,7 +1918,7 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
     }
     // ─────────────────────────────────────────────────────────────────────────────
 
-    const { amendPayrollEntry } = await import('../services/payrollAutomation');
+    // amendPayrollEntry — now static import at top
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await amendPayrollEntry(entryId, workspaceId, userId, { ...amendments, reason: reason.trim() });
 
@@ -2086,7 +1994,7 @@ router.get('/export/pdf/:runId', async (req: AuthenticatedRequest, res) => {
       ));
 
     const workspace = await storage.getWorkspace(workspaceId);
-    const { employees: employeesTable } = await import('@shared/schema');
+    // @shared/schema symbols — now static import at top
     const empList = await db.select({ id: employeesTable.id, firstName: employeesTable.firstName, lastName: employeesTable.lastName })
       .from(employeesTable)
       .where(eq(employeesTable.workspaceId, workspaceId));
@@ -2176,14 +2084,16 @@ router.get('/pre-run-checklist', async (req: AuthenticatedRequest, res) => {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
 
-    const { invoices: invoicesTable, clients } = await import('@shared/schema');
-    const { eq: eqI, and: andI, inArray: inArrayI, sql: sqlI } = await import('drizzle-orm');
+    // invoices, clients, eq, and, inArray, sql — all static imports at top
+    const invoicesTable = invoices;
+    const { eq: eqI, and: andI, inArray: inArrayI, sql: sqlI } = { eq, and, inArray, sql };
 
     const workspace = await storage.getWorkspace(workspaceId);
     const blob = (workspace?.billingSettingsBlob as any) || {};
     const cycle = blob.payrollCycle || 'bi-weekly';
 
-    const { startOfWeek, endOfWeek, subDays: subDaysI, startOfMonth, endOfMonth } = await import('date-fns');
+    // date-fns functions — now static import at top
+    const subDaysI = subDays;
     const now = new Date();
 
     let periodStart: Date;
@@ -2316,220 +2226,22 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
     const workspaceId = req.workspaceId!;
-    const { id: runId } = req.params;
+    const result = await generateNachaFile(workspaceId, req.params.id);
 
-    const run = await storage.getPayrollRun(runId, workspaceId);
-    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (!isTerminalPayrollStatus(run.status)) {
-      return res.status(400).json({ message: 'NACHA file is only available for processed or paid payroll runs' });
-    }
-
-    const { workspaces: wsTable } = await import('@shared/schema');
-    const [ws] = await db.select({
-      name: wsTable.name,
-      companyName: (wsTable as any).companyName,
-      payrollBankRouting: (wsTable as any).payrollBankRouting,
-      payrollBankAccount: (wsTable as any).payrollBankAccount,
-      payrollBankName: (wsTable as any).payrollBankName,
-    }).from(wsTable).where(eq(wsTable.id, workspaceId)).limit(1);
-
-    const entries = await db.select({
-      employeeId: payrollEntries.employeeId,
-      netPay: payrollEntries.netPay,
-      directDepositEnabled: employeePayrollInfo.directDepositEnabled,
-      routingNumber: employeePayrollInfo.bankRoutingNumber,
-      accountNumber: employeePayrollInfo.bankAccountNumber,
-      accountType: employeePayrollInfo.bankAccountType,
-      firstName: employees.firstName,
-      lastName: employees.lastName,
-    })
-      .from(payrollEntries)
-      .leftJoin(employeePayrollInfo, eq(payrollEntries.employeeId, employeePayrollInfo.employeeId))
-      .leftJoin(employees, eq(payrollEntries.employeeId, employees.id))
-      .where(and(eq(payrollEntries.workspaceId, workspaceId), eq(payrollEntries.payrollRunId, runId)));
-
-    // ACH COMPLIANCE: Decrypt routing/account numbers — fields are AES-256-GCM encrypted at rest.
-    // safeDecrypt falls back to raw value for any legacy plaintext rows (migration safety).
-    function safeDecrypt(value: string | null | undefined): string | null {
-      if (!value) return null;
-      try { return decryptToken(value); } catch { return value; }
-    }
-
-    // For each entry, prefer the canonical employee_bank_accounts record (encrypted), then fall back to employee_payroll_info
-    const employeeIds = entries.map(e => (e as any).employeeId).filter(Boolean);
-    const bankAccountRows = employeeIds.length > 0
-      ? await db.select().from(employeeBankAccounts)
-          .where(and(
-            sql`${employeeBankAccounts.employeeId} = ANY(ARRAY[${sql.join(employeeIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
-            eq(employeeBankAccounts.isPrimary, true),
-            eq(employeeBankAccounts.isActive, true)
-          ))
-      : [];
-    const bankAccountMap = new Map(bankAccountRows.map(r => [r.employeeId, r]));
-
-    const decryptedEntries = entries.map(e => {
-      const canonical = bankAccountMap.get((e as any).employeeId);
-      if (canonical?.routingNumberEncrypted && canonical?.accountNumberEncrypted) {
-        return {
-          ...e,
-          routingNumber: safeDecrypt(canonical.routingNumberEncrypted),
-          accountNumber: safeDecrypt(canonical.accountNumberEncrypted),
-          accountType: canonical.accountType || e.accountType,
-        };
-      }
-      return {
-        ...e,
-        routingNumber: safeDecrypt(e.routingNumber as string | null),
-        accountNumber: safeDecrypt(e.accountNumber as string | null),
-      };
-    });
-
-    const eligible = decryptedEntries.filter(e => e.directDepositEnabled && e.routingNumber && e.accountNumber);
-    const missing = decryptedEntries.filter(e => !e.directDepositEnabled || !e.routingNumber || !e.accountNumber);
-
-    if (eligible.length === 0) {
-      return res.status(422).json({
-        message: 'No employees have direct deposit configured for this payroll run',
-        missingCount: missing.length,
-        hint: 'Ensure employees have bank routing/account numbers set in their payroll profile',
+    if (!result.success) {
+      return res.status(result.status || 500).json({
+        message: result.error,
+        ...result.extra,
       });
     }
 
-    // Build a proper NACHA ACH PPD file
-    const companyName = ((ws as any)?.companyName || (ws as any)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
-    const originRoutingRaw = (ws as any)?.payrollBankRouting || '000000000';
-    // NACHA routing number: leading digit '1' + 8-digit bank routing = 9 chars
-    const originRouting = `1${originRoutingRaw.replace(/\D/g, '').substring(0, 8).padEnd(8, '0')}`;
-    const originAccount = ((ws as any)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
-    const now = new Date();
-    const fileDate = now.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
-    const fileTime = now.toTimeString().slice(0, 5).replace(':', ''); // HHMM
-    const batchCount = 1;
-    const fileIdModifier = 'A';
-    const blockingFactor = 10;
-    const formatCode = '1';
-    const totalDebitCents = 0;
-    const totalCreditCents = eligible.reduce((sum, e) => sum + Math.round(Number(e.netPay) * 100), 0);
-
-    const pad = (s: string | number, len: number, right = false) => {
-      const str = String(s);
-      return right ? str.substring(0, len).padEnd(len, ' ') : str.substring(0, len).padStart(len, '0');
-    };
-
-    // File Header Record (1)
-    const fileHeader = [
-      '1', // Record Type
-      '01', // Priority Code
-      pad(originRouting, 10), // Immediate Destination
-      pad(originRouting.replace(/\D/g, '').padEnd(10, '0'), 10), // Immediate Origin
-      fileDate, // File Creation Date (YYMMDD)
-      fileTime, // File Creation Time (HHMM)
-      fileIdModifier, // File ID Modifier
-      '094', // Record Size
-      String(blockingFactor), // Blocking Factor
-      formatCode, // Format Code
-      companyName.padEnd(23, ' '), // Immediate Destination Name
-      companyName.padEnd(23, ' '), // Immediate Origin Name
-      '        ', // Reference Code
-    ].join('');
-
-    // Batch Header Record (5)
-    const batchHeader = [
-      '5', // Record Type
-      '200', // Service Class Code (200 = mixed debits/credits, 220 = credits only)
-      companyName.padEnd(16, ' '), // Company Name
-      '          ', // Company Discretionary Data
-      originRouting.replace(/\D/g, '').padStart(10, '0'), // Company Identification
-      'PPD', // Standard Entry Class Code (PPD = Prearranged Payment and Deposit)
-      'PAYROLL         ', // Company Entry Description
-      fileDate, // Company Descriptive Date
-      fileDate, // Effective Entry Date
-      '   ', // Settlement Date (filled by bank)
-      '1', // Originator Status Code
-      originRouting, // Originating DFI Identification
-      pad(batchCount, 7), // Batch Number
-    ].join('');
-
-    // Entry Detail Records (6)
-    const entryLines: string[] = [];
-    let traceSeq = 1;
-    for (const e of eligible) {
-      const txCode = e.accountType === 'savings' ? '32' : '22'; // 22=checking credit, 32=savings credit
-      const routingRaw = (e.routingNumber || '').replace(/\D/g, '').padEnd(8, '0');
-      const checkDigit = (e.routingNumber || '0').slice(-1);
-      const accountNum = (e.accountNumber || '').padEnd(17, ' ').substring(0, 17);
-      const amountCents = Math.round(Number(e.netPay) * 100);
-      const employeeName = `${e.firstName || ''} ${e.lastName || ''}`.trim().substring(0, 22).padEnd(22, ' ');
-      const traceNum = `${originRouting.slice(1, 9)}${pad(traceSeq++, 7)}`;
-
-      entryLines.push([
-        '6', // Record Type
-        txCode, // Transaction Code
-        `${routingRaw}${checkDigit}`, // Receiving DFI Routing Transit Number (8 + check digit)
-        accountNum, // DFI Account Number
-        pad(amountCents, 10), // Amount (cents, no decimal)
-        e.employeeId.substring(0, 15).padEnd(15, ' '), // Individual Identification Number
-        employeeName, // Individual Name
-        '  ', // Discretionary Data
-        '0', // Addenda Record Indicator
-        traceNum, // Trace Number (15 digits)
-      ].join(''));
-    }
-
-    // Batch Control Record (8)
-    const entryAddendaCount = entryLines.length;
-    const entryHash = eligible
-      .reduce((sum, e) => sum + parseInt((e.routingNumber || '0').replace(/\D/g, '').substring(0, 8), 10), 0)
-      .toString().slice(-10).padStart(10, '0');
-
-    const batchControl = [
-      '8', // Record Type
-      '220', // Service Class Code
-      pad(entryAddendaCount, 6), // Entry/Addenda Count
-      entryHash, // Entry Hash
-      pad(totalDebitCents, 12), // Total Debit Entry Dollar Amount
-      pad(totalCreditCents, 12), // Total Credit Entry Dollar Amount
-      originRouting.replace(/\D/g, '').padStart(10, '0'), // Company Identification
-      ' '.repeat(39), // Message Authentication Code + Reserved
-      originRouting.slice(1, 9), // Originating DFI Identification
-      pad(batchCount, 7), // Batch Number
-    ].join('');
-
-    // File Control Record (9)
-    const blockCount = Math.ceil((2 + 2 + entryLines.length) / blockingFactor);
-    const fileControl = [
-      '9', // Record Type
-      pad(batchCount, 6), // Batch Count
-      pad(blockCount, 6), // Block Count
-      pad(entryAddendaCount, 8), // Entry/Addenda Count
-      entryHash, // Entry Hash
-      pad(totalDebitCents, 12), // Total Debit
-      pad(totalCreditCents, 12), // Total Credit
-      ' '.repeat(39), // Reserved
-    ].join('');
-
-    // Pad file to multiple of 10 records (9 filler lines)
-    const records = [fileHeader, batchHeader, ...entryLines, batchControl, fileControl];
-    const totalRecords = records.length;
-    const paddedTo = Math.ceil(totalRecords / 10) * 10;
-    for (let i = totalRecords; i < paddedTo; i++) {
-      records.push('9'.repeat(94));
-    }
-
-    const nachaContent = records.map(r => r.substring(0, 94)).join('\r\n');
-    const periodLabel = run.periodStart
-      ? new Date(run.periodStart).toISOString().slice(0, 10).replace(/-/g, '')
-      : fileDate;
-    const filename = `payroll-ach-${periodLabel}-${runId.substring(0, 8)}.ach`;
-
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('X-NACHA-Entries', String(eligible.length));
-    res.setHeader('X-NACHA-Missing', String(missing.length));
-    res.setHeader('X-NACHA-Total-Cents', String(totalCreditCents));
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('X-NACHA-Entries', String(result.eligibleCount));
+    res.setHeader('X-NACHA-Missing', String(result.missingCount));
+    res.setHeader('X-NACHA-Total-Cents', String(result.totalCreditCents));
 
-    return res.send(nachaContent);
+    return res.send(result.nachaContent);
   } catch (error: unknown) {
     log.error('[NACHA] Error generating NACHA file:', error);
     res.status(500).json({ message: 'Failed to generate NACHA file: ' + (sanitizeError(error) || 'Unknown error') });
