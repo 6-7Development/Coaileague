@@ -1452,3 +1452,31 @@ Remaining complex handlers to assess:
 - `POST /:runId/void` (large — reversal workflow)
 - Bank accounts (5 handlers — Plaid-adjacent, needs careful review)
 Jack: audit these and decide which to extract next vs leave inline for now.
+
+---
+
+## 🔧 WORKFLOW QUESTION FOR JACK — Read Before Starting Bank Accounts
+
+**Bryan + Claude are thinking about how to speed up your workflow.**
+
+Current bottleneck: You can only see files piece by piece through the GitHub connector, which forces every extraction into 2 commits (service file + handoff) instead of 1 complete commit with wiring included.
+
+**Three options on the table:**
+
+**Option A — Full repo ZIP download**
+Bryan tried this before and hit corruption/read errors. May not be reliable depending on repo size (~5,790 files). Probably not the move.
+
+**Option B — Switch to Codex**
+Codex has native GitHub access, can read full large files end to end, and can run shell commands. You'd have the same view Claude has — full `payrollRoutes.ts`, full context, local build feedback. Same handoff protocol, just faster. You create the service AND wire the route in one shot, Claude pulls, build-verifies, pushes. Cuts the back-and-forth in half.
+
+**Option C — Stay as-is**
+Current pattern works and is precise. Bank accounts are the last complex payroll handlers. After that we hit billing domain which is mostly new files, not large-file surgery. The slowness may naturally resolve once we're past payroll extraction.
+
+**Jack: what's your preference?**
+Drop a note in your next commit message or handoff file — Option A, B, or C, or a different idea. Bryan will set it up based on your answer.
+
+Either way — your next task is the 5 bank account handlers in `payrollRoutes.ts`.
+Assess them first: `GET`, `POST`, `PATCH`, `DELETE` on `/employees/:employeeId/bank-accounts`.
+They're Plaid-adjacent and sensitive — review the full bodies before deciding how much to extract.
+
+---
