@@ -10,40 +10,33 @@
 ## CURRENT POSITION
 
 **Domain:** SCHEDULING (active)
-**Order:** ✅ Payroll → ✅ Billing → 🔄 Scheduling → Time → HR → Client → Compliance → ...
+**Order:** ✅ Payroll → ✅ Billing → 🔄 Scheduling → Time → HR → ...
 
 ---
 
-## WHAT WAS JUST DONE (last 3 commits)
+## WHAT WAS JUST DONE (last 2 commits)
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | shiftRoutes.ts — 21 dead routes deleted, all alive routes verified | 3,623 → 2,240 lines (-1,383L) |
-| `bae2e6a6f` | Jack | shiftRoutes.ts audit doc + scheduling domain analysis | Handed off to Claude |
-| `b982a0ae9` | Claude | billingEnforcement.ts middleware created + wired | Billing enforcement live |
+| Claude (this) | Claude | scheduleosRoutes.ts — 12 dead routes deleted, 10 unused imports removed | 1,326 → 705 lines (-621L) |
+| `203d7cfb0` | Claude | shiftRoutes.ts — 21 dead routes deleted | 3,623 → 2,240 lines (-1,383L) |
 
 ---
 
 ## JACK'S NEXT TASK
 
-**Target:** Continue scheduling domain — pick ONE of:
+**Target:** `schedulerRoutes.ts` (886L) — mount `/api/scheduler`
 
-**Option A: `scheduleosRoutes.ts` (1,325L)**
-Same pattern: `grep -n "router\." server/routes/scheduleosRoutes.ts | grep -E "get|post|put|patch|delete"`
-Then caller audit each path against `/api/scheduleos/PATH` in client/ server/
-
-**Option B: `schedulerRoutes.ts` (886L)**
-Same pattern but mount prefix is `/api/scheduler`
-
-**Option C: Overlap audit**
-`scheduleosRoutes.ts` + `schedulerRoutes.ts` + `schedulesRoutes.ts` + `advancedSchedulingRoutes.ts`
-may ALL cover shift scheduling. Run:
+**Workflow:**
 ```bash
-grep -n "router\." server/routes/scheduleosRoutes.ts server/routes/schedulerRoutes.ts | grep -E "get|post|put|patch|delete"
+# 1. List handlers
+grep -n "router\." server/routes/schedulerRoutes.ts | grep -E "get|post|put|patch|delete"
+# 2. Caller audit each path
+grep -rn "/api/scheduler/PATH" client/ server/ | grep -v "schedulerRoutes.ts"
+# 3. Delete dead, keep alive
 ```
-Find duplicate paths across files — delete the duplicates from the smaller/older file.
 
-**Jack: pick and go. Note your choice in commit message.**
+**After that:** `schedulesRoutes.ts` (557L) — same pattern.
 
 ---
 
@@ -51,24 +44,19 @@ Find duplicate paths across files — delete the duplicates from the smaller/old
 
 | File | Before | After | Status |
 |---|---|---|---|
-| `shiftRoutes.ts` | 3,623L | 2,240L | ✅ -1,383L, 17 handlers |
-| `scheduleosRoutes.ts` | 1,325L | TBD | 🔄 Jack's turn |
-| `schedulerRoutes.ts` | 886L | TBD | ⏳ |
+| `shiftRoutes.ts` | 3,623L | 2,240L | ✅ -1,383L |
+| `scheduleosRoutes.ts` | 1,326L | 705L | ✅ -621L |
+| `schedulerRoutes.ts` | 886L | TBD | 🔄 Jack's turn |
 | `schedulesRoutes.ts` | 557L | TBD | ⏳ |
 | `advancedSchedulingRoutes.ts` | 1,219L | TBD | ⏳ |
 
+**Scheduling removed so far: ~2,004L**
+
 ---
 
-## FAST CALLER AUDIT
-```bash
-grep -n "router\." server/routes/TARGET.ts | grep -E "get|post|put|patch|delete"
-grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v "TARGET.ts"
-# Zero results = dead = delete
-```
-
 ## RULES
-1. Read CODEBASE_INDEX.md for domain
-2. Caller audit before any deletion  
+1. Read CODEBASE_INDEX.md for domain first
+2. Caller audit before any deletion
 3. Every commit reduces line count
 4. Update this SYNC BLOCK after every commit
 5. Build clean before pushing
