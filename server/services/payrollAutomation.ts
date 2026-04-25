@@ -876,7 +876,7 @@ export class PayrollAutomationEngine {
     // Calculate overtime premium using "half-time" method
     // This is the FLSA-approved method: pay straight time for all hours,
     // then add 0.5x the weighted average rate for each OT hour
-    const overtimePremium = overtimeHours * (weightedAverageRate * 0.5);
+    const overtimePremium = Number(multiplyFinancialValues(toFinancialString(overtimeHours), toFinancialString(Number(multiplyFinancialValues(toFinancialString(weightedAverageRate), toFinancialString(0.5))))));
     
     // Total pay = straight time pay + OT premium
     const totalPay = straightTimePay + overtimePremium;

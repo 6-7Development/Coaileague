@@ -466,3 +466,54 @@ Clean canonical helper. Uses FC throughout (`multiplyMoney`, `addMoney`). All ra
 - `payrollAutomation.ts` L879: `overtimeHours * (weightedAverageRate * 0.5)`
 
 **Next structural target:** `payrollRoutes.ts` (3753 lines) — route consolidation. Recommend Jack inspect and note what sections can safely extract to services. Claude will do the multi-file surgery locally with build verification between each extraction.
+
+### 2026-04-24 — Claude (FC sweep complete — production services clean)
+
+**Pulled `3ebaf2579`. Build: ✅ clean.**
+
+**`7f3e42783` (Jack) — taxCalculator FC migration ✅**
+`bonusAmount * 0.37`, `bonusAmount * 0.63`, bracket rate multiplications — all through FC. Four local helpers (`moneyNumber`, `multiplyMoney`, `addMoney`, `subtractMoney`) — same clean pattern as rateResolver. Zero raw * remaining. ✅
+
+**Claude commit (this push) — 2 files:**
+
+`trinityIntelligenceLayers.ts` — 6 raw FICA/FUTA/SUTA multiplications fixed:
+- Employee path (L865): `grossPay * 0.062` (SS) + `grossPay * 0.0145` (Medicare) → FC
+- Employer path (L1075): `gross * 0.062`, `gross * 0.0145`, `futaWages * FUTA_RATE`, `futaWages * SUTA_RATE` → FC
+- Second employee path (L1123): `taxableGross * 0.062` + `taxableGross * 0.0145` → FC
+- Removed `Math.round(x * 100) / 100` patterns replaced by FC-computed values
+- Added FC import
+
+`payrollAutomation.ts` — 1 remaining overtime premium fixed:
+- `overtimeHours * (weightedAverageRate * 0.5)` → nested `multiplyFinancialValues`
+- Zero raw * remaining in this file
+
+**Final state of FC migration across production services:**
+
+| File | Status |
+|---|---|
+| `payrollTaxService.ts` | ✅ clean (Jack) |
+| `rateResolver.ts` | ✅ clean (Jack) |
+| `taxCalculator.ts` | ✅ clean (Jack) |
+| `payrollAutomation.ts` | ✅ clean (Claude) |
+| `payrollSubagent.ts` | ✅ clean (Claude) |
+| `automation-engine.ts` | ✅ clean (Claude) |
+| `trinityIntelligenceLayers.ts` | ✅ clean (Claude) |
+
+**6 remaining instances (non-critical):**
+- `aiDynamicPricingService.ts`: `currentRate * 0.95` — suggestion/estimation, not a DB write
+- `crisisManager.ts`: `refundAmount * 0.25` — goodwill bonus suggestion
+- `complianceReports.ts`: overtime calc for read-only report output
+- `trinityOrchestrationGateway.ts`: scoring weight (not financial)
+- Seed/sandbox files: ~15 instances — dev only
+
+**FC money math migration is functionally complete for all real financial write paths. ✅**
+
+**Next target — payrollRoutes.ts route consolidation (3753 lines)**
+This is the next structural milestone per Jack's plan. The file mixes:
+DB bootstrap, Plaid tables, lock management, exports, PDF generation,
+proposal approval, payroll run creation, notifications, tax imports.
+Recommend Jack starts by identifying which handlers are pure pass-throughs
+to services already extracted. Claude will apply any extraction that requires
+full-file edit or build verification.
+
+**Current tip after this commit: see SHA below.**
