@@ -140,6 +140,7 @@ import { rejectPayrollProposal } from '../services/payroll/payrollProposalReject
 import { getMyPaychecks, getMyPayStub, getMyPayrollInfo, updateMyPayrollInfo, getYtdEarnings } from '../services/payroll/payrollEmployeeSelfServiceService';
 import { listPayrollProposals, getPayrollProposal } from '../services/payroll/payrollProposalReadService';
 import { getMyEmployeeTaxForms, getMyEmployeeTaxForm } from '../services/payroll/payrollEmployeeTaxFormsService';
+import { listPayrollRuns, getPayrollRun } from '../services/payroll/payrollRunReadService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -678,11 +679,16 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
   router.get('/runs', async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const runs = await storage.getPayrollRunsByWorkspace(workspaceId);
+      const runs = await listPayrollRuns({
+        workspaceId,
+        status: typeof req.query.status === 'string' ? req.query.status : null,
+        limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : null,
+      });
       res.json(runs);
     } catch (error: unknown) {
-      log.error("Error fetching payroll runs:", error);
-      res.status(500).json({ message: "Failed to fetch payroll runs" });
+      const status = (error as any)?.status || 500;
+      log.error('Error fetching payroll runs:', error);
+      res.status(status).json({ message: 'Failed to fetch payroll runs' });
     }
   });
 
@@ -691,39 +697,27 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
 
-      const run = await storage.getPayrollRun(id, workspaceId);
-      if (!run) {
-        return res.status(404).json({ message: "Payroll run not found" });
-      }
-
       const isManager = req.workspaceRole && hasManagerAccess(req.workspaceRole);
       const isPlatform = req.platformRole && hasPlatformWideAccess(req.platformRole);
 
+      // Employees see only their own entries — preserve scoped path inline
       if (!isManager && !isPlatform) {
+        const run = await storage.getPayrollRun(id, workspaceId);
+        if (!run) return res.status(404).json({ message: 'Payroll run not found' });
         const employee = await storage.getEmployeeByUserId(req.user?.id || '', workspaceId);
-        if (!employee) {
-          return res.status(403).json({ error: "No employee record found for your user in this workspace" });
-        }
-        
-        // In a run-level fetch, we only show entries for the requesting employee if they are not a manager
+        if (!employee) return res.status(403).json({ error: 'No employee record found for your user in this workspace' });
         const entries = await db.select().from(payrollEntries)
           .where(and(eq(payrollEntries.payrollRunId, id), eq(payrollEntries.employeeId, employee.id)));
-        
-        return res.json({
-          ...run,
-          entries
-        });
+        return res.json({ ...run, entries });
       }
 
-      const entries = await storage.getPayrollEntriesByRun(id);
-
-      res.json({
-        ...run,
-        entries
-      });
+      // Managers/platform: full run + all entries via canonical service
+      const result = await getPayrollRun({ workspaceId, payrollRunId: id, includeEntries: true });
+      res.json({ ...result.run, entries: result.entries || [] });
     } catch (error: unknown) {
-      log.error("Error fetching payroll run:", error);
-      res.status(500).json({ message: "Failed to fetch payroll run" });
+      const status = (error as any)?.status || 500;
+      log.error('Error fetching payroll run:', error);
+      res.status(status).json({ message: 'Failed to fetch payroll run' });
     }
   });
 

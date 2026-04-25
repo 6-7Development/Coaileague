@@ -765,3 +765,64 @@ Wired 5 handlers: `my-paychecks`, `pay-stubs/:id`, `my-payroll-info` GET,
 - `GET /runs/:id` (40 lines, pure storage delegation)
 - `DELETE /runs/:id` (39 lines)
 - `POST /runs/:id/approve` (147 lines) — or leave for run management pass
+
+### 2026-04-25 — Claude (run reads + BusinessFormsVaultService + W-2 vault wiring)
+
+**Pulled `69037de74` (2 Jack commits). Build: ✅ clean.**
+
+**`47b17a466` (Jack) — payrollRunReadService.ts ✅**
+`listPayrollRuns()` (workspace-scoped, optional status + limit filters, bounded at 250)
+`getPayrollRun()` (workspace-scoped, optional includeEntries, throws 404)
+
+**Claude: GET /runs + GET /runs/:id wired**
+- `GET /runs` → `listPayrollRuns()` with status/limit query param forwarding
+- `GET /runs/:id` → employee-scoped path preserved inline (employees see only their own entries); manager/platform path delegates to `getPayrollRun()`
+- Status-aware error handling on both
+
+**payrollRoutes.ts: 3754 → 3386 (-368 total, 15 handlers extracted)**
+
+---
+
+**Bryan directive: Every generated document must be a real branded PDF saved to vault.**
+
+**Created `server/services/documents/businessFormsVaultService.ts`**
+
+The canonical layer all form generators must pass through:
+
+1. `saveToVault(opts)` — stamps branded header + footer (workspace name, document title, doc ID, timestamp, platform name, page numbers, disclaimer) onto any PDF buffer, then persists to `document_vault` table with SHA-256 integrity hash. Returns `{ vault, stampedBuffer }`.
+2. `getVaultRecord(workspaceId, documentNumber)` — retrieve a saved record
+3. `listVaultRecords(workspaceId, category?)` — list all vault docs for a tenant
+
+Document number format: `PAY-20260425-00291`, `TAX-20260425-00117`, `HR-...`, `OPS-...`
+
+Categories: `payroll | tax | hr | operations | compliance | legal`
+
+**Wired into `taxFormGeneratorService.generateW2ForEmployee()`:**
+- After W-2 PDF is generated and DB record created → `saveToVault()` called
+- Returns `{ success, pdfBuffer (stamped), taxFormId, vaultId, documentNumber }`
+- Vault save failure is non-blocking (warns, returns original buffer)
+
+**Still needs wiring (next pass or Jack):**
+- `generate1099ForEmployee()` → same saveToVault pattern
+- `generate940PDF()` / `generate941PDF()` → same pattern
+- `paystubService.generatePaystub()` → pay stubs are the highest-volume form
+- Proof of Employment letter generator (does not exist yet — needs creating)
+- W-3 transmittal generator (does not exist yet)
+- Direct deposit confirmation PDF (does not exist yet)
+
+**Platform-standard form checklist:**
+
+| Form | Generator | Vault-saved | Branded |
+|---|---|---|---|
+| W-2 | ✅ taxFormGeneratorService | ✅ (this commit) | ✅ (this commit) |
+| 1099-NEC | ✅ taxFormGeneratorService | ❌ next | ❌ next |
+| Form 941 | ✅ taxFormGeneratorService | ❌ next | ❌ next |
+| Form 940 | ✅ taxFormGeneratorService | ❌ next | ❌ next |
+| Pay Stub | ✅ paystubService | ❌ next | ❌ next |
+| Direct Deposit Confirmation | ❌ missing | ❌ | ❌ |
+| Proof of Employment | ❌ missing | ❌ | ❌ |
+| W-3 Transmittal | ❌ missing | ❌ | ❌ |
+| 1099-MISC | ❌ missing | ❌ | ❌ |
+| Payroll Run Summary | ❌ missing | ❌ | ❌ |
+
+Next priority: wire saveToVault into 1099, 941, 940, and paystubService. Then create the missing generators.

@@ -13,6 +13,7 @@ import { startOfYear, endOfYear, startOfQuarter, endOfQuarter } from "date-fns";
 import { getTaxRules } from './tax/taxRulesRegistry';
 import { createLogger } from '../lib/logger';
 import { employeeTaxForms } from '@shared/schema';
+import { saveToVault } from './documents/businessFormsVaultService';
 const log = createLogger('taxFormGeneratorService');
 
 
@@ -290,7 +291,29 @@ export class TaxFormGeneratorService {
         isActive: true,
       }).returning();
 
-      return { success: true, pdfBuffer, taxFormId: taxForm.id };
+      // Stamp branded header/footer and save to document vault
+      const vaultResult = await saveToVault({
+        workspaceId,
+        workspaceName: (workspace as any)?.name || workspaceId,
+        documentTitle: `W-2 Wage and Tax Statement`,
+        category: 'tax',
+        formNumber: 'W-2',
+        period: String(taxYear),
+        relatedEntityType: 'employee',
+        relatedEntityId: employeeId,
+        rawBuffer: pdfBuffer,
+      });
+      if (!vaultResult.success) {
+        log.warn('[TaxFormGenerator] W-2 vault save failed (non-blocking):', vaultResult.error);
+      }
+
+      return {
+        success: true,
+        pdfBuffer: vaultResult.stampedBuffer || pdfBuffer,
+        taxFormId: taxForm.id,
+        vaultId: vaultResult.vault?.id,
+        documentNumber: vaultResult.vault?.documentNumber,
+      };
     } catch (error) {
       log.error('[TaxFormGenerator] W-2 generation failed:', error);
       return { success: false, error: String(error) };
