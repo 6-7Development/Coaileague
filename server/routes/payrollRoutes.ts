@@ -146,6 +146,7 @@ import { universalNotificationEngine } from '../services/universalNotificationEn
 import { taxFormGeneratorService } from '../services/taxFormGeneratorService';
 import { markPayrollRunPaid } from '../services/payroll/payrollRunMarkPaidService';
 import { processPayrollRunState } from '../services/payroll/payrollRunProcessStateService';
+import { voidPayrollRun } from '../services/payroll/payrollRunVoidService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -2011,54 +2012,25 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const { runId } = req.params;
-    const parsed = payrollVoidSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: 'A reason is required to void a payroll run', details: parsed.error.flatten() });
-    const { reason } = parsed.data;
-
-    const { voidPayrollRun } = await import('../services/payrollAutomation');
-    const result = await voidPayrollRun(runId, workspaceId, userId, reason.trim());
-
-    if (!result.success) {
-      return res.status(422).json({ message: result.error });
-    }
-
-    storage.createAuditLog({
+    const result = await voidPayrollRun({
       workspaceId,
+      payrollRunId: req.params.runId,
       userId,
       userEmail: req.user?.email || 'unknown',
       userRole: req.user?.role || 'user',
-      action: 'update',
-      entityType: 'payroll_run',
-      entityId: runId,
-      actionDescription: `Payroll run ${runId} voided: ${reason}`,
-      changes: { after: { status: 'voided', reason, voidedBy: userId } },
-      isSensitiveData: true,
-      complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
+      reason: typeof req.body?.reason === 'string' ? req.body.reason : '',
+      reversalReference: typeof req.body?.reversalReference === 'string' ? req.body.reversalReference : null,
+    });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const { broadcastToWorkspace: bcastVoid } = await import('../services/websocketService');
-    bcastVoid(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
-    platformEventBus.publish({
-      type: 'payroll_run_voided',
-      category: 'automation',
-      title: 'Payroll Run Voided',
-      description: `Payroll run ${runId} voided by ${userId} — reason: ${reason}`,
-      workspaceId,
-      userId,
-      metadata: {
-        payrollRunId: runId,
-        voidedBy: userId,
-        reason,
-        source: 'payroll_void',
-      },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-    res.json({ success: true, message: 'Payroll run voided successfully' });
+    res.json(result);
   } catch (error: unknown) {
+    const status = (error as any)?.status || 500;
+    const extra = (error as any)?.extra || {};
     log.error('Error voiding payroll run:', error);
-    res.status(500).json({ message: sanitizeError(error) || 'Failed to void payroll run' });
+    res.status(status).json({
+      message: error instanceof Error ? sanitizeError(error) : 'Failed to void payroll run',
+      ...extra,
+    });
   }
 });
 
