@@ -6,6 +6,7 @@ export interface PayrollTimeEntryClaimResult {
   requestedCount: number;
   claimedCount: number;
   claimedIds: string[];
+  unclaimedIds: string[];
 }
 
 export interface ClaimPayrollTimeEntriesParams {
@@ -13,6 +14,8 @@ export interface ClaimPayrollTimeEntriesParams {
   timeEntryIds: string[];
   payrollRunId: string;
   requireAll?: boolean;
+  claimedAt?: Date;
+  tx?: typeof db;
 }
 
 /**
@@ -30,8 +33,9 @@ export async function claimPayrollTimeEntries({
   timeEntryIds,
   payrollRunId,
   requireAll = true,
+  claimedAt = new Date(),
   tx: client,
-}: ClaimPayrollTimeEntriesParams & { tx?: typeof db }): Promise<PayrollTimeEntryClaimResult> {
+}: ClaimPayrollTimeEntriesParams): Promise<PayrollTimeEntryClaimResult> {
   const client_ = client ?? db;
   if (!workspaceId) {
     throw new Error('[PayrollTimeEntryClaimer] workspaceId is required');
@@ -42,15 +46,15 @@ export async function claimPayrollTimeEntries({
 
   const uniqueIds = Array.from(new Set(timeEntryIds)).filter(Boolean);
   if (uniqueIds.length === 0) {
-    return { requestedCount: 0, claimedCount: 0, claimedIds: [] };
+    return { requestedCount: 0, claimedCount: 0, claimedIds: [], unclaimedIds: [] };
   }
 
   const claimed = await client_
     .update(timeEntries)
     .set({
-      payrolledAt: new Date(),
+      payrolledAt: claimedAt,
       payrollRunId,
-      updatedAt: new Date(),
+      updatedAt: claimedAt,
     })
     .where(and(
       eq(timeEntries.workspaceId, workspaceId),
@@ -59,16 +63,22 @@ export async function claimPayrollTimeEntries({
     ))
     .returning({ id: timeEntries.id });
 
-  if (requireAll && claimed.length !== uniqueIds.length) {
+  const claimedIds = claimed.map(entry => entry.id);
+  const claimedIdSet = new Set(claimedIds);
+  const unclaimedIds = uniqueIds.filter(id => !claimedIdSet.has(id));
+
+  if (requireAll && unclaimedIds.length > 0) {
     throw new Error(
-      `[PayrollTimeEntryClaimer] Payroll claim aborted: ${uniqueIds.length - claimed.length} of ${uniqueIds.length} ` +
-      'time entries were already payrolled, unavailable, or outside workspace scope'
+      `[PayrollTimeEntryClaimer] Payroll claim aborted: ${unclaimedIds.length} of ${uniqueIds.length} ` +
+      `time entries were already payrolled, unavailable, or outside workspace scope: ${unclaimedIds.slice(0, 10).join(', ')}` +
+      `${unclaimedIds.length > 10 ? ` +${unclaimedIds.length - 10} more` : ''}`
     );
   }
 
   return {
     requestedCount: uniqueIds.length,
-    claimedCount: claimed.length,
-    claimedIds: claimed.map(entry => entry.id),
+    claimedCount: claimedIds.length,
+    claimedIds,
+    unclaimedIds,
   };
 }
