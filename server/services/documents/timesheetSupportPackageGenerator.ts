@@ -3,7 +3,7 @@ import { and, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../../db';
 import { clients, employees, shifts, timeEntries, workspaces } from '@shared/schema';
 import { saveToVault } from './businessFormsVaultService';
-import { formatCurrency, sumFinancialValues } from '../financialCalculator';
+import { formatCurrency, multiplyFinancialValues, sumFinancialValues, toFinancialString } from '../financialCalculator';
 import { createLogger } from '../../lib/logger';
 
 const log = createLogger('TimesheetSupportPackageGenerator');
@@ -68,10 +68,18 @@ function getEntryHours(entry: any): number {
   return 0;
 }
 
-function getBillableAmount(entry: any): string {
-  const hours = getEntryHours(entry);
-  const rate = numberValue(entry.capturedBillRate ?? entry.billableRate ?? entry.hourlyRate ?? 0);
-  return formatCurrency(String(hours * rate));
+function getBillableAmountValue(entry: any): string {
+  if (entry.billableAmount != null) {
+    return toFinancialString(entry.billableAmount);
+  }
+
+  const hours = toFinancialString(getEntryHours(entry));
+  const rate = toFinancialString(entry.capturedBillRate ?? entry.hourlyRate ?? 0);
+  return multiplyFinancialValues(hours, rate);
+}
+
+function getBillableAmountLabel(entry: any): string {
+  return formatCurrency(getBillableAmountValue(entry));
 }
 
 function employeeName(employee: any, fallbackId: string): string {
@@ -85,7 +93,7 @@ function clientName(client: any, fallbackId?: string | null): string {
   return client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim() || fallbackId || 'Client';
 }
 
-function buildPdf(builder: (doc: PDFDocument) => void): Promise<Buffer> {
+function buildPdf(builder: (doc: PDFKit.PDFDocument) => void): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({ size: 'LETTER', margins: { top: 72, bottom: 72, left: 54, right: 54 } });
@@ -97,7 +105,7 @@ function buildPdf(builder: (doc: PDFDocument) => void): Promise<Buffer> {
   });
 }
 
-function drawEntryTable(doc: PDFDocument, rows: JoinedTimesheetRow[]): void {
+function drawEntryTable(doc: PDFKit.PDFDocument, rows: JoinedTimesheetRow[]): void {
   const colX = [54, 122, 228, 330, 400, 464];
   const headers = ['Date', 'Employee', 'Client', 'Hours', 'Status', 'Billable'];
 
@@ -133,7 +141,7 @@ function drawEntryTable(doc: PDFDocument, rows: JoinedTimesheetRow[]): void {
       clientName(row.client, entry.clientId),
       hours,
       entry.status || 'unknown',
-      getBillableAmount(entry),
+      getBillableAmountLabel(entry),
     ];
 
     values.forEach((value, index) => {
@@ -189,7 +197,7 @@ export async function generateTimesheetSupportPackage(
       .orderBy(timeEntries.clockIn);
 
     const totalHours = rows.reduce((sum, row) => sum + getEntryHours(row.timeEntry as any), 0);
-    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmount(row.timeEntry as any))));
+    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmountValue(row.timeEntry as any))));
     const workspaceName = (workspace as any)?.companyName || (workspace as any)?.name || workspaceId;
     const periodLabel = `${formatDate(periodStart)} – ${formatDate(periodEnd)}`;
 
