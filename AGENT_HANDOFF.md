@@ -826,3 +826,58 @@ Categories: `payroll | tax | hr | operations | compliance | legal`
 | Payroll Run Summary | ❌ missing | ❌ | ❌ |
 
 Next priority: wire saveToVault into 1099, 941, 940, and paystubService. Then create the missing generators.
+
+### 2026-04-25 — Claude (autonomous pass — business forms complete)
+
+**No Jack commits. Autonomous pass. Build: ✅ clean throughout.**
+
+#### 1. saveToVault wired into remaining tax generators
+
+All 4 primary tax form generators now stamp + save to vault:
+- `generate1099ForEmployee()` — 1099-NEC, branded, vault-saved ✅
+- `generate940Report()` — Form 940, branded, vault-saved ✅
+- `generate941Report()` — Form 941 (quarterly), branded with period Q{q} {year}, vault-saved ✅
+- Pay stubs — `paystubService.generatePaystub()` now calls saveToVault; returns `documentNumber` as `paystubId` ✅
+
+#### 2. businessDocumentGenerators.ts (NEW — 4 generators)
+
+`server/services/documents/businessDocumentGenerators.ts`
+
+Created the 4 previously-missing business document generators:
+
+| Generator | Form | Category | Notes |
+|---|---|---|---|
+| `generateProofOfEmployment()` | Proof of Employment Letter | hr | Employee name, hire date, title, employer note field |
+| `generateDirectDepositConfirmation()` | ACH Confirmation | payroll | Net pay, pay date, routing/account last-4, account type |
+| `generatePayrollRunSummary()` | Payroll Run Summary | payroll | Per-employee breakdown table, totals, status |
+| `generateW3Transmittal()` | Form W-3 | tax | Aggregate W-2 totals, SSA filing instructions, 4-year retention notice |
+
+All 4: branded header/footer via `saveToVault()`, persisted to tenant vault, traceable doc number.
+
+#### 3. Trinity actions registered
+
+4 new actions in `trinityDocumentActions.ts`:
+- `document.proof_of_employment` — Trinity can issue on behalf of employer
+- `document.direct_deposit_confirmation` — Trinity generates after every payroll run
+- `document.payroll_run_summary` — Trinity generates for manager after run approval
+- `document.w3_transmittal` — Trinity generates at year-end
+
+#### Form checklist — current state:
+
+| Form | Status |
+|---|---|
+| W-2 | ✅ generates + brands + vault |
+| 1099-NEC | ✅ generates + brands + vault |
+| Form 941 (quarterly) | ✅ generates + brands + vault |
+| Form 940 (annual FUTA) | ✅ generates + brands + vault |
+| Pay Stub (gross/net/deductions/YTD) | ✅ generates + brands + vault |
+| Direct Deposit Confirmation | ✅ NEW |
+| Proof of Employment Letter | ✅ NEW |
+| Payroll Run Summary | ✅ NEW |
+| W-3 Transmittal | ✅ NEW |
+| 1099-MISC | ❌ not yet — low priority for security companies |
+
+**Next for Jack or next pass:**
+- Wire `document.direct_deposit_confirmation` into the payroll approval/process event flow (auto-generate after every approved run per employee)
+- Wire `document.payroll_run_summary` into the `payroll_run_approved` event subscription
+- Add routes to expose `generateProofOfEmployment` to managers via API (`POST /api/hr/proof-of-employment`)

@@ -20,6 +20,7 @@ import {
   formatCurrency,
 } from "./financialCalculator";
 import { createLogger } from '../lib/logger';
+import { saveToVault } from './documents/businessFormsVaultService';
 const log = createLogger('paystubService');
 
 
@@ -328,10 +329,32 @@ export class PaystubService {
         }
       }
 
+      // Resolve workspace name for branded header
+      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
+
+      // Stamp branded header/footer and save to tenant vault
+      const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const vaultResult = await saveToVault({
+        workspaceId,
+        workspaceName: (ws as any)?.name || workspaceId,
+        documentTitle: 'Employee Pay Stub',
+        category: 'payroll',
+        period: periodLabel,
+        relatedEntityType: 'employee',
+        relatedEntityId: employeeId,
+        generatedBy: 'trinity',
+        rawBuffer: pdfBuffer,
+      });
+      if (!vaultResult.success) {
+        log.warn('[PaystubService] Vault save failed (non-blocking):', vaultResult.error);
+      }
+
       return {
         success: true,
-        paystubId: `PS-${Date.now()}`,
-        pdfBuffer,
+        paystubId: vaultResult.vault?.documentNumber || `PS-${Date.now()}`,
+        pdfBuffer: vaultResult.stampedBuffer || pdfBuffer,
+        vaultId: vaultResult.vault?.id,
+        documentNumber: vaultResult.vault?.documentNumber,
         data,
       };
     } catch (error) {

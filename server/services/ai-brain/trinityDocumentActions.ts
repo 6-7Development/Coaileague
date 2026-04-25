@@ -21,6 +21,12 @@ import { randomUUID } from 'crypto';
 import { format } from 'date-fns';
 import { universalAudit } from '../universalAuditService';
 import { createLogger } from '../../lib/logger';
+import {
+  generateProofOfEmployment,
+  generateDirectDepositConfirmation,
+  generatePayrollRunSummary,
+  generateW3Transmittal,
+} from '../documents/businessDocumentGenerators';
 const log = createLogger('trinityDocumentActions');
 const I9_COMPLIANCE_WINDOW_DAYS = 90;
 const I9_DEADLINE_DAYS = 3;
@@ -685,4 +691,64 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
       updatedAt: new Date(),
     });
   }
+
+  // ── Business Document Generators (Phase: Business Forms) ──────────────────
+
+  orchestrator.registerAction({
+    actionId: 'document.proof_of_employment',
+    description: 'Generate a branded Proof of Employment letter for an employee and save to tenant vault',
+    async execute(request: any) {
+      const { workspaceId, employeeId, requestedBy, employerNote } = request.parameters || {};
+      if (!workspaceId || !employeeId) {
+        return { actionId: request.actionId, success: false, error: 'workspaceId and employeeId required' };
+      }
+      const result = await generateProofOfEmployment({ workspaceId, employeeId, requestedBy, employerNote });
+      return { actionId: request.actionId, ...result };
+    },
+  });
+
+  orchestrator.registerAction({
+    actionId: 'document.direct_deposit_confirmation',
+    description: 'Generate a Direct Deposit Confirmation PDF for a payroll disbursement and save to vault',
+    async execute(request: any) {
+      const { workspaceId, employeeId, payrollRunId, netPay, payDate, bankRoutingLast4, bankAccountLast4, accountType } = request.parameters || {};
+      if (!workspaceId || !employeeId || !payrollRunId) {
+        return { actionId: request.actionId, success: false, error: 'workspaceId, employeeId, payrollRunId required' };
+      }
+      const result = await generateDirectDepositConfirmation({
+        workspaceId, employeeId, payrollRunId,
+        netPay: Number(netPay || 0),
+        payDate: payDate ? new Date(payDate) : new Date(),
+        bankRoutingLast4, bankAccountLast4, accountType,
+      });
+      return { actionId: request.actionId, ...result };
+    },
+  });
+
+  orchestrator.registerAction({
+    actionId: 'document.payroll_run_summary',
+    description: 'Generate a branded Payroll Run Summary report for the employer and save to vault',
+    async execute(request: any) {
+      const { workspaceId, payrollRunId, generatedBy } = request.parameters || {};
+      if (!workspaceId || !payrollRunId) {
+        return { actionId: request.actionId, success: false, error: 'workspaceId and payrollRunId required' };
+      }
+      const result = await generatePayrollRunSummary({ workspaceId, payrollRunId, generatedBy });
+      return { actionId: request.actionId, ...result };
+    },
+  });
+
+  orchestrator.registerAction({
+    actionId: 'document.w3_transmittal',
+    description: 'Generate a W-3 Transmittal summary for a given tax year and save to vault',
+    async execute(request: any) {
+      const { workspaceId, taxYear, generatedBy } = request.parameters || {};
+      if (!workspaceId || !taxYear) {
+        return { actionId: request.actionId, success: false, error: 'workspaceId and taxYear required' };
+      }
+      const result = await generateW3Transmittal({ workspaceId, taxYear: Number(taxYear), generatedBy });
+      return { actionId: request.actionId, ...result };
+    },
+  });
+
 }
