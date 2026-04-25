@@ -6,7 +6,7 @@ import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { requireManager } from "../../rbac";
-import { financialLimiter, exportLimiter } from "../../middleware/rateLimiter";
+import { financialLimiter } from "../../middleware/rateLimiter";
 import { billingRouter } from "../billing-api";
 import upsellRouter from "../upsellRoutes";
 import { quickbooksSyncRouter } from "../quickbooks-sync";
@@ -57,7 +57,9 @@ export function mountBillingRoutes(app: Express): void {
   app.use("/api/billing", billingRouter);
   app.use(quickbooksSyncRouter);
 
-  // Inline billing usage and reconciliation (manager only)
+  // Inline billing usage dashboards (manager only). Duplicate /reconcile and
+  // /transactions handlers were removed because /api/billing is mounted above
+  // and billingRouter already owns those canonical paths.
   app.get("/api/billing/daily-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
     try {
       const workspaceId = req.workspaceId;
@@ -75,25 +77,6 @@ export function mountBillingRoutes(app: Express): void {
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
       const result = await billingReconciliation.getMonthlyUsageSummary(workspaceId, year, month);
-      res.json(result);
-    } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
-  });
-
-  app.get("/api/billing/reconcile", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
-    try {
-      const workspaceId = req.workspaceId;
-      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
-      const result = await billingReconciliation.reconcileCredits(workspaceId);
-      res.json(result);
-    } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
-  });
-
-  app.get("/api/billing/transactions", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
-    try {
-      const workspaceId = req.workspaceId;
-      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
-      const limit = req.query.limit ? Math.min(parseInt(req.query.limit as string), 200) : 50;
-      const result = await billingReconciliation.getRecentTransactions(workspaceId, limit);
       res.json(result);
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
