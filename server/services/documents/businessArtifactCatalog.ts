@@ -157,10 +157,12 @@ const BUSINESS_ARTIFACT_CATALOG: BusinessArtifactCatalogEntry[] = [
     cadence: 'per_run',
     sourceDomain: 'billing',
     sourceTables: ['invoices', 'invoiceLineItems', 'timeEntries'],
+    generator: 'invoiceService.generateInvoicePDF',
+    trinityActionId: 'document.generate_invoice_pdf',
     vaultBacked: true,
     availableToTenant: true,
     availableToEmployee: false,
-    notes: ['Cataloged as required business artifact. Confirm generator/vault path during billing extraction.'],
+    notes: ['Branded client invoice PDF saved to tenant vault.'],
   },
   {
     artifactType: 'timesheet_support_package',
@@ -170,10 +172,11 @@ const BUSINESS_ARTIFACT_CATALOG: BusinessArtifactCatalogEntry[] = [
     cadence: 'per_run',
     sourceDomain: 'time_tracking',
     sourceTables: ['timeEntries', 'shifts', 'employees', 'clients'],
-    vaultBacked: false,
+    generator: 'generateTimesheetSupportPackage',
+    vaultBacked: true,
     availableToTenant: true,
     availableToEmployee: false,
-    notes: ['Required for invoice/payroll reconciliation. Confirm generator/vault path during time tracking extraction.'],
+    notes: ['Branded reconciliation package for payroll, invoice, audit, and dispute support.'],
   },
 ];
 
