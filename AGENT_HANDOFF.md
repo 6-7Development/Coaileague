@@ -55,6 +55,45 @@ The canonical source is `shared/billingConfig.ts`. Build the enforcement wrapper
 **Option C — Continue `payrollRoutes.ts` extraction**
 Still at 3,386 lines. Next: `DELETE /runs/:id` (small) or `POST /runs/:id/approve` (147 lines, needs inspection first).
 
+
+---
+
+## ⚠️ PROCESS RULE — BOTH AGENTS READ THIS
+**Bryan directive 2026-04-25:** When either agent gets sidetracked, STOP and re-read the handoff before continuing. We have a systematic order:
+> Front end → back end → complete 360 holistic platform and Trinity.
+> Do not hop around. Finish the current domain before starting the next.
+
+**Current order:**
+1. ~~Payroll domain~~ — routes extraction at 3,386 lines, still in progress
+2. Billing domain — `billingTiersRegistry.ts` enforcement layer (next big ticket)
+3. Scheduling domain
+4. Time tracking domain
+5. HR domain
+6. Client/Contract domain
+7. Compliance/Licensing domain
+8. Reporting/Analytics domain
+9. Email/Notifications domain ← see note below
+10. Security domain ← see note below
+11. UI/Frontend polish (last)
+
+---
+
+## 📌 PARKED NOTES — DO NOT ACT ON YET, JUST REMEMBER
+
+### Email System Issues (tackle in Email/Notifications domain sprint)
+- Forwarded emails arrive with **empty body** — Resend inbound routing strips content
+- **Forgot password email sends empty** — no design, no template, no reset link, no action
+- Password reset flow needs: branded email template → temp password OR reset link → force password change on first login
+- Goal: any of those flows would work — temp password is simplest, reset link is more secure
+- Do NOT work on this now — note it and come back when we reach the Email domain
+
+### Code Security (tackle in Security domain sprint)
+- Bryan flagged: protect platform code from scraping and theft
+- Items: WAF, rate limiting, client-side bundle obfuscation, IP allowlisting on admin routes, secrets scanning in CI/CD, copyright headers, `trinitySelfEditGovernance.ts` enforcement audit
+- Do NOT work on this now — note it and come back when we reach Security domain
+
+---
+
 ---
 
 ### Bryan's direction (always in scope):
