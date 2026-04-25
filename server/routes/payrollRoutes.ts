@@ -147,6 +147,7 @@ import { markPayrollRunPaid } from '../services/payroll/payrollRunMarkPaidServic
 import { processPayrollRunState } from '../services/payroll/payrollRunProcessStateService';
 import { voidPayrollRun } from '../services/payroll/payrollRunVoidService';
 import { createPayrollRunForPeriod } from '../services/payroll/payrollRunCreationService';
+import { listBankAccounts, addBankAccount, updateBankAccount, deactivateBankAccount, verifyBankAccount } from '../services/payroll/payrollBankAccountService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -2574,13 +2575,8 @@ router.get('/employees/:employeeId/bank-accounts', async (req: AuthenticatedRequ
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
-    const { employeeId } = req.params;
-
-    const rows = await db.select().from(employeeBankAccounts)
-      .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId), eq(employeeBankAccounts.isActive, true)))
-      .orderBy(desc(employeeBankAccounts.isPrimary));
-
-    res.json({ success: true, bankAccounts: rows.map(maskBankAccount) });
+    const result = await listBankAccounts({ workspaceId, employeeId: req.params.employeeId });
+    res.json(result);
   } catch (error: unknown) {
     log.error('[BankAccounts] GET error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -2593,25 +2589,15 @@ router.post('/employees/:employeeId/bank-accounts/verify', async (req: Authentic
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
     const { employeeId } = req.params;
-
     const [employee] = await db.select({ userId: employees.userId })
       .from(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
       .limit(1);
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-
-    if (!requireManagerOrOwn(req, employee.userId)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const { verifyEmployeeBankAccount } = await import('../services/payroll/achTransferService');
-    const verification = await verifyEmployeeBankAccount({
-      workspaceId,
-      employeeId,
-      verifiedBy: userId,
-    });
-
-    res.json({ success: verification.valid, status: verification.status });
+    if (!requireManagerOrOwn(req, employee.userId)) return res.status(403).json({ error: 'Access denied' });
+    const result = await verifyBankAccount({ workspaceId, employeeId, userId });
+    if (!result.success) return res.status(result.httpStatus || 500).json({ error: result.error });
+    res.json({ success: result.valid, status: result.status });
   } catch (error: unknown) {
     log.error('[BankAccounts] VERIFY error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -2623,144 +2609,14 @@ router.post('/employees/:employeeId/bank-accounts', async (req: AuthenticatedReq
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const { employeeId } = req.params;
-
-    const parsed = employeeBankAccountSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Invalid bank account data', details: parsed.error.flatten() });
-    const { bankName, routingNumber, accountNumber, accountType, depositType, depositAmount, depositPercent, isPrimary, notes } = parsed.data;
-
-    const encryptedRouting = encryptToken(String(routingNumber).trim());
-    const encryptedAccount = encryptToken(String(accountNumber).trim());
-    const routingLast4 = String(routingNumber).trim().slice(-4);
-    const accountLast4 = String(accountNumber).trim().slice(-4);
-
-    if (isPrimary) {
-      await db.update(employeeBankAccounts).set({ isPrimary: false })
-        .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
-    }
-
-    const [created] = await db.insert(employeeBankAccounts).values({
-      workspaceId,
-      employeeId,
-      bankName: bankName || null,
-      routingNumberEncrypted: encryptedRouting,
-      accountNumberEncrypted: encryptedAccount,
-      accountType: accountType || 'checking',
-      routingNumberLast4: routingLast4,
-      accountNumberLast4: accountLast4,
-      depositType: depositType || 'full',
-      depositAmount: depositAmount ? String(depositAmount) : null,
-      depositPercent: depositPercent ? String(depositPercent) : null,
-      isPrimary: isPrimary ?? true,
-      isActive: true,
-      addedBy: userId,
-      notes: notes || null,
-    }).returning();
-
-    await db.update(employeeOnboardingProgress)
-      .set({
-        stepsCompleted: sql`CASE
-          WHEN NOT (${employeeOnboardingProgress.stepsCompleted} @> '["direct_deposit"]'::jsonb)
-          THEN ${employeeOnboardingProgress.stepsCompleted} || '["direct_deposit"]'::jsonb
-          ELSE ${employeeOnboardingProgress.stepsCompleted}
-        END`,
-        directDepositComplete: true,
-        status: sql`CASE
-          WHEN ${employeeOnboardingProgress.overallProgressPct} >= 100 THEN 'complete'
-          ELSE ${employeeOnboardingProgress.status}
-        END`,
-        lastUpdatedAt: new Date(),
-      } as any)
-      .where(
-        and(
-          eq(employeeOnboardingProgress.workspaceId, workspaceId),
-          eq(employeeOnboardingProgress.employeeId, employeeId),
-        )
-      );
-
-    const [progress] = await db.select()
-      .from(employeeOnboardingProgress)
-      .where(
-        and(
-          eq(employeeOnboardingProgress.workspaceId, workspaceId),
-          eq(employeeOnboardingProgress.employeeId, employeeId),
-        )
-      )
-      .limit(1);
-
-    if (progress && ((progress.overallProgressPct || 0) >= 100 || progress.status === 'complete')) {
-      const [employee] = await db.select({
-        firstName: employees.firstName,
-        lastName: employees.lastName,
-      })
-        .from(employees)
-        .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
-        .limit(1);
-
-      platformEventBus.emit('employee_onboarding_completed', {
-        workspaceId,
-        employeeId,
-        employeeName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : 'Employee',
-        completedAt: new Date().toISOString(),
-      });
-    }
-
-    storage.createAuditLog({
-      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
-      action: 'create', entityType: 'employee_bank_account', entityId: created.id,
-      actionDescription: `Bank account (****${accountLast4}) added for employee ${employeeId}`,
-      changes: { routing_last4: routingLast4, account_last4: accountLast4, accountType },
-      isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-    // Mark direct deposit step complete in onboarding progress (non-blocking)
-    ;(async () => {
-      try {
-        await db.execute(sql`
-          UPDATE employee_onboarding_progress
-          SET
-            direct_deposit_complete = true,
-            steps_completed = CASE
-              WHEN NOT (steps_completed @> '["direct_deposit"]'::jsonb)
-              THEN steps_completed || '["direct_deposit"]'::jsonb
-              ELSE steps_completed
-            END,
-            last_updated_at = now()
-          WHERE workspace_id = ${workspaceId} AND employee_id = ${employeeId}
-        `);
-
-        // Check if all steps are now complete → emit onboarding_completed event
-        const progResult = await db.execute(sql`
-          SELECT
-            jsonb_array_length(steps_completed) as done,
-            (SELECT COUNT(*) FROM employee_onboarding_steps WHERE required = true) as total,
-            e.first_name, e.last_name
-          FROM employee_onboarding_progress p
-          JOIN employees e ON e.id = p.employee_id
-          WHERE p.workspace_id = ${workspaceId} AND p.employee_id = ${employeeId}
-          LIMIT 1
-        `);
-
-        const prog = (progResult as any).rows?.[0];
-        if (prog) {
-          const done = parseInt(prog.done) || 0;
-          const total = parseInt(prog.total) || 1;
-          const pct = Math.round((done / total) * 100);
-          if (pct >= 100) {
-            platformEventBus.publish({
-              type: 'employee_onboarding_completed',
-              workspaceId,
-              title: `${prog.first_name} ${prog.last_name} completed onboarding`,
-              payload: { employeeId, completedAt: new Date().toISOString() },
-            });
-          }
-        }
-      } catch (err: any) {
-        log.warn('[BankAccounts] Onboarding progress update failed (non-blocking):', err?.message);
-      }
-    })();
-
-    res.status(201).json({ success: true, bankAccount: maskBankAccount(created) });
+    const result = await addBankAccount({
+      workspaceId, employeeId: req.params.employeeId, userId,
+      userEmail: req.user?.email || null,
+      userRole: req.user?.role || null,
+      body: req.body,
+    });
+    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
+    res.status(201).json(result);
   } catch (error: unknown) {
     log.error('[BankAccounts] POST error:', error);
     res.status(400).json({ error: sanitizeError(error) });
@@ -2772,84 +2628,15 @@ router.patch('/employees/:employeeId/bank-accounts/:accountId', async (req: Auth
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const { employeeId, accountId } = req.params;
-
-    const [current] = await db.select().from(employeeBankAccounts)
-      .where(and(eq(employeeBankAccounts.id, accountId), eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)))
-      .limit(1);
-    if (!current) return res.status(404).json({ error: 'Bank account not found' });
-
-    const parsed = employeeBankAccountUpdateSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Invalid bank account update data', details: parsed.error.flatten() });
-    const { bankName, routingNumber, accountNumber, accountType, depositType, depositAmount, depositPercent, isPrimary, notes } = parsed.data;
-    const updateFields: Record<string, any> = { updatedAt: new Date() };
-
-    if (bankName !== undefined) updateFields.bankName = bankName;
-    if (accountType !== undefined) updateFields.accountType = accountType;
-    if (depositType !== undefined) updateFields.depositType = depositType;
-    if (depositAmount !== undefined) updateFields.depositAmount = String(depositAmount);
-    if (depositPercent !== undefined) updateFields.depositPercent = String(depositPercent);
-    if (notes !== undefined) updateFields.notes = notes;
-    if (isPrimary !== undefined) updateFields.isPrimary = isPrimary;
-
-    if (routingNumber) {
-      updateFields.routingNumberEncrypted = encryptToken(String(routingNumber).trim());
-      updateFields.routingNumberLast4 = String(routingNumber).trim().slice(-4);
-    }
-    if (accountNumber) {
-      updateFields.accountNumberEncrypted = encryptToken(String(accountNumber).trim());
-      updateFields.accountNumberLast4 = String(accountNumber).trim().slice(-4);
-    }
-
-    let updated: typeof employeeBankAccounts.$inferSelect | undefined;
-    await db.transaction(async (tx) => {
-      if (isPrimary) {
-        // Atomically clear existing primary before setting new
-        await tx.update(employeeBankAccounts).set({ isPrimary: false })
-          .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
-      }
-      [updated] = await tx.update(employeeBankAccounts).set(updateFields)
-        .where(and(
-          eq(employeeBankAccounts.id, accountId),
-          eq(employeeBankAccounts.workspaceId, workspaceId),
-          eq(employeeBankAccounts.employeeId, employeeId)
-        )).returning();
+    const result = await updateBankAccount({
+      workspaceId, employeeId: req.params.employeeId,
+      accountId: req.params.accountId, userId,
+      userEmail: req.user?.email || null,
+      userRole: req.user?.role || null,
+      body: req.body,
     });
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Bank account not found' });
-    }
-
-    storage.createAuditLog({
-      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
-      action: 'update', entityType: 'employee_bank_account', entityId: accountId,
-      actionDescription: `Bank account (****${updated.accountNumberLast4}) updated for employee ${employeeId}`,
-      changes: { updatedFields: Object.keys(updateFields) },
-      isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-    // Non-blocking: security alert to org owner + managers when bank info changes
-    const changedSensitive = routingNumber || accountNumber;
-    if (changedSensitive) {
-      (async () => {
-        try {
-          // universalNotificationEngine — now static import at top
-          await universalNotificationEngine.sendNotification({
-            workspaceId,
-            type: 'security_alert',
-            title: 'Employee Bank Account Updated',
-            message: `Direct deposit bank account (****${updated.accountNumberLast4}) was updated for employee ${employeeId}. Changed by: ${req.user?.email || userId}. Please verify this change is authorized.`,
-            priority: 'high',
-            severity: 'warning',
-            targetRoles: ['org_owner', 'co_owner', 'payroll_admin'],
-          });
-        } catch (alertErr: unknown) {
-          log.warn('[PayrollRoutes] Bank account change security alert failed (non-blocking):', (alertErr instanceof Error ? alertErr.message : String(alertErr)));
-        }
-      })();
-    }
-
-    res.json({ success: true, bankAccount: maskBankAccount(updated) });
+    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
+    res.json(result);
   } catch (error: unknown) {
     log.error('[BankAccounts] PATCH error:', error);
     res.status(400).json({ error: sanitizeError(error) });
@@ -2861,24 +2648,14 @@ router.delete('/employees/:employeeId/bank-accounts/:accountId', async (req: Aut
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const { employeeId, accountId } = req.params;
-
-    const [deactivated] = await db.update(employeeBankAccounts)
-      .set({ isActive: false, deactivatedAt: new Date(), deactivatedBy: userId })
-      .where(and(eq(employeeBankAccounts.id, accountId), eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)))
-      .returning();
-
-    if (!deactivated) return res.status(404).json({ error: 'Bank account not found' });
-
-    storage.createAuditLog({
-      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
-      action: 'delete', entityType: 'employee_bank_account', entityId: accountId,
-      actionDescription: `Bank account (****${deactivated.accountNumberLast4}) deactivated for employee ${employeeId}`,
-      changes: { before: { isActive: true }, after: { isActive: false } },
-      isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-    res.json({ success: true, message: 'Bank account deactivated' });
+    const result = await deactivateBankAccount({
+      workspaceId, employeeId: req.params.employeeId,
+      accountId: req.params.accountId, userId,
+      userEmail: req.user?.email || null,
+      userRole: req.user?.role || null,
+    });
+    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
+    res.json(result);
   } catch (error: unknown) {
     log.error('[BankAccounts] DELETE error:', error);
     res.status(400).json({ error: sanitizeError(error) });
