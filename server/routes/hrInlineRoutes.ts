@@ -43,7 +43,7 @@ const ONBOARDING_DEADLINE_DAYS = 7;
 
 const router = Router();
 
-ter.post("/manager-assignments", requireManager, async (req: AuthenticatedRequest, res) => {
+router.post("/manager-assignments", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
 
@@ -77,134 +77,6 @@ ter.post("/manager-assignments", requireManager, async (req: AuthenticatedReques
   }
 });
 
-ter.get("/employee-reputation/:employeeId", requireAuth, async (req: any, res) => {
-  try {
-    const userId = req.user?.id || req.user?.claims?.sub;
-    const { employeeId } = req.params;
-    
-    const employee = await storage.getEmployeeByUserId(userId, req.workspaceId);
-    const isAuthorized = employee && ['org_owner', 'co_owner', 'org_admin', 'org_manager', 'department_manager'].includes(employee.role || '');
-    
-    if (!isAuthorized) {
-      return res.status(403).json({ message: "Only HR/Managers can view employee reputation data" });
-    }
-
-    // SECURITY: workspace-scoped lookup — prevents cross-tenant data access.
-    // A manager in Workspace A must NOT be able to read reputation data for Workspace B employees.
-    const requesterWorkspaceId = req.workspaceId || employee?.workspaceId;
-    if (!requesterWorkspaceId) {
-      return res.status(403).json({ message: "Workspace context required" });
-    }
-
-    const targetEmployee = await db.select().from(employees)
-      .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, requesterWorkspaceId)))
-      .limit(1);
-    if (!targetEmployee.length) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
-
-    const { performanceReviews } = await import('@shared/schema');
-    const performanceReviewsData = await db.query.performanceReviews.findMany({
-      where: (performanceReviews, { eq }) => eq(performanceReviews.employeeId, employeeId),
-      columns: {
-        overallRating: true,
-        attendanceRating: true,
-        attendanceRate: true,
-        complianceViolations: true,
-        reportsSubmitted: true,
-        reportsApproved: true,
-        reportsRejected: true,
-        completedAt: true,
-      }
-    });
-
-    const { stagedShifts } = await import('@shared/schema');
-    const writeUps = await db.select({ count: sql<number>`count(*)` })
-      .from(reportTemplates)
-      .innerJoin(
-        reportSubmissions,
-        eq(reportSubmissions.templateId, reportTemplates.id)
-      )
-      .where(
-        and(
-          eq(reportSubmissions.employeeId, employeeId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          eq(reportTemplates.isDisciplinary, true)
-        )
-      );
-
-    const attendanceData = await db.select({
-      totalEntries: sql<number>`count(*)`,
-      lateClockIns: sql<number>`count(*) filter (where clock_in > (select start_time from ${shifts} where ${shifts.id} = ${timeEntriesTable.shiftId}))`,
-      avgHoursPerWeek: sql<number>`avg(total_hours)`
-    })
-      .from(timeEntriesTable)
-      .where(eq(timeEntriesTable.employeeId, employeeId));
-
-    const employerRatingsCount = await db.select({ count: sql<number>`count(*)` })
-      .from(employerRatings)
-      .where(eq(employerRatings.employeeId, employeeId));
-
-    const avgPerformanceRating = performanceReviewsData.length > 0
-      ? performanceReviewsData.reduce((sum, r) => sum + (r.overallRating || 0), 0) / performanceReviewsData.length
-      : 0;
-
-    const avgAttendanceRating = performanceReviewsData.length > 0
-      ? performanceReviewsData.reduce((sum, r) => sum + (r.attendanceRating || 0), 0) / performanceReviewsData.length
-      : 0;
-
-    const writeUpCount = writeUps[0]?.count || 0;
-    const attendanceMetrics = attendanceData[0] || { totalEntries: 0, lateClockIns: 0, avgHoursPerWeek: 0 };
-
-    const reputationData = {
-      employeeId,
-      employeeInitials: `${targetEmployee[0].firstName?.charAt(0) || ''}${targetEmployee[0].lastName?.charAt(0) || ''}`,
-      role: targetEmployee[0].role,
-      
-      performanceMetrics: {
-        avgOverallRating: Math.round(avgPerformanceRating * 10) / 10,
-        avgAttendanceRating: Math.round(avgAttendanceRating * 10) / 10,
-        totalReviewsCompleted: performanceReviewsData.length,
-        avgAttendanceRate: performanceReviewsData.length > 0
-          ? performanceReviewsData.reduce((sum, r) => sum + (Number(r.attendanceRate) || 0), 0) / performanceReviewsData.length
-          : 0,
-      },
-      
-      disciplinaryRecord: {
-        totalWriteUps: writeUpCount,
-        complianceViolations: performanceReviewsData.reduce((sum, r) => sum + (r.complianceViolations || 0), 0),
-      },
-      
-      attendanceMetrics: {
-        totalTimeEntries: attendanceMetrics.totalEntries,
-        lateClockIns: attendanceMetrics.lateClockIns,
-        lateClockInRate: attendanceMetrics.totalEntries > 0
-          ? Math.round((attendanceMetrics.lateClockIns / attendanceMetrics.totalEntries) * 1000) / 10
-          : 0,
-        avgHoursPerWeek: Math.round(Number(attendanceMetrics.avgHoursPerWeek) * 10) / 10,
-      },
-      
-      engagementMetrics: {
-        employerRatingsSubmitted: employerRatingsCount[0]?.count || 0,
-      },
-      
-      overallReputationScore: Math.min(100, Math.max(0, Math.round(
-        (avgPerformanceRating * 15) +
-        (avgAttendanceRating * 10) +
-        (attendanceMetrics.totalEntries > 0 ? ((attendanceMetrics.totalEntries - attendanceMetrics.lateClockIns) / attendanceMetrics.totalEntries) * 20 : 0) -
-        (writeUpCount * 5)
-      ))),
-      
-      privacyNotice: "Sensitive information (names, comments, specific details) has been redacted for privacy. This data is aggregated for hiring decisions only."
-    };
-
-    res.json(reputationData);
-  } catch (error) {
-    log.error("Error fetching employee reputation:", error);
-    res.status(500).json({ message: "Failed to fetch employee reputation data" });
-  }
-});
-
 // Short, human-friendly code (12 chars) so accept-invite.tsx can distinguish
 // workspace invites (len < 20) from long employee-onboarding tokens.
 // Crockford-style alphabet: no 0/O/1/I to prevent transcription errors.
@@ -216,56 +88,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-er.get("/hr/pto-balances", requireManager, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId!;
-    const balances = await getAllPtoBalances(workspaceId);
-    res.json(balances);
-  } catch (error: unknown) {
-    log.error("Error fetching PTO balances:", error);
-    res.status(500).json({ message: "Failed to fetch PTO balances" });
-  }
-});
-
-uter.post("/organization-onboarding/start", requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId!;
-    const userId = req.user?.id || (req.user)?.claims?.sub;
-    const {
-      organizationName,
-      industry,
-      employeeCount,
-      subscriptionTier,
-      billingEmail,
-      adminEmail,
-    } = req.body;
-    const { organizationOnboarding } = await import("@shared/schema");
-
-    const [onboarding] = await db
-      .insert(organizationOnboarding)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      .values({
-        workspaceId,
-        userId: userId!,
-        organizationName,
-        industry,
-        employeeCount,
-        subscriptionTier,
-        billingEmail,
-        adminEmail,
-        status: 'in_progress',
-        currentStep: 'profile_setup',
-      })
-      .returning();
-
-    res.json(onboarding);
-  } catch (error: unknown) {
-    log.error('Error starting onboarding:', error);
-    res.status(500).json({ message: sanitizeError(error) || 'Failed to start onboarding' });
-  }
-});
-
-outer.get("/organization-onboarding/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get("/organization-onboarding/status", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { organizationOnboarding } = await import("@shared/schema");

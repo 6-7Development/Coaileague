@@ -896,7 +896,7 @@ router.post('/:id/reactivate', requireManagerOrPlatformStaff, async (req: Authen
 // ─── POST /:id/collections/resolve ───────────────────────────────────────────
 // ─── POST /:id/collections/write-off ─────────────────────────────────────────
 // ─── GET /:id/collections/log ─────────────────────────────────────────────────
-outer.delete('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+router.delete('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
@@ -1244,7 +1244,7 @@ const coverageScheduleSchema = z.object({
   coverageNotes: z.string().optional().nullable(),
 });
 
-outer.patch('/:clientId/coverage-schedule', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+router.patch('/:clientId/coverage-schedule', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { clientId } = req.params;
     const workspaceId = req.workspaceId;

@@ -18,29 +18,6 @@ const log = createLogger('VehicleRoutes');
 const router = Router();
 router.use(requireAuth);
 
-uter.get("/maintenance/list", async (req, res) => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const workspaceId = authReq.workspaceId;
-    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
-
-    const vehicleId = req.query.vehicleId as string | undefined;
-    let conditions = [eq(vehicleMaintenance.workspaceId, workspaceId)];
-    if (vehicleId) conditions.push(eq(vehicleMaintenance.vehicleId, vehicleId));
-
-    const logs = await db
-      .select()
-      .from(vehicleMaintenance)
-      .where(and(...conditions))
-      .orderBy(desc(vehicleMaintenance.date));
-
-    res.json(logs);
-  } catch (error: unknown) {
-    log.error("Error fetching vehicle maintenance logs:", error);
-    res.status(500).json({ error: "Failed to fetch vehicle maintenance logs" });
-  }
-});
-
 router.get("/:id", async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -110,41 +87,6 @@ router.patch("/:id", async (req, res) => {
   } catch (error: unknown) {
     log.error("Error updating vehicle:", error);
     res.status(400).json({ error: sanitizeError(error) || "Failed to update vehicle" });
-  }
-});
-
-uter.post("/assignments/:id/return", async (req, res) => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const workspaceId = authReq.workspaceId;
-    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
-
-    const endMileage = req.body.endMileage;
-    const notes = req.body.notes;
-
-    const [assignment] = await db
-      .update(vehicleAssignments)
-      .set({ returnDate: new Date(), endMileage, notes, updatedAt: new Date() })
-      .where(and(eq(vehicleAssignments.id, req.params.id), eq(vehicleAssignments.workspaceId, workspaceId)))
-      .returning();
-
-    if (!assignment) return res.status(404).json({ error: "Assignment not found" });
-
-    await db
-      .update(vehicles)
-      .set({ assignedEmployeeId: null, currentMileage: endMileage || undefined, updatedAt: new Date() })
-      .where(and(eq(vehicles.id, assignment.vehicleId), eq(vehicles.workspaceId, workspaceId)));
-
-    const wss = req.app?.get?.("wss");
-    if (wss) {
-      const msg = JSON.stringify({ type: "vehicle_returned", payload: assignment });
-      wss.clients?.forEach?.((c: any) => { if (c.readyState === 1) c.send(msg); });
-    }
-
-    res.json(assignment);
-  } catch (error: unknown) {
-    log.error("Error returning vehicle:", error);
-    res.status(500).json({ error: "Failed to process vehicle return" });
   }
 });
 

@@ -906,30 +906,6 @@ router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.get('/:employeeId/time-off', async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId!;
-    const { employeeId } = req.params;
-    const { timeOffRequests } = await import("@shared/schema");
-
-    const requests = await db
-      .select()
-      .from(timeOffRequests)
-      .where(
-        and(
-          eq(timeOffRequests.workspaceId, workspaceId),
-          eq(timeOffRequests.employeeId, employeeId)
-        )
-      )
-      .orderBy(desc(timeOffRequests.createdAt));
-
-    res.json(requests);
-  } catch (error: unknown) {
-    log.error('Error getting time off requests:', error);
-    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to get time off requests' });
-  }
-});
-
 router.get('/count', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;

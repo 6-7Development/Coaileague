@@ -24,7 +24,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-uter.post("/templates", async (req: AuthenticatedRequest, res) => {
+router.post("/templates", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
@@ -48,7 +48,7 @@ uter.post("/templates", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
+router.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
   try {
     if (!hasManagerAccess(req.workspaceRole || '')) {
       return res.status(403).json({ error: "Manager access required to delete post order templates" });
@@ -66,24 +66,6 @@ outer.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
   } catch (error: unknown) {
     log.error("Error deleting post order template:", error);
     res.status(500).json({ error: "Failed to delete post order template" });
-  }
-});
-
-outer.get("/shift/:shiftId", async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId;
-    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
-
-    const orders = await db
-      .select()
-      .from(shiftOrders)
-      .where(and(eq(shiftOrders.shiftId, req.params.shiftId), eq(shiftOrders.workspaceId, workspaceId)))
-      .orderBy(desc(shiftOrders.createdAt));
-
-    res.json(orders);
-  } catch (error: unknown) {
-    log.error("Error fetching shift orders:", error);
-    res.status(500).json({ error: "Failed to fetch shift orders" });
   }
 });
 
@@ -135,7 +117,7 @@ router.post("/acknowledge", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.get("/tracking", async (req: AuthenticatedRequest, res) => {
+router.get("/tracking", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });

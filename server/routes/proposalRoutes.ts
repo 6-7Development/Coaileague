@@ -66,7 +66,7 @@ router.get("/templates", async (_req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.get("/", async (req: AuthenticatedRequest, res) => {
+router.get("/", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -84,7 +84,7 @@ outer.get("/", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.post("/", async (req: AuthenticatedRequest, res) => {
+router.post("/", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
@@ -101,48 +101,6 @@ outer.post("/", async (req: AuthenticatedRequest, res) => {
   } catch (error: unknown) {
     log.error("Error creating proposal:", error);
     res.status(400).json({ error: sanitizeError(error) || "Failed to create proposal" });
-  }
-});
-
-outer.patch("/:id/status", requireManager, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId;
-    if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
-
-    const { status } = req.body;
-    const validStatuses = ['draft', 'review', 'submitted', 'won', 'lost'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
-    }
-
-    const [updated] = await db
-      .update(proposals)
-      .set({ status, updatedAt: new Date() } as any)
-      .where(and(eq(proposals.id, req.params.id), eq(proposals.workspaceId, workspaceId)))
-      .returning();
-
-    if (!updated) return res.status(404).json({ error: "Proposal not found" });
-    res.json(updated);
-  } catch (error: unknown) {
-    log.error("Error updating proposal status:", error);
-    res.status(400).json({ error: sanitizeError(error) || "Failed to update proposal status" });
-  }
-});
-
-outer.post("/:id/generate-pdf", async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = req.workspaceId;
-    if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
-
-    const pdfBuffer = await generateProposalPdf(req.params.id, workspaceId);
-
-    const safePropId = req.params.id.slice(0, 8).replace(/[\r\n]/g, '');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="proposal-${safePropId}.pdf"`);
-    res.send(pdfBuffer);
-  } catch (error: unknown) {
-    log.error("Error generating proposal PDF:", error);
-    res.status(500).json({ error: sanitizeError(error) || "Failed to generate PDF" });
   }
 });
 
