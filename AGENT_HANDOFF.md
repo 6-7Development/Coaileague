@@ -71,3 +71,24 @@ wc -l server/routes/shiftRoutes.ts     # 2,240L
 4. Build check before every commit
 5. No commits to development — refactor branch only
 
+
+---
+
+## LATEST CLAUDE PASS — bcc86cdbc → [this commit]
+
+**This pass: shiftRoutes + miscRoutes + devRoutes (-4,408L + ghost cleanup)**
+
+| File | Before | After | Notes |
+|---|---|---|---|
+| shiftRoutes.ts | 3,623L | 1,642L | -1,981L, 22 dead deleted |
+| miscRoutes.ts | 2,777L | 2,004L | -773L, 29 dead deleted + workspaceId bug fixed |
+| devRoutes.ts | 2,459L | 149L | -2,310L, 31 dead deleted — 4 dev-only seeds kept |
+
+Build: clean ✅ | Broken prefixes: 0 ✅
+
+**Next targets for Jack:**
+- `shiftRoutes.ts` — Jack can audit /:id/cancel, /:id/duplicate, /recurring/* if they exist
+- `timeOffRoutes.ts` (709L) — confirmed all 16 alive previously, quick verify + skip
+- `scheduleosRoutes.ts`, `schedulesRoutes.ts`, `advancedSchedulingRoutes.ts`
+- Trinity/AI files: `ai-brain-routes.ts`, `helpai-routes.ts`
+
