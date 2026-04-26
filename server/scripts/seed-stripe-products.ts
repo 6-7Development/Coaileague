@@ -127,7 +127,7 @@ async function createOneTimePrice(
   return price.id;
 }
 
-async function /**
+/**
  * Archives Stripe products that are no longer in the canonical billing config.
  * These are products whose names suggest old/retired pricing structures.
  * Does NOT delete — Stripe keeps price history for existing subscriptions.
@@ -178,7 +178,7 @@ async function archiveLegacyProducts(): Promise<void> {
   }
 }
 
-seedProducts() {
+async function seedProducts() {
   console.log('\nCoAIleague Stripe Product Catalog Sync\n');
   console.log('='.repeat(60));
 
