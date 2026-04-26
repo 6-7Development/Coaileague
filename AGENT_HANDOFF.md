@@ -9,37 +9,37 @@
 
 ## CURRENT POSITION
 
-**Domain:** SCHEDULING (active)
+**Domain:** SCHEDULING (nearly done)
 **Order:** ✅ Payroll → ✅ Billing → 🔄 Scheduling → Time → HR → ...
 
 ---
 
-## WHAT WAS JUST DONE (last 3 commits)
+## WHAT WAS JUST DONE (last 2 commits)
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | Deleted schedulerRoutes.ts (887L) + schedules/export/csv dead route | schedulerRoutes.ts: DELETED, schedulesRoutes.ts: 558→518L |
-| `d81b3e930` | Jack | Unmounted /api/scheduler (no callers) | scheduling.ts cleaned |
-| `8ecdca177` | Claude | scheduleosRoutes.ts — 12 dead routes deleted | 1,326→705L (-621L) |
+| Claude (this) | Claude | advancedSchedulingRoutes.ts — 17 dead routes deleted | 1,220→799L (-421L) |
+| `9fbdaa8c3` | Claude | schedulerRoutes.ts DELETED + schedulesRoutes.ts -40L | -927L total |
 
 ---
 
 ## JACK'S NEXT TASK
 
-**Target:** `advancedSchedulingRoutes.ts` (1,219L) — same caller audit pattern
+**Target:** `autonomousSchedulingRoutes.ts` (523L)
 
 ```bash
-# 1. Find mount prefix
-grep -n "advancedScheduling" server/routes/domains/scheduling.ts
+# Find mount
+grep -n "autonomous" server/routes/domains/scheduling.ts
 
-# 2. List handlers
-grep -n "router\." server/routes/advancedSchedulingRoutes.ts | grep -E "get|post|put|patch|delete"
+# List handlers  
+grep -n "router\." server/routes/autonomousSchedulingRoutes.ts | grep -E "get|post|put|patch|delete"
 
-# 3. Caller audit each path
-grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v "advancedSchedulingRoutes.ts"
+# Caller audit each
+grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v "autonomousSchedulingRoutes.ts"
 ```
 
-**After that:** `autonomousSchedulingRoutes.ts` (523L) — then scheduling domain is DONE.
+**After that:** Scheduling domain is DONE → move to TIME domain.
+TIME: `time-entry-routes.ts` (2,707L) + `timeEntryRoutes.ts` (924L) — known 60% overlap.
 
 ---
 
@@ -49,20 +49,12 @@ grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v "advancedSchedulingRoutes.t
 |---|---|---|---|
 | `shiftRoutes.ts` | 3,623L | 2,240L | ✅ -1,383L |
 | `scheduleosRoutes.ts` | 1,326L | 705L | ✅ -621L |
-| `schedulerRoutes.ts` | 887L | DELETED | ✅ -887L (unmounted → deleted) |
+| `schedulerRoutes.ts` | 887L | DELETED | ✅ -887L |
 | `schedulesRoutes.ts` | 558L | 518L | ✅ -40L |
-| `advancedSchedulingRoutes.ts` | 1,219L | TBD | 🔄 Jack's turn |
-| `autonomousSchedulingRoutes.ts` | 523L | TBD | ⏳ |
+| `advancedSchedulingRoutes.ts` | 1,220L | 799L | ✅ -421L |
+| `autonomousSchedulingRoutes.ts` | 523L | TBD | 🔄 Jack's turn |
 
-**Scheduling removed so far: ~2,931L**
-
----
-
-## RULES
-1. Caller audit before any deletion
-2. Every commit reduces line count
-3. Update SYNC BLOCK after every commit
-4. Build clean before pushing
+**Scheduling removed so far: ~3,352L**
 
 ---
 
