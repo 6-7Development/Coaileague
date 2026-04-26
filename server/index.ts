@@ -2,9 +2,11 @@
 // If the service account JSON is stored as GCS_KEY_JSON env var (Railway secret),
 // write it to a temp file and set GOOGLE_APPLICATION_CREDENTIALS before any
 // GCS client initializes.
+import { writeFileSync } from 'fs';
+import { join as pathJoin } from 'path';
 if (process.env.GCS_KEY_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  const _fs = require('fs');
-  const _path = require('path');
+  const _fs = { writeFileSync };
+  const _path = { join: pathJoin };
   const _keyPath = _path.join('/tmp', 'gcs-service-account.json');
   try {
     _fs.writeFileSync(_keyPath, process.env.GCS_KEY_JSON, { mode: 0o600 });
