@@ -4,71 +4,47 @@
 # ═══════════════════════════════════════════════════════════
 
 ## WHO GOES NEXT: JACK ✋
-
----
-
-## ⚠️ SYNC CHECK — JACK READ THIS FIRST
-
-**Remote development tip: `c4f8d471e`**
-
-If your connector shows a different tip, you are behind. Do NOT commit until you pull.
-The remote IS at `c4f8d471e` — verified via `git ls-remote origin development`.
-
-**What's already done (do not redo):**
-- `onboardingInlineRoutes.ts` → 1,545L → **483L** ✅ DONE in `c4f8d471e`
-- `onboardingRoutes.ts` → 820L → **400L** ✅ DONE in `c4f8d471e`
-- `hrisRoutes.ts` → 249L → **43L** ✅ DONE
-- `hiringRoutes.ts` → 417L → **99L** ✅ DONE
-- All 4 all-dead HR files → **DELETED** ✅ DONE
-- HR domain total: **~5,200L removed**
+## REMOTE TIP AFTER THIS PUSH: see bottom of this block
 
 ---
 
 ## CURRENT POSITION
-**Domain:** CLIENT (active) — HR ✅ COMPLETE
-**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → ✅ HR → 🔄 Client → Compliance → Ops
+**Domain:** COMPLIANCE (next) — CLIENT ✅ COMPLETE
+**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → ✅ HR → ✅ Client → 🔄 Compliance → Ops
 
 ---
 
-## JACK'S NEXT TASK
+## WHAT WAS JUST DONE (this commit)
 
-**DEEP_ROUTE_INDEX.md has clientRoutes.ts, contractPipelineRoutes.ts, proposalRoutes.ts fully pre-audited.**
-
-Jack: open `DEEP_ROUTE_INDEX.md` → CLIENT DOMAIN section → copy DELETE rows → handoff.
-
-| File | Lines | Pre-audited? | Delete count |
+| File | Before | After | Deleted |
 |---|---|---|---|
-| `clientRoutes.ts` | 1,605L | ✅ In index | 12 handlers |
-| `contractPipelineRoutes.ts` | 787L | ✅ In index | 20 handlers |
-| `proposalRoutes.ts` | 237L | ✅ In index | 6 handlers |
-| `salesRoutes.ts` | 393L | ⚠️ Run local audit | TBD |
+| clientRoutes.ts | 1,605L | 1,296L | 12 dead routes |
+| contractPipelineRoutes.ts | 787L | 407L | 20 dead routes |
+| proposalRoutes.ts | 237L | 105L | 6 dead routes |
+| salesRoutes.ts | 393L | 269L | 8 dead routes |
 
-**All delete paths listed in DEEP_ROUTE_INDEX.md CLIENT section.**
-Jack just needs to copy the DELETE rows and write the handoff.
-
----
-
-## WHY JACK'S CONNECTOR SHOWED OLD COMMITS
-
-Git's remote tracking cache (`origin/development`) was stale in Claude's local clone.
-`git log --oneline origin/development` was showing cached data, not live remote state.
-`git ls-remote origin development` confirmed the real remote tip = `c4f8d471e`.
-
-**Fix going forward:** At the top of every handoff, Claude will include:
-- Exact commit hash: `c4f8d471e`
-- File: `ls -la server/routes/CHANGED_FILE.ts` line count confirms change landed
-
-Jack's connector delay is normal. The handoff commit hash is the source of truth.
+**Client domain total: -945L**
 
 ---
 
-## CLAUDE'S NEXT TASK (after Jack's CLIENT handoff)
+## JACK'S NEXT TASK — COMPLIANCE
 
-1. `git fetch && git reset --hard origin/development`
-2. `node build.mjs` — must be clean
-3. Execute CLIENT deletions from Jack's handoff (all 3 files in one pass)
-4. Pre-audit COMPLIANCE domain for DEEP_ROUTE_INDEX
-5. Commit + push with current tip hash in message
+```bash
+# Find files and mounts
+grep -rn "compliance\|licenseRout\|officerCert\|regulatory" server/routes/domains/compliance.ts | head -20
+```
+
+Key targets:
+- `complianceRoutes.ts` (1,823L) — mount: `/api/security-compliance` — 51 handlers
+- `licenseRoutes.ts` — find mount
+- `officerCertificationRoutes.ts` — find mount
+
+**Caller audit pattern:**
+```bash
+grep -rn "/api/security-compliance/PATH" client/ server/ | grep -v complianceRoutes.ts
+```
+
+DEEP_ROUTE_INDEX.md COMPLIANCE section has partial info — Jack runs local audit for full picture.
 
 ---
 
@@ -80,17 +56,17 @@ Jack's connector delay is normal. The handoff commit hash is the source of truth
 | Billing | -2,577L |
 | Scheduling | -3,757L |
 | Time | -1,621L |
-| HR | -5,200L (4 files deleted) |
-| **TOTAL** | **~14,841L** |
+| HR | -5,200L |
+| Client | -945L |
+| **TOTAL** | **~15,786L** |
 
 ---
 
-## RULES (both agents)
-1. Always state tip commit hash in handoff — Jack confirms before committing
-2. Read DEEP_ROUTE_INDEX.md — most files pre-audited
-3. Every commit reduces line count
-4. Build clean before pushing
-5. After push: `git ls-remote origin development` to confirm hash landed
+## SYNC PROTOCOL
+After every Claude push: `git ls-remote origin development` → hash at bottom of this block.
+Jack: confirm your connector shows this hash before committing.
+
+**Current remote tip: UPDATE AFTER PUSH**
 
 ---
 
