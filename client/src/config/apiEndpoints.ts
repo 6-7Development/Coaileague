@@ -16,7 +16,6 @@
  *   /api/mascot/*        - Trinity AI Mascot
  *   /api/trinity-staffing/* - Trinity Staffing
  *   /api/helpai/*        - HelpAI assistant
- *   /api/training/*      - Training courses
  *   /api/trinity-training/* - Trinity training scenarios
  */
 
@@ -315,9 +314,6 @@ export const API_ENDPOINTS = {
   },
 
   training: {
-    courses: "/api/training/courses",
-    enrollments: "/api/training/enrollments",
-    certifications: "/api/training/certifications",
   },
 
   staffing: {
