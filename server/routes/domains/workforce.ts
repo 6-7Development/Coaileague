@@ -11,7 +11,6 @@ import { attachWorkspaceIdOptional } from "../../rbac";
 import { registerFlexStaffingRoutes } from "../flexStaffingRoutes";
 import hrisRouter from "../hrisRoutes";
 import hrInlineRouter from "../hrInlineRoutes";
-import terminationRouter from "../terminationRoutes";
 import leaderRouter from "../leaderRoutes";
 import ownerEmployeeRouter from "../owner-employee";
 import officerScoreRouter from "../officerScoreRoutes";
@@ -19,7 +18,6 @@ import officerIntelligenceRouter from "../officerIntelligenceRoutes";
 import employeeRouter from "../employeeRoutes";
 import engagementRouter from "../engagementRoutes";
 import gamificationEnhancedRoutes from "../gamificationRoutes";
-import trainingRouter from "../trainingRoutes";
 import officerCertificationRouter, { publicCertRouter } from "../officerCertificationRoutes";
 import feedbackRouter from "../feedbackRoutes";
 import availabilityRouter from "../availabilityRoutes";
@@ -36,7 +34,6 @@ import hiringSettingsRouter from "../hiringSettingsRoutes";
 import performanceNoteRouter from "../performanceNoteRoutes";
 import disciplinaryRecordRouter from "../disciplinaryRecordRoutes";
 import onboardingTaskRouter from "../onboardingTaskRoutes";
-import performanceRouter from "../performanceRoutes";
 import recognitionRouter from "../recognitionRoutes";
 import { clockinPinRouter } from "../clockinPinRoutes";
 import { identityPinRouter } from "../identityPinRoutes";
@@ -53,7 +50,6 @@ export function mountWorkforceRoutes(app: Express): void {
   app.use("/api/hris", requireAuth, attachWorkspaceIdOptional, hrisRouter);
   app.use("/api/wellness", requireAuth, ensureWorkspaceAccess, wellnessRouter);
   app.use("/api", requireAuth, ensureWorkspaceAccess, hrInlineRouter);
-  app.use("/api", requireAuth, ensureWorkspaceAccess, terminationRouter);
   app.use("/api", requireAuth, ensureWorkspaceAccess, leaderRouter);
   app.use("/api/owner-employee", requireAuth, ensureWorkspaceAccess, ownerEmployeeRouter);
   app.use(officerScoreRouter);
@@ -64,7 +60,6 @@ export function mountWorkforceRoutes(app: Express): void {
   app.use("/api/employees", requireAuth, ensureWorkspaceAccess, employeeRouter);
   app.use("/api/engagement", requireAuth, ensureWorkspaceAccess, engagementRouter);
   app.use("/api/gamification/enhanced", requireAuth, ensureWorkspaceAccess, gamificationEnhancedRoutes);
-  app.use("/api/training", requireAuth, ensureWorkspaceAccess, trainingRouter);
   app.use("/api/training/certification", requireAuth, ensureWorkspaceAccess, officerCertificationRouter);
   // Public certificate verification — no auth, accessed via QR code
   app.use("/api/public/training/certification", publicCertRouter);
@@ -97,7 +92,6 @@ export function mountWorkforceRoutes(app: Express): void {
   // Disciplinary records — formal HR disciplinary workflow
   app.use("/api/disciplinary-records", requireAuth, ensureWorkspaceAccess, disciplinaryRecordRouter);
   // Performance management hub — disciplinary records (role-scoped), performance reviews, NDS notifications
-  app.use("/api/performance", requireAuth, ensureWorkspaceAccess, performanceRouter);
   // Onboarding task management — Phase 48 task tracking and blocking
   app.use("/api/onboarding-tasks", requireAuth, ensureWorkspaceAccess, onboardingTaskRouter);
   // Phase 35T: Officer Recognition, Awards & Culture Building

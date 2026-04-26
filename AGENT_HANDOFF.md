@@ -8,8 +8,8 @@
 ---
 
 ## CURRENT POSITION
-**Domain:** HR (active)
-**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → Ops → ...
+**Domain:** HR (nearly done) → CLIENT next
+**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → Ops
 
 ---
 
@@ -17,37 +17,42 @@
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | hrInlineRoutes.ts — 17 dead routes deleted | 1,795→1,312L (-483L) |
-| `6d5f71311` | Jack | hrInlineRoutes delete list from DEEP_ROUTE_INDEX | Index working ✅ |
+| Claude (this) | Claude | hrisRoutes+hiringRoutes deleted + 4 all-dead files deleted | -3,329L this pass |
+| `de5c9212b` | Jack | hris+hiring delete lists from DEEP_ROUTE_INDEX | Index workflow confirmed |
 
 ---
 
-## JACK'S NEXT TASK — READ DEEP_ROUTE_INDEX.md
-
-**`DEEP_ROUTE_INDEX.md` has hrisRoutes.ts and hiringRoutes.ts fully pre-audited.**
-
-Jack: read the file → copy DELETE rows → write handoff → done.
-
-**hrisRoutes.ts (248L):** delete 6 of 8 handlers (keep: /providers, /connections)
-**hiringRoutes.ts (416L):** delete 8 of 11 handlers (keep: /pipeline, /training-pipeline, /seed)
-
-After those two: run local audit on onboardingRoutes.ts, trainingRoutes.ts (largest remaining)
-
----
-
-## HR DOMAIN STATUS
+## HR DOMAIN — NEARLY COMPLETE
 
 | File | Before | After | Status |
 |---|---|---|---|
-| `employeeRoutes.ts` | 2,452L | 1,541L | ✅ -911L |
-| `hrInlineRoutes.ts` | 1,795L | 1,312L | ✅ -483L |
-| `hrisRoutes.ts` | 248L | TBD | 🔄 Jack (pre-audited in index) |
-| `hiringRoutes.ts` | 416L | TBD | 🔄 Jack (pre-audited in index) |
-| `onboardingRoutes.ts` | 819L | TBD | ⏳ |
-| `terminationRoutes.ts` | 572L | TBD | ⏳ |
-| `performanceRoutes.ts` | 754L | TBD | ⏳ |
-| `trainingRoutes.ts` | 1,290L | TBD | ⏳ |
-| `benefitRoutes.ts` | 113L | TBD | ⏳ |
+| employeeRoutes.ts | 2,452L | 1,541L | ✅ |
+| hrInlineRoutes.ts | 1,795L | 1,312L | ✅ |
+| hrisRoutes.ts | 249L | 93L | ✅ |
+| hiringRoutes.ts | 417L | 99L | ✅ |
+| trainingRoutes.ts | 1,291L | DELETED | ✅ |
+| terminationRoutes.ts | 573L | DELETED | ✅ |
+| performanceRoutes.ts | 755L | DELETED | ✅ |
+| offboardingRoutes.ts | 236L | DELETED | ✅ |
+| onboardingRoutes.ts | 820L | TBD | 🔄 Jack |
+| onboardingInlineRoutes.ts | 1,546L | TBD | 🔄 Jack |
+| benefitRoutes.ts | 114L | TBD | 🔄 Jack |
+
+**HR total removed: -4,723L | Cumulative: ~15,275L**
+
+---
+
+## JACK'S NEXT TASK
+
+**Option A: Finish HR** — onboarding files + benefitRoutes
+Mount for onboardingRoutes.ts: `/api/sps/onboarding`
+Mount for onboardingInlineRoutes.ts: find with `grep -n "onboardingInline" server/routes/domains/workforce.ts`
+benefitRoutes.ts: `/api/benefits` — only 1 dead route (`/employee/:employeeId`)
+
+**Option B: Move to CLIENT domain** — clientRoutes.ts (1,604L)
+Mount: `/api/clients` — run caller audit, same pattern
+
+Jack: pick and state in commit message.
 
 ---
 
@@ -59,17 +64,8 @@ After those two: run local audit on onboardingRoutes.ts, trainingRoutes.ts (larg
 | Billing | -2,577L |
 | Scheduling | -3,757L |
 | Time | -1,621L |
-| HR (so far) | -1,394L |
-| **TOTAL** | **~11,035L** |
-
----
-
-## RULES
-1. Read DEEP_ROUTE_INDEX.md — most files are pre-audited
-2. Caller audit before any deletion not in index
-3. Every commit reduces line count
-4. Update SYNC BLOCK after every commit
-5. Build clean before pushing
+| HR | -4,723L (4 files DELETED) |
+| **TOTAL** | **~14,364L** |
 
 ---
 
