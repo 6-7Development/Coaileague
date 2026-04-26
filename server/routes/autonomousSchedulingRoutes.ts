@@ -1,30 +1,22 @@
 /**
- * AUTONOMOUS SCHEDULING API ROUTES
- * =================================
- * 
- * Endpoints for Trinity's autonomous scheduling features:
- * - Execute autonomous scheduling (day/week/month modes)
- * - Import historical schedules
- * - Manage recurring templates
- * - Control the scheduling daemon
+ * AUTONOMOUS SCHEDULING IMPORT ROUTES
+ * ===================================
+ *
+ * Active endpoint for importing historical schedules so Trinity can learn
+ * scheduling patterns. Dead autonomous execution/template/daemon endpoints were
+ * removed after caller audit showed no frontend consumers.
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
-import { Express, Request, Response } from 'express';
-import { z } from 'zod';
-import { trinityAutonomousScheduler } from '../services/scheduling/trinityAutonomousScheduler';
+import { Express, Response } from 'express';
 import { historicalScheduleImporter } from '../services/scheduling/historicalScheduleImporter';
-import { recurringScheduleTemplates } from '../services/scheduling/recurringScheduleTemplates';
-import { autonomousSchedulingDaemon } from '../services/scheduling/autonomousSchedulingDaemon';
 import { requireAuth } from '../auth';
-import { requireManager } from '../rbac';
 import { storage } from '../storage';
 import { platformEventBus } from '../services/platformEventBus';
 import multer from 'multer';
 import { localVirusScan } from '../middleware/virusScan';
 import { createLogger } from '../lib/logger';
 const log = createLogger('AutonomousSchedulingRoutes');
-
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -40,83 +32,6 @@ const upload = multer({
 });
 
 export function registerAutonomousSchedulingRoutes(app: Express) {
-  
-  // ============================================================================
-  // AUTONOMOUS SCHEDULING
-  // ============================================================================
-
-  /**
-   * Execute autonomous scheduling for current workspace
-   * POST /api/trinity/autonomous-schedule
-   */
-  app.post('/api/trinity/autonomous-schedule', requireAuth, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const schema = z.object({
-        mode: z.enum(['current_day', 'current_week', 'next_week', 'full_month']).default('current_day'),
-        prioritizeBy: z.enum(['urgency', 'value', 'chronological']).default('urgency'),
-        useContractorFallback: z.boolean().default(true),
-        maxShiftsPerEmployee: z.number().min(0).max(50).default(0),
-        respectAvailability: z.boolean().default(true),
-      });
-
-      const config = schema.parse(req.body);
-
-      log.info(`[AutonomousScheduling] Starting ${config.mode} scheduling for workspace ${userWorkspace.workspaceId}`);
-
-      const result = await trinityAutonomousScheduler.executeAutonomousScheduling({
-        workspaceId: userWorkspace.workspaceId,
-        userId,
-        ...config,
-      });
-
-      res.json({
-        success: true,
-        message: `I processed ${result.summary.totalProcessed} shifts and assigned ${result.summary.totalAssigned}`,
-        summary: result.summary,
-        sessionId: result.session.sessionId,
-      });
-
-    } catch (error: unknown) {
-      log.error('[AutonomousScheduling] Error:', error);
-      res.status(500).json({ 
-        success: false,
-        message: sanitizeError(error) || 'Autonomous scheduling failed' 
-      });
-    }
-  });
-
-  /**
-   * Get scheduling session status
-   * GET /api/trinity/autonomous-schedule/status/:sessionId
-   */
-  app.get('/api/trinity/autonomous-schedule/status/:sessionId', requireAuth, async (req: any, res: Response) => {
-    try {
-      const { sessionId } = req.params;
-      const session = trinityAutonomousScheduler.getActiveSession(sessionId);
-
-      if (!session) {
-        return res.status(404).json({ message: 'Session not found or completed' });
-      }
-
-      res.json({
-        sessionId: session.sessionId,
-        status: session.status,
-        progress: session.progress,
-        startTime: session.startTime,
-      });
-
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
   // ============================================================================
   // HISTORICAL SCHEDULE IMPORT
   // ============================================================================
@@ -198,226 +113,5 @@ export function registerAutonomousSchedulingRoutes(app: Express) {
     }
   });
 
-  // ============================================================================
-  // RECURRING TEMPLATES
-  // ============================================================================
-
-  /**
-   * Get all templates for workspace
-   * GET /api/trinity/templates
-   */
-  app.get('/api/trinity/templates', requireAuth, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const templates = recurringScheduleTemplates.getWorkspaceTemplates(userWorkspace.workspaceId);
-
-      res.json({
-        success: true,
-        templates,
-      });
-
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Create template from current week
-   * POST /api/trinity/templates/from-week
-   */
-  app.post('/api/trinity/templates/from-week', requireAuth, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const { weekStartDate, templateName } = req.body;
-
-      if (!weekStartDate || !templateName) {
-        return res.status(400).json({ message: 'weekStartDate and templateName are required' });
-      }
-
-      const template = await recurringScheduleTemplates.createTemplateFromWeek(
-        userWorkspace.workspaceId,
-        new Date(weekStartDate),
-        templateName
-      );
-
-      res.json({
-        success: true,
-        message: `Template "${templateName}" created with ${template.shifts.length} shifts`,
-        template,
-      });
-
-    } catch (error: unknown) {
-      log.error('[Templates] Error:', error);
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Apply template to a week
-   * POST /api/trinity/templates/:templateId/apply
-   */
-  app.post('/api/trinity/templates/:templateId/apply', requireAuth, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const { templateId } = req.params;
-      const { weekStartDate, overwriteExisting, assignEmployees } = req.body;
-
-      if (!weekStartDate) {
-        return res.status(400).json({ message: 'weekStartDate is required' });
-      }
-
-      const result = await recurringScheduleTemplates.applyTemplate(
-        templateId,
-        new Date(weekStartDate),
-        {
-          overwriteExisting: overwriteExisting === true,
-          assignEmployees: assignEmployees === true,
-        }
-      );
-
-      res.json({
-        success: result.success,
-        message: result.success 
-          ? `Created ${result.shiftsCreated} shifts for week of ${result.weekStart.toLocaleDateString()}`
-          : result.errors.join(', '),
-        shiftsCreated: result.shiftsCreated,
-        errors: result.errors,
-      });
-
-    } catch (error: unknown) {
-      log.error('[Templates] Error:', error);
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Delete template
-   * DELETE /api/trinity/templates/:templateId
-   */
-  app.delete('/api/trinity/templates/:templateId', requireAuth, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const { templateId } = req.params;
-      const deleted = recurringScheduleTemplates.deleteTemplate(templateId);
-
-      res.json({
-        success: deleted,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        message: deleted ? 'Template deleted' : 'Template not found',
-      });
-
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  // ============================================================================
-  // DAEMON CONTROL
-  // ============================================================================
-
-  /**
-   * Get daemon status
-   * GET /api/trinity/daemon/status
-   */
-  app.get('/api/trinity/daemon/status', requireManager, async (req: any, res: Response) => {
-    try {
-      const status = autonomousSchedulingDaemon.getStatus();
-      res.json({
-        success: true,
-        ...status,
-      });
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Start the daemon
-   * POST /api/trinity/daemon/start
-   */
-  app.post('/api/trinity/daemon/start', requireManager, async (req: any, res: Response) => {
-    try {
-      const config = req.body || {};
-      autonomousSchedulingDaemon.start(config);
-      
-      res.json({
-        success: true,
-        message: 'Autonomous scheduling daemon started',
-      });
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Stop the daemon
-   * POST /api/trinity/daemon/stop
-   */
-  app.post('/api/trinity/daemon/stop', requireManager, async (req: any, res: Response) => {
-    try {
-      autonomousSchedulingDaemon.stop();
-      
-      res.json({
-        success: true,
-        message: 'Autonomous scheduling daemon stopped',
-      });
-    } catch (error: unknown) {
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  /**
-   * Trigger manual scheduling run
-   * POST /api/trinity/daemon/trigger
-   */
-  app.post('/api/trinity/daemon/trigger', requireManager, async (req: any, res: Response) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-      
-      if (!userWorkspace) {
-        return res.status(404).json({ message: 'Workspace not found' });
-      }
-
-      const { mode } = req.body;
-      const result = await autonomousSchedulingDaemon.triggerManualRun(
-        userWorkspace.workspaceId,
-        mode || 'current_day'
-      );
-
-      res.json(result);
-
-    } catch (error: unknown) {
-      res.status(500).json({ 
-        success: false,
-        message: sanitizeError(error) 
-      });
-    }
-  });
-
-  log.info('[Routes] Autonomous scheduling routes registered');
+  log.info('[Routes] Autonomous scheduling import route registered');
 }
