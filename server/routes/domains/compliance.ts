@@ -10,7 +10,6 @@ import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { portalLimiter } from "../../middleware/rateLimiter";
 import { attachWorkspaceIdOptional } from "../../rbac";
 import { registerDocumentLibraryRoutes } from "../documentLibraryRoutes";
-import { complianceRoutes } from "../compliance";
 import credentialRouter from "../credentialRoutes";
 import documentRouter from "../documentRoutes";
 import documentTemplateRouter from "../documentTemplateRoutes";
@@ -19,7 +18,6 @@ import fileDownloadRoutes from "../fileDownload";
 import formBuilderRouter from "../formBuilderRoutes";
 import formRouter from "../formRoutes";
 import policyComplianceRouter from "../policyComplianceRoutes";
-import complianceEnforcementRouter from "../complianceRoutes";
 import complianceInlineRouter from "../complianceInlineRoutes";
 import governanceInlineRouter from "../governanceInlineRoutes";
 import uacpRouter from "../uacpRoutes";
@@ -43,7 +41,6 @@ export function mountComplianceRoutes(app: Express): void {
   // Governance inline routes BEFORE security-compliance to ensure lock-vault is handled
   app.use("/api", requireAuth, ensureWorkspaceAccess, governanceInlineRouter);
   app.use("/api/compliance/evidence", requireAuth, ensureWorkspaceAccess, complianceEvidenceRouter);
-  app.use("/api/security-compliance", requireAuth, ensureWorkspaceAccess, complianceRoutes);
   app.use("/api/credentials", requireAuth, ensureWorkspaceAccess, credentialRouter);
   registerDocumentLibraryRoutes(app, requireAuth, ensureWorkspaceAccess);
   app.use(documentRouter);
