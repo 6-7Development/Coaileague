@@ -1,106 +1,91 @@
 # ═══════════════════════════════════════════════════════════
 # AGENT SYNC BLOCK
-# Updated: 2026-04-25
+# Updated: 2026-04-26
 # ═══════════════════════════════════════════════════════════
 
-## STATUS: PLATFORM STABLE ✅
+## WHO GOES NEXT: JACK ✋
 
-development branch = stable production (do not push route changes here)
-refactor/route-cleanup branch = where all cleanup work happens
-
----
-
-## ROOT CAUSE OF CRASH — FIXED
-
-Our per-route caller audit missed frontend usage routed through:
-  - apiEndpoints.ts config (shows as "1 caller" but used by many components)
-  - Dynamic path construction in components
-
-Files like trainingRoutes.ts, performanceRoutes.ts had "0 callers" per route
-but 57 and 3 callers respectively under their MOUNT PREFIX.
-
-**New rule: Check mount prefix callers, not just individual route paths.**
+## BRANCH RULES — MANDATORY
+- `development` = stable production — DO NOT push route changes here
+- `refactor/route-cleanup` = all cleanup work goes here
+- Remote tips:
+  - development: 9278e5a0a (platform GREEN ✅)
+  - refactor/route-cleanup: eb7c54f0c (latest cleanup)
 
 ---
 
-## CORRECT METHODOLOGY (going forward)
+## CORRECT AUDIT METHODOLOGY (learned from crash)
 
-Before deleting ANY route file:
+**Step 1 — Check mount prefix first:**
 ```bash
-# Check the mount prefix — if ANY frontend caller exists, KEEP the file
 grep -rn "/api/MOUNT_PREFIX" client/ | wc -l
-# Only delete if result is 0
+# If > 0: file must stay. Only trim dead handlers inside it.
+# If 0: entire file can be deleted.
 ```
 
-For trimming dead handlers WITHIN a file (safe, doesn't break mount):
+**Step 2 — Check individual handler paths:**
 ```bash
-# Check the specific full path
-grep -rn "/api/MOUNT_PREFIX/specific-path" client/ server/ | grep -v FILENAME.ts
+grep -rn "/api/MOUNT/specific-path" client/ server/ | grep -v FILENAME.ts
+# If 0 results: handler is dead, safe to delete
 ```
 
 ---
 
-## CONFIRMED SAFE TO DELETE (zero mount-prefix callers)
+## WHAT'S DONE ON refactor/route-cleanup (eb7c54f0c)
 
-Already deleted on refactor/route-cleanup branch:
-  offboardingRoutes.ts (-236L) — /api/offboarding: 0 callers
-  stateRegulatoryRoutes.ts (-408L) — /api/regulatory: 0 callers
-  dispatch.ts (-350L) — /api/dispatch: 0 callers
-  gpsRoutes.ts (-90L) — /api/gps: 0 callers
+**Files deleted (mount prefix = 0 callers):**
+- offboardingRoutes.ts (-236L)
+- stateRegulatoryRoutes.ts (-408L)
+- dispatch.ts (-350L)
+- gpsRoutes.ts (-90L)
 
-MUST KEEP (active frontend callers under mount prefix):
-  trainingRoutes.ts — /api/training: 57 callers
-  terminationRoutes.ts — /api/terminations: 5 callers
-  performanceRoutes.ts — /api/performance-notes: 3 callers
-  complianceRoutes.ts — /api/security-compliance: 39 callers
-  schedulerRoutes.ts — /api/schedules: 20 callers
+**Dead handlers removed (files kept, mount active):**
+- rmsRoutes.ts: 1,729→960L (-769L)
+- clientRoutes.ts: 1,605→1,340L (-265L)
+- cadRoutes.ts: 590→219L (-371L)
+- incidentPipelineRoutes.ts: 403→297L (-106L)
+- postOrderRoutes.ts: 321→168L (-153L)
+- contractPipelineRoutes.ts: 787→540L (-247L)
+- proposalRoutes.ts: 237→150L (-87L)
 
----
-
-## NEXT WORK — ON refactor/route-cleanup BRANCH ONLY
-
-Jack: checkout refactor/route-cleanup, do cleanup there.
-Claude: verify on refactor branch, test build + startup before any merge.
-
-Within-file handler trimming is safe (individual dead handlers in active files).
-File deletion only when mount prefix = 0 frontend callers (confirmed above).
-
-Total still achievable safely: significant line reduction within files.
+**Refactor branch total so far: -3,397L**
 
 ---
 
-## KNOWN BUILD ERRORS — FOR JACK (do not work until Bryan confirms green)
-
-### Error 1: `require is not defined in ES module` — FIXED ✅
-**Commit:** `9278e5a0a`
-**Cause:** `server/index.ts` used `require('fs')` and `require('path')` inside an
-if-block. `package.json` has `"type": "module"` making all files ESM — `require`
-doesn't exist in ESM scope.
-**Fix:** Replaced with `import { writeFileSync } from 'fs'` and `import { join as pathJoin } from 'path'` as static ESM imports at top of file.
-
-### Error 2: `typescript` not resolved at bundle time — COPILOT FIXING
-**Cause:** `cosmiconfig` (used by some config library) tries to resolve `typescript`
-at esbuild bundle time. `typescript` is a devDependency — not installed in Railway
-production builds.
-**Fix:** Add `'typescript'` to the `external` array in `build.mjs`. Cosmiconfig
-handles missing module gracefully at runtime.
-**Status:** Copilot deploying fix. Wait for Bryan's green before continuing.
-
-### Error 3: TypeScript syntax errors in seed script — FIXED ✅
-**Commit:** `9278e5a0a`
-**File:** `server/scripts/seed-stripe-products.ts` lines 130, 181
-**Cause:** Orphaned `async function` keyword + missing `async function` on `seedProducts()`
-**Fix:** Corrected both syntax errors.
-
----
-
-## WHEN BRYAN SAYS GREEN — RESUME ON refactor/route-cleanup BRANCH
+## JACK'S NEXT TARGETS (on refactor/route-cleanup branch)
 
 ```bash
 git checkout refactor/route-cleanup
-git pull origin development  # pick up Copilot's build.mjs fix
+git pull origin refactor/route-cleanup
 ```
 
-Then continue within-file handler trimming (safe — doesn't delete whole files).
-Only delete files where mount prefix = 0 frontend callers (already identified above).
+**Priority files not yet touched:**
+- `salesRoutes.ts` (393L) — find mount, audit handlers
+- `vehicleRoutes.ts` (300L) — mount: /api/vehicles, Jack already cleaned some
+- `hrInlineRoutes.ts` (1,796L) — mount: /api, many handlers
+- `employeeRoutes.ts` (2,452L) — mount: /api/employees
+- `hrisRoutes.ts` (249L) — mount: /api/hris
+- `hiringRoutes.ts` (417L) — mount: /api/hiring
+- `schedulerRoutes.ts` (887L) — mount: /api/schedules (20 callers — keep, trim inside)
+
+**Audit pattern:**
+```bash
+# Find mount
+grep -n "salesRouter\|salesRoute" server/routes/domains/*.ts | grep "app.use("
+
+# List handlers
+grep -n "router\." server/routes/salesRoutes.ts | grep -E "get|post|put|patch|delete"
+
+# Check each path
+grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v salesRoutes.ts
+```
+
+---
+
+## KNOWN SAFE DELETIONS (0 prefix callers — Jack can delete entire files)
+Already confirmed from prefix audit:
+- offboarding, stateRegulatory, dispatch, gps → already done ✅
+
+Still to check if 0 prefix callers:
+- Any new files Jack discovers during audit
 
