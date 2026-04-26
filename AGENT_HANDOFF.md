@@ -9,8 +9,8 @@
 
 ## CURRENT POSITION
 
-**Domain:** TIME (active) — SCHEDULING ✅ COMPLETE
-**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → 🔄 Time → HR → ...
+**Domain:** HR (next) — TIME ✅ COMPLETE
+**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → ...
 
 ---
 
@@ -18,59 +18,63 @@
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | autonomousSchedulingRoutes verified + time-entry-routes.ts -1,493L | Scheduling DONE, TIME started |
-| `907e2cc2a` | Jack | autonomousSchedulingRoutes.ts — 10 dead routes deleted | 523 → 118 lines (-405L) |
+| Claude (this) | Claude | timeEntryRoutes.ts -128L + timeOffRoutes.ts verified all alive | TIME domain DONE |
+| `cd2735ffc` | Jack | timeEntryRoutes.ts caller audit doc | 5 dead routes identified |
 
 ---
 
-## SCHEDULING DOMAIN — COMPLETE ✅
-
-Total removed: **~3,757L** across 6 files
-| File | Result |
-|---|---|
-| shiftRoutes.ts | -1,383L |
-| scheduleosRoutes.ts | -621L |
-| schedulerRoutes.ts | DELETED (-887L) |
-| schedulesRoutes.ts | -40L |
-| advancedSchedulingRoutes.ts | -421L |
-| autonomousSchedulingRoutes.ts | -405L |
-
----
-
-## JACK'S NEXT TASK
-
-**Target:** `timeEntryRoutes.ts` (924L) — caller audit, mount `/api/time-entries`
-
-```bash
-# List handlers
-grep -n "router\." server/routes/timeEntryRoutes.ts | grep -E "get|post|put|patch|delete"
-
-# Caller audit (mount is /api/time-entries)
-grep -rn "/api/time-entries/PATH" client/ server/ | grep -v "timeEntryRoutes.ts"
-```
-
-Note: `time-entry-routes.ts` (was 2,708L → now 1,215L) is a DIFFERENT system:
-- `time-entry-routes.ts` = clock-in/out/status/active (IoT/clock operations)
-- `timeEntryRoutes.ts` = CRUD/approve/reject (management operations)
-Both mount on `/api/time-entries` — NOT duplicates, different endpoints.
-
----
-
-## TIME DOMAIN STATUS
+## TIME DOMAIN — COMPLETE ✅
 
 | File | Before | After | Status |
 |---|---|---|---|
 | `time-entry-routes.ts` | 2,708L | 1,215L | ✅ -1,493L |
-| `timeEntryRoutes.ts` | 924L | TBD | 🔄 Jack's turn |
-| `timeOffRoutes.ts` | 708L | TBD | ⏳ |
+| `timeEntryRoutes.ts` | 925L | 797L | ✅ -128L |
+| `timeOffRoutes.ts` | 709L | 709L | ✅ ALL 16 alive (full /api/* paths, no-prefix mount) |
+
+**Time total removed: ~1,621L**
+
+---
+
+## JACK'S NEXT TASK — HR DOMAIN
+
+Read `CODEBASE_INDEX.md` HR section first.
+
+**Priority targets (biggest files):**
+1. `employeeRoutes.ts` (2,451L) — mount `/api/employees`
+2. `hrInlineRoutes.ts` (1,795L) — find its mount prefix first
+
+**Workflow:**
+```bash
+# Find HR mounts
+grep -n "employee\|hrInline\|hrisR" server/routes/domains/workforce.ts server/routes/domains/*.ts
+
+# List handlers
+grep -n "router\." server/routes/employeeRoutes.ts | grep -E "get|post|put|patch|delete"
+
+# Caller audit
+grep -rn "/api/employees/PATH" client/ server/ | grep -v "employeeRoutes.ts"
+```
+
+---
+
+## CUMULATIVE STATS (all domains so far)
+
+| Domain | Lines Removed |
+|---|---|
+| Payroll | -1,686L |
+| Billing | -2,577L |
+| Scheduling | -3,757L |
+| Time | -1,621L |
+| **TOTAL** | **~9,641L** |
 
 ---
 
 ## RULES
-1. Caller audit before any deletion
-2. Every commit reduces line count
-3. Update SYNC BLOCK after every commit
-4. Build clean before pushing
+1. Read CODEBASE_INDEX.md for domain first
+2. Caller audit before any deletion
+3. Every commit reduces line count
+4. Update SYNC BLOCK after every commit
+5. Build clean before pushing
 
 ---
 

@@ -8,7 +8,6 @@ import { db } from "../db";
 import {
   timeEntries as timeEntriesTable,
   employees,
-  stagedShifts,
   clients,
   insertTimeEntrySchema,
   shifts,
@@ -22,7 +21,6 @@ import { typedPoolExec } from '../lib/typedSql';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
 const log = createLogger('TimeEntryRoutes');
-
 
 const router = Router();
 
@@ -376,297 +374,7 @@ const router = Router();
     }
   });
 
-  router.get('/pending', requireManager, async (req: AuthenticatedRequest, res) => {
-    try {
-      const workspaceId = req.workspaceId!;
-      const { employeeId, clientId, startDate, endDate, hasGps, hasPhoto } = req.query;
-
-      // Build query with filters
-      let query = db
-        .select({
-          timeEntry: timeEntriesTable,
-          employee: employees,
-          client: clients,
-        })
-        .from(timeEntriesTable)
-        .leftJoin(employees, eq(timeEntriesTable.employeeId, employees.id))
-        .leftJoin(clients, eq(timeEntriesTable.clientId, clients.id))
-        .where(
-          and(
-            eq(timeEntriesTable.workspaceId, workspaceId),
-            eq(timeEntriesTable.status, 'pending'),
-            employeeId ? eq(timeEntriesTable.employeeId, employeeId as string) : undefined,
-            clientId ? eq(timeEntriesTable.clientId, clientId as string) : undefined,
-            startDate ? gte(timeEntriesTable.clockIn, new Date(startDate as string)) : undefined,
-            endDate ? lte(timeEntriesTable.clockIn, new Date(endDate as string)) : undefined
-          )
-        )
-        .orderBy(desc(timeEntriesTable.clockIn));
-
-      const results = await query;
-
-      // Filter by verification status if requested
-      let filtered = results;
-      if (hasGps === 'true') {
-        filtered = filtered.filter(r => r.timeEntry.clockInLatitude !== null);
-      }
-      if (hasPhoto === 'true') {
-        filtered = filtered.filter(r => r.timeEntry.clockInPhotoUrl !== null);
-      }
-
-      res.json(filtered);
-    } catch (error: unknown) {
-      log.error("Error fetching pending time entries:", error);
-      res.status(500).json({ message: "Failed to fetch pending time entries" });
-    }
-  });
-
-  router.post('/bulk-approve', requireManager, async (req: AuthenticatedRequest, res) => {
-    try {
-      const workspaceId = req.workspaceId!;
-      const authReq = req as AuthenticatedRequest;
-      const userId = authReq.user?.id;
-      
-      // For unauthenticated users, return success (frontend handles localStorage)
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-      const { timeEntryIds } = req.body;
-
-      if (!Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
-        return res.status(400).json({ message: "timeEntryIds must be a non-empty array" });
-      }
-
-      // Prevent self-approval: get all employee IDs for the time entries
-      const entries = await db
-        .select()
-        .from(timeEntriesTable)
-        .where(
-          and(
-            eq(timeEntriesTable.workspaceId, workspaceId),
-            inArray(timeEntriesTable.id, timeEntryIds)
-          )
-        );
-
-      const employeeIds = [...new Set(entries.map(e => e.employeeId))];
-      
-      // Check if any of these employees are the current user
-      const userEmployees = await db
-        .select()
-        .from(employees)
-        .where(
-          and(
-            eq(employees.workspaceId, workspaceId),
-            eq(employees.userId, userId),
-            inArray(employees.id, employeeIds)
-          )
-        );
-
-      if (userEmployees.length > 0) {
-        return res.status(403).json({ 
-          message: "Cannot approve your own time entries",
-          selfApprovalCount: userEmployees.length
-        });
-      }
-
-      // Bulk approve all valid entries
-      const updated = await db
-        .update(timeEntriesTable)
-        .set({
-          status: 'approved',
-          approvedBy: userId,
-          approvedAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(
-          and(
-            eq(timeEntriesTable.workspaceId, workspaceId),
-            inArray(timeEntriesTable.id, timeEntryIds),
-            eq(timeEntriesTable.status, 'pending') // Only approve pending entries
-          )
-        )
-        .returning();
-
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
-
-      // Audit trail: log bulk approval as a single event with all entry IDs (Phase 10 requirement)
-      if (updated.length > 0) {
-        try {
-          await storage.createAuditLog({
-            workspaceId,
-            userId,
-            action: 'bulk_approve',
-            entityType: 'time_entry',
-            entityId: updated[0].id,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            description: `Bulk approved ${updated.length} time entr${updated.length === 1 ? 'y' : 'ies'}`,
-            metadata: {
-              entryIds: updated.map(e => e.id),
-              count: updated.length,
-              approvedBy: userId,
-              source: 'timeEntryRoutes.bulk_approve',
-            },
-          });
-        } catch (auditErr: unknown) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          log.warn('[TimeEntry] Bulk approve audit log failed (non-blocking):', auditErr.message);
-        }
-
-        // Fire automation event — triggers invoice creation + payroll processing pipeline
-        platformEventBus.publish({
-          type: 'time_entries_approved',
-          workspaceId,
-          payload: { count: updated.length, entryIds: updated.map(e => e.id), approvedBy: userId },
-          metadata: { source: 'timeEntryRoutes.bulk_approve' },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-        // Phase 20 — Trinity invoice lifecycle workflow per entry (de-duped
-        // inside the workflow if the client is already invoiced for the day).
-        for (const entry of updated) {
-          scheduleNonBlocking('trinity.invoice_lifecycle.bulk', async () => {
-            const { executeInvoiceLifecycleWorkflow } = await import(
-              '../services/trinity/workflows/invoiceLifecycleWorkflow'
-            );
-            await executeInvoiceLifecycleWorkflow({
-              workspaceId,
-              timeEntryId: entry.id,
-              triggerSource: 'time_entry_approved',
-              userId,
-            });
-          });
-        }
-      }
-
-      const gpsWarnings = updated
-        .filter(e => !e.clockInLatitude && !e.clockInLongitude)
-        .map(e => e.id);
-
-      res.json({
-        approved: updated.length,
-        entries: updated,
-        gpsWarnings: gpsWarnings.length > 0
-          ? {
-              count: gpsWarnings.length,
-              entryIds: gpsWarnings,
-              message: `${gpsWarnings.length} approved entr${gpsWarnings.length === 1 ? 'y' : 'ies'} had no GPS coordinates. Manager review recommended before payroll run.`,
-            }
-          : null,
-      });
-    } catch (error: unknown) {
-      log.error("Error bulk approving time entries:", error);
-      res.status(500).json({ message: "Failed to bulk approve time entries" });
-    }
-  });
-
-  router.get('/post-order-quiz/:shiftId', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
-      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
-
-      const { postOrderQuizService } = await import('../services/fieldOperations/postOrderQuizService');
-      const quiz = await postOrderQuizService.getQuizForShift(req.params.shiftId, workspace.id);
-      if (!quiz) return res.json({ required: false, quiz: null });
-
-      const employee = await storage.getEmployeeByUserId(userId);
-      if (!employee) return res.status(403).json({ message: "No employee record" });
-
-      const alreadyPassed = await postOrderQuizService.hasPassedQuiz(req.params.shiftId, employee.id, workspace.id);
-      res.json({ required: !alreadyPassed, quiz: alreadyPassed ? null : quiz });
-    } catch (error: unknown) {
-      log.error("Error fetching post-order quiz:", error);
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  router.post('/post-order-quiz/:shiftId/submit', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
-      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
-
-      const employee = await storage.getEmployeeByUserId(userId);
-      if (!employee) return res.status(403).json({ message: "No employee record" });
-
-      const { postOrderQuizService } = await import('../services/fieldOperations/postOrderQuizService');
-      const result = await postOrderQuizService.validateQuizAnswers(
-        req.params.shiftId, workspace.id, employee.id, req.body.answers || {}
-      );
-
-      res.json(result);
-    } catch (error: unknown) {
-      log.error("Error submitting post-order quiz:", error);
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  router.post('/gps-ping', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
-      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
-
-      const employee = await storage.getEmployeeByUserId(userId);
-      if (!employee) return res.status(403).json({ message: "No employee record" });
-
-      const { latitude, longitude, accuracy } = req.body;
-      if (!latitude || !longitude) return res.status(400).json({ message: "GPS coordinates required" });
-
-      const [activeEntry] = await db.select({ id: timeEntriesTable.id, shiftId: timeEntriesTable.shiftId })
-        .from(timeEntriesTable)
-        .where(and(
-          eq(timeEntriesTable.workspaceId, workspace.id),
-          eq(timeEntriesTable.employeeId, employee.id),
-          isNull(timeEntriesTable.clockOut)
-        ))
-        .limit(1);
-
-      if (!activeEntry) return res.status(404).json({ message: "No active clock-in session" });
-
-      await db.update(timeEntriesTable)
-        .set({ lastGpsPingAt: new Date(), lastGpsPingLat: latitude, lastGpsPingLng: longitude })
-        .where(eq(timeEntriesTable.id, activeEntry.id));
-
-      if (activeEntry.shiftId) {
-        const [shiftSite] = await db.select({
-          geofenceLat: sites.geofenceLat,
-          geofenceLng: sites.geofenceLng,
-          geofenceRadius: sites.geofenceRadiusMeters,
-        })
-          .from(shifts)
-          .innerJoin(sites, and(eq(sites.id, shifts.siteId), eq(sites.workspaceId, shifts.workspaceId)))
-          .where(and(
-            eq(shifts.id, activeEntry.shiftId),
-            eq(shifts.workspaceId, workspace.id),
-          ))
-          .limit(1);
-
-        if (shiftSite?.geofenceLat && shiftSite?.geofenceLng) {
-          const { presenceMonitorService } = await import('../services/fieldOperations/presenceMonitorService');
-          await presenceMonitorService.processLocationPing(
-            {
-              officerId: employee.id,
-              latitude: Number(latitude),
-              longitude: Number(longitude),
-              accuracy: Number(accuracy || 999),
-              source: 'background',
-            },
-            Number(shiftSite.geofenceLat),
-            Number(shiftSite.geofenceLng),
-            Number(shiftSite.geofenceRadius || 200),
-          ).catch(() => null);
-        }
-      }
-
-      res.json({ success: true, pingedAt: new Date().toISOString() });
-    } catch (error: unknown) {
-      log.error("Error processing GPS ping:", error);
-      res.status(500).json({ message: sanitizeError(error) });
-    }
-  });
-
-  router.post('/manual-override', requireAuth, async (req: any, res) => {
+uter.post('/manual-override', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -888,26 +596,7 @@ const router = Router();
     }
   });
 
-  router.get('/unbilled/:clientId', requireAuth, async (req: any, res) => {
-
-
-    try {
-      const userId = req.user?.id || req.user?.claims?.sub;
-      const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
-
-      const unbilledEntries = await storage.getUnbilledTimeEntries(workspace.id, req.params.clientId);
-      res.json(unbilledEntries);
-    } catch (error) {
-      log.error("Error fetching unbilled time entries:", error);
-      res.status(500).json({ message: "Failed to fetch unbilled time entries" });
-    }
-  });
-
-router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, res) => {
+outer.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId, startDate, endDate } = req.body;
     if (!employeeId || !startDate || !endDate) return res.status(400).json({ error: 'employeeId, startDate, endDate required' });
@@ -920,5 +609,188 @@ router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, r
     res.status(500).json({ error: "An internal error occurred" });
   }
 });
+
+router.get('/pending', requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { employeeId, clientId, startDate, endDate, hasGps, hasPhoto } = req.query;
+
+      // Build query with filters
+      let query = db
+        .select({
+          timeEntry: timeEntriesTable,
+          employee: employees,
+          client: clients,
+        })
+        .from(timeEntriesTable)
+        .leftJoin(employees, eq(timeEntriesTable.employeeId, employees.id))
+        .leftJoin(clients, eq(timeEntriesTable.clientId, clients.id))
+        .where(
+          and(
+            eq(timeEntriesTable.workspaceId, workspaceId),
+            eq(timeEntriesTable.status, 'pending'),
+            employeeId ? eq(timeEntriesTable.employeeId, employeeId as string) : undefined,
+            clientId ? eq(timeEntriesTable.clientId, clientId as string) : undefined,
+            startDate ? gte(timeEntriesTable.clockIn, new Date(startDate as string)) : undefined,
+            endDate ? lte(timeEntriesTable.clockIn, new Date(endDate as string)) : undefined
+          )
+        )
+        .orderBy(desc(timeEntriesTable.clockIn));
+
+      const results = await query;
+
+      // Filter by verification status if requested
+      let filtered = results;
+      if (hasGps === 'true') {
+        filtered = filtered.filter(r => r.timeEntry.clockInLatitude !== null);
+      }
+      if (hasPhoto === 'true') {
+        filtered = filtered.filter(r => r.timeEntry.clockInPhotoUrl !== null);
+      }
+
+      res.json(filtered);
+    } catch (error: unknown) {
+      log.error("Error fetching pending time entries:", error);
+      res.status(500).json({ message: "Failed to fetch pending time entries" });
+    }
+  })
+
+router.post('/bulk-approve', requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
+      // For unauthenticated users, return success (frontend handles localStorage)
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      const { timeEntryIds } = req.body;
+
+      if (!Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
+        return res.status(400).json({ message: "timeEntryIds must be a non-empty array" });
+      }
+
+      // Prevent self-approval: get all employee IDs for the time entries
+      const entries = await db
+        .select()
+        .from(timeEntriesTable)
+        .where(
+          and(
+            eq(timeEntriesTable.workspaceId, workspaceId),
+            inArray(timeEntriesTable.id, timeEntryIds)
+          )
+        );
+
+      const employeeIds = [...new Set(entries.map(e => e.employeeId))];
+      
+      // Check if any of these employees are the current user
+      const userEmployees = await db
+        .select()
+        .from(employees)
+        .where(
+          and(
+            eq(employees.workspaceId, workspaceId),
+            eq(employees.userId, userId),
+            inArray(employees.id, employeeIds)
+          )
+        );
+
+      if (userEmployees.length > 0) {
+        return res.status(403).json({ 
+          message: "Cannot approve your own time entries",
+          selfApprovalCount: userEmployees.length
+        });
+      }
+
+      // Bulk approve all valid entries
+      const updated = await db
+        .update(timeEntriesTable)
+        .set({
+          status: 'approved',
+          approvedBy: userId,
+          approvedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(timeEntriesTable.workspaceId, workspaceId),
+            inArray(timeEntriesTable.id, timeEntryIds),
+            eq(timeEntriesTable.status, 'pending') // Only approve pending entries
+          )
+        )
+        .returning();
+
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
+
+      // Audit trail: log bulk approval as a single event with all entry IDs (Phase 10 requirement)
+      if (updated.length > 0) {
+        try {
+          await storage.createAuditLog({
+            workspaceId,
+            userId,
+            action: 'bulk_approve',
+            entityType: 'time_entry',
+            entityId: updated[0].id,
+            // @ts-expect-error — TS migration: fix in refactoring sprint
+            description: `Bulk approved ${updated.length} time entr${updated.length === 1 ? 'y' : 'ies'}`,
+            metadata: {
+              entryIds: updated.map(e => e.id),
+              count: updated.length,
+              approvedBy: userId,
+              source: 'timeEntryRoutes.bulk_approve',
+            },
+          });
+        } catch (auditErr: unknown) {
+          // @ts-expect-error — TS migration: fix in refactoring sprint
+          log.warn('[TimeEntry] Bulk approve audit log failed (non-blocking):', auditErr.message);
+        }
+
+        // Fire automation event — triggers invoice creation + payroll processing pipeline
+        platformEventBus.publish({
+          type: 'time_entries_approved',
+          workspaceId,
+          payload: { count: updated.length, entryIds: updated.map(e => e.id), approvedBy: userId },
+          metadata: { source: 'timeEntryRoutes.bulk_approve' },
+        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+        // Phase 20 — Trinity invoice lifecycle workflow per entry (de-duped
+        // inside the workflow if the client is already invoiced for the day).
+        for (const entry of updated) {
+          scheduleNonBlocking('trinity.invoice_lifecycle.bulk', async () => {
+            const { executeInvoiceLifecycleWorkflow } = await import(
+              '../services/trinity/workflows/invoiceLifecycleWorkflow'
+            );
+            await executeInvoiceLifecycleWorkflow({
+              workspaceId,
+              timeEntryId: entry.id,
+              triggerSource: 'time_entry_approved',
+              userId,
+            });
+          });
+        }
+      }
+
+      const gpsWarnings = updated
+        .filter(e => !e.clockInLatitude && !e.clockInLongitude)
+        .map(e => e.id);
+
+      res.json({
+        approved: updated.length,
+        entries: updated,
+        gpsWarnings: gpsWarnings.length > 0
+          ? {
+              count: gpsWarnings.length,
+              entryIds: gpsWarnings,
+              message: `${gpsWarnings.length} approved entr${gpsWarnings.length === 1 ? 'y' : 'ies'} had no GPS coordinates. Manager review recommended before payroll run.`,
+            }
+          : null,
+      });
+    } catch (error: unknown) {
+      log.error("Error bulk approving time entries:", error);
+      res.status(500).json({ message: "Failed to bulk approve time entries" });
+    }
+  })
 
 export default router;
