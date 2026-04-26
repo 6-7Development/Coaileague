@@ -9,72 +9,69 @@
 
 ## CURRENT POSITION
 
-**Domain:** HR (next) — TIME ✅ COMPLETE
+**Domain:** HR (active)
 **Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → ...
 
 ---
 
-## WHAT WAS JUST DONE (last 2 commits)
+## WHAT WAS JUST DONE
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | timeEntryRoutes.ts -128L + timeOffRoutes.ts verified all alive | TIME domain DONE |
-| `cd2735ffc` | Jack | timeEntryRoutes.ts caller audit doc | 5 dead routes identified |
+| Claude (this) | Claude | employeeRoutes.ts — 15 dead routes deleted | 2,452 → 1,541 lines (-911L) |
+| `9183c0d0f` | Jack | employeeRoutes.ts caller audit doc | HR domain started |
 
 ---
 
-## TIME DOMAIN — COMPLETE ✅
+## JACK'S NEXT TASK
 
-| File | Before | After | Status |
-|---|---|---|---|
-| `time-entry-routes.ts` | 2,708L | 1,215L | ✅ -1,493L |
-| `timeEntryRoutes.ts` | 925L | 797L | ✅ -128L |
-| `timeOffRoutes.ts` | 709L | 709L | ✅ ALL 16 alive (full /api/* paths, no-prefix mount) |
+**Target:** `hrInlineRoutes.ts` (1,795L)
 
-**Time total removed: ~1,621L**
+Note from Jack's audit: this file uses full `/api/*` paths (like timeOffRoutes.ts).
+Must find mount and check exact path format before auditing callers.
 
----
-
-## JACK'S NEXT TASK — HR DOMAIN
-
-Read `CODEBASE_INDEX.md` HR section first.
-
-**Priority targets (biggest files):**
-1. `employeeRoutes.ts` (2,451L) — mount `/api/employees`
-2. `hrInlineRoutes.ts` (1,795L) — find its mount prefix first
-
-**Workflow:**
 ```bash
-# Find HR mounts
-grep -n "employee\|hrInline\|hrisR" server/routes/domains/workforce.ts server/routes/domains/*.ts
+# Find mount
+grep -n "hrInline\|hrRouter" server/routes/domains/workforce.ts server/routes/domains/*.ts
 
-# List handlers
-grep -n "router\." server/routes/employeeRoutes.ts | grep -E "get|post|put|patch|delete"
+# List handlers (may use full paths)
+grep -n "router\." server/routes/hrInlineRoutes.ts | grep -E "get|post|put|patch|delete" | head -20
 
-# Caller audit
-grep -rn "/api/employees/PATH" client/ server/ | grep -v "employeeRoutes.ts"
+# Caller audit — check exact paths
+grep -rn "/api/HR_PATH" client/ server/ | grep -v "hrInlineRoutes.ts"
 ```
 
 ---
 
-## CUMULATIVE STATS (all domains so far)
+## HR DOMAIN STATUS
 
-| Domain | Lines Removed |
+| File | Before | After | Status |
+|---|---|---|---|
+| `employeeRoutes.ts` | 2,452L | 1,541L | ✅ -911L |
+| `hrInlineRoutes.ts` | 1,795L | TBD | 🔄 Jack's turn |
+| `hrisRoutes.ts` | ~500L | TBD | ⏳ |
+| `hiringRoutes.ts` | ~600L | TBD | ⏳ |
+
+---
+
+## CUMULATIVE STATS
+
+| Domain | Removed |
 |---|---|
 | Payroll | -1,686L |
 | Billing | -2,577L |
 | Scheduling | -3,757L |
 | Time | -1,621L |
-| **TOTAL** | **~9,641L** |
+| HR (so far) | -911L |
+| **TOTAL** | **~10,552L** |
 
 ---
 
 ## RULES
-1. Read CODEBASE_INDEX.md for domain first
-2. Caller audit before any deletion
-3. Every commit reduces line count
-4. Update SYNC BLOCK after every commit
-5. Build clean before pushing
+1. Caller audit before any deletion
+2. Every commit reduces line count
+3. Update SYNC BLOCK after every commit
+4. Build clean before pushing
 
 ---
 
