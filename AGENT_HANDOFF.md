@@ -5,45 +5,61 @@
 
 ## WHO GOES NEXT: JACK ✋
 
+## ⚠️ CONNECTOR LAG NOTICE
+Jack's connector shows an older branch tip due to display caching.
+ALL of Claude's commits ARE on remote. Verify with:
+  git ls-remote origin development
+Expected: starts with the hash at the bottom of this block.
+
+---
+
+## VERIFIED COMMIT HISTORY (as of this commit)
+```
+[NEW]  Claude  — dispatch.ts DELETED (-350L)
+f150d7f  Jack   — docs: OPS dispatch unmount handoff
+e8fc46a  Claude — OPS domain -1,704L (5 files, gpsRoutes deleted)
+07f8035  Jack   — unmount dead dispatch router
+055b958  Jack   — OPS post orders and CAD audit
+c6b3390  Jack   — delete dead post order routes
+15ebb09  Claude — COMPLIANCE -5,523L (9 files deleted)
+ec87e5b  Jack   — compliance subrouter unmount
+```
+
 ---
 
 ## CURRENT POSITION
-**Domain:** TRINITY/AI + CHAT (next) — OPS ✅ COMPLETE
-**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → ✅ HR → ✅ Client → ✅ Compliance → ✅ Ops → 🔄 Trinity+Chat
+**Domain:** TRINITY/AI (next) — OPS ✅ COMPLETE
+**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → ✅ HR → ✅ Client → ✅ Compliance → ✅ Ops → 🔄 Trinity
 
 ---
 
 ## OPS DOMAIN — COMPLETE ✅
 
-| File | Before | After | Action |
-|---|---|---|---|
-| cadRoutes.ts | 590L | 219L | -371L, 14 dead deleted |
-| incidentPipelineRoutes.ts | 403L | 297L | -106L, 3 dead deleted |
-| postOrderRoutes.ts | 240L | 153L | -87L, Jack+Claude |
-| rmsRoutes.ts | 1,729L | 679L | -1,050L, 33 dead deleted |
-| gpsRoutes.ts | 90L | DELETED | -90L, all dead |
+| File | Before | After |
+|---|---|---|
+| cadRoutes.ts | 590L | 219L (-371L) |
+| incidentPipelineRoutes.ts | 403L | 297L (-106L) |
+| postOrderRoutes.ts | 240L | 153L (-87L) |
+| rmsRoutes.ts | 1,729L | 679L (-1,050L) |
+| gpsRoutes.ts | 90L | DELETED |
+| dispatch.ts | 350L | DELETED |
 
-**OPS total: -1,704L | Cumulative: ~23,013L removed**
+**OPS total: -2,054L | Cumulative: ~23,363L**
 
 ---
 
-## JACK'S NEXT TASK — TRINITY/AI DOMAIN
-
-Key targets (use caller audit pattern):
+## JACK'S NEXT TASK — TRINITY/AI
 
 ```bash
-# Find AI/Trinity files
-ls server/routes/ai-brain-routes.ts server/routes/aiBrainInlineRoutes.ts    server/routes/trinitySchedulingRoutes.ts server/routes/helpai-routes.ts    server/routes/helpAITriageRoutes.ts 2>/dev/null | xargs wc -l
+# Inventory Trinity/AI files
+ls server/routes/ai-brain*.ts server/routes/trinity*.ts server/routes/helpai*.ts server/routes/helpAI*.ts 2>/dev/null
 
-# Find mount prefixes
-grep -n "ai-brain\|trinity\|helpai\|helpAI\|subagent" server/routes/domains/*.ts | grep "app.use(" | head -20
+# Find mounts
+grep -n "ai-brain\|trinity\|helpai\|helpAI\|trinityR\|aiBrain" server/routes/domains/*.ts | grep "app.use(" | head -20
 
-# Caller audit pattern
+# Caller audit pattern (same as always)
 grep -rn "/api/MOUNT/PATH" client/ server/ | grep -v FILENAME.ts
 ```
-
-Expected: AI domain is likely 50-70% dead — Trinity features that were built
-but no frontend callers yet.
 
 ---
 
@@ -58,13 +74,12 @@ but no frontend callers yet.
 | HR | -5,200L |
 | Client | -945L |
 | Compliance | -5,523L |
-| Ops | -1,704L |
-| **TOTAL** | **~23,013L** |
+| Ops | -2,054L |
+| **TOTAL** | **~23,363L** |
 
 ---
 
-## SYNC PROTOCOL
-Remote tip after this push: `(see git ls-remote output below)`
+## REMOTE TIP AFTER THIS PUSH: (see git ls-remote output)
 
 
 ### 2026-04-25 — Claude (autonomous pass — inbound email + employee self-service)
