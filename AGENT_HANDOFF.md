@@ -66,3 +66,41 @@ Within-file handler trimming is safe (individual dead handlers in active files).
 File deletion only when mount prefix = 0 frontend callers (confirmed above).
 
 Total still achievable safely: significant line reduction within files.
+
+---
+
+## KNOWN BUILD ERRORS — FOR JACK (do not work until Bryan confirms green)
+
+### Error 1: `require is not defined in ES module` — FIXED ✅
+**Commit:** `9278e5a0a`
+**Cause:** `server/index.ts` used `require('fs')` and `require('path')` inside an
+if-block. `package.json` has `"type": "module"` making all files ESM — `require`
+doesn't exist in ESM scope.
+**Fix:** Replaced with `import { writeFileSync } from 'fs'` and `import { join as pathJoin } from 'path'` as static ESM imports at top of file.
+
+### Error 2: `typescript` not resolved at bundle time — COPILOT FIXING
+**Cause:** `cosmiconfig` (used by some config library) tries to resolve `typescript`
+at esbuild bundle time. `typescript` is a devDependency — not installed in Railway
+production builds.
+**Fix:** Add `'typescript'` to the `external` array in `build.mjs`. Cosmiconfig
+handles missing module gracefully at runtime.
+**Status:** Copilot deploying fix. Wait for Bryan's green before continuing.
+
+### Error 3: TypeScript syntax errors in seed script — FIXED ✅
+**Commit:** `9278e5a0a`
+**File:** `server/scripts/seed-stripe-products.ts` lines 130, 181
+**Cause:** Orphaned `async function` keyword + missing `async function` on `seedProducts()`
+**Fix:** Corrected both syntax errors.
+
+---
+
+## WHEN BRYAN SAYS GREEN — RESUME ON refactor/route-cleanup BRANCH
+
+```bash
+git checkout refactor/route-cleanup
+git pull origin development  # pick up Copilot's build.mjs fix
+```
+
+Then continue within-file handler trimming (safe — doesn't delete whole files).
+Only delete files where mount prefix = 0 frontend callers (already identified above).
+
