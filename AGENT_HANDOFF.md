@@ -8,9 +8,8 @@
 ---
 
 ## CURRENT POSITION
-
 **Domain:** HR (active)
-**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → ...
+**Order:** ✅ Payroll → ✅ Billing → ✅ Scheduling → ✅ Time → 🔄 HR → Client → Compliance → Ops → ...
 
 ---
 
@@ -18,28 +17,21 @@
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| Claude (this) | Claude | employeeRoutes.ts — 15 dead routes deleted | 2,452 → 1,541 lines (-911L) |
-| `9183c0d0f` | Jack | employeeRoutes.ts caller audit doc | HR domain started |
+| Claude (this) | Claude | hrInlineRoutes.ts — 17 dead routes deleted | 1,795→1,312L (-483L) |
+| `6d5f71311` | Jack | hrInlineRoutes delete list from DEEP_ROUTE_INDEX | Index working ✅ |
 
 ---
 
-## JACK'S NEXT TASK
+## JACK'S NEXT TASK — READ DEEP_ROUTE_INDEX.md
 
-**Target:** `hrInlineRoutes.ts` (1,795L)
+**`DEEP_ROUTE_INDEX.md` has hrisRoutes.ts and hiringRoutes.ts fully pre-audited.**
 
-Note from Jack's audit: this file uses full `/api/*` paths (like timeOffRoutes.ts).
-Must find mount and check exact path format before auditing callers.
+Jack: read the file → copy DELETE rows → write handoff → done.
 
-```bash
-# Find mount
-grep -n "hrInline\|hrRouter" server/routes/domains/workforce.ts server/routes/domains/*.ts
+**hrisRoutes.ts (248L):** delete 6 of 8 handlers (keep: /providers, /connections)
+**hiringRoutes.ts (416L):** delete 8 of 11 handlers (keep: /pipeline, /training-pipeline, /seed)
 
-# List handlers (may use full paths)
-grep -n "router\." server/routes/hrInlineRoutes.ts | grep -E "get|post|put|patch|delete" | head -20
-
-# Caller audit — check exact paths
-grep -rn "/api/HR_PATH" client/ server/ | grep -v "hrInlineRoutes.ts"
-```
+After those two: run local audit on onboardingRoutes.ts, trainingRoutes.ts (largest remaining)
 
 ---
 
@@ -48,9 +40,14 @@ grep -rn "/api/HR_PATH" client/ server/ | grep -v "hrInlineRoutes.ts"
 | File | Before | After | Status |
 |---|---|---|---|
 | `employeeRoutes.ts` | 2,452L | 1,541L | ✅ -911L |
-| `hrInlineRoutes.ts` | 1,795L | TBD | 🔄 Jack's turn |
-| `hrisRoutes.ts` | ~500L | TBD | ⏳ |
-| `hiringRoutes.ts` | ~600L | TBD | ⏳ |
+| `hrInlineRoutes.ts` | 1,795L | 1,312L | ✅ -483L |
+| `hrisRoutes.ts` | 248L | TBD | 🔄 Jack (pre-audited in index) |
+| `hiringRoutes.ts` | 416L | TBD | 🔄 Jack (pre-audited in index) |
+| `onboardingRoutes.ts` | 819L | TBD | ⏳ |
+| `terminationRoutes.ts` | 572L | TBD | ⏳ |
+| `performanceRoutes.ts` | 754L | TBD | ⏳ |
+| `trainingRoutes.ts` | 1,290L | TBD | ⏳ |
+| `benefitRoutes.ts` | 113L | TBD | ⏳ |
 
 ---
 
@@ -62,16 +59,17 @@ grep -rn "/api/HR_PATH" client/ server/ | grep -v "hrInlineRoutes.ts"
 | Billing | -2,577L |
 | Scheduling | -3,757L |
 | Time | -1,621L |
-| HR (so far) | -911L |
-| **TOTAL** | **~10,552L** |
+| HR (so far) | -1,394L |
+| **TOTAL** | **~11,035L** |
 
 ---
 
 ## RULES
-1. Caller audit before any deletion
-2. Every commit reduces line count
-3. Update SYNC BLOCK after every commit
-4. Build clean before pushing
+1. Read DEEP_ROUTE_INDEX.md — most files are pre-audited
+2. Caller audit before any deletion not in index
+3. Every commit reduces line count
+4. Update SYNC BLOCK after every commit
+5. Build clean before pushing
 
 ---
 

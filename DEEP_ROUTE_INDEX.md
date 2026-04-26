@@ -195,3 +195,55 @@ Active routes preserved (N):
 FILENAME.ts: BEFORE → AFTER lines (-DIFF)
 Build: TBD (Claude verifies)
 ```
+
+---
+
+## ✅ hrInlineRoutes.ts — DONE
+1,795 → 1,312 lines (-483L). 17 handlers deleted. 13 critical routes intact.
+
+---
+
+## hrisRoutes.ts — 248L | mount: `/api/hris`
+**2 alive / 6 dead → delete 6**
+
+| Status | Method | Path |
+|---|---|---|
+| DELETE | GET | `/employees` |
+| ALIVE(3) | GET | `/providers` |
+| ALIVE(7) | GET | `/connections` |
+| DELETE | GET | `/auth/:provider` |
+| DELETE | GET | `/callback/:provider` |
+| DELETE | POST | `/sync/:provider` |
+| DELETE | DELETE | `/disconnect/:provider` |
+| DELETE | GET | `/sync-status/:provider` |
+
+---
+
+## hiringRoutes.ts — 416L | mount: `/api/hiring`
+**3 alive / 8 dead → delete 8**
+
+| Status | Method | Path |
+|---|---|---|
+| ALIVE(7) | GET | `/pipeline` |
+| DELETE | GET | `/applicants/:id` |
+| DELETE | PATCH | `/applicants/:id/stage` |
+| DELETE | POST | `/applicants/:id/verify-license` |
+| DELETE | POST | `/applicants/:id/score-interview` |
+| DELETE | POST | `/applicants/:id/assess` |
+| DELETE | GET | `/question-sets` |
+| DELETE | GET | `/sessions/:id` |
+| DELETE | POST | `/postings/:id/draft-approve` |
+| ALIVE(1) | GET | `/training-pipeline` |
+| ALIVE(1) | POST | `/seed` |
+
+---
+
+## onboardingRoutes.ts — 819L | mount: `/api/sps/onboarding`
+Uses different router pattern — `grep -n "router\." server/routes/onboardingRoutes.ts` then audit each path against `/api/sps/onboarding/PATH`
+
+## offboardingRoutes.ts — 235L | find mount: `grep -n "offboard" server/routes/domains/workforce.ts`
+## terminationRoutes.ts — 572L | find mount: `grep -n "termination" server/routes/domains/workforce.ts`
+## performanceRoutes.ts — 754L | mount: `/api/performance-notes`
+## trainingRoutes.ts — 1,290L | mount: `/api/training-compliance` — 26 handlers, run full audit
+## benefitRoutes.ts — 113L | mount: `/api/benefits` — small, run audit
+
