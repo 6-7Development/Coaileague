@@ -162,11 +162,6 @@ router.post('/send', requireAuth, async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "Recipient and message or attachment are required" });
     }
 
-    const recipientValidation = await validatePrivateMessageRecipient(userId, recipientId, workspaceId);
-    if (!recipientValidation.valid) {
-      return res.status(403).json({ message: recipientValidation.error || 'Recipient is not available for direct messaging' });
-    }
-
     const conversation = await storage.getOrCreatePrivateConversation(workspaceId, userId, recipientId);
 
     const { formatUserDisplayNameForChat } = await import('../utils/formatUserDisplayName');
@@ -192,19 +187,21 @@ router.post('/send', requireAuth, async (req: AuthenticatedRequest, res) => {
       attachmentName,
     });
 
-    try {
-      const wsPayload = {
-        type: 'private_message_received',
-        conversationId: sentMessage?.conversationId || conversation.id,
-        message: sentMessage,
-      };
-      if (recipientId) broadcastToUser(recipientId, wsPayload);
-      if (userId) broadcastToUser(userId, wsPayload);
-    } catch (_wsErr) {
-      // WebSocket broadcast is best-effort — REST response still succeeds
-    }
-
-    res.json(sentMessage);
+    
+      // Broadcast to both participants via WebSocket for socket-first live updates
+      try {
+        const { broadcastToUser } = await import('../websocket');
+        const wsPayload = {
+          type: 'private_message_received',
+          conversationId: newMessage?.conversationId,
+          message: newMessage,
+        };
+        if (recipientId) broadcastToUser(recipientId, wsPayload);
+        if (userId) broadcastToUser(userId, wsPayload);
+      } catch (_wsErr) {
+        // WebSocket broadcast is best-effort — REST response still succeeds
+      }
+      res.json(sentMessage);
   } catch (error: unknown) {
     log.error("Error sending message:", error);
     res.status(500).json({ message: "Failed to send message" });
@@ -228,11 +225,6 @@ router.post('/start', requireAuth, async (req: AuthenticatedRequest, res) => {
 
     if (!recipientId) {
       return res.status(400).json({ message: "Recipient is required" });
-    }
-
-    const recipientValidation = await validatePrivateMessageRecipient(userId, recipientId, workspaceId);
-    if (!recipientValidation.valid) {
-      return res.status(403).json({ message: recipientValidation.error || 'Recipient is not available for direct messaging' });
     }
 
     const conversation = await storage.getOrCreatePrivateConversation(workspaceId, userId, recipientId);

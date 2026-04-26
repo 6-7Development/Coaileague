@@ -1,6 +1,6 @@
 // Domain Scheduling — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
-// Canonical prefixes: /api/schedules, /api/scheduling, /api/shifts,
+// Canonical prefixes: /api/scheduler, /api/schedules, /api/scheduling, /api/shifts,
 //   /api/calendar, /api/coverage, /api/post-orders, /api/shift-chatrooms,
 //   /api/trinity/scheduling, /api/trinity-staffing, /api/public/trinity-staffing,
 //   /api/staffing (staffing broadcast — public accept + per-route auth)
@@ -11,6 +11,7 @@ import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { registerAutonomousSchedulingRoutes } from "../autonomousSchedulingRoutes";
 import approvalRoutes from "../approvalRoutes";
+import schedulerRouter from "../schedulerRoutes";
 import orchestratedScheduleRouter from "../orchestratedScheduleRoutes";
 import { coverageRouter } from "../coverageRoutes";
 import { calendarRouter } from "../calendarRoutes";
@@ -82,6 +83,7 @@ export function mountSchedulingRoutes(app: Express): void {
 
   app.use("/api/approvals", requireAuth, ensureWorkspaceAccess, approvalRoutes);
   registerAutonomousSchedulingRoutes(app);
+  app.use("/api/scheduler", requireAuth, ensureWorkspaceAccess, schedulerRouter);
   app.use("/api/orchestrated-schedule", requireAuth, ensureWorkspaceAccess, orchestratedScheduleRouter);
   app.use("/api/coverage", requireAuth, ensureWorkspaceAccess, coverageRouter);
   app.use("/api/calendar", requireAuth, ensureWorkspaceAccess, calendarRouter);

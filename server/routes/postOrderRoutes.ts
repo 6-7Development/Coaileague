@@ -1,13 +1,29 @@
 import { Router } from "express";
 import { db } from "../db";
 import { postOrderTemplates, shiftOrders, shiftOrderAcknowledgments, employees, insertPostOrderTemplateSchema } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { hasManagerAccess, type AuthenticatedRequest } from "../rbac";
 import { createLogger } from '../lib/logger';
 const log = createLogger('PostOrderRoutes');
 
+
 const router = Router();
+
+router.get("/", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId || req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: 'Missing workspace' });
+    const templates = await db
+      .select()
+      .from(postOrderTemplates)
+      .where(eq(postOrderTemplates.workspaceId, workspaceId))
+      .orderBy(desc(postOrderTemplates.updatedAt));
+    res.json(templates);
+  } catch (err: unknown) {
+    res.status(500).json({ error: 'Failed to fetch post orders' });
+  }
+});
 
 router.get("/templates", async (req: AuthenticatedRequest, res) => {
   try {
@@ -27,7 +43,25 @@ router.get("/templates", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.post("/templates", async (req: AuthenticatedRequest, res) => {
+router.get("/templates/:id", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
+
+    const [template] = await db
+      .select()
+      .from(postOrderTemplates)
+      .where(and(eq(postOrderTemplates.id, req.params.id), eq(postOrderTemplates.workspaceId, workspaceId)));
+
+    if (!template) return res.status(404).json({ error: "Template not found" });
+    res.json(template);
+  } catch (error: unknown) {
+    log.error("Error fetching post order template:", error);
+    res.status(500).json({ error: "Failed to fetch post order template" });
+  }
+});
+
+router.post("/templates", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
@@ -51,7 +85,42 @@ outer.post("/templates", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
+router.patch("/templates/:id", async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!hasManagerAccess(req.workspaceRole || '')) {
+      return res.status(403).json({ error: "Manager access required to update post order templates" });
+    }
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
+
+    const [existing] = await db
+      .select()
+      .from(postOrderTemplates)
+      .where(and(eq(postOrderTemplates.id, req.params.id), eq(postOrderTemplates.workspaceId, workspaceId)));
+
+    if (!existing) return res.status(404).json({ error: "Template not found" });
+
+    const updateData = insertPostOrderTemplateSchema.partial().parse(req.body);
+    delete (updateData as any).workspaceId;
+    delete (updateData as any).createdBy;
+
+    const [updated] = await db
+      .update(postOrderTemplates)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(and(eq(postOrderTemplates.id, req.params.id), eq(postOrderTemplates.workspaceId, workspaceId)))
+      .returning();
+
+    res.json(updated);
+  } catch (error: unknown) {
+    log.error("Error updating post order template:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to update post order template" });
+  }
+});
+
+router.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
   try {
     if (!hasManagerAccess(req.workspaceRole || '')) {
       return res.status(403).json({ error: "Manager access required to delete post order templates" });
@@ -69,6 +138,72 @@ outer.delete("/templates/:id", async (req: AuthenticatedRequest, res) => {
   } catch (error: unknown) {
     log.error("Error deleting post order template:", error);
     res.status(500).json({ error: "Failed to delete post order template" });
+  }
+});
+
+router.post("/assign-to-shift", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Authentication required" });
+    if (!workspaceId) return res.status(403).json({ error: "Workspace context required" });
+
+    const schema = z.object({
+      templateId: z.string(),
+      shiftId: z.string(),
+    });
+
+    const { templateId, shiftId } = schema.parse(req.body);
+
+    const [template] = await db
+      .select()
+      .from(postOrderTemplates)
+      .where(and(eq(postOrderTemplates.id, templateId), eq(postOrderTemplates.workspaceId, workspaceId)));
+
+    if (!template) return res.status(404).json({ error: "Template not found" });
+
+    const [order] = await db
+      .insert(shiftOrders)
+      .values({
+        workspaceId,
+        shiftId,
+        title: template.title,
+        description: template.description,
+        priority: template.priority,
+        requiresAcknowledgment: template.requiresAcknowledgment,
+        requiresSignature: template.requiresSignature,
+        requiresPhotos: template.requiresPhotos,
+        photoFrequency: template.photoFrequency,
+        photoInstructions: template.photoInstructions,
+        createdBy: userId,
+      })
+      .returning();
+
+    res.status(201).json(order);
+  } catch (error: unknown) {
+    log.error("Error assigning post order to shift:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to assign post order to shift" });
+  }
+});
+
+router.get("/shift/:shiftId", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
+
+    const orders = await db
+      .select()
+      .from(shiftOrders)
+      .where(and(eq(shiftOrders.shiftId, req.params.shiftId), eq(shiftOrders.workspaceId, workspaceId)))
+      .orderBy(desc(shiftOrders.createdAt));
+
+    res.json(orders);
+  } catch (error: unknown) {
+    log.error("Error fetching shift orders:", error);
+    res.status(500).json({ error: "Failed to fetch shift orders" });
   }
 });
 
@@ -120,7 +255,40 @@ router.post("/acknowledge", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-outer.get("/tracking", async (req: AuthenticatedRequest, res) => {
+router.get("/acknowledgments/:shiftOrderId", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });
+
+    const acks = await db
+      .select({
+        id: shiftOrderAcknowledgments.id,
+        shiftOrderId: shiftOrderAcknowledgments.shiftOrderId,
+        employeeId: shiftOrderAcknowledgments.employeeId,
+        acknowledgedAt: shiftOrderAcknowledgments.acknowledgedAt,
+        notes: shiftOrderAcknowledgments.notes,
+        signatureUrl: shiftOrderAcknowledgments.signatureUrl,
+        signedAt: shiftOrderAcknowledgments.signedAt,
+        employeeName: sql<string>`COALESCE(${employees.firstName} || ' ' || ${employees.lastName}, 'Unknown')`.as('employee_name'),
+      })
+      .from(shiftOrderAcknowledgments)
+      .leftJoin(employees, eq(shiftOrderAcknowledgments.employeeId, employees.id))
+      .where(
+        and(
+          eq(shiftOrderAcknowledgments.shiftOrderId, req.params.shiftOrderId),
+          eq(shiftOrderAcknowledgments.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(shiftOrderAcknowledgments.acknowledgedAt));
+
+    res.json(acks);
+  } catch (error: unknown) {
+    log.error("Error fetching acknowledgments:", error);
+    res.status(500).json({ error: "Failed to fetch acknowledgments" });
+  }
+});
+
+router.get("/tracking", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "Missing workspace" });

@@ -1,38 +1,33 @@
 import crypto from 'crypto';
 import { sanitizeError } from '../middleware/errorHandler';
 import { PLATFORM } from '../config/platformConfig';
-import {  validateDeductionAmount, validateNonNegativeAmount, businessRuleResponse } from '../lib/businessRules';
+import { validatePayrollPeriod, validateDeductionAmount, validateNonNegativeAmount, businessRuleResponse } from '../lib/businessRules';
 import { Router } from "express";
 import type { AuthenticatedRequest } from "../rbac";
-import { sumFinancialValues,  toFinancialString } from '../services/financialCalculator';
+import { sumFinancialValues, formatCurrency, toFinancialString } from '../services/financialCalculator';
 import { platformEventBus } from '../services/platformEventBus';
 import { hasManagerAccess, hasPlatformWideAccess } from "../rbac";
 import PDFDocument from "pdfkit";
 import { db } from "../db";
 import { storage } from "../storage";
-import { and,  desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import {
   payrollRuns,
   payrollEntries,
   payrollGarnishments,
   payStubs,
   employees,
-  
+  stagedShifts,
   employeePayrollInfo,
   employeeBankAccounts,
   timeEntries,
   billingAuditLog,
   payrollRunLocks,
-  invoices,
-  clients,
-  employeeTaxForms,
-  employees as employeesTable,
-  users,
-  workspaces,
 } from '@shared/schema';
 import { employeeOnboardingProgress } from '@shared/schema/domains/workforce/extended';
 import { encryptToken, decryptToken } from '../security/tokenEncryption';
 import * as taxCalculator from "../services/taxCalculator";
+import { calculateStateTax, calculateBonusTaxation } from "../services/taxCalculator";
 import { getWorkspaceTier, hasTierAccess, requirePlan } from "../tierGuards";
 import { payrollDeductions } from '@shared/schema';
 import { registerLegacyBootstrap } from '../services/legacyBootstrapRegistry';
@@ -117,6 +112,7 @@ import {
   calculateTotalDeductions,
   calculateTotalGarnishments,
 } from "../services/payrollDeductionService";
+import { detectPayPeriod, createAutomatedPayrollRun } from "../services/payrollAutomation";
 import { broadcastNotificationToUser as broadcastNotification } from "../websocket";
 import * as notificationHelpers from "../notifications";
 import { format } from "date-fns";
@@ -137,38 +133,6 @@ import { idempotencyMiddleware } from "../middleware/idempotency";
 import { mutationLimiter } from "../middleware/rateLimiter";
 import { isValidPayrollTransition, resolvePayrollLifecycleStatus } from "../services/payroll/payrollStateMachine";
 import { createLogger } from '../lib/logger';
-import { isTerminalPayrollStatus,  isValidPayrollTransition} from '../services/payroll/payrollStatus';
-import { getPayrollTaxFilingDeadlines, getPayrollTaxFilingGuide, getPayrollStatePortals } from '../services/payroll/payrollTaxFilingGuideService';
-import { buildPayrollCsvExport } from '../services/payroll/payrollCsvExportService';
-import { rejectPayrollProposal } from '../services/payroll/payrollProposalRejectionService';
-import { getMyPaychecks, getMyPayStub, getMyPayrollInfo, updateMyPayrollInfo, getYtdEarnings } from '../services/payroll/payrollEmployeeSelfServiceService';
-import { listPayrollProposals } from '../services/payroll/payrollProposalReadService';
-import { getMyEmployeeTaxForms, getMyEmployeeTaxForm } from '../services/payroll/payrollEmployeeTaxFormsService';
-import { listPayrollRuns, getPayrollRun } from '../services/payroll/payrollRunReadService';
-import { deletePayrollRun } from '../services/payroll/payrollRunDeleteService';
-import { approvePayrollProposal } from '../services/payroll/payrollProposalApprovalService';
-import { broadcastToWorkspace } from '../websocket';
-import { universalNotificationEngine } from '../services/universalNotificationEngine';
-import { taxFormGeneratorService } from '../services/taxFormGeneratorService';
-import { markPayrollRunPaid } from '../services/payroll/payrollRunMarkPaidService';
-import { processPayrollRunState } from '../services/payroll/payrollRunProcessStateService';
-import { voidPayrollRun } from '../services/payroll/payrollRunVoidService';
-import { createPayrollRunForPeriod } from '../services/payroll/payrollRunCreationService';
-import { listBankAccounts, addBankAccount, updateBankAccount, deactivateBankAccount, verifyBankAccount } from '../services/payroll/payrollBankAccountService';
-import { approvePayrollRun } from '../services/payroll/payrollRunApprovalService';
-import { tokenManager } from '../services/billing/tokenManager';
-import { taxFilingAssistanceService } from '../services/taxFilingAssistanceService';
-import { executeInternalPayroll, amendPayrollEntry } from '../services/payrollAutomation';
-import { startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, format as dateFnsFormat } from 'date-fns';
-import { generateNachaFile } from '../services/payroll/payrollNachaService';
-import { generatePayrollRunPdf } from '../services/payroll/payrollPdfExportService';
-import { initiatePayrollAchTransfer } from '../services/payroll/achTransferService';
-import { retryFailedPayrollTransfers } from '../services/payroll/payrollRetryService';
-import { PLATFORM } from '@shared/platformConfig';
-import { getMiddlewareFees } from '@shared/billingConfig';
-import { createBonusPayEntry, createCommissionPayEntry } from '../services/payroll/payrollSupplementalPayService';
-import { getTaxCenterData, getPreRunChecklist } from '../services/payroll/payrollTaxCenterService';
-import { writeLedgerEntry } from '../services/orgLedgerService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -199,44 +163,121 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       if (!roleCheck.allowed) {
         return res.status(roleCheck.status || 403).json({ error: roleCheck.error || 'Insufficient permissions' });
       }
-      const userId = req.user?.id;
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
       if (!workspaceId) {
-        return res.status(400).json({ error: 'Workspace context required' });
+        return res.status(400).json({ error: "Workspace context required" });
+      }
+      const { startDate, endDate } = req.query;
+
+      // Get payroll runs
+      const runs = await db.select({
+        id: payrollRuns.id,
+        periodStart: payrollRuns.periodStart,
+        periodEnd: payrollRuns.periodEnd,
+        status: payrollRuns.status,
+        totalGrossPay: payrollRuns.totalGrossPay,
+        totalNetPay: payrollRuns.totalNetPay,
+        createdAt: payrollRuns.createdAt,
+      }).from(payrollRuns)
+        .where(eq(payrollRuns.workspaceId, workspaceId))
+        .orderBy(desc(payrollRuns.createdAt));
+
+      // Get all payroll entries
+      const entries = await db.select({
+        id: payrollEntries.id,
+        employeeId: payrollEntries.employeeId,
+        periodStart: payrollRuns.periodStart,
+        periodEnd: payrollRuns.periodEnd,
+        regularHours: payrollEntries.regularHours,
+        overtimeHours: payrollEntries.overtimeHours,
+        hourlyRate: payrollEntries.hourlyRate,
+        grossPay: payrollEntries.grossPay,
+        federalTax: payrollEntries.federalTax,
+        stateTax: payrollEntries.stateTax,
+        socialSecurity: payrollEntries.socialSecurity,
+        medicare: payrollEntries.medicare,
+        netPay: payrollEntries.netPay,
+        createdAt: payrollEntries.createdAt,
+      })
+        .from(payrollEntries)
+        .leftJoin(payrollRuns, eq(payrollEntries.payrollRunId, payrollRuns.id))
+        .where(eq(payrollEntries.workspaceId, workspaceId));
+
+      // Generate CSV
+      const csvHeader = 'Employee Name,Period Start,Period End,Regular Hours,Overtime Hours,Hourly Rate,Gross Pay,Deductions,Federal Tax,State Tax,Social Security,Medicare,Net Pay,Date\n';
+      
+      const employeeIds = [...new Set(entries.map((e: any) => e.employeeId))];
+      const employeeMap = new Map();
+      if (employeeIds.length > 0) {
+        const emps = await db.select().from(employees).where(inArray(employees.id, employeeIds));
+        emps.forEach(emp => employeeMap.set(emp.id, `${emp.firstName} ${emp.lastName}`));
       }
 
-      const { startDate, endDate } = req.query;
-      const result = await buildPayrollCsvExport({
-        workspaceId,
-        userId,
-        ipAddress: req.ip || null,
-        startDate: typeof startDate === 'string' ? startDate : null,
-        endDate: typeof endDate === 'string' ? endDate : null,
-      });
+      const csvRows = entries.map((e: any) => {
+        const employeeName = employeeMap.get(e.employeeId) || e.employeeId;
+        // RC4 (Phase 2): sumFinancialValues uses Decimal.js — eliminates 4-field floating-point accumulation.
+        const deductions = formatCurrency(sumFinancialValues([e.federalTax || '0', e.stateTax || '0', e.socialSecurity || '0', e.medicare || '0']));
+        return `"${employeeName}",${e.periodStart ? format(new Date(e.periodStart), 'yyyy-MM-dd') : ''},${e.periodEnd ? format(new Date(e.periodEnd), 'yyyy-MM-dd') : ''},${e.regularHours},${e.overtimeHours},${e.hourlyRate},${e.grossPay},${deductions},${e.federalTax},${e.stateTax},${e.socialSecurity},${e.medicare},${e.netPay},${format(new Date(e.createdAt), 'yyyy-MM-dd')}`;
+      }).join('\n');
 
-      res.setHeader('Content-Type', result.contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-      res.send(result.csv);
+      // Audit log: payroll data exports are sensitive — always record who exported what
+      try {
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        await db.insert((await import('@shared/schema')).auditLogs).values({
+          id: crypto.randomUUID(),
+          workspaceId,
+          userId,
+          action: 'payroll.export.csv',
+          entityType: 'payroll',
+          entityId: workspaceId,
+          details: JSON.stringify({
+            exportedRows: entries.length,
+            dateRange: { startDate: startDate || null, endDate: endDate || null },
+            exportedAt: new Date().toISOString(),
+          }),
+          ipAddress: req.ip || null,
+          createdAt: new Date(),
+        });
+      } catch (auditErr) {
+        log.warn('[Payroll] Failed to write export audit log (non-blocking):', auditErr);
+      }
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="payroll-export-${format(new Date(), 'yyyy-MM-dd')}.csv"`);
+      res.send(csvHeader + csvRows);
     } catch (error: unknown) {
       log.error("Error exporting payroll CSV:", error);
       res.status(500).json({ message: "Failed to export payroll" });
     }
   });
+
   router.get('/proposals', async (req: AuthenticatedRequest, res) => {
     try {
       const roleCheck = checkManagerRole(req);
-      if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
-      const userWorkspace = await storage.getWorkspaceMemberByUserId(req.user?.id!);
-      if (!userWorkspace) return res.status(404).json({ message: 'Workspace not found' });
-      const status = typeof req.query.status === 'string' ? req.query.status : null;
-      const proposals = await listPayrollProposals({ workspaceId: userWorkspace.workspaceId, status });
+      if (!roleCheck.allowed) {
+        return res.status(roleCheck.status || 403).json({ message: roleCheck.error || 'Insufficient permissions' });
+      }
+      const userId = req.user?.id;
+      const userWorkspace = await storage.getWorkspaceMemberByUserId(userId!);
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const { payrollProposals } = await import("@shared/schema");
+      
+      const proposals = await db.select().from(payrollProposals)
+        .where(eq(payrollProposals.workspaceId, userWorkspace.workspaceId))
+        .orderBy(desc(payrollProposals.id))
+        .limit(100);
+      
       res.json(proposals);
     } catch (error: unknown) {
-      log.error('Error fetching payroll proposals:', error);
-      res.status(500).json({ message: sanitizeError(error) || 'Failed to fetch proposals' });
+      log.error("Error fetching payroll proposals:", error);
+      res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to fetch proposals" });
     }
   });
 
@@ -248,25 +289,162 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const { id } = req.params;
       const userId = req.user?.id;
       const userWorkspace = await storage.getWorkspaceMemberByUserId(userId!);
-      if (!userWorkspace) return res.status(404).json({ message: 'Workspace not found' });
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const { payrollProposals } = await import("@shared/schema");
 
-      const result = await approvePayrollProposal({
-        proposalId: id,
+      // Phase 29 / Phase 27 guard: SELECT FOR UPDATE inside a transaction prevents
+      // two concurrent managers from approving the same payroll proposal simultaneously.
+      let proposal: any;
+      let approvedProposal: any;
+      try {
+        ({ proposal, approvedProposal } = await db.transaction(async (tx) => {
+          // Lock the row — concurrent requests wait here instead of racing
+          const [locked] = await tx
+            .select()
+            .from(payrollProposals)
+            .where(
+              and(
+                eq(payrollProposals.id, id),
+                eq(payrollProposals.workspaceId, userWorkspace.workspaceId),
+              )
+            )
+            .for('update')
+            .limit(1);
+
+          if (!locked) throw Object.assign(new Error('NOT_FOUND'), { status: 404 });
+
+          if (locked.status !== 'pending') {
+            throw Object.assign(new Error('ALREADY_PROCESSED'), { status: 409 });
+          }
+
+          // FIX [FOUR-EYES PAYROLL APPROVAL]: four-eyes check inside transaction so
+          // it cannot be bypassed by a concurrent request that reads stale state.
+          if (locked.createdBy && locked.createdBy === userId) {
+            throw Object.assign(new Error('SELF_APPROVAL_FORBIDDEN'), { status: 403 });
+          }
+
+          // FIX [PAYROLL PROPOSAL STALENESS]: 30-day stale guard
+          if (locked.createdAt) {
+            const proposalAgeMs = Date.now() - new Date(locked.createdAt).getTime();
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            if (proposalAgeMs > thirtyDaysMs) {
+              throw Object.assign(new Error('PROPOSAL_EXPIRED'), {
+                status: 409,
+                extra: {
+                  createdAt: locked.createdAt,
+                  ageInDays: Math.floor(proposalAgeMs / (24 * 60 * 60 * 1000)),
+                },
+              });
+            }
+          }
+
+          const [approved] = await tx.update(payrollProposals).set({
+            status: 'approved',
+            approvedBy: userId,
+            approvedAt: new Date(),
+            updatedAt: new Date(),
+          }).where(and(
+            eq(payrollProposals.id, id),
+            eq(payrollProposals.status, 'pending'),
+          )).returning();
+
+          if (!approved) throw Object.assign(new Error('ALREADY_PROCESSED'), { status: 409 });
+
+          return { proposal: locked, approvedProposal: approved };
+        }));
+      } catch (txErr: any) {
+        const status = txErr?.status || 500;
+        if (status === 404) return res.status(404).json({ message: "Proposal not found" });
+        if (status === 409 && txErr?.message === 'ALREADY_PROCESSED') return res.status(409).json({ message: "Proposal was already processed by another user" });
+        if (status === 403) return res.status(403).json({ message: "You cannot approve a payroll proposal that you created. A different authorised manager must approve it.", code: 'SELF_APPROVAL_FORBIDDEN' });
+        if (status === 409 && txErr?.message === 'PROPOSAL_EXPIRED') return res.status(409).json({ message: "This payroll proposal is more than 30 days old and can no longer be approved. Please create a new proposal with current data.", code: 'PROPOSAL_EXPIRED', ...txErr?.extra });
+        throw txErr;
+      }
+
+      if (!approvedProposal) {
+        return res.status(409).json({ message: "Proposal was already processed by another user" });
+      }
+
+      // FIX 7: Financial anomaly check on payroll approval — non-blocking warning
+      let payrollAnomalyWarning: string | null = null;
+      const proposalData = (proposal as any).data ?? {};
+      const payrollTotal = parseFloat(toFinancialString(proposalData.totalGross ?? proposalData.totalAmount ?? proposalData.total ?? '0')); // billing boundary
+      const PAYROLL_ANOMALY_THRESHOLD = 100000;
+      const PAYROLL_EXTREME_THRESHOLD = 500000;
+      if (payrollTotal >= PAYROLL_EXTREME_THRESHOLD) {
+        payrollAnomalyWarning = `EXTREME_PAYROLL: Total payroll $${payrollTotal.toLocaleString()} far exceeds normal range ($500k+). Verify with finance team before processing.`;
+        log.warn(`[FinancialAnomaly] Payroll proposal ${id} total $${payrollTotal} ≥ $${PAYROLL_EXTREME_THRESHOLD} threshold`);
+      } else if (payrollTotal >= PAYROLL_ANOMALY_THRESHOLD) {
+        payrollAnomalyWarning = `HIGH_PAYROLL: Total payroll $${payrollTotal.toLocaleString()} is above typical range ($100k+). Please confirm this is correct.`;
+        log.warn(`[FinancialAnomaly] Payroll proposal ${id} total $${payrollTotal} ≥ $${PAYROLL_ANOMALY_THRESHOLD} threshold`);
+      }
+
+      storage.createAuditLog({
         workspaceId: userWorkspace.workspaceId,
         userId: userId!,
         userEmail: req.user?.email || 'unknown',
         userRole: req.user?.role || 'user',
-      });
+        action: 'update',
+        entityType: 'payroll_proposal',
+        entityId: id,
+        actionDescription: `Payroll proposal ${id} approved`,
+        changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
+        isSensitiveData: true,
+        complianceTag: 'soc2',
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal approval', { error: err?.message }));
 
-      res.json(result);
-    } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      const extra = (error as any)?.extra || {};
-      log.error('OperationsOS™ Payroll Approval Error:', error);
-      res.status(status).json({
-        message: error instanceof Error ? sanitizeError(error) : 'Failed to approve payroll',
-        ...extra,
+      // Webhook Emission
+      try {
+        const { deliverWebhookEvent } = await import('../services/webhookDeliveryService');
+        deliverWebhookEvent(userWorkspace.workspaceId, 'payroll.run_completed', {
+          proposalId: id,
+          approvedBy: userId,
+          totalGross: (proposal as any).data?.totalGross,
+          approvedAt: new Date().toISOString()
+        });
+      } catch (webhookErr: any) {
+        log.warn('[Payroll] Failed to log webhook error to audit log', { error: webhookErr.message });
+      }
+
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const { broadcastToWorkspace: bcastProposalApprove } = await import('../services/websocketService');
+      bcastProposalApprove(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_approved', proposalId: id });
+      platformEventBus.publish({
+        type: 'payroll_run_approved',
+        category: 'automation',
+        title: 'Payroll Proposal Approved',
+        description: `Payroll proposal ${id} approved by ${userId} — payroll will be processed`,
+        workspaceId: userWorkspace.workspaceId,
+        userId: userId!,
+        metadata: {
+          proposalId: id,
+          approvedBy: userId,
+          source: 'proposal_approve',
+        },
+      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      // Notify managers about payroll approval
+      const { universalNotificationEngine } = await import('../services/universalNotificationEngine');
+      await universalNotificationEngine.sendNotification({
+        workspaceId: userWorkspace.workspaceId,
+        type: 'payroll_approved',
+        priority: 'high',
+        title: 'Payroll Approved',
+        message: `Payroll proposal ${id} has been approved and is moving to processing.`,
+        severity: 'info',
+        metadata: { proposalId: id, approvedBy: userId }
+      }).catch(err => log.error('[Payroll] Failed to send approval notification:', (err instanceof Error ? err.message : String(err))));
+
+      res.json({
+        success: true,
+        proposalId: id,
+        message: 'Payroll proposal approved. Payroll will be processed.',
+        ...(payrollAnomalyWarning ? { anomalyWarning: payrollAnomalyWarning } : {}),
       });
+    } catch (error: unknown) {
+      log.error("OperationsOS™ Payroll Approval Error:", error);
+      res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to approve payroll" });
     }
   });
 
@@ -279,22 +457,58 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const { reason } = req.body;
       const userId = req.user?.id;
       const userWorkspace = await storage.getWorkspaceMemberByUserId(userId!);
-      if (!userWorkspace) return res.status(404).json({ message: 'Workspace not found' });
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const { payrollProposals } = await import("@shared/schema");
+      const [proposal] = await db.select().from(payrollProposals).where(
+        and(
+          eq(payrollProposals.id, id),
+          eq(payrollProposals.workspaceId, userWorkspace.workspaceId),
+          eq(payrollProposals.status, 'pending')
+        )
+      ).limit(1);
+      
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found or already processed" });
+      }
+      
+      await db.update(payrollProposals).set({
+        status: 'rejected',
+        rejectedBy: userId,
+        rejectedAt: new Date(),
+        rejectionReason: reason || 'No reason provided',
+        updatedAt: new Date(),
+      }).where(and(
+        eq(payrollProposals.id, id),
+        eq(payrollProposals.workspaceId, userWorkspace.workspaceId)
+      ));
 
-      const result = await rejectPayrollProposal({
-        proposalId: id,
-        reason,
-        userId: userId!,
+      storage.createAuditLog({
         workspaceId: userWorkspace.workspaceId,
+        userId: userId!,
         userEmail: req.user?.email || 'unknown',
         userRole: req.user?.role || 'user',
-      });
+        action: 'update',
+        entityType: 'payroll_proposal',
+        entityId: id,
+        actionDescription: `Payroll proposal ${id} rejected`,
+        changes: { before: { status: 'pending' }, after: { status: 'rejected', rejectedBy: userId, reason: reason || 'No reason provided' } },
+        isSensitiveData: true,
+        complianceTag: 'soc2',
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err?.message }));
 
-      res.json(result);
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const { broadcastToWorkspace: bcastProposalReject } = await import('../services/websocketService');
+      bcastProposalReject(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_rejected', proposalId: id });
+
+      res.json({
+        success: true,
+        proposalId: id,
+        message: 'Payroll proposal rejected.',
+      });
     } catch (error: unknown) {
-      log.error('[PayrollRoute] Failed to reject payroll:', error);
-      const status = (error as any)?.status || 500;
-      res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to reject payroll' });
+      log.error("[PayrollRoute] Failed to reject payroll:", error);
+      res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to reject payroll" });
     }
   });
 
@@ -303,70 +517,278 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const roleCheck = checkManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
       const workspaceId = req.workspaceId!;
 
+      const workspaceTier = await getWorkspaceTier(workspaceId);
+      if (!hasTierAccess(workspaceTier, 'professional')) {
+        return res.status(402).json({ error: 'This feature requires professional plan or higher', currentTier: workspaceTier, minimumTier: 'professional', requiresTierUpgrade: true });
+      }
+
+      // GAP-45 FIX: Block suspended/cancelled workspaces from creating payroll runs.
+      // Invoice routes already guard this; payroll creation was missing the same check.
+      // A workspace with subscriptionStatus='suspended' or 'cancelled' must NOT be able
+      // to generate payroll — doing so would create financial obligations for an org that
+      // has been administratively locked, creating reconciliation debt and audit exposure.
+      const ws = await storage.getWorkspace(workspaceId);
+      if (!ws || ws.subscriptionStatus === 'suspended' || ws.subscriptionStatus === 'cancelled') {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_INACTIVE',
+          message: 'Organization subscription is not active — payroll cannot be run until the subscription is restored',
+        });
+      }
+
+      const lockResult = await acquirePayrollRunLock(workspaceId, userId);
+      if (!lockResult.acquired) {
+        return res.status(409).json({ error: "A payroll run is already being created for this workspace", lockedBy: lockResult.holder });
+      }
+
+      // Validate input
       const schema = z.object({
         payPeriodStart: z.string().optional(),
         payPeriodEnd: z.string().optional(),
       });
-
+      
       const validationResult = schema.safeParse(req.body);
       if (!validationResult.success) {
-        return res.status(422).json({
-          message: 'Invalid request',
-          errors: validationResult.error.errors,
+        return res.status(422).json({ 
+          message: "Invalid request",
+          errors: validationResult.error.errors
         });
       }
 
-      const result = await createPayrollRunForPeriod({
+      const { payPeriodStart, payPeriodEnd } = validationResult.data;
+
+      // Auto-detect pay period if not provided
+      let periodStart: Date;
+      let periodEnd: Date;
+      
+      if (payPeriodStart && payPeriodEnd) {
+        periodStart = new Date(payPeriodStart);
+        periodEnd = new Date(payPeriodEnd);
+      } else {
+        const detected = await detectPayPeriod(workspaceId);
+        periodStart = detected.periodStart;
+        periodEnd = detected.periodEnd;
+      }
+
+      const periodViolation = validatePayrollPeriod(periodStart, periodEnd);
+      if (periodViolation) {
+        await releasePayrollRunLock(workspaceId);
+        if (businessRuleResponse(res, [periodViolation])) return;
+      }
+
+      // Check for overlapping runs
+      const overlappingRun = await db.select().from(payrollRuns)
+        .where(and(
+          eq(payrollRuns.workspaceId, workspaceId),
+          sql`(${payrollRuns.periodStart}, ${payrollRuns.periodEnd}) OVERLAPS (${periodStart.toISOString()}, ${periodEnd.toISOString()})`
+        ))
+        .limit(1);
+
+      if (overlappingRun.length > 0) {
+        await releasePayrollRunLock(workspaceId);
+        return res.status(409).json({
+          message: "Payroll period overlaps with an existing run",
+          existingRunId: overlappingRun[0].id 
+        });
+      }
+
+      // ── PRE-GATE: Workspace-wide compliance scan (runs regardless of approved hours) ──
+      // Checks ALL active employees for guard card issues, missing onboarding, missing pay type.
+      // Returns warnings even when payroll is blocked by ZERO_APPROVED_HOURS.
+      const complianceWarnings: Array<{ employeeId: string; name: string; issue: string }> = [];
+      try {
+        const allWorkspaceEmployees = await db
+          .select({
+            id: employees.id,
+            firstName: employees.firstName,
+            lastName: employees.lastName,
+            onboardingStatus: employees.onboardingStatus,
+            guardCardNumber: employees.guardCardNumber,
+            guardCardExpiryDate: employees.guardCardExpiryDate,
+            compliancePayType: employees.compliancePayType,
+            licenseType: employees.licenseType,
+            status: employees.status,
+          })
+          .from(employees)
+          .where(and(
+            eq(employees.workspaceId, workspaceId),
+            sql`${employees.status} NOT IN ('terminated', 'inactive')`
+          ));
+        const today = new Date();
+        const thirtyDaysOut = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        for (const emp of allWorkspaceEmployees) {
+          const name = `${emp.firstName} ${emp.lastName}`;
+          if (emp.onboardingStatus !== 'completed') {
+            complianceWarnings.push({ employeeId: emp.id, name, issue: 'Onboarding packet not completed — I-9/W-4 may be missing' });
+          }
+          if (!emp.guardCardNumber) {
+            complianceWarnings.push({ employeeId: emp.id, name, issue: 'Guard card number not on file — required for licensed security work' });
+          } else if (emp.guardCardExpiryDate) {
+            const expiry = new Date(emp.guardCardExpiryDate);
+            if (expiry < today) {
+              complianceWarnings.push({ employeeId: emp.id, name, issue: `Guard card expired on ${expiry.toLocaleDateString()} — officer cannot legally work` });
+            } else if (expiry < thirtyDaysOut) {
+              complianceWarnings.push({ employeeId: emp.id, name, issue: `Guard card expires soon — ${expiry.toLocaleDateString()} (within 30 days)` });
+            }
+          }
+          if (!emp.compliancePayType) {
+            complianceWarnings.push({ employeeId: emp.id, name, issue: 'Pay classification (W-2/1099) not set — required for tax reporting' });
+          }
+        }
+      } catch (compErr) {
+        log.warn('[Payroll] Compliance pre-check failed (non-blocking):', (compErr as Error).message);
+      }
+
+      // ── FIX 2: HARD GATE — zero approved hours blocks payroll run creation ──
+      // Reasoning audit Section 5 #2: was PARTIAL (deferred warning), now hard block.
+      // complianceWarnings are included in the 400 response so the caller still gets them.
+      const [approvedHoursCheck] = await db
+        .select({ approvedCount: count(timeEntries.id) })
+        .from(timeEntries)
+        .where(and(
+          eq(timeEntries.workspaceId, workspaceId),
+          eq(timeEntries.status, 'approved'),
+          gte(timeEntries.clockIn, periodStart),
+          lte(timeEntries.clockIn, periodEnd),
+        ));
+
+      if (!approvedHoursCheck || approvedHoursCheck.approvedCount === 0) {
+        await releasePayrollRunLock(workspaceId);
+        return res.status(422).json({
+          error: 'ZERO_APPROVED_HOURS',
+          message: `No approved timesheets found for ${periodStart.toLocaleDateString()} – ${periodEnd.toLocaleDateString()}. Approve timesheets before running payroll.`,
+          periodStart: periodStart.toISOString(),
+          periodEnd: periodEnd.toISOString(),
+          complianceWarnings,
+        });
+      }
+
+      const payrollRun = await db.transaction(async (tx) => {
+        const existingRun = await tx
+          .select()
+          .from(payrollRuns)
+          .where(and(
+            eq(payrollRuns.workspaceId, workspaceId),
+            eq(payrollRuns.periodStart, periodStart),
+            eq(payrollRuns.periodEnd, periodEnd),
+          ))
+          .for('update')
+          .limit(1);
+
+        if (existingRun.length > 0) {
+          throw Object.assign(new Error(
+            `A payroll run for this pay period (${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}) already exists.`
+          ), {
+            statusCode: 409,
+            code: 'DUPLICATE_PAYROLL_RUN',
+            existingRunId: existingRun[0].id,
+            existingRunStatus: existingRun[0].status,
+          });
+        }
+
+        return await createAutomatedPayrollRun({
+          workspaceId,
+          periodStart,
+          periodEnd,
+          createdBy: userId
+        });
+      });
+
+      storage.createAuditLog({
         workspaceId,
         userId,
         userEmail: req.user?.email || 'unknown',
         userRole: req.user?.role || 'user',
-        payPeriodStart: validationResult.data.payPeriodStart || null,
-        payPeriodEnd: validationResult.data.payPeriodEnd || null,
+        action: 'create',
+        entityType: 'payroll_run',
+        entityId: (payrollRun as any).id,
+        actionDescription: `Payroll run created for period ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
+        changes: { after: { payrollRunId: (payrollRun as any).id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
+        isSensitiveData: true,
+        complianceTag: 'soc2',
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err?.message }));
+
+      const periodStartStr = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const periodEndStr = periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      notificationHelpers.createPayrollRunCreatedNotification(
+        { storage, broadcastNotification },
+        {
+          workspaceId,
+          userId,
+          payrollRunId: (payrollRun as any).id,
+          periodStart: periodStartStr,
+          periodEnd: periodEndStr,
+          createdBy: userId,
+        }
+      ).catch(err => log.error('Failed to create payroll notification:', err));
+
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const { broadcastToWorkspace: bcastRunCreated } = await import('../services/websocketService');
+      bcastRunCreated(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: (payrollRun as any).id });
+      platformEventBus.publish({
+        type: 'payroll_run_created',
+        category: 'automation',
+        title: 'Payroll Run Created',
+        description: `Payroll run created for ${periodStartStr} – ${periodEndStr}`,
+        workspaceId,
+        userId,
+        metadata: {
+          payrollRunId: (payrollRun as any).id,
+          periodStart: periodStart.toISOString(),
+          periodEnd: periodEnd.toISOString(),
+          createdBy: userId,
+        },
+      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+
+      // FIX-2: Financial audit log for payroll run creation
+      await db.insert(billingAuditLog).values({
+        workspaceId,
+        eventType: 'payroll_run_created',
+        eventCategory: 'payroll',
+        actorType: 'user',
+        actorId: userId,
+        actorEmail: req.user?.email || null,
+        description: `Payroll run created for period ${periodStartStr} to ${periodEndStr}`,
+        relatedEntityType: 'payroll_run',
+        relatedEntityId: (payrollRun as any).id,
+        newState: { status: (payrollRun as any).status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      });
-
-      res.json({ ...result.payrollRun, complianceWarnings: result.complianceWarnings });
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err?.message }));
+      res.json({ ...payrollRun, complianceWarnings });
     } catch (error: unknown) {
-      const status = (error as any)?.status || (error as any)?.statusCode || 500;
-      const extra = (error as any)?.extra || {};
-
-      if ((error as any)?.code === 'DUPLICATE_PAYROLL_RUN') {
+      if (error instanceof Error && (error as any).code === 'DUPLICATE_PAYROLL_RUN') {
         return res.status(409).json({
-          message: error instanceof Error ? sanitizeError(error) : 'Duplicate payroll run',
+          message: sanitizeError(error),
           code: (error as any).code,
           existingRunId: (error as any).existingRunId,
           existingRunStatus: (error as any).existingRunStatus,
         });
       }
-
-      log.error('Error creating payroll run:', error);
-      res.status(status).json({
-        message: error instanceof Error ? sanitizeError(error) : 'Failed to create payroll run',
-        ...extra,
-      });
+      log.error("Error creating payroll run:", error);
+      res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to create payroll run" });
+    } finally {
+      const workspaceId = req.workspaceId;
+      if (workspaceId) await releasePayrollRunLock(workspaceId);
     }
   });
 
   router.get('/runs', async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const runs = await listPayrollRuns({
-        workspaceId,
-        status: typeof req.query.status === 'string' ? req.query.status : null,
-        limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : null,
-      });
+      const runs = await storage.getPayrollRunsByWorkspace(workspaceId);
       res.json(runs);
     } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      log.error('Error fetching payroll runs:', error);
-      res.status(status).json({ message: 'Failed to fetch payroll runs' });
+      log.error("Error fetching payroll runs:", error);
+      res.status(500).json({ message: "Failed to fetch payroll runs" });
     }
   });
 
@@ -375,27 +797,39 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
 
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
       const isManager = req.workspaceRole && hasManagerAccess(req.workspaceRole);
       const isPlatform = req.platformRole && hasPlatformWideAccess(req.platformRole);
 
-      // Employees see only their own entries — preserve scoped path inline
       if (!isManager && !isPlatform) {
-        const run = await storage.getPayrollRun(id, workspaceId);
-        if (!run) return res.status(404).json({ message: 'Payroll run not found' });
         const employee = await storage.getEmployeeByUserId(req.user?.id || '', workspaceId);
-        if (!employee) return res.status(403).json({ error: 'No employee record found for your user in this workspace' });
+        if (!employee) {
+          return res.status(403).json({ error: "No employee record found for your user in this workspace" });
+        }
+        
+        // In a run-level fetch, we only show entries for the requesting employee if they are not a manager
         const entries = await db.select().from(payrollEntries)
           .where(and(eq(payrollEntries.payrollRunId, id), eq(payrollEntries.employeeId, employee.id)));
-        return res.json({ ...run, entries });
+        
+        return res.json({
+          ...run,
+          entries
+        });
       }
 
-      // Managers/platform: full run + all entries via canonical service
-      const result = await getPayrollRun({ workspaceId, payrollRunId: id, includeEntries: true });
-      res.json({ ...result.run, entries: result.entries || [] });
+      const entries = await storage.getPayrollEntriesByRun(id);
+
+      res.json({
+        ...run,
+        entries
+      });
     } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      log.error('Error fetching payroll run:', error);
-      res.status(status).json({ message: 'Failed to fetch payroll run' });
+      log.error("Error fetching payroll run:", error);
+      res.status(500).json({ message: "Failed to fetch payroll run" });
     }
   });
 
@@ -404,41 +838,146 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       const roleCheck = checkManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
       const workspaceId = req.workspaceId!;
+
       const workspaceTier = await getWorkspaceTier(workspaceId);
       if (!hasTierAccess(workspaceTier, 'professional')) {
-        return res.status(402).json({
-          error: 'This feature requires professional plan or higher',
-          currentTier: workspaceTier,
-          minimumTier: 'professional',
-          requiresTierUpgrade: true,
+        return res.status(402).json({ error: 'This feature requires professional plan or higher', currentTier: workspaceTier, minimumTier: 'professional', requiresTierUpgrade: true });
+      }
+
+      const { id } = req.params;
+
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      // ── WRITE-PROTECT: Paid payroll runs are closed accounting records ──────────
+      if (run.status === 'paid') {
+        return res.status(403).json({
+          message: "This record has been closed and cannot be modified",
+          code: 'RECORD_CLOSED',
+          currentStatus: run.status,
+        });
+      }
+      // ─────────────────────────────────────────────────────────────────────────────
+
+      const currentStatus = run.status ?? 'draft';
+      if (!isValidPayrollTransition(currentStatus, 'approved')) {
+        const lifecycleStatus = resolvePayrollLifecycleStatus(currentStatus);
+        return res.status(422).json({
+          message: "Only payroll runs pending review can be approved",
+          currentStatus: lifecycleStatus || currentStatus,
         });
       }
 
-      const result = await approvePayrollRun({
-        workspaceId,
-        payrollRunId: req.params.id,
-        userId,
-        userEmail: req.user?.email || null,
-        userRole: req.user?.role || null,
-        ipAddress: req.ip || null,
-        userAgent: req.get('user-agent') || null,
-      });
+      // FIX [GAP-11 FOUR-EYES RUN APPROVAL]: The manager who created the payroll run
+      // (processedBy) must not be the same person who approves it. Without this check,
+      // a single manager can create and immediately approve their own payroll run,
+      // bypassing the two-person authorization requirement entirely.
+      // This mirrors the same guard already in place for payroll proposals (line ~219).
+      if (run.processedBy && run.processedBy === userId) {
+        return res.status(403).json({
+          message: "You cannot approve a payroll run that you created. A different authorized manager must approve it.",
+          code: 'SELF_APPROVAL_FORBIDDEN',
+        });
+      }
 
-      res.json({ ...result.run, qbSync: result.qbSync });
+      const updated = await storage.updatePayrollRunStatus(id, 'approved', userId, workspaceId);
+
+      // GAP-42 FIX: Audit log write is now awaited, not fire-and-forget.
+      // Previously, createAuditLog was called with .catch() — if the DB write failed,
+      // the payroll run was approved with zero SOC2 audit trail. For a complianceTag:soc2
+      // operation, a missing audit entry during an audit is a critical finding.
+      // Now we await the write; on failure we log loudly but do NOT block the approval —
+      // the payroll run IS correctly approved and the error is surfaced in structured logs
+      // where it can be caught by the log monitoring pipeline for SOC2 audit alerting.
+      try {
+        await storage.createAuditLog({
+          workspaceId,
+          userId,
+          userEmail: req.user?.email || 'unknown',
+          userRole: req.user?.role || 'user',
+          action: 'update',
+          entityType: 'payroll_run',
+          entityId: id,
+          actionDescription: `Payroll run ${id} approved`,
+          changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
+          isSensitiveData: true,
+          complianceTag: 'soc2',
+        });
+      } catch (err: unknown) {
+        log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll approval', {
+          runId: id,
+          workspaceId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // FIX-2: Financial audit log for payroll approval
+      try {
+        await db.insert(billingAuditLog).values({
+          workspaceId,
+          eventType: 'payroll_run_approved',
+          eventCategory: 'payroll',
+          actorType: 'user',
+          actorId: userId,
+          actorEmail: req.user?.email || null,
+          description: `Payroll run ${run.id} approved for period ${run.periodStart} to ${run.periodEnd}`,
+          relatedEntityType: 'payroll_run',
+          relatedEntityId: id,
+          previousState: { status: 'pending' },
+          newState: { status: 'approved', approvedBy: userId, approvedAt: new Date().toISOString() },
+          ipAddress: req.ip || null,
+          userAgent: req.get('user-agent') || null,
+        });
+      } catch (err: unknown) {
+        log.error('[BillingAudit] billing_audit_log write failed for payroll approval', {
+          runId: id,
+          workspaceId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      let qbSyncResult = null;
+      try {
+        const { onPayrollApproved } = await import('../services/financialPipelineOrchestrator');
+        qbSyncResult = await onPayrollApproved(id, workspaceId, userId);
+        log.info(`[PayrollApproval] QB sync result for payroll ${id}:`, qbSyncResult.action);
+      } catch (syncError: unknown) {
+        log.warn('[PayrollApproval] QB sync after approval failed (non-blocking):', (syncError instanceof Error ? syncError.message : String(syncError)));
+      }
+
+      // Real-time: update payroll dashboard for all managers in this workspace
+      try {
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        const { broadcastToWorkspace } = await import('../services/websocketService');
+        broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'approved', runId: run.id });
+      } catch (_wsErr: any) {
+        log.warn('[Payroll] Failed to broadcast WebSocket update', { error: _wsErr.message });
+      }
+
+      platformEventBus.publish({
+        type: 'payroll_run_approved',
+        category: 'automation',
+        title: `Payroll Run Approved`,
+        description: `Payroll run ${run.id} approved by manager — ready for processing`,
+        workspaceId,
+        userId,
+        metadata: { payrollRunId: run.id, approvedBy: userId, runPeriod: run.periodStart + ' – ' + run.periodEnd },
+        visibility: 'manager',
+      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      res.json({ ...updated, qbSync: qbSyncResult ? { synced: qbSyncResult.success, details: qbSyncResult.details } : undefined });
     } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      const extra = (error as any)?.extra || {};
-      const code = (error as any)?.code;
-      log.error('Error approving payroll run:', error);
-      res.status(status).json({
-        message: error instanceof Error ? sanitizeError(error) : 'Failed to approve payroll run',
-        ...(code ? { code } : {}),
-        ...extra,
-      });
+      log.error("Error approving payroll run:", error);
+      res.status(500).json({ message: "Failed to approve payroll run" });
     }
   });
 
@@ -548,7 +1087,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       }
 
       try {
-        // writeLedgerEntry — static import at top
+        const { writeLedgerEntry } = await import('../services/orgLedgerService');
         await writeLedgerEntry({
           workspaceId,
           entryType: 'payroll_processed',
@@ -632,7 +1171,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
           // CHANNEL 2: Resend email to each employee
           try {
-            // @shared/schema symbols — now static import at top
+            const { users, workspaces } = await import('@shared/schema');
             const { sendPayStubEmail } = await import('../services/emailCore');
             const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
             const orgName = ws?.name || 'Your Organization';
@@ -676,7 +1215,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       // Real-time: update payroll dashboard for all managers in this workspace
       try {
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        // broadcastToWorkspace — now static import at top
+        const { broadcastToWorkspace } = await import('../services/websocketService');
         broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'processed', runId: id });
       } catch (_wsErr: any) {
         log.warn('[Payroll] Failed to broadcast WebSocket update', { error: _wsErr.message });
@@ -720,13 +1259,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       res.json(updated);
     } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      const extra = (error as any)?.extra || {};
-      log.error('Error processing payroll run:', error);
-      res.status(status).json({
-        message: error instanceof Error ? sanitizeError(error) : 'Failed to process payroll run',
-        ...extra,
-      });
+      log.error("Error processing payroll run:", error);
+      res.status(500).json({ message: "Failed to process payroll run" });
     }
   });
 
@@ -734,39 +1268,88 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
     try {
       const roleCheck = checkManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+
       const workspaceId = req.workspaceId!;
-      const result = await deletePayrollRun({
-        workspaceId,
-        payrollRunId: req.params.id,
-        userId: req.user?.id || null,
-        reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
+      const { id } = req.params;
+
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      if (run.status !== 'draft') {
+        return res.status(422).json({ message: "Only draft payroll runs can be deleted. This run has already been " + run.status });
+      }
+
+      await db.transaction(async (tx) => {
+        await tx.delete(payrollEntries).where(eq(payrollEntries.payrollRunId, id));
+        await tx.delete(payrollRuns).where(and(eq(payrollRuns.id, id), eq(payrollRuns.workspaceId, workspaceId)));
       });
-      res.json(result);
+
+      const userId = req.user?.id;
+      storage.createAuditLog({
+        workspaceId,
+        userId,
+        action: 'delete',
+        entityType: 'payroll_run',
+        entityId: id,
+        changes: { before: { status: run.status, payPeriodStart: run.periodStart, payPeriodEnd: run.periodEnd }, after: { status: 'deleted' } },
+        metadata: { isSensitiveData: true, complianceTag: 'soc2' },
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll delete', { error: err?.message }));
+
+      res.json({ message: "Payroll run deleted successfully" });
     } catch (error: unknown) {
-      const status = (error as any)?.status || 500;
-      log.error('Error deleting payroll run:', error);
-      res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to delete payroll run' });
+      log.error("Error deleting payroll run:", error);
+      res.status(500).json({ message: "Failed to delete payroll run" });
     }
   });
 
   router.get('/my-paychecks', async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-      const result = await getMyPaychecks(userId);
-      if (!result.success) return res.status(result.status || 500).json({ message: result.error });
-      res.json(result.data);
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
+      // For unauthenticated users, return success (frontend handles localStorage)
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Find employee record for this user
+      const allEmployees = await db
+        .select()
+        .from(employees)
+        .where(eq(employees.userId, userId));
+
+      if (!allEmployees || allEmployees.length === 0) {
+        return res.status(404).json({ message: "Employee record not found" });
+      }
+
+      // Use the first employee record (users typically belong to one workspace)
+      const employee = allEmployees[0];
+      const workspaceId = employee.workspaceId;
+
+      const paychecks = await storage.getPayrollEntriesByEmployee(employee.id, workspaceId);
+      res.json(paychecks);
     } catch (error: unknown) {
-      log.error('Error fetching paychecks:', error);
-      res.status(500).json({ message: 'Failed to fetch paychecks' });
+      log.error("Error fetching paychecks:", error);
+      res.status(500).json({ message: "Failed to fetch paychecks" });
     }
   });
 
 router.get('/pay-stubs/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const result = await getMyPayStub(req.user!.id, req.params.id);
-    if (!result.success) return res.status(result.status || 500).json({ error: result.error });
-    res.json(result.data);
+    const userId = req.user!.id;
+    // Resolve the employee record for this user so we can scope by employeeId.
+    const userEmployees = await db.select({ id: employees.id })
+      .from(employees)
+      .where(eq(employees.userId, userId));
+    if (!userEmployees.length) return res.status(404).json({ error: 'Pay stub not found' });
+    const employeeIds = userEmployees.map(e => e.id);
+    const [stub] = await db.select().from(payStubs)
+      .where(and(eq(payStubs.id, req.params.id), inArray(payStubs.employeeId, employeeIds)))
+      .limit(1);
+    if (!stub) return res.status(404).json({ error: 'Pay stub not found' });
+    res.json(stub);
   } catch (error: unknown) {
     log.error('Error fetching pay stub:', error);
     res.status(500).json({ error: 'Failed to fetch pay stub' });
@@ -777,9 +1360,27 @@ router.get('/my-payroll-info', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-    const result = await getMyPayrollInfo(userId);
-    if (!result.success) return res.status(result.status || 500).json({ message: result.error });
-    res.json(result.data);
+
+    const allEmployees = await db.select().from(employees).where(eq(employees.userId, userId));
+    if (!allEmployees.length) return res.status(404).json({ message: 'Employee record not found' });
+
+    const employee = allEmployees[0];
+    const info = await db.query.employeePayrollInfo.findFirst({
+      where: and(
+        eq(employeePayrollInfo.employeeId, employee.id),
+        eq(employeePayrollInfo.workspaceId, employee.workspaceId)
+      ),
+    });
+
+    if (!info) return res.json({ directDepositEnabled: false, preferredPayoutMethod: 'direct_deposit' });
+
+    res.json({
+      directDepositEnabled: info.directDepositEnabled,
+      bankAccountType: info.bankAccountType,
+      preferredPayoutMethod: info.preferredPayoutMethod,
+      hasRoutingNumber: !!(info.bankRoutingNumber),
+      hasAccountNumber: !!(info.bankAccountNumber),
+    });
   } catch (error: unknown) {
     log.error('Error fetching payroll info:', error);
     res.status(500).json({ message: 'Failed to fetch payroll info' });
@@ -790,9 +1391,92 @@ router.patch('/my-payroll-info', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-    const result = await updateMyPayrollInfo({ userId, body: req.body });
-    if (!result.success) return res.status(result.status || 500).json({ message: result.error, ...(result.data ? { details: result.data } : {}) });
-    res.json(result.data);
+
+    const allEmployees = await db.select().from(employees).where(eq(employees.userId, userId));
+    if (!allEmployees.length) return res.status(404).json({ message: 'Employee record not found' });
+
+    const employee = allEmployees[0];
+    const parsed = payrollInfoUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid payroll info', details: parsed.error.flatten() });
+    const { bankAccountType, bankRoutingNumber, bankAccountNumber, directDepositEnabled, preferredPayoutMethod } = parsed.data;
+
+    const existing = await db.query.employeePayrollInfo.findFirst({
+      where: and(
+        eq(employeePayrollInfo.employeeId, employee.id),
+        eq(employeePayrollInfo.workspaceId, employee.workspaceId)
+      ),
+    });
+
+    const updateFields: Record<string, any> = {};
+    if (bankAccountType !== undefined) updateFields.bankAccountType = bankAccountType;
+    if (directDepositEnabled !== undefined) updateFields.directDepositEnabled = directDepositEnabled;
+    if (preferredPayoutMethod !== undefined) updateFields.preferredPayoutMethod = preferredPayoutMethod;
+
+    // ACH COMPLIANCE: Encrypt routing/account numbers at rest before storage
+    let encryptedRouting: string | undefined;
+    let encryptedAccount: string | undefined;
+    if (bankRoutingNumber !== undefined && bankRoutingNumber.trim()) {
+      encryptedRouting = encryptToken(bankRoutingNumber.trim());
+      updateFields.bankRoutingNumber = encryptedRouting;
+    }
+    if (bankAccountNumber !== undefined && bankAccountNumber.trim()) {
+      encryptedAccount = encryptToken(bankAccountNumber.trim());
+      updateFields.bankAccountNumber = encryptedAccount;
+    }
+
+    // Wrap both table writes in a single transaction — if bank account upsert fails,
+    // the payrollInfo update rolls back too, keeping the two tables consistent.
+    await db.transaction(async (tx) => {
+      if (existing) {
+        await tx.update(employeePayrollInfo)
+          .set(updateFields)
+          .where(and(
+            eq(employeePayrollInfo.employeeId, employee.id),
+            eq(employeePayrollInfo.workspaceId, employee.workspaceId)
+          ));
+      } else {
+        await tx.insert(employeePayrollInfo).values({
+          employeeId: employee.id,
+          workspaceId: employee.workspaceId,
+          ...updateFields,
+        });
+      }
+
+      // Also upsert into canonical encrypted employee_bank_accounts table if bank data provided
+      if (encryptedRouting || encryptedAccount) {
+        const routingLast4 = bankRoutingNumber?.trim().slice(-4) || null;
+        const accountLast4 = bankAccountNumber?.trim().slice(-4) || null;
+
+        const [existingBankAcct] = await tx.select({ id: employeeBankAccounts.id })
+          .from(employeeBankAccounts)
+          .where(and(eq(employeeBankAccounts.employeeId, employee.id), eq(employeeBankAccounts.isPrimary, true), eq(employeeBankAccounts.isActive, true)))
+          .limit(1);
+
+        if (existingBankAcct) {
+          await tx.update(employeeBankAccounts).set({
+            ...(encryptedRouting ? { routingNumberEncrypted: encryptedRouting, routingNumberLast4: routingLast4 } : {}),
+            ...(encryptedAccount ? { accountNumberEncrypted: encryptedAccount, accountNumberLast4: accountLast4 } : {}),
+            ...(bankAccountType ? { accountType: bankAccountType } : {}),
+            updatedAt: new Date(),
+          }).where(eq(employeeBankAccounts.id, existingBankAcct.id));
+        } else {
+          await tx.insert(employeeBankAccounts).values({
+            workspaceId: employee.workspaceId,
+            employeeId: employee.id,
+            routingNumberEncrypted: encryptedRouting || null,
+            accountNumberEncrypted: encryptedAccount || null,
+            routingNumberLast4: routingLast4,
+            accountNumberLast4: accountLast4,
+            accountType: bankAccountType || 'checking',
+            isPrimary: true,
+            isActive: true,
+            addedBy: userId,
+          });
+        }
+      }
+    });
+
+    res.json({ success: true, message: 'Direct deposit settings updated' });
   } catch (error: unknown) {
     log.error('Error updating payroll info:', error);
     res.status(500).json({ message: 'Failed to update payroll info' });
@@ -803,14 +1487,47 @@ router.get('/my-tax-forms', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
-    const result = await getMyEmployeeTaxForms({ userId, workspaceId });
-    res.json(result);
+
+    const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string) : undefined;
+
+    const empRecords = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.userId, userId), eq(employees.workspaceId, workspaceId)));
+
+    if (!empRecords || empRecords.length === 0) {
+      return res.status(404).json({ message: 'No employee record found for your account in this workspace' });
+    }
+
+    const employee = empRecords[0];
+
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const forms = await taxFilingAssistanceService.getEmployeeTaxForms(employee.id, workspaceId, taxYear);
+
+    res.json({
+      employeeId: employee.id,
+      employeeName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
+      forms: forms.map(f => ({
+        id: f.id,
+        formType: f.formType,
+        taxYear: f.taxYear,
+        wages: f.wages,
+        federalTaxWithheld: f.federalTaxWithheld,
+        stateTaxWithheld: f.stateTaxWithheld,
+        socialSecurityWages: f.socialSecurityWages,
+        socialSecurityTaxWithheld: f.socialSecurityTaxWithheld,
+        medicareWages: f.medicareWages,
+        medicareTaxWithheld: f.medicareTaxWithheld,
+        generatedAt: f.generatedAt,
+        isActive: f.isActive,
+      })),
+    });
   } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
     log.error('Error fetching my tax forms:', error);
-    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to fetch tax forms' });
+    res.status(500).json({ message: 'Failed to fetch tax forms' });
   }
 });
 
@@ -818,20 +1535,45 @@ router.get('/my-tax-forms/:formId/download', async (req: AuthenticatedRequest, r
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-    const workspaceId = req.workspaceId;
-    if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
 
-    // Enforce ownership via service — verifies formId belongs to this employee
-    const access = await getMyEmployeeTaxForm({ userId, workspaceId, formId: req.params.formId });
+    const { formId } = req.params;
 
-    // taxFormGeneratorService — now static import at top
+    const empRecords = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.userId, userId));
+
+    if (!empRecords || empRecords.length === 0) {
+      return res.status(404).json({ message: 'Employee record not found' });
+    }
+
+    const employee = empRecords[0];
+
+    const { employeeTaxForms } = await import('@shared/schema');
+    const forms = await db
+      .select()
+      .from(employeeTaxForms)
+      .where(
+        and(
+          eq(employeeTaxForms.id, formId),
+          eq(employeeTaxForms.employeeId, employee.id),
+          eq(employeeTaxForms.workspaceId, employee.workspaceId)
+        )
+      );
+
+    if (!forms || forms.length === 0) {
+      return res.status(404).json({ message: 'Tax form not found or access denied' });
+    }
+
+    const form = forms[0];
+
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
     let result;
-    const { form, employeeId } = access;
 
     if (form.formType === 'w2') {
-      result = await taxFormGeneratorService.generateW2ForEmployee(employeeId, workspaceId, form.taxYear);
+      result = await taxFormGeneratorService.generateW2ForEmployee(employee.id, employee.workspaceId, form.taxYear);
     } else if (form.formType === '1099') {
-      result = await taxFormGeneratorService.generate1099ForEmployee(employeeId, workspaceId, form.taxYear);
+      result = await taxFormGeneratorService.generate1099ForEmployee(employee.id, employee.workspaceId, form.taxYear);
     } else {
       return res.status(400).json({ message: 'Only W-2 and 1099 forms are available for employee download' });
     }
@@ -844,15 +1586,23 @@ router.get('/my-tax-forms/:formId/download', async (req: AuthenticatedRequest, r
     res.setHeader('Content-Disposition', `attachment; filename="${form.formType}-${form.taxYear}.pdf"`);
     return res.send(result.pdfBuffer);
   } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
     log.error('Error downloading tax form:', error);
-    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to download tax form' });
+    res.status(500).json({ message: 'Failed to download tax form' });
   }
 });
 
-router.get('/tax-filing/deadlines', async (_req, res) => {
+router.get('/tax-filing/deadlines', async (req: AuthenticatedRequest, res) => {
   try {
-    res.json(getPayrollTaxFilingDeadlines());
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const deadlines = taxFilingAssistanceService.getFilingDeadlines(year);
+
+    res.json({
+      year,
+      deadlines,
+      disclaimer: 'Filing deadlines are provided for reference only. This platform is middleware — verify all deadlines with the IRS or your tax professional.',
+    });
   } catch (error: unknown) {
     log.error('Error fetching filing deadlines:', error);
     res.status(500).json({ message: 'Failed to fetch filing deadlines' });
@@ -861,19 +1611,56 @@ router.get('/tax-filing/deadlines', async (_req, res) => {
 
 router.get('/tax-filing/guide/:formType', async (req: AuthenticatedRequest, res) => {
   try {
-    const formType = req.params.formType;
-    const guide = getPayrollTaxFilingGuide(formType);
-    if (!guide) return res.status(404).json({ error: 'Unsupported payroll tax form type' });
-    res.json(guide);
+    const formType = req.params.formType as '941' | '940' | 'w2' | '1099';
+    if (!['941', '940', 'w2', '1099'].includes(formType)) {
+      return res.status(400).json({ message: 'Invalid form type. Must be 941, 940, w2, or 1099.' });
+    }
+
+    const state = req.query.state as string | undefined;
+    const workspaceId = req.workspaceId;
+
+    if (workspaceId) {
+      try {
+        const { tokenManager } = await import('../services/billing/tokenManager');
+        await tokenManager.recordUsage({
+          workspaceId,
+          userId: req.user?.id || 'system',
+          featureKey: 'tax_filing_assistance',
+          // @ts-expect-error — TS migration: fix in refactoring sprint
+          featureName: 'Tax Filing Assistance Guide',
+          description: `Tax filing guide for form ${req.params.formType}`,
+        });
+      } catch (billingErr) {
+        log.warn('[TaxFiling] Credit deduction failed for filing guide (non-blocking):', billingErr);
+      }
+    }
+
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const guide = taxFilingAssistanceService.getFilingGuide(formType, state);
+
+    res.json({
+      ...guide,
+      disclaimer: 'Filing guidance is provided for convenience only. This platform is middleware — not a CPA or tax filing service. Consult a qualified tax professional.',
+    });
   } catch (error: unknown) {
     log.error('Error fetching filing guide:', error);
     res.status(500).json({ message: 'Failed to fetch filing guide' });
   }
 });
 
-router.get('/tax-filing/state-portals', async (_req, res) => {
+router.get('/tax-filing/state-portals', async (req: AuthenticatedRequest, res) => {
   try {
-    res.json(getPayrollStatePortals());
+    const state = req.query.state as string | undefined;
+
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const portals = taxFilingAssistanceService.getStatePortals(state);
+
+    res.json({
+      count: portals.length,
+      portals,
+      irsPortals: taxFilingAssistanceService.getIRSPortals(),
+      disclaimer: `Portal URLs are provided for convenience. ${PLATFORM.name} is not responsible for external website availability or changes.`,
+    });
   } catch (error: unknown) {
     log.error('Error fetching state portals:', error);
     res.status(500).json({ message: 'Failed to fetch state portals' });
@@ -887,11 +1674,118 @@ router.get('/tax-center', async (req: AuthenticatedRequest, res) => {
   try {
     const roleCheck = checkManagerRole(req);
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
-    const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string, 10) : undefined;
-    const data = await getTaxCenterData(workspaceId, taxYear);
-    res.json(data);
+
+    const currentYear = new Date().getFullYear();
+    const priorYear = currentYear - 1;
+    const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string, 10) : priorYear;
+
+    // 1. Classify employees (W-2 vs 1099) for the current roster
+    const roster = await db
+      .select({
+        id: employees.id,
+        workerType: employees.workerType,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+      })
+      .from(employees)
+      .where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true)));
+
+    const w2Employees = roster.filter(e => (e.workerType || 'employee') !== 'contractor');
+    const contractorRoster = roster.filter(e => (e.workerType || 'employee') === 'contractor');
+
+    // 2. Scan prior-year payroll totals for contractors and find $600+ candidates
+    const FORM_1099_THRESHOLD = 600;
+    const yearStart = new Date(taxYear, 0, 1);
+    const yearEnd = new Date(taxYear, 11, 31, 23, 59, 59);
+
+    let contractorsAbove600 = 0;
+    const contractorDetails: Array<{ employeeId: string; name: string; totalPaid: number; requiresFiling: boolean }> = [];
+
+    for (const contractor of contractorRoster) {
+      try {
+        const totals = await db
+          .select({ totalPaid: sql<string>`COALESCE(SUM(${payrollEntries.grossPay}), 0)` })
+          .from(payrollEntries)
+          .innerJoin(payrollRuns, eq(payrollEntries.payrollRunId, payrollRuns.id))
+          .where(
+            and(
+              eq(payrollEntries.employeeId, contractor.id),
+              eq(payrollRuns.workspaceId, workspaceId),
+              gte(payrollRuns.periodStart, yearStart),
+              lte(payrollRuns.periodEnd, yearEnd),
+            )
+          );
+        const totalPaid = parseFloat(totals[0]?.totalPaid || '0');
+        const requiresFiling = totalPaid >= FORM_1099_THRESHOLD;
+        if (requiresFiling) contractorsAbove600 += 1;
+        contractorDetails.push({
+          employeeId: contractor.id,
+          name: `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim(),
+          totalPaid,
+          requiresFiling,
+        });
+      } catch (err: unknown) {
+        log.warn('Tax center contractor total calc failed', { employeeId: contractor.id });
+      }
+    }
+
+    // 3. Generated forms for the tax year
+    const { employeeTaxForms } = await import('@shared/schema');
+    const forms = await db
+      .select()
+      .from(employeeTaxForms)
+      .where(
+        and(
+          eq(employeeTaxForms.workspaceId, workspaceId),
+          eq(employeeTaxForms.taxYear, taxYear),
+        )
+      );
+    const w2sGenerated = forms.filter(f => f.formType === 'w2').length;
+    const form1099sGenerated = forms.filter(f => f.formType === '1099').length;
+
+    // 4. Deadlines
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const deadlines = taxFilingAssistanceService.getFilingDeadlines(taxYear);
+
+    // 5. Fees — pull tier discount and compute
+    const tierId = (await getWorkspaceTier(workspaceId)) as any;
+    const { getMiddlewareFees } = await import('@shared/billingConfig');
+    const fees = getMiddlewareFees(tierId);
+    const w2PerFormDollars = fees.taxForms.w2PerFormCents / 100;
+    const form1099PerFormDollars = fees.taxForms.form1099PerFormCents / 100;
+
+    return res.json({
+      taxYear,
+      employees: {
+        w2Count: w2Employees.length,
+        total1099Count: contractorRoster.length,
+        contractorsAbove600,
+        contractorDetails,
+      },
+      forms: {
+        w2sGenerated,
+        form1099sGenerated,
+        w2sExpected: w2Employees.length,
+        form1099sExpected: contractorsAbove600,
+      },
+      deadlines,
+      filingGuides: {
+        w2:       { url: 'https://www.ssa.gov/employer',              label: 'SSA Business Services Online' },
+        form1099: { url: 'https://www.irs.gov/filing/e-file-providers', label: 'IRS FIRE System' },
+        form941:  { url: 'https://www.eftps.gov',                     label: 'Electronic Federal Tax System (EFTPS)' },
+        texasTWC: { url: 'https://apps.twc.state.tx.us',              label: 'Texas Workforce Commission' },
+      },
+      fees: {
+        w2PerForm: w2PerFormDollars,
+        form1099PerForm: form1099PerFormDollars,
+        tierDiscountPercent: fees.tierDiscount,
+        estimatedTotal: +(w2Employees.length * w2PerFormDollars + contractorsAbove600 * form1099PerFormDollars).toFixed(2),
+      },
+      disclaimer: `${PLATFORM.name} is middleware — we generate and deliver tax forms but do not file them with the IRS, SSA, or state agencies. Verify all figures with your CPA or tax professional before filing.`,
+    });
   } catch (error: unknown) {
     log.error('Error fetching tax center data:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Failed to fetch tax center data' });
@@ -1228,7 +2122,7 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      // tokenManager (static)
+      const { tokenManager } = await import('../services/billing/tokenManager');
       await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
@@ -1252,7 +2146,7 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: 'Invalid year' });
     }
 
-    // taxFormGeneratorService — now static import at top
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
     const result = await taxFormGeneratorService.generate941Report(workspaceId, quarterNum, yearNum);
 
     if (!result.success) {
@@ -1302,7 +2196,7 @@ router.get('/tax-forms/941/:year/:quarter', async (req: AuthenticatedRequest, re
       return res.status(400).json({ message: 'Invalid year' });
     }
 
-    // taxFormGeneratorService — now static import at top
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
     const result = await taxFormGeneratorService.generate941Report(workspaceId, quarterNum, yearNum);
 
     if (!result.success) {
@@ -1339,7 +2233,7 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      // tokenManager (static)
+      const { tokenManager } = await import('../services/billing/tokenManager');
       const creditKey = formType === 'w2' ? 'tax_prep_w2' : 'tax_prep_1099';
       const formLabel = formType === 'w2' ? 'W-2 Employee Tax Form' : '1099-NEC Contractor Tax Form';
       await tokenManager.recordUsage({
@@ -1356,7 +2250,7 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
       log.warn(`[TaxPrep] Credit deduction failed for ${formType} (non-blocking):`, billingErr);
     }
 
-    // taxFormGeneratorService — now static import at top
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
 
     let result;
     if (formType === 'w2') {
@@ -1430,7 +2324,7 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      // tokenManager (static)
+      const { tokenManager } = await import('../services/billing/tokenManager');
       await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
@@ -1443,7 +2337,7 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
       log.warn('[TaxPrep] Credit deduction failed for 940 (non-blocking):', billingErr);
     }
 
-    // taxFormGeneratorService — now static import at top
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
     const result = await taxFormGeneratorService.generate940Report(workspaceId, year);
 
     if (!result.success) {
@@ -1489,7 +2383,7 @@ router.get('/tax-forms/940/:year', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: 'Invalid year parameter' });
     }
 
-    // taxFormGeneratorService — now static import at top
+    const { taxFormGeneratorService } = await import('../services/taxFormGeneratorService');
     const result = await taxFormGeneratorService.generate940Report(workspaceId, year);
 
     if (!result.success) {
@@ -1514,9 +2408,32 @@ router.get('/ytd/:employeeId', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.params;
-    if (!employeeId) return res.status(400).json({ message: 'Employee ID is required' });
-    const result = await getYtdEarnings(employeeId, workspaceId);
-    res.json(result.data);
+
+    if (!employeeId) {
+      return res.status(400).json({ message: 'Employee ID is required' });
+    }
+
+    const { paystubService } = await import('../services/paystubService');
+    const ytdData = await paystubService.getYTDEarnings(employeeId, workspaceId);
+
+    if (!ytdData) {
+      return res.json({
+        taxYear: new Date().getFullYear(),
+        grossPay: 0,
+        netPay: 0,
+        federalTax: 0,
+        stateTax: 0,
+        socialSecurity: 0,
+        medicare: 0,
+        totalDeductions: 0,
+        totalHours: 0,
+        regularHours: 0,
+        overtimeHours: 0,
+        payPeriodCount: 0,
+      });
+    }
+
+    res.json(ytdData);
   } catch (error: unknown) {
     log.error('Error fetching YTD earnings:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Failed to fetch YTD earnings' });
@@ -1543,12 +2460,12 @@ router.post('/runs/:id/execute-internal', async (req: AuthenticatedRequest, res)
         return res.status(400).json({ message: `Payroll run status is '${run.status}', must be 'approved' or 'pending' to execute internally` });
       }
 
-      // executeInternalPayroll — now static import at top
+      const { executeInternalPayroll } = await import('../services/payrollAutomation');
       const result = await executeInternalPayroll(workspaceId, id, userId);
 
       if (result.processedEntries > 0) {
         try {
-          // tokenManager (static)
+          const { tokenManager } = await import('../services/billing/tokenManager');
           await tokenManager.recordUsage({
             workspaceId,
             userId: userId || 'system',
@@ -1609,25 +2526,54 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const result = await voidPayrollRun({
+    const { runId } = req.params;
+    const parsed = payrollVoidSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: 'A reason is required to void a payroll run', details: parsed.error.flatten() });
+    const { reason } = parsed.data;
+
+    const { voidPayrollRun } = await import('../services/payrollAutomation');
+    const result = await voidPayrollRun(runId, workspaceId, userId, reason.trim());
+
+    if (!result.success) {
+      return res.status(422).json({ message: result.error });
+    }
+
+    storage.createAuditLog({
       workspaceId,
-      payrollRunId: req.params.runId,
       userId,
       userEmail: req.user?.email || 'unknown',
       userRole: req.user?.role || 'user',
-      reason: typeof req.body?.reason === 'string' ? req.body.reason : '',
-      reversalReference: typeof req.body?.reversalReference === 'string' ? req.body.reversalReference : null,
-    });
+      action: 'update',
+      entityType: 'payroll_run',
+      entityId: runId,
+      actionDescription: `Payroll run ${runId} voided: ${reason}`,
+      changes: { after: { status: 'voided', reason, voidedBy: userId } },
+      isSensitiveData: true,
+      complianceTag: 'soc2',
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
 
-    res.json(result);
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const { broadcastToWorkspace: bcastVoid } = await import('../services/websocketService');
+    bcastVoid(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
+    platformEventBus.publish({
+      type: 'payroll_run_voided',
+      category: 'automation',
+      title: 'Payroll Run Voided',
+      description: `Payroll run ${runId} voided by ${userId} — reason: ${reason}`,
+      workspaceId,
+      userId,
+      metadata: {
+        payrollRunId: runId,
+        voidedBy: userId,
+        reason,
+        source: 'payroll_void',
+      },
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    res.json({ success: true, message: 'Payroll run voided successfully' });
   } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
-    const extra = (error as any)?.extra || {};
     log.error('Error voiding payroll run:', error);
-    res.status(status).json({
-      message: error instanceof Error ? sanitizeError(error) : 'Failed to void payroll run',
-      ...extra,
-    });
+    res.status(500).json({ message: sanitizeError(error) || 'Failed to void payroll run' });
   }
 });
 
@@ -1643,27 +2589,135 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
     const workspaceId = req.workspaceId!;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const result = await markPayrollRunPaid({
+    // ACH payroll is a Professional-tier feature — gate here at service layer
+    const { getWorkspaceTier, hasTierAccess } = await import('../tierGuards');
+    const tier = await getWorkspaceTier(workspaceId);
+    if (!hasTierAccess(tier, 'professional')) {
+      return res.status(402).json({ error: 'ACH payroll requires the Professional plan or higher', currentTier: tier, minimumTier: 'professional', requiresTierUpgrade: true });
+    }
+
+    const { id: runId } = req.params;
+    const parsed = payrollMarkPaidSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: 'Invalid mark-paid payload', details: parsed.error.flatten() });
+    const { disbursementMethod = 'ach', notes } = parsed.data;
+
+    const run = await storage.getPayrollRun(runId, workspaceId);
+    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
+
+    const currentStatus = run.status ?? 'draft';
+    if (!isValidPayrollTransition(currentStatus, 'paid')) {
+      const lifecycleStatus = resolvePayrollLifecycleStatus(currentStatus);
+      return res.status(422).json({
+        message: `Only processing payroll runs can be marked as paid. Current status: ${lifecycleStatus || currentStatus}`,
+      });
+    }
+
+    const updated = await storage.updatePayrollRunStatus(runId, 'paid', userId, workspaceId);
+    if (!updated) {
+      return res.status(409).json({ message: 'Payroll run status could not be updated — concurrent modification detected' });
+    }
+
+    // Bulk-stamp disbursedAt and disbursementMethod on all payroll entries for this run
+    const now = new Date();
+    await db.update(payrollEntries)
+      .set({
+        disbursedAt: now,
+        disbursementMethod,
+      })
+      .where(and(
+        eq(payrollEntries.payrollRunId, runId),
+        eq(payrollEntries.workspaceId, workspaceId),
+      ));
+
+    try {
+      const { writeLedgerEntry } = await import('../services/orgLedgerService');
+      await writeLedgerEntry({
+        workspaceId,
+        entryType: 'payroll_disbursed',
+        direction: 'credit',
+        // G14 FIX: use ?? not || — totalNetPay of 0 (fully garnished) must record as 0 in the ledger
+        amount: parseFloat(String(run.totalNetPay ?? run.totalGrossPay ?? 0)),
+        relatedEntityType: 'payroll_run',
+        relatedEntityId: runId,
+        payrollRunId: runId,
+        description: `Payroll run ${runId.substring(0, 8)} disbursed via ${disbursementMethod.toUpperCase()} — confirmed by ${req.user?.email || userId}${notes ? ` — ${notes}` : ''}`,
+        createdBy: userId,
+        metadata: { disbursementMethod, confirmedBy: userId, notes },
+      });
+    } catch (ledgerErr: unknown) {
+      log.error('[PayrollRoute] Ledger write failed on mark-paid:', (ledgerErr instanceof Error ? ledgerErr.message : String(ledgerErr)));
+    }
+
+    storage.createAuditLog({
       workspaceId,
-      payrollRunId: req.params.id,
-      userId: req.user!.id,
+      userId,
       userEmail: req.user?.email || 'unknown',
       userRole: req.user?.role || 'user',
-      ipAddress: req.ip || null,
-      userAgent: req.get('user-agent') || null,
-      reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
-    });
+      action: 'update',
+      entityType: 'payroll_run',
+      entityId: runId,
+      actionDescription: `Payroll run ${runId} marked as paid via ${disbursementMethod}`,
+      changes: { before: { status: 'processed' }, after: { status: 'paid', disbursementMethod, confirmedBy: userId } },
+      isSensitiveData: true,
+      complianceTag: 'soc2',
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll mark-paid', { error: err?.message }));
 
-    res.json(result);
-  } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
-    const extra = (error as any)?.extra || {};
-    log.error('Error marking payroll run paid:', error);
-    res.status(status).json({
-      message: error instanceof Error ? sanitizeError(error) : 'Failed to mark payroll run paid',
-      ...extra,
+      // FIX-2: Financial audit log for payroll disbursement
+      await db.insert(billingAuditLog).values({
+        workspaceId,
+        eventType: 'payroll_run_paid',
+        eventCategory: 'payroll',
+        actorType: 'user',
+        actorId: userId,
+        actorEmail: req.user?.email || null,
+        description: `Payroll run marked as paid via ${disbursementMethod}`,
+        relatedEntityType: 'payroll_run',
+        relatedEntityId: runId,
+        previousState: { status: 'processed' },
+        newState: { status: 'paid', disbursementMethod, disbursedAt: now.toISOString(), confirmedBy: userId },
+        metadata: { notes, totalNetPay: run.totalNetPay, totalGrossPay: run.totalGrossPay },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err?.message }));
+
+    try {
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const { broadcastToWorkspace } = await import('../services/websocketService');
+      broadcastToWorkspace(workspaceId, {
+        type: 'payroll_updated',
+        action: 'paid',
+        runId,
+        disbursementMethod,
+      });
+    } catch (err: any) {
+      log.warn('[Payroll] Failed to process batch completion', { error: err.message });
+    }
+
+    platformEventBus.publish({
+      type: 'payroll_run_paid',
+      category: 'automation',
+      title: `Payroll Disbursed`,
+      description: `Payroll run ${runId} marked as paid — funds disbursed via ${disbursementMethod}`,
+      workspaceId,
+      userId,
+      metadata: { payrollRunId: runId, disbursementMethod, confirmedBy: userId, paidAt: new Date().toISOString() },
+      visibility: 'manager',
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    res.json({
+      success: true,
+      runId,
+      status: 'paid',
+      disbursementMethod,
+      confirmedBy: userId,
+      message: 'Payroll run marked as paid. Disbursement confirmed.',
     });
+  } catch (error: unknown) {
+    log.error('[PayrollRoute] Error marking payroll run as paid:', error);
+    res.status(500).json({ message: sanitizeError(error) || 'Failed to mark payroll run as paid' });
   }
 });
 
@@ -1681,14 +2735,94 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
+    // ACH transfer retries are a Professional-tier feature
+    const { getWorkspaceTier, hasTierAccess } = await import('../tierGuards');
     const tier = await getWorkspaceTier(workspaceId);
     if (!hasTierAccess(tier, 'professional')) {
       return res.status(402).json({ error: 'ACH payroll requires the Professional plan or higher', currentTier: tier, minimumTier: 'professional', requiresTierUpgrade: true });
     }
 
-    const result = await retryFailedPayrollTransfers(workspaceId, req.params.id, userId);
-    if (!result.success) return res.status(result.status || 500).json({ message: result.error });
-    res.json(result);
+    const { id: runId } = req.params;
+
+    // Verify run exists and belongs to workspace
+    const run = await storage.getPayrollRun(runId, workspaceId);
+    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
+
+    // Get all failed/poll_failed pay stubs for this run
+    const failedStubs = await db.select()
+      .from(payStubs)
+      .where(and(
+        eq(payStubs.payrollRunId, runId),
+        eq(payStubs.workspaceId, workspaceId),
+        sql`${payStubs.plaidTransferStatus} IN ('failed', 'poll_failed', 'returned')`,
+      ));
+
+    if (failedStubs.length === 0) {
+      return res.status(400).json({ message: 'No failed transfers found for this payroll run' });
+    }
+
+    const { initiatePayrollAchTransfer } = await import('../services/payroll/achTransferService');
+
+    const results: { stubId: string; employeeId: string; status: 'retried' | 'skipped' | 'failed'; transferId?: string; reason?: string }[] = [];
+
+    for (const stub of failedStubs) {
+      try {
+        const empId = stub.employeeId;
+        const netPay = parseFloat(String(stub.netPay ?? 0));
+        const transferResult = await initiatePayrollAchTransfer({
+          workspaceId,
+          employeeId: empId,
+          payrollRunId: runId,
+          payrollEntryId: stub.payrollEntryId || null,
+          payStubId: stub.id,
+          amount: netPay,
+          idempotencyKey: `retry-${stub.id}`,
+          description: 'Payroll Retry',
+          legalName: empId,
+        });
+
+        if (transferResult.status === 'initiated') {
+          platformEventBus.publish({
+            type: 'payroll_transfer_initiated' as any,
+            category: 'payroll',
+            title: 'ACH Transfer Retry Initiated',
+            description: `Retry transfer ${transferResult.transferId} initiated for employee ${empId}`,
+            workspaceId,
+            userId,
+            metadata: { payrollRunId: runId, employeeId: empId, transferId: transferResult.transferId, amount: netPay, isRetry: true },
+            visibility: 'manager',
+          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+          results.push({ stubId: stub.id, employeeId: empId, status: 'retried', transferId: transferResult.transferId });
+          continue;
+        }
+
+        if (transferResult.status === 'payment_held') {
+          results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: transferResult.reason || 'PAYMENT_HELD' });
+          continue;
+        }
+
+        if (transferResult.status === 'skipped') {
+          results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: transferResult.reason || 'Transfer skipped' });
+          continue;
+        }
+
+        results.push({ stubId: stub.id, employeeId: empId, status: 'failed', reason: transferResult.reason || 'Transfer failed' });
+      } catch (err: unknown) {
+        results.push({ stubId: stub.id, employeeId: stub.employeeId, status: 'failed', reason: (err instanceof Error ? err.message : String(err)) });
+      }
+    }
+
+    const retriedCount = results.filter(r => r.status === 'retried').length;
+    res.json({
+      success: true,
+      runId,
+      totalFailed: failedStubs.length,
+      retriedCount,
+      skippedCount: results.filter(r => r.status === 'skipped').length,
+      errorCount: results.filter(r => r.status === 'failed').length,
+      results,
+    });
   } catch (error: unknown) {
     log.error('[PayrollRoute] Error retrying failed transfers:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Failed to retry transfers' });
@@ -1739,7 +2873,7 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
     }
     // ─────────────────────────────────────────────────────────────────────────────
 
-    // amendPayrollEntry — now static import at top
+    const { amendPayrollEntry } = await import('../services/payrollAutomation');
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await amendPayrollEntry(entryId, workspaceId, userId, { ...amendments, reason: reason.trim() });
 
@@ -1781,16 +2915,109 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
 router.get('/export/pdf/:runId', async (req: AuthenticatedRequest, res) => {
   try {
     const roleCheck = checkManagerRole(req);
-    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    if (!roleCheck.allowed) {
+      return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    }
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
 
-    const result = await generatePayrollRunPdf(workspaceId, req.params.runId);
-    if (!result.success) return res.status(result.status || 500).json({ message: result.error });
+    const { runId } = req.params;
+
+    const [run] = await db.select().from(payrollRuns)
+      .where(and(eq(payrollRuns.id, runId), eq(payrollRuns.workspaceId, workspaceId)))
+      .limit(1);
+
+    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
+
+    const entries = await db.select({
+      id: payrollEntries.id,
+      employeeId: payrollEntries.employeeId,
+      regularHours: payrollEntries.regularHours,
+      overtimeHours: payrollEntries.overtimeHours,
+      hourlyRate: payrollEntries.hourlyRate,
+      grossPay: payrollEntries.grossPay,
+      federalTax: payrollEntries.federalTax,
+      stateTax: payrollEntries.stateTax,
+      socialSecurity: payrollEntries.socialSecurity,
+      medicare: payrollEntries.medicare,
+      netPay: payrollEntries.netPay,
+      workerType: payrollEntries.workerType,
+    }).from(payrollEntries)
+      .where(and(
+        eq(payrollEntries.payrollRunId, runId),
+        eq(payrollEntries.workspaceId, workspaceId),
+      ));
+
+    const workspace = await storage.getWorkspace(workspaceId);
+    const { employees: employeesTable } = await import('@shared/schema');
+    const empList = await db.select({ id: employeesTable.id, firstName: employeesTable.firstName, lastName: employeesTable.lastName })
+      .from(employeesTable)
+      .where(eq(employeesTable.workspaceId, workspaceId));
+    const empMap = new Map(empList.map(e => [e.id, `${e.firstName} ${e.lastName}`.trim()]));
+
+    const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.send(result.pdfBuffer);
+    res.setHeader('Content-Disposition', `attachment; filename="payroll-run-${format(run.periodStart || new Date(), 'yyyy-MM-dd')}.pdf"`);
+    doc.pipe(res);
+
+    doc.fontSize(20).text(workspace?.companyName || 'Company', { align: 'center' });
+    doc.fontSize(14).text('PAYROLL RUN SUMMARY', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).text(
+      `Pay Period: ${format(new Date(run.periodStart || new Date()), 'MMMM d, yyyy')} – ${format(new Date(run.periodEnd || new Date()), 'MMMM d, yyyy')}`,
+      { align: 'center' },
+    );
+    doc.text(`Generated: ${format(new Date(), 'MMMM d, yyyy')}`, { align: 'center' });
+    doc.text(`Status: ${(run.status || '').toUpperCase()}`, { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(12).text('EMPLOYEE BREAKDOWN', { underline: true });
+    doc.moveDown(0.3);
+
+    const colX = { name: 50, hours: 220, rate: 290, gross: 360, taxes: 420, net: 490 };
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Employee', colX.name, doc.y, { continued: false });
+    const headerY = doc.y - 12;
+    doc.text('Reg Hrs', colX.hours, headerY, { continued: false });
+    doc.text('Rate', colX.rate, headerY, { continued: false });
+    doc.text('Gross', colX.gross, headerY, { continued: false });
+    doc.text('Taxes', colX.taxes, headerY, { continued: false });
+    doc.text('Net Pay', colX.net, headerY, { continued: false });
+    doc.moveDown(0.2);
+    doc.moveTo(50, doc.y).lineTo(560, doc.y).stroke();
+    doc.moveDown(0.3);
+
+    doc.font('Helvetica').fontSize(9);
+
+    for (const entry of entries) {
+      const name = empMap.get(entry.employeeId) || 'Unknown';
+      const taxes = (parseFloat(entry.federalTax || '0') + parseFloat(entry.stateTax || '0') +
+        parseFloat(entry.socialSecurity || '0') + parseFloat(entry.medicare || '0')).toFixed(2);
+      const rowY = doc.y;
+      doc.text(name, colX.name, rowY, { width: 165, continued: false });
+      doc.text(`${parseFloat(entry.regularHours || '0').toFixed(1)}`, colX.hours, rowY);
+      doc.text(`$${parseFloat(entry.hourlyRate || '0').toFixed(2)}`, colX.rate, rowY);
+      doc.text(`$${parseFloat(entry.grossPay || '0').toFixed(2)}`, colX.gross, rowY);
+      doc.text(`$${taxes}`, colX.taxes, rowY);
+      doc.text(`$${parseFloat(entry.netPay || '0').toFixed(2)}`, colX.net, rowY);
+      doc.moveDown(0.4);
+    }
+
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(560, doc.y).stroke();
+    doc.moveDown(0.3);
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.text(`Total Employees: ${entries.length}`, 50);
+    doc.text(`Total Gross Pay: $${parseFloat(run.totalGrossPay || '0').toFixed(2)}`, 50);
+    doc.text(`Total Taxes: $${(parseFloat(run.totalTaxes || '0')).toFixed(2)}`, 50);
+    doc.text(`Total Net Pay: $${parseFloat(run.totalNetPay || '0').toFixed(2)}`, 50);
+
+    doc.moveDown();
+    doc.fontSize(8).font('Helvetica').fillColor('grey')
+      .text('This document is confidential. Generated by Trinity Payroll Automation.', { align: 'center' });
+
+    doc.end();
   } catch (error: unknown) {
     log.error('Error generating payroll PDF:', error);
     if (!res.headersSent) res.status(500).json({ message: 'Failed to generate payroll PDF' });
@@ -1806,11 +3033,98 @@ router.get('/export/pdf/:runId', async (req: AuthenticatedRequest, res) => {
 router.get('/pre-run-checklist', async (req: AuthenticatedRequest, res) => {
   try {
     const roleCheck = checkManagerRole(req);
-    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    if (!roleCheck.allowed) {
+      return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    }
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
-    const data = await getPreRunChecklist(workspaceId);
-    res.json(data);
+
+    const { invoices: invoicesTable, clients } = await import('@shared/schema');
+    const { eq: eqI, and: andI, inArray: inArrayI, sql: sqlI } = await import('drizzle-orm');
+
+    const workspace = await storage.getWorkspace(workspaceId);
+    const blob = (workspace?.billingSettingsBlob as any) || {};
+    const cycle = blob.payrollCycle || 'bi-weekly';
+
+    const { startOfWeek, endOfWeek, subDays: subDaysI, startOfMonth, endOfMonth } = await import('date-fns');
+    const now = new Date();
+
+    let periodStart: Date;
+    let periodEnd: Date;
+    if (cycle === 'weekly') {
+      periodStart = startOfWeek(now, { weekStartsOn: 0 });
+      periodEnd = endOfWeek(now, { weekStartsOn: 0 });
+    } else if (cycle === 'monthly') {
+      periodStart = startOfMonth(now);
+      periodEnd = endOfMonth(now);
+    } else {
+      const twoWeeksAgo = subDaysI(now, 13);
+      // FIX [GAP-2 UTC REGRESSION]: Use setUTCHours not setHours — local-time midnight
+      // produces inconsistent period boundaries across timezones, breaking bi-weekly period
+      // calculations in the same way the Phase 11 UTC fix corrected the canonical period detector.
+      twoWeeksAgo.setUTCHours(0, 0, 0, 0);
+      periodStart = twoWeeksAgo;
+      periodEnd = now;
+    }
+
+    const outstandingInvoices = await db
+      .select({
+        id: invoicesTable.id,
+        invoiceNumber: invoicesTable.invoiceNumber,
+        clientId: invoicesTable.clientId,
+        total: invoicesTable.total,
+        status: invoicesTable.status,
+        dueDate: invoicesTable.dueDate,
+        createdAt: invoicesTable.createdAt,
+      })
+      .from(invoicesTable)
+      .where(andI(
+        eqI(invoicesTable.workspaceId, workspaceId),
+        sqlI`${invoicesTable.status} IN ('draft', 'sent')`,
+        sqlI`${invoicesTable.createdAt} >= ${periodStart}`,
+        sqlI`${invoicesTable.createdAt} <= ${periodEnd}`,
+      ));
+
+    const clientIds = [...new Set(outstandingInvoices.map(i => i.clientId).filter(Boolean))];
+    const clientMap = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const clientRows = await db.select({ id: clients.id, companyName: clients.companyName })
+        .from(clients).where(inArrayI(clients.id, clientIds));
+      for (const c of clientRows) clientMap.set(c.id, c.companyName || 'Unknown');
+    }
+
+    const totalOutstanding = outstandingInvoices.reduce((s, i) => s + parseFloat(i.total), 0);
+    const unsentDrafts = outstandingInvoices.filter(i => i.status === 'draft');
+    const sentUnpaid = outstandingInvoices.filter(i => i.status === 'sent');
+
+    const [payrollObligation] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${payrollRuns.totalNetPay}), 0)` })
+      .from(payrollRuns)
+      .where(andI(
+        eqI(payrollRuns.workspaceId, workspaceId),
+        sqlI`${payrollRuns.status} IN ('draft', 'pending')`,
+      ));
+
+    res.json({
+      payPeriod: { start: periodStart.toISOString(), end: periodEnd.toISOString(), cycle },
+      payrollObligation: parseFloat(payrollObligation?.total || '0'),
+      outstandingInvoices: outstandingInvoices.map(i => ({
+        ...i,
+        clientName: clientMap.get(i.clientId) || 'Unknown',
+        amount: parseFloat(i.total),
+      })),
+      summary: {
+        totalOutstanding,
+        unsentDrafts: unsentDrafts.length,
+        sentUnpaid: sentUnpaid.length,
+        totalCount: outstandingInvoices.length,
+      },
+      recommendation: unsentDrafts.length > 0
+        ? `You have ${unsentDrafts.length} unsent draft invoice${unsentDrafts.length === 1 ? '' : 's'} totaling $${unsentDrafts.reduce((s, i) => s + parseFloat(i.total), 0).toFixed(2)}. Consider sending them before approving payroll to ensure cash is on the way.`
+        : totalOutstanding > 0
+          ? `You have ${sentUnpaid.length} outstanding invoice${sentUnpaid.length === 1 ? '' : 's'} awaiting payment. Monitor collections before payroll disbursement.`
+          : 'All invoices for this period are settled. You are clear to approve payroll.',
+    });
   } catch (error: unknown) {
     log.error('Error generating pre-payroll checklist:', error);
     res.status(500).json({ message: 'Failed to generate pre-payroll checklist' });
@@ -1865,22 +3179,220 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
 
     const workspaceId = req.workspaceId!;
-    const result = await generateNachaFile(workspaceId, req.params.id);
+    const { id: runId } = req.params;
 
-    if (!result.success) {
-      return res.status(result.status || 500).json({
-        message: result.error,
-        ...result.extra,
+    const run = await storage.getPayrollRun(runId, workspaceId);
+    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    if (!['processed', 'paid'].includes(run.status)) {
+      return res.status(400).json({ message: 'NACHA file is only available for processed or paid payroll runs' });
+    }
+
+    const { workspaces: wsTable } = await import('@shared/schema');
+    const [ws] = await db.select({
+      name: wsTable.name,
+      companyName: (wsTable as any).companyName,
+      payrollBankRouting: (wsTable as any).payrollBankRouting,
+      payrollBankAccount: (wsTable as any).payrollBankAccount,
+      payrollBankName: (wsTable as any).payrollBankName,
+    }).from(wsTable).where(eq(wsTable.id, workspaceId)).limit(1);
+
+    const entries = await db.select({
+      employeeId: payrollEntries.employeeId,
+      netPay: payrollEntries.netPay,
+      directDepositEnabled: employeePayrollInfo.directDepositEnabled,
+      routingNumber: employeePayrollInfo.bankRoutingNumber,
+      accountNumber: employeePayrollInfo.bankAccountNumber,
+      accountType: employeePayrollInfo.bankAccountType,
+      firstName: employees.firstName,
+      lastName: employees.lastName,
+    })
+      .from(payrollEntries)
+      .leftJoin(employeePayrollInfo, eq(payrollEntries.employeeId, employeePayrollInfo.employeeId))
+      .leftJoin(employees, eq(payrollEntries.employeeId, employees.id))
+      .where(and(eq(payrollEntries.workspaceId, workspaceId), eq(payrollEntries.payrollRunId, runId)));
+
+    // ACH COMPLIANCE: Decrypt routing/account numbers — fields are AES-256-GCM encrypted at rest.
+    // safeDecrypt falls back to raw value for any legacy plaintext rows (migration safety).
+    function safeDecrypt(value: string | null | undefined): string | null {
+      if (!value) return null;
+      try { return decryptToken(value); } catch { return value; }
+    }
+
+    // For each entry, prefer the canonical employee_bank_accounts record (encrypted), then fall back to employee_payroll_info
+    const employeeIds = entries.map(e => (e as any).employeeId).filter(Boolean);
+    const bankAccountRows = employeeIds.length > 0
+      ? await db.select().from(employeeBankAccounts)
+          .where(and(
+            sql`${employeeBankAccounts.employeeId} = ANY(ARRAY[${sql.join(employeeIds.map(id => sql`${id}`), sql`, `)}]::text[])`,
+            eq(employeeBankAccounts.isPrimary, true),
+            eq(employeeBankAccounts.isActive, true)
+          ))
+      : [];
+    const bankAccountMap = new Map(bankAccountRows.map(r => [r.employeeId, r]));
+
+    const decryptedEntries = entries.map(e => {
+      const canonical = bankAccountMap.get((e as any).employeeId);
+      if (canonical?.routingNumberEncrypted && canonical?.accountNumberEncrypted) {
+        return {
+          ...e,
+          routingNumber: safeDecrypt(canonical.routingNumberEncrypted),
+          accountNumber: safeDecrypt(canonical.accountNumberEncrypted),
+          accountType: canonical.accountType || e.accountType,
+        };
+      }
+      return {
+        ...e,
+        routingNumber: safeDecrypt(e.routingNumber as string | null),
+        accountNumber: safeDecrypt(e.accountNumber as string | null),
+      };
+    });
+
+    const eligible = decryptedEntries.filter(e => e.directDepositEnabled && e.routingNumber && e.accountNumber);
+    const missing = decryptedEntries.filter(e => !e.directDepositEnabled || !e.routingNumber || !e.accountNumber);
+
+    if (eligible.length === 0) {
+      return res.status(422).json({
+        message: 'No employees have direct deposit configured for this payroll run',
+        missingCount: missing.length,
+        hint: 'Ensure employees have bank routing/account numbers set in their payroll profile',
       });
     }
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.setHeader('X-NACHA-Entries', String(result.eligibleCount));
-    res.setHeader('X-NACHA-Missing', String(result.missingCount));
-    res.setHeader('X-NACHA-Total-Cents', String(result.totalCreditCents));
+    // Build a proper NACHA ACH PPD file
+    const companyName = ((ws as any)?.companyName || (ws as any)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
+    const originRoutingRaw = (ws as any)?.payrollBankRouting || '000000000';
+    // NACHA routing number: leading digit '1' + 8-digit bank routing = 9 chars
+    const originRouting = `1${originRoutingRaw.replace(/\D/g, '').substring(0, 8).padEnd(8, '0')}`;
+    const originAccount = ((ws as any)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
+    const now = new Date();
+    const fileDate = now.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
+    const fileTime = now.toTimeString().slice(0, 5).replace(':', ''); // HHMM
+    const batchCount = 1;
+    const fileIdModifier = 'A';
+    const blockingFactor = 10;
+    const formatCode = '1';
+    const totalDebitCents = 0;
+    const totalCreditCents = eligible.reduce((sum, e) => sum + Math.round(Number(e.netPay) * 100), 0);
 
-    return res.send(result.nachaContent);
+    const pad = (s: string | number, len: number, right = false) => {
+      const str = String(s);
+      return right ? str.substring(0, len).padEnd(len, ' ') : str.substring(0, len).padStart(len, '0');
+    };
+
+    // File Header Record (1)
+    const fileHeader = [
+      '1', // Record Type
+      '01', // Priority Code
+      pad(originRouting, 10), // Immediate Destination
+      pad(originRouting.replace(/\D/g, '').padEnd(10, '0'), 10), // Immediate Origin
+      fileDate, // File Creation Date (YYMMDD)
+      fileTime, // File Creation Time (HHMM)
+      fileIdModifier, // File ID Modifier
+      '094', // Record Size
+      String(blockingFactor), // Blocking Factor
+      formatCode, // Format Code
+      companyName.padEnd(23, ' '), // Immediate Destination Name
+      companyName.padEnd(23, ' '), // Immediate Origin Name
+      '        ', // Reference Code
+    ].join('');
+
+    // Batch Header Record (5)
+    const batchHeader = [
+      '5', // Record Type
+      '200', // Service Class Code (200 = mixed debits/credits, 220 = credits only)
+      companyName.padEnd(16, ' '), // Company Name
+      '          ', // Company Discretionary Data
+      originRouting.replace(/\D/g, '').padStart(10, '0'), // Company Identification
+      'PPD', // Standard Entry Class Code (PPD = Prearranged Payment and Deposit)
+      'PAYROLL         ', // Company Entry Description
+      fileDate, // Company Descriptive Date
+      fileDate, // Effective Entry Date
+      '   ', // Settlement Date (filled by bank)
+      '1', // Originator Status Code
+      originRouting, // Originating DFI Identification
+      pad(batchCount, 7), // Batch Number
+    ].join('');
+
+    // Entry Detail Records (6)
+    const entryLines: string[] = [];
+    let traceSeq = 1;
+    for (const e of eligible) {
+      const txCode = e.accountType === 'savings' ? '32' : '22'; // 22=checking credit, 32=savings credit
+      const routingRaw = (e.routingNumber || '').replace(/\D/g, '').padEnd(8, '0');
+      const checkDigit = (e.routingNumber || '0').slice(-1);
+      const accountNum = (e.accountNumber || '').padEnd(17, ' ').substring(0, 17);
+      const amountCents = Math.round(Number(e.netPay) * 100);
+      const employeeName = `${e.firstName || ''} ${e.lastName || ''}`.trim().substring(0, 22).padEnd(22, ' ');
+      const traceNum = `${originRouting.slice(1, 9)}${pad(traceSeq++, 7)}`;
+
+      entryLines.push([
+        '6', // Record Type
+        txCode, // Transaction Code
+        `${routingRaw}${checkDigit}`, // Receiving DFI Routing Transit Number (8 + check digit)
+        accountNum, // DFI Account Number
+        pad(amountCents, 10), // Amount (cents, no decimal)
+        e.employeeId.substring(0, 15).padEnd(15, ' '), // Individual Identification Number
+        employeeName, // Individual Name
+        '  ', // Discretionary Data
+        '0', // Addenda Record Indicator
+        traceNum, // Trace Number (15 digits)
+      ].join(''));
+    }
+
+    // Batch Control Record (8)
+    const entryAddendaCount = entryLines.length;
+    const entryHash = eligible
+      .reduce((sum, e) => sum + parseInt((e.routingNumber || '0').replace(/\D/g, '').substring(0, 8), 10), 0)
+      .toString().slice(-10).padStart(10, '0');
+
+    const batchControl = [
+      '8', // Record Type
+      '220', // Service Class Code
+      pad(entryAddendaCount, 6), // Entry/Addenda Count
+      entryHash, // Entry Hash
+      pad(totalDebitCents, 12), // Total Debit Entry Dollar Amount
+      pad(totalCreditCents, 12), // Total Credit Entry Dollar Amount
+      originRouting.replace(/\D/g, '').padStart(10, '0'), // Company Identification
+      ' '.repeat(39), // Message Authentication Code + Reserved
+      originRouting.slice(1, 9), // Originating DFI Identification
+      pad(batchCount, 7), // Batch Number
+    ].join('');
+
+    // File Control Record (9)
+    const blockCount = Math.ceil((2 + 2 + entryLines.length) / blockingFactor);
+    const fileControl = [
+      '9', // Record Type
+      pad(batchCount, 6), // Batch Count
+      pad(blockCount, 6), // Block Count
+      pad(entryAddendaCount, 8), // Entry/Addenda Count
+      entryHash, // Entry Hash
+      pad(totalDebitCents, 12), // Total Debit
+      pad(totalCreditCents, 12), // Total Credit
+      ' '.repeat(39), // Reserved
+    ].join('');
+
+    // Pad file to multiple of 10 records (9 filler lines)
+    const records = [fileHeader, batchHeader, ...entryLines, batchControl, fileControl];
+    const totalRecords = records.length;
+    const paddedTo = Math.ceil(totalRecords / 10) * 10;
+    for (let i = totalRecords; i < paddedTo; i++) {
+      records.push('9'.repeat(94));
+    }
+
+    const nachaContent = records.map(r => r.substring(0, 94)).join('\r\n');
+    const periodLabel = run.periodStart
+      ? new Date(run.periodStart).toISOString().slice(0, 10).replace(/-/g, '')
+      : fileDate;
+    const filename = `payroll-ach-${periodLabel}-${runId.substring(0, 8)}.ach`;
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-NACHA-Entries', String(eligible.length));
+    res.setHeader('X-NACHA-Missing', String(missing.length));
+    res.setHeader('X-NACHA-Total-Cents', String(totalCreditCents));
+
+    return res.send(nachaContent);
   } catch (error: unknown) {
     log.error('[NACHA] Error generating NACHA file:', error);
     res.status(500).json({ message: 'Failed to generate NACHA file: ' + (sanitizeError(error) || 'Unknown error') });
@@ -1926,8 +3438,13 @@ router.get('/employees/:employeeId/bank-accounts', async (req: AuthenticatedRequ
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
-    const result = await listBankAccounts({ workspaceId, employeeId: req.params.employeeId });
-    res.json(result);
+    const { employeeId } = req.params;
+
+    const rows = await db.select().from(employeeBankAccounts)
+      .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId), eq(employeeBankAccounts.isActive, true)))
+      .orderBy(desc(employeeBankAccounts.isPrimary));
+
+    res.json({ success: true, bankAccounts: rows.map(maskBankAccount) });
   } catch (error: unknown) {
     log.error('[BankAccounts] GET error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -1940,15 +3457,25 @@ router.post('/employees/:employeeId/bank-accounts/verify', async (req: Authentic
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
     const { employeeId } = req.params;
+
     const [employee] = await db.select({ userId: employees.userId })
       .from(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
       .limit(1);
     if (!employee) return res.status(404).json({ error: 'Employee not found' });
-    if (!requireManagerOrOwn(req, employee.userId)) return res.status(403).json({ error: 'Access denied' });
-    const result = await verifyBankAccount({ workspaceId, employeeId, userId });
-    if (!result.success) return res.status(result.httpStatus || 500).json({ error: result.error });
-    res.json({ success: result.valid, status: result.status });
+
+    if (!requireManagerOrOwn(req, employee.userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { verifyEmployeeBankAccount } = await import('../services/payroll/achTransferService');
+    const verification = await verifyEmployeeBankAccount({
+      workspaceId,
+      employeeId,
+      verifiedBy: userId,
+    });
+
+    res.json({ success: verification.valid, status: verification.status });
   } catch (error: unknown) {
     log.error('[BankAccounts] VERIFY error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -1960,14 +3487,144 @@ router.post('/employees/:employeeId/bank-accounts', async (req: AuthenticatedReq
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const result = await addBankAccount({
-      workspaceId, employeeId: req.params.employeeId, userId,
-      userEmail: req.user?.email || null,
-      userRole: req.user?.role || null,
-      body: req.body,
-    });
-    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
-    res.status(201).json(result);
+    const { employeeId } = req.params;
+
+    const parsed = employeeBankAccountSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid bank account data', details: parsed.error.flatten() });
+    const { bankName, routingNumber, accountNumber, accountType, depositType, depositAmount, depositPercent, isPrimary, notes } = parsed.data;
+
+    const encryptedRouting = encryptToken(String(routingNumber).trim());
+    const encryptedAccount = encryptToken(String(accountNumber).trim());
+    const routingLast4 = String(routingNumber).trim().slice(-4);
+    const accountLast4 = String(accountNumber).trim().slice(-4);
+
+    if (isPrimary) {
+      await db.update(employeeBankAccounts).set({ isPrimary: false })
+        .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
+    }
+
+    const [created] = await db.insert(employeeBankAccounts).values({
+      workspaceId,
+      employeeId,
+      bankName: bankName || null,
+      routingNumberEncrypted: encryptedRouting,
+      accountNumberEncrypted: encryptedAccount,
+      accountType: accountType || 'checking',
+      routingNumberLast4: routingLast4,
+      accountNumberLast4: accountLast4,
+      depositType: depositType || 'full',
+      depositAmount: depositAmount ? String(depositAmount) : null,
+      depositPercent: depositPercent ? String(depositPercent) : null,
+      isPrimary: isPrimary ?? true,
+      isActive: true,
+      addedBy: userId,
+      notes: notes || null,
+    }).returning();
+
+    await db.update(employeeOnboardingProgress)
+      .set({
+        stepsCompleted: sql`CASE
+          WHEN NOT (${employeeOnboardingProgress.stepsCompleted} @> '["direct_deposit"]'::jsonb)
+          THEN ${employeeOnboardingProgress.stepsCompleted} || '["direct_deposit"]'::jsonb
+          ELSE ${employeeOnboardingProgress.stepsCompleted}
+        END`,
+        directDepositComplete: true,
+        status: sql`CASE
+          WHEN ${employeeOnboardingProgress.overallProgressPct} >= 100 THEN 'complete'
+          ELSE ${employeeOnboardingProgress.status}
+        END`,
+        lastUpdatedAt: new Date(),
+      } as any)
+      .where(
+        and(
+          eq(employeeOnboardingProgress.workspaceId, workspaceId),
+          eq(employeeOnboardingProgress.employeeId, employeeId),
+        )
+      );
+
+    const [progress] = await db.select()
+      .from(employeeOnboardingProgress)
+      .where(
+        and(
+          eq(employeeOnboardingProgress.workspaceId, workspaceId),
+          eq(employeeOnboardingProgress.employeeId, employeeId),
+        )
+      )
+      .limit(1);
+
+    if (progress && ((progress.overallProgressPct || 0) >= 100 || progress.status === 'complete')) {
+      const [employee] = await db.select({
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+      })
+        .from(employees)
+        .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
+        .limit(1);
+
+      platformEventBus.emit('employee_onboarding_completed', {
+        workspaceId,
+        employeeId,
+        employeeName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : 'Employee',
+        completedAt: new Date().toISOString(),
+      });
+    }
+
+    storage.createAuditLog({
+      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
+      action: 'create', entityType: 'employee_bank_account', entityId: created.id,
+      actionDescription: `Bank account (****${accountLast4}) added for employee ${employeeId}`,
+      changes: { routing_last4: routingLast4, account_last4: accountLast4, accountType },
+      isSensitiveData: true, complianceTag: 'soc2',
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    // Mark direct deposit step complete in onboarding progress (non-blocking)
+    ;(async () => {
+      try {
+        await db.execute(sql`
+          UPDATE employee_onboarding_progress
+          SET
+            direct_deposit_complete = true,
+            steps_completed = CASE
+              WHEN NOT (steps_completed @> '["direct_deposit"]'::jsonb)
+              THEN steps_completed || '["direct_deposit"]'::jsonb
+              ELSE steps_completed
+            END,
+            last_updated_at = now()
+          WHERE workspace_id = ${workspaceId} AND employee_id = ${employeeId}
+        `);
+
+        // Check if all steps are now complete → emit onboarding_completed event
+        const progResult = await db.execute(sql`
+          SELECT
+            jsonb_array_length(steps_completed) as done,
+            (SELECT COUNT(*) FROM employee_onboarding_steps WHERE required = true) as total,
+            e.first_name, e.last_name
+          FROM employee_onboarding_progress p
+          JOIN employees e ON e.id = p.employee_id
+          WHERE p.workspace_id = ${workspaceId} AND p.employee_id = ${employeeId}
+          LIMIT 1
+        `);
+
+        const prog = (progResult as any).rows?.[0];
+        if (prog) {
+          const done = parseInt(prog.done) || 0;
+          const total = parseInt(prog.total) || 1;
+          const pct = Math.round((done / total) * 100);
+          if (pct >= 100) {
+            platformEventBus.publish({
+              type: 'employee_onboarding_completed',
+              workspaceId,
+              title: `${prog.first_name} ${prog.last_name} completed onboarding`,
+              payload: { employeeId, completedAt: new Date().toISOString() },
+            });
+          }
+        }
+      } catch (err: any) {
+        log.warn('[BankAccounts] Onboarding progress update failed (non-blocking):', err?.message);
+      }
+    })();
+
+    res.status(201).json({ success: true, bankAccount: maskBankAccount(created) });
   } catch (error: unknown) {
     log.error('[BankAccounts] POST error:', error);
     res.status(400).json({ error: sanitizeError(error) });
@@ -1979,15 +3636,84 @@ router.patch('/employees/:employeeId/bank-accounts/:accountId', async (req: Auth
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const result = await updateBankAccount({
-      workspaceId, employeeId: req.params.employeeId,
-      accountId: req.params.accountId, userId,
-      userEmail: req.user?.email || null,
-      userRole: req.user?.role || null,
-      body: req.body,
+    const { employeeId, accountId } = req.params;
+
+    const [current] = await db.select().from(employeeBankAccounts)
+      .where(and(eq(employeeBankAccounts.id, accountId), eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)))
+      .limit(1);
+    if (!current) return res.status(404).json({ error: 'Bank account not found' });
+
+    const parsed = employeeBankAccountUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid bank account update data', details: parsed.error.flatten() });
+    const { bankName, routingNumber, accountNumber, accountType, depositType, depositAmount, depositPercent, isPrimary, notes } = parsed.data;
+    const updateFields: Record<string, any> = { updatedAt: new Date() };
+
+    if (bankName !== undefined) updateFields.bankName = bankName;
+    if (accountType !== undefined) updateFields.accountType = accountType;
+    if (depositType !== undefined) updateFields.depositType = depositType;
+    if (depositAmount !== undefined) updateFields.depositAmount = String(depositAmount);
+    if (depositPercent !== undefined) updateFields.depositPercent = String(depositPercent);
+    if (notes !== undefined) updateFields.notes = notes;
+    if (isPrimary !== undefined) updateFields.isPrimary = isPrimary;
+
+    if (routingNumber) {
+      updateFields.routingNumberEncrypted = encryptToken(String(routingNumber).trim());
+      updateFields.routingNumberLast4 = String(routingNumber).trim().slice(-4);
+    }
+    if (accountNumber) {
+      updateFields.accountNumberEncrypted = encryptToken(String(accountNumber).trim());
+      updateFields.accountNumberLast4 = String(accountNumber).trim().slice(-4);
+    }
+
+    let updated: typeof employeeBankAccounts.$inferSelect | undefined;
+    await db.transaction(async (tx) => {
+      if (isPrimary) {
+        // Atomically clear existing primary before setting new
+        await tx.update(employeeBankAccounts).set({ isPrimary: false })
+          .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
+      }
+      [updated] = await tx.update(employeeBankAccounts).set(updateFields)
+        .where(and(
+          eq(employeeBankAccounts.id, accountId),
+          eq(employeeBankAccounts.workspaceId, workspaceId),
+          eq(employeeBankAccounts.employeeId, employeeId)
+        )).returning();
     });
-    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
-    res.json(result);
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Bank account not found' });
+    }
+
+    storage.createAuditLog({
+      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
+      action: 'update', entityType: 'employee_bank_account', entityId: accountId,
+      actionDescription: `Bank account (****${updated.accountNumberLast4}) updated for employee ${employeeId}`,
+      changes: { updatedFields: Object.keys(updateFields) },
+      isSensitiveData: true, complianceTag: 'soc2',
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    // Non-blocking: security alert to org owner + managers when bank info changes
+    const changedSensitive = routingNumber || accountNumber;
+    if (changedSensitive) {
+      (async () => {
+        try {
+          const { universalNotificationEngine } = await import('../services/universalNotificationEngine');
+          await universalNotificationEngine.sendNotification({
+            workspaceId,
+            type: 'security_alert',
+            title: 'Employee Bank Account Updated',
+            message: `Direct deposit bank account (****${updated.accountNumberLast4}) was updated for employee ${employeeId}. Changed by: ${req.user?.email || userId}. Please verify this change is authorized.`,
+            priority: 'high',
+            severity: 'warning',
+            targetRoles: ['org_owner', 'co_owner', 'payroll_admin'],
+          });
+        } catch (alertErr: unknown) {
+          log.warn('[PayrollRoutes] Bank account change security alert failed (non-blocking):', (alertErr instanceof Error ? alertErr.message : String(alertErr)));
+        }
+      })();
+    }
+
+    res.json({ success: true, bankAccount: maskBankAccount(updated) });
   } catch (error: unknown) {
     log.error('[BankAccounts] PATCH error:', error);
     res.status(400).json({ error: sanitizeError(error) });
@@ -1999,68 +3725,27 @@ router.delete('/employees/:employeeId/bank-accounts/:accountId', async (req: Aut
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
-    const result = await deactivateBankAccount({
-      workspaceId, employeeId: req.params.employeeId,
-      accountId: req.params.accountId, userId,
-      userEmail: req.user?.email || null,
-      userRole: req.user?.role || null,
-    });
-    if (!result.success) return res.status(result.status || 400).json({ error: result.error });
-    res.json(result);
+    const { employeeId, accountId } = req.params;
+
+    const [deactivated] = await db.update(employeeBankAccounts)
+      .set({ isActive: false, deactivatedAt: new Date(), deactivatedBy: userId })
+      .where(and(eq(employeeBankAccounts.id, accountId), eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)))
+      .returning();
+
+    if (!deactivated) return res.status(404).json({ error: 'Bank account not found' });
+
+    storage.createAuditLog({
+      workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',
+      action: 'delete', entityType: 'employee_bank_account', entityId: accountId,
+      actionDescription: `Bank account (****${deactivated.accountNumberLast4}) deactivated for employee ${employeeId}`,
+      changes: { before: { isActive: true }, after: { isActive: false } },
+      isSensitiveData: true, complianceTag: 'soc2',
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    res.json({ success: true, message: 'Bank account deactivated' });
   } catch (error: unknown) {
     log.error('[BankAccounts] DELETE error:', error);
     res.status(400).json({ error: sanitizeError(error) });
-  }
-});
-
-
-// ── Bonus Pay ─────────────────────────────────────────────────────────────────
-// POST /payroll/bonus — create a standalone bonus pay entry for an employee
-// Supports: performance, retention, referral, sign-on, holiday, discretionary
-// Tax: 22% federal supplemental flat rate + FICA (SS 6.2% + Medicare 1.45%)
-router.post('/bonus', async (req: AuthenticatedRequest, res) => {
-  try {
-    const roleCheck = checkManagerRole(req);
-    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
-    const workspaceId = req.workspaceId!;
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
-    const result = await createBonusPayEntry(workspaceId, userId, req.body);
-    if (!result.success) return res.status(result.status || 400).json({ message: result.error });
-    res.status(201).json({
-      ...result,
-      irsNotice: 'Federal tax withheld at 22% supplemental flat rate (IRS Pub. 15-T). This is an estimate — consult your CPA for aggregate method if more appropriate.',
-    });
-  } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
-    log.error('Error creating bonus pay:', error);
-    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to create bonus pay' });
-  }
-});
-
-// ── Commission Pay ────────────────────────────────────────────────────────────
-// POST /payroll/commission — create a commission pay entry for an employee
-// Sources: contract_sale, contract_renewal, referral_client, performance, overtime_incentive
-// Tax: 22% federal supplemental flat rate + FICA
-router.post('/commission', async (req: AuthenticatedRequest, res) => {
-  try {
-    const roleCheck = checkManagerRole(req);
-    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
-    const workspaceId = req.workspaceId!;
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
-    const result = await createCommissionPayEntry(workspaceId, userId, req.body);
-    if (!result.success) return res.status(result.status || 400).json({ message: result.error });
-    res.status(201).json({
-      ...result,
-      irsNotice: 'Commission withheld at 22% federal supplemental flat rate. Commissions may be subject to FICA — consult your CPA.',
-    });
-  } catch (error: unknown) {
-    const status = (error as any)?.status || 500;
-    log.error('Error creating commission pay:', error);
-    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to create commission pay' });
   }
 });
 

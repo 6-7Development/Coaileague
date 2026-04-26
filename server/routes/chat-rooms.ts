@@ -50,9 +50,9 @@ async function handleRoomLifecycleAction(
 
     // Resolve the room
     const [room] = await db
-      .select({ id: organizationChatRooms.id, createdBy: organizationChatRooms.createdBy, workspaceId: organizationChatRooms.workspaceId })
-      .from(organizationChatRooms)
-      .where(eq(organizationChatRooms.id, roomId))
+      .select({ id: chatRooms.id, createdBy: chatRooms.createdBy, workspaceId: chatRooms.workspaceId })
+      .from(chatRooms)
+      .where(eq(chatRooms.id, roomId))
       .limit(1);
 
     if (!room) {
@@ -69,9 +69,9 @@ async function handleRoomLifecycleAction(
 
     const newStatus = action === 'close' ? 'archived' : 'active';
     await db
-      .update(organizationChatRooms)
+      .update(chatRooms)
       .set({ status: newStatus as any, updatedAt: new Date() })
-      .where(eq(organizationChatRooms.id, roomId));
+      .where(eq(chatRooms.id, roomId));
 
     res.json({ success: true, roomId, status: newStatus, action });
   } catch (err: unknown) {
@@ -337,12 +337,13 @@ router.post(
       // ─────────────────────────────────────────────────────────────────────
       // [chatPolicyService] Use centralized policy — not route-local lists
       // isReservedRoomName() and isReservedRoomNameExempt() imported from chatPolicyService
-      const requestedName = (subject || '').trim();
-      const isReservedName = isReservedRoomName(requestedName);
+      const requestedName = (subject || '').trim().toLowerCase();
+      const isReservedName = RESERVED_ROOM_NAMES.some(
+        r => requestedName === r || requestedName.startsWith(r)
+      );
       const _userPlatformRole = (authReq.user)?.platformRole || (authReq.user)?.role || '';
       const isSupportExempt = isSupportStaffRole(authReq.workspaceRole || '') ||
-                              isSupportStaffRole(_userPlatformRole) ||
-                              isReservedRoomNameExempt(requestedName, authReq.workspaceRole || _userPlatformRole || undefined);
+                              isSupportStaffRole(_userPlatformRole);
       if (isReservedName && !isSupportExempt) {
         log.warn(`[ChatRoom CREATE] Blocked reserved room name "${subject}" by user ${userId} (role: ${authReq.workspaceRole})`);
         return res.status(403).json({

@@ -16,6 +16,7 @@ import { requirePlan } from '../tierGuards';
 import { createLogger } from '../lib/logger';
 const log = createLogger('ContractPipelineRoutes');
 
+
 const router = Router();
 
 // Contract pipeline is a Professional+ feature (contract_pipeline, e_signatures, document_signing)
@@ -62,6 +63,70 @@ function getAuditContext(req: AuthenticatedRequest, actorType: 'user' | 'client'
 // TEMPLATES
 // ============================================================================
 
+router.get('/templates', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const category = req.query.category as string | undefined;
+    const templates = await contractPipelineService.getTemplates(workspaceId, category);
+    res.json({ templates });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get templates error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get templates' });
+  }
+});
+
+router.post('/templates', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    const userId = req.user?.id || req.session?.userId;
+    if (!workspaceId || !userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const schema = z.object({
+      name: z.string().min(1).max(200),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      content: z.string().min(1),
+      fieldMappings: z.record(z.any()).optional(),
+      includedClauses: z.array(z.string()).optional(),
+      isDefault: z.boolean().optional(),
+    });
+
+    const input = schema.parse(req.body);
+    const template = await contractPipelineService.createTemplate({
+      ...input,
+      workspaceId,
+      createdBy: userId,
+    });
+
+    res.status(201).json({ template });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Create template error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to create template' });
+  }
+});
+
+router.get('/templates/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const template = await contractPipelineService.getTemplate(req.params.id);
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    if (template.workspaceId !== req.workspaceId) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json({ template });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get template error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get template' });
+  }
+});
+
 router.patch('/templates/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!hasManagerAccess(req.workspaceRole || '')) {
@@ -79,6 +144,26 @@ router.patch('/templates/:id', async (req: AuthenticatedRequest, res: Response) 
   } catch (error: unknown) {
     log.error('[ContractPipeline] Update template error:', error);
     res.status(400).json({ error: sanitizeError(error) || 'Failed to update template' });
+  }
+});
+
+router.delete('/templates/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!hasManagerAccess(req.workspaceRole || '')) {
+      return res.status(403).json({ error: 'Manager access required to delete contract templates' });
+    }
+    const existing = await contractPipelineService.getTemplate(req.params.id);
+    if (!existing || existing.workspaceId !== req.workspaceId) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    const deleted = await contractPipelineService.deleteTemplate(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json({ success: true });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Delete template error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to delete template' });
   }
 });
 
@@ -110,6 +195,76 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    const userId = req.user?.id || req.session?.userId;
+    if (!workspaceId || !userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const schema = z.object({
+      clientId: z.string().optional(),
+      clientName: z.string().min(1),
+      clientEmail: z.string().email(),
+      title: z.string().min(1).max(300),
+      content: z.string().min(1),
+      templateId: z.string().optional(),
+      services: z.array(z.any()).optional(),
+      billingTerms: z.record(z.any()).optional(),
+      totalValue: z.number().optional(),
+      effectiveDate: z.string().optional(),
+      termEndDate: z.string().optional(),
+      expiresAt: z.string().optional(),
+      specialTerms: z.string().optional(),
+    });
+
+    const input = schema.parse(req.body);
+    const result = await contractPipelineService.createProposal(
+      {
+        ...input,
+        workspaceId,
+        createdBy: userId,
+        expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
+      },
+      getAuditContext(req)
+    );
+
+    res.status(201).json(result);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Create contract error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to create proposal' });
+  }
+});
+
+router.get('/usage', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const usage = await contractPipelineService.getUsage(workspaceId);
+    res.json(usage);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get usage error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get usage' });
+  }
+});
+
+router.get('/access', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const access = await contractPipelineService.checkAccess(workspaceId);
+    res.json(access);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Check access error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to check access' });
+  }
+});
+
 router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -124,9 +279,121 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-//============================================================================
+router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const contract = await contractPipelineService.getContract(req.params.id);
+    if (!contract) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+    if (contract.workspaceId !== req.workspaceId) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+    res.json({ contract });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get contract error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get contract' });
+  }
+});
+
+router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!hasManagerAccess(req.workspaceRole || '')) {
+      return res.status(403).json({ error: 'Manager access required to update contracts' });
+    }
+    const existing = await contractPipelineService.getContract(req.params.id);
+    if (!existing || existing.workspaceId !== req.workspaceId) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+    const contract = await contractPipelineService.updateContract(
+      req.params.id,
+      req.body,
+      getAuditContext(req)
+    );
+    if (!contract) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+    res.json({ contract });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Update contract error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to update contract' });
+  }
+});
+
+// ============================================================================
 // PROPOSAL WORKFLOW
 // ============================================================================
+
+router.post('/:id/send', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // ── S6: REQUIRE MANAGER+ TO SEND CONTRACTS ─────────────────────────────
+    // Mount-level gates only require auth + workspace access; sending a
+    // contract that gates invoicing and signer liability should be a
+    // manager-or-above action.
+    const role = (req.user as any)?.workspaceRole || req.workspaceRole;
+    if (!hasManagerAccess(role)) {
+      return res.status(403).json({ error: 'Only managers and owners can send contracts for signature' });
+    }
+
+    const result = await contractPipelineService.sendProposal(
+      req.params.id,
+      getAuditContext(req)
+    );
+
+    // Deduct 3 credits per document sent for e-signature (contract pipeline)
+    const workspaceId = req.workspaceId;
+    if (workspaceId) {
+      tokenManager.recordUsage({
+        workspaceId,
+        userId: req.user?.id || 'system',
+        featureKey: 'document_signing_send',
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        featureName: 'Digital E-Signature Send (Contract)',
+        description: `Contract/proposal ${req.params.id} sent for signature`,
+        amountOverride: 3,
+        relatedEntityType: 'contract',
+        relatedEntityId: req.params.id,
+      }).catch((err: Error) => {
+        log.error('[ContractPipeline] Credit deduction failed (non-blocking):', err.message);
+      });
+    }
+
+    res.json(result);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Send proposal error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to send proposal' });
+  }
+});
+
+router.post('/:id/accept', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const contract = await contractPipelineService.acceptProposal(
+      req.params.id,
+      getAuditContext(req, 'client')
+    );
+    res.json({ contract });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Accept proposal error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to accept proposal' });
+  }
+});
+
+router.post('/:id/request-changes', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { changesRequested } = req.body;
+    if (!changesRequested) {
+      return res.status(400).json({ error: 'changesRequested is required' });
+    }
+    const contract = await contractPipelineService.requestChanges(
+      req.params.id,
+      changesRequested,
+      getAuditContext(req, 'client')
+    );
+    res.json({ contract });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Request changes error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to request changes' });
+  }
+});
 
 router.post('/:id/decline', async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -147,9 +414,117 @@ router.post('/:id/decline', async (req: AuthenticatedRequest, res: Response) => 
 // SIGNATURES
 // ============================================================================
 
+router.get('/:id/signatures', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const signatures = await contractPipelineService.getSignatures(req.params.id);
+    res.json({ signatures });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get signatures error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get signatures' });
+  }
+});
+
+router.post('/:id/sign', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const schema = z.object({
+      signerRole: z.enum(['company', 'client', 'witness', 'notary']),
+      signerName: z.string().min(1),
+      signerEmail: z.string().email(),
+      signerTitle: z.string().optional(),
+      signatureType: z.enum(['typed', 'drawn', 'uploaded']),
+      signatureData: z.string().optional(),
+      consentText: z.string().min(1),
+      geolocation: z.object({
+        lat: z.number(),
+        lng: z.number(),
+        accuracy: z.number(),
+      }).optional(),
+      timezone: z.string().optional(),
+    });
+
+    const input = schema.parse(req.body);
+    const signature = await contractPipelineService.captureSignature(
+      {
+        contractId: req.params.id,
+        ...input,
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        ipAddress: getClientIP(req),
+        userAgent: req.headers['user-agent'] || 'unknown',
+      },
+      getAuditContext(req, input.signerRole === 'company' ? 'user' : 'client')
+    );
+
+    res.status(201).json({ signature });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Capture signature error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to capture signature' });
+  }
+});
+
 // ============================================================================
 // SIGNER MANAGEMENT & SEQUENCING
 // ============================================================================
+
+router.post('/:id/signers', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const schema = z.object({
+      signers: z.array(z.object({
+        signerRole: z.enum(['company', 'client', 'witness', 'notary']),
+        signerName: z.string().min(1),
+        signerEmail: z.string().email(),
+        signerTitle: z.string().optional(),
+        order: z.number().int().min(1),
+      })).min(1),
+    });
+
+    const { signers } = schema.parse(req.body);
+    const result = await contractPipelineService.addSigners(
+      req.params.id,
+      signers,
+      getAuditContext(req)
+    );
+
+    res.status(201).json({ signers: result });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Add signers error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to add signers' });
+  }
+});
+
+router.get('/:id/signers', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const signers = await contractPipelineService.getSignersForContract(req.params.id);
+    const nextSigner = await contractPipelineService.getNextSigner(req.params.id);
+    res.json({ signers, nextSigner });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get signers error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get signers' });
+  }
+});
+
+router.post('/:id/remind', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const schema = z.object({
+      signerId: z.string().min(1),
+    });
+
+    const { signerId } = schema.parse(req.body);
+    const result = await contractPipelineService.sendReminder(
+      req.params.id,
+      signerId,
+      getAuditContext(req)
+    );
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+
+    res.json(result);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Send reminder error:', error);
+    res.status(400).json({ error: sanitizeError(error) || 'Failed to send reminder' });
+  }
+});
 
 router.patch('/:id/signers/reorder', async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -181,9 +556,29 @@ router.patch('/:id/signers/reorder', async (req: AuthenticatedRequest, res: Resp
 // AUDIT TRAIL
 // ============================================================================
 
+router.get('/:id/audit', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const auditTrail = await contractPipelineService.getAuditTrail(req.params.id);
+    res.json({ auditTrail });
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Get audit trail error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to get audit trail' });
+  }
+});
+
 // ============================================================================
 // EVIDENCE EXPORT
 // ============================================================================
+
+router.get('/:id/evidence', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const evidencePackage = await contractPipelineService.generateEvidencePackage(req.params.id);
+    res.json(evidencePackage);
+  } catch (error: unknown) {
+    log.error('[ContractPipeline] Generate evidence error:', error);
+    res.status(500).json({ error: sanitizeError(error) || 'Failed to generate evidence package' });
+  }
+});
 
 router.get('/:id/verify', async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -198,6 +593,7 @@ router.get('/:id/verify', async (req: AuthenticatedRequest, res: Response) => {
 // ============================================================================
 // USAGE & QUOTA
 // ============================================================================
+
 
 // ============================================================================
 // PUBLIC PORTAL (No Auth Required) - Uses publicPortalRouter
@@ -386,21 +782,5 @@ publicPortalRouter.post('/:token/request-changes', async (req: Request, res: Res
     res.status(400).json({ error: sanitizeError(error) || 'Failed to request changes' });
   }
 });
-
-router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const contract = await contractPipelineService.getContract(req.params.id);
-    if (!contract) {
-      return res.status(404).json({ error: 'Contract not found' });
-    }
-    if (contract.workspaceId !== req.workspaceId) {
-      return res.status(404).json({ error: 'Contract not found' });
-    }
-    res.json({ contract });
-  } catch (error: unknown) {
-    log.error('[ContractPipeline] Get contract error:', error);
-    res.status(500).json({ error: sanitizeError(error) || 'Failed to get contract' });
-  }
-})
 
 export default router;

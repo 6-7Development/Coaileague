@@ -40,6 +40,53 @@ router.get("/workspace", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+router.post("/workspace", requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: "Workspace required" });
+
+    const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
+      .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+    const current = ((ws?.blob || {}) as Record<string, any>);
+
+    const allowedSettingsFields = [
+      'payrollCycle', 'payrollDayOfWeek', 'payrollDayOfMonth', 'payrollSecondDayOfMonth',
+      'payrollCutoffDays', 'payrollFirstPeriodStart', 'payrollFirstPeriodEnd',
+      'defaultBillingCycle', 'defaultPaymentTerms', 'defaultOvertimeThreshold',
+      'defaultDailyOvertimeThreshold', 'defaultOvertimeMultiplier', 'defaultDoubleTimeMultiplier',
+      'autoGenerateInvoices', 'invoicePrefix', 'invoiceNumberStart', 'invoiceProvider',
+      'payrollProvider', 'qbAutoSync',
+    ];
+    const merged: Record<string, any> = { ...current, workspaceId, updatedAt: new Date().toISOString() };
+    for (const field of allowedSettingsFields) {
+      if (req.body[field] !== undefined) merged[field] = req.body[field];
+    }
+
+    await db.update(workspaces).set({ billingSettingsBlob: merged }).where(eq(workspaces.id, workspaceId));
+
+    // Phase 7: audit all billing settings writes
+    try {
+      const { universalAudit } = await import('../services/universalAuditService');
+      await universalAudit.log({
+        workspaceId,
+        actorId: req.user?.id || null,
+        actorType: req.user?.id ? 'user' : 'system',
+        action: 'settings.updated',
+        entityType: 'workspace_billing_settings',
+        entityId: workspaceId,
+        changeType: 'update',
+        changes: Object.fromEntries(Object.keys(req.body).map(k => [k, { old: null, new: req.body[k] }])),
+        sourceRoute: 'POST /api/billing-settings',
+      });
+    } catch (_) { /* audit is best-effort */ }
+
+    res.json({ settings: merged });
+  } catch (error: unknown) {
+    log.error("[BillingSettings] Error saving workspace settings:", sanitizeError(error));
+    res.status(500).json({ message: "Failed to save billing settings" });
+  }
+});
+
 router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
@@ -171,6 +218,29 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
 // CLIENT BILLING TERMS  (per-client invoice frequency, service dates, etc.)
 // ─────────────────────────────────────────────────────────────────────────────
 
+router.get("/clients", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: "Workspace required" });
+
+    const settings = await db
+      .select({
+        billingSettings: clientBillingSettings,
+        clientName: clients.companyName,
+        clientFirstName: clients.firstName,
+        clientLastName: clients.lastName,
+      })
+      .from(clientBillingSettings)
+      .leftJoin(clients, eq(clientBillingSettings.clientId, clients.id))
+      .where(eq(clientBillingSettings.workspaceId, workspaceId));
+
+    res.json({ settings });
+  } catch (error: unknown) {
+    log.error("[BillingSettings] Error fetching client settings:", sanitizeError(error));
+    res.status(500).json({ message: "Failed to fetch client billing settings" });
+  }
+});
+
 router.get("/clients/:clientId", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
@@ -221,6 +291,89 @@ router.post("/clients/:clientId", requireManager, async (req: AuthenticatedReque
   } catch (error: unknown) {
     log.error("[BillingSettings] Error saving client settings:", sanitizeError(error));
     res.status(500).json({ message: "Failed to save client billing settings" });
+  }
+});
+
+router.patch("/clients/:clientId", requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const { clientId } = req.params;
+    if (!workspaceId) return res.status(400).json({ message: "Workspace required" });
+
+    const existing = await db.select().from(clientBillingSettings)
+      .where(and(eq(clientBillingSettings.workspaceId, workspaceId), eq(clientBillingSettings.clientId, clientId))).limit(1);
+
+    if (existing.length === 0) return res.status(404).json({ message: "No billing settings found for this client. Use POST to create." });
+
+    const allowedFields = [
+      // Service contract window
+      'serviceStartDate',
+      'serviceEndDate',
+      // Invoice frequency
+      'billingCycle',               // daily | weekly | biweekly | semimonthly | monthly
+      'billingDayOfWeek',           // 0-6 anchor for weekly/biweekly invoices
+      'billingDayOfMonth',          // 1-31 anchor for monthly / first day of semimonthly
+      'billingSecondDayOfMonth',    // 1-31 second day for semimonthly
+      // Payment terms
+      'paymentTerms',               // net_15 | net_30 | net_45 | net_60 | due_on_receipt
+      // Rates
+      'defaultBillRate', 'defaultPayRate',
+      'overtimeBillMultiplier', 'overtimePayMultiplier',
+      // Invoice format
+      'invoiceFormat', 'groupLineItemsBy', 'includeTimeBreakdown',
+      'includeEmployeeDetails', 'autoSendInvoice', 'invoiceRecipientEmails',
+      'ccEmails',
+      // QB
+      'qbCustomerId', 'qbItemId', 'qbClassId',
+      'isActive',
+    ];
+
+    if (req.body.paymentTerms !== undefined && req.body.paymentTerms === null) {
+      return res.status(400).json({ message: "paymentTerms cannot be null or undefined" });
+    }
+
+    const merged: Record<string, any> = { ...existing[0], updatedAt: new Date() };
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) merged[field] = req.body[field];
+    }
+
+    const [settings] = await db.update(clientBillingSettings).set(merged)
+      .where(eq(clientBillingSettings.id, existing[0].id)).returning();
+
+    await db.insert(auditLogs).values({
+      workspaceId,
+      userId: req.user?.id || null,
+      action: 'invoice_settings_updated',
+      entityType: 'invoice_settings',
+      entityId: existing[0].id,
+      changesBefore: existing[0],
+      changesAfter: settings,
+      createdAt: new Date(),
+    } as any);
+
+    res.json({ settings });
+  } catch (error: unknown) {
+    log.error("[BillingSettings] Error updating client settings:", sanitizeError(error));
+    res.status(500).json({ message: "Failed to update client billing settings" });
+  }
+});
+
+router.delete("/clients/:clientId", requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const { clientId } = req.params;
+    if (!workspaceId) return res.status(400).json({ message: "Workspace required" });
+
+    const deleted = await db.delete(clientBillingSettings)
+      .where(and(eq(clientBillingSettings.workspaceId, workspaceId), eq(clientBillingSettings.clientId, clientId)))
+      .returning();
+
+    if (deleted.length === 0) return res.status(404).json({ message: "No billing settings found for this client" });
+
+    res.json({ message: "Client billing settings removed, workspace defaults will apply" });
+  } catch (error: unknown) {
+    log.error("[BillingSettings] Error deleting client settings:", sanitizeError(error));
+    res.status(500).json({ message: "Failed to delete client billing settings" });
   }
 });
 

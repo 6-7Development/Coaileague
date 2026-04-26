@@ -250,6 +250,208 @@ router.patch('/:employeeId/role', async (req: AuthenticatedRequest, res) => {
   }
 });
 
+router.patch('/:employeeId/position', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { employeeId } = req.params;
+    const validation = z.object({
+      position: z.string(),
+      expectedVersion: z.number().optional()
+    }).safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
+    }
+    const { position: newPosition, expectedVersion } = validation.data;
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+
+    if (!userId || !workspaceId) {
+      return res.status(400).json({ message: "User and workspace context required" });
+    }
+
+    if (!newPosition) {
+      return res.status(400).json({ message: "New position is required" });
+    }
+
+    const newPosDefinition = getPositionById(newPosition);
+    if (!newPosDefinition) {
+      return res.status(400).json({ message: `Invalid position: ${newPosition}. Must be a canonical position ID from the registry.` });
+    }
+
+    const resolvedPlatRole = req.platformRole || await getUserPlatformRole(userId);
+    const isPlatStaff = resolvedPlatRole && ['root_admin', 'deputy_admin', 'sysop', 'support_manager'].includes(resolvedPlatRole);
+
+    const requesterEmployee = await storage.getEmployeeByUserId(userId, workspaceId);
+    const targetEmployee = await storage.getEmployee(employeeId, workspaceId);
+
+    if (!targetEmployee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    if (!isPlatStaff) {
+      if (!requesterEmployee) {
+        return res.status(403).json({ message: "Requester employee record not found" });
+      }
+
+      if (!canEditEmployeeByPosition(
+        requesterEmployee.position, targetEmployee.position,
+        requesterEmployee.workspaceRole as string, targetEmployee.workspaceRole as string
+      )) {
+        return res.status(403).json({ message: "You cannot change the position of someone at your authority level or above" });
+      }
+
+      if (!canPromoteEmployeeTo(requesterEmployee.position, newPosition, requesterEmployee.workspaceRole as string)) {
+        return res.status(403).json({ message: "You cannot assign a position at or above your own authority level" });
+      }
+    }
+
+    if (expectedVersion !== undefined) {
+      const currentVersion = (targetEmployee as any).version || 1;
+      if (currentVersion !== expectedVersion) {
+        return res.status(409).json({
+          message: "This employee was modified by another user. Please refresh and try again.",
+          conflict: true,
+          currentVersion,
+          expectedVersion,
+        });
+      }
+    }
+
+    const previousPosition = targetEmployee.position;
+    const previousRole = targetEmployee.workspaceRole;
+    const previousRate = targetEmployee.hourlyRate;
+    const newWorkspaceRole = getWorkspaceRoleForPosition(newPosition);
+    const newVersion = ((targetEmployee as any).version || 1) + 1;
+
+    await db.update(employees).set({
+      position: newPosition,
+      workspaceRole: newWorkspaceRole as any,
+      version: newVersion,
+      updatedAt: new Date(),
+    }).where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)));
+
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const updated = await storage.getEmployee(employeeId);
+
+    // Wage change audit trail (A4 requirement)
+    if (updated && previousRate !== updated.hourlyRate) {
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const { universalAuditService, AUDIT_ACTIONS } = await import('../services/universalAuditService');
+      await universalAuditService.log({
+        workspaceId,
+        actorId: userId,
+        actorType: 'user',
+        action: AUDIT_ACTIONS.EMPLOYEE_PAY_RATE_CHANGED,
+        entityType: 'employee',
+        entityId: employeeId,
+        changeType: 'update',
+        changes: {
+          hourlyRate: { old: previousRate, new: updated.hourlyRate }
+        },
+        metadata: {
+          previousPosition,
+          newPosition,
+          reason: 'position_change'
+        },
+        sourceRoute: 'PATCH /employees/:employeeId/position',
+      });
+    }
+
+    await storage.createAuditLog({
+      workspaceId,
+      userId,
+      action: 'update',
+      entityType: 'employee',
+      entityId: employeeId,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      details: {
+        previousPosition,
+        newPosition,
+        previousRole,
+        newRole: newWorkspaceRole,
+        authorityLevel: newPosDefinition.authorityLevel,
+        category: newPosDefinition.category,
+      },
+    });
+
+    try {
+      const { broadcastToWorkspace } = await import('../websocket');
+
+      broadcastToWorkspace(workspaceId, {
+        type: 'EMPLOYEE_POSITION_CHANGED',
+        payload: {
+          employeeId,
+          userId: targetEmployee.userId,
+          previousPosition,
+          newPosition,
+          previousRole,
+          newRole: newWorkspaceRole,
+          authorityLevel: newPosDefinition.authorityLevel,
+          category: newPosDefinition.category,
+          color: newPosDefinition.color,
+          changedBy: userId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      broadcastToWorkspace(workspaceId, {
+        type: 'RBAC_ROLE_CHANGED',
+        payload: {
+          employeeId,
+          userId: targetEmployee.userId,
+          previousRole,
+          newRole: newWorkspaceRole,
+          changedBy: userId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      const { platformEventBus } = await import('../services/platformEventBus');
+      platformEventBus.emit('RBAC_ROLE_CHANGED', {
+        workspaceId,
+        employeeId,
+        userId: targetEmployee.userId,
+        previousRole,
+        newRole: newWorkspaceRole,
+        changedBy: userId,
+      });
+      platformEventBus.emit('TRINITY_ACCESS_CHANGED', {
+        workspaceId,
+        employeeId,
+        userId: targetEmployee.userId,
+        previousPosition,
+        newPosition,
+        previousRole,
+        newRole: newWorkspaceRole,
+        changedBy: userId,
+      });
+    } catch (wsError: unknown) {
+      log.error("WebSocket broadcast error (non-fatal):", wsError);
+    }
+
+    try {
+      const { eventBus } = await import('../services/trinity/eventBus');
+      eventBus.emit('employee_position_changed', {
+        employeeId,
+        previousPosition: previousPosition || '',
+        newPosition,
+      });
+    } catch (trinityError: unknown) {
+      log.error("Trinity event error (non-fatal):", trinityError);
+    }
+
+    res.json({
+      success: true,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      employee: filterEmployeeForResponse(updated, createFilterContext(req)),
+      message: `Position updated to ${newPosDefinition.label}`,
+    });
+  } catch (error: unknown) {
+    log.error("Error updating employee position:", error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to update position" });
+  }
+});
+
 router.patch('/:employeeId/access', async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId } = req.params;
@@ -524,13 +726,282 @@ router.patch('/:employeeId/access', async (req: AuthenticatedRequest, res) => {
 // event so the compliance engine clears any "unverified guard card" flag and
 // the officer becomes eligible for armed/armed-site shifts (combined with
 // S8's employees.is_armed check).
+router.patch('/:employeeId/guard-card/verify', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { employeeId } = req.params;
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+    if (!userId || !workspaceId) {
+      return res.status(401).json({ message: 'User + workspace context required' });
+    }
+
+    const schema = z.object({
+      verified: z.boolean().default(true),
+      guardCardNumber: z.string().optional(),
+      guardCardExpiryDate: z.union([z.date(), z.string().transform(v => new Date(v))]).optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation failed', details: parsed.error.issues });
+    }
+    const { verified, guardCardNumber, guardCardExpiryDate } = parsed.data;
+
+    const { hasManagerAccess: _hasManagerAccess } = await import('../rbac');
+    const platRole = req.platformRole || await getUserPlatformRole(userId);
+    const isPlatformStaff = !!platRole && platRole !== 'none';
+    if (!isPlatformStaff) {
+      const requesterEmployee = await storage.getEmployeeByUserId(userId, workspaceId);
+      if (!_hasManagerAccess(requesterEmployee?.workspaceRole as string)) {
+        return res.status(403).json({ message: 'Only managers and owners can verify guard cards' });
+      }
+    }
+
+    const targetEmployee = await storage.getEmployee(employeeId, workspaceId);
+    if (!targetEmployee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const updatePayload: any = { guardCardVerified: verified, updatedAt: new Date() };
+    if (guardCardNumber) updatePayload.guardCardNumber = guardCardNumber;
+    if (guardCardExpiryDate) updatePayload.guardCardExpiryDate = guardCardExpiryDate;
+
+    const [updated] = await db.update(employees)
+      .set(updatePayload)
+      .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
+      .returning();
+
+    // Audit + Trinity event (non-blocking)
+    try {
+      await db.insert(systemAuditLogs).values({
+        workspaceId,
+        userId,
+        userEmail: req.user?.email || 'system',
+        userRole: 'manager',
+        action: 'update',
+        entityType: 'employee',
+        entityId: employeeId,
+        changes: {
+          action: verified ? 'guard_card_verified' : 'guard_card_unverified',
+          guardCardNumber: guardCardNumber || undefined,
+          guardCardExpiryDate: guardCardExpiryDate || undefined,
+        },
+      });
+    } catch (auditErr: any) {
+      log.warn('[EmployeeRoutes] guard-card verify audit failed (non-blocking):', auditErr?.message);
+    }
+
+    try {
+      const { platformEventBus } = await import('../services/platformEventBus');
+      await platformEventBus.publish({
+        type: verified ? 'guard_card_verified' : 'guard_card_unverified',
+        category: 'compliance',
+        title: verified ? 'Guard card verified' : 'Guard card verification revoked',
+        description: `${updated?.firstName || ''} ${updated?.lastName || ''}`.trim() || employeeId,
+        workspaceId,
+        metadata: { employeeId, verifiedBy: userId, guardCardNumber: guardCardNumber || updated?.guardCardNumber },
+      });
+    } catch (evErr: any) {
+      log.warn('[EmployeeRoutes] guard-card event publish failed (non-blocking):', evErr?.message);
+    }
+
+    res.json({ success: true, employee: updated });
+  } catch (error: unknown) {
+    log.error('Error verifying guard card:', error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to verify guard card' });
+  }
+});
+
 // ── TOPS Screenshot Verification Upload ────────────────────────────────────
 // POST /:employeeId/tops-verification
 // Officer or manager/owner uploads a TOPS screenshot; Trinity vision verifies
 // the screenshot and sets the employee's guardCardStatus tier.
+const topsUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error(`File type not allowed: ${file.mimetype}`));
+    }
+    cb(null, true);
+  },
+});
+
+router.post(
+  '/:employeeId/tops-verification',
+  requireAuth,
+  topsUpload.single('screenshot'),
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { employeeId } = req.params;
+      const workspaceId = req.workspaceId!;
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: 'Screenshot file required' });
+
+      const employee = await storage.getEmployee(employeeId, workspaceId);
+      if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+      const { hasManagerAccess } = await import('../rbac');
+      const isSelf = req.user?.id === employee.userId;
+      const isManager = hasManagerAccess(req.workspaceRole as string);
+      if (!isSelf && !isManager) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Persist the screenshot to object storage (non-fatal on failure)
+      let objectPath = 'record_only';
+      try {
+        const privateDir = process.env.PRIVATE_OBJECT_DIR;
+        if (privateDir) {
+          objectPath = `${privateDir}/tops-screenshots/${workspaceId}/${employeeId}/${Date.now()}-${(file.originalname || 'screenshot').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const { bucketName, objectName } = parseObjectPath(objectPath);
+          const bucket = objectStorageClient.bucket(bucketName);
+          await bucket.file(objectName).save(file.buffer, {
+            metadata: {
+              contentType: file.mimetype,
+              metadata: {
+                workspaceId,
+                employeeId,
+                uploadedBy: req.user?.id || '',
+                timestamp: new Date().toISOString(),
+              },
+            },
+          });
+        }
+      } catch (storeErr: any) {
+        log.warn('[TOPSUpload] Object storage save failed (non-fatal):', storeErr?.message);
+      }
+
+      // Record the document for audit trail
+      try {
+        await db.insert(employeeDocuments).values({
+          workspaceId,
+          employeeId,
+          documentType: 'tops_screenshot_active',
+          documentName: `TOPS Screenshot — ${new Date().toLocaleDateString()}`,
+          fileUrl: objectPath,
+          fileSize: file.size,
+          fileType: file.mimetype,
+          originalFileName: file.originalname,
+          uploadedBy: req.user?.id || '',
+          uploadedByEmail: req.user?.email || '',
+          uploadedByRole: req.workspaceRole || '',
+          uploadIpAddress: req.ip || '',
+          isComplianceDocument: true,
+          requiresApproval: true,
+          retentionPeriodYears: 7,
+        } as any);
+      } catch (docErr: any) {
+        log.warn('[TOPSUpload] Document record failed (non-fatal):', docErr?.message);
+      }
+
+      // Trinity vision verification
+      const imageBase64 = file.buffer.toString('base64');
+      const { verifyTOPSScreenshot } = await import('../services/trinity/workflows/topsVerificationWorkflow');
+
+      if (file.size < 5 * 1024 * 1024) {
+        const result = await verifyTOPSScreenshot({
+          employeeId,
+          workspaceId,
+          imageBase64,
+          imageMimeType: file.mimetype,
+          uploadedByUserId: req.user?.id || '',
+          isArmed: !!employee.isArmed,
+        });
+        return res.json({ success: true, verification: result });
+      }
+
+      verifyTOPSScreenshot({
+        employeeId,
+        workspaceId,
+        imageBase64,
+        imageMimeType: file.mimetype,
+        uploadedByUserId: req.user?.id || '',
+        isArmed: !!employee.isArmed,
+      }).catch((err: any) =>
+        log.warn('[TOPSUpload] Async verification failed:', err?.message),
+      );
+
+      res.json({
+        success: true,
+        verification: {
+          status: 'processing',
+          notes: 'Verification in progress — you will be notified.',
+        },
+      });
+    } catch (error: unknown) {
+      log.error('[TOPSUpload] Error:', error);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  },
+);
 
 // ── Background Check Record ────────────────────────────────────────────────
 // POST /:employeeId/background-check — manager/owner records a completed check
+router.post(
+  '/:employeeId/background-check',
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { hasManagerAccess } = await import('../rbac');
+      if (!hasManagerAccess(req.workspaceRole as string)) {
+        return res.status(403).json({ error: 'Manager access required' });
+      }
+
+      const { employeeId } = req.params;
+      const workspaceId = req.workspaceId!;
+      const { checkType, provider, sexOffenderChecked, noAdverseAction, notes } = req.body as any;
+
+      if (!['dps_criminal', 'commercial'].includes(checkType)) {
+        return res.status(400).json({ error: 'checkType must be dps_criminal or commercial' });
+      }
+
+      await db.update(employees)
+        .set({
+          backgroundCheckDate: new Date(),
+          backgroundCheckType: checkType,
+          backgroundCheckProvider: provider || null,
+          sexOffenderRegistryChecked: sexOffenderChecked === true,
+          sexOffenderRegistryCheckDate: sexOffenderChecked ? new Date() : null,
+          noAdverseActionConfirmed: noAdverseAction === true,
+          noAdverseActionConfirmedDate: noAdverseAction ? new Date() : null,
+          noAdverseActionConfirmedBy: req.user?.id || null,
+        } as any)
+        .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)));
+
+      try {
+        await db.insert(employeeDocuments).values({
+          workspaceId,
+          employeeId,
+          documentType: checkType === 'dps_criminal' ? 'background_check_dps' : 'background_check_commercial',
+          documentName: `Background Check — ${provider || 'unknown'} — ${new Date().toLocaleDateString()}`,
+          fileUrl: 'record_only',
+          uploadedBy: req.user?.id || '',
+          uploadedByEmail: req.user?.email || '',
+          uploadedByRole: req.workspaceRole || '',
+          uploadIpAddress: req.ip || '',
+          isComplianceDocument: true,
+          retentionPeriodYears: 7,
+          metadata: {
+            checkType,
+            provider,
+            sexOffenderChecked,
+            noAdverseAction,
+            confirmedBy: req.user?.email,
+            notes,
+          },
+        } as any);
+      } catch (docErr: any) {
+        log.warn('[BackgroundCheck] Document record failed (non-fatal):', docErr?.message);
+      }
+
+      res.json({ success: true });
+    } catch (error: unknown) {
+      log.error('[BackgroundCheck] Error:', error);
+      res.status(500).json({ error: 'Failed to record background check' });
+    }
+  },
+);
 
 router.get('/', async (req: AuthenticatedRequest, res) => {
   const startTime = Date.now();
@@ -577,6 +1048,36 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
   } catch (error) {
     log.error("Error fetching employees:", error);
     res.status(500).json({ message: "Failed to fetch employees" });
+  }
+});
+
+router.get('/export', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) {
+      return res.status(400).json({ message: "Workspace ID is required" });
+    }
+
+    const { hasManagerAccess } = await import('../rbac');
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const requesterEmployee = await storage.getEmployeeByUserId(req.user.id, workspaceId);
+    if (!hasManagerAccess(requesterEmployee?.workspaceRole as string)) {
+      return res.status(403).json({ message: "Only managers can export the employee roster" });
+    }
+
+    const allEmployees = await storage.getEmployeesByWorkspace(workspaceId, 10000, 0);
+    
+    const csvHeader = 'First Name,Last Name,Email,Phone,Position,Role,Status,Worker Type,Pay Type\n';
+    const csvRows = allEmployees.map(e => 
+      `"${e.firstName}","${e.lastName}","${e.email || ''}","${e.phone || ''}","${e.position || ''}","${e.workspaceRole || ''}","${e.isActive ? 'Active' : 'Inactive'}","${e.workerType || ''}","${e.payType || ''}"`
+    ).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="employee-roster-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvHeader + csvRows);
+  } catch (error) {
+    log.error("Error exporting employees:", error);
+    res.status(500).json({ message: "Failed to export employees" });
   }
 });
 
@@ -1247,7 +1748,176 @@ router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-ter.get('/stats', async (req: AuthenticatedRequest, res) => {
+router.get('/me', async (req: any, res) => {
+  try {
+    let userId: string | undefined;
+    
+    if (req.session?.userId) {
+      userId = req.session.userId;
+    }
+    else if (req.requireAuth?.() && req.user?.id) {
+      userId = req.user?.id;
+    }
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const workspaceId = req.workspaceId;
+    // Always scope /me to the authenticated workspace — prevents cross-tenant profile leak
+    const employee = await storage.getEmployeeByUserId(userId, workspaceId);
+    
+    if (!employee) {
+      return res.status(404).json({ message: "Employee profile not found" });
+    }
+    
+    const [platformRoleData] = await db
+      .select({ role: platformRoles.role })
+      .from(platformRoles)
+      .where(and(eq(platformRoles.userId, userId), isNull(platformRoles.revokedAt)))
+      .limit(1);
+    
+    res.json({
+      ...employee,
+      platformRole: platformRoleData?.role || null
+    });
+  } catch (error: unknown) {
+    log.error("Error fetching employee profile:", error);
+    res.status(500).json({ message: "Failed to fetch employee profile" });
+  }
+});
+
+router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id || req.user?.id;
+
+    // Scope to the authenticated workspace — prevents cross-tenant mutation
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const employee = await storage.getEmployeeByUserId(userId, req.workspaceId);
+
+    if (!employee) {
+      return res.status(404).json({ message: "Employee profile not found" });
+    }
+
+    // ── S3: BLOCK UNVERIFIED EMAIL SELF-EDIT ───────────────────────────────
+    // Email is an identity field. Changing it without re-verification is an
+    // account-takeover vector. Route callers to the verified-change flow
+    // instead of silently persisting.
+    if (req.body.email !== undefined && req.body.email !== employee.email) {
+      return res.status(403).json({
+        error: 'EMAIL_CHANGE_REQUIRES_VERIFICATION',
+        message: 'Email changes require verification. Use POST /api/auth/request-email-change to start the flow.',
+      });
+    }
+
+    // ── S3: allowedFields no longer includes 'email' ───────────────────────
+    const allowedFields = ['phone', 'address', 'addressLine2', 'city', 'state', 'zipCode', 'country',
+                           'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+    const filteredData: any = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        filteredData[key] = req.body[key];
+      }
+    }
+
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    const validated = insertEmployeeSchema.partial().parse(filteredData);
+    const updated = await storage.updateEmployee(employee.id, employee.workspaceId, validated);
+
+    if (!updated) {
+      return res.status(404).json({ message: "Failed to update employee" });
+    }
+
+    // ── S11: phone sync to users.phone when user is linked ─────────────────
+    // The parallel route PATCH /api/auth/profile already syncs phone both
+    // ways. This route didn't, leaving users.phone stale. Keep the two
+    // tables in step when the employee has a linked user account.
+    if (employee.userId && Object.prototype.hasOwnProperty.call(filteredData, 'phone')) {
+      try {
+        const trimmedPhone = typeof filteredData.phone === 'string' ? filteredData.phone.trim() : filteredData.phone;
+        await storage.updateUser(employee.userId, { phone: trimmedPhone ?? null });
+      } catch (userSyncErr: unknown) {
+        log.warn('[EmployeeRoutes] users.phone sync from /me/contact-info failed (non-blocking):', (userSyncErr as any)?.message || String(userSyncErr));
+      }
+    }
+
+    res.json(updated);
+  } catch (error: unknown) {
+    log.error("Error updating contact info:", error);
+    res.status(400).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to update contact information" });
+  }
+});
+
+router.post('/approve', async (req: any, res) => {
+  try {
+    const userId = req.user?.id || req.user?.id;
+    const user = await storage.getUser(userId);
+    
+    if (!user?.currentWorkspaceId) {
+      return res.status(403).json({ message: "No workspace selected" });
+    }
+
+    const approvalSchema = z.object({
+      employeeId: z.string().min(1, "Employee ID is required"),
+      hourlyRate: z.number().positive("Hourly rate must be greater than 0"),
+    });
+
+    const { employeeId, hourlyRate } = approvalSchema.parse(req.body);
+
+    const existingEmployee = await storage.getEmployee(employeeId, user.currentWorkspaceId);
+    
+    if (!existingEmployee) {
+      return res.status(404).json({ message: "Employee not found or does not belong to your workspace" });
+    }
+
+    if (existingEmployee.onboardingStatus !== 'pending_review') {
+      return res.status(400).json({ 
+        message: `Employee must be in 'pending_review' status. Current status: ${existingEmployee.onboardingStatus}` 
+      });
+    }
+
+    const employee = await storage.updateEmployee(employeeId, user.currentWorkspaceId, {
+      hourlyRate: hourlyRate.toString(),
+      onboardingStatus: 'completed',
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: "Failed to update employee" });
+    }
+
+    log.info(`[AUDIT] Manager ${userId} approved employee ${employeeId} with hourly rate $${hourlyRate}`);
+
+    // 🧠 TRINITY: New pay rate set during onboarding approval — flag payroll drafts and future cost projections
+    (async () => {
+      try {
+        const { helpaiOrchestrator } = await import('../services/helpai/platformActionHub');
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        await helpaiOrchestrator.executeAction('settings.propagate_pay_rate_change', {
+          employeeId,
+          workspaceId: user.currentWorkspaceId,
+          newRate: hourlyRate.toString(),
+          changedBy: userId,
+          context: 'onboarding_approval',
+        });
+      } catch (propagateErr) {
+        log.warn('[PayRatePropagation] Trinity propagation non-blocking failure (onboarding approval):', propagateErr);
+      }
+    })();
+
+    res.json(employee ? filterEmployeeForResponse(employee, createFilterContext(req)) : null);
+  } catch (error: unknown) {
+    log.error("Error approving employee:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      return res.status(400).json({ message: (error as any).errors[0].message });
+    }
+    res.status(400).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to approve employee" });
+  }
+});
+
+router.get('/stats', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace required' });
@@ -1266,6 +1936,24 @@ ter.get('/stats', async (req: AuthenticatedRequest, res) => {
     });
   } catch (err: unknown) {
     res.status(500).json({ message: 'Failed to fetch employee stats' });
+  }
+});
+
+router.get('/search', async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const query = req.query.q as string;
+    
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+    
+    const results = await storage.searchEmployeesAndApplications(workspaceId, query);
+    const ctx = createFilterContext(req);
+    res.json(Array.isArray(results) ? filterEmployeesForResponse(results, ctx) : results);
+  } catch (error) {
+    log.error("Error searching employees:", error);
+    res.status(500).json({ message: "Failed to search employees" });
   }
 });
 
@@ -1332,7 +2020,114 @@ router.get('/:employeeId/payroll', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-uter.post('/:employeeId/availability', async (req: AuthenticatedRequest, res) => {
+router.put('/:employeeId/payroll', async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+    const { employeePayrollInfo, insertEmployeePayrollInfoSchema } = await import("@shared/schema");
+
+    const validated = insertEmployeePayrollInfoSchema.partial().parse(req.body);
+
+    const {
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      taxId,
+      bankAccountNumber,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      routingNumber,
+      preferredPayoutMethod,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      w4Allowances,
+      additionalWithholding,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      filingStatus,
+      directDepositEnabled,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      w9OnFile,
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      i9OnFile,
+    } = validated;
+
+    const existing = await db
+      .select()
+      .from(employeePayrollInfo)
+      .where(
+        and(
+          eq(employeePayrollInfo.workspaceId, workspaceId),
+          eq(employeePayrollInfo.employeeId, employeeId)
+        )
+      )
+      .limit(1)
+      .then(rows => rows[0]);
+
+    let result;
+    if (existing) {
+      [result] = await db
+        .update(employeePayrollInfo)
+        .set({
+          // @ts-expect-error — TS migration: fix in refactoring sprint
+          taxId,
+          bankAccountNumber,
+          routingNumber,
+          preferredPayoutMethod,
+          w4Allowances,
+          additionalWithholding,
+          filingStatus,
+          directDepositEnabled,
+          w9OnFile,
+          i9OnFile,
+          updatedAt: new Date(),
+        })
+        .where(eq(employeePayrollInfo.id, existing.id))
+        .returning();
+    } else {
+      [result] = await db
+        .insert(employeePayrollInfo)
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        .values({
+          workspaceId,
+          employeeId,
+          taxId,
+          bankAccountNumber,
+          routingNumber,
+          preferredPayoutMethod,
+          w4Allowances,
+          additionalWithholding,
+          filingStatus,
+          directDepositEnabled,
+          w9OnFile,
+          i9OnFile,
+        })
+        .returning();
+    }
+
+    res.json(result);
+  } catch (error: unknown) {
+    log.error('Error updating payroll info:', error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to update payroll information' });
+  }
+});
+
+router.get('/:employeeId/availability', async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+    const { includeExpired } = req.query;
+    const { availabilityService } = await import("../services/availabilityService");
+
+    const availability = await availabilityService.getEmployeeAvailability(
+      workspaceId,
+      employeeId,
+      includeExpired === 'true'
+    );
+
+    res.json(availability);
+  } catch (error: unknown) {
+    log.error('Error getting availability:', error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to get availability' });
+  }
+});
+
+router.post('/:employeeId/availability', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.params;
@@ -1349,6 +2144,30 @@ uter.post('/:employeeId/availability', async (req: AuthenticatedRequest, res) =>
   } catch (error: unknown) {
     log.error('Error setting availability:', error);
     res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to set availability' });
+  }
+});
+
+router.get('/:employeeId/time-off', async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+    const { timeOffRequests } = await import("@shared/schema");
+
+    const requests = await db
+      .select()
+      .from(timeOffRequests)
+      .where(
+        and(
+          eq(timeOffRequests.workspaceId, workspaceId),
+          eq(timeOffRequests.employeeId, employeeId)
+        )
+      )
+      .orderBy(desc(timeOffRequests.createdAt));
+
+    res.json(requests);
+  } catch (error: unknown) {
+    log.error('Error getting time off requests:', error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to get time off requests' });
   }
 });
 
@@ -1386,6 +2205,31 @@ router.get('/:employeeId/contracts', async (req: AuthenticatedRequest, res) => {
   } catch (error: unknown) {
     log.error('Error getting contracts:', error);
     res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to get contracts' });
+  }
+});
+
+router.get('/:employeeId/shift-actions', async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+    const { shiftActions } = await import("@shared/schema");
+
+    const actions = await db
+      .select()
+      .from(shiftActions)
+      .where(
+        and(
+          eq(shiftActions.workspaceId, workspaceId),
+          // @ts-expect-error — TS migration: fix in refactoring sprint
+          eq(shiftActions.employeeId, employeeId)
+        )
+      )
+      .orderBy(desc(shiftActions.createdAt));
+
+    res.json(actions);
+  } catch (error: unknown) {
+    log.error('Error getting shift actions:', error);
+    res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || 'Failed to get shift actions' });
   }
 });
 
@@ -1429,112 +2273,179 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 // Pre-flight: legal hold (423), open payroll records (409).
 // Anonymizes PII fields, preserves financial ledger, writes permanent audit record.
 // ─────────────────────────────────────────────────────────────────────────────
+router.delete('/:id/pii-purge', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    const userRole = (req.user)?.workspaceRole;
+
+    if (!workspaceId) {
+      return res.status(403).json({ message: 'Workspace context required' });
+    }
+
+    // ── RBAC: ORG_OWNER only ────────────────────────────────────────────────
+    if (userRole !== 'org_owner') {
+      return res.status(403).json({
+        message: 'Only the organization owner may perform a PII hard purge.',
+        code: 'ORG_OWNER_REQUIRED',
+      });
+    }
+
+    // ── Body validation ─────────────────────────────────────────────────────
+    const bodySchema = z.object({
+      confirm: z.literal('PURGE'),
+      reason: z.string().min(10, 'Purge reason must be at least 10 characters'),
+    });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'Body must include { confirm: "PURGE", reason: string (min 10 chars) }',
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+    const { reason } = parsed.data;
+
+    // ── Load employee (workspace-scoped) ────────────────────────────────────
+    const employee = await storage.getEmployee(id, workspaceId);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // ── PRE-FLIGHT 1: Legal hold check — 423 ────────────────────────────────
+    // Check any DAR associated with this employee's shifts for legal hold
+    const legalHoldCheck = await db
+      .select({ id: sql<string>`id`, legalHold: sql<boolean>`legal_hold` })
+      .from(sql`daily_activity_reports`)
+      .where(sql`workspace_id = ${workspaceId} AND employee_id = ${id} AND legal_hold = true`)
+      .limit(1)
+      .catch(() => []);
+
+    if (legalHoldCheck.length > 0) {
+      return res.status(423).json({
+        message: 'Employee has active legal hold. PII purge is blocked until legal hold is released.',
+        code: 'LEGAL_HOLD_ACTIVE',
+      });
+    }
+
+    // ── PRE-FLIGHT 2: Open payroll records — 409 ────────────────────────────
+    const openPayrollCheck = await db
+      .select({ id: sql<string>`id` })
+      .from(sql`payroll_periods`)
+      .where(sql`workspace_id = ${workspaceId} AND status NOT IN ('payment_confirmed', 'payment_failed', 'cancelled') AND EXISTS (SELECT 1 FROM payroll_entries pe WHERE pe.payroll_period_id = payroll_periods.id AND pe.employee_id = ${id})`)
+      .limit(1)
+      .catch(() => []);
+
+    if (openPayrollCheck.length > 0) {
+      return res.status(409).json({
+        message: 'Employee has open payroll records. Close all payroll periods before purging PII.',
+        code: 'OPEN_PAYROLL_RECORDS',
+      });
+    }
+
+    // ── ANONYMIZE PII fields, preserve financial ledger ─────────────────────
+    const anonymizedTag = `PURGED-${id.substring(0, 8).toUpperCase()}`;
+    await db
+      .update(employees)
+      .set({
+        firstName: 'PURGED',
+        lastName: anonymizedTag,
+        email: `purged-${id}@purged.invalid`,
+        phone: null,
+        address: null,
+        dateOfBirth: null,
+        ssn: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        emergencyContactRelation: null,
+        licenseNumber: null,
+        licenseExpiry: null,
+        updatedAt: new Date(),
+      } as any)
+      .where(and(eq(employees.id, id), eq(employees.workspaceId, workspaceId)));
+
+    // ── Write permanent purge audit record ──────────────────────────────────
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const { universalAuditService, AUDIT_ACTIONS } = await import('../services/universalAuditService');
+    await universalAuditService.log({
+      workspaceId,
+      actorId: userId!,
+      action: (AUDIT_ACTIONS as any).PII_HARD_PURGE ?? 'PII_HARD_PURGE',
+      resourceType: 'employee',
+      resourceId: id,
+      metadata: {
+        reason,
+        purgedFields: ['firstName', 'lastName', 'email', 'phone', 'address', 'dateOfBirth', 'ssn', 'emergencyContact', 'licenseNumber', 'licenseExpiry'],
+        financialRecordsPreserved: true,
+        performedBy: userId,
+        performedAt: new Date().toISOString(),
+        anonymizedTag,
+      },
+      severity: 'CRITICAL',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    log.warn('PII_HARD_PURGE performed', { workspaceId, employeeId: id, actorId: userId, reason });
+
+    return res.status(200).json({
+      message: 'Employee PII has been permanently purged. Financial records preserved.',
+      employeeId: id,
+      anonymizedTag,
+      auditRecordCreated: true,
+    });
+  } catch (error: unknown) {
+    log.error('Error in PII hard purge:', error);
+    return res.status(500).json({ message: 'PII purge failed. No changes were applied.' });
+  }
+});
+
 // Phase 4 — GET /api/employees/my/career-score
 // Self-service career score for the currently authenticated employee.
 // Returns the cross-tenant coaileague score plus active disciplinary counts
 // so HelpAI can answer "what's my score" by SMS / chat.
-
-router.get('/me', async (req: any, res) => {
+router.get('/my/career-score', requireAuth, async (req: any, res) => {
   try {
-    let userId: string | undefined;
-    
-    if (req.session?.userId) {
-      userId = req.session.userId;
-    }
-    else if (req.requireAuth?.() && req.user?.id) {
-      userId = req.user?.id;
-    }
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
+    const userId = req.user?.id;
     const workspaceId = req.workspaceId;
-    // Always scope /me to the authenticated workspace — prevents cross-tenant profile leak
-    const employee = await storage.getEmployeeByUserId(userId, workspaceId);
-    
-    if (!employee) {
-      return res.status(404).json({ message: "Employee profile not found" });
-    }
-    
-    const [platformRoleData] = await db
-      .select({ role: platformRoles.role })
-      .from(platformRoles)
-      .where(and(eq(platformRoles.userId, userId), isNull(platformRoles.revokedAt)))
-      .limit(1);
-    
-    res.json({
-      ...employee,
-      platformRole: platformRoleData?.role || null
+    if (!userId || !workspaceId) return res.status(403).json({ error: 'Auth required' });
+
+    const { pool } = await import('../db');
+
+    const { rows: emp } = await pool.query(
+      `SELECT id FROM employees WHERE user_id = $1 AND workspace_id = $2 LIMIT 1`,
+      [userId, workspaceId],
+    );
+    if (!emp.length) return res.status(404).json({ error: 'Employee record not found' });
+
+    const { rows } = await pool.query(
+      `SELECT cp.overall_score,
+              cp.reliability_score,
+              (SELECT COUNT(*)::int FROM disciplinary_records dr
+                WHERE dr.employee_id = cp.employee_id
+                  AND dr.workspace_id = $1
+                  AND dr.status = 'active'
+                  AND dr.record_type != 'commendation') AS active_disciplinary_count,
+              (SELECT COUNT(*)::int FROM disciplinary_records dr
+                WHERE dr.employee_id = cp.employee_id
+                  AND dr.workspace_id = $1
+                  AND dr.record_type = 'commendation') AS commendation_count
+         FROM coaileague_employee_profiles cp
+        WHERE cp.employee_id = $2 AND cp.workspace_id = $1
+        LIMIT 1`,
+      [workspaceId, emp[0].id],
+    );
+
+    res.json(rows[0] || {
+      overall_score: 0.75,
+      reliability_score: 0.85,
+      active_disciplinary_count: 0,
+      commendation_count: 0,
     });
   } catch (error: unknown) {
-    log.error("Error fetching employee profile:", error);
-    res.status(500).json({ message: "Failed to fetch employee profile" });
+    log.error('[CareerScore] Fetch failed:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
-})
-
-router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id || req.user?.id;
-
-    // Scope to the authenticated workspace — prevents cross-tenant mutation
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const employee = await storage.getEmployeeByUserId(userId, req.workspaceId);
-
-    if (!employee) {
-      return res.status(404).json({ message: "Employee profile not found" });
-    }
-
-    // ── S3: BLOCK UNVERIFIED EMAIL SELF-EDIT ───────────────────────────────
-    // Email is an identity field. Changing it without re-verification is an
-    // account-takeover vector. Route callers to the verified-change flow
-    // instead of silently persisting.
-    if (req.body.email !== undefined && req.body.email !== employee.email) {
-      return res.status(403).json({
-        error: 'EMAIL_CHANGE_REQUIRES_VERIFICATION',
-        message: 'Email changes require verification. Use POST /api/auth/request-email-change to start the flow.',
-      });
-    }
-
-    // ── S3: allowedFields no longer includes 'email' ───────────────────────
-    const allowedFields = ['phone', 'address', 'addressLine2', 'city', 'state', 'zipCode', 'country',
-                           'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
-    const filteredData: any = {};
-    for (const key of allowedFields) {
-      if (req.body[key] !== undefined) {
-        filteredData[key] = req.body[key];
-      }
-    }
-
-    if (Object.keys(filteredData).length === 0) {
-      return res.status(400).json({ message: "No valid fields to update" });
-    }
-
-    const validated = insertEmployeeSchema.partial().parse(filteredData);
-    const updated = await storage.updateEmployee(employee.id, employee.workspaceId, validated);
-
-    if (!updated) {
-      return res.status(404).json({ message: "Failed to update employee" });
-    }
-
-    // ── S11: phone sync to users.phone when user is linked ─────────────────
-    // The parallel route PATCH /api/auth/profile already syncs phone both
-    // ways. This route didn't, leaving users.phone stale. Keep the two
-    // tables in step when the employee has a linked user account.
-    if (employee.userId && Object.prototype.hasOwnProperty.call(filteredData, 'phone')) {
-      try {
-        const trimmedPhone = typeof filteredData.phone === 'string' ? filteredData.phone.trim() : filteredData.phone;
-        await storage.updateUser(employee.userId, { phone: trimmedPhone ?? null });
-      } catch (userSyncErr: unknown) {
-        log.warn('[EmployeeRoutes] users.phone sync from /me/contact-info failed (non-blocking):', (userSyncErr as any)?.message || String(userSyncErr));
-      }
-    }
-
-    res.json(updated);
-  } catch (error: unknown) {
-    log.error("Error updating contact info:", error);
-    res.status(400).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to update contact information" });
-  }
-})
+});
 
 export default router;
