@@ -118,3 +118,29 @@ Alive kept: /api/automation/triggers, /api/control-tower/summary,
 - billing-api.ts (912L) + invoiceRoutes.ts (2,462L) — billing surfaces
 - timeOffRoutes.ts (709L) — quick verify
 - When complete: PR refactor branch onto development
+
+
+---
+
+## LATEST CLAUDE PASS — Financial domain batch: -3,223L
+
+| File | Before | After | Notes |
+|---|---|---|---|
+| payrollRoutes.ts | 3,753L | 1,719L | -2,034L, 27 dead handlers deleted |
+| billing-api.ts | 1,839L | 1,588L | -251L, 11 dead handlers deleted |
+| invoiceRoutes.ts | 3,819L | 2,881L | -938L, 20 dead handlers deleted |
+| timeOffRoutes.ts | 709L | 709L | All 16 handlers alive — skip |
+
+**Extra caution applied:** Preserved portal, PDF, payment-status, create-payment routes
+even when exact-path search showed 0 — verified via broad/component search first.
+
+**Refactor branch total: ~24,335L removed**
+
+**Next: PR refactor branch onto development**
+```bash
+git checkout development
+git merge --no-ff refactor/route-cleanup -m "refactor: merge route cleanup branch"
+git push origin development
+```
+Before merging: Railway preview deploy on refactor branch recommended.
+
