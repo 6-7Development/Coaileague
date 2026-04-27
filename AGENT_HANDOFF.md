@@ -402,3 +402,31 @@ No Trinity action mutation without workspace scope, hard preflight gates, audit 
 and fail-closed behavior for financial/compliance/tax/scheduling risk.
 Trinity is one individual. No Business/Personal/Tech mode switching.
 ```
+
+
+---
+
+## QUEUED ITEMS (post-audit-phases, pre-ChatDock sprint)
+
+### RBAC + IRC mode consolidation
+Bryan flagged: the IRC mode system and RBAC are two competing layers answering
+the same permission questions. This is redundant and should be collapsed.
+
+Target architecture:
+  RBAC owns ALL permission decisions (who can do what)
+  Room type (Shift Room, Team Channel, DM) owns behavior decisions (what appears, what bots join)
+  IRC mode strings (sup/org/met/field/coai) -> internal routing metadata only, never user-facing
+
+Work:
+  server/websocket.ts - 8,920L of mode-based branching -> room-type + RBAC checks
+  server/services/ircEventRegistry.ts -> simplify or remove IRC event abstraction
+  IRC_EVENTS -> replace with typed WebSocket message events
+
+Timing: after all audit phases complete. Core to ChatDock enhancement sprint.
+This is NOT a Phase E item - just queued so it doesn't get lost.
+
+### Codex upgrade notes from Phase D (to address in future passes)
+  - Action registry is well above 300 (561 unique IDs found). assertRegistryInvariants()
+    now warns at startup - Claude needs a consolidation pass to disable/merge low-value
+    action sets until runtime count is under 300.
+  - Suggest adding startup test: initialize registry, assert unique IDs + count < 300.
