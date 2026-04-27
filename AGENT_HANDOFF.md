@@ -1,14 +1,13 @@
 # COAILEAGUE REFACTOR - MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 - Codex (Phase D Trinity action-flow audit complete)
+# Last updated: 2026-04-27 - Claude (Phase D fixes complete)
 
 ---
 
 ## TURN TRACKER
 
 ```text
-Current turn: CLAUDE <- execute Phase D Trinity action-flow fixes on development.
-Next Codex turn: review Claude's Phase D fixes before Phase E starts.
+Current turn: CODEX <- review Phase D fixes + audit Phase E (documents/compliance)
 ```
 
 ---
@@ -28,10 +27,11 @@ Never merge refactor/service-layer -> development.
 
 ```text
 Phases 1-6 broad refactor: complete, ~97k lines removed.
-Phase A auth/session: reviewed and green.
-Phase B financial flows: all fixes deployed + follow-ups complete.
-Phase C scheduling/shift: Grade A hardening deployed.
-Phase D Trinity action flows: AUDIT COMPLETE - blockers found; Claude executes next.
+Phase A auth/session: complete.
+Phase B financial flows: complete.
+Phase C scheduling/shift: complete.
+Phase D Trinity action flows: FIXES DEPLOYED — Codex to verify before Phase E.
+Phase E documents/compliance flows: NOT STARTED — Codex audits next.
 ```
 
 ---
@@ -39,17 +39,82 @@ Phase D Trinity action flows: AUDIT COMPLETE - blockers found; Claude executes n
 ## DEVELOPMENT TIP
 
 ```text
-origin/development -> 443e8bce2 (STABLE GREEN before Phase D fixes)
-refactor/service-layer audit base -> f3f92da6c
+origin/development -> 0db5ac212 (STABLE GREEN after Phase D fixes)
 ```
 
 ---
 
-## WHAT CLAUDE DID - Phase B follow-ups + Phase C (Codex notes)
+## WHAT CLAUDE DID — Phase D (Codex: please verify)
 
-Phase B and C were not reworked by Codex this turn. The Phase D audit found Trinity action paths that bypass or break some Phase B/C standards, especially payroll, invoice/payment, and action-gate execution. Fix Phase D below before moving to documents/compliance.
+### P0 fixes — action gates were broken
+
+**preExecutionValidator** — fail-closed on error for high-risk categories
+  Was: any validator exception → PASSED (fail open)
+  Now: payroll/invoicing/billing/scheduling/admin/compliance/tax → blocked
+
+**platformActionHub** — validator contract corrected
+  Was: checking .valid (always undefined) → blocked every workspace action
+  Now: checks .approved + handles .requiresConfirmation explicitly
+  Also: fail-closed on catch for high-risk categories
+
+**Dual-AI verification** — now actually blocks
+  Was: only blocked if approved===false AND criticalIssues.length > 0 (catch continued)
+  Now: blocks on any non-approved result. Catch → fail-closed block.
+
+**payroll.run_payroll** — zero-hours gate before insert
+  Was: insert payroll run first, count hours second
+  Now: count approved hours FIRST, block with ZERO_APPROVED_HOURS if 0, then insert
+
+### P1 fixes — security
+
+**Session messages IDOR** — ownership check on getSessionMessages()
+**Control console** — workspaceId from auth, not raw query
+**Role lists** — canonical names + support_agent/support_manager added
+**Terminated employee** — all payload aliases + terminationDate check
+**Registry invariant** — assertRegistryInvariants() method added
+**Dispatcher action ID** — payroll.run → payroll.run_payroll
+**Tax action RBAC** — requiredRoles set, req.payload instead of req.params
+
+### P2 fixes — guardrails + cleanup
+
+**Legal/duty-of-care hard guard** — deterministic regex in trinityContentGuardrails
+**Stale mode code** — legacy aliases removed, switchMode deprecated
+
+### Codex — verify:
+1. Does the fail-closed pattern in preExecutionValidator look correct?
+2. Is the dual-AI catch block returning a proper ActionResult type?
+3. Any other Trinity action paths that bypass the validator entirely?
+4. Is the legal_advice guardrail pattern comprehensive enough?
 
 ---
+
+## PHASE E — NEXT (Codex audits)
+
+Target: Document and compliance flows
+
+Files to inspect:
+```
+server/routes/payStubRoutes.ts
+server/routes/payrollRoutes.ts          (pay stub generation + PDF)
+server/services/paystubService.ts       (PDF generation — already partially fixed)
+server/services/documents/             (document vault service)
+server/routes/complianceReportsRoutes.ts
+server/routes/compliance/
+server/routes/documentVaultRoutes.ts
+server/routes/documentLibraryRoutes.ts
+server/routes/hr/documentRequestRoutes.ts
+```
+
+Look for:
+1. Every document endpoint — does it return a real branded PDF saved to vault?
+   OR does any endpoint return raw data instead of a PDF?
+2. PDF has: header, footer, page numbers, document ID, tenant branding
+3. DocuSign-equivalent signing: request → signed webhook → vault storage
+4. Compliance evidence: license upload → expiration tracking → alert → regulator view
+5. Auditor portal: read-only, no write paths possible, workspace scoped
+6. i9, onboarding packet, credential wallet — end-to-end chain
+7. Any document endpoint missing workspace scoping
+
 
 ## PHASE D - TRINITY ACTION FLOWS AUDIT
 
