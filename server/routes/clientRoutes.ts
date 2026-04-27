@@ -991,7 +991,7 @@ router.post('/dockchat/start', dockChatRateLimit, async (req: any, res: any) => 
       }),
       clientId: z.string().optional(),
       clientName: z.string().optional(),
-      clientEmail: z.string().email().optional().or(z.literal('')),
+      clientEmail: z.string().email().optional().or(z.literal('')).transform(v => v || undefined),
       initialMessage: z.string().optional(),
     });
     const dockStartParsed = dockChatStartSchema.safeParse(req.body);

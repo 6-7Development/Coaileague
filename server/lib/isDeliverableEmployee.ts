@@ -12,8 +12,8 @@
  * a supervisor chain.
  */
 
-const BLOCKED_STATUSES = ['terminated', 'inactive', 'deactivated', 'suspended'] as const;
+const BLOCKED_STATUSES = new Set(['terminated', 'inactive', 'deactivated', 'suspended']);
 
 export function isDeliverableEmployee(emp: { isActive: boolean; status?: string | null }): boolean {
-  return emp.isActive === true && !BLOCKED_STATUSES.includes((emp.status ?? '') as typeof BLOCKED_STATUSES[number]);
+  return emp.isActive === true && !BLOCKED_STATUSES.has(emp.status ?? '');
 }
