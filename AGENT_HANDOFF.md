@@ -1,12 +1,12 @@
 # COAILEAGUE REFACTOR — MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-26 by Claude
+# Last updated: 2026-04-27 by Claude
 
 ---
 
 ## ACTIVE BRANCH
 ```
-refactor/service-layer  →  tip: 8751d8e7e
+refactor/service-layer  →  tip: d815a667f
 ```
 Both agents work here. Never push directly to development without a passing boot test.
 
