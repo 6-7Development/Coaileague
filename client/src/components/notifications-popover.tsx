@@ -2436,18 +2436,6 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         ) : sortedNotifications.length > 0 ? (
           <div className="divide-y min-h-0">
             {sortedNotifications.map((notification) => {
-              // Check if this is a broadcast notification
-              const isBroadcast = notification.metadata?.broadcastId;
-              
-              if (isBroadcast) {
-                return (
-                    key={notification.id}
-                    notification={notification}
-                    onDismiss={() => handleDismiss(notification.id)}
-                  />
-                );
-              }
-              
               return enableSwipeDelete ? (
                 <SwipeToDelete
                   key={notification.id}
@@ -2579,10 +2567,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       <>
         {/* Notification Bell Trigger */}
         <div onClick={() => { chatDock?.closeBubble(); setOpen(true); }}>
-          <AnimatedNotificationBell
-            notificationCount={totalUnread}
-            onClick={() => { chatDock?.closeBubble(); setOpen(true); }}
-          />
+          <Bell className="h-5 w-5 text-foreground" />
         </div>
         
         {/* Notifications Sheet - Uses Canvas Hub MobileResponsiveSheet for proper layer management */}
@@ -2642,10 +2627,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
             aria-expanded={open}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }}
           >
-            <AnimatedNotificationBell
-              notificationCount={totalUnread}
-              onClick={() => setOpen(!open)}
-            />
+            <Bell className="h-5 w-5" />
           </div>
         </PopoverTrigger>
         <PopoverContent 

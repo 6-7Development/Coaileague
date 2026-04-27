@@ -254,14 +254,7 @@ export function BroadcastCard({ broadcast, recipient, onDismiss }: BroadcastCard
       </Card>
 
       {/* Feedback Form Modal */}
-      {showFeedbackForm && (
-          open={showFeedbackForm}
-          onOpenChange={setShowFeedbackForm}
-          broadcastId={broadcast.id}
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          feedbackType={broadcast.actionConfig?.formType || 'general'}
-        />
-      )}
+      {/* BroadcastFeedbackForm removed */}
     </>
   );
 }

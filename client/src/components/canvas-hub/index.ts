@@ -1,10 +1,4 @@
 export {
-  CanvasHeader,
-  CanvasSection,
-  useCanvasHub,
-  type CanvasHubConfig,
-
-export {
   LayerManagerProvider,
   useLayerManager,
   useManagedLayer,
@@ -20,16 +14,6 @@ export {
 } from "./ManagedDialog"
 
 export {
-  NavigationSheetItem,
-  NavigationSheetSection,
-  SHEET_PROCESS_STEPS,
-  SHEET_HEIGHT_PRESETS,
-  type SheetProcessStep,
-  type SheetHeightPreset,
-
-export {
-
-export {
   TransitionLoaderProvider,
   useTransitionLoader,
   useTransitionLoaderIfMounted,
@@ -38,8 +22,6 @@ export {
   type TransitionLoaderConfig,
   type TransitionStatus,
 } from "./TransitionLoader"
-
-export {
 
 export {
   CanvasHubPage,
