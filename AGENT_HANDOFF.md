@@ -1,39 +1,34 @@
 # COAILEAGUE REFACTOR - MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 - Claude (Phase G complete, 3-agent protocol added)
+# Last updated: 2026-04-27 - Claude (Phase H complete)
 
 ---
 
 ## THREE-AGENT RELAY PROTOCOL
 
 ```
-CODEX       — Audit/review lead on refactor/service-layer
-              Documents exact risks, line numbers, fix instructions, validation
-              Audits WHOLE domains — routes, services, jobs, webhooks, storage, events
-
-CLAUDE      — Implementation lead on development
-              Executes fixes for WHOLE domains, boot-tests, then syncs back
-              One domain = one complete sweep = one coherent commit
-
-COPILOT     — Acceleration helper (narrow scoped only)
-              Narrow repeated patterns, test scaffolds, Zod boilerplate, helper replacements
-              NO architecture calls, NO final safety decisions, NO independent merges
+CLAUDE      → executes domain, boot-tests, commits
+COPILOT     → boilerplate acceleration (Zod, test scaffolds, helper patterns)
+CODEX       → verifies, decides next domain or signals AUDIT COMPLETE
 ```
 
-Speed rule: **One domain, one complete sweep, one coherent commit. Finish routes,
-services, jobs, webhooks, storage, events, tests, and validation for that domain
-before moving on.**
+Speed rule: One domain, one complete sweep, one coherent commit.
 
 ---
 
 ## TURN TRACKER
 
 ```text
-Current turn: CODEX
-  → Verify Phase G fixes on development (e9e0e20a2)
-  → Determine: Phase H audit needed? Or signal AUDIT COMPLETE?
-  → If Phase H: document full domain findings with line numbers, Claude + Copilot execute
-  → If complete: mark AUDIT COMPLETE and note post-audit enhancement sprint start
+Current turn: COPILOT
+  → Look for repeated Zod schema patterns, test stubs, or helper boilerplate
+    that can be added quickly across the codebase
+  → Suggested target: add test scaffolds for the key fixes from Phases D-H
+  → OR if no narrow scope found: signal CODEX to verify Phase H
+
+After Copilot: CODEX
+  → Verify Phase H fixes
+  → Determine: any remaining domains?
+  → Suggest: AUDIT COMPLETE if nothing critical remains
 ```
 
 ---
@@ -41,18 +36,8 @@ Current turn: CODEX
 ## CURRENT COMMIT
 
 ```text
-origin/development           -> e9e0e20a2  (Railway STABLE GREEN ✅)
-origin/refactor/service-layer -> this commit (synced + 3-agent protocol)
-```
-
-Boot test:
-```bash
-export DATABASE_URL="postgresql://postgres:MmUbhSxdkRGFLhBGGXGaWQeBceaqNmlj@metro.proxy.rlwy.net:40051/railway"
-export SESSION_SECRET="coaileague-dev-test-session-secret-32chars"
-node build.mjs && node dist/index.js > /tmp/boot.txt 2>&1 &
-sleep 18 && curl -s http://localhost:5000/api/workspace/health  # → {"message":"Unauthorized"}
-grep -cE "ReferenceError|is not defined|CRITICAL.*Failed" /tmp/boot.txt  # → 0
-kill %1
+origin/development           -> 8aca7e864  (Railway STABLE GREEN ✅)
+origin/refactor/service-layer -> this commit
 ```
 
 ---
@@ -65,70 +50,55 @@ Phase A auth/session:                  ✅ complete
 Phase B financial flows:               ✅ complete
 Phase C scheduling/shift:              ✅ complete (Grade A)
 Phase D Trinity action flows:          ✅ complete
-Phase E documents/compliance:          ✅ complete (2 larger items queued)
+Phase E documents/compliance:          ✅ complete
 Phase F notifications/broadcasting:    ✅ complete
-Phase G integrations (QB/Stripe/Plaid): ✅ deployed — Codex to verify
-Phase H (TBD):                         Codex decides after Phase G verification
+Phase G integrations (QB/Stripe/Plaid): ✅ complete
+Phase H admin/upload/platform guards:  ✅ deployed — Copilot then Codex to verify
 ```
 
 ---
 
-## PHASE G — WHAT CLAUDE DID (Codex: verify)
+## WHAT CLAUDE DID — Phase H (verify)
 
-**F residuals also closed in this commit:**
-- F-RESIDUAL-P1: /api/notifications/send — Zod validation (uuid, channel enum, body)
+H-P0-1: bulk-operations — 5 MB file limit + MIME filter (CSV/Excel) + requireManager on imports
+H-P1-1: platform survey creation — requirePlatformStaff (was completely open)
+H-P1-2: adminDevExecuteRoute — production hard block added (defense-in-depth)
 
-**Phase G fixes:**
-- G-P0-1: Plaid employee DD — self-or-manager guard on link-token + exchange
-  Field employees can only link their own record (checks emp.userId === requester userId)
-  Managers/owners have explicit payroll authority
-- G-P0-2: Plaid ACH — Decimal-safe amount via toFinancialString(), idempotency check
-  before Plaid API call (returns existing attempt on duplicate key), amount > 0 guard
-- G-P1-1: QB manual-review IDOR — workspaceId passed into resolveManualReview()
-- G-P1-2: QB invoice — string|number Zod transform at API boundary
-- G-P1-3: QB webhook — DB insert-on-conflict dedupe replaces in-memory Set (survives restarts)
-- G-P1-4: Plaid webhook — signature verified BEFORE 200 response
-  Was: 200 sent first, verify async → Plaid saw success when verify failed
-  Now: verify → 400 on bad sig (Plaid retries), 200 on success, process async
-- G-P1-5: Stripe — centsToMoneyString(), calculateStripeAchFee(), calculateStripeCardFee()
-  helpers replacing raw / 100 and fee arithmetic throughout stripeWebhooks.ts
-- G-P2-1: QB sync-invoices — requireManager added alongside requireProfessional
-
-**Codex verify questions:**
-1. Does the Plaid self-or-manager guard look correct for the employee ownership flow?
-2. Is the QB DB-backed dedupe (insert into quickbooks_processed_events) safe given
-   the table may not exist yet? Should it fail open or hard on table-not-found?
-3. Any Stripe raw math missed in stripeEventBridge.ts or billing-api.ts?
+PASSES (no action needed, documented for audit trail):
+  adminRoutes, adminWorkspaceDetailsRoutes, financialAdminRoutes,
+  platformRoutes, adminPermissionRoutes, securityAdminRoutes,
+  platformConfigValuesRoutes, admin/aiCosts, auditorRoutes,
+  bulk-operations exports, chat-uploads — all properly gated ✅
 
 ---
 
-## PHASE H — SUGGESTED AUDIT TARGETS (Codex decides)
+## COPILOT SCOPE (narrow, acceleration only)
 
-If Codex determines another pass is warranted, suggested domains:
+Suggested narrow targets across the codebase:
+1. Any route file that has manual body destructuring instead of Zod — add schema
+2. Test stubs for key security fixes (panic alert double-ack, NDS atomic claim,
+   broadcast token double-accept, Plaid ownership, QB IDOR)
+3. Helper function for "is deliverable employee" (isActive + status exclusion)
+   shared across UNE, scheduling, and validator
+4. Any remaining `// @ts-expect-error — TS migration: fix in refactoring sprint`
+   comments where the actual fix is simple
 
-```
-1. Admin + internal API routes
-   server/routes/adminRoutes.ts
-   server/routes/platformAdminRoutes.ts
-   server/routes/rootAdminRoutes.ts
-   → Any endpoint returning cross-workspace data without platform-admin gate?
-   → Any bulk operation without rate limit or audit trail?
-
-2. Multi-tenant data isolation edge cases
-   Anywhere workspaceId is optional in a query that should never be optional
-   Any Trinity or HelpAI action that could bleed cross-tenant context
-
-3. Storage + file handling
-   server/routes/uploadRoutes.ts
-   server/services/storageService.ts
-   → Workspace-scoped uploads? Presigned URL expiry? Content-type validation?
-
-4. Session + auth edge cases
-   Any route that reads req.session directly without requireAuth guard
-   Social auth / SSO callback paths
-```
+DO NOT: make architecture changes, merge independently, touch auth patterns
 
 ---
+
+## QUEUED — POST-AUDIT ENHANCEMENT SPRINT
+
+After Codex signals AUDIT COMPLETE, in priority order:
+
+1. RBAC + IRC mode consolidation
+2. Action registry to <300 actions
+3. E-P0-2 compliance report PDF service
+4. E-P1-5 compliance document vault intake
+5. ChatDock full enhancement sprint (see memory for full list)
+6. Holistic audit of all services as unified whole
+7. Trinity biological brain wiring enhancement
+8. UI polish (update toast, seasonal effects, mobile offline)
 
 ## STANDARD: NO BANDAIDS
 
