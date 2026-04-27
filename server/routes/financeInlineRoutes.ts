@@ -38,7 +38,8 @@ const BulkCreditSchema = z.object({
   reason: z.string().min(1),
 });
 const PeriodSchema = z.object({
-  period: z.enum(['month', 'quarter', 'year']).default('month'),
+  period: z.enum(['this_month', 'last_month', 'this_quarter', 'this_year', 'last_30_days'])
+    .default('this_month'),
 });
 const log = createLogger('FinanceInlineRoutes');
 
@@ -180,7 +181,9 @@ router.post("/billing/adjust-invoice/bulk-credit", requireOwner, async (req: Aut
 router.get("/finance/pl/consolidated", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
-    const period = (req.query.period as string) || "this_month";
+    const periodParsed = PeriodSchema.safeParse({ period: req.query.period || 'this_month' });
+    if (!periodParsed.success) return res.status(400).json({ error: 'Invalid period', valid: ['this_month','last_month','this_quarter','this_year','last_30_days'] });
+    const period = periodParsed.data.period;
     let startDate: Date;
     const now = new Date();
     switch (period) {
@@ -188,7 +191,7 @@ router.get("/finance/pl/consolidated", requireManager, async (req: Authenticated
       case "last_month": startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); break;
       case "this_quarter": startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); break;
       case "this_year": startDate = new Date(now.getFullYear(), 0, 1); break;
-      default: startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      case "last_30_days": default: startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
     // CATEGORY C — Raw SQL retained: COALESCE/SUM aggregations via pool client | Tables: invoices, expenses | Verified: 2026-03-23
@@ -215,10 +218,6 @@ router.get("/finance/pl/consolidated", requireManager, async (req: Authenticated
       const margin = totalRevenue > 0
         ? parseFloat(divideFinancialValues(multiplyFinancialValues(netProfitStr, '100'), totalRevenueStr)).toFixed(1)
         : "0.0";
-
-      // Validate period query param
-      const periodParsed = PeriodSchema.safeParse({ period });
-      // period is already cast above — validation is best-effort here
 
       res.json({
         success: true,

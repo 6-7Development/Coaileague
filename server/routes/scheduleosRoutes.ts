@@ -231,7 +231,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
         });
       }
     } catch (error: unknown) {
-      log.error("AI Scheduling™ Smart Generate Error:", error);
+      log.error("Trinity Schedule Smart Generate Error:", error);
       res.status(500).json({ message: sanitizeError(error) || "Failed to generate schedule" });
     }
   });
@@ -374,7 +374,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
         });
       });
     } catch (error: unknown) {
-      log.error("AI Scheduling™ Approval Error:", error);
+      log.error("Trinity Schedule Approval Error:", error);
       res.status(500).json({ message: sanitizeError(error) || "Failed to approve proposal" });
     }
   });
@@ -532,13 +532,13 @@ router.post('/start-trial', requireAuth, async (req: any, res) => {
 
       res.json({
         success: true,
-        message: "AI Scheduling™ 7-day free trial activated!",
+        message: "Trinity Schedule 7-day free trial activated!",
         trialStartedAt: new Date(),
         trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         daysLeft: 7,
       });
     } catch (error: unknown) {
-      log.error("Error starting AI Scheduling™ trial:", error);
+      log.error("Error starting Trinity Schedule trial:", error);
       res.status(500).json({ message: "Failed to start trial" });
     }
   });
@@ -585,7 +585,7 @@ router.post('/activate', requireManager, async (req: any, res) => {
 
         return res.json({
           success: true,
-          message: "AI Scheduling™ activated successfully! (Included in your subscription)",
+          message: "Trinity Schedule activated successfully! (Included in your subscription)",
           activatedAt: new Date(),
           activatedBy: userId,
         });
@@ -614,7 +614,7 @@ router.post('/activate', requireManager, async (req: any, res) => {
 
         return res.json({
           success: true,
-          message: "AI Scheduling™ activated successfully!",
+          message: "Trinity Schedule activated successfully!",
           activatedAt: new Date(),
           activatedBy: userId,
         });
@@ -686,7 +686,7 @@ router.post('/activate', requireManager, async (req: any, res) => {
 
           return res.json({
             success: true,
-            message: "AI Scheduling™ activated successfully!",
+            message: "Trinity Schedule activated successfully!",
             activatedAt: new Date(),
             activatedBy: userId,
           });
@@ -705,8 +705,8 @@ router.post('/activate', requireManager, async (req: any, res) => {
         error: "Invalid payment method",
       });
     } catch (error: unknown) {
-      log.error("Error activating AI Scheduling™:", error);
-      res.status(500).json({ message: "Failed to activate AI Scheduling™" });
+      log.error("Error activating Trinity Schedule:", error);
+      res.status(500).json({ message: "Failed to activate Trinity Schedule" });
     }
   });
 
@@ -786,7 +786,7 @@ router.get('/status', async (req: any, res) => {
 
       res.json(response);
     } catch (error: unknown) {
-      log.error("Error checking AI Scheduling™ status:", error);
+      log.error("Error checking Trinity Schedule status:", error);
       res.status(500).json({ message: "Failed to check status" });
     }
   });
