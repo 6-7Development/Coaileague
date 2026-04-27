@@ -49,25 +49,23 @@ export function ProgressiveHeader({ pageTitle, className }: ProgressiveHeaderPro
     }
   }, [transitionLoader]);
 
-  const {
-    isOpen,
-    animationState,
-    activeCategory,
-    handleMouseEnter,
-    handleMouseLeave,
-    handleOverlayMouseEnter,
-    handleOverlayMouseLeave,
-    toggleOverlay,
-    closeOverlay,
-    setActiveCategory,
-    onOpen: () => {
-      document.body.setAttribute('data-nav-overlay-open', 'true');
-    },
-    onClose: () => {
-      document.body.removeAttribute('data-nav-overlay-open');
-      triggerRef.current?.focus();
-    },
-  });
+  const [isOpen, setIsOpen] = useState(false);
+  const animationState = isOpen ? 'open' : 'closed';
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const handleMouseEnter = () => {};
+  const handleMouseLeave = () => {};
+  const handleOverlayMouseEnter = () => {};
+  const handleOverlayMouseLeave = () => {};
+  const toggleOverlay = (_trigger?: string) => {
+    setIsOpen(v => !v);
+    if (!isOpen) document.body.setAttribute('data-nav-overlay-open', 'true');
+    else document.body.removeAttribute('data-nav-overlay-open');
+  };
+  const closeOverlay = () => {
+    setIsOpen(false);
+    document.body.removeAttribute('data-nav-overlay-open');
+    triggerRef.current?.focus();
+  };
 
   useEffect(() => {
     if (isTrinityOpen && isOpen) {
@@ -180,25 +178,15 @@ export function ProgressiveHeader({ pageTitle, className }: ProgressiveHeaderPro
 
   return (
     <>
-        pageTitle={pageTitle}
-        isOverlayOpen={!isMobile && isOpen}
-        onTriggerMouseEnter={!isMobile ? handleMouseEnter : undefined}
-        onTriggerMouseLeave={!isMobile ? handleMouseLeave : undefined}
-        onTriggerClick={isMobile ? () => setLocation('/') : () => toggleOverlay('hover')}
-        rightActions={rightActions}
+      <div
         className={className}
-      />
-
-      {!isMobile && (
-          isOpen={isOpen}
-          animationState={animationState}
-          activeCategory={activeCategory}
-          onCategoryHover={setActiveCategory}
-          onClose={closeOverlay}
-          onMouseEnter={handleOverlayMouseEnter}
-          onMouseLeave={handleOverlayMouseLeave}
-        />
-      )}
+        onMouseEnter={!isMobile ? handleMouseEnter : undefined}
+        onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+        onClick={isMobile ? () => setLocation('/') : undefined}
+      >
+        {rightActions && <div className="flex items-center gap-2">{rightActions}</div>}
+      </div>
+      {/* NavigationOverlay removed — overlay handled by canvas-hub layer */}
     </>
   );
 }
