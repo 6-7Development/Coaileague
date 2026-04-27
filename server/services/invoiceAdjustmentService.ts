@@ -346,29 +346,36 @@ export async function refundInvoice(
     }
   }
 
-  // Update invoice status
-  const updated = await db
-    .update(invoices)
-    .set({
-      status: newStatus as any,
-      total: newTotalStr,
-      notes: `${invoice.notes || ""}\n[REFUND] ${formatCurrency(refundAmountStr)} refunded (${reason}) by ${processedBy}${stripeRefundId ? ` — Stripe refund ${stripeRefundId}` : ' — manual/offline refund (no Stripe PI recorded)'}`,
-    })
-    .where(eq(invoices.id, invoiceId))
-    .returning();
+  // Atomically update invoice + insert adjustment record
+  // Stripe refund (external call) is intentionally outside this transaction —
+  // external side effects cannot be rolled back. If the Stripe call succeeds
+  // but the DB write fails, the stripeRefundId is logged and the operator can
+  // reconcile. This is the industry-standard pattern for Stripe + DB ordering.
+  const [updated] = await db.transaction(async (tx) => {
+    const [inv] = await tx
+      .update(invoices)
+      .set({
+        status: newStatus as any,
+        total: newTotalStr,
+        notes: `${invoice.notes || ""}\n[REFUND] ${formatCurrency(refundAmountStr)} refunded (${reason}) by ${processedBy}${stripeRefundId ? ` — Stripe refund ${stripeRefundId}` : ' — manual/offline refund (no Stripe PI recorded)'}`,
+      })
+      .where(eq(invoices.id, invoiceId))
+      .returning();
 
-  // Save adjustment record
-  await db.insert(invoiceAdjustments).values({
-    invoiceId,
-    workspaceId: invoice.workspaceId,
-    adjustmentType: 'refund',
-    description: `Refund: ${reason}`,
-    amount: String(-refundAmount), // Negative for refund
-    reason,
-    createdBy: processedBy,
-    approvedBy: processedBy,
-    approvedAt: new Date(),
-    status: 'applied',
+    await tx.insert(invoiceAdjustments).values({
+      invoiceId,
+      workspaceId: invoice.workspaceId,
+      adjustmentType: 'refund',
+      description: `Refund: ${reason}`,
+      amount: String(-refundAmount), // Negative for refund
+      reason,
+      createdBy: processedBy,
+      approvedBy: processedBy,
+      approvedAt: new Date(),
+      status: 'applied',
+    });
+
+    return [inv];
   });
 
   // GAP-11 FIX: Only write the ledger entry here for offline/manual refunds (no Stripe PI).

@@ -4,6 +4,7 @@ import { Router } from "express";
 import { requireAuth } from "../auth";
 import { requireManager, requireManagerOrPlatformStaff, requireEmployee, attachWorkspaceId, type AuthenticatedRequest } from "../rbac";
 import { storage } from "../storage";
+import { hoursBetween, addHours, roundHours, isOverHours } from '../services/scheduling/schedulingMath';
 import { db } from "../db";
 import {
   chatConversations,
@@ -536,7 +537,8 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
 
       if (newShiftStart) {
         const newShiftEnd = new Date(validated.endTime);
-        const newShiftHours = (newShiftEnd.getTime() - newShiftStart.getTime()) / (1000 * 60 * 60);
+        const newShiftHoursStr = hoursBetween(newShiftStart, newShiftEnd);
+        const newShiftHours = parseFloat(newShiftHoursStr);
         const weekStart = new Date(newShiftStart);
         weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay());
         weekStart.setUTCHours(0, 0, 0, 0);
@@ -545,21 +547,20 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
 
         for (const empId of assignedEmpIds2) {
           const weekShifts = await storage.getShiftsByEmployeeAndDateRange(workspaceId, empId, weekStart, weekEnd);
-          const currentHours = weekShifts
+          const currentHoursStr = weekShifts
             .filter((s: any) => !['cancelled', 'draft'].includes(s.status))
-            .reduce((sum: number, s: any) => {
-              const sh = (new Date(s.endTime).getTime() - new Date(s.startTime).getTime()) / (1000 * 60 * 60);
-              return sum + sh;
-            }, 0);
-          const projected = currentHours + newShiftHours;
-          if (projected > OT_THRESHOLD_HOURS) {
+            .reduce((sum: string, s: any) => {
+              return addHours(sum, hoursBetween(s.startTime, s.endTime));
+            }, '0');
+          const projectedStr = addHours(currentHoursStr, newShiftHoursStr);
+          if (isOverHours(projectedStr, String(OT_THRESHOLD_HOURS))) {
             const emp = await storage.getEmployee(empId, workspaceId);
             overtimeWarnings.push({
               employeeId: empId,
               name: emp ? `${emp.firstName} ${emp.lastName}` : empId,
-              currentHours: Math.round(currentHours * 10) / 10,
-              shiftHours: Math.round(newShiftHours * 10) / 10,
-              projectedHours: Math.round(projected * 10) / 10,
+              currentHours: roundHours(currentHoursStr, 1),
+              shiftHours: roundHours(newShiftHoursStr, 1),
+              projectedHours: roundHours(projectedStr, 1),
             });
           }
         }

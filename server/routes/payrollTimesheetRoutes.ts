@@ -474,14 +474,30 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
       }
     }
 
-    const [updated] = await db
-      .update(payrollTimesheets)
-      .set({ status: "submitted", updatedAt: new Date() })
-      .where(eq(payrollTimesheets.id, id))
-      .returning();
-
-    await writeAudit(workspaceId, userId, "submit_timesheet", id,
-      `Submitted timesheet ${id} for approval`, req);
+    // Atomic conditional update — only succeeds if still 'draft'. Prevents race conditions.
+    const [updated] = await db.transaction(async (tx) => {
+      const [ts] = await tx
+        .update(payrollTimesheets)
+        .set({ status: "submitted", updatedAt: new Date() })
+        .where(and(
+          eq(payrollTimesheets.id, id),
+          eq(payrollTimesheets.workspaceId, workspaceId),
+          eq(payrollTimesheets.status, "draft")
+        ))
+        .returning();
+      if (!ts) {
+        const [current] = await tx.select({ status: payrollTimesheets.status })
+          .from(payrollTimesheets).where(eq(payrollTimesheets.id, id)).limit(1);
+        throw Object.assign(new Error(`CONFLICT:${current?.status || 'unknown'}`), { code: 'CONFLICT' });
+      }
+      await tx.insert(payrollTimesheetAudit).values({
+        timesheetId: id, workspaceId, userId,
+        action: "submit_timesheet",
+        description: `Submitted timesheet ${id} for approval`,
+        createdAt: new Date(),
+      }).catch(() => {}); // audit is best-effort
+      return [ts];
+    });
 
     // Notify managers in the workspace — filter by role in a single query
     try {
@@ -520,6 +536,10 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
 
     return res.json(updated);
   } catch (err: any) {
+    if (err?.code === 'CONFLICT' || err?.message?.startsWith('CONFLICT:')) {
+      const status = err.message.split(':')[1] || 'unknown';
+      return res.status(409).json({ message: `Timesheet is already ${status} — cannot submit`, code: 'CONFLICT' });
+    }
     log.error("Error submitting timesheet", { error: err?.message });
     return res.status(500).json({ message: "Failed to submit timesheet" });
   }
@@ -552,11 +572,24 @@ router.post("/:id/approve", async (req: AuthenticatedRequest, res) => {
       return res.status(409).json({ message: `Cannot approve a timesheet with status '${timesheet.status}'` });
     }
 
-    const [updated] = await db
-      .update(payrollTimesheets)
-      .set({ status: "approved", approvedBy: userId, approvedAt: new Date(), updatedAt: new Date() })
-      .where(eq(payrollTimesheets.id, id))
-      .returning();
+    // Atomic conditional update — only succeeds if still 'submitted'. Prevents double-approve.
+    const [updated] = await db.transaction(async (tx) => {
+      const [ts] = await tx
+        .update(payrollTimesheets)
+        .set({ status: "approved", approvedBy: userId, approvedAt: new Date(), updatedAt: new Date() })
+        .where(and(
+          eq(payrollTimesheets.id, id),
+          eq(payrollTimesheets.workspaceId, workspaceId),
+          eq(payrollTimesheets.status, "submitted")
+        ))
+        .returning();
+      if (!ts) {
+        const [current] = await tx.select({ status: payrollTimesheets.status })
+          .from(payrollTimesheets).where(eq(payrollTimesheets.id, id)).limit(1);
+        throw Object.assign(new Error(`CONFLICT:${current?.status || 'unknown'}`), { code: 'CONFLICT' });
+      }
+      return [ts];
+    });
 
     await writeAudit(workspaceId, userId, "approve_timesheet", id,
       `Approved timesheet ${id} (${timesheet.totalHours}h, period ${timesheet.periodStart}–${timesheet.periodEnd})`, req);
@@ -585,6 +618,10 @@ router.post("/:id/approve", async (req: AuthenticatedRequest, res) => {
 
     return res.json(updated);
   } catch (err: any) {
+    if (err?.code === 'CONFLICT' || err?.message?.startsWith('CONFLICT:')) {
+      const status = err.message.split(':')[1] || 'unknown';
+      return res.status(409).json({ message: `Timesheet is already ${status} — cannot approve`, code: 'CONFLICT' });
+    }
     log.error("Error approving timesheet", { error: err?.message });
     return res.status(500).json({ message: "Failed to approve timesheet" });
   }
@@ -605,11 +642,9 @@ router.post("/:id/reject", async (req: AuthenticatedRequest, res) => {
     }
 
     const { id } = req.params;
-    const { reason } = req.body as { reason?: string };
-
-    if (!reason?.trim()) {
-      return res.status(400).json({ message: "A reason is required when rejecting a timesheet" });
-    }
+    const rejectParsed = RejectTimesheetSchema.safeParse(req.body);
+    if (!rejectParsed.success) return res.status(400).json({ message: rejectParsed.error.errors[0].message });
+    const { reason } = rejectParsed.data;
 
     const [timesheet] = await db
       .select()
@@ -622,17 +657,30 @@ router.post("/:id/reject", async (req: AuthenticatedRequest, res) => {
       return res.status(409).json({ message: `Cannot reject a timesheet with status '${timesheet.status}'` });
     }
 
-    const [updated] = await db
-      .update(payrollTimesheets)
-      .set({
-        status: "rejected",
-        rejectedBy: userId,
-        rejectedAt: new Date(),
-        rejectionReason: reason.trim(),
-        updatedAt: new Date(),
-      })
-      .where(eq(payrollTimesheets.id, id))
-      .returning();
+    // Atomic conditional update — only succeeds if still 'submitted'. Prevents double-reject.
+    const [updated] = await db.transaction(async (tx) => {
+      const [ts] = await tx
+        .update(payrollTimesheets)
+        .set({
+          status: "rejected",
+          rejectedBy: userId,
+          rejectedAt: new Date(),
+          rejectionReason: reason.trim(),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(payrollTimesheets.id, id),
+          eq(payrollTimesheets.workspaceId, workspaceId),
+          eq(payrollTimesheets.status, "submitted")
+        ))
+        .returning();
+      if (!ts) {
+        const [current] = await tx.select({ status: payrollTimesheets.status })
+          .from(payrollTimesheets).where(eq(payrollTimesheets.id, id)).limit(1);
+        throw Object.assign(new Error(`CONFLICT:${current?.status || 'unknown'}`), { code: 'CONFLICT' });
+      }
+      return [ts];
+    });
 
     await writeAudit(workspaceId, userId, "reject_timesheet", id,
       `Rejected timesheet ${id}: ${reason.trim()}`, req);
@@ -661,6 +709,10 @@ router.post("/:id/reject", async (req: AuthenticatedRequest, res) => {
 
     return res.json(updated);
   } catch (err: any) {
+    if (err?.code === 'CONFLICT' || err?.message?.startsWith('CONFLICT:')) {
+      const status = err.message.split(':')[1] || 'unknown';
+      return res.status(409).json({ message: `Timesheet is already ${status} — cannot reject`, code: 'CONFLICT' });
+    }
     log.error("Error rejecting timesheet", { error: err?.message });
     return res.status(500).json({ message: "Failed to reject timesheet" });
   }
