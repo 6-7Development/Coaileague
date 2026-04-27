@@ -13,9 +13,6 @@ import { useLocation } from 'wouter';
 import { HelpCircle, Settings, LogOut, Mail, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { SlimHeader } from './SlimHeader';
-import { NavigationOverlay } from './NavigationOverlay';
-import { useNavigationOverlay } from '@/hooks/useNavigationOverlay';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTrinityModal } from '@/components/trinity-chat-modal';
@@ -63,7 +60,6 @@ export function ProgressiveHeader({ pageTitle, className }: ProgressiveHeaderPro
     toggleOverlay,
     closeOverlay,
     setActiveCategory,
-  } = useNavigationOverlay({
     onOpen: () => {
       document.body.setAttribute('data-nav-overlay-open', 'true');
     },
@@ -184,7 +180,6 @@ export function ProgressiveHeader({ pageTitle, className }: ProgressiveHeaderPro
 
   return (
     <>
-      <SlimHeader
         pageTitle={pageTitle}
         isOverlayOpen={!isMobile && isOpen}
         onTriggerMouseEnter={!isMobile ? handleMouseEnter : undefined}
@@ -195,7 +190,6 @@ export function ProgressiveHeader({ pageTitle, className }: ProgressiveHeaderPro
       />
 
       {!isMobile && (
-        <NavigationOverlay
           isOpen={isOpen}
           animationState={animationState}
           activeCategory={activeCategory}

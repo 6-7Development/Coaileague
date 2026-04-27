@@ -41,9 +41,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { MobileUserActionSheet } from "./mobile-user-action-sheet";
-import { StaffNameDisplay } from "./staff-name-display";
-import { MessageTextWithIcons } from "./message-text-with-icons";
 import { MOBILE_CONFIG } from "@/config/mobileConfig";
 import type { ChatMessage } from "@shared/schema";
 

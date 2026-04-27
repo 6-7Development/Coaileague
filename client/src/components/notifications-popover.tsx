@@ -30,7 +30,6 @@ import { MobileResponsiveSheet } from "@/components/canvas-hub";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { AnimatedNotificationBell } from "./animated-notification-bell";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -43,9 +42,7 @@ import { useChatDock } from "@/contexts/ChatDockContext";
 import { useTrinityModal } from "@/components/trinity-chat-modal";
 import { humanizeTitle, humanizeText, generateEndUserSummary, generateStructuredBreakdown, type StructuredBreakdown } from "@shared/utils/humanFriendlyCopy";
 import { Suspense, lazy } from "react";
-import { UNSCommandCenter } from "./uns-command-center";
 import { SwipeToDelete } from "./swipe-to-delete";
-import { BroadcastNotificationAdapter } from "./broadcasts/BroadcastNotificationAdapter";
 import { PushNotificationPrompt } from "./push-notification-prompt";
 
 // Generic template phrases to detect - these should be replaced with actual content
@@ -2444,7 +2441,6 @@ function NotificationsPopoverInner({ user }: { user: any }) {
               
               if (isBroadcast) {
                 return (
-                  <BroadcastNotificationAdapter
                     key={notification.id}
                     notification={notification}
                     onDismiss={() => handleDismiss(notification.id)}
