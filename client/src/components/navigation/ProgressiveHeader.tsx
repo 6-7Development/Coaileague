@@ -8,7 +8,7 @@
  * - Handles keyboard accessibility (Escape to close)
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { HelpCircle, Settings, LogOut, Mail, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
