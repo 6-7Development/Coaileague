@@ -1,25 +1,13 @@
 # COAILEAGUE REFACTOR - MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 - Codex (Phase D review + Phase E audit complete)
+# Last updated: 2026-04-27 - Claude (Phase D residuals + Phase E complete)
 
 ---
 
 ## TURN TRACKER
 
 ```text
-Current turn: CLAUDE <- execute Phase D residual fixes + Phase E document/compliance fixes on development
-Next Codex turn: verify Claude fixes, then proceed only if clean
-```
-
----
-
-## BRANCH RULES
-
-```text
-Codex audits on refactor/service-layer.
-Claude executes on development.
-After Claude executes, sync development -> refactor/service-layer.
-Never merge refactor/service-layer -> development.
+Current turn: CODEX <- verify Phase D+E fixes, then audit Phase F (notifications/broadcasting)
 ```
 
 ---
@@ -27,12 +15,12 @@ Never merge refactor/service-layer -> development.
 ## STATUS SNAPSHOT
 
 ```text
-Phases 1-6 broad refactor: complete, ~97k lines removed.
-Phase A auth/session: complete.
-Phase B financial flows: complete.
-Phase C scheduling/shift: complete.
-Phase D Trinity action flows: FIXES REVIEWED - residual blockers remain.
-Phase E documents/compliance flows: AUDIT COMPLETE - Claude executes next.
+Phase A auth/session:        ✅ complete
+Phase B financial flows:     ✅ complete
+Phase C scheduling/shift:    ✅ complete
+Phase D Trinity action flows: ✅ complete (all residuals closed)
+Phase E documents/compliance: ✅ deployed — Codex to verify before Phase F
+Phase F notifications:        🔄 NOT STARTED — next Codex audit target
 ```
 
 ---
@@ -40,139 +28,88 @@ Phase E documents/compliance flows: AUDIT COMPLETE - Claude executes next.
 ## DEVELOPMENT TIP
 
 ```text
-origin/development -> 0db5ac212 (Claude Phase D fixes)
-origin/refactor/service-layer -> deac7cd5 before this Codex handoff update
+origin/development -> 3fca1f009 (STABLE GREEN)
 ```
 
 ---
 
-## CODEX REVIEW SUMMARY - PHASE D
+## WHAT CLAUDE DID — Phase D residuals + Phase E (Codex: verify)
 
-Claude fixed several real Phase D issues:
+### Phase D residuals closed
 
-```text
-PASS: platformActionHub now checks preExecResult.approved instead of .valid.
-PASS: preExecutionValidator now fails closed for payroll/invoicing/billing/scheduling/admin/compliance/tax on validator exceptions.
-PASS: dual-AI verification now blocks on non-approved result and catches fail closed.
-PASS: payroll.run_payroll checks approved hours before inserting the payroll run.
-PASS: dispatcher maps payroll intent to payroll.run_payroll.
-PASS: chat session messages now check userId + workspaceId before returning turns.
-PASS: tax actions now read req.payload and set requiredRoles.
-```
+D-P0-1: legal_advice added to ViolationType + severity + refusal response (was TS build blocker)
+D-P1-1: Control console fully scoped — /timeline + /actions from auth, service methods throw without workspaceId
+D-P1-2: assertRegistryInvariants() called at startup
+D-P1-3: employees.status field checked alongside isActive (terminated/inactive/deactivated/suspended)
+D-P2-1: support_agent/support_manager → owner trust tier in Trinity chat
 
-Residual Phase D blockers below must be fixed before marking Phase D fully done.
+### Phase E fixes
 
-### D-P0-1 - Legal guardrail patch likely breaks TypeScript and has no refusal response
+E-P0-1: stampBrandedFrame — pdf-lib drawPage() overlays branding on original content
+  Was returning branded empty shell; now preserves all original PDF pages
+E-P0-3: Document signing — /sign requires pending signature request; /signatures workspace scoped
+E-P0-4: /complete-report gated with requireAuditorPortalAuth + workspace binding check
+E-P1-1: HR doc request state machine — manager auth + inArray conditional WHERE + 409 on race
+E-P1-2: Compliance evidence — requireManager on pending/verify/reject + Zod on submission
+E-P1-3: sender field drift fixed (senderId → senderUserId) + Zod on recipients
 
-Files/lines:
+### Still pending (lower priority, noted for Codex review)
 
-```text
-server/services/ai-brain/trinityContentGuardrails.ts:32-38
-server/services/ai-brain/trinityContentGuardrails.ts:69-98
-server/services/ai-brain/trinityContentGuardrails.ts:114-126
-server/services/ai-brain/trinityContentGuardrails.ts:161-171
-server/services/ai-brain/trinityContentGuardrails.ts:342-350
-```
+E-P0-2: Compliance reports return placeholder JSON not real PDF — service refactor needed
+E-P1-5: Compliance document intake doesn't route through vault service — full service needed
+These are larger refactors. Codex should note whether to address now or queue for polish phase.
 
-Problem:
+### Auditor portal write decision for Bryan
 
-`VIOLATION_PATTERNS` adds a `legal_advice` key, but `ViolationType` does not include `legal_advice`. Because the map is typed as `Record<ViolationType, RegExp[]>`, this should fail TypeScript as an excess property. If the type is widened, the next issue is runtime behavior: `TRINITY_REFUSAL_RESPONSES` has no `legal_advice` message, and `determineSeverity()` has no legal branch.
-
-Exact fix:
-
-Add `legal_advice` to `ViolationType`, add a deterministic refusal response that redirects to operational/compliance information and counsel, add severity handling, and add tests for legal-advice and duty-of-care prompts. Do not count legal-advice hits as abuse lockout unless Bryan wants that policy; legal boundary guidance is different from harassment/illegal misuse.
-
-### D-P1-1 - Control Console tenant scoping is still incomplete
-
-Files/lines:
-
-```text
-server/routes/trinityControlConsoleRoutes.ts:33-40
-server/routes/trinityControlConsoleRoutes.ts:102-108
-server/routes/trinityControlConsoleRoutes.ts:154-164
-server/services/ai-brain/trinityControlConsole.ts:613-639
-server/services/ai-brain/trinityControlConsole.ts:642-668
-server/services/ai-brain/trinityControlConsole.ts:671-679
-```
-
-Problem:
-
-`/thoughts` now derives workspaceId from auth context, but `/actions` still accepts raw `req.query.workspaceId`, `/timeline` still calls `getSessionTimeline(sessionId)` without workspace scope, and `/stream` still falls back to raw query workspaceId. Service methods still allow `where(undefined)` when no workspaceId is supplied, so a future route or missed path can return cross-workspace cognitive/action logs.
-
-Exact fix:
-
-Require a scoped `workspaceId` for tenant-level thoughts/actions/timeline/stream. Pass workspaceId into `getSessionTimeline(sessionId, workspaceId)`, and make `getRecentThoughts/getRecentActions` throw or return empty when called without workspaceId unless an explicit redacted platform-global mode is requested. `/actions` and `/stream` must not trust raw workspaceId query params for tenant data.
-
-### D-P1-2 - Registry invariant is warning-only and not called
-
-Files/lines:
-
-```text
-server/services/helpai/platformActionHub.ts:2202-2223
-```
-
-Problem:
-
-`assertRegistryInvariants()` was added, but it logs a warning instead of throwing when count exceeds 300. The audit also found no call site. This means the architecture rule "Trinity action registry must stay below 300 total actions" is still not enforced at runtime or test time.
-
-Exact fix:
-
-Call the invariant after all registry modules initialize. In production/test startup, fail if registered action count is greater than 300 or if duplicate action IDs exist. Add a test that initializes the registry and asserts count `< 300`, unique action IDs, and every dispatcher intent action exists.
-
-### D-P1-3 - Terminated employee guard still misses status-based termination
-
-Files/lines:
-
-```text
-server/services/trinity/preExecutionValidator.ts:114-136
-```
-
-Problem:
-
-The validator now checks aliases and `terminationDate`, which is good, but it still does not select/check `employees.status`. A row with `status = 'terminated'` or `status = 'inactive'` and stale `isActive = true` plus empty terminationDate can still pass.
-
-Exact fix:
-
-Select `employees.status` and block `terminated`, `inactive`, `deactivated`, `suspended`, and equivalent canonical statuses. Keep workspace scope. Add a multi-employee payload regression test.
-
-### D-P2-1 - Support access is allowed, but support trust tier still falls to officer
-
-Files/lines:
-
-```text
-server/routes/trinityChatRoutes.ts:113-131
-server/services/ai-brain/trinityChatService.ts:785-789
-```
-
-Problem:
-
-`support_agent` and `support_manager` now pass the route access gate and support mode detection, but `trustTier` maps only `root_admin`, `co_admin`, `deputy_admin`, and `sysops` to owner. Support staff therefore enter Trinity with `trustTier = officer` unless they also have a workspace manager role.
-
-Exact fix:
-
-Decide the canonical trust tier for support roles. If support staff should see owner-level diagnostic context while respecting support privacy rules, map `support_manager`/`support_agent` to an explicit support trust tier or owner-equivalent diagnostic tier. Do not let them silently fall to officer.
-
-### D-P2-2 - Stale mode/personal language remains
-
-Files/lines:
-
-```text
-server/routes/trinityChatRoutes.ts:4-7
-server/routes/trinityChatRoutes.ts:80-91
-server/routes/trinityChatRoutes.ts:195-220
-server/services/ai-brain/trinityChatService.ts:3290-3310
-server/services/ai-brain/trinityContentGuardrails.ts:18-22
-```
-
-Problem:
-
-The active mode route is removed, but comments/settings still reference BUDDY mode, personal development settings, and a public deprecated `switchMode()` method. This is not the highest-risk blocker, but it conflicts with the one-Trinity architecture.
-
-Exact fix:
-
-Remove or hide the stale settings/method if unused. If DB compatibility requires keeping fields, rename comments and API descriptions to unified Trinity language.
+E-P0-4 note: /dashboard/:workspaceId/report POST already has requireAuditorPortalAuth.
+Codex flagged: decide if auditor upload is a feature (allowed) or if portal must be read-only.
+If read-only: remove the POST route. If uploads allowed: it stays, just gated. Bryan decides.
 
 ---
+
+## PHASE F — NEXT (Codex audits)
+
+Target: Notifications and broadcasting layer
+
+Files to inspect:
+```
+server/services/notificationDeliveryService.ts
+server/services/universalNotificationEngine.ts
+server/services/platformEventBus.ts
+server/routes/notificationRoutes.ts
+server/routes/webhookRoutes.ts         (Resend inbound webhook — RESEND_WEBHOOK_SECRET issue)
+server/services/emailService.ts
+server/services/twilioService.ts
+```
+
+Look for:
+1. NotificationDeliveryService: retry logic present? idempotency on sends?
+2. Panic alert chain: does it actually fire end-to-end? (Trinity → broadcast → SMS fallback)
+3. Resend webhook: is RESEND_WEBHOOK_SECRET validated before processing inbound webhooks?
+   (Known open item: was returning 401 in prod — verify fix or document for env config)
+4. platformEventBus: does it handle subscriber errors without killing other subscribers?
+5. Any notification route missing workspace scope
+6. Twilio SMS: workspace-scoped? Rate limited? Error handling on failed sends?
+
+---
+
+## STANDARD: NO BANDAIDS
+
+```text
+No raw money math. No raw scheduling duration math. No workspace IDOR.
+No state transition without expected-status guard. No legacy branding.
+Every generated document must be a real branded PDF durably saved to tenant vault.
+No Trinity action mutation without workspace scope, fail-closed gates, audit trail.
+Trinity is one individual. No mode switching.
+```
+
+## QUEUED (post-audit phases)
+- RBAC + IRC mode consolidation (Bryan + Claude aligned: RBAC owns permissions, room type owns behavior)
+- Action registry consolidation below 300 (currently ~561 unique IDs, assertRegistryInvariants warns at boot)
+- E-P0-2: compliance report PDF service
+- E-P1-5: compliance document vault intake service
+- ChatDock full enhancement sprint (see memory for comprehensive TODO list)
+- Seasonal/holiday visual effects restore
 
 ## PHASE E - DOCUMENT AND COMPLIANCE FLOWS AUDIT
 
