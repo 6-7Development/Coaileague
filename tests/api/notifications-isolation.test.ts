@@ -32,6 +32,13 @@ async function apiPost(path: string, body: unknown = {}, token?: string) {
 }
 
 // ─── Unit: recipient isolation logic ─────────────────────────────────────────
+//
+// Mirrors the DB query in server/routes/notifications.ts:
+//   SELECT id FROM employees WHERE userId = recipientUserId AND workspaceId = workspaceId
+//
+// Note: employees.userId is nullable — employees without a linked user account
+// cannot receive notifications via this route. That is intentional and correct
+// for the current security model. See handoff deliberation item #2 for context.
 
 type EmployeeRecord = { id: string; userId: string; workspaceId: string };
 
