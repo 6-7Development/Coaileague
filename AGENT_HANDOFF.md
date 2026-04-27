@@ -1,516 +1,239 @@
 # COAILEAGUE REFACTOR — MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 — Jack/GPT Phase B audit complete
+# Last updated: 2026-04-27 — Copilot acceleration pass complete; Codex next
 
 ---
 
-## HOW THIS HANDOFF WORKS
+## THREE-AGENT RELAY PROTOCOL
 
-**This is a back-and-forth relay between Jack (GPT/Copilot) and Claude.**
+```
+CLAUDE      → executes domain, boot-tests, commits
+COPILOT     → boilerplate acceleration (Zod, test scaffolds, helper patterns)
+CODEX       → verifies, decides next domain or signals AUDIT COMPLETE
+```
 
-- Jack audits on `refactor/service-layer` — flags issues, documents findings, commits AGENT_HANDOFF.md
-- Claude pulls Jack's findings, executes fixes on `development`, then syncs back to `refactor/service-layer`
-- Neither agent moves to the next phase until the current one is reviewed by both
-- **"Go" from Bryan = one turn for whichever agent is up**
+Speed rule: One domain, one complete sweep, one coherent commit.
 
-**Current turn: CLAUDE ← execute Phase B fixes**
+Role clarification (supersedes the shorthand above):
+- CODEX verifies, but is also expected to strengthen weak code, remove bandaids,
+  and perform scoped refactors/enhancements when a domain can be improved safely
+  on `refactor/service-layer`. Codex documents exact risks, line numbers, fix
+  instructions, validation, and any code changes made.
+- CLAUDE remains implementation lead on `development`, integrates Copilot/Codex
+  changes when made, boot-tests, and syncs back.
+- COPILOT is acceleration only: repeated Zod/schema work, test scaffolds, helper
+  replacements, and repeated route-guard sweeps after Claude/Codex define the
+  canonical pattern. No architecture calls, final safety decisions, or independent
+  merges.
+
+Whole-domain definition: routes, services, jobs, schedulers, queues, workers,
+automations, webhooks, storage, events, migrations, tests, validation, and
+user-facing action paths. Nothing in the domain is considered done until the full
+workflow is coherent end-to-end.
+
+Ownership rule: no two agents edit the same files at the same time. If Codex
+patches code during verification, Claude integrates those exact changes or
+documents why a different implementation replaced them.
 
 ---
 
-## ACTIVE BRANCH
-```text
-refactor/service-layer  →  synced with development as of f7177cc05
-```
-Both agents work here. Never push directly to development without a passing boot test.
-
-## DEVELOPMENT (Railway)
-```text
-origin/development  →  5c7aef271  (STABLE ✅ GREEN)
-```
-
----
-
-## PHASE STATUS
-
-| Phase | Domain | Status | Agent |
-|---|---|---|---|
-| 1 | Server routes dead code | ✅ Complete ~24,335L | Claude |
-| 2 | Server services dead code | ✅ Complete ~22,931L | Claude |
-| 3 | Client components dead code | ✅ Complete ~43,663L | Claude |
-| 4 | Client contexts/hooks/config | ✅ Complete ~3,352L | Claude |
-| 5 | Client pages | ✅ Complete ~1,211L | Claude |
-| 6 | Shared/ dead code | ✅ Complete ~1,842L | Claude |
-| **Total removed** | | **~97,334L** | |
-| A | Auth & Session audit | ✅ Reviewed by Jack | Claude |
-| B | Financial flows audit | 🔄 Jack audit complete → Claude executes | Jack → Claude |
-
----
-
-## PHASE A — JACK REVIEW RESULT
-
-Claude asked Jack to verify:
-
-1. Are there any auth patterns Claude missed in the route files?
-2. Is the session destroy on logout correctly clearing all session fields?
-3. Any workspace_id scoping issues at the service layer?
-
-### Jack findings
+## TURN TRACKER
 
 ```text
-Phase A looks good from connector evidence.
-```
+Current turn: CODEX
+  → Verify Phase H fixes (admin routes, upload security, platform guards)
+  → Pull from origin/copilot/refactor-three-agent-protocol for Copilot's additions
+  → Determine: any remaining domains needing audit?
+  → Strengthen / refactor any weak Phase H code found
+  → Signal AUDIT COMPLETE if nothing critical remains, else document Phase I
 
-Details:
-
-```text
-1. Direct req.user.id/email/firstName/lastName patterns:
-   GitHub connector search did not surface remaining direct-dot patterns in server/routes.
-   Claude's 11 null-deref fixes look complete from connector evidence.
-
-2. Logout/session destroy:
-   server/routes/authRoutes.ts has /logout-all that calls authService.logoutAllSessions(userId), clears auth_token, then waits for req.session.destroy() before responding.
-   That auxiliary route looks correct.
-   Note: canonical /logout is documented as living in server/authRoutes.ts, not this file. Claude should confirm canonical logout has the same destroy/clear-cookie behavior if not already verified.
-
-3. Workspace scoping:
-   Route-level mount architecture is confirmed: do not flag unguarded route files before checking server/routes/domains/*.ts and server/routes.ts mount guards.
-   Jack did not identify a new Phase A blocker from connector review.
-```
-
-Phase A can be treated as reviewed/closed after Claude confirms canonical `/logout` behavior.
-
----
-
-## PHASE B — JACK AUDIT RESULT
-
-### Scope inspected
-
-```text
-server/routes/payrollTimesheetRoutes.ts
-server/routes/payStubRoutes.ts
-server/routes/financeRoutes.ts
-server/routes/financeInlineRoutes.ts
-server/routes/payrollRoutes.ts  # comparison/good pattern
-server/services/paystubService.ts
-server/services/financialLedgerService.ts
-server/services/invoiceAdjustmentService.ts
-```
-
-### High-level correction to initial scan
-
-The original scan said the four flagged route files were missing `FinancialCalculator`. That is only partly true.
-
-```text
-Some routes correctly delegate financial math to services that already use Decimal-backed financialCalculator helpers.
-The remaining issue is not always "import FinancialCalculator into the route".
-The actual fixes belong where math happens: sometimes route, sometimes service.
+After Codex: CLAUDE
+  → Integrate any Codex hardening patches onto development
+  → Boot-test and sync back to refactor/service-layer
 ```
 
 ---
 
-# File-by-file Phase B findings
-
-## 1. server/routes/payrollTimesheetRoutes.ts
-
-### Does it do math?
-
-Yes.
+## CURRENT COMMIT
 
 ```text
-PUT /:id/entries calculates totalHours with raw JS:
-entries.reduce((sum, e) => sum + Number(e.hours), 0)
-String(Number(e.hours).toFixed(2))
-String(totalHours.toFixed(2))
-```
-
-### FinancialCalculator status
-
-```text
-Missing. This route directly handles hour accumulation and decimal formatting.
-```
-
-This is not currency, but payroll hours are still numeric financial-adjacent data that feed payroll. Use Decimal-backed helper or a small hours decimal helper to avoid floating drift.
-
-### Zod validation status
-
-```text
-Missing. The route manually validates req.body for create/edit/reject.
-```
-
-Replace manual validation with schemas for:
-
-```text
-create timesheet: employeeId, periodStart, periodEnd, notes
-replace entries: entries[] with date, hours, notes
-reject: reason
-```
-
-### Transaction status
-
-```text
-PUT /:id/entries is GOOD: delete old entries + insert new entries + update totalHours are inside db.transaction().
-Create/submit/approve/reject each do one main table update plus audit/notification side effects. Transaction is less critical there, but audit may remain best-effort.
-```
-
-### Recommended Claude fix
-
-```text
-Add Zod schemas.
-Use Decimal-backed hour summing/formatting for entries and totalHours.
-Keep existing transaction around replace entries.
+origin/development                          -> 8aca7e864  (Railway STABLE GREEN ✅)
+origin/copilot/refactor-three-agent-protocol -> Copilot acceleration pass (this branch)
+origin/refactor/service-layer               -> 16f21237  (3-agent roles clarified)
 ```
 
 ---
 
-## 2. server/routes/payStubRoutes.ts
-
-### Does it do math?
-
-Route file: minimal math only.
+## STATUS SNAPSHOT
 
 ```text
-successCount/failCount/results.length for response summary only.
-Date range construction for current month.
-```
-
-Actual pay calculations are delegated to:
-
-```text
-server/services/paystubService.ts
-```
-
-### FinancialCalculator status
-
-```text
-Route-level FinancialCalculator is not required for core pay math.
-paystubService already imports and uses calculateGrossPay, calculateOvertimePay, calculateNetPay, sumFinancialValues, subtractFinancialValues, multiplyFinancialValues, toFinancialString, formatCurrency from ./financialCalculator.
-```
-
-Important service finding:
-
-```text
-paystubService still has PDF-display-only raw arithmetic:
-(data.regularHours * data.regularRate).toFixed(2)
-(data.overtimeHours * data.overtimeRate).toFixed(2)
-data.deductions.reduce((sum, d) => sum + d.amount, 0)
-data.regularHours + data.overtimeHours
-```
-
-Core stored pay calculations are Decimal-backed, but PDF/display totals should also use financial helpers for consistency.
-
-### Zod validation status
-
-```text
-Missing at route API boundaries.
-```
-
-Need schemas for:
-
-```text
-GET /api/paystubs/:employeeId/:startDate/:endDate params
-GET /api/paystubs/:employeeId/:startDate/:endDate/pdf params
-POST /api/paystubs/batch body: startDate, endDate, employeeIds?, sendNotifications?
-GET /pay-stubs/:id params
-```
-
-Existing `isValidDateString()` is partial/manual and should be replaced or wrapped by Zod.
-
-### Transaction status
-
-```text
-Route does not write DB directly except reads/delegation. Batch generation loops through paystubService.generatePaystub().
-No immediate route-level transaction fix required unless paystubService persists multiple DB records per paystub in a way that must be atomic.
-```
-
-### Recommended Claude fix
-
-```text
-Add Zod params/body validation in payStubRoutes.
-Replace PDF/display raw arithmetic in paystubService with financialCalculator helpers.
-No route-level FinancialCalculator import needed for core logic.
+Phases 1-6 broad refactor:             ✅ complete (~97k lines removed)
+Phase A auth/session:                  ✅ complete
+Phase B financial flows:               ✅ complete
+Phase C scheduling/shift:              ✅ complete (Grade A)
+Phase D Trinity action flows:          ✅ complete
+Phase E documents/compliance:          ✅ complete
+Phase F notifications/broadcasting:    ✅ complete
+Phase G integrations (QB/Stripe/Plaid): ✅ complete
+Phase H admin/upload/platform guards:  ✅ deployed + Copilot hardening applied
 ```
 
 ---
 
-## 3. server/routes/financeRoutes.ts
+## COPILOT PASS — WHAT WAS DONE
 
-### Does it do math?
+Branch: `copilot/refactor-three-agent-protocol`
+Tests: 139 passed, 0 failed after changes.
 
-Route file itself delegates most math to:
+### Phase H forward-port (3 files from development → branch)
+
+- `server/routes/adminDevExecuteRoute.ts`
+  Added `NODE_ENV === 'production'` hard block inside the route handler so dev-
+  execute is impossible to invoke in prod even if token auth passes.
+
+- `server/routes/bulk-operations.ts`
+  Added `requireManager` to the three import routes (employees, clients, shifts).
+  Added secure multer config: 5 MB `fileSize` limit + MIME/extension allowlist
+  (CSV and Excel only). Previously multer({ storage: memoryStorage() }) with no
+  limits allowed any file type and unlimited size.
+
+- `server/routes/platformFeedbackRoutes.ts`
+  Added `requirePlatformStaff` guard to `POST /api/platform-feedback/surveys`.
+  Previously any request (no auth header) could create platform-wide surveys.
+
+### Phase G residual fixes
+
+- `server/services/scheduling/index.ts`
+  Removed truncated export block for `registerSchedulingWithOrchestration`,
+  `checkSchedulingGovernance`, `getSchedulingOrchestrationStatus`. These symbols
+  do not exist in any file — the source module was deleted. The dangling export
+  was a compile blocker (tsc stops here before reaching Phase G files).
+
+- `server/routes/quickbooks-sync.ts` — P2-10
+  Changed 6 mutating POST routes from `requireProfessional` to `requireManager`:
+  - POST /api/quickbooks/sync/initial
+  - POST /api/quickbooks/invoice/create
+  - POST /api/quickbooks/sync/cdc
+  - POST /api/quickbooks/review-queue/:itemId/resolve
+  - POST /api/admin/quickbooks/sync-staffing-clients
+  - POST /api/quickbooks/sync/retry-queue/:logId
+  Read-only GETs remain at `requireProfessional`. `requireManager` was already
+  imported; only the route declarations were changed.
+
+- `server/routes/notifications.ts` — P1-8
+  Added `employees` to the schema import (already exported from @shared/schema).
+  Added workspace membership lookup in `POST /api/notifications/send` between
+  Zod parse and `NotificationDeliveryService.send`:
+  ```
+  SELECT id FROM employees
+  WHERE userId = recipientUserId AND workspaceId = workspaceId
+  LIMIT 1
+  ```
+  Returns 403 `Recipient is not a member of this workspace` if no row found.
+  Prevents a manager in Workspace A from pushing notifications to users in
+  Workspace B by knowing their userId.
+
+### Test scaffolds added (4 new files, 139 total passing)
+
+- `tests/api/quickbooks-guards.test.ts`
+  Smoke tests: all 6 mutating QB routes return 401/403 unauthenticated.
+  Read-only routes also reject unauthenticated. Unit section documents the
+  mutating vs read-only inventory.
+
+- `tests/api/notifications-isolation.test.ts`
+  Unit tests for the workspace membership filter logic (all cases: same
+  workspace, cross-workspace, unknown user). HTTP smoke: send route rejects
+  unauthenticated, malformed payload does not 500.
+
+- `tests/regression/phase-g-integrations.test.ts`
+  Idempotency key uniqueness invariant. Stripe cents/decimal round-trip boundary
+  (centsToDecimalString / decimalStringToCents helpers — no floating-point drift).
+  QB, Plaid, and notification send routes all reject unauthenticated. None 500.
+
+- `tests/regression/phase-h-admin-guards.test.ts`
+  File-type allowlist unit tests (CSV/Excel pass, PDF/image/exe/zip fail).
+  File-size boundary unit tests (1 MB, 5 MB pass; 6 MB fails).
+  dev-execute production block unit test.
+  HTTP smoke: bulk import routes, platform survey, admin routes reject
+  unauthenticated. None 500.
+
+---
+
+## DELIBERATION FOR CODEX / CLAUDE
+
+Items where Copilot made a decision that Codex should review before merging
+to development:
+
+1. **scheduling/index.ts — removed broken export**
+   The three symbols (`registerSchedulingWithOrchestration`, etc.) were in an
+   unterminated export block with no source module anywhere in the repo.
+   Copilot removed the block entirely. Codex should confirm no caller site
+   imports these names from the scheduling index; if a caller exists, Claude
+   must create stub implementations or restore the module.
+   Search: `grep -rn "registerSchedulingWithOrchestration" server/`
+
+2. **notifications.ts — employees table used for membership check**
+   The recipient workspace check queries `employees.userId = recipientUserId`.
+   `employees.userId` is nullable (some employees don't have linked user accounts).
+   For those employees, a notification can never be sent to them via this route.
+   This is conservative and correct for the current security requirement, but
+   if platform staff or workspace owners who lack an employee record need to
+   receive notifications via this route, the check would need to also accept
+   workspace owners via a `workspaces.ownerId` check. Codex should decide.
+
+3. **QB requireManager sweep — requireProfessional still on two GET routes**
+   `GET /api/quickbooks/review-queue` and `GET /api/quickbooks/sync/retry-queue`
+   remain at `requireProfessional`. Codex should confirm this is the right
+   floor for those read-only endpoints.
+
+---
+
+## STANDARD: NO BANDAIDS
 
 ```text
-financialLedgerService
-icalService
-```
-
-It parses dates/year/quarter from query directly.
-
-### FinancialCalculator status
-
-```text
-Route-level FinancialCalculator is not the main issue.
-financialLedgerService is the real math surface.
-```
-
-Service finding in `server/services/financialLedgerService.ts`:
-
-```text
-Still uses raw JS arithmetic for financial report calculations:
-regularHrs * avgRate
-overtimeHrs * avgRate * 1.5
-regularLabor + overtimeLabor
-totalRevenue - totalCOGS
-grossProfit - totalExpenses
-(grossProfit / totalRevenue) * 100
-revenue / hours
-totalLaborCost / totalRevenue
-parseFloat(l.totalHours) * parseFloat(l.avgRate)
-revenue - laborCost
-(profit / revenue) * 100
-summary.totalOutstanding += outstanding
-ficaTotal + futaLiability + sutaLiability
-federalIncomeTaxWithheld + employeeSS + employeeMedicare + employerSS + employerMedicare
-employeeCount * wageBase, totalGross * rate, totalEmployerObligation / 4
-recordPayrollJournalEntries accumulates totals with +=
-```
-
-Some AR outstanding subtraction already uses financialCalculator; the rest should be upgraded.
-
-### Zod validation status
-
-```text
-financeRoutes imports z but does not use it.
-Query/body validation is missing/partial.
-```
-
-Need schemas for:
-
-```text
-start/end query params used by ledger/report/dashboard endpoints
-asOf query param
-year/quarter query params
-POST /ical/subscribe body: employeeId?, name?
-ical token param validation
-```
-
-### Transaction status
-
-```text
-financeRoutes mainly reads/delegates. No direct multi-table DB writes observed in route except createICalSubscription delegation.
-Transaction need depends on createICalSubscription internals, not this route.
-```
-
-### Recommended Claude fix
-
-```text
-Use Zod query/body/params schemas in financeRoutes.
-Move financialLedgerService arithmetic to financialCalculator helpers.
-Do not simply import FinancialCalculator into financeRoutes unless doing actual arithmetic there.
+No raw money math. No raw scheduling duration math. No workspace IDOR.
+No state transition without expected-status guard. No user-facing legacy branding.
+Every generated document = real branded PDF saved to tenant vault.
+Trinity action mutations = workspace scope + fail-closed gates + audit trail.
+Trinity is one individual. No mode switching. HelpAI is the only bot field workers see.
+One domain, one complete sweep, one coherent commit.
 ```
 
 ---
 
-## 4. server/routes/financeInlineRoutes.ts
+## QUEUED — POST-AUDIT ENHANCEMENT SPRINT
 
-### Does it do math?
+After Codex signals AUDIT COMPLETE:
 
-Yes, route does both mutation orchestration and report arithmetic.
+### Priority 1 — Foundation
+- RBAC + IRC mode consolidation: RBAC owns permissions, room type owns behavior.
+- Action registry consolidation below 300.
+- E-P0-2: compliance report PDF service.
+- E-P1-5: compliance document vault intake service.
 
-Route-level raw arithmetic:
+### Priority 2 — ChatDock Enhancement
+1. Durable message store + Redis pub/sub.
+2. FCM push + four-tier delivery: WS → FCM → RCS → SMS.
+3. Typed WebSocket event protocol for Trinity/HelpAI streaming.
+4. Read receipts + acknowledgment receipts for post orders.
+5. Message replies, emoji reactions, pins, polls, media gallery, archive, search.
+6. Presence tied to shift status: connected/offline/NCNS.
+7. HelpAI scheduled messages + shift close summary cards.
+8. Content moderation + report queue + legal hold + evidence export.
+9. Live call/radio button (WebRTC already wired).
+10. Async voice messages + Whisper transcription.
 
-```text
-const netProfit = totalRevenue - totalExpenses;
-const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0.0";
-parseFloat(margin)
-```
+### Priority 3 — Holistic Audit
+- All services as unified whole: ChatDock, email, forms, PDF, workflows, storage.
+- Login/logout/session persistence verification.
+- All action-triggering buttons/icons verified for correct workflow outcomes.
+- Auditor portal, client portal, workspace dashboards → Grade A uniformity.
 
-Also passes raw body financial values directly to invoice adjustment services:
+### Priority 4 — Trinity Brain + UI
+- Gemini + Claude + GPT triad: genuine reasoning before Trinity speaks, not just routing.
+- Trinity personality: one unified individual, no Business/Personal/Tech modes.
+- HelpAI: field-supervisor voice and only worker-facing bot.
+- Seasonal/holiday theming restored on public pages.
+- Mobile offline-first: op-sqlite, optimistic sends.
+- Update notification toast: minimal icon + version + arrow.
 
-```text
-amount
-discountPercent
-refundAmount
-newQuantity
-newUnitPrice
-creditPerInvoice
-```
-
-### FinancialCalculator status
-
-```text
-Route-level calculator/helper needed for consolidated P&L response, or move that calculation into a service that uses financialCalculator.
-```
-
-Invoice adjustment services already use financialCalculator internally for stored adjustment math.
-
-### Zod validation status
-
-```text
-Missing. This is the highest-priority validation gap.
-```
-
-Need schemas for:
-
-```text
-credit: invoiceId, amount, description?
-discount: invoiceId, discountPercent, reason
-refund: invoiceId, refundAmount, reason
-correct-line-item: invoiceId, lineItemIndex, newQuantity?, newUnitPrice?, reason?
-bulk-credit: invoiceIds[], creditPerInvoice, reason?
-pl/consolidated query: period enum
-history params: invoiceId
-```
-
-### Transaction status
-
-Route file itself calls services. But service internals reveal transaction gaps:
-
-```text
-invoiceAdjustmentService.creditInvoice:
-  update invoice
-  insert invoiceAdjustments
-  writeLedgerEntry best-effort
-  platformEventBus publish best-effort
-  NOT wrapped in db.transaction
-
-invoiceAdjustmentService.discountInvoice:
-  update invoice
-  insert invoiceAdjustments
-  writeLedgerEntry best-effort
-  platformEventBus publish best-effort
-  NOT wrapped in db.transaction
-
-invoiceAdjustmentService.refundInvoice:
-  Stripe refund first when paymentIntentId exists
-  update invoice
-  insert invoiceAdjustments
-  optional ledger/event side effects
-  NOT wrapped in db.transaction for DB writes
-
-invoiceAdjustmentService.correctInvoiceLineItem:
-  update invoiceLineItem
-  update invoice total
-  insert invoiceAdjustments
-  NOT wrapped in db.transaction
-```
-
-At minimum, the DB mutation pairs/triples should be atomic:
-
-```text
-invoice update + adjustment insert
-line item update + invoice total update + adjustment insert
-```
-
-External Stripe and platform events should remain carefully ordered/outbox/best-effort, but DB state should not become half-written.
-
-### Workspace scoping status
-
-Good route-level IDOR fix is present:
-
-```text
-assertInvoiceBelongsToWorkspace(invoiceId, workspaceId)
-```
-
-However bulk credit relies on service call with workspaceId + invoiceIds; Claude should verify `bulkCreditInvoices` or caller validates every invoice belongs to workspace before applying credit. Current route does not explicitly loop `assertInvoiceBelongsToWorkspace` for each invoice ID.
-
-### Recommended Claude fix
-
-```text
-Add Zod schemas to every mutating route and period query.
-Use financialCalculator helpers for consolidated P&L math or delegate to service.
-Wrap invoiceAdjustmentService DB mutations in transactions.
-For bulk-credit, assert every invoiceId belongs to workspace before processing or enforce inside service.
-```
-
----
-
-# Phase B priority order for Claude
-
-Recommended execution order:
-
-```text
-1. financeInlineRoutes + invoiceAdjustmentService
-   Highest risk: live invoice money mutation + missing Zod + DB transaction gaps.
-
-2. financeRoutes + financialLedgerService
-   Report math uses raw arithmetic in service and route query validation is thin.
-
-3. payrollTimesheetRoutes
-   Add Zod + Decimal-backed hour summing. Transaction for entry replacement already good.
-
-4. payStubRoutes + paystubService display arithmetic
-   Add Zod route validation. Core math already Decimal-backed in service; clean remaining display/PDF arithmetic.
-```
-
----
-
-## MANDATORY CHECKS FOR PHASE B FIXES
-
-Since Phase B touches financial behavior, run:
-
-```bash
-node build.mjs
-```
-
-Boot test before pushing to development:
-
-```bash
-export DATABASE_URL="postgresql://postgres:MmUbhSxdkRGFLhBGGXGaWQeBceaqNmlj@metro.proxy.rlwy.net:40051/railway"
-export SESSION_SECRET="coaileague-dev-test-session-secret-32chars"
-node build.mjs && node dist/index.js > /tmp/boot.txt 2>&1 &
-sleep 18 && curl -s http://localhost:5000/api/workspace/health
-# expected: {"message":"Unauthorized"}
-grep -cE "ReferenceError|is not defined|CRITICAL.*Failed" /tmp/boot.txt
-# expected: 0
-kill %1
-```
-
-If Claude changes financial calculations, add/adjust focused tests if any existing test harness exists for:
-
-```text
-financialCalculator
-financialLedgerService
-invoiceAdjustmentService
-paystubService
-```
-
----
-
-## NEXT TURN
-
-```text
-Claude executes Phase B fixes on development.
-Claude syncs development → refactor/service-layer.
-Claude updates this file with exact fixes and marks Jack as reviewer for Phase B.
-```
-
----
-
-## THE 6 DELETION FAILURE PATTERNS (permanent)
-
-1. **STATIC IMPORT** — `from './DeletedFile'` still in source
-2. **DYNAMIC IMPORT** — `import('./DeletedFile')` in lazy/Suspense
-3. **BARREL EXPORT** — `index.ts` still exports a deleted file
-4. **BARREL NAMED EXPORT** — file imports `{ X }` from barrel but X was deleted
-5. **ORPHANED JSX BODY** — import removed, `<Component />` left in render
-6. **ORPHANED JSX PROPS** — opening tag removed, props block left as raw text
-
----
-
-## BRANCH RULES (permanent)
-
-- Jack audits on `refactor/service-layer`, Claude executes on `development`
-- Sync direction: `development` → `refactor/service-layer` after every Claude turn
-- Never merge `refactor/service-layer` into `development` (wrong direction)
-- Claude runs verify script before every delete commit
-- **Neither agent skips to next phase without the other reviewing current phase**
-
----
-
-## PROCESS RULES
-
-- Read this file at start of every turn
-- Update it at end of every turn — current phase status, what was done, what's next
-- Never create separate handoff files — one file, updated in place
-- After Claude executes: sync development → refactor/service-layer and push
-- After Jack audits: push refactor/service-layer with findings in this file
