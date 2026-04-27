@@ -15,5 +15,6 @@
 const BLOCKED_STATUSES = new Set(['terminated', 'inactive', 'deactivated', 'suspended']);
 
 export function isDeliverableEmployee(emp: { isActive: boolean; status?: string | null }): boolean {
-  return emp.isActive === true && !BLOCKED_STATUSES.has(emp.status ?? '');
+  const status = typeof emp.status === 'string' ? emp.status.trim().toLowerCase() : '';
+  return emp.isActive === true && !BLOCKED_STATUSES.has(status);
 }
