@@ -1,621 +1,467 @@
 # COAILEAGUE REFACTOR — MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 — Jack/GPT Phase B audit complete
+# Last updated: 2026-04-27 — Jack/GPT Grade A scheduling hardening audit
 
 ---
 
-## HOW THIS HANDOFF WORKS
+## TURN TRACKER
 
-**This is a back-and-forth relay between Jack (GPT/Copilot) and Claude.**
+```text
+Current turn: CLAUDE ← execute Phase B follow-ups + Grade A scheduling hardening
+```
 
-- Jack audits on `refactor/service-layer` — flags issues, documents findings, commits AGENT_HANDOFF.md
-- Claude pulls Jack's findings, executes fixes on `development`, then syncs back to `refactor/service-layer`
-- Neither agent moves to the next phase until the current one is reviewed by both
-- **"Go" from Bryan = one turn for whichever agent is up**
+Bryan clarified the standard:
 
-**Current turn: JACK ← review Phase B, then audit Phase C (scheduling)**
+```text
+Fix all weak code. Replace with structured strengthened code. Don't leave bandaids behind.
+Correct any phase/domain while refactoring or verifying the code base. Whatever weak code is found, strengthen it for Grade A code.
+Scheduling is core and feeds everything else, so it needs to be super duper.
+```
+
+This means phase labels are bookkeeping only. If weak code is found in any domain while doing this pass, strengthen it properly.
 
 ---
 
-## ACTIVE BRANCH
-```text
-refactor/service-layer  →  synced with development as of f7177cc05
-```
-Both agents work here. Never push directly to development without a passing boot test.
-
-## DEVELOPMENT (Railway)
-```text
-origin/development  →  5c7aef271  (STABLE ✅ GREEN)
-```
-
----
-
-## PHASE STATUS
-
-| Phase | Domain | Status | Agent |
-|---|---|---|---|
-| 1 | Server routes dead code | ✅ Complete ~24,335L | Claude |
-| 2 | Server services dead code | ✅ Complete ~22,931L | Claude |
-| 3 | Client components dead code | ✅ Complete ~43,663L | Claude |
-| 4 | Client contexts/hooks/config | ✅ Complete ~3,352L | Claude |
-| 5 | Client pages | ✅ Complete ~1,211L | Claude |
-| 6 | Shared/ dead code | ✅ Complete ~1,842L | Claude |
-| **Total removed** | | **~97,334L** | |
-| A | Auth & Session audit | ✅ Reviewed by Jack | Claude |
-| B | Financial flows audit | ✅ Fixed, deployed 9273a3af3 | Claude |
-| C | Scheduling & Shift flows | 🔄 NOT STARTED — Jack audits first | Next: Jack |
-
-
----
-
-## PHASE B — CLAUDE EXECUTION SUMMARY (Jack: please review)
-
-**Deployed:** `9273a3af3` on development
-
-### What Claude fixed
-- `financeInlineRoutes.ts` — Added Zod to all 6 endpoints. FinancialCalculator for P&L. Bulk-credit IDOR guard per invoice.
-- `financialLedgerService.ts` — multiplyFinancialValues for labor math, subtractFinancialValues for grossProfit/netIncome.
-- `payrollTimesheetRoutes.ts` — Zod schemas + addFinancialValues Decimal accumulation for hour totals.
-- `payStubRoutes.ts` — BatchGenerateSchema Zod on batch endpoint.
-
-### What was already correct (not changed)
-- `financeRoutes.ts` — Already had full Zod. Jack's scan was pre-upgrade.
-- `paystubService.ts` PDF — Already using multiplyFinancialValues/addFinancialValues.
-- `invoiceAdjustmentService` — creditInvoice, discountInvoice, correctInvoiceLineItem already transacted. refundInvoice intentionally Stripe-first (no DB transaction by design).
-
-### Jack — verify before moving to Phase C:
-1. Bulk-credit IDOR guard — does calling `assertInvoiceBelongsToWorkspace()` per ID before `bulkCreditInvoices()` look correct?
-2. Stripe-first refund pattern — acceptable to leave without DB transaction wrapper?
-3. Any financial path Claude missed?
-
----
-
-## PHASE C — JACK AUDITS NEXT (scheduling & shift flows)
-
-**Files to inspect:**
-```
-server/routes/schedulesRoutes.ts
-server/routes/shiftRoutes.ts
-server/routes/scheduleosRoutes.ts
-server/routes/orchestratedScheduleRoutes.ts
-server/services/scheduling/   (directory)
-```
-
-**Jack: look for:**
-1. Shift overlap — btree_gist exclusion constraint or app-level detection?
-2. Call-off → coverage pipeline → Trinity alert — does it wire end-to-end?
-3. Overtime detection — hours accumulation using Decimal or raw JS?
-4. GPS/proof-of-service — check-in → location stamp → guard tour chain intact?
-5. Mobile payloads — do scheduling endpoints return mobile-friendly responses?
-
----
-
-## PHASE A — JACK REVIEW RESULT
-
-Claude asked Jack to verify:
-
-1. Are there any auth patterns Claude missed in the route files?
-2. Is the session destroy on logout correctly clearing all session fields?
-3. Any workspace_id scoping issues at the service layer?
-
-### Jack findings
+## BRANCH RULES
 
 ```text
-Phase A looks good from connector evidence.
+Jack audits on refactor/service-layer.
+Claude executes on development.
+After Claude executes, sync development → refactor/service-layer.
+Never merge refactor/service-layer → development unless Claude is explicitly deploying the reviewed execution.
 ```
 
-Details:
-
-```text
-1. Direct req.user.id/email/firstName/lastName patterns:
-   GitHub connector search did not surface remaining direct-dot patterns in server/routes.
-   Claude's 11 null-deref fixes look complete from connector evidence.
-
-2. Logout/session destroy:
-   server/routes/authRoutes.ts has /logout-all that calls authService.logoutAllSessions(userId), clears auth_token, then waits for req.session.destroy() before responding.
-   That auxiliary route looks correct.
-   Note: canonical /logout is documented as living in server/authRoutes.ts, not this file. Claude should confirm canonical logout has the same destroy/clear-cookie behavior if not already verified.
-
-3. Workspace scoping:
-   Route-level mount architecture is confirmed: do not flag unguarded route files before checking server/routes/domains/*.ts and server/routes.ts mount guards.
-   Jack did not identify a new Phase A blocker from connector review.
-```
-
-Phase A can be treated as reviewed/closed after Claude confirms canonical `/logout` behavior.
-
----
-
-## PHASE B — JACK AUDIT RESULT
-
-### Scope inspected
-
-```text
-server/routes/payrollTimesheetRoutes.ts
-server/routes/payStubRoutes.ts
-server/routes/financeRoutes.ts
-server/routes/financeInlineRoutes.ts
-server/routes/payrollRoutes.ts  # comparison/good pattern
-server/services/paystubService.ts
-server/services/financialLedgerService.ts
-server/services/invoiceAdjustmentService.ts
-```
-
-### High-level correction to initial scan
-
-The original scan said the four flagged route files were missing `FinancialCalculator`. That is only partly true.
-
-```text
-Some routes correctly delegate financial math to services that already use Decimal-backed financialCalculator helpers.
-The remaining issue is not always "import FinancialCalculator into the route".
-The actual fixes belong where math happens: sometimes route, sometimes service.
-```
-
----
-
-# File-by-file Phase B findings
-
-## 1. server/routes/payrollTimesheetRoutes.ts
-
-### Does it do math?
-
-Yes.
-
-```text
-PUT /:id/entries calculates totalHours with raw JS:
-entries.reduce((sum, e) => sum + Number(e.hours), 0)
-String(Number(e.hours).toFixed(2))
-String(totalHours.toFixed(2))
-```
-
-### FinancialCalculator status
-
-```text
-Missing. This route directly handles hour accumulation and decimal formatting.
-```
-
-This is not currency, but payroll hours are still numeric financial-adjacent data that feed payroll. Use Decimal-backed helper or a small hours decimal helper to avoid floating drift.
-
-### Zod validation status
-
-```text
-Missing. The route manually validates req.body for create/edit/reject.
-```
-
-Replace manual validation with schemas for:
-
-```text
-create timesheet: employeeId, periodStart, periodEnd, notes
-replace entries: entries[] with date, hours, notes
-reject: reason
-```
-
-### Transaction status
-
-```text
-PUT /:id/entries is GOOD: delete old entries + insert new entries + update totalHours are inside db.transaction().
-Create/submit/approve/reject each do one main table update plus audit/notification side effects. Transaction is less critical there, but audit may remain best-effort.
-```
-
-### Recommended Claude fix
-
-```text
-Add Zod schemas.
-Use Decimal-backed hour summing/formatting for entries and totalHours.
-Keep existing transaction around replace entries.
-```
-
----
-
-## 2. server/routes/payStubRoutes.ts
-
-### Does it do math?
-
-Route file: minimal math only.
-
-```text
-successCount/failCount/results.length for response summary only.
-Date range construction for current month.
-```
-
-Actual pay calculations are delegated to:
-
-```text
-server/services/paystubService.ts
-```
-
-### FinancialCalculator status
-
-```text
-Route-level FinancialCalculator is not required for core pay math.
-paystubService already imports and uses calculateGrossPay, calculateOvertimePay, calculateNetPay, sumFinancialValues, subtractFinancialValues, multiplyFinancialValues, toFinancialString, formatCurrency from ./financialCalculator.
-```
-
-Important service finding:
-
-```text
-paystubService still has PDF-display-only raw arithmetic:
-(data.regularHours * data.regularRate).toFixed(2)
-(data.overtimeHours * data.overtimeRate).toFixed(2)
-data.deductions.reduce((sum, d) => sum + d.amount, 0)
-data.regularHours + data.overtimeHours
-```
-
-Core stored pay calculations are Decimal-backed, but PDF/display totals should also use financial helpers for consistency.
-
-### Zod validation status
-
-```text
-Missing at route API boundaries.
-```
-
-Need schemas for:
-
-```text
-GET /api/paystubs/:employeeId/:startDate/:endDate params
-GET /api/paystubs/:employeeId/:startDate/:endDate/pdf params
-POST /api/paystubs/batch body: startDate, endDate, employeeIds?, sendNotifications?
-GET /pay-stubs/:id params
-```
-
-Existing `isValidDateString()` is partial/manual and should be replaced or wrapped by Zod.
-
-### Transaction status
-
-```text
-Route does not write DB directly except reads/delegation. Batch generation loops through paystubService.generatePaystub().
-No immediate route-level transaction fix required unless paystubService persists multiple DB records per paystub in a way that must be atomic.
-```
-
-### Recommended Claude fix
-
-```text
-Add Zod params/body validation in payStubRoutes.
-Replace PDF/display raw arithmetic in paystubService with financialCalculator helpers.
-No route-level FinancialCalculator import needed for core logic.
-```
-
----
-
-## 3. server/routes/financeRoutes.ts
-
-### Does it do math?
-
-Route file itself delegates most math to:
-
-```text
-financialLedgerService
-icalService
-```
-
-It parses dates/year/quarter from query directly.
-
-### FinancialCalculator status
-
-```text
-Route-level FinancialCalculator is not the main issue.
-financialLedgerService is the real math surface.
-```
-
-Service finding in `server/services/financialLedgerService.ts`:
-
-```text
-Still uses raw JS arithmetic for financial report calculations:
-regularHrs * avgRate
-overtimeHrs * avgRate * 1.5
-regularLabor + overtimeLabor
-totalRevenue - totalCOGS
-grossProfit - totalExpenses
-(grossProfit / totalRevenue) * 100
-revenue / hours
-totalLaborCost / totalRevenue
-parseFloat(l.totalHours) * parseFloat(l.avgRate)
-revenue - laborCost
-(profit / revenue) * 100
-summary.totalOutstanding += outstanding
-ficaTotal + futaLiability + sutaLiability
-federalIncomeTaxWithheld + employeeSS + employeeMedicare + employerSS + employerMedicare
-employeeCount * wageBase, totalGross * rate, totalEmployerObligation / 4
-recordPayrollJournalEntries accumulates totals with +=
-```
-
-Some AR outstanding subtraction already uses financialCalculator; the rest should be upgraded.
-
-### Zod validation status
-
-```text
-financeRoutes imports z but does not use it.
-Query/body validation is missing/partial.
-```
-
-Need schemas for:
-
-```text
-start/end query params used by ledger/report/dashboard endpoints
-asOf query param
-year/quarter query params
-POST /ical/subscribe body: employeeId?, name?
-ical token param validation
-```
-
-### Transaction status
-
-```text
-financeRoutes mainly reads/delegates. No direct multi-table DB writes observed in route except createICalSubscription delegation.
-Transaction need depends on createICalSubscription internals, not this route.
-```
-
-### Recommended Claude fix
-
-```text
-Use Zod query/body/params schemas in financeRoutes.
-Move financialLedgerService arithmetic to financialCalculator helpers.
-Do not simply import FinancialCalculator into financeRoutes unless doing actual arithmetic there.
-```
-
----
-
-## 4. server/routes/financeInlineRoutes.ts
-
-### Does it do math?
-
-Yes, route does both mutation orchestration and report arithmetic.
-
-Route-level raw arithmetic:
-
-```text
-const netProfit = totalRevenue - totalExpenses;
-const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0.0";
-parseFloat(margin)
-```
-
-Also passes raw body financial values directly to invoice adjustment services:
-
-```text
-amount
-discountPercent
-refundAmount
-newQuantity
-newUnitPrice
-creditPerInvoice
-```
-
-### FinancialCalculator status
-
-```text
-Route-level calculator/helper needed for consolidated P&L response, or move that calculation into a service that uses financialCalculator.
-```
-
-Invoice adjustment services already use financialCalculator internally for stored adjustment math.
-
-### Zod validation status
-
-```text
-Missing. This is the highest-priority validation gap.
-```
-
-Need schemas for:
-
-```text
-credit: invoiceId, amount, description?
-discount: invoiceId, discountPercent, reason
-refund: invoiceId, refundAmount, reason
-correct-line-item: invoiceId, lineItemIndex, newQuantity?, newUnitPrice?, reason?
-bulk-credit: invoiceIds[], creditPerInvoice, reason?
-pl/consolidated query: period enum
-history params: invoiceId
-```
-
-### Transaction status
-
-Route file itself calls services. But service internals reveal transaction gaps:
-
-```text
-invoiceAdjustmentService.creditInvoice:
-  update invoice
-  insert invoiceAdjustments
-  writeLedgerEntry best-effort
-  platformEventBus publish best-effort
-  NOT wrapped in db.transaction
-
-invoiceAdjustmentService.discountInvoice:
-  update invoice
-  insert invoiceAdjustments
-  writeLedgerEntry best-effort
-  platformEventBus publish best-effort
-  NOT wrapped in db.transaction
-
-invoiceAdjustmentService.refundInvoice:
-  Stripe refund first when paymentIntentId exists
-  update invoice
-  insert invoiceAdjustments
-  optional ledger/event side effects
-  NOT wrapped in db.transaction for DB writes
-
-invoiceAdjustmentService.correctInvoiceLineItem:
-  update invoiceLineItem
-  update invoice total
-  insert invoiceAdjustments
-  NOT wrapped in db.transaction
-```
-
-At minimum, the DB mutation pairs/triples should be atomic:
-
-```text
-invoice update + adjustment insert
-line item update + invoice total update + adjustment insert
-```
-
-External Stripe and platform events should remain carefully ordered/outbox/best-effort, but DB state should not become half-written.
-
-### Workspace scoping status
-
-Good route-level IDOR fix is present:
-
-```text
-assertInvoiceBelongsToWorkspace(invoiceId, workspaceId)
-```
-
-However bulk credit relies on service call with workspaceId + invoiceIds; Claude should verify `bulkCreditInvoices` or caller validates every invoice belongs to workspace before applying credit. Current route does not explicitly loop `assertInvoiceBelongsToWorkspace` for each invoice ID.
-
-### Recommended Claude fix
-
-```text
-Add Zod schemas to every mutating route and period query.
-Use financialCalculator helpers for consolidated P&L math or delegate to service.
-Wrap invoiceAdjustmentService DB mutations in transactions.
-For bulk-credit, assert every invoiceId belongs to workspace before processing or enforce inside service.
-```
-
----
-
-# Phase B priority order for Claude
-
-Recommended execution order:
-
-```text
-1. financeInlineRoutes + invoiceAdjustmentService
-   Highest risk: live invoice money mutation + missing Zod + DB transaction gaps.
-
-2. financeRoutes + financialLedgerService
-   Report math uses raw arithmetic in service and route query validation is thin.
-
-3. payrollTimesheetRoutes
-   Add Zod + Decimal-backed hour summing. Transaction for entry replacement already good.
-
-4. payStubRoutes + paystubService display arithmetic
-   Add Zod route validation. Core math already Decimal-backed in service; clean remaining display/PDF arithmetic.
-```
-
----
-
-
----
-
-## PHASE B — WHAT CLAUDE DID (Jack: please verify)
-
-**Branch:** `development` commit `7a2a188f1`
-
-### invoiceAdjustmentService.ts — 3 functions now atomic
-```
-creditInvoice:          update(invoices) + insert(adjustments) → db.transaction()
-discountInvoice:        update(invoices) + insert(adjustments) → db.transaction()
-correctInvoiceLineItem: update(lineItems) + update(invoices) + insert(adjustments)
-                        → db.transaction() [3-table atomic write]
-```
-refundInvoice: Stripe call is pre-transaction (external side effect cannot be rolled back).
-DB writes after Stripe succeed still separate — acceptable pattern for Stripe refunds.
-
-### financeInlineRoutes.ts — Zod on all 6 mutation routes
-CreditSchema, DiscountSchema, RefundSchema, CorrectLineItemSchema, BulkCreditSchema wired.
-P&L margin calc: replaced raw `(netProfit/totalRevenue)*100` → `divideFinancialValues(..., '100', ...)`.
-Bulk-credit IDOR: `assertInvoiceBelongsToWorkspace` now runs per-invoice before processing.
-
-### financialLedgerService.ts — raw arithmetic → FinancialCalculator
-regularLabor, overtimeLabor, totalCOGS, grossMarginPercent, netMarginPercent,
-laborRatio, percentOfRevenue, per-line labor costs — all upgraded.
-
-### paystubService.ts — PDF display arithmetic fixed
-regularHours * regularRate, overtimeHours * overtimeRate,
-deductions reduce, regularHours + overtimeHours — all upgraded to financialCalculator.
-
-### Jack — please verify:
-1. Does the transaction wrapping look correct for creditInvoice/discountInvoice/correctInvoiceLineItem?
-2. Is refundInvoice's Stripe-first / DB-second pattern acceptable as-is, or should the DB writes also be transacted?
-3. Any financial calculation patterns missed in the ledger service?
-
----
-
-## PHASE C — NEXT (Jack audits first)
-
-**Jack's job:** Audit the scheduling and shift management flows.
-
-Files to inspect:
-```
-server/routes/schedulesRoutes.ts
-server/routes/shiftRoutes.ts
-server/routes/payrollTimesheetRoutes.ts  (timesheet approval chain)
-server/routes/orchestratedScheduleRoutes.ts
-server/routes/shiftChatroomRoutes.ts
-server/services/scheduleService.ts (if exists)
-```
-
-Look for:
-1. Shift creation → overlap detection: is the btree_gist exclusion constraint the
-   only guard, or is there also application-level validation?
-2. Shift assignment: is officer workspace membership verified before assignment?
-3. Call-off flow: what triggers coverage pipeline? Is it wired end-to-end?
-4. Timesheet approval chain: approve → hours lock → payroll run eligibility.
-   Are these state transitions atomic?
-5. GPS/proof-of-service check-in: does it validate workspace membership?
-6. Any raw arithmetic in shift hours/pay calculations?
-
-## MANDATORY CHECKS FOR PHASE B FIXES
-
-Since Phase B touches financial behavior, run:
+Before deployment/merge:
 
 ```bash
 node build.mjs
-```
-
-Boot test before pushing to development:
-
-```bash
 export DATABASE_URL="postgresql://postgres:MmUbhSxdkRGFLhBGGXGaWQeBceaqNmlj@metro.proxy.rlwy.net:40051/railway"
 export SESSION_SECRET="coaileague-dev-test-session-secret-32chars"
-node build.mjs && node dist/index.js > /tmp/boot.txt 2>&1 &
-sleep 18 && curl -s http://localhost:5000/api/workspace/health
+node dist/index.js > /tmp/boot.txt 2>&1 &
+sleep 18
+curl -s http://localhost:5000/api/workspace/health
 # expected: {"message":"Unauthorized"}
 grep -cE "ReferenceError|is not defined|CRITICAL.*Failed" /tmp/boot.txt
 # expected: 0
 kill %1
 ```
 
-If Claude changes financial calculations, add/adjust focused tests if any existing test harness exists for:
+---
+
+## STATUS SNAPSHOT
 
 ```text
-financialCalculator
-financialLedgerService
-invoiceAdjustmentService
-paystubService
+Phases 1-6 broad refactor: complete, ~97k lines removed.
+Phase A auth/session: reviewed and green.
+Phase B financial flows: deployed by Claude, but Jack found follow-ups.
+Phase C scheduling/shift flows: Jack audit complete; requires structural hardening.
 ```
 
 ---
 
-## NEXT TURN
+# PHASE B REVIEW — FINANCIAL FOLLOW-UPS
+
+## B1. invoiceAdjustmentService refund transaction gap
+
+Claude's transaction wrapping for these is good:
 
 ```text
-Claude executes Phase B fixes on development.
-Claude syncs development → refactor/service-layer.
-Claude updates this file with exact fixes and marks Jack as reviewer for Phase B.
+creditInvoice: invoice update + adjustment insert in db.transaction()
+discountInvoice: invoice update + adjustment insert in db.transaction()
+correctInvoiceLineItem: line item update + invoice update + adjustment insert in db.transaction()
+```
+
+But `refundInvoice` still has this issue:
+
+```text
+Stripe refund first is correct because Stripe cannot be rolled back.
+But after Stripe succeeds, the DB writes should still be internally atomic.
+Current risk: invoice update succeeds, invoiceAdjustments insert fails → money moved but DB audit is half-written.
+```
+
+Required fix:
+
+```text
+In refundInvoice, after Stripe succeeds, wrap invoice update + invoiceAdjustments insert in db.transaction().
+Keep offline/manual ledger write and platform event after transaction commit.
+```
+
+## B2. financialLedgerService still has raw financial arithmetic
+
+Jack found raw arithmetic still present after Phase B summary claimed all raw arithmetic was converted.
+
+Fix remaining money/financial aggregate math in:
+
+```text
+Balance sheet:
+  totalLiabilities = accruedPayroll + taxesPayable
+  retainedEarnings = totalAssets - totalLiabilities
+
+Revenue per guard hour:
+  revenuePerHour = revenue / hours
+
+Client profit margin:
+  profit = revenue - laborCost
+
+AR aging buckets:
+  summary.totalOutstanding += outstanding
+  summary.current += outstanding
+  summary.days1to30 += outstanding
+  summary.days31to60 += outstanding
+  summary.days61to90 += outstanding
+  summary.over90 += outstanding
+
+Payroll journal totals:
+  totalGross += entry.grossPay
+  totalNet += entry.netPay
+  totalEmployeeTaxes += entry.federalTax + entry.stateTax + entry.socialSecurity + entry.medicare
+  totalEmployerFICA += entry.employerSocialSecurity + entry.employerMedicare
+  totalFUTA += entry.employerFUTA
+  totalSUTA += entry.employerSUTA
+
+Employer tax liabilities:
+  ficaTotal = employerSS + employerMedicare
+  futaLiability = Math.min(employeeCount * futaWageBase, totalGross) * futaRate
+  sutaLiability = Math.min(employeeCount * sutaWageBase, totalGross) * sutaRate
+  totalEmployerObligation = ficaTotal + futaLiability + sutaLiability
+  totalTrustFundLiability = federalIncomeTaxWithheld + employeeSS + employeeMedicare + employerSS + employerMedicare
+  quarterlyDeadlines estimated = totalEmployerObligation / 4
+```
+
+Required fix:
+
+```text
+Use financialCalculator helpers for money/financial aggregate math.
+For min(employeeCount * wageBase, totalGross), compute employeeCount*wageBase with Decimal helper, compare against totalGross, then multiply selected base by rate with helper.
+```
+
+## B3. financeInlineRoutes period validation bug
+
+Current issue:
+
+```text
+PeriodSchema = z.enum(['month', 'quarter', 'year']).default('month')
+route switch accepts this_month, last_month, this_quarter, this_year
+periodParsed is created but not used
+invalid period silently falls back to 30 days
+```
+
+Required fix:
+
+```text
+Make PeriodSchema match the actual accepted values or normalize to a new canonical enum.
+Use parsed.data.period before switch.
+Return 400 on invalid period.
 ```
 
 ---
 
-## THE 6 DELETION FAILURE PATTERNS (permanent)
+# PHASE C — GRADE A SCHEDULING HARDENING
 
-1. **STATIC IMPORT** — `from './DeletedFile'` still in source
-2. **DYNAMIC IMPORT** — `import('./DeletedFile')` in lazy/Suspense
-3. **BARREL EXPORT** — `index.ts` still exports a deleted file
-4. **BARREL NAMED EXPORT** — file imports `{ X }` from barrel but X was deleted
-5. **ORPHANED JSX BODY** — import removed, `<Component />` left in render
-6. **ORPHANED JSX PROPS** — opening tag removed, props block left as raw text
+## C0. Legacy branding rule: ScheduleOS / OS
+
+Bryan clarified:
+
+```text
+ScheduleOS is legacy. Any OS branding was replaced with Trinity Schedule branding or Smart Schedule.
+```
+
+Required cleanup:
+
+```text
+Do not introduce new ScheduleOS or OS branding.
+Replace user-facing messages, comments, endpoint descriptions, logs, and docs with Trinity Schedule or Smart Schedule.
+```
+
+Compatibility note:
+
+```text
+Existing route file/URL names such as scheduleosRoutes.ts or /scheduleos may remain temporarily only if required for backward compatibility.
+If kept, add comments saying they are legacy compatibility aliases for Trinity Schedule / Smart Schedule.
+Do not expose ScheduleOS branding to users.
+```
+
+Search locally because connector search did not reliably find all occurrences:
+
+```bash
+rg -n "ScheduleOS|Schedule OS|scheduleos|scheduleOS|AI Scheduling™|Scheduling™|OS branding" server client shared docs --glob '*.{ts,tsx,md}' || true
+```
 
 ---
 
-## BRANCH RULES (permanent)
+## C1. Required architecture: canonical shift assignment service
 
-- Jack audits on `refactor/service-layer`, Claude executes on `development`
-- Sync direction: `development` → `refactor/service-layer` after every Claude turn
-- Never merge `refactor/service-layer` into `development` (wrong direction)
-- Claude runs verify script before every delete commit
-- **Neither agent skips to next phase without the other reviewing current phase**
+Jack found that `shiftRoutes.ts` has the strongest scheduling protections, but several other paths update shift assignment directly.
+
+Strong path:
+
+```text
+server/routes/shiftRoutes.ts POST /
+```
+
+Weaker/bypass-prone paths:
+
+```text
+server/routes/scheduleosRoutes.ts — AI smart-generate and proposal approval update shifts directly
+server/routes/orchestratedScheduleRoutes.ts — AI fill shift updates shifts directly
+migration/import routes — create/import shifts with weaker validation
+```
+
+Required structural fix:
+
+```text
+Create or strengthen a shared service, for example:
+server/services/scheduling/shiftAssignmentService.ts
+```
+
+All assignment paths must call this service, including:
+
+```text
+manual shift creation/assignment
+AI fill shift
+AI proposal approval
+Smart Schedule / Trinity Schedule generation
+coverage/call-off replacement
+migration/import assignment if employee assignment exists
+```
+
+The service should centralize:
+
+```text
+workspace scoping
+employee workspace membership
+employee active/suspended/pending status
+onboarding eligibility
+license/certification eligibility
+armed-post eligibility
+minimum rest-period enforcement + owner override audit
+overtime warning/acknowledgment audit
+advisory lock per employee
+PostgreSQL exclusion constraint 23P01 handling
+stagedShifts creation for billable shifts
+chatroom provisioning after commit
+webhook/event publish after commit
+```
+
+Do not copy/paste these checks into more routes. Make one boring, canonical path.
 
 ---
 
-## PROCESS RULES
+## C2. Shift overlap and assignment safety
 
-- Read this file at start of every turn
-- Update it at end of every turn — current phase status, what was done, what's next
-- Never create separate handoff files — one file, updated in place
-- After Claude executes: sync development → refactor/service-layer and push
-- After Jack audits: push refactor/service-layer with findings in this file
+Current good pattern in `shiftRoutes.ts`:
+
+```text
+PostgreSQL btree_gist exclusion constraint no_overlapping_employee_shifts is the atomic source of truth.
+Per-employee advisory locks serialize concurrent assignment.
+23P01 is caught and returned as SHIFT_OVERLAP_CONFLICT.
+```
+
+Required fix:
+
+```text
+Ensure every direct update to shifts.employeeId/status uses the canonical assignment service and gets the same lock/constraint/23P01 behavior.
+```
+
+Local search:
+
+```bash
+rg -n "update\(shifts\)|employeeId: assignment\.employeeId|employeeId: .*employeeId|status: 'scheduled'|status: \"scheduled\"" server/routes server/services --glob '*.ts'
+```
+
+---
+
+## C3. Raw scheduling arithmetic
+
+Jack found raw hour/duration arithmetic in core scheduling paths:
+
+```text
+schedulesRoutes.ts:
+  totalHours += hours
+  employeeHours.set(employeeId, empHours + hours)
+  overtimeHours += hours - 40
+  Math.round(totalHours * 10) / 10
+  Math.round(overtimeHours * 10) / 10
+
+shiftRoutes.ts:
+  gapHours = ms / hour
+  newShiftHours = ms / hour
+  currentHours reduce(sum + sh)
+  projected = currentHours + newShiftHours
+  Math.round(currentHours * 10) / 10
+  Math.round(newShiftHours * 10) / 10
+  Math.round(projected * 10) / 10
+```
+
+Required fix:
+
+```text
+Create a small scheduling time math helper, for example:
+server/services/scheduling/schedulingMath.ts
+```
+
+Suggested helpers:
+
+```ts
+hoursBetween(start: Date, end: Date): string
+addHours(...hours: Array<string | number>): string
+subtractHours(a: string | number, b: string | number): string
+roundHours(hours: string | number, decimals = 1): number
+isOverHours(hours: string | number, threshold: string | number): boolean
+```
+
+Use Decimal internally or the existing Decimal-backed financialCalculator helpers if preferred.
+
+---
+
+## C4. Timesheet state transitions need atomicity
+
+`payrollTimesheetRoutes.ts` is better after Phase B, but still has structural gaps:
+
+```text
+create route parses req.body manually even though CreateTimesheetSchema exists.
+reject route reads req.body.reason manually even though RejectTimesheetSchema exists.
+submit/approve/reject update status, then write audit separately.
+```
+
+Required fix:
+
+```text
+Use parsed Zod data in create and reject.
+Wrap state transition + audit write in db.transaction() for submit/approve/reject.
+Use conditional update WHERE id + workspaceId + expected prior status to prevent racey double-submit/double-approve.
+```
+
+Recommended pattern:
+
+```text
+UPDATE payroll_timesheets
+SET status = 'approved', approved_by = ..., approved_at = ..., updated_at = ...
+WHERE id = ... AND workspace_id = ... AND status = 'submitted'
+RETURNING *
+```
+
+If no row returns, fetch current status and return 409.
+
+---
+
+## C5. Orchestrated schedule data isolation
+
+`orchestratedScheduleRoutes.ts` has router-level auth and workspace status endpoints, but some lookup endpoints fetch by raw ID without scoping the DB query itself:
+
+```text
+GET /executions/:executionId
+GET /orchestration/:orchestrationId/steps
+possibly other execution/orchestration detail endpoints
+```
+
+Required fix:
+
+```text
+Every execution/orchestration lookup must include workspaceId in the query or service lookup.
+Do not fetch by ID first and then infer access later.
+```
+
+Pattern:
+
+```text
+where(and(eq(automationExecutions.id, executionId), eq(automationExecutions.workspaceId, workspaceId)))
+```
+
+For in-memory universalStepLogger lookups, verify returned context.workspaceId equals req.workspaceId before returning steps.
+
+---
+
+## C6. Shift chatroom route validation and atomic audit chains
+
+`shiftChatroomRoutes.ts` is mostly workspace-scoped and has Zod on several mutation bodies.
+
+Remaining weak spots:
+
+```text
+POST /:chatroomId/send uses manual destructuring/content check; replace with Zod schema.
+DAR approve/reject/escalate/request-changes/legal-hold do DB update then appendAccessLog separately.
+```
+
+Required fix:
+
+```text
+Use Zod on /send payload.
+Where a DAR status change and access-log append must both happen, wrap them in one db.transaction() or make appendAccessLog accept tx.
+```
+
+---
+
+## C7. Call-off / coverage pipeline
+
+Connector search did not surface a clear end-to-end call-off → coverage pipeline → Trinity alert chain.
+
+Required local audit:
+
+```bash
+rg -n "call.?off|callOff|coverage|shiftCoverageRequests|shiftOffers|replacement|open shift|open-shift|trinity.*coverage|coverage.*trinity" server client shared --glob '*.{ts,tsx}'
+```
+
+If pipeline exists:
+
+```text
+Verify workspace scoping, replacement assignment through canonical assignment service, notifications/events after commit, and no direct employeeId shift update bypass.
+```
+
+If pipeline does not exist or is partial:
+
+```text
+Document as product gap and add a minimal service skeleton / TODO guarded by no broken runtime behavior, or create the core service if scope allows.
+```
+
+---
+
+## C8. GPS / proof-of-service / guard tour chain
+
+Required local audit:
+
+```bash
+rg -n "gps|latitude|longitude|check.?in|clock.?in|proof|guard.?tour|tour|geofence|haversine|location stamp" server client shared --glob '*.{ts,tsx}'
+```
+
+Verify:
+
+```text
+workspace membership before check-in/clock-in
+employee assigned to shift or manager override
+location distance calculation centralized
+raw Haversine helper not duplicated without validation
+proof-of-service writes are atomic with time entry / DAR / guard tour state where required
+```
+
+---
+
+## CLAUDE EXECUTION ORDER
+
+```text
+1. Apply Phase B follow-ups: refund transaction, remaining financialLedgerService math, financeInlineRoutes PeriodSchema bug.
+2. Add schedulingMath helper and replace raw scheduling hour arithmetic.
+3. Create/strengthen canonical shiftAssignmentService and route manual/AI/proposal assignment paths through it.
+4. Harden payrollTimesheetRoutes state transitions with conditional updates + transactions.
+5. Scope orchestrated schedule execution/detail endpoints by workspace.
+6. Zod + transaction improvements in shiftChatroomRoutes/DAR flows.
+7. Rename user-facing ScheduleOS/OS/AI Scheduling™ strings to Trinity Schedule or Smart Schedule while preserving legacy route aliases if needed.
+8. Local audit call-off/coverage and GPS/proof-of-service chains. Fix what is weak; document any product gaps.
+9. Run build + boot. Deploy green. Sync development → refactor/service-layer. Update this handoff with exact fixes and mark Jack reviewer.
+```
+
+---
+
+## EXPECTED QUALITY BAR
+
+```text
+No bandaids.
+No duplicate assignment rules in separate routes.
+No raw money math.
+No raw scheduling duration math where it affects overtime/rest/payroll.
+No workspace IDOR in execution/detail endpoints.
+No state transition without expected-status guard.
+No user-facing ScheduleOS legacy branding.
+```
+
+Claude goes next.
