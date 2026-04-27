@@ -3,7 +3,7 @@ import { useModules } from "@/config/moduleConfig";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Settings, BarChart3, Shield } from "lucide-react";
-import { HelpAIIntegrationPanel } from "@/components/helpai";
+;
 
 export default function HelpAIOrchestration() {
   const { user } = useAuth();
@@ -68,7 +68,6 @@ export default function HelpAIOrchestration() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <HelpAIIntegrationPanel />
               </CardContent>
             </Card>
           </TabsContent>
@@ -83,7 +82,6 @@ export default function HelpAIOrchestration() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <HelpAIIntegrationPanel />
               </CardContent>
             </Card>
           </TabsContent>
@@ -136,7 +134,6 @@ export default function HelpAIOrchestration() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <HelpAIIntegrationPanel />
               </CardContent>
             </Card>
           </TabsContent>

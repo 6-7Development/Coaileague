@@ -3,30 +3,13 @@ import { TrinityArrowMark } from "@/components/trinity-logo";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { 
-  Bell, AlertTriangle, Info, Wrench, Check, Clock, X, Sparkles, 
-  Zap, ChevronRight, Eye, Filter, ArrowUpDown, Shield, UserCheck,
-  MessageCircle, Trash2, CheckCircle2
-} from "lucide-react";
+import { Bell, AlertTriangle, Info, Wrench, Check, Clock, X, Sparkles, Zap, ChevronRight, Eye, Filter, ArrowUpDown, Shield, UserCheck, MessageCircle, Trash2, CheckCircle2 } from "lucide-react";
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger,  } from "@/components/ui/popover";
 import { UniversalModal, UniversalModalContent } from '@/components/ui/universal-modal'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { MobileResponsiveSheet } from "@/components/canvas-hub";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,  } from "@/components/ui/alert-dialog";
+;
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -2154,7 +2137,6 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       className="flex flex-col h-full min-h-0"
     >
       {/* UNS Header with Trinity Branding - Polished Gradient */}
-      {/* Skip on mobile since MobileResponsiveSheet already provides header */}
       {!skipHeader && (
       <div className={`${compact ? 'px-3 py-2.5' : 'px-4 py-3'} border-b bg-gradient-to-r from-primary to-primary/85 flex-shrink-0`}>
         <div className="flex items-center justify-between gap-2">
@@ -2570,32 +2552,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
           <Bell className="h-5 w-5 text-foreground" />
         </div>
         
-        {/* Notifications Sheet - Uses Canvas Hub MobileResponsiveSheet for proper layer management */}
         {/* No title so we control our own header; showCloseButton=false hides the built-in sheet buttons */}
-        <MobileResponsiveSheet
-          open={open}
-          onOpenChange={setOpen}
-          side="bottom"
-          className="p-0"
-          maxHeight="100dvh"
-          showDragIndicator={true}
-          showCloseButton={false}
-        >
-          {/* Full GetSling-style Mobile Notifications */}
-          <div
-            data-testid="notification-sheet-content"
-            data-trinity-avoid="true"
-            className="flex flex-col"
-            style={{ height: 'calc(100dvh - 36px)' }}
-          >
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {MobileNotificationsContent}
-            </div>
-            <div className="flex-shrink-0">
-              <Footer compact={true} onAskTrinity={openTrinityModal} />
-            </div>
-          </div>
-        </MobileResponsiveSheet>
         
         {/* Notification Detail Modal - Shows structured breakdown */}
         <NotificationDetailModal
