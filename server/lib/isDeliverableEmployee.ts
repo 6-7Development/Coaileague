@@ -1,0 +1,19 @@
+/**
+ * isDeliverableEmployee
+ * ─────────────────────
+ * Single-source-of-truth guard for "can we act on / notify this employee?"
+ *
+ * An employee is NOT deliverable if:
+ *  - isActive is false  (platform-level deactivation)
+ *  - status is one of the BLOCKED lifecycle values
+ *
+ * Use this everywhere an employee record must be active before the platform
+ * sends them a notification, executes a Trinity action, or includes them in
+ * a supervisor chain.
+ */
+
+const BLOCKED_STATUSES = ['terminated', 'inactive', 'deactivated', 'suspended'] as const;
+
+export function isDeliverableEmployee(emp: { isActive: boolean; status?: string | null }): boolean {
+  return emp.isActive === true && !BLOCKED_STATUSES.includes((emp.status ?? '') as typeof BLOCKED_STATUSES[number]);
+}
