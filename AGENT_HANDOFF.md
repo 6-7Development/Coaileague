@@ -1,6 +1,6 @@
 # COAILEAGUE REFACTOR - MASTER HANDOFF
 # ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 - Claude (Phase H complete)
+# Last updated: 2026-04-27 - Codex (3-agent roles clarified; Codex hardening role added)
 
 ---
 
@@ -14,6 +14,27 @@ CODEX       → verifies, decides next domain or signals AUDIT COMPLETE
 
 Speed rule: One domain, one complete sweep, one coherent commit.
 
+Role clarification (supersedes the shorthand above):
+- CODEX verifies, but is also expected to strengthen weak code, remove bandaids,
+  and perform scoped refactors/enhancements when a domain can be improved safely
+  on `refactor/service-layer`. Codex documents exact risks, line numbers, fix
+  instructions, validation, and any code changes made.
+- CLAUDE remains implementation lead on `development`, integrates Codex hardening
+  changes when Codex made them, boot-tests, and syncs back.
+- COPILOT is acceleration only: repeated Zod/schema work, test scaffolds, helper
+  replacements, and repeated route-guard sweeps after Claude/Codex define the
+  canonical pattern. No architecture calls, final safety decisions, or independent
+  merges.
+
+Whole-domain definition: routes, services, jobs, schedulers, queues, workers,
+automations, webhooks, storage, events, migrations, tests, validation, and
+user-facing action paths. Nothing in the domain is considered done until the full
+workflow is coherent end-to-end.
+
+Ownership rule: no two agents edit the same files at the same time. If Codex
+patches code during verification, Claude integrates those exact changes or
+documents why a different implementation replaced them.
+
 ---
 
 ## TURN TRACKER
@@ -26,6 +47,7 @@ Current turn: COPILOT
   → OR if no narrow scope found: signal CODEX to verify Phase H
 
 After Copilot: CODEX
+  -> Verify Phase H fixes and strengthen/refactor weak Phase H code if safely scoped.
   → Verify Phase H fixes
   → Determine: any remaining domains?
   → Suggest: AUDIT COMPLETE if nothing critical remains
