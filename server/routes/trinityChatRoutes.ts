@@ -7,6 +7,7 @@
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
@@ -99,7 +100,7 @@ router.post('/chat', attachWorkspaceId, requireTrinityAccess, async (req: Reques
     const authReq = req as AuthenticatedRequest;
     const parsed = chatSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Invalid request', details: formatZodIssues(parsed.error) });
     }
 
     const { message, sessionId, images } = parsed.data;
@@ -228,7 +229,7 @@ router.patch('/settings', attachWorkspaceId, requireTrinityAccess, async (req: R
     const authReq = req as AuthenticatedRequest;
     const parsed = updateSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid settings', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Invalid settings', details: formatZodIssues(parsed.error) });
     }
 
     const userId = authReq.user!.id;

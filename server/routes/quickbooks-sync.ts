@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
@@ -135,7 +136,7 @@ router.post("/api/quickbooks/invoice/create", requireAuth, requireProfessional, 
     if (!parseResult.success) {
       return res.status(400).json({ 
         error: "Validation failed", 
-        details: parseResult.error.issues 
+        details: formatZodIssues(parseResult.error) 
       });
     }
     

@@ -1,4 +1,5 @@
 import { requirePlatformStaff } from '../rbac';
+import { formatZodIssues } from '../middleware/validateRequest';
 /**
  * Platform Feedback Routes
  *
@@ -169,7 +170,7 @@ const SurveyCreateSchema = z.object({
 router.post('/surveys', requirePlatformStaff, async (req, res) => {
   const parse = SurveyCreateSchema.safeParse(req.body);
   if (!parse.success) {
-    return res.status(400).json({ error: 'Invalid survey data', details: parse.error.issues });
+    return res.status(400).json({ error: 'Invalid survey data', details: formatZodIssues(parse.error) });
   }
 
   const { title, description, questions, frequency, isActive } = parse.data;
@@ -217,7 +218,7 @@ router.put('/surveys/:id', async (req, res) => {
   const { id } = req.params;
   const parse = SurveyCreateSchema.partial().safeParse(req.body);
   if (!parse.success) {
-    return res.status(400).json({ error: 'Invalid update data', details: parse.error.issues });
+    return res.status(400).json({ error: 'Invalid update data', details: formatZodIssues(parse.error) });
   }
 
   try {
@@ -253,7 +254,7 @@ const ResponseSchema = z.object({
 router.post('/respond', async (req, res) => {
   const parse = ResponseSchema.safeParse(req.body);
   if (!parse.success) {
-    return res.status(400).json({ error: 'Invalid response data', details: parse.error.issues });
+    return res.status(400).json({ error: 'Invalid response data', details: formatZodIssues(parse.error) });
   }
 
   const { surveyId, answers, workspaceId } = parse.data;

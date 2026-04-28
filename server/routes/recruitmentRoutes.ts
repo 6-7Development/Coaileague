@@ -6,6 +6,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { db } from '../db';
 import {
   interviewCandidates,
@@ -126,7 +127,7 @@ router.post('/candidates', async (req: Request, res: Response) => {
   try {
     const parsed = insertInterviewCandidateSchema.safeParse({ ...req.body, workspaceId });
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Validation failed', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Validation failed', details: formatZodIssues(parsed.error) });
     }
     const candidate = await createCandidate({ ...parsed.data, workspaceId });
     res.status(201).json({ candidate });
@@ -287,7 +288,7 @@ router.patch('/candidates/:id/decision', async (req: Request, res: Response) => 
 
     const parsed = decisionSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid decision data', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Invalid decision data', details: formatZodIssues(parsed.error) });
     }
 
     if (!req.user?.id) {
@@ -368,7 +369,7 @@ router.post('/questions', async (req: Request, res: Response) => {
   try {
     const parsed = insertInterviewQuestionBankSchema.safeParse({ ...req.body, workspaceId });
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Validation failed', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Validation failed', details: formatZodIssues(parsed.error) });
     }
     const [question] = await db.insert(interviewQuestionsBank).values(parsed.data).returning();
     res.status(201).json({ question });

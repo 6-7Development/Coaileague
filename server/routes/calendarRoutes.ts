@@ -4,6 +4,7 @@
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { Router, Response, Request } from 'express';
 import { requireAuth } from '../auth';
 import { AuthenticatedRequest } from '../rbac';
@@ -227,7 +228,7 @@ calendarRouter.post('/subscriptions', requireAuth, async (req: AuthenticatedRequ
 
     const parsed = createSubscriptionSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid subscription options', details: parsed.error.issues });
+      return res.status(400).json({ error: 'Invalid subscription options', details: formatZodIssues(parsed.error) });
     }
     const body = parsed.data;
 

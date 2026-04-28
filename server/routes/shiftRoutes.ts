@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { validateShiftTimes, validateShiftStartPast, validateShiftEndFuture, businessRuleResponse } from '../lib/businessRules';
 import { Router } from "express";
 import { requireAuth } from "../auth";
@@ -321,7 +322,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
       });
 
       if (!validationResult.success) {
-        return res.status(400).json({ error: "Validation failed", details: validationResult.error.issues });
+        return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validationResult.error) });
       }
 
       const rawValidated = validationResult.data;
@@ -980,7 +981,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
       const { workspaceId: _, ...updateData } = req.body;
       const validationResult = insertShiftSchema.partial().safeParse(updateData);
       if (!validationResult.success) {
-        return res.status(400).json({ error: "Validation failed", details: validationResult.error.issues });
+        return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validationResult.error) });
       }
       const validated = validationResult.data;
 
