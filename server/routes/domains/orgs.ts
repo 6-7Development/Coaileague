@@ -6,7 +6,7 @@ import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { requirePlatformStaff } from "../../rbac";
-import { mountWorkspaceRoutes } from "./routeMounting";
+import { mountRoutes, mountWorkspaceRoutes } from "./routeMounting";
 import integrationRouterOAuth from "../oauthIntegrationRoutes";
 import configRegistryRouter from "../configRegistryRoutes";
 import featureFlagsRoutes from "../featureFlagsRoutes";
@@ -65,11 +65,12 @@ export function mountOrgsRoutes(app: Express): void {
   mountWorkspaceRoutes(app, [
     ["/api/workspace/integrations", integrationRoutes],
   ]);
-  app.use("/api/workspace", requireAuth, workspaceSettingsRouter);
+  mountRoutes(app, [
+    ["/api/workspace", requireAuth, workspaceSettingsRouter, workspaceInlineRouter],
+  ]);
   mountWorkspaceRoutes(app, [
     ["/api/integrations", integrationsInlineRouter],
   ]);
-  app.use("/api/workspace", requireAuth, workspaceInlineRouter);
   app.use("/api/admin/partners", requirePlatformStaff, partnerRoutes);
   mountWorkspaceRoutes(app, [
     ["/api/import", importRouter],

@@ -3,8 +3,8 @@
  */
 
 import { db } from "../db";
-import { employees, shifts } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { automationExecutions } from "@shared/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 export interface ActiveWorkflow {
   id: string;
@@ -18,74 +18,70 @@ export interface ActiveWorkflow {
   lastUpdatedAt: Date;
 }
 
+const ACTIVE_EXECUTION_STATUSES = ['queued', 'in_progress', 'pending_verification'] as const;
+
+function toWorkflowStatus(status: string): ActiveWorkflow['status'] {
+  if (status === 'queued') return 'scheduled';
+  return 'running';
+}
+
+function getWorkBreakdownTotal(workBreakdown: unknown): number {
+  if (!workBreakdown || typeof workBreakdown !== 'object') return 0;
+  const totalCount = (workBreakdown as { totalCount?: unknown }).totalCount;
+  return typeof totalCount === 'number' && Number.isFinite(totalCount) ? totalCount : 0;
+}
+
+function deriveProgressPercent(execution: typeof automationExecutions.$inferSelect): number {
+  if (execution.status === 'pending_verification') return 100;
+  if (execution.status === 'queued') return 0;
+
+  const targetCount = getWorkBreakdownTotal(execution.workBreakdown);
+  if (targetCount <= 0) return 0;
+
+  const completedItems = (execution.itemsProcessed ?? 0) + (execution.itemsFailed ?? 0);
+  return Math.min(99, Math.max(0, Math.round((completedItems / targetCount) * 100)));
+}
+
+function executionTypeToWorkflowType(actionType: string): string {
+  if (actionType.includes('schedule')) return 'schedule';
+  if (actionType.includes('payroll')) return 'payroll';
+  if (actionType.includes('invoice') || actionType.includes('billing')) return 'billing';
+  if (actionType.includes('employee') || actionType.includes('onboarding')) return 'onboarding';
+  if (actionType.includes('compliance')) return 'compliance';
+  return actionType || 'automation';
+}
+
 /**
  * Get all active workflows for workspace
  */
 export async function getActiveWorkflows(
   workspaceId: string
 ): Promise<ActiveWorkflow[]> {
-  const workflows: ActiveWorkflow[] = [];
-
-  // Check for active scheduling workflows
-  const schedulingShifts = await db
+  const activeExecutions = await db
     .select()
-    .from(shifts)
+    .from(automationExecutions)
     .where(and(
-      eq(shifts.workspaceId, workspaceId),
-      eq(shifts.status, 'published')
-    ));
+      eq(automationExecutions.workspaceId, workspaceId),
+      inArray(automationExecutions.status, [...ACTIVE_EXECUTION_STATUSES])
+    ))
+    .orderBy(desc(automationExecutions.updatedAt), desc(automationExecutions.queuedAt))
+    .limit(50);
 
-  if (schedulingShifts.length > 0) {
-    workflows.push({
-      id: `schedule-${workspaceId}`,
-      type: 'schedule',
-      name: 'Shift Scheduling',
-      status: 'running',
-      targetCount: schedulingShifts.length,
-      progressPercent: 75,
-      startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      estimatedCompletionAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
-      lastUpdatedAt: new Date(),
-    });
-  }
+  return activeExecutions.map((execution): ActiveWorkflow => {
+    const workBreakdownTotal = getWorkBreakdownTotal(execution.workBreakdown);
+    const observedItems = (execution.itemsProcessed ?? 0) + (execution.itemsFailed ?? 0);
 
-  // Check for active onboarding workflows
-  const newEmployees = await db
-    .select()
-    .from(employees)
-    .where(and(
-      eq(employees.workspaceId, workspaceId),
-      sql`${employees.createdAt} > NOW() - INTERVAL '30 days'`
-    ));
-
-  if (newEmployees.length > 0) {
-    workflows.push({
-      id: `onboarding-${workspaceId}`,
-      type: 'onboarding',
-      name: 'Employee Onboarding',
-      status: 'running',
-      targetCount: newEmployees.length,
-      progressPercent: 40,
-      startedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      estimatedCompletionAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-      lastUpdatedAt: new Date(),
-    });
-  }
-
-  // Check for payroll workflows (if configured)
-  workflows.push({
-    id: `payroll-${workspaceId}`,
-    type: 'payroll',
-    name: 'Payroll Processing',
-    status: 'scheduled',
-    targetCount: 0,
-    progressPercent: 0,
-    startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last run 7 days ago
-    estimatedCompletionAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Next run tomorrow
-    lastUpdatedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    return {
+      id: execution.id,
+      type: executionTypeToWorkflowType(execution.actionType),
+      name: execution.actionName,
+      status: toWorkflowStatus(execution.status),
+      targetCount: workBreakdownTotal || observedItems,
+      progressPercent: deriveProgressPercent(execution),
+      startedAt: execution.startedAt ?? execution.queuedAt,
+      lastUpdatedAt: execution.updatedAt ?? execution.startedAt ?? execution.queuedAt,
+    };
   });
-
-  return workflows.filter(w => w.status === 'running' || w.targetCount > 0);
 }
 
 /**

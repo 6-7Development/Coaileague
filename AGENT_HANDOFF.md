@@ -1,6 +1,6 @@
 # COAILEAGUE - MASTER HANDOFF
 # ONE FILE. Update in place. Never create new handoff files.
-# Last updated: 2026-04-28 - Codex (extended route cleanup + Copilot architecture TODOs logged)
+# Last updated: 2026-04-28 - Codex (refactor closeout implementation ready for Claude)
 
 ---
 
@@ -36,8 +36,8 @@ Next merge target:
 ## CURRENT COMMITS
 
 ```
-origin/development           -> 656e9750  (latest Claude demo-account startup fix)
-origin/refactor/service-layer -> Codex extended route cleanup + Copilot architecture TODOs
+origin/development           -> 832bf99a  (latest Copilot automation audit merge)
+origin/refactor/service-layer -> Codex refactor closeout implementation
 local Codex lane             -> synced with origin/refactor/service-layer before patching
 ```
 
@@ -61,6 +61,106 @@ kill %1
 Registry: 143 handlers, 137 Trinity-visible, 0 duplicates, under the 300 cap.
 Log fixes: 0 thought recording errors, 0 billing canary false positives.
 All audit hardening phases A-I are deployed and stable.
+
+---
+
+## REFACTOR CLOSEOUT MASTER LIST - BEFORE POLISH
+
+Purpose: this is the complete remaining structural/refactor list Claude should
+review as a whole before the team declares "refactor/condense complete" and
+moves fully into polish/enhancement work.
+
+### Already Closed
+- Broad dead-code refactor complete: ~97,334 lines removed.
+- Integration audits A-I complete and deployed/stable.
+- Trinity action registry consolidated: 143 handlers, 137 Trinity-visible, 0 duplicates, under 300 cap.
+- Trinity/log fixes verified: 0 thought recording errors, 0 billing canary false positives.
+- Scheduling pipeline backend verified Grade A; one scanner failure was a false positive.
+- RBAC/chat centralization safe slice complete outside WebSocket core.
+- Domain route mount condensation complete in two Codex commits:
+  - `450b9451` first route mount helper pass.
+  - `3968be97` audit/compliance/time/Trinity follow-up pass.
+- Copilot automation audit merged to development at `832bf99a`.
+- Current Codex patch closes remaining duplicate mount decisions.
+- Current Codex patch removes hardcoded workflow progress.
+- Current Codex patch makes automation retry honest: no fake retry success without a registered executor.
+- Current Codex patch hydrates pending approval gates from DB before approval lookup.
+- Current Codex patch persists workspace admin hourly rate in `workspaces.automation_policy_blob`.
+
+### Must Fix Or Explicitly Defer Before Full Polish
+1. ARCH-01 - Automation tracking truth source.
+   - Owner lane: Codex maps readers/writers; Claude implements canonical ledger/migration; Copilot scaffolds event-sequence tests.
+   - Issue: `automationEventsService`, `workflowLedger`, and `automationExecutionTracker` are disconnected.
+   - Exit: one canonical execution ledger with adapters or migrated callers.
+
+2. WIRE-01 - Real automation retry execution. PARTIALLY CLOSED BY CODEX
+   - Current patch: `automationEventsService.requestRetry()` no longer creates a fake retry job unless a real retry executor is registered for that job type. It exposes `registerRetryHandler()` and runs the handler asynchronously, completing/failing the retry event based on actual handler result.
+   - Remaining: register concrete retry executors for each automation job type when ARCH-01 canonical execution mapping is finished.
+   - Exit: each supported job type retries through the canonical executor with idempotency keys, max attempts, durable state transitions, and error capture.
+
+3. WIRE-04 - Durable approval gates. CLOSED BY CODEX
+   - Current patch: `approvalGateEnforcement` now hydrates pending gates from DB on startup and before approve/reject/status/pending/escalation/expiration lookups.
+   - Review focus: confirm no startup race remains around pending gate reads.
+
+4. STUB-01 - Real workflow progress. CLOSED BY CODEX
+   - Current patch: `workflowStatusService.ts` now reads active rows from `automation_executions` and derives status/progress from execution status, item counts, and work breakdown totals.
+   - Removed fake scheduling/onboarding/payroll workflow rows and guessed completion timestamps.
+
+5. STUB-03 - Admin hourly rate persistence. CLOSED BY CODEX
+   - Current patch: `automationMetrics.setWorkspaceAdminHourlyRate()` validates with existing business rules and persists the rate in `workspaces.automation_policy_blob`; reads now use the persisted value with safe fallback to the default.
+   - Review focus: confirm this existing JSONB settings column is acceptable instead of a new schema column.
+
+6. P0 - ChatDock durable foundation.
+   - Owner lane: Claude later, before ChatDock features.
+   - Issue: direct WebSocket/in-memory broadcast patterns remain.
+   - Exit: durable message store, per-room sequence numbers, Redis pub/sub, typed WS events, and FCM push foundation before receipts/reactions/polls/media/voice.
+
+7. P0 - RBAC/IRC final consolidation.
+   - Owner lane: Codex review/refactor after ChatDock foundation tests.
+   - Issue: `server/websocket.ts` and `server/services/ircEventRegistry.ts` still contain mode/IRC permission-sensitive concepts.
+   - Exit: RBAC owns permissions, room type owns behavior, IRC/mode names are internal routing metadata only.
+
+8. P1 - Zod API boundary sweep.
+   - Owner lane: Copilot batches, Claude verifies.
+   - Issue: remaining route mutation handlers read `req.body` without obvious local Zod `safeParse` boundary.
+   - Exit: each mutation has local Zod validation or a clearly documented already-validated service boundary.
+
+9. P1 - PDF/vault workflow sweep.
+   - Owner lane: Codex audit, Claude fixes.
+   - Issue: tax, payroll, compliance, client report, and document routes must prove real branded PDF generation plus tenant vault persistence.
+   - Exit: every generated document persists to tenant vault before response/email; no raw data substitutes for required PDFs.
+
+10. P1 - Payroll/ACH/Plaid/paystub sweep.
+    - Owner lane: Codex audit, Claude fixes.
+    - Issue: full workflow still needs final FinancialCalculator/idempotency/workspace/paystub-vault verification.
+    - Exit: money mutations use FinancialCalculator, ACH/Plaid handlers are idempotent, employee ownership is enforced, and paystubs are vaulted before transfer/notification.
+
+11. P1 - Remaining duplicate mount decisions. CLOSED BY CODEX
+    - Current patch: added generic `mountRoutes()` helper and routed intentional ordered multi-router mounts through it.
+    - Closed prefixes: `audit.ts` (`/api/admin`, `/api/platform`), `clients.ts` (`/api/clients`), `orgs.ts` (`/api/workspace`), and `trinity.ts` (`/api/trinity`).
+    - Scanner result: P1 count dropped from 48 to 43.
+
+12. P1 - Portal/dashboard quiet-state and action outcome uniformity.
+    - Owner lane: Claude polish, after structural items above.
+    - Issue: scanner still finds generic quiet-state/mock/TODO copy candidates.
+    - Exit: shared loading/empty/error/action states across portals, dashboards, and major action buttons.
+
+13. P2 - Large-file decomposition inventory.
+    - Owner lane: Codex/Claude later.
+    - Issue: `server/storage.ts`, `server/websocket.ts`, `aiBrainMasterOrchestrator.ts`, `settings.tsx`, and `voiceRoutes.ts` remain large.
+    - Exit: do not split cosmetically before live; only split after behavior tests pin the domain boundary.
+
+### Remaining Structural Work After This Codex Patch
+- ARCH-01 canonical automation execution truth source remains open.
+- WIRE-01 retry now has an honest executor hook, but concrete job retry handlers still need to be registered as part of ARCH-01.
+- P0 ChatDock durable foundation remains open before ChatDock feature expansion.
+- P0 RBAC/IRC final consolidation remains open in `server/websocket.ts` and `ircEventRegistry.ts`, best handled after ChatDock durability tests.
+- P1 Zod API boundary sweep remains for Copilot/Claude batches.
+- P1 PDF/vault workflow sweep remains for Codex audit and Claude fixes.
+- P1 Payroll/ACH/Plaid/paystub sweep remains for Codex audit and Claude fixes.
+
+Items 12-13 can continue into polish/enhancement if the live-critical structural
+items above are closed or explicitly deferred by Bryan.
 
 ---
 
@@ -191,62 +291,16 @@ First batches:
 - Billing: `billing-api.ts`, `billingSettingsRoutes.ts`, `budgetRoutes.ts`.
 
 ### P1 - Codex Owns: Route Mount, PDF/Vault, Payroll/ACH
-- Review duplicate route mounts in `server/routes/domains/*` one domain at a time.
+- Duplicate route mount cleanup is closed by the current Codex patch.
 - Verify document/tax/paystub routes produce branded PDFs and persist to tenant vault.
 - Verify payroll/ACH/Plaid/paystub path for FinancialCalculator, idempotency, workspace ownership, and vault persistence before notification/transfer.
 
-### P1 - Pre-Polish Architecture Leftovers From Copilot
-These are larger refactors and should be handled before the broad polish sprint
-unless Bryan explicitly defers them. They are the remaining architecture-grade
-items after route mount condensation, registry consolidation, and audit phases.
-
-ARCH-01 - Automation tracking truth-source consolidation:
-- Current issue: `automationEventsService`, `workflowLedger`, and
-  `automationExecutionTracker` are disconnected tracking systems.
-- Risk: operators can see different execution states depending on which surface
-  reads which tracker; retry/audit semantics stay hard to reason about.
-- Fix direction: choose one canonical execution ledger, define adapters for
-  legacy readers, and migrate callers domain by domain. Codex should map all
-  writers/readers first; Claude implements the canonical service/migration after
-  the map is reviewed. Copilot can scaffold tests around known event sequences.
-
-WIRE-01 - Real automation retry execution:
-- Current issue: `automationEventsService` retry is cosmetic; it records retry
-  intent/status but does not reliably re-execute the failed work.
-- Risk: UI can imply recovery while the underlying automation never ran again.
-- Fix direction: retry must enqueue or call the canonical executor with
-  idempotency keys, max-attempt policy, error capture, and durable status
-  transitions. No "retry" label without real re-execution.
-
-WIRE-04 - Approval gate durability:
-- Current issue: approval gate lookup is in memory only and has no DB fallback
-  after restart.
-- Risk: Railway restart can orphan pending approval flows or cause Trinity to
-  lose the reason/state for a blocked action.
-- Fix direction: persist pending approvals with workspaceId, actor, action,
-  payload hash, status, created/expires timestamps, and resume metadata. On
-  startup, hydrate or reconcile pending approvals from DB.
-
-STUB-01 - Workflow progress must be real:
-- Current issue: `workflowStatusService.ts` still returns hardcoded progress.
-- Risk: dashboards and Trinity status summaries can show fake confidence.
-- Fix direction: derive progress from canonical workflow steps/ledger rows, or
-  mark unknown explicitly. Hardcoded progress is not acceptable pre-live.
-
-STUB-03 - Admin hourly rate persistence:
-- Current issue: admin hourly rate is not persisted to DB.
-- Risk: billing/cost/admin views can drift from configured reality after restart
-  or redeploy.
-- Fix direction: schema-backed setting with workspace/platform scope, audit log,
-  validation, and migration/defaults. Requires schema work, so do not patch with
-  another in-memory fallback.
-
-Completion rule:
-- The codebase-wide refactor/condense phase is not fully closed until these
-  five items are either fixed and boot-validated or explicitly moved to a
-  documented post-live hardening bucket by Bryan. After these are resolved,
-  the remaining work becomes polish, UX uniformity, portal upgrades, and feature
-  enhancement rather than structural cleanup.
+### Pre-Polish Architecture Status
+The Copilot leftovers are now tracked in the master closeout list above.
+Current Codex patch closes WIRE-04, STUB-01, STUB-03, and duplicate mounts, and
+hardens WIRE-01 so retry cannot pretend to run without an executor. ARCH-01
+canonical automation execution mapping remains the main automation architecture
+item.
 
 ### Codex Patch - Domain Route Mount Condensation, Safe Slice
 This turn condensed repeated domain mount guard stacks without changing any route
@@ -315,6 +369,55 @@ Validation:
 Claude review focus:
 - Confirm mount order stayed identical in `audit.ts`, `compliance.ts`,
   `time.ts`, and `trinity.ts`.
+- Run boot validation after merge to `development`.
+
+### Codex Patch - Refactor Closeout Implementation
+This turn does actual closeout work, not just TODO logging.
+
+Files changed:
+- `server/routes/domains/routeMounting.ts`
+  - Added `mountRoutes()` for ordered multi-router mounts with mixed middleware.
+- `server/routes/domains/audit.ts`
+  - Condensed ordered duplicate `/api/admin` and `/api/platform` mounts through
+    `mountRoutes()` while preserving order.
+- `server/routes/domains/clients.ts`
+  - Routed intentional `/api/clients` mounts through `mountRoutes()`.
+  - Preserved public client portal setup routes by not adding `requireAuth` to
+    `clientPortalInviteRouter`.
+- `server/routes/domains/orgs.ts`
+  - Condensed the two authenticated `/api/workspace` routers into one ordered
+    mount.
+- `server/routes/domains/trinity.ts`
+  - Routed ordered `/api/trinity` catch-all routers through `mountRoutes()`.
+- `server/services/workflowStatusService.ts`
+  - Replaced hardcoded progress rows with real reads from `automation_executions`.
+  - Removed fake scheduling/onboarding/payroll workflows and guessed completion
+    timestamps.
+- `server/services/automationEventsService.ts`
+  - Added retry handler registration.
+  - `requestRetry()` now refuses to report success unless a real executor is
+    registered for the job type.
+- `server/services/orchestration/approvalGateEnforcement.ts`
+  - Pending gates now hydrate from DB at startup and before approval lookups,
+    approve/reject, pending list, escalation, and expiration checks.
+- `server/services/automationMetrics.ts`
+  - Admin hourly rate now persists in `workspaces.automation_policy_blob` using
+    existing business-rule validation.
+
+Validation:
+- `node build.mjs` passes.
+- `npm run audit:consolidation` passes through bundled Node.
+- Consolidation scanner P1 count dropped from 48 to 43.
+- `git diff --check` clean.
+
+Claude review focus:
+- Confirm `mountRoutes()` preserves middleware order for mixed public/auth
+  routers.
+- Confirm `automation_policy_blob` is acceptable persistence for admin hourly
+  rate, since the existing workspace schema already provides that JSONB setting
+  column.
+- Confirm retry API behavior is now honest: no registered executor means no
+  retry is queued.
 - Run boot validation after merge to `development`.
 
 ### P2 - Large File Decomposition Inventory

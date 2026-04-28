@@ -65,10 +65,16 @@ export interface AutomationStats {
   averageDuration: number;
 }
 
+export type AutomationRetryHandler = (
+  failedEvent: AutomationJobEvent,
+  retryJobId: string,
+) => Promise<AutomationJobEvent['result'] | void>;
+
 class AutomationEventsService {
   private static instance: AutomationEventsService;
   private recentEvents: Map<string, AutomationJobEvent> = new Map();
   private maxEvents = 100;
+  private retryHandlers: Partial<Record<AutomationJobType, AutomationRetryHandler>> = {};
   private jobRetryLimits: Record<AutomationJobType, number> = {
     invoicing: 3,
     payroll: 2,
@@ -90,6 +96,10 @@ class AutomationEventsService {
       this.instance = new AutomationEventsService();
     }
     return this.instance;
+  }
+
+  registerRetryHandler(type: AutomationJobType, handler: AutomationRetryHandler): void {
+    this.retryHandlers[type] = handler;
   }
 
   /**
@@ -275,13 +285,34 @@ class AutomationEventsService {
       return { success: false, message: 'Only failed jobs can be retried' };
     }
 
+    const retryHandler = this.retryHandlers[event.type];
+    if (!retryHandler) {
+      return {
+        success: false,
+        message: `No retry executor is registered for ${this.getJobLabel(event.type)}. Retry was not queued.`,
+      };
+    }
+
+    const newJobId = this.startJob(event.type, {
+      workspaceId: event.workspaceId,
+      retryCount: event.retryCount + 1,
+    });
+
+    void Promise.resolve(retryHandler(event, newJobId))
+      .then((result) => {
+        this.completeJob(newJobId, result ?? {
+          message: `${this.getJobLabel(event.type)} retry completed`,
+        });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.failJob(newJobId, message);
+      });
+
     return { 
       success: true, 
       message: `Retry queued for ${this.getJobLabel(event.type)}`,
-      newJobId: this.startJob(event.type, { 
-        workspaceId: event.workspaceId, 
-        retryCount: event.retryCount + 1 
-      })
+      newJobId,
     };
   }
 

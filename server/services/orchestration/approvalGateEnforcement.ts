@@ -151,13 +151,28 @@ class ApprovalGateEnforcementService {
   private gates = new Map<string, ApprovalGate>();
   private policies = new Map<ApprovalCategory, ApprovalPolicy>();
   private expirationCheckInterval: NodeJS.Timeout | null = null;
+  private pendingGatesLoaded = false;
+  private pendingGatesLoad: Promise<ApprovalGate[]> | null = null;
 
   constructor() {
     DEFAULT_POLICIES.forEach(policy => {
       this.policies.set(policy.category, policy);
     });
 
+    void this.ensurePendingGatesLoaded();
     this.expirationCheckInterval = setInterval(() => this.checkExpirations(), 3600000);
+  }
+
+  private async ensurePendingGatesLoaded(): Promise<ApprovalGate[]> {
+    if (this.pendingGatesLoaded) return [];
+    if (!this.pendingGatesLoad) {
+      this.pendingGatesLoad = this.loadPendingGates()
+        .finally(() => {
+          this.pendingGatesLoaded = true;
+          this.pendingGatesLoad = null;
+        });
+    }
+    return this.pendingGatesLoad;
   }
 
   /**
@@ -456,6 +471,7 @@ class ApprovalGateEnforcementService {
   }): Promise<{ success: boolean; message: string }> {
     const { gateId, approverId, approverRole, notes } = params;
 
+    await this.ensurePendingGatesLoaded();
     const gate = this.gates.get(gateId);
     if (!gate) {
       return { success: false, message: 'Approval gate not found' };
@@ -511,6 +527,7 @@ class ApprovalGateEnforcementService {
   }): Promise<{ success: boolean; message: string }> {
     const { gateId, rejectorId, reason } = params;
 
+    await this.ensurePendingGatesLoaded();
     const gate = this.gates.get(gateId);
     if (!gate) {
       return { success: false, message: 'Approval gate not found' };
@@ -553,20 +570,24 @@ class ApprovalGateEnforcementService {
   }
 
   async checkApprovalStatus(gateId: string): Promise<ApprovalGate | null> {
+    await this.ensurePendingGatesLoaded();
     return this.gates.get(gateId) || null;
   }
 
   async isApproved(gateId: string): Promise<boolean> {
+    await this.ensurePendingGatesLoaded();
     const gate = this.gates.get(gateId);
     return gate?.status === 'approved' || gate?.status === 'auto_approved';
   }
 
   async getPendingApprovals(workspaceId: string): Promise<ApprovalGate[]> {
+    await this.ensurePendingGatesLoaded();
     return Array.from(this.gates.values())
       .filter(gate => gate.workspaceId === workspaceId && gate.status === 'pending');
   }
 
   async escalate(gateId: string): Promise<{ success: boolean; newLevel: number }> {
+    await this.ensurePendingGatesLoaded();
     const gate = this.gates.get(gateId);
     if (!gate || gate.status !== 'pending') {
       return { success: false, newLevel: 0 };
@@ -608,6 +629,7 @@ class ApprovalGateEnforcementService {
   }
 
   private async checkExpirations(): Promise<void> {
+    await this.ensurePendingGatesLoaded();
     const now = new Date();
 
     for (const [gateId, gate] of this.gates.entries()) {

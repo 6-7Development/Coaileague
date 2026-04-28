@@ -25,6 +25,7 @@ import { subDays, startOfMonth, endOfMonth, differenceInHours } from "date-fns";
 import { typedCount } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
 import { invoiceProposals } from '@shared/schema';
+import { validateAdminHourlyRate } from '../lib/businessRules';
 const log = createLogger('automationMetrics');
 
 // Load dynamic constants from config (replaces hardcoded values)
@@ -36,28 +37,62 @@ const DEFAULT_MINUTES_SAVED_PER_PAYROLL = 40; // 45min manual - 5min AI (from co
 
 /**
  * Get workspace-specific admin hourly rate for cost avoidance calculations
- * Uses default rate since workspace config is not stored in database
  */
-function getWorkspaceAdminHourlyRate(_workspaceId: string): number {
-  // Return default rate - workspace-specific rates would require schema extension
-  return DEFAULT_ADMIN_HOURLY_RATE;
+async function getWorkspaceAdminHourlyRate(workspaceId: string): Promise<number> {
+  const [workspace] = await db
+    .select({ automationPolicyBlob: workspaces.automationPolicyBlob })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  const policy = workspace?.automationPolicyBlob;
+  const configuredRate = policy && typeof policy === 'object'
+    ? (policy as { adminHourlyRate?: unknown }).adminHourlyRate
+    : undefined;
+
+  const violation = validateAdminHourlyRate(configuredRate, 'adminHourlyRate');
+  if (violation || configuredRate === undefined || configuredRate === null || configuredRate === '') {
+    return DEFAULT_ADMIN_HOURLY_RATE;
+  }
+
+  const parsed = Number(configuredRate);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_ADMIN_HOURLY_RATE;
 }
 
 /**
  * Set workspace admin hourly rate for cost avoidance calculations
- * Note: Currently uses default rate - workspace-specific rates require schema extension
  */
 export async function setWorkspaceAdminHourlyRate(
-  _workspaceId: string,
+  workspaceId: string,
   hourlyRate: number
 ): Promise<void> {
-  if (hourlyRate <= 0 || hourlyRate > 500) {
-    throw new Error('Hourly rate must be between $1 and $500');
+  const violation = validateAdminHourlyRate(hourlyRate, 'adminHourlyRate');
+  if (violation) {
+    throw new Error(violation.message);
   }
-  
-  // Per-workspace rates require adminHourlyRate column in workspaces table
-  // Using default rate until schema extension is implemented
-  log.info(`[AutomationMetrics] Using default hourly rate: $${DEFAULT_ADMIN_HOURLY_RATE}/hr (workspace-specific rates require schema extension)`);
+
+  const [workspace] = await db
+    .select({ automationPolicyBlob: workspaces.automationPolicyBlob })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  const existingPolicy = workspace?.automationPolicyBlob && typeof workspace.automationPolicyBlob === 'object'
+    ? workspace.automationPolicyBlob as Record<string, unknown>
+    : {};
+
+  await db.update(workspaces)
+    .set({
+      automationPolicyBlob: {
+        ...existingPolicy,
+        adminHourlyRate: hourlyRate.toFixed(2),
+        adminHourlyRateUpdatedAt: new Date().toISOString(),
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(workspaces.id, workspaceId));
+
+  log.info(`[AutomationMetrics] Updated admin hourly rate for workspace ${workspaceId}`);
 }
 
 interface AutomationMetrics {

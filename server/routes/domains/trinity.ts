@@ -62,7 +62,7 @@ import agentActivityRouter from "../agentActivityRoutes";
 import trinityLimbicRouter from "../trinityLimbicRoutes";
 import trinityTransparencyRouter from "../trinityTransparencyRoutes";
 import trinityAgentDashboardRouter from "../trinityAgentDashboardRoutes";
-import { mountWorkspaceRoutes } from "./routeMounting";
+import { mountRoutes, mountWorkspaceRoutes } from "./routeMounting";
 
 const domainHealthRouter = Router();
 domainHealthRouter.get("/domain-health", requireAuth, requireTrinityAccess, (_req, res) => {
@@ -142,7 +142,9 @@ export function mountTrinityRoutes(app: Express): void {
   app.use("/api/helpai", helpaiRouter);
 
   // ── Trinity — specific sub-paths FIRST, general mounts after ─────────────
-  app.use("/api/trinity", domainHealthRouter);
+  mountRoutes(app, [
+    ["/api/trinity", domainHealthRouter],
+  ]);
   app.use("/api/trinity/maintenance", trinityMaintenanceRouter);
   app.use("/api/trinity/control-console", trinityControlConsoleRouter);
   // Notification management routes rely on req.platformRole being set by the outer gate.
@@ -168,7 +170,9 @@ export function mountTrinityRoutes(app: Express): void {
     ["/api/trinity/crisis", trinityCrisisRouter],
   ]);
   // ── ACC + Thalamic Brain Dashboard ───────────────────────────────────────────
-  app.use("/api/trinity", brainDashboardRouter);
+  mountRoutes(app, [
+    ["/api/trinity", brainDashboardRouter],
+  ]);
 
   // ── Trinity Audit Trail ──────────────────────────────────────────────────
   mountWorkspaceRoutes(app, [
@@ -197,16 +201,20 @@ export function mountTrinityRoutes(app: Express): void {
   app.use("/api/trinity/agent-dashboard", requireAuth, requirePlatformStaff, trinityAgentDashboardRouter);
 
   // General /api/trinity — empire & bluedot first (requireAuth inside router), then broader catches
-  app.use("/api/trinity", empireRouter);
-  app.use("/api/trinity", trinityAlertsRouter);
-  app.use("/api/trinity", requireAuth, requireTrinityAccess, trinityInsightsRouter);
+  mountRoutes(app, [
+    ["/api/trinity", empireRouter],
+    ["/api/trinity", trinityAlertsRouter],
+    ["/api/trinity", requireAuth, requireTrinityAccess, trinityInsightsRouter],
+  ]);
   mountWorkspaceRoutes(app, [
     ["/api/trinity", trinityThoughtStatusRouter],
   ]);
   // requireAuth fires first: populates req.user, checks account lock, emits auth telemetry.
   // requirePlatformStaff then does the DB-level platform-role gate.
   // Both guards must be present — requirePlatformStaff alone skips the account-lock check.
-  app.use("/api/trinity", requireAuth, requirePlatformStaff, trinityMiscRouter); // platform-staff gate — must be last
+  mountRoutes(app, [
+    ["/api/trinity", requireAuth, requirePlatformStaff, trinityMiscRouter],
+  ]); // platform-staff gate — must be last
 
   // ── Trinity Intelligence — Phases A-D (Regulatory, Financial, Autonomous, Officer) ──
   app.use("/api/trinity/intelligence", trinityIntelligenceRouter);

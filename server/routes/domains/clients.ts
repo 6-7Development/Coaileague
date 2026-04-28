@@ -7,7 +7,7 @@
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
-import { mountWorkspaceRoutes } from "./routeMounting";
+import { mountRoutes, mountWorkspaceRoutes } from "./routeMounting";
 import clientRouter from "../clientRoutes";
 import contractPipelineRouter, { publicPortalRouter as contractPortalRouter } from "../contractPipelineRoutes";
 import siteBriefingRouter from "../siteBriefingRoutes";
@@ -28,7 +28,9 @@ export function mountClientRoutes(app: Express): void {
   // clientRouter applies requireAuth + requireManagerOrPlatformStaff on every route internally.
   // requireAuth added at mount level as defense-in-depth; ensureWorkspaceAccess intentionally
   // omitted — individual routes resolve workspace via requireManagerOrPlatformStaff internally.
-  app.use("/api/clients", requireAuth, clientRouter);
+  mountRoutes(app, [
+    ["/api/clients", requireAuth, clientRouter],
+  ]);
   mountWorkspaceRoutes(app, [
     ["/api/site-briefings", siteBriefingRouter],
     ["/api", contentInlineRouter],
@@ -51,7 +53,9 @@ export function mountClientRoutes(app: Express): void {
   ]);
 
   // Client Portal Invite — Manager+ only, NDS tracked
-  app.use("/api/clients", clientPortalInviteRouter);
+  mountRoutes(app, [
+    ["/api/clients", clientPortalInviteRouter],
+  ]);
 
   // Client portal dashboard — quick summary for portal users
   app.get("/api/client-portal/dashboard", requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
