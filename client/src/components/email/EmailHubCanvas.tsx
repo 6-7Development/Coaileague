@@ -836,8 +836,8 @@ function TrinityInboxPanel({ onBack }: { onBack: () => void }) {
             <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-3">
               <Bot className="w-8 h-8 text-yellow-500/60" />
             </div>
-            <h3 className="font-semibold mb-1">No Trinity activity</h3>
-            <p className="text-sm text-muted-foreground">Trinity AI hasn't processed any emails yet</p>
+            <h3 className="font-semibold mb-1">Trinity is monitoring</h3>
+            <p className="text-sm text-muted-foreground">Inbound emails will appear here. Trinity reacts with ✅ when actioned.</p>
           </div>
         ) : (
           <div className="divide-y">
@@ -1179,6 +1179,20 @@ function MobileAIInsights({
     retry: false,
   });
   
+  // Mark email as read/seen by Trinity — sends reaction emoji
+  const trinityReactToEmail = async (emailId: string, reaction: '✅' | '👀') => {
+    try {
+      await secureFetch('/api/internal-email/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ emailId, reaction, source: 'trinity_auto' }),
+      });
+    } catch {
+      // non-fatal — reaction is cosmetic
+    }
+  };
+
   // Execute a Trinity workflow action (fill shifts, generate PDF, etc.)
   const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
     if (!email) return;
@@ -1670,6 +1684,20 @@ function AIContextRail({
     retry: false,
   });
   
+  // Mark email as read/seen by Trinity — sends reaction emoji
+  const trinityReactToEmail = async (emailId: string, reaction: '✅' | '👀') => {
+    try {
+      await secureFetch('/api/internal-email/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ emailId, reaction, source: 'trinity_auto' }),
+      });
+    } catch {
+      // non-fatal — reaction is cosmetic
+    }
+  };
+
   // Execute a Trinity workflow action (fill shifts, generate PDF, etc.)
   const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
     if (!email) return;

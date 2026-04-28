@@ -282,9 +282,24 @@ const InlineDraggableShift = ({ shift, children, canDrag, style: passedStyle, cl
       style={combinedStyle}
       {...listeners}
       {...attributes}
-      className={`${className || ''} ${isPending ? 'shift-pending-reassign' : ''}`}
+      className={`${className || ''} ${isPending ? 'shift-pending-reassign' : ''} group/shift relative`}
     >
       {children}
+      {/* Resize handle — right edge drag to extend shift duration */}
+      {canDrag && !isDragging && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize opacity-0 group-hover/shift:opacity-100 transition-opacity rounded-r-lg hover:bg-white/30 flex items-center justify-center"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            // Resize not yet fully implemented — shows intent
+          }}
+          data-testid={`resize-handle-${shift.id}`}
+          title="Drag to resize shift duration"
+        >
+          <div className="w-0.5 h-4 rounded-full bg-current opacity-50" />
+        </div>
+      )}
     </div>
   );
 };
