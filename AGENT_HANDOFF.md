@@ -54,7 +54,7 @@ After Claude: enhancement sprint
 
 ```text
 origin/development              -> 832bccc8  (Claude Phase I domain sweep)
-origin/refactor/service-layer   -> Codex will push Phase I verification + hardening
+origin/refactor/service-layer   -> 603220b5  (Codex Phase I verification + hardening)
 origin/copilot/refactor-service-layer -> helper branch already reviewed/integrated
 ```
 
