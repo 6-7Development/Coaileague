@@ -561,7 +561,12 @@ router.post("/api/auth/login", async (req, res) => {
     }
 
     const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-    await saveSessionAsync(req);
+    try {
+      await saveSessionAsync(req);
+    } catch (sessionErr: unknown) {
+      log.error('[Auth] Session save failed after login — returning 503 so client does not proceed with an unsaved session', sessionErr);
+      return res.status(503).json({ message: 'Login succeeded but your session could not be saved. Please try again.' });
+    }
 
     // Phase 53: Register session for concurrent session limit tracking
     await registerSession(
