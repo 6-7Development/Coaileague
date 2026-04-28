@@ -36,9 +36,9 @@ Next merge target:
 ## CURRENT COMMITS
 
 ```
-origin/development           -> 89264fa9  (Claude Phase 1A scheduling audit + email gap analysis)
+origin/development           -> 1855a1db  (Codex audit harness merged into development)
 origin/refactor/service-layer -> pending Codex RBAC/IRC low-risk consolidation patch
-local Codex lane             -> synced with development before patching
+local Codex lane             -> synced with latest development before push
 ```
 
 Boot test before any push to development:
