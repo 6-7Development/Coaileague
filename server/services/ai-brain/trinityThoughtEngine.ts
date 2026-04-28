@@ -148,10 +148,16 @@ class TrinityThoughtEngine {
       const wsChain = this.getThoughtChain(wsKey);
       const lastThought = wsChain.length > 0 ? wsChain[wsChain.length - 1] : null;
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      // sessionId is NOT NULL — derive a stable fallback from workspace + phase
+      // so daemon-triggered thoughts (no active session) don't crash the write.
+      const resolvedSessionId =
+        context.sessionId ||
+        this.getActiveSession(wsKey) ||
+        `auto-${wsKey || 'global'}-${phase}-${Date.now()}`;
+
       const [thought] = await db.insert(trinityThoughtSignatures).values({
         workspaceId: context.workspaceId,
-        sessionId: context.sessionId || this.getActiveSession(wsKey),
+        sessionId: resolvedSessionId,
         thoughtType,
         content,
         confidence: Math.round(confidence * 100),
@@ -165,7 +171,7 @@ class TrinityThoughtEngine {
           parentThoughtId: context.parentThoughtId || lastThought || null,
           wasActedUpon: false,
         },
-      }).returning();
+      } as any).returning();
 
       this.pushThought(wsKey, thought.id);
       
@@ -189,9 +195,20 @@ class TrinityThoughtEngine {
         confidence,
         wasConfused,
       };
-    } catch (error) {
-      log.error('[TrinityThoughtEngine] Failed to record thought:', error);
-      throw error;
+    } catch (error: any) {
+      // Extract the meaningful error message — PostgreSQL errors bury the cause in .message or .detail
+      const errMsg = error?.message || error?.detail || String(error);
+      const errCode = error?.code || 'unknown';
+      log.warn(`[TrinityThoughtEngine] Failed to record thought (non-fatal, degrading gracefully): [${errCode}] ${errMsg}`);
+      // Thought recording is observability — it must never crash the operational flow
+      // Return a synthetic result so callers can continue
+      return {
+        thoughtId: `degraded-${Date.now()}`,
+        phase,
+        content,
+        confidence,
+        wasConfused,
+      };
     }
   }
 
