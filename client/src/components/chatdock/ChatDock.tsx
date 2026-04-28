@@ -2497,32 +2497,31 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
             )}
           </div>
           {/* @mention picker — WhatsApp style */}
-          {mentionQuery !== null && (
-            <div className="absolute bottom-full left-12 right-12 mb-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50 animate-in slide-in-from-bottom-1 fade-in duration-150" data-testid="mention-picker">
-              {/* System bots first */}
-              {[
-                { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
-                { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
-              ]
-                .concat(
-                  (members ?? []).map((m: any) => ({
-                    id: `@${m.firstName}${m.lastName}`,
-                    name: `${m.firstName} ${m.lastName}`,
-                    role: m.workspaceRole || 'Member',
-                    badge: null,
-                    color: null,
-                  }))
-                )
-                .filter(item => item.name.toLowerCase().includes(mentionQuery ?? ''))
-                .slice(0, 6)
-                .map(item => (
+          {mentionQuery !== null && (() => {
+            const BOT_MENTIONS = [
+              { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
+              { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
+            ];
+            const memberMentions = (members ?? []).map((m: any) => ({
+              id: `@${m.firstName}${m.lastName}`,
+              name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim(),
+              role: m.workspaceRole || 'Member',
+              badge: null as string | null,
+              color: null as string | null,
+            }));
+            const allMentions = [...BOT_MENTIONS, ...memberMentions];
+            const filtered = allMentions.filter(item => item.name.toLowerCase().includes(mentionQuery ?? '')).slice(0, 6);
+            return (
+              <div className="absolute bottom-full left-12 right-12 mb-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50 animate-in slide-in-from-bottom-1 fade-in duration-150" data-testid="mention-picker">
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">No matches for @{mentionQuery}</div>
+                ) : filtered.map(item => (
                   <button
                     key={item.id}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted transition-colors text-sm"
                     data-testid={`mention-option-${item.id}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      // Replace the @query with the selected mention
                       const before = input.slice(0, mentionAnchor);
                       const after = input.slice(mentionAnchor + (mentionQuery?.length ?? 0) + 1);
                       setInput(`${before}${item.id} ${after}`);
@@ -2542,23 +2541,10 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                       <div className="text-[11px] text-muted-foreground truncate">{item.role}</div>
                     </div>
                   </button>
-                ))
-              }
-              {/* Empty state */}
-              {[...([
-                { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
-                { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
-              ], ...(members ?? []).map((m: any) => ({
-                id: `@${m.firstName}${m.lastName}`,
-                name: `${m.firstName} ${m.lastName}`,
-                role: m.workspaceRole || 'Member',
-                badge: null,
-                color: null,
-              })))].filter(item => item.name.toLowerCase().includes(mentionQuery ?? '')).length === 0 && (
-                <div className="px-3 py-2 text-sm text-muted-foreground">No matches for @{mentionQuery}</div>
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
           <Input
             ref={inputRef}
             value={input}
