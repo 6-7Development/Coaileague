@@ -171,7 +171,6 @@ import { startNotificationCleanupScheduler } from "./services/notificationCleanu
 import { initTokenCleanupScheduler } from "./services/tokenCleanupService";
 import { initializeOrchestrationServices, setOrchestrationWebSocketBroadcaster } from "./services/ai-brain/orchestrationBridge";
 import { broadcastToWorkspace } from "./websocket";
-import { initChatDurability } from "./services/chat/chatDurabilityAdapter";
 import { initializeSkillsSystem } from "./services/ai-brain/skills/skill-loader";
 import "./services/scheduleLiveNotifier";
 import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
@@ -841,7 +840,9 @@ async function initializeCriticalServices() {
       const { probeDbConnection } = await import('./db');
       return await probeDbConnection();
     } catch { return false; }
-  })();
+  }).catch((err: any) => {
+      log.error(`[PostListen] Unhandled crash: ${err instanceof Error ? err.message : String(err)}`);
+    });
 
   if (!dbAvailableForSeed) {
     log.warn('Phase 1 seeding skipped — DB unreachable (will seed on next restart when DB is ready)');
