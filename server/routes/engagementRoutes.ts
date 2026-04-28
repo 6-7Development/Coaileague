@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { z } from 'zod';
 import { Router } from "express";
 import { requireManager, type AuthenticatedRequest } from "../rbac";
 import { db } from "../db";
@@ -136,10 +137,24 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
         return res.status(404).json({ message: "Pulse survey template not found" });
       }
       
+      const updateTemplateSchema = z.object({
+        title: z.string().min(1).optional(),
+        description: z.string().optional(),
+        questions: z.array(z.unknown()).optional(),
+        frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly']).optional(),
+        isActive: z.boolean().optional(),
+        targetAudience: z.string().optional(),
+        category: z.string().optional(),
+      });
+      const templateParsed = updateTemplateSchema.safeParse(req.body);
+      if (!templateParsed.success) {
+        return res.status(400).json({ error: 'Invalid request body', details: templateParsed.error.issues });
+      }
+
       const [updated] = await db
         .update(pulseSurveyTemplates)
         .set({
-          ...req.body,
+          ...templateParsed.data,
           updatedAt: new Date()
         })
         .where(eq(pulseSurveyTemplates.id, id))

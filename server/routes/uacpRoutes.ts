@@ -10,6 +10,7 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { db } from '../db';
 import { 
   agentIdentities, 
@@ -255,10 +256,23 @@ router.patch('/agents/:agentId', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
     const { agentId } = req.params;
-    const updates = req.body;
+    const updateAgentSchema = z.object({
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      role: z.string().optional(),
+      permissions: z.array(z.string()).optional(),
+      allowedTools: z.array(z.string()).optional(),
+      allowedDomains: z.array(z.string()).optional(),
+      missionObjective: z.string().optional(),
+      riskProfile: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+      maxAutonomyLevel: z.number().int().min(1).max(10).optional(),
+    });
+    const agentParsed = updateAgentSchema.safeParse(req.body);
+    if (!agentParsed.success) {
+      return res.status(400).json({ error: 'Invalid request body', details: agentParsed.error.issues });
+    }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const result = await agentIdentityService.updateAgentAccess(agentId, updates, user.id);
+    const result = await agentIdentityService.updateAgentAccess(agentId, agentParsed.data, (user as any).id);
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -542,12 +556,30 @@ router.post('/policies', requireAdminAccess, async (req, res) => {
 router.patch('/policies/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const updates = req.body;
+    const updatePolicySchema = z.object({
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      effect: z.enum(['allow', 'deny']).optional(),
+      priority: z.number().int().min(1).max(1000).optional(),
+      subjectConditions: z.record(z.unknown()).optional(),
+      resourceType: z.string().optional(),
+      resourcePattern: z.string().optional(),
+      contextConditions: z.record(z.unknown()).optional(),
+      actions: z.array(z.string()).optional(),
+      maxTransactionAmount: z.string().optional().nullable(),
+      validFrom: z.string().optional().nullable(),
+      validUntil: z.string().optional().nullable(),
+      isActive: z.boolean().optional(),
+    });
+    const policyParsed = updatePolicySchema.safeParse(req.body);
+    if (!policyParsed.success) {
+      return res.status(400).json({ error: 'Invalid request body', details: policyParsed.error.issues });
+    }
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
 
     await db.update(accessPolicies)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...policyParsed.data, updatedAt: new Date() })
       .where(and(eq(accessPolicies.id, req.params.id), eq(accessPolicies.workspaceId, workspaceId)));
 
     policyDecisionPoint.invalidateCache();
