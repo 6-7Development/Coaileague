@@ -34,18 +34,8 @@ import { eq, and, or, sql, inArray, desc } from 'drizzle-orm';
 import { SUPPORT_POOL_FEATURES } from './billing/tokenManager';
 import { PLATFORM_SUPPORT_POOL_ID } from './billing/billingConstants';
 import { createLogger } from '../lib/logger';
+import { isPlatformStaffRole, isWorkspaceLeadershipRole } from '@shared/config/rbac';
 const log = createLogger('chatParityService');
-
-
-const MANAGEMENT_ROLES = new Set([
-  'org_owner', 'co_owner', 'org_admin', 'org_manager',
-  'manager', 'department_manager', 'supervisor',
-]);
-
-const PLATFORM_STAFF_ROLES = new Set([
-  'root_admin', 'deputy_admin', 'sysop', 'support_agent', 
-  'support_manager', 'compliance_officer',
-]);
 
 const SYSTEM_BOT_SENDER_TYPES = new Set(['system', 'bot']);
 
@@ -395,11 +385,11 @@ export class ChatParityService {
     platformRole: string | null,
     roomType: string
   ): { allowed: boolean; reason?: string } {
-    if (PLATFORM_STAFF_ROLES.has(platformRole || '')) {
+    if (isPlatformStaffRole(platformRole)) {
       return { allowed: true };
     }
 
-    if (MANAGEMENT_ROLES.has(userRole)) {
+    if (isWorkspaceLeadershipRole(userRole)) {
       return { allowed: true };
     }
 
@@ -425,7 +415,7 @@ export class ChatParityService {
     targetRoomOrgId: string;
     targetRoomMode: string;
   }): Promise<{ allowed: boolean; reason?: string }> {
-    if (PLATFORM_STAFF_ROLES.has(params.platformRole || '')) {
+    if (isPlatformStaffRole(params.platformRole)) {
       return { allowed: true };
     }
 
@@ -437,7 +427,7 @@ export class ChatParityService {
       return { allowed: true };
     }
 
-    if (MANAGEMENT_ROLES.has(params.userRole)) {
+    if (isWorkspaceLeadershipRole(params.userRole)) {
       const isParentOrgManager = await this.isParentOrgManager(
         params.userId, 
         params.userOrgId, 
@@ -618,7 +608,7 @@ export class ChatParityService {
     targetUserId: string;
     targetOrgId: string;
   }): Promise<{ allowed: boolean; reason?: string }> {
-    if (PLATFORM_STAFF_ROLES.has(params.initiatorPlatformRole || '')) {
+    if (isPlatformStaffRole(params.initiatorPlatformRole)) {
       return { allowed: true };
     }
 
@@ -626,7 +616,7 @@ export class ChatParityService {
       return { allowed: true };
     }
 
-    if (MANAGEMENT_ROLES.has(params.initiatorRole)) {
+    if (isWorkspaceLeadershipRole(params.initiatorRole)) {
       const isParent = await this.isParentOrgManager(
         params.initiatorId,
         params.initiatorOrgId,
@@ -648,7 +638,7 @@ export class ChatParityService {
     initiatorPlatformRole: string | null;
     participantOrgIds: string[];
   }): Promise<{ allowed: boolean; reason?: string }> {
-    if (PLATFORM_STAFF_ROLES.has(params.initiatorPlatformRole || '')) {
+    if (isPlatformStaffRole(params.initiatorPlatformRole)) {
       return { allowed: true };
     }
 
@@ -658,7 +648,7 @@ export class ChatParityService {
       return { allowed: true };
     }
 
-    if (MANAGEMENT_ROLES.has(params.initiatorRole)) {
+    if (isWorkspaceLeadershipRole(params.initiatorRole)) {
       for (const orgId of uniqueOrgs) {
         if (orgId === params.initiatorOrgId) continue;
         const isParent = await this.isParentOrgManager(
@@ -795,12 +785,12 @@ export class ChatParityService {
       return { allowed: true };
     }
 
-    if (PLATFORM_STAFF_ROLES.has(params.platformRole || '')) {
+    if (isPlatformStaffRole(params.platformRole)) {
       return { allowed: true };
     }
 
     if (params.conversationStatus === 'closed') {
-      if (MANAGEMENT_ROLES.has(params.userRole)) {
+      if (isWorkspaceLeadershipRole(params.userRole)) {
         return { allowed: true };
       }
       return { 
@@ -810,7 +800,7 @@ export class ChatParityService {
     }
 
     if (params.isMutedForEndUsers) {
-      if (MANAGEMENT_ROLES.has(params.userRole)) {
+      if (isWorkspaceLeadershipRole(params.userRole)) {
         return { allowed: true };
       }
       return { 
