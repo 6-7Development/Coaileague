@@ -1,5 +1,5 @@
 /**
- * CoAIleague Service Worker v4.6.0
+ * CoAIleague Service Worker v4.7.0
  * APK-ready with IndexedDB offline queue, SW update prompts, and enhanced caching.
  *
  * Canonical registration: navigator.serviceWorker.register('/sw.js').
@@ -106,7 +106,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v4.6.0 — purging ALL old caches + standalone HTML bypass');
+  console.log('[SW] Activating service worker v4.7.0 — purging ALL old caches + standalone HTML bypass');
   event.waitUntil(
     Promise.all([
       // Delete ALL caches that aren't the current valid set — this purges any stale Vite module caches
@@ -145,7 +145,7 @@ self.addEventListener('activate', (event) => {
           // navigate() forces a full reload, bypassing any stale in-memory modules
           c.navigate(c.url).catch(() => {
             // fallback: postMessage if navigate fails
-            c.postMessage({ type: 'SW_UPDATED', version: 'v4.6.0' });
+            c.postMessage({ type: 'SW_UPDATED', version: 'v4.7.0' });
           });
         });
       });
@@ -745,7 +745,7 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'GET_VERSION') {
-    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.6.0' });
+    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.7.0' });
   }
 
   if (event.data?.type === 'CLEAR_ALL_CACHES') {
@@ -782,4 +782,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Service Worker loaded - v4.6.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');
+console.log('[SW] Service Worker loaded - v4.7.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');

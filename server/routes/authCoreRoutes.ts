@@ -187,8 +187,19 @@ router.post("/api/auth/register", async (req, res) => {
     if (priorHrisState) req.session.hrisOAuthState = priorHrisState;
 
     req.session.userId = newUser.id;
-    const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-    await saveSessionAsync(req);
+    // Save session — critical path. If this fails, the user will see a black screen.
+    try {
+      const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
+      await saveSessionAsync(req);
+    } catch (sessionErr: any) {
+      log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
+      // Return a clear, actionable error rather than a generic 500
+      return res.status(503).json({
+        message: 'Login succeeded but your session could not be saved. This is usually a temporary database issue. Please try again in a few seconds.',
+        error: 'SESSION_SAVE_FAILED',
+        retryable: true,
+      });
+    }
 
     res.status(201).json({
       message: "Registration successful",
@@ -560,8 +571,19 @@ router.post("/api/auth/login", async (req, res) => {
       await resolveAndCacheWorkspaceContext(req, user.id, workspaceId);
     }
 
-    const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-    await saveSessionAsync(req);
+    // Save session — critical path. If this fails, the user will see a black screen.
+    try {
+      const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
+      await saveSessionAsync(req);
+    } catch (sessionErr: any) {
+      log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
+      // Return a clear, actionable error rather than a generic 500
+      return res.status(503).json({
+        message: 'Login succeeded but your session could not be saved. This is usually a temporary database issue. Please try again in a few seconds.',
+        error: 'SESSION_SAVE_FAILED',
+        retryable: true,
+      });
+    }
 
     // Phase 53: Register session for concurrent session limit tracking
     await registerSession(
@@ -694,8 +716,19 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
       const { resolveAndCacheWorkspaceContext } = await import('../services/session/sessionWorkspaceService');
       await resolveAndCacheWorkspaceContext(req, user.id, workspaceId);
     }
-    const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-    await saveSessionAsync(req);
+    // Save session — critical path. If this fails, the user will see a black screen.
+    try {
+      const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
+      await saveSessionAsync(req);
+    } catch (sessionErr: any) {
+      log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
+      // Return a clear, actionable error rather than a generic 500
+      return res.status(503).json({
+        message: 'Login succeeded but your session could not be saved. This is usually a temporary database issue. Please try again in a few seconds.',
+        error: 'SESSION_SAVE_FAILED',
+        retryable: true,
+      });
+    }
 
     // Register session for concurrent session limit tracking
     await registerSession(user.id, req.session.id, ipAddr, ua);
@@ -1797,8 +1830,19 @@ router.post("/api/auth/sms-otp/verify", async (req, res) => {
       const { resolveAndCacheWorkspaceContext } = await import('../services/session/sessionWorkspaceService');
       await resolveAndCacheWorkspaceContext(req, userId, workspaceId);
     }
-    const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-    await saveSessionAsync(req);
+    // Save session — critical path. If this fails, the user will see a black screen.
+    try {
+      const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
+      await saveSessionAsync(req);
+    } catch (sessionErr: any) {
+      log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
+      // Return a clear, actionable error rather than a generic 500
+      return res.status(503).json({
+        message: 'Login succeeded but your session could not be saved. This is usually a temporary database issue. Please try again in a few seconds.',
+        error: 'SESSION_SAVE_FAILED',
+        retryable: true,
+      });
+    }
 
     await registerSession(userId, req.session.id, ipAddr, ua);
 
