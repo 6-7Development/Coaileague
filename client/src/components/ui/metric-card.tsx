@@ -87,7 +87,7 @@ export function MetricCard({
         </div>
       </div>
 
-      <div className={cn('mt-1.5', size === 'sm' ? 'mt-1' : size === 'lg' ? 'mt-2')}>
+      <div className={cn('mt-1.5', size === 'sm' ? 'mt-1' : size === 'lg' ? 'mt-2' : '')}>
         <span className={cn(
           'font-semibold tabular-nums',
           size === 'sm' ? 'text-xl' : size === 'lg' ? 'text-3xl' : 'text-2xl',
