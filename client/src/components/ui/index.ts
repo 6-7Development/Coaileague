@@ -61,3 +61,6 @@ export * from "./trinity-animated-logo";
 // Utility
 export * from "./visually-hidden";
 export * from "./chart";
+
+export * from './status-badge';
+export * from './metric-card';

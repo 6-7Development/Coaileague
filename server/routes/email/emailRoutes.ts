@@ -784,3 +784,12 @@ emailRouter.post('/support-inbox/:emailId/reply', async (req: any, res) => {
     return res.status(500).json({ error: 'Failed to send support reply' });
   }
 });
+
+
+// ─── Entity Context Route ─────────────────────────────────────────────────────
+// GET /api/email/entity-context?email=sender@domain.com
+// Resolves sender email → client or employee entity + operational stats + Trinity actions
+// Powers the AIContextRail entity panel in EmailHubCanvas.tsx
+import emailEntityContextDefaultRouter from '../emailEntityContextRoute';
+import { z } from 'zod';
+emailRouter.use(emailEntityContextDefaultRouter);

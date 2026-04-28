@@ -15,8 +15,9 @@
  */
 
 import { db } from '../../db';
+import { broadcastToWorkspace } from '../../websocket';
 import { pool } from '../../db';
-import { shifts, timeEntries, employees, notifications } from '@shared/schema';
+import { shifts, timeEntries, employees, notifications, workspaces } from '@shared/schema';
 import { eq, and, gte, lte, isNull, or, ne, sql } from 'drizzle-orm';
 import { platformEventBus } from '../platformEventBus';
 import { coaileagueScoringService } from './coaileagueScoringService';
@@ -159,17 +160,30 @@ class ShiftMonitoringService {
         const windowStart = new Date(now.getTime() - 2 * 60 * 60 * 1000);
         const windowEnd = new Date(now.getTime() + 30 * 60 * 1000);
 
+        // Only process shifts for workspaces that are still operational.
         const activeShifts = await db.select({
           shift: shifts,
           employee: employees,
         })
           .from(shifts)
           .innerJoin(employees, eq(shifts.employeeId, employees.id))
+          .innerJoin(workspaces, eq(shifts.workspaceId, workspaces.id))
           .where(
             and(
               eq(shifts.date, today),
               gte(shifts.startTime, windowStart),
               lte(shifts.startTime, windowEnd),
+              eq(workspaces.isDeactivated, false),
+              eq(workspaces.isSuspended, false),
+              eq(workspaces.isFrozen, false),
+              eq(workspaces.isLocked, false),
+              or(
+                isNull(workspaces.subscriptionStatus),
+                and(
+                  ne(workspaces.subscriptionStatus, 'suspended'),
+                  ne(workspaces.subscriptionStatus, 'cancelled')
+                )
+              ),
               or(
                 eq(shifts.status, 'scheduled'),
                 eq(shifts.status, 'confirmed'),
@@ -370,6 +384,33 @@ class ShiftMonitoringService {
         } catch (visitorErr: any) {
           log.error('[ShiftMonitor] Visitor monitoring error (non-blocking):', visitorErr.message);
         }
+
+        // HelpAI pre-shift reminder: message officers 2h before their shift
+        try {
+          const { pool: shiftPool } = await import('../../db');
+          const upcoming = await shiftPool.query(`
+            SELECT s.id, s.employee_id, s.workspace_id, s.site_name
+            FROM shifts s
+            WHERE s.date = CURRENT_DATE
+              AND s.start_time::time BETWEEN (NOW()::time) AND (NOW() + INTERVAL '2 hours 5 minutes')::time
+              AND s.employee_id IS NOT NULL
+              AND s.status IN ('scheduled', 'published')
+              AND (s.helpai_reminded IS NULL OR s.helpai_reminded IS NOT TRUE)
+            LIMIT 10
+          `);
+          for (const shift of upcoming.rows) {
+            broadcastToWorkspace(shift.workspace_id, {
+              type: 'helpai_pre_shift_reminder',
+              employeeId: shift.employee_id,
+              shiftId: shift.id,
+              message: `Reminder: Your shift at ${shift.site_name} starts in 2 hours. Reply to ask about post orders.`,
+            });
+            await shiftPool.query(
+              `UPDATE shifts SET helpai_reminded = true WHERE id = $1`,
+              [shift.id]
+            ).catch(() => null); // Column may not exist yet — non-fatal
+          }
+        } catch { /* pre-shift HelpAI reminder is always non-fatal */ }
 
         return result;
       }

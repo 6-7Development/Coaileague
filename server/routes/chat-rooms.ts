@@ -2,7 +2,7 @@ import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
 import { summonHelpAIForConversation } from '../services/botSummonService';
-import { broadcastToWorkspace } from "../websocket";
+import { broadcastToWorkspace } from "../services/chat/broadcaster";
 import { roomPresence } from "../services/ircEventRegistry";
 import { 
   chatConversations, 
@@ -27,6 +27,7 @@ import { requireAuth } from '../auth';
 import { softDelete } from '../lib/softDelete';
 import { createLogger } from '../lib/logger';
 import { isSupportStaffRole, isProtectedDirectMessageRole, isReservedRoomName, isReservedRoomNameExempt, MANAGER_ROLES, SUPPORT_STAFF_ROLES, getRoomLifecycleAccessPolicy } from '../services/chat/chatPolicyService';
+import { z } from 'zod';
 const log = createLogger('ChatRooms');
 
 
@@ -2316,6 +2317,7 @@ router.post(
         actorId: userId,
         actorName: userName,
         actorRole: workspaceRole,
+        platformRole,
         reason: reason || undefined,
         initiatorType: 'user',
         ipAddress: authReq.ip,

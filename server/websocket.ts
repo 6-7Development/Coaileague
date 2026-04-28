@@ -758,18 +758,26 @@ import { isSupportStaffRole, SUPPORT_STAFF_ROLES } from './services/chat/chatPol
 async function canPerformModerationAction(
   actorUserId: string,
   action: 'kick' | 'silence' | 'give_voice' | 'ban',
+  workspaceRole?: string,
 ): Promise<{ allowed: boolean; reason?: string }> {
   try {
     const { storage } = await import('./storage');
+    const { isPlatformStaffRole, isWorkspaceLeadershipRole } = await import('../shared/config/rbac');
     const platformRole = await storage.getUserPlatformRole(actorUserId).catch(() => null);
-    if (isSupportStaffRole(platformRole)) return { allowed: true };
-    // Workspace-level managers can kick/silence within their own rooms
-    if (action === 'give_voice') {
-      const { hasManagerAccess } = await import('./rbac');
-      // give_voice is less restricted — room owner/manager can do it
-      return { allowed: true };
+
+    // Platform staff (root_admin, deputy_admin, support_manager) can always moderate
+    if (isPlatformStaffRole(platformRole)) return { allowed: true };
+
+    // Workspace leadership (owner, manager, supervisor) can moderate within their workspace
+    if (workspaceRole && isWorkspaceLeadershipRole(workspaceRole)) {
+      // give_voice and kick are allowed for workspace leaders
+      if (action === 'kick' || action === 'silence' || action === 'give_voice') {
+        return { allowed: true };
+      }
+      // ban is platform-staff-only (too destructive for workspace-level)
     }
-    return { allowed: false, reason: 'Platform staff access required for ' + action };
+
+    return { allowed: false, reason: `${action} requires platform staff or workspace leadership role` };
   } catch {
     return { allowed: false, reason: 'Permission check failed' };
   }
@@ -909,8 +917,12 @@ export { sessionSyncService };
 // Clients that reconnect within 5 minutes receive missed events instead of a
 // full page refresh. Clients disconnected longer receive full_refresh_required.
 // ============================================================================
-const EVENT_BUFFER_MAX = 50;
-const EVENT_BUFFER_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// ChatDurability adapter — Redis-backed with in-memory fallback
+// Replaces the in-memory workspaceEventBuffer Map that was lost on restart
+import { pushEvent as pushEventDurable, onBroadcast, initChatDurability } from './services/chat/chatDurabilityAdapter';
+
+const EVENT_BUFFER_MAX = 100;           // Kept for replay logic references
+const EVENT_BUFFER_TTL_MS = 5 * 60 * 1000;
 
 interface BufferedEvent {
   eventId: string;
@@ -919,9 +931,14 @@ interface BufferedEvent {
   data: any;
 }
 
+// Legacy in-memory map retained for getEventsSince() calls that haven't migrated
 const workspaceEventBuffer = new Map<string, BufferedEvent[]>();
 
 function pushEventToBuffer(workspaceId: string, data: any): string {
+  // Async fire-and-forget to durable adapter (non-blocking for WebSocket path)
+  pushEventDurable(workspaceId, data).catch(() => null);
+  
+  // Also maintain local buffer for immediate replay (backwards compat)
   const eventId = `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const entry: BufferedEvent = { eventId, timestamp: Date.now(), workspaceId, data: { ...data, eventId } };
   const existing = workspaceEventBuffer.get(workspaceId) ?? [];
@@ -931,6 +948,9 @@ function pushEventToBuffer(workspaceId: string, data: any): string {
   workspaceEventBuffer.set(workspaceId, trimmed);
   return eventId;
 }
+
+// Initialize durability on startup (async, non-blocking)
+initChatDurability().catch(() => null);
 
 export function broadcastToWorkspace(workspaceId: string, data: any) {
   if (!globalBroadcaster) {

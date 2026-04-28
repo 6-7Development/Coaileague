@@ -36,6 +36,7 @@ import trainingComplianceRouter from "../trainingComplianceRoutes";
 import licenseDashboardRouter from "../license-dashboard";
 import insuranceRouter from "../insuranceRoutes";
 import complianceEvidenceRouter from "../complianceEvidenceRoutes";
+import { spsFormsRouter } from '../spsFormsRoutes';
 
 export function mountComplianceRoutes(app: Express): void {
   // Governance inline routes BEFORE security-compliance to ensure lock-vault is handled
@@ -58,7 +59,6 @@ export function mountComplianceRoutes(app: Express): void {
   // /upload is handled inside the router without workspace middleware (multer + GCS)
   app.use("/api/sps/onboarding", requireAuth, ensureWorkspaceAccess, spsOnboardingRoutes);
   app.use("/api/sps/forms", requireAuth, ensureWorkspaceAccess, spsOnboardingRoutes);
-  app.use("/api/sps/onboarding", requireAuth, ensureWorkspaceAccess, spsOnboardingRoutes);
   // SPS Document Management System
   // Document view/download routes MUST come before spsDocumentRouter (/:id catch-all)
   app.use("/api/sps/documents", requireAuth, ensureWorkspaceAccess, documentViewRouter);
@@ -87,4 +87,5 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/compliance/licenses", requireAuth, ensureWorkspaceAccess, licenseDashboardRouter);
   // Insurance — certificates, bonding, coverage management (Phase 35R)
   app.use("/api/insurance", requireAuth, ensureWorkspaceAccess, insuranceRouter);
+  app.use('/api/sps/forms', requireAuth, spsFormsRouter);
 }

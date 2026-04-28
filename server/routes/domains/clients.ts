@@ -78,4 +78,39 @@ export function mountClientRoutes(app: Express): void {
       res.status(500).json({ message: 'Failed to load client portal dashboard' });
     }
   });
+
+  // Client portal — active officer status (read-only view for clients)
+  app.get("/api/client-portal/officers/status", requireAuth, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId;
+      const { pool } = await import("../../db");
+      const result = await pool.query(
+        `SELECT
+          e.id, e.first_name, e.last_name, e.workspace_role,
+          s.id AS shift_id, s.date, s.start_time, s.end_time, s.status,
+          s.site_name, s.client_id,
+          tc.status AS clock_status, tc.clock_in_time,
+          CASE WHEN s.id IS NOT NULL AND s.status IN ('scheduled','confirmed') THEN 'scheduled'
+               WHEN tc.status = 'clocked_in' THEN 'on_shift'
+               ELSE 'off_duty'
+          END AS officer_status
+         FROM employees e
+         LEFT JOIN shifts s ON s.employee_id = e.id
+           AND s.workspace_id = $1
+           AND s.date = CURRENT_DATE
+         LEFT JOIN time_clock_entries tc ON tc.employee_id = e.id
+           AND tc.workspace_id = $1
+           AND tc.status = 'clocked_in'
+         WHERE e.workspace_id = $1
+           AND e.is_active = true
+         ORDER BY officer_status DESC, e.last_name ASC
+         LIMIT 50`,
+        [workspaceId]
+      );
+      res.json({ officers: result.rows ?? [], asOf: new Date().toISOString() });
+    } catch (err: any) {
+      res.json({ officers: [], asOf: new Date().toISOString() });
+    }
+  });
+
 }

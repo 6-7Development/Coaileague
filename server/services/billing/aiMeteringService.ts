@@ -65,7 +65,9 @@ class AiMeteringServiceImpl {
 
     setImmediate(() => {
       this._recordAiCallAsync(params).catch((err: unknown) => {
-        log.error('[AiMetering] record error (non-fatal):', (err as any)?.message);
+        const aiMeteringErrMsg = (err as any)?.message || (err as any)?.detail || String(err);
+        const aiMeteringErrCode = (err as any)?.code || 'unknown';
+        log.warn(`[AiMetering] record error (non-fatal, degrading) [${aiMeteringErrCode}]: ${aiMeteringErrMsg}`, { workspaceId: params.workspaceId });
       });
     });
   }

@@ -5,6 +5,8 @@
 //   /api/officers (intelligence dashboard — Phase 11)
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
+import { requireManager } from "../../rbac";
+import { readLimiter } from "../../middleware/rateLimiter";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { attachWorkspaceIdOptional } from "../../rbac";
 import { registerFlexStaffingRoutes } from "../flexStaffingRoutes";
@@ -40,6 +42,7 @@ import { employmentVerifyRouter } from "../employmentVerifyRoutes";
 import recruitmentRouter from "../recruitmentRoutes";
 import wellnessRouter from "../wellnessRoutes";
 import inviteRouter, { publicInviteRouter } from "../inviteRoutes";
+import { registerRatingsRoutes } from '../ratingsRoutes';
 
 export function mountWorkforceRoutes(app: Express): void {
   app.use(publicInviteRouter);
@@ -110,4 +113,5 @@ export function mountWorkforceRoutes(app: Express): void {
   app.use("/api/employment-verify", requireAuth, ensureWorkspaceAccess, employmentVerifyRouter);
   // Phase 58: Trinity Interview Pipeline — Recruitment API
   app.use("/api/recruitment", requireAuth, ensureWorkspaceAccess, recruitmentRouter);
+  registerRatingsRoutes(app, requireAuth, requireManager, readLimiter);
 }

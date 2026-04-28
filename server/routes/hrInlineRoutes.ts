@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { requireAuth } from "../auth";
@@ -162,7 +163,21 @@ router.post("/experience/notification-preferences", requireAuth, async (req: Aut
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { email, push, sms, digest, shiftReminders, shiftReminderTiming, scheduleChangeNotifications, approvalNotifications, quietHoursStart, quietHoursEnd } = req.body;
+    const notifSchema = z.object({
+      email: z.boolean().optional(),
+      push: z.boolean().optional(),
+      sms: z.boolean().optional(),
+      digest: z.string().max(20).optional(),
+      shiftReminders: z.boolean().optional(),
+      shiftReminderTiming: z.number().int().min(0).max(1440).optional(),
+      scheduleChangeNotifications: z.boolean().optional(),
+      approvalNotifications: z.boolean().optional(),
+      quietHoursStart: z.string().max(10).optional(),
+      quietHoursEnd: z.string().max(10).optional(),
+    });
+    const notifParsed = notifSchema.safeParse(req.body);
+    if (!notifParsed.success) return res.status(400).json({ error: 'Validation failed', details: notifParsed.error.flatten() });
+    const { email, push, sms, digest, shiftReminders, shiftReminderTiming, scheduleChangeNotifications, approvalNotifications, quietHoursStart, quietHoursEnd } = notifParsed.data;
 
     const updateData: any = { updatedAt: new Date() };
     if (email !== undefined) updateData.enableEmail = email;
@@ -207,7 +222,7 @@ router.post("/experience/notification-preferences", requireAuth, async (req: Aut
       });
     }
 
-    res.json({ success: true, ...req.body });
+    res.json({ success: true });
   } catch (error: unknown) {
     log.error('Error saving notification preferences:', error);
     res.status(500).json({ error: 'Failed to save notification preferences' });

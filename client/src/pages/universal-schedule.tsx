@@ -202,11 +202,17 @@ const DroppableSlot = ({ day, hour, children, onClick }: {
     <div
       ref={setNodeRef}
       onClick={onClick}
-      className={`relative h-16 border-b cursor-pointer transition-colors group ${
-        isOver ? 'bg-primary/10 border-primary/40' : 'hover:bg-primary/5'
+      className={`relative h-16 border-b cursor-pointer transition-all duration-100 group ${
+        isOver ? 'bg-primary/12 ring-1 ring-primary/40 ring-inset' : 'hover:bg-muted/40'
       }`}
       data-testid={`grid-cell-${day}-${hour}`}
     >
+      {/* GetSling-style: ghost preview when dragging over this cell */}
+      {isOver && (
+        <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/60 bg-primary/5 pointer-events-none z-20 flex items-center justify-center">
+          <span className="text-[10px] font-semibold text-primary/70">Drop here</span>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -225,10 +231,15 @@ const DroppableEmployeeRow = ({ employeeId, children, isDropTarget }: {
   return (
     <div ref={setNodeRef} className="relative">
       {isDropTarget && (
-        <div className="absolute inset-0 z-40 pointer-events-none border-2 border-dashed schedule-drop-zone-active transition-all duration-150" data-testid={`inline-drop-indicator-${employeeId}`}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[11px] font-bold text-primary bg-card/95 dark:bg-slate-800/95 px-3 py-1.5 rounded-md shadow-sm ring-1 ring-primary/20">
-              Reassign here
+        <div
+          className="absolute inset-0 z-40 pointer-events-none rounded-sm transition-all duration-100"
+          style={{ background: 'hsl(var(--primary) / 0.06)', outline: '2px dashed hsl(var(--primary) / 0.5)' }}
+          data-testid={`inline-drop-indicator-${employeeId}`}
+        >
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="text-[11px] font-semibold text-primary bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
+              Move shift here
             </span>
           </div>
         </div>
@@ -257,7 +268,11 @@ const InlineDraggableShift = ({ shift, children, canDrag, style: passedStyle, cl
     ...(transform ? {
       transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
       zIndex: 100,
-    } : {}),
+      // Fade the source shift while dragging (shows the gap — GetSling style)
+      opacity: 0.35,
+    } : {
+      opacity: 1,
+    }),
     opacity: isDragging ? 0.4 : undefined,
   };
 
@@ -267,9 +282,24 @@ const InlineDraggableShift = ({ shift, children, canDrag, style: passedStyle, cl
       style={combinedStyle}
       {...listeners}
       {...attributes}
-      className={`${className || ''} ${isPending ? 'shift-pending-reassign' : ''}`}
+      className={`${className || ''} ${isPending ? 'shift-pending-reassign' : ''} group/shift relative`}
     >
       {children}
+      {/* Resize handle — right edge drag to extend shift duration */}
+      {canDrag && !isDragging && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize opacity-0 group-hover/shift:opacity-100 transition-opacity rounded-r-lg hover:bg-white/30 flex items-center justify-center"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            // Resize not yet fully implemented — shows intent
+          }}
+          data-testid={`resize-handle-${shift.id}`}
+          title="Drag to resize shift duration"
+        >
+          <div className="w-0.5 h-4 rounded-full bg-current opacity-50" />
+        </div>
+      )}
     </div>
   );
 };
@@ -287,11 +317,19 @@ const PendingChangesBar = ({
 }) => {
   if (count === 0) return null;
   return (
-    <div className="pending-changes-bar flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border-b-2 border-amber-400/60 dark:border-amber-600/60 z-50" data-testid="pending-changes-bar">
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 z-50 border-t"
+      style={{ background: 'hsl(38 92% 50% / 0.1)', borderColor: 'hsl(38 92% 50% / 0.4)' }}
+      data-testid="pending-changes-bar"
+    >
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <ArrowLeftRight className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-        <span className="text-sm font-semibold text-amber-800 dark:text-amber-200 truncate">
-          {count} unsaved reassignment{count !== 1 ? 's' : ''} — review before saving
+        {/* Animated indicator dot */}
+        <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'hsl(38 92% 50%)' }} />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: 'hsl(38 92% 50%)' }} />
+        </span>
+        <span className="text-sm font-semibold truncate" style={{ color: 'hsl(38 78% 35%)' }}>
+          {count} unsaved move{count !== 1 ? 's' : ''} — drag more or save to publish
         </span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -301,24 +339,26 @@ const PendingChangesBar = ({
           onClick={onDiscard}
           disabled={isSaving}
           data-testid="button-discard-pending"
-          className="text-amber-700 dark:text-amber-300 hover:text-amber-900"
+          className="h-8 text-xs"
+          style={{ color: 'hsl(38 78% 35%)' }}
         >
           <Undo2 className="h-3.5 w-3.5 mr-1" />
-          Discard
+          Undo all
         </Button>
         <Button
           size="sm"
           onClick={onSave}
           disabled={isSaving}
           data-testid="button-save-pending"
-          className="bg-amber-500 hover:bg-amber-600 text-white border-amber-600"
+          className="h-8 text-xs font-semibold"
+          style={{ background: 'hsl(38 92% 50%)', color: 'white', border: 'none' }}
         >
           {isSaving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
           ) : (
-            <Save className="h-3.5 w-3.5 mr-1" />
+            <CheckCircle className="h-3.5 w-3.5 mr-1" />
           )}
-          Save {count} Change{count !== 1 ? 's' : ''}
+          Publish {count} change{count !== 1 ? 's' : ''}
         </Button>
       </div>
     </div>
@@ -609,11 +649,14 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   
   // Drag state for DragOverlay
   const [activeEmployeeId, setActiveEmployeeId] = useState<string | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<{ day: number; hour: number } | null>(null);
+  const [draggedShift, setDraggedShift] = useState<Shift | null>(null);
   
   const handleDragStart = (event: any) => {
     const data = event.active.data.current;
     if (data?.type === 'inline-shift') {
       setDraggedShiftId(data.shift.id);
+      setDraggedShift(data.shift as Shift);
     } else {
       setActiveEmployeeId(event.active.id as string);
     }
@@ -658,7 +701,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     onSuccess: (count) => {
       setPendingReassignments(new Map());
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
-      toast({ title: `${count} shift${count !== 1 ? 's' : ''} reassigned`, description: 'All pending changes have been saved.' });
+      toast({ variant: 'success', title: `${count} shift${count !== 1 ? 's' : ''} saved`, description: 'Schedule updated successfully.' });
     },
     onError: (error: any) => {
       toast({ variant: 'destructive', title: 'Failed to save changes', description: parseScheduleError(error) });
@@ -669,7 +712,9 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     const { active, over } = event;
     setActiveEmployeeId(null);
     setDraggedShiftId(null);
+    setDraggedShift(null);
     setDropTargetEmployeeId(null);
+    setDragOverCell(null);
     if (!over) return;
 
     const activeData = active.data.current;
@@ -686,6 +731,28 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
 
     const overData = over.data.current as { day: number; hour: number };
     if (overData?.day === undefined || overData?.hour === undefined) return;
+
+    // CROSS-DAY DRAG: if an existing shift was dragged to a different day/time slot
+    if (activeData?.type === 'inline-shift' && draggedShift) {
+      const shift = draggedShift as Shift;
+      const { day, hour } = overData;
+      const newDate = new Date(weekStart);
+      newDate.setDate(newDate.getDate() + day);
+      const newDateStr = newDate.toISOString().split('T')[0];
+      const hourStr = hour.toString().padStart(2, '0');
+      const endHour = Math.min(hour + 8, 23).toString().padStart(2, '0');
+
+      // Stage the date change as a pending reassignment (reuses existing staging architecture)
+      setPendingReassignments(prev => {
+        const next = new Map(prev);
+        next.set(`${shift.id}-date`, { newEmployeeId: shift.employeeId ?? '', originalEmployeeId: shift.employeeId ?? null, newDate: newDateStr, newStartTime: `${hourStr}:00`, newEndTime: `${endHour}:00` } as any);
+        return next;
+      });
+      toast({ variant: 'info', title: `Shift moved to ${newDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`, description: 'Click Publish to save changes' });
+      return;
+    }
+
+    // NEW SHIFT via employee drag-to-cell
     const employeeId = active.id as string;
     const { day, hour } = overData;
 
@@ -704,11 +771,6 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     });
     setModalPosition({ day, hour });
     setShowShiftModal(true);
-
-    toast({
-      title: 'Shift Draft Created',
-      description: 'Review and save shift details',
-    });
   };
   
   // State management
@@ -1618,30 +1680,38 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   
   // GetSling-style color-coding for shift status (uses explicit status fields only)
   // Blue=confirmed, Yellow=pending, Green=clocked-in, Red=unassigned, Purple=overtime
-  const getShiftStatusColor = (shift: Shift) => {
-    // Check if unassigned (red) - no employee assigned
+  const getShiftStatusColor = (shift: Shift): { bg: string; text: string; border: string; label: string; dot: string } => {
+    // Unassigned — needs coverage, urgent red
     if (!shift.employeeId) {
-      return { bg: '#ef4444', label: 'Unassigned' }; // Red
+      return { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5', dot: '#ef4444', label: 'Open — needs fill' };
     }
-    
-    // Check if employee is clocked in (green) - based on actual time clock status
+    // Cancelled
+    if (shift.status === 'cancelled' || shift.status === 'denied') {
+      return { bg: '#f9fafb', text: '#6b7280', border: '#d1d5db', dot: '#9ca3af', label: 'Cancelled' };
+    }
+    // Currently clocked in — active green
     const timeClockStatus = getShiftTimeClockStatus(shift);
     if (timeClockStatus.label === 'Active') {
-      return { bg: '#10b981', label: 'Clocked In' }; // Green
+      return { bg: '#f0fdf4', text: '#15803d', border: '#86efac', dot: '#22c55e', label: 'On Shift' };
     }
-    
-    // Check explicit overtime flag if available (purple)
+    // Overtime warning — amber
     if ((shift as any).isOvertime === true) {
-      return { bg: '#8b5cf6', label: 'Overtime' }; // Purple
+      return { bg: '#fffbeb', text: '#d97706', border: '#fcd34d', dot: '#f59e0b', label: 'Overtime' };
     }
-    
-    // Check status for pending/draft approval (yellow) vs confirmed (blue)
-    if (shift.status === 'draft' || shift.status === 'in_progress') {
-      return { bg: '#f59e0b', label: 'Pending' }; // Yellow
+    // Draft / pending approval — slate
+    if (shift.status === 'draft') {
+      return { bg: '#f8fafc', text: '#475569', border: '#cbd5e1', dot: '#94a3b8', label: 'Draft' };
     }
-    
-    // Default: confirmed/published/scheduled (blue)
-    return { bg: '#3b82f6', label: 'Confirmed' }; // Blue
+    // In progress / partial clock
+    if (shift.status === 'in_progress') {
+      return { bg: '#eff6ff', text: '#1d4ed8', border: '#93c5fd', dot: '#3b82f6', label: 'In Progress' };
+    }
+    // Completed
+    if (shift.status === 'completed') {
+      return { bg: '#f0fdf4', text: '#166534', border: '#86efac', dot: '#16a34a', label: 'Completed' };
+    }
+    // Confirmed / published / scheduled — primary blue
+    return { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', dot: '#3b82f6', label: 'Confirmed' };
   };
 
   // Helper for week navigation - accepts Date range from ScheduleToolbar
@@ -1692,12 +1762,57 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         const overData = event.over?.data.current;
         if (overData?.type === 'employee-drop-row') {
           setDropTargetEmployeeId(overData.employeeId);
+          setDragOverCell(null);
+        } else if (overData?.day !== undefined && overData?.hour !== undefined) {
+          // Cross-day drag — capture target cell for ghost preview
+          setDragOverCell({ day: overData.day, hour: overData.hour });
+          setDropTargetEmployeeId(null);
         } else {
           setDropTargetEmployeeId(null);
+          setDragOverCell(null);
         }
       }}
       onDragEnd={handleDragEnd}
     >
+      {/* WEEK SUMMARY BAR — GetSling-style analytics strip */}
+      {isManager && (
+        <div className="flex items-center gap-4 px-3 py-1.5 border-b bg-muted/30 text-xs shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="text-muted-foreground">Coverage:</span>
+            <span className="font-semibold text-foreground">
+              {Math.round(((filteredShifts.filter(s => s.employeeId).length / Math.max(filteredShifts.length, 1)) * 100))}%
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span className="text-muted-foreground">Shifts:</span>
+            <span className="font-semibold text-foreground">{filteredShifts.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="text-muted-foreground">Open:</span>
+            <span className="font-semibold text-destructive">{filteredShifts.filter(s => !s.employeeId).length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="text-muted-foreground">OT risk:</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">
+              {filteredShifts.filter(s => (s as any).isOvertime).length}
+            </span>
+          </div>
+          {pendingReassignments.size > 0 && (
+            <div className="ml-auto flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+              </span>
+              {pendingReassignments.size} unsaved
+            </div>
+          )}
+        </div>
+      )}
+
       {/* GETSLING-STYLE: Fixed height container - schedule dominates viewport, minimal chrome */}
       <div className="flex h-[calc(100vh-6.5rem)] bg-background overflow-hidden overflow-x-hidden">
         {/* Left Filters Panel - COLLAPSIBLE (default collapsed for max schedule space) */}
@@ -2495,6 +2610,8 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                                 style={{ 
                                   position: 'absolute' as const,
                                   backgroundColor: statusColor.bg,
+                                  color: statusColor.text,
+                                  borderColor: isPendingShift ? undefined : statusColor.border,
                                   left: `${leftPercent}%`,
                                   width: `${Math.max(widthPercent, 4.5)}%`,
                                   minWidth: '65px',
@@ -2502,8 +2619,8 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                                   height: rowHeight || 'calc(100% - 6px)',
                                   zIndex: 10 + rowIdx,
                                 }}
-                                className={`rounded-md px-2 py-1 cursor-pointer text-white flex flex-col justify-center overflow-hidden border transition-all duration-200 hover:shadow-sm hover:z-30 hover:-translate-y-px ${
-                                  isPendingShift ? 'border-amber-300/80 border-dashed' : 'border-white/20'
+                                className={`rounded-lg px-2 py-1 cursor-pointer flex flex-col justify-center overflow-hidden border transition-all duration-200 hover:shadow-md hover:z-30 hover:-translate-y-px active:scale-[0.98] ${
+                                  isPendingShift ? 'border-dashed border-amber-400' : ''
                                 } ${isProcessing ? 'trinity-shift-processing' : ''} ${justAssigned ? 'trinity-shift-assigned' : ''}`}
                               >
                                 <div
@@ -3068,7 +3185,10 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     />
     
     {/* DragOverlay - shows full-opacity clone during drag */}
-    <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+    <DragOverlay
+      dropAnimation={{ duration: 150, easing: 'cubic-bezier(0.25, 0, 0.25, 1)' }}
+      modifiers={[]}
+    >
       {activeEmployeeId && employees.find(e => e.id === activeEmployeeId) ? (
         <div className="p-3 rounded-lg border border-primary bg-card cursor-grabbing opacity-100 shadow-2xl">
           {(() => {

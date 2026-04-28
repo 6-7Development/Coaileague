@@ -31,8 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Mail, Send, Inbox, Star, Archive, Trash2, Search, Plus, RefreshCw,
+import {Eye, Mail, Send, Inbox, Star, Archive, Trash2, Search, Plus, RefreshCw,
   Reply, Forward, MoreVertical, Clock, CheckCircle, AlertCircle, Eye,
   Sparkles, Wand2, ArrowLeft, ChevronRight, Calendar, Users, Building2,
   FileText, Paperclip, X, Download, Brain, Zap, TrendingUp, MessageSquare,
@@ -250,8 +249,13 @@ function EmailListItem({
     "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
     "bg-orange-500/15 text-orange-600 dark:text-orange-400",
   ];
-  const avatarColor = email.type === 'system' 
-    ? "bg-primary/10 text-primary"
+  // Semantic avatar colors: client=blue, employee=green, system=purple, external=hash
+  const avatarColor = email.type === 'system'
+    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+    : email.senderType === 'client' || email.folderType === 'staffing'
+    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+    : email.senderType === 'employee' || email.folderType === 'calloffs'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
     : avatarColors[Math.abs((email.fromName || email.fromAddress).charCodeAt(0)) % avatarColors.length];
 
   const innerContent = isMobile ? (
@@ -372,13 +376,19 @@ function EmailListItem({
         
         <div className="flex items-center gap-1">
           {email.priority === 'urgent' && (
-            <Badge variant="destructive" className="shrink-0 text-[10px]">Urgent</Badge>
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">Urgent</span>
           )}
-          {email.priority === 'high' && !email.isRead && (
-            <Badge variant="outline" className="shrink-0 text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400">High</Badge>
+          {(email.aiCategory === 'action_required' || email.category === 'action_required') && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">Action needed</span>
           )}
-          {email.aiCategory === 'action_required' && (
-            <Badge variant="outline" className="shrink-0 text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400">Action</Badge>
+          {(email.attachments && email.attachments.length > 0 && email.attachments.some((a: any) => a.type?.includes('pdf') || a.name?.endsWith('.pdf'))) && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">PDF</span>
+          )}
+          {email.folderType === 'calloffs' && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-900/20 dark:border-rose-800">Calloff</span>
+          )}
+          {email.folderType === 'incidents' && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">Incident</span>
           )}
           <p className={cn("text-xs truncate flex-1 leading-normal", email.aiSummary ? "text-muted-foreground/70 italic" : "text-muted-foreground/60")}>
             {email.aiSummary || email.bodyText?.slice(0, 80) || 'No preview available'}
@@ -825,8 +835,8 @@ function TrinityInboxPanel({ onBack }: { onBack: () => void }) {
             <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-3">
               <Bot className="w-8 h-8 text-yellow-500/60" />
             </div>
-            <h3 className="font-semibold mb-1">No Trinity activity</h3>
-            <p className="text-sm text-muted-foreground">Trinity AI hasn't processed any emails yet</p>
+            <h3 className="font-semibold mb-1">Trinity is monitoring</h3>
+            <p className="text-sm text-muted-foreground">Inbound emails will appear here. Trinity reacts with ✅ when actioned.</p>
           </div>
         ) : (
           <div className="divide-y">
@@ -1168,6 +1178,53 @@ function MobileAIInsights({
     retry: false,
   });
   
+  // Mark email as read/seen by Trinity — sends reaction emoji
+  const trinityReactToEmail = async (emailId: string, reaction: '✅' | '👀') => {
+    try {
+      await secureFetch('/api/internal-email/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ emailId, reaction, source: 'trinity_auto' }),
+      });
+    } catch {
+      // non-fatal — reaction is cosmetic
+    }
+  };
+
+  // Execute a Trinity workflow action (fill shifts, generate PDF, etc.)
+  const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
+    if (!email) return;
+    // Build a natural-language command for Trinity to execute
+    const entityName = entityData?.entity?.name ?? senderEmail;
+    const prompt = `Email context: ${email.subject || 'No subject'} from ${entityName}. Action requested: ${action.label}. ${action.description}`;
+    try {
+      const res = await secureFetch('/api/ai-brain/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: prompt,
+          context: { 
+            source: 'email_entity_panel',
+            senderEmail,
+            entityId: entityData?.entity?.id,
+            entityType: entityData?.entity?.type,
+            emailId: email.id,
+            actionIcon: action.icon,
+          },
+        }),
+      });
+      if (res.ok) {
+        toast({ title: `Trinity: ${action.label}`, description: 'Processing your request…' });
+      } else {
+        toast({ title: 'Trinity unavailable', description: 'Try again in a moment', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Could not reach Trinity', variant: 'destructive' });
+    }
+  };
+
   const generateReplyMutation = useMutation({
     mutationFn: async () => {
       const res = await secureFetch('/api/external-emails/reply-suggestions', {
@@ -1584,7 +1641,25 @@ function AIContextRail({
 }) {
   const { toast } = useToast();
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
-  
+  const [draftReply, setDraftReply] = useState<string | null>(null);
+
+  // Entity context: look up the sender as a client or employee
+  const senderEmail = email?.fromAddress ?? '';
+  const { data: entityData } = useQuery({
+    queryKey: ['/api/email/entity-context', senderEmail],
+    queryFn: async () => {
+      if (!senderEmail) return null;
+      const res = await secureFetch(`/api/email/entity-context?email=${encodeURIComponent(senderEmail)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!senderEmail && !!email,
+    staleTime: 2 * 60 * 1000,
+    retry: false,
+  });
+
   const { data: analysisData, isLoading: analysisLoading, refetch: refetchAnalysis } = useQuery({
     queryKey: ['/api/external-emails/analyze', email?.id],
     queryFn: async () => {
@@ -1608,6 +1683,53 @@ function AIContextRail({
     retry: false,
   });
   
+  // Mark email as read/seen by Trinity — sends reaction emoji
+  const trinityReactToEmail = async (emailId: string, reaction: '✅' | '👀') => {
+    try {
+      await secureFetch('/api/internal-email/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ emailId, reaction, source: 'trinity_auto' }),
+      });
+    } catch {
+      // non-fatal — reaction is cosmetic
+    }
+  };
+
+  // Execute a Trinity workflow action (fill shifts, generate PDF, etc.)
+  const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
+    if (!email) return;
+    // Build a natural-language command for Trinity to execute
+    const entityName = entityData?.entity?.name ?? senderEmail;
+    const prompt = `Email context: ${email.subject || 'No subject'} from ${entityName}. Action requested: ${action.label}. ${action.description}`;
+    try {
+      const res = await secureFetch('/api/ai-brain/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: prompt,
+          context: { 
+            source: 'email_entity_panel',
+            senderEmail,
+            entityId: entityData?.entity?.id,
+            entityType: entityData?.entity?.type,
+            emailId: email.id,
+            actionIcon: action.icon,
+          },
+        }),
+      });
+      if (res.ok) {
+        toast({ title: `Trinity: ${action.label}`, description: 'Processing your request…' });
+      } else {
+        toast({ title: 'Trinity unavailable', description: 'Try again in a moment', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Could not reach Trinity', variant: 'destructive' });
+    }
+  };
+
   const generateReplyMutation = useMutation({
     mutationFn: async () => {
       if (!email) return null;
@@ -1850,12 +1972,101 @@ function AIContextRail({
               >
                 <RefreshCw className="w-4 h-4" /> Refresh Analysis
               </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
-                <Users className="w-4 h-4" /> Find in CRM
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
-                <Building2 className="w-4 h-4" /> Link to Contract
-              </Button>
+              {/* Entity context panel — live data from CRM */}
+              {entityData?.entity && (
+                <div className="rounded-lg bg-muted/40 border p-3 space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="w-7 h-7">
+                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                        {(entityData.entity.name ?? '?').split(' ').map((n: string) => n[0]).join('').slice(0,2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="font-medium text-xs truncate">{entityData.entity.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{entityData.entity.type === 'client' ? 'Client' : 'Employee'}</p>
+                    </div>
+                  </div>
+                  {entityData.stats && (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {entityData.entity.type === 'client' && (<>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Open shifts</p>
+                          <p className="font-semibold text-sm">{entityData.stats.openShifts ?? 0}</p>
+                        </div>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Officers</p>
+                          <p className="font-semibold text-sm">{entityData.stats.officerCount ?? 0}</p>
+                        </div>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Rate</p>
+                          <p className="font-semibold text-sm">{entityData.stats.contractRate ? `$${entityData.stats.contractRate}/hr` : '—'}</p>
+                        </div>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">MTD invoiced</p>
+                          <p className="font-semibold text-sm">{entityData.stats.mtdInvoiced ? `$${entityData.stats.mtdInvoiced.toLocaleString()}` : '—'}</p>
+                        </div>
+                      </>)}
+                      {entityData.entity.type === 'employee' && (<>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Next shift</p>
+                          <p className="font-semibold text-sm truncate">{entityData.stats.nextShift ?? '—'}</p>
+                        </div>
+                        <div className="bg-background rounded p-1.5 text-center">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Timesheet</p>
+                          <p className="font-semibold text-sm capitalize">{entityData.stats.timesheetStatus ?? '—'}</p>
+                        </div>
+                        <div className="bg-background rounded p-1.5 text-center col-span-2">
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Certifications</p>
+                          <p className="font-semibold text-sm">{entityData.stats.certCount ?? 0} on file</p>
+                        </div>
+                      </>)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trinity workflow actions — context-aware based on email */}
+              {entityData?.suggestedActions && entityData.suggestedActions.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Trinity suggested actions</p>
+                  {entityData.suggestedActions.map((action: {label: string; description: string; icon: string}, i: number) => (
+                    <Button
+                      key={i}
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-auto py-2 text-left"
+                      data-testid={`button-trinity-action-${i}`}
+                    onClick={() => executeTrinityAction(action)}
+                    >
+                      <div className="w-5 h-5 rounded shrink-0 bg-primary/10 flex items-center justify-center">
+                        <Sparkles className="w-3 h-3 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium leading-tight">{action.label}</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{action.description}</p>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Fallback stubs when no entity data */}
+              {!entityData?.entity && (
+                <>
+                  <Button 
+                    variant="ghost" size="sm" className="w-full justify-start gap-2"
+                    onClick={() => executeTrinityAction({ label: 'Create client record', description: `Add ${senderEmail} as a new client`, icon: 'client' })}
+                  >
+                    <Users className="w-4 h-4" /> Add as new client
+                  </Button>
+                  <Button 
+                    variant="ghost" size="sm" className="w-full justify-start gap-2"
+                    onClick={() => executeTrinityAction({ label: 'Start employee onboarding', description: `Begin onboarding for ${senderEmail}`, icon: 'employee' })}
+                  >
+                    <Building2 className="w-4 h-4" /> Start onboarding
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
           
@@ -2245,6 +2456,21 @@ function ComposeCanvas({
   const [isUploading, setIsUploading] = useState(false);
   const [signatureApplied, setSignatureApplied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // @mention state — type @ in body to trigger picker
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionAnchor, setMentionAnchor] = useState(-1);
+
+  const QUICK_MENTIONS = [
+    { id: '@Trinity', label: 'Trinity (AI)', icon: '🟣' },
+    { id: '@manager', label: 'Manager', icon: '👔' },
+    { id: '@client', label: 'Client', icon: '🏢' },
+    { id: '@team', label: 'All team', icon: '👥' },
+  ];
+
+  // Emoji quick-insert for email compose
+  const EMAIL_EMOJIS = ['✅', '⚠️', '📋', '📞', '🔔', '👍', '❌', '📌', '💼', '⏰'];
 
   // Fetch user's platform email addresses to surface signatures and
   // populate the From field with real data.
@@ -2574,13 +2800,72 @@ function ComposeCanvas({
             </div>
           )}
           
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your message here..."
-            className={cn("resize-none font-mono text-sm leading-relaxed", isMobile ? "min-h-[200px]" : "min-h-[280px]")}
-            data-testid="input-compose-body"
-          />
+          {/* Emoji quick-insert bar */}
+          <div className="flex items-center gap-1 px-1 py-0.5 flex-wrap" data-testid="email-emoji-bar">
+            {EMAIL_EMOJIS.map(emoji => (
+              <button
+                key={emoji}
+                type="button"
+                className="w-7 h-7 rounded hover:bg-muted flex items-center justify-center text-sm transition-colors"
+                onClick={() => setBody(prev => prev + emoji)}
+                title={`Insert ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+            <span className="text-[10px] text-muted-foreground ml-1">Quick insert</span>
+          </div>
+
+          {/* @mention picker for email */}
+          {mentionQuery !== null && (
+            <div className="absolute z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden" style={{ bottom: '140px', left: '24px', right: '24px' }}>
+              {QUICK_MENTIONS.filter(m => m.label.toLowerCase().includes(mentionQuery.toLowerCase())).map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted text-sm transition-colors"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const before = body.slice(0, mentionAnchor);
+                    const after = body.slice(mentionAnchor + mentionQuery.length + 1);
+                    setBody(`${before}${m.id} ${after}`);
+                    setMentionQuery(null);
+                    setMentionAnchor(-1);
+                    bodyRef.current?.focus();
+                  }}
+                >
+                  <span>{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="relative">
+            <Textarea
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => {
+                setBody(e.target.value);
+                // Detect @mention trigger
+                const cursor = e.target.selectionStart;
+                const textUpToCursor = e.target.value.slice(0, cursor);
+                const lastAt = textUpToCursor.lastIndexOf('@');
+                if (lastAt >= 0) {
+                  const query = textUpToCursor.slice(lastAt + 1);
+                  if (/^[a-zA-Z]*$/.test(query) && (cursor - lastAt) <= 15) {
+                    setMentionQuery(query);
+                    setMentionAnchor(lastAt);
+                    return;
+                  }
+                }
+                setMentionQuery(null);
+              }}
+              placeholder="Write your message... (@ to mention, pick emoji above)"
+              className={cn("resize-none font-mono text-sm leading-relaxed", isMobile ? "min-h-[200px]" : "min-h-[280px]")}
+              data-testid="input-compose-body"
+            />
+          </div>
           
           {isMobile && (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gradient-to-r from-primary/10 via-cyan-500/5 to-primary/10 border border-primary/20" data-testid="mobile-ai-compose-toolbar">
@@ -3598,13 +3883,12 @@ export function EmailHubCanvas() {
   };
 
   if (isMobile) {
-    const mobileFolderTabs: { folder: FolderType; icon: typeof Inbox; label: string }[] = [
+    const mobileFolderTabs: { folder: FolderType; icon: typeof Inbox; label: string; badge?: number }[] = [
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'inbox', icon: Inbox, label: 'Inbox' },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'starred', icon: Star, label: 'Starred' },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'sent', icon: Send, label: 'Sent' },
+      { folder: 'inbox', icon: Inbox, label: 'All' },
+      { folder: 'calloffs', icon: PhoneOff, label: 'Calloffs', badge: folders.find(f => f.folderType === 'calloffs')?.unreadCount },
+      { folder: 'incidents', icon: AlertOctagon, label: 'Incidents', badge: folders.find(f => f.folderType === 'incidents')?.unreadCount },
+      { folder: 'billing', icon: Receipt, label: 'Billing' },
       { folder: 'support', icon: Headphones, label: 'Support' },
     ];
 

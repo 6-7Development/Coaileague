@@ -5,6 +5,7 @@
  * This enables the orchestrator to execute any platform action through a unified interface.
  */
 
+import { recordDeliberation } from './trinityEpisodicMemoryService';
 import { 
   helpaiOrchestrator, 
   type ActionHandler, 
@@ -366,7 +367,7 @@ class AIBrainActionRegistry {
       name: 'Create Shift',
       category: 'scheduling',
       description: 'Create a new shift for an employee',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -416,7 +417,7 @@ class AIBrainActionRegistry {
       name: 'Get Shifts',
       category: 'scheduling',
       description: 'Get shifts for a date range',
-      requiredRoles: ['employee', 'manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'employee', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const shiftList = await db.query.shifts.findMany({
@@ -436,7 +437,7 @@ class AIBrainActionRegistry {
       name: 'Create Open Shift & Auto-Fill',
       category: 'scheduling',
       description: 'Create an open shift and have Trinity automatically find the best employee match with live progress streaming',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { schedulingSubagent } = await import('./subagents/schedulingSubagent');
@@ -651,7 +652,7 @@ class AIBrainActionRegistry {
       name: 'Update Shift',
       category: 'scheduling',
       description: 'Update an existing shift — change time, assigned employee, or status. Requires shift ID.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId, startTime, endTime, employeeId, status, notes } = request.payload || {};
@@ -687,7 +688,7 @@ class AIBrainActionRegistry {
       name: 'Delete Shift',
       category: 'scheduling',
       description: 'Delete a shift. Cannot delete shifts with clock-in records — cancel instead.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId, reason } = request.payload || {};
@@ -725,7 +726,7 @@ class AIBrainActionRegistry {
       name: 'Cancel Shift',
       category: 'scheduling',
       description: 'Cancel a shift without deleting it. Status becomes cancelled; assigned employee is notified.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId, reason } = request.payload || {};
@@ -752,7 +753,7 @@ class AIBrainActionRegistry {
       name: 'Publish Shift',
       category: 'scheduling',
       description: 'Publish a draft shift, making it visible to employees.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId } = request.payload || {};
@@ -782,7 +783,7 @@ class AIBrainActionRegistry {
       name: 'Bulk Publish Shifts',
       category: 'scheduling',
       description: 'Publish multiple draft shifts at once. Accepts shiftIds array, or publishes all drafts when omitted.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftIds, weekOf } = request.payload || {};
@@ -824,7 +825,7 @@ class AIBrainActionRegistry {
       name: 'Reassign Shift',
       category: 'scheduling',
       description: 'Reassign a shift from one employee to another. Broadcasts update so both employees see the change.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId, newEmployeeId, reason } = request.payload || {};
@@ -879,7 +880,7 @@ class AIBrainActionRegistry {
       name: 'Get Payroll Runs',
       category: 'payroll',
       description: 'Get payroll runs for a workspace',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const runs = await db.query.payrollRuns.findMany({
@@ -904,7 +905,7 @@ class AIBrainActionRegistry {
       name: 'List Employees',
       category: 'scheduling',
       description: 'List all employees in a workspace',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const employeeList = await db.query.employees.findMany({
@@ -919,7 +920,7 @@ class AIBrainActionRegistry {
       name: 'Get Employee',
       category: 'scheduling',
       description: 'Get a specific employee by ID',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const employee = await db.query.employees.findFirst({
@@ -938,7 +939,7 @@ class AIBrainActionRegistry {
       name: 'Activate Employee',
       category: 'scheduling',
       description: 'Activate an employee account - restore their access to the platform',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -979,7 +980,7 @@ class AIBrainActionRegistry {
       name: 'Deactivate Employee',
       category: 'scheduling',
       description: 'Deactivate an employee account - revoke their access without deleting records',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -1020,7 +1021,7 @@ class AIBrainActionRegistry {
       name: 'Update Employee',
       category: 'scheduling',
       description: 'Update employee details such as pay rate, position, phone, email, or other profile fields',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { employeeId, ...updates } = request.payload || {};
@@ -1077,7 +1078,7 @@ class AIBrainActionRegistry {
       name: 'Create Employee',
       category: 'scheduling',
       description: 'Create a new employee record in the workspace',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { firstName, lastName, email, phone, position, role, payRate, payType, department } = request.payload || {};
@@ -1152,7 +1153,7 @@ class AIBrainActionRegistry {
       name: 'Get Employee Lifecycle History',
       category: 'workforce',
       description: 'Retrieve the full lifecycle audit history for an officer — all state transitions (activated, suspended, terminated, rehired) with actor, reason, and timestamp. Payload: employeeId (required), limit (optional, default 50).',
-      requiredRoles: ['manager', 'owner', 'root_admin', 'compliance_officer'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin', 'compliance_officer'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { employeeId, limit = 50 } = request.payload || {};
@@ -1174,7 +1175,7 @@ class AIBrainActionRegistry {
       name: 'Get Client Lifecycle History',
       category: 'invoicing',
       description: 'Retrieve the full lifecycle audit history for a client — onboarding, suspension, offboarding events with actor, reason, and timestamp. Payload: clientId (required), limit (optional, default 50).',
-      requiredRoles: ['manager', 'owner', 'root_admin', 'compliance_officer'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin', 'compliance_officer'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { clientId, limit = 50 } = request.payload || {};
@@ -1208,7 +1209,7 @@ class AIBrainActionRegistry {
       name: 'List Clients',
       category: 'invoicing',
       description: 'List all clients in a workspace',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const clientList = await db.query.clients.findMany({
@@ -1225,7 +1226,7 @@ class AIBrainActionRegistry {
       name: 'Create Client',
       category: 'invoicing',
       description: 'Create a new client in the workspace — Trinity can pre-fill all fields from context (email, conversation, or staffing request). Payload: firstName, lastName, companyName, email, phone, address, city, state, postalCode, contractRate, billingEmail, notes.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const p = request.payload || {};
@@ -1275,7 +1276,7 @@ class AIBrainActionRegistry {
       name: 'Send Client Portal Invite',
       category: 'invoicing',
       description: 'Send a portal invitation email to a client so they can create their account and access the client portal. Payload: clientId, email (required), clientName.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const p = request.payload || {};
@@ -1308,7 +1309,7 @@ class AIBrainActionRegistry {
       name: 'Scan Open Shifts',
       category: 'scheduling',
       description: 'Trinity self-aware schedule scan — returns all unfilled or open shifts in the next 14 days, grouped by urgency. Trinity calls this proactively when talking to owners or managers.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const now = new Date();
@@ -1359,7 +1360,7 @@ class AIBrainActionRegistry {
       name: 'Detect Client Demand Changes',
       category: 'scheduling',
       description: 'Analyze shift patterns over the last 60 days to detect clients whose scheduling demand is trending up or down. Trinity uses this to proactively recommend creating new shifts or renegotiating contracts.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const now = new Date();
@@ -1431,7 +1432,7 @@ class AIBrainActionRegistry {
       name: 'Get Time Entries',
       category: 'scheduling',
       description: 'Get time entries for an employee',
-      requiredRoles: ['employee', 'manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'employee', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const entries = await db.query.timeEntries.findMany({
@@ -1451,7 +1452,7 @@ class AIBrainActionRegistry {
       name: 'Edit Time Entry',
       category: 'scheduling',
       description: 'Edit a time entry - adjust clock in/out times, add notes, or change status',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { entryId, clockIn: newClockIn, clockOut: newClockOut, notes, status } = request.payload || {};
@@ -1736,7 +1737,7 @@ class AIBrainActionRegistry {
       name: 'Fill Open Shift',
       category: 'scheduling',
       description: 'Assign an employee to an unassigned shift',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { shiftId, employeeId } = request.payload || {};
@@ -1780,12 +1781,24 @@ class AIBrainActionRegistry {
       name: 'Approve Timesheet',
       category: 'payroll',
       description: 'Approve a time entry for payroll',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { timeEntryId } = request.payload || {};
         if (!timeEntryId) return createResult(request.actionId, false, 'timeEntryId required', null, start);
         if (request.workspaceId) await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+
+        // HIGH-STAKES: deliberation log for payroll approval
+        recordDeliberation({
+          workspaceId: request.workspaceId || 'unknown',
+          actionType: 'payroll_timesheet_approval',
+          actionDescription: `Approving timesheet ${timeEntryId} for payroll`,
+          whatIKnow: `Time entry ID: ${timeEntryId}. Requested by: ${request.userId} (${request.userRole}).`,
+          myOptions: 'Approve entry (includes in next payroll run) OR reject (requires correction)',
+          myDecision: 'APPROVED: Marking time entry as approved, setting approvedBy and approvedAt',
+          confidenceScore: 0.9,
+          actionId: request.actionId,
+        }).catch(() => null); // fire-and-forget, non-fatal
 
         const [updated] = await db.update(timeEntries)
           .set({
@@ -1838,7 +1851,7 @@ class AIBrainActionRegistry {
       name: 'Create Invoice',
       category: 'invoicing',
       description: 'Create a new invoice for a client in the workspace',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { clientId, amount, dueDate, lineItems, notes } = request.payload || {};
@@ -1942,7 +1955,7 @@ class AIBrainActionRegistry {
       name: 'Send Invoice',
       category: 'invoicing',
       description: 'Send a finalized invoice to a client',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId } = request.payload || {};
@@ -1976,7 +1989,7 @@ class AIBrainActionRegistry {
       name: 'Clock Out Officer',
       category: 'scheduling',
       description: 'Force clock-out an officer who forgot to clock out',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { timeEntryId, clockOutTime } = request.payload || {};
@@ -2034,7 +2047,7 @@ class AIBrainActionRegistry {
       name: 'Escalate Compliance Issue',
       category: 'compliance',
       description: 'Create a compliance alert and notify stakeholders',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { title, description, severity, relatedEntityId, relatedEntityType } = request.payload || {};
@@ -2107,7 +2120,7 @@ class AIBrainActionRegistry {
       name: 'Add Invoice Line Items',
       category: 'invoicing',
       description: 'Append line items to a draft invoice and recalculate the total',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, items } = request.payload || {};
@@ -2240,7 +2253,7 @@ class AIBrainActionRegistry {
       name: 'Update Invoice',
       category: 'billing',
       description: 'Update a draft or open invoice — due date, notes, or memo. Blocked on paid/void/cancelled/refunded invoices.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, dueDate, notes, memo } = request.payload || {};
@@ -2285,7 +2298,7 @@ class AIBrainActionRegistry {
       name: 'Void Invoice',
       category: 'billing',
       description: 'Void an invoice. Requires dual-AI deliberation and reason. Writes AR reversal ledger entry.',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, reason } = request.payload || {};
@@ -2393,7 +2406,7 @@ class AIBrainActionRegistry {
       name: 'Cancel Invoice',
       category: 'billing',
       description: 'Cancel an unpaid invoice. For draft/sent invoices only.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, reason } = request.payload || {};
@@ -2427,7 +2440,7 @@ class AIBrainActionRegistry {
       name: 'Duplicate Invoice',
       category: 'billing',
       description: 'Duplicate an existing invoice as a new draft. Copies line items.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, newDueDate } = request.payload || {};
@@ -2492,7 +2505,7 @@ class AIBrainActionRegistry {
       name: 'Apply Payment',
       category: 'billing',
       description: 'Record a manual payment against an invoice. Updates balance and writes ledger entry.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, amount, paymentMethod, paymentDate, reference } = request.payload || {};
@@ -2606,7 +2619,7 @@ class AIBrainActionRegistry {
       name: 'Get Onboarding Checklist',
       category: 'lifecycle',
       description: 'Get the onboarding checklist for a user/employee',
-      requiredRoles: ['employee', 'manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'employee', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { onboardingConfig } = await import('@shared/config/onboardingConfig');
@@ -2621,7 +2634,7 @@ class AIBrainActionRegistry {
       name: 'Send / Manage Employee or Client Invitation',
       category: 'lifecycle',
       description: 'Manage invitations. Use payload.action="resend" to resend an existing invitation (requires invitationId); action="revoke" to revoke (requires invitationId); action="client_welcome" to send a client welcome email (requires email, clientName); default sends a new employee invitation (requires email, firstName, lastName).',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { action: subAction, email, firstName, lastName, role, invitationId, clientId, clientName, companyName } = request.payload || {};
@@ -2754,7 +2767,7 @@ class AIBrainActionRegistry {
       name: 'Resend Employee Invitation',
       category: 'lifecycle',
       description: 'Resend an invitation email to an employee',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invitationId } = request.payload || {};
@@ -2799,7 +2812,7 @@ class AIBrainActionRegistry {
       name: 'Revoke Employee Invitation',
       category: 'lifecycle',
       description: 'Revoke an outstanding employee invitation',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invitationId } = request.payload || {};
@@ -2824,7 +2837,7 @@ class AIBrainActionRegistry {
       name: 'Send Client Welcome Email',
       category: 'lifecycle',
       description: 'Send a welcome email to a new client with portal access',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { clientId, email, clientName, companyName } = request.payload || {};
@@ -2897,7 +2910,7 @@ class AIBrainActionRegistry {
       name: 'Get Platform Onboarding Status',
       category: 'lifecycle',
       description: 'Get onboarding status across all organizations',
-      requiredRoles: ['support_agent', 'sysop', 'root_admin'],
+      requiredRoles: ['system', 'support_agent', 'sysop', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { employeeInvitations } = await import('@shared/schema');
@@ -2929,7 +2942,7 @@ class AIBrainActionRegistry {
       name: 'Gather Client Billing Preferences During Onboarding',
       category: 'lifecycle',
       description: 'During client onboarding, gather and persist billing preferences. Accepts clientId plus optional: billingCycle (daily/weekly/bi_weekly/monthly), paymentTerms (net_7/net_15/net_30/net_60/due_on_receipt), defaultBillRate, invoiceFormat (summary/detailed/itemized), autoSendInvoice, invoiceRecipientEmails. Missing fields use workspace defaults.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3012,7 +3025,7 @@ class AIBrainActionRegistry {
       name: 'Bulk Import Employees',
       category: 'scheduling',
       description: 'Import multiple employees from CSV data',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const rows = request.payload?.data as Array<{
@@ -3066,7 +3079,7 @@ class AIBrainActionRegistry {
       name: 'Bulk Export Employees',
       category: 'scheduling',
       description: 'Export all employees to CSV format',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { exportEmployees } = await import('../exportService');
@@ -3153,7 +3166,7 @@ class AIBrainActionRegistry {
       name: 'Get Employee Business Metrics',
       category: 'strategic',
       description: 'Get strategic employee scoring and performance metrics',
-      requiredRoles: ['owner', 'root_admin', 'manager'],
+      requiredRoles: ['system', 'owner', 'root_admin', 'manager'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { strategicOptimizationService } = await import('./strategicOptimizationService');
@@ -3167,7 +3180,7 @@ class AIBrainActionRegistry {
       name: 'Get Client Business Metrics',
       category: 'strategic',
       description: 'Get strategic client tiering and value metrics',
-      requiredRoles: ['owner', 'root_admin', 'manager'],
+      requiredRoles: ['system', 'owner', 'root_admin', 'manager'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { strategicOptimizationService } = await import('./strategicOptimizationService');
@@ -3195,7 +3208,7 @@ class AIBrainActionRegistry {
       name: 'Calculate Shift Profit',
       category: 'strategic',
       description: 'Calculate profit metrics for a specific employee-shift assignment',
-      requiredRoles: ['owner', 'root_admin', 'manager'],
+      requiredRoles: ['system', 'owner', 'root_admin', 'manager'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { strategicOptimizationService } = await import('./strategicOptimizationService');
@@ -3219,7 +3232,7 @@ class AIBrainActionRegistry {
       name: 'Get At-Risk Clients',
       category: 'strategic',
       description: 'Get list of clients flagged as at-risk of churn',
-      requiredRoles: ['owner', 'root_admin', 'manager'],
+      requiredRoles: ['system', 'owner', 'root_admin', 'manager'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { strategicOptimizationService } = await import('./strategicOptimizationService');
@@ -3249,7 +3262,7 @@ class AIBrainActionRegistry {
       name: 'Get Problematic Employees',
       category: 'strategic',
       description: 'Get list of employees with performance issues (low scores or no-shows)',
-      requiredRoles: ['owner', 'root_admin', 'manager'],
+      requiredRoles: ['system', 'owner', 'root_admin', 'manager'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { strategicOptimizationService } = await import('./strategicOptimizationService');
@@ -3279,7 +3292,7 @@ class AIBrainActionRegistry {
       name: 'Get Contract Pipeline Statistics',
       category: 'billing',
       description: 'Get contract pipeline statistics including proposals, contracts, and conversion rates',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3293,7 +3306,7 @@ class AIBrainActionRegistry {
       name: 'Get Pending Signatures',
       category: 'billing',
       description: 'Get contracts waiting for client signatures',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3307,7 +3320,7 @@ class AIBrainActionRegistry {
       name: 'Get Expiring Contracts',
       category: 'billing',
       description: 'Get contracts expiring within 30 days',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3324,7 +3337,7 @@ class AIBrainActionRegistry {
       name: 'Get Contract Pipeline Usage',
       category: 'billing',
       description: 'Get current month contract pipeline quota usage',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3339,7 +3352,7 @@ class AIBrainActionRegistry {
       name: 'Get Contract Templates',
       category: 'billing',
       description: 'Get available contract templates',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3353,7 +3366,7 @@ class AIBrainActionRegistry {
       name: 'Search Contracts',
       category: 'billing',
       description: 'Search contracts by client name, title, or content',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3373,7 +3386,7 @@ class AIBrainActionRegistry {
       name: 'Get Contract Audit Trail',
       category: 'billing',
       description: 'Get audit trail for a specific contract',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
@@ -3529,7 +3542,7 @@ class AIBrainActionRegistry {
       name: 'Billing Settings',
       category: 'billing',
       description: 'Consolidated billing settings action. Dispatch via payload.entity (workspace|client) and payload.action (get|set|list|learn). Defaults to get workspace settings.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const entity = request.payload?.entity;
@@ -3707,7 +3720,7 @@ class AIBrainActionRegistry {
       name: 'Set Workspace Billing Settings',
       category: 'billing',
       description: 'Configure workspace billing settings. Accepts: payrollCycle (daily/weekly/bi_weekly/semi_monthly/monthly), defaultBillingCycle, defaultPaymentTerms (net_7/net_15/net_30/net_60/due_on_receipt), overtime thresholds and multipliers, invoice automation',
-      requiredRoles: ['owner', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3731,7 +3744,7 @@ class AIBrainActionRegistry {
       name: 'Get Client Billing Settings',
       category: 'billing',
       description: 'Get billing settings for a specific client. Provide clientId in payload. Returns the client billing cycle, payment terms, rates, and invoice preferences that override workspace defaults.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3763,7 +3776,7 @@ class AIBrainActionRegistry {
       name: 'Set Client Billing Settings',
       category: 'billing',
       description: 'Configure per-client billing overrides. Accepts clientId plus: billingCycle (daily/weekly/bi_weekly/monthly), paymentTerms, defaultBillRate, defaultPayRate, overtimeBillMultiplier, overtimePayMultiplier, invoiceFormat, autoSendInvoice, invoiceRecipientEmails',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3806,7 +3819,7 @@ class AIBrainActionRegistry {
       name: 'List All Client Billing Settings',
       category: 'billing',
       description: 'List billing settings for all clients in the workspace, showing which clients have custom billing cycles different from the workspace default',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3833,7 +3846,7 @@ class AIBrainActionRegistry {
       name: 'Learn Billing Preference',
       category: 'billing',
       description: 'Record a learned billing/payroll preference from user conversation or onboarding. Accepts: preferenceType (billing_cycle/payment_terms/payroll_schedule/overtime_rules), entity (workspace/client), entityId, value, confidence (0-1), source (conversation/onboarding/migration)',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         try {
@@ -3967,7 +3980,7 @@ class AIBrainActionRegistry {
       name: 'Get or List Invoices',
       category: 'invoicing',
       description: 'Get a single invoice by ID/number (pass payload.id or payload.invoiceNumber) or list all invoices filtered by status/client. Consolidates billing.invoices_get and billing.invoices_list.',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
 
@@ -4011,7 +4024,7 @@ class AIBrainActionRegistry {
       name: 'Get Invoice Details',
       category: 'invoicing',
       description: 'Get detailed information about a specific invoice by ID or invoice number',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const { invoiceId, invoiceNumber } = request.payload || {};
@@ -4035,7 +4048,7 @@ class AIBrainActionRegistry {
       name: 'Invoice Summary & Analytics',
       category: 'invoicing',
       description: 'Get a summary of invoice analytics: total billed, paid, outstanding, overdue amounts',
-      requiredRoles: ['manager', 'owner', 'root_admin'],
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const [summary] = await db
@@ -4072,7 +4085,7 @@ class AIBrainActionRegistry {
       category: 'hr',
       description:
         'Trinity guides the manager through a 5-W intake and generates a disciplinary document (or Letter of Dissatisfaction for 1099 contractors).',
-      requiredRoles: ['owner', 'manager', 'root_admin'],
+      requiredRoles: ['system', 'owner', 'manager', 'root_admin'],
       handler: async (request: ActionRequest): Promise<ActionResult> => {
         const start = Date.now();
         const {
@@ -4289,7 +4302,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Execute Autonomous Scheduling',
     category: 'scheduling',
     description: 'Run Trinity intelligent autonomous scheduling with day-by-day processing, demand prioritization, and historical pattern learning. Processes current day first, then tomorrow, then rest of week.',
-    requiredRoles: ['manager', 'owner', 'root_admin'],
+    requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {
@@ -4330,7 +4343,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Get Autonomous Scheduling Status',
     category: 'scheduling',
     description: 'Get the current status of Trinity autonomous scheduling daemon and session progress',
-    requiredRoles: ['manager', 'owner', 'root_admin'],
+    requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {
@@ -4348,7 +4361,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Enable Background Scheduling Daemon',
     category: 'scheduling',
     description: 'Enable Trinity continuous background scheduling daemon that automatically fills open shifts',
-    requiredRoles: ['owner', 'root_admin'],
+    requiredRoles: ['system', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {
@@ -4380,7 +4393,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Disable Background Scheduling Daemon',
     category: 'scheduling',
     description: 'Disable Trinity continuous background scheduling daemon',
-    requiredRoles: ['owner', 'root_admin'],
+    requiredRoles: ['system', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {
@@ -4412,7 +4425,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Import Historical Scheduling Patterns',
     category: 'scheduling',
     description: 'Import historical scheduling data from CSV to train Trinity on past assignment patterns and employee preferences',
-    requiredRoles: ['owner', 'root_admin'],
+    requiredRoles: ['system', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {
@@ -4448,7 +4461,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
     name: 'Create Recurring Schedule Template',
     category: 'scheduling',
     description: 'Create a weekly recurring schedule template that I\'ll automatically apply each week',
-    requiredRoles: ['manager', 'owner', 'root_admin'],
+    requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
       try {

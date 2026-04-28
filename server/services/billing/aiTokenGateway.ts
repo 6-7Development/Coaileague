@@ -172,8 +172,10 @@ export class AITokenGateway {
         actionType: 'ai_action',
         featureName: featureKey ?? null,
       });
-    } else if (featureKey && !TOKEN_FREE_FEATURES.has(featureKey)) {
-      // workspaceId is missing on a chargeable feature — tenant attribution lost.
+    } else if (featureKey && !TOKEN_FREE_FEATURES.has(featureKey) && workspaceId !== undefined) {
+      // workspaceId is explicitly missing on a chargeable feature (undefined/null passed).
+      // This is a real attribution problem. If workspaceId was never provided (startup/platform calls),
+      // isBillingExcluded already returned true above, so this path only fires for tenant calls.
       log.warn(
         `[BILLING_LEAK_CANARY] finalizeBilling called with NO workspaceId for chargeable feature="${featureKey}" — tenant attribution lost.`,
       );

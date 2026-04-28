@@ -1,5 +1,5 @@
 /**
- * CoAIleague Service Worker v4.6.0
+ * CoAIleague Service Worker v4.7.0
  * APK-ready with IndexedDB offline queue, SW update prompts, and enhanced caching.
  *
  * Canonical registration: navigator.serviceWorker.register('/sw.js').
@@ -22,8 +22,8 @@
  */
 
 const CACHE_VERSION = 11;
-const CACHE_NAME = 'coaileague-v4.6';
-const STATIC_CACHE = 'coaileague-static-v4.6';
+const CACHE_NAME = 'coaileague-v4.7';
+const STATIC_CACHE = 'coaileague-static-v4.7';
 const API_CACHE = 'coaileague-api-v' + CACHE_VERSION;
 const offlineFallbackPage = '/offline.html';
 
@@ -95,7 +95,7 @@ function openDB() {
 }
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v4.3.0');
+  console.log('[SW] Installing service worker v4.7.0');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[SW] Caching app shell');
@@ -106,7 +106,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v4.6.0 — purging ALL old caches + standalone HTML bypass');
+  console.log('[SW] Activating service worker v4.7.0 — purging ALL old caches + standalone HTML bypass');
   event.waitUntil(
     Promise.all([
       // Delete ALL caches that aren't the current valid set — this purges any stale Vite module caches
@@ -145,7 +145,7 @@ self.addEventListener('activate', (event) => {
           // navigate() forces a full reload, bypassing any stale in-memory modules
           c.navigate(c.url).catch(() => {
             // fallback: postMessage if navigate fails
-            c.postMessage({ type: 'SW_UPDATED', version: 'v4.6.0' });
+            c.postMessage({ type: 'SW_UPDATED', version: 'v4.7.0' });
           });
         });
       });
@@ -190,7 +190,36 @@ async function handleStaleWhileRevalidate(request) {
   return cached || fetchPromise;
 }
 
-self.addEventListener('fetch', (event) => {
+self.
+// ─── STARTUP HEALTH CHECK ─────────────────────────────────────────────────────
+// On every SW activation, ping /sw-health. If it returns 200, purge any
+// cached 401/403 responses that may have gotten stuck in the cache.
+// This breaks the "cached unauthorized response" loop.
+self.addEventListener('activate', function swHealthCheck(event) {
+  event.waitUntil(
+    fetch('/sw-health', { cache: 'no-store' })
+      .then(async (resp) => {
+        if (resp.ok) {
+          // Server is alive — purge any stale auth-error responses from ALL caches
+          const cacheNames = await caches.keys();
+          for (const cacheName of cacheNames) {
+            const cache = await caches.open(cacheName);
+            const requests = await cache.keys();
+            for (const req of requests) {
+              const cached = await cache.match(req);
+              if (cached && (cached.status === 401 || cached.status === 403 || cached.status === 0)) {
+                await cache.delete(req);
+                console.log('[SW] Purged bad cached response:', req.url, cached.status);
+              }
+            }
+          }
+        }
+      })
+      .catch(() => null) // Health check is best-effort
+  );
+});
+
+addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   if (event.request.method !== 'GET') {
@@ -745,7 +774,7 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'GET_VERSION') {
-    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.6.0' });
+    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.7.0' });
   }
 
   if (event.data?.type === 'CLEAR_ALL_CACHES') {
@@ -782,4 +811,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Service Worker loaded - v4.6.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');
+console.log('[SW] Service Worker loaded - v4.7.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { StatusBadge, ActionResult } from "@/components/ui/status-badge";
 import { useLocation } from "wouter";
 import { Briefcase, Clock, FileText, Calendar, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";

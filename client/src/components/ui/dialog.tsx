@@ -34,21 +34,37 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const dialogContentVariants = cva(
-  "fixed left-[50%] top-[50%] z-[2501] grid max-w-none translate-x-[-50%] translate-y-[-50%] gap-2 border bg-background/95 backdrop-blur-md p-3 sm:p-4 shadow-sm duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 rounded-md max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] box-border",
+  [
+    // Centering + z-index
+    "fixed left-[50%] top-[50%] z-[2501]",
+    "translate-x-[-50%] translate-y-[-50%]",
+    // Layout
+    "grid gap-0",
+    // Visual
+    "border bg-background/98 backdrop-blur-sm shadow-md rounded-xl",
+    // Containment — critical for all screen sizes
+    "max-h-[calc(100dvh-2rem)] overflow-hidden",
+    // Mobile safe area
+    "p-0",
+    // Animation
+    "duration-200",
+    "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+    "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+    // Touch scroll inside modal
+    "box-border",
+  ].join(" "),
   {
     variants: {
       size: {
-        sm: "w-[min(92vw,22rem)]",
-        md: "w-[min(92vw,26rem)]",
-        default: "w-[min(92vw,28rem)]",
-        lg: "w-[min(92vw,32rem)]",
-        xl: "w-[min(92vw,42rem)]",
-        full: "w-[min(95vw,56rem)]",
+        sm:      "w-[min(94vw,22rem)]",
+        md:      "w-[min(94vw,26rem)]",
+        default: "w-[min(94vw,28rem)]",
+        lg:      "w-[min(94vw,36rem)]",
+        xl:      "w-[min(94vw,46rem)]",
+        full:    "w-[min(96vw,60rem)]",
       },
     },
-    defaultVariants: {
-      size: "default",
-    },
+    defaultVariants: { size: "default" },
   }
 )
 

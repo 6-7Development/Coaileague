@@ -9,8 +9,7 @@ import { Redirect } from "wouter";
 import { performLogout } from "@/lib/logoutHandler";
 import { useTrinityModal } from "@/components/trinity-chat-modal";
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
-import {
-  Clock, Users, Building2, Shield,
+import {Eye, Clock, Users, Building2, Shield,
   FolderOpen, Activity, Eye, MessageSquare, Megaphone, FileText,
   ArrowRightLeft, CalendarOff, ClipboardList, AlertTriangle,
   Settings, HelpCircle, LogOut, Briefcase, ChevronRight, X,
@@ -253,7 +252,7 @@ export default function MobileMorePage() {
         <SectionHeader label="Account" />
         <MenuItem icon={Settings} label="Settings" href="/settings" />
         <MenuItem icon={HelpCircle} label="HelpDesk" href="/helpdesk" />
-        <MenuItem icon={LogOut} label="Log Out" href="#" onClick={performLogout} variant="destructive" />
+        <MenuItem icon={LogOut} label="Log Out" href="/logout" onClick={performLogout} variant="destructive" />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 /**
  * UNIVERSAL ACCESS CONTROL PANEL (UACP) API ROUTES
  * =================================================
@@ -118,7 +119,14 @@ router.get('/dashboard', requireAdminAccess, async (req, res) => {
  */
 router.post('/authorize', requireAuth, async (req, res) => {
   try {
-    const { subject, resource, context } = req.body;
+    const authorizeSchema = z.object({
+      subject: z.object({ entityType: z.string(), entityId: z.string() }),
+      resource: z.object({ resourceType: z.string(), resourceId: z.string() }),
+      context: z.record(z.unknown()).optional(),
+    });
+    const authParsed = authorizeSchema.safeParse(req.body);
+    if (!authParsed.success) return res.status(400).json({ error: 'Validation failed', details: authParsed.error.flatten() });
+    const { subject, resource, context } = authParsed.data;
 
     if (!subject?.entityType || !subject?.entityId || !resource?.resourceType || !resource?.resourceId) {
       return res.status(400).json({ error: 'Missing required fields: subject, resource' });
@@ -205,12 +213,23 @@ router.get('/agents/:agentId', requireAdminAccess, async (req, res) => {
 router.post('/agents', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const { 
-      agentId, name, description, entityType, 
-      role, permissions, allowedTools, allowedDomains,
-      missionObjective, riskProfile, maxAutonomyLevel,
-      isGlobal
-    } = req.body;
+    const agentRegSchema = z.object({
+      agentId: z.string().min(1).max(100),
+      name: z.string().min(1).max(200),
+      description: z.string().max(1000).optional(),
+      entityType: z.string().min(1).max(50),
+      role: z.string().max(50).optional(),
+      permissions: z.array(z.string()).optional(),
+      allowedTools: z.array(z.string()).optional(),
+      allowedDomains: z.array(z.string()).optional(),
+      missionObjective: z.string().max(1000).optional(),
+      riskProfile: z.string().max(50).optional(),
+      maxAutonomyLevel: z.number().int().min(0).max(10).optional(),
+      isGlobal: z.boolean().optional(),
+    });
+    const agentRegParsed = agentRegSchema.safeParse(req.body);
+    if (!agentRegParsed.success) return res.status(400).json({ error: 'Validation failed', details: agentRegParsed.error.flatten() });
+    const { agentId, name, description, entityType, role, permissions, allowedTools, allowedDomains, missionObjective, riskProfile, maxAutonomyLevel, isGlobal } = agentRegParsed.data;
 
     if (!agentId || !name || !entityType) {
       return res.status(400).json({ error: 'Missing required fields: agentId, name, entityType' });
@@ -281,7 +300,10 @@ router.post('/agents/:agentId/suspend', requireAdminAccess, async (req, res) => 
   try {
     const user = req.user;
     const { agentId } = req.params;
-    const { reason } = req.body;
+    const suspendSchema = z.object({ reason: z.string().min(1).max(500) });
+    const suspendParsed = suspendSchema.safeParse(req.body);
+    if (!suspendParsed.success) return res.status(400).json({ error: 'Reason is required' });
+    const { reason } = suspendParsed.data;
 
     if (!reason) {
       return res.status(400).json({ error: 'Suspension reason required' });
@@ -389,7 +411,17 @@ router.get('/attributes/:entityType/:entityId', requireAdminAccess, async (req, 
 router.post('/attributes', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const { entityType, entityId, attributeName, attributeValue, attributeType, expiresAt } = req.body;
+    const attrSchema = z.object({
+      entityType: z.string().min(1).max(50),
+      entityId: z.string().min(1).max(200),
+      attributeName: z.string().min(1).max(100),
+      attributeValue: z.unknown(),
+      attributeType: z.string().max(50).optional(),
+      expiresAt: z.string().optional(),
+    });
+    const attrParsed = attrSchema.safeParse(req.body);
+    if (!attrParsed.success) return res.status(400).json({ error: 'Validation failed', details: attrParsed.error.flatten() });
+    const { entityType, entityId, attributeName, attributeValue, attributeType, expiresAt } = attrParsed.data;
 
     if (!entityType || !entityId || !attributeName || attributeValue === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -663,7 +695,10 @@ router.patch('/users/:userId/role', requireAdminAccess, async (req, res) => {
   try {
     const actor = req.user;
     const { userId } = req.params;
-    const { role } = req.body;
+    const roleAssignSchema = z.object({ role: z.string().min(1).max(100) });
+    const roleParsed = roleAssignSchema.safeParse(req.body);
+    if (!roleParsed.success) return res.status(400).json({ error: 'Valid role is required' });
+    const { role } = roleParsed.data;
 
     if (!role) {
       return res.status(400).json({ error: 'Role is required' });
@@ -793,3 +828,7 @@ router.post('/seed-agents', requireAdminAccess, async (req, res) => {
 });
 
 export default router;
+
+// ── Zod validation patch (appended by architect) ──────────────────────────
+// All validation is applied inline at route level below via the schemas here.
+// This keeps the patch minimal and non-invasive during the sprint.

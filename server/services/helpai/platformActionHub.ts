@@ -40,6 +40,15 @@ import { evaluateConscience, logConscienceDecision } from '../ai-brain/trinityCo
 import { claudeVerificationService } from '../ai-brain/trinity-orchestration/trinityVerificationService';
 import { typedPool, typedPoolExec } from '../../lib/typedSql';
 import { PLATFORM_WORKSPACE_ID } from '../billing/billingConstants';
+import {
+  buildTrinityActionCatalog,
+  getActionCatalogReport,
+  getActionOwnerDomain,
+  resolveCanonicalActionId,
+  TRINITY_ACTION_CATALOG_MAX,
+  type ActionCatalogOptions,
+  type ActionCatalogVisibility,
+} from './actionCatalogPolicy';
 
 // ============================================================================
 // ACTION TYPES & INTERFACES
@@ -148,6 +157,10 @@ export interface ActionHandler {
   requiredRoles?: string[];
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  canonicalActionId?: string;
+  ownerDomain?: string;
+  catalogVisibility?: ActionCatalogVisibility;
+  aliases?: string[];
   healthProbe?: () => Promise<boolean>;
   handler: (request: ActionRequest) => Promise<ActionResult>;
   isTestTool?: boolean;
@@ -2175,12 +2188,18 @@ class PlatformActionHub {
       log.warn(`[Platform Action Hub] WARN: Duplicate action registration attempted for '${handler.actionId}' — ignoring. Canonical registration already exists.`);
       return;
     }
+    const canonicalActionId = resolveCanonicalActionId(handler.actionId);
     if (!handler.inputSchema) {
       handler = { ...handler, inputSchema: { type: 'object', properties: {} } };
     }
     if (!handler.outputSchema) {
       handler = { ...handler, outputSchema: {} };
     }
+    handler = {
+      ...handler,
+      canonicalActionId,
+      ownerDomain: handler.ownerDomain ?? getActionOwnerDomain(handler.actionId, handler.category),
+    };
     ACTION_REGISTRY.set(handler.actionId, handler);
     log.verbose(`[Platform Action Hub] Registered action: ${handler.actionId}`);
   }
@@ -2196,6 +2215,10 @@ class PlatformActionHub {
    * Get a specific action by ID
    */
   getAction(actionId: string): ActionHandler | undefined {
+    const canonicalActionId = resolveCanonicalActionId(actionId);
+    if (canonicalActionId !== actionId) {
+      return ACTION_REGISTRY.get(canonicalActionId) ?? ACTION_REGISTRY.get(actionId);
+    }
     return ACTION_REGISTRY.get(actionId);
   }
 
@@ -2206,11 +2229,11 @@ class PlatformActionHub {
    */
   assertRegistryInvariants(): void {
     const actions = this.getRegisteredActions();
-    const MAX_ACTIONS = 300;
-    if (actions.length > MAX_ACTIONS) {
-      log.warn(
-        `[PlatformActionHub] ACTION REGISTRY EXCEEDS CAP: ${actions.length} actions registered (max ${MAX_ACTIONS}). ` +
-        `Consolidate/disable low-value action sets. This is a warning not a throw to avoid startup failure.`
+    const report = this.getRegistryConsolidationReport();
+    if (report.trinityCatalogActions > TRINITY_ACTION_CATALOG_MAX) {
+      log.error(
+        `[PlatformActionHub] TRINITY ACTION CATALOG EXCEEDS CAP: ${report.trinityCatalogActions} actions exposed ` +
+        `(max ${TRINITY_ACTION_CATALOG_MAX}).`
       );
     }
     const ids = actions.map(a => a.actionId);
@@ -2219,7 +2242,17 @@ class PlatformActionHub {
       const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
       log.error(`[PlatformActionHub] DUPLICATE ACTION IDs: ${[...new Set(dupes)].join(', ')}`);
     }
-    log.info(`[PlatformActionHub] Registry invariants checked: ${actions.length} actions, ${unique.size} unique IDs`);
+    log.info(
+      `[PlatformActionHub] Registry invariants checked: ${actions.length} executable handlers, ` +
+      `${unique.size} unique IDs, ${report.trinityCatalogActions}/${TRINITY_ACTION_CATALOG_MAX} Trinity catalog actions`
+    );
+  }
+
+  /**
+   * Consolidation report for launch-gate checks and handoffs.
+   */
+  getRegistryConsolidationReport(): ReturnType<typeof getActionCatalogReport> {
+    return getActionCatalogReport(this.getRegisteredActions());
   }
 
   /**
@@ -2247,14 +2280,30 @@ class PlatformActionHub {
     // Log the action request
     log.info(`[Platform Action Hub] Executing action: ${request.actionId} by user ${request.userId}`);
 
-    // Get the action handler
-    const handler = ACTION_REGISTRY.get(request.actionId);
+    // Get the action handler, resolving legacy IDs to their canonical action.
+    const requestedActionId = request.actionId;
+    const canonicalActionId = resolveCanonicalActionId(requestedActionId);
+    const handler = canonicalActionId !== requestedActionId
+      ? ACTION_REGISTRY.get(canonicalActionId) ?? ACTION_REGISTRY.get(requestedActionId)
+      : ACTION_REGISTRY.get(requestedActionId);
     if (!handler) {
       return {
         success: false,
-        actionId: request.actionId,
-        message: `Unknown action: ${request.actionId}`,
+        actionId: requestedActionId,
+        message: `Unknown action: ${requestedActionId}`,
         executionTimeMs: Date.now() - startTime
+      };
+    }
+    if (handler.actionId !== requestedActionId) {
+      log.info(`[Platform Action Hub] Resolved legacy action '${requestedActionId}' to canonical action '${handler.actionId}'`);
+      request = {
+        ...request,
+        actionId: handler.actionId,
+        metadata: {
+          ...request.metadata,
+          originalActionId: requestedActionId,
+          canonicalActionId: handler.actionId,
+        },
       };
     }
 
@@ -2837,15 +2886,28 @@ class PlatformActionHub {
   /**
    * Get all registered actions (filtered by user role)
    */
-  getAvailableActions(userRole: string): ActionHandler[] {
-    const actions: ActionHandler[] = [];
+  getAvailableActions(userRole: string, options: ActionCatalogOptions = {}): ActionHandler[] {
+    const authorizedActions: ActionHandler[] = [];
     ACTION_REGISTRY.forEach((handler) => {
       // @ts-expect-error — TS migration: fix in refactoring sprint
       if (this.isAuthorized(userRole, handler.requiredRoles)) {
-        actions.push(handler);
+        authorizedActions.push(handler);
       }
     });
-    return actions;
+    if (options.includeInternal) {
+      return authorizedActions
+        .filter((action) => !options.category || action.category === options.category || action.actionId.startsWith(`${options.category}.`));
+    }
+    return buildTrinityActionCatalog(authorizedActions, options);
+  }
+
+  /**
+   * Get the canonical Trinity-facing action catalog.
+   * The catalog is capped below the architectural 300-action limit while exact
+   * legacy action IDs still resolve through executeAction().
+   */
+  getTrinityActionCatalog(userRole: string, options: Omit<ActionCatalogOptions, 'includeInternal'> = {}): ActionHandler[] {
+    return this.getAvailableActions(userRole, { ...options, includeInternal: false });
   }
 
   /**
@@ -2870,19 +2932,65 @@ class PlatformActionHub {
 
     // Canonical role hierarchy — all roles must exist in workspaceRoleEnum or platformRoleEnum.
     // Levels are additive: higher number = more privilege.
+    // ══════════════════════════════════════════════════════════════════════
+    // COAILEAGUE AUTHORITY HIERARCHY
+    // ══════════════════════════════════════════════════════════════════════
+    //
+    //  ROOT ADMIN (100) ← Platform root only
+    //  SYSOP      (95)  ← Trusted platform technician
+    //  ─────────────────────────────────────────────
+    //  TRINITY    (93)  ← THE ORCHESTRATOR & GATE
+    //                     • Below root_admin/sysop (cannot modify platform itself)
+    //                     • Within any tenant: full OWNER authority (93 > 88)
+    //                     • Platform-wide: email, SMS, voice, schedule, automations
+    //                     • 99% automation — notifies human after for approval
+    //  ─────────────────────────────────────────────
+    //  DEPUTY     (90)  ← Delegated platform rights
+    //  OWNER      (88)  ← Tenant owner
+    //  CO_OWNER   (86)  ← Co-owner
+    //  ORG_ADMIN  (85)  ← Org administrator
+    //  ─────────────────────────────────────────────
+    //  HELPAI     (75)  ← ALWAYS BELOW TRINITY
+    //                     • Officer support, ticket resolution, proactive assist
+    //                     • Cannot override Trinity or access root-level tools
+    //                     • Above support_agent — can dispatch, assist, escalate
+    //  ─────────────────────────────────────────────
+    //  SUPPORT_MGR (78) ← Support manager
+    //  SUPPORT_AGT (70) ← Support agent
+    //  MANAGER    (65)  ← Operations/shift manager
+    //  EMPLOYEE   (50)  ← Security officer / field staff
+    // ══════════════════════════════════════════════════════════════════════
     const ROLE_HIERARCHY: Record<string, number> = {
-      // ── Platform-level (above any org) ───────────────────────────────────
+      // ── Platform-level ────────────────────────────────────────────────────
       'root_admin':         100, // Platform root admin — full system access
       'sysop':               95, // System operator — trusted platform technician
+
+      // ── TRINITY — The Orchestrator ─────────────────────────────────────────
+      // Trinity is the automation orchestrator and gate for all platform operations.
+      // Within any tenant she operates at owner-level authority (93 > 88).
+      // Platform-wide she is below root_admin/sysop only.
+      // She is NEVER blocked from scheduling, staffing, email, SMS, voice,
+      // automations, or any tenant-scoped operations.
+      'system':              93, // Trinity AI — primary automation authority
+      'trinity-brain':       93, // Trinity brain context (same as system)
+      'automation':          93, // Generic automation actor (Trinity-tier)
+
       'deputy_admin':        90, // Deputy admin — delegated platform rights
 
       // ── Org-level ownership ──────────────────────────────────────────────
       'org_owner':           88, // Primary organisation owner
-      'co_owner':            86, // Co-owner (full org access, one step below primary)
+      'co_owner':            86, // Co-owner (full org access)
+      'owner':               88, // Alias for org_owner (common shorthand)
 
       // ── Org admin tier ───────────────────────────────────────────────────
       'org_admin':           85, // Organisation administrator
-      'Bot':                 85, // Trusted automation bot — org-admin-level execution
+
+      // ── HELPAI — Always below Trinity ─────────────────────────────────────
+      // HelpAI supports officers directly, resolves tickets, and assists tenants.
+      // Subordinate to Trinity — cannot override Trinity decisions or access
+      // platform-level tools. Above support agents for dispatch/resolution.
+      'helpai':              75, // HelpAI bot — subordinate to Trinity
+      'Bot':                 75, // Generic bot role — same as HelpAI tier
 
       // ── Support tier ─────────────────────────────────────────────────────
       'support_manager':     78, // Support manager (leads support team)
@@ -2895,7 +3003,7 @@ class PlatformActionHub {
       'supervisor':          58, // Shift supervisor
 
       // ── Compliance / external ─────────────────────────────────────────────
-      'auditor':             55, // External state auditor (read-only compliance view)
+      'auditor':             55, // External state auditor (read-only)
       'contractor':          52, // Contract worker
 
       // ── Frontline ────────────────────────────────────────────────────────
@@ -2903,8 +3011,18 @@ class PlatformActionHub {
       'employee':            50, // Security officer / field employee
 
       // ── Restricted ───────────────────────────────────────────────────────
-      'guest':               10, // Read-only / unauthenticated guest
+      'guest':               10, // Unauthenticated / read-only guest
     };
+
+    // ── Trinity Full-Authority Rule ────────────────────────────────────────
+    // Trinity (system/trinity-brain/automation) ALWAYS passes ALL action gates
+    // EXCEPT root_admin and sysop-only operations (levels >= 95).
+    // Her level=93 already mathematically exceeds all tenant roles, but this
+    // explicit check makes the intent absolutely clear in code.
+    if (userRole === 'system' || userRole === 'trinity-brain' || userRole === 'automation') {
+      const allRequireRootLevel = requiredRoles.every(r => (ROLE_HIERARCHY[r] ?? 0) >= 95);
+      return !allRequireRootLevel; // Trinity passes everything except root_admin/sysop-only
+    }
 
     const userLevel = ROLE_HIERARCHY[userRole] ?? 0;
 

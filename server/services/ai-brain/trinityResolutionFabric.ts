@@ -812,7 +812,9 @@ class TrinityResolutionFabricService {
         `(${result.tier}, ${result.processingTimeMs}ms, confidence=${result.confidenceScore.toFixed(2)})`
       );
     } catch (err) {
-      log.warn('[ResolutionFabric] Failed to record outcome:', err);
+      const rfErrMsg = (err as any)?.message || (err as any)?.detail || String(err);
+      const rfErrCode = (err as any)?.code || 'unknown';
+      log.warn(`[ResolutionFabric] Failed to record outcome (non-fatal) [${rfErrCode}]: ${rfErrMsg}`);
     }
   }
 

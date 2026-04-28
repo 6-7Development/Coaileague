@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { isValidIANATimezone } from '../services/holidayService';
 import { validateBillingRate, businessRuleResponse } from '../lib/businessRules';
 import { Router } from "express";
@@ -189,7 +190,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     });
 
     if (!validationResult.success) {
-      return res.status(400).json({ error: "Validation failed", details: validationResult.error.issues });
+      return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validationResult.error) });
     }
 
     const validated = validationResult.data;
@@ -291,7 +292,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       const { emailService } = await import('../services/emailService');
       // @ts-expect-error — TS migration: fix in refactoring sprint
       const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as any).name || 'Valued Client', validated.companyName || '', workspace.name || '');
-      NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+      NotificationDeliveryService.send({ idempotencyKey: `notif:client:${client.id}:welcome`,
             type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
         .catch(err => log.error('[Client Creation] Failed to queue welcome email:', err));
 
@@ -386,7 +387,7 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
     const { workspaceId: _, ...updateData } = req.body;
     const validationResult = insertClientSchema.partial().safeParse(coerceClientNumbers(trimStrings(updateData)));
     if (!validationResult.success) {
-      return res.status(400).json({ error: "Validation failed", details: validationResult.error.issues });
+      return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validationResult.error) });
     }
     const validated = validationResult.data;
 
@@ -540,7 +541,7 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
     }).safeParse(req.body);
 
     if (!validation.success) {
-      return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
+      return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validation.error) });
     }
     const body = validation.data;
 
@@ -829,7 +830,7 @@ router.post('/:id/reactivate', requireManagerOrPlatformStaff, async (req: Authen
     }).safeParse(req.body);
 
     if (!validation.success) {
-      return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
+      return res.status(400).json({ error: "Validation failed", details: formatZodIssues(validation.error) });
     }
     const body = validation.data;
 
@@ -984,16 +985,19 @@ function dockChatRateLimit(req: any, res: any, next: any) {
 
 router.post('/dockchat/start', dockChatRateLimit, async (req: any, res: any) => {
   try {
-    const { orgWorkspaceId, clientId, clientName, clientEmail, reportType, initialMessage } = req.body;
-
-    if (!orgWorkspaceId || !reportType) {
-      return res.status(400).json({ message: 'orgWorkspaceId and reportType are required' });
-    }
-
-    const validTypes = ['billing_discrepancy', 'staff_issue', 'complaint', 'violation', 'service_quality', 'other'];
-    if (!validTypes.includes(reportType)) {
-      return res.status(400).json({ message: 'Invalid reportType' });
-    }
+    const dockChatStartSchema = z.object({
+      orgWorkspaceId: z.string().min(1, 'orgWorkspaceId required'),
+      reportType: z.enum(['billing_discrepancy','staff_issue','complaint','violation','service_quality','other'], {
+        errorMap: () => ({ message: 'Invalid reportType' }),
+      }),
+      clientId: z.string().optional(),
+      clientName: z.string().optional(),
+      clientEmail: z.string().email().optional().or(z.literal('')).transform(v => v || undefined),
+      initialMessage: z.string().optional(),
+    });
+    const dockStartParsed = dockChatStartSchema.safeParse(req.body);
+    if (!dockStartParsed.success) return res.status(400).json({ message: 'Invalid request body', details: formatZodIssues(dockStartParsed.error) });
+    const { orgWorkspaceId, clientId, clientName, clientEmail, reportType, initialMessage } = dockStartParsed.data;
 
     const result = await clientPortalHelpAIService.startSession({
       orgWorkspaceId,
@@ -1014,11 +1018,14 @@ router.post('/dockchat/start', dockChatRateLimit, async (req: any, res: any) => 
 // Send a message in a DockChat session
 router.post('/dockchat/message', dockChatRateLimit, async (req: any, res: any) => {
   try {
-    const { sessionId, message, evidenceText } = req.body;
-
-    if (!sessionId || !message) {
-      return res.status(400).json({ message: 'sessionId and message are required' });
-    }
+    const dockChatMsgSchema = z.object({
+      sessionId: z.string().min(1, 'sessionId required'),
+      message: z.string().min(1, 'message required'),
+      evidenceText: z.string().optional(),
+    });
+    const dockMsgParsed = dockChatMsgSchema.safeParse(req.body);
+    if (!dockMsgParsed.success) return res.status(400).json({ message: 'Invalid request body', details: formatZodIssues(dockMsgParsed.error) });
+    const { sessionId, message, evidenceText } = dockMsgParsed.data;
 
     const result = await clientPortalHelpAIService.processMessage({ sessionId, message, evidenceText });
     res.json(result);
@@ -1031,11 +1038,13 @@ router.post('/dockchat/message', dockChatRateLimit, async (req: any, res: any) =
 // Close session and generate structured report
 router.post('/dockchat/close', dockChatRateLimit, async (req: any, res: any) => {
   try {
-    const { sessionId, title } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ message: 'sessionId is required' });
-    }
+    const dockChatCloseSchema = z.object({
+      sessionId: z.string().min(1, 'sessionId required'),
+      title: z.string().optional(),
+    });
+    const dockCloseParsed = dockChatCloseSchema.safeParse(req.body);
+    if (!dockCloseParsed.success) return res.status(400).json({ message: 'Invalid request body', details: formatZodIssues(dockCloseParsed.error) });
+    const { sessionId, title } = dockCloseParsed.data;
 
     const result = await clientPortalHelpAIService.closeSession(sessionId, title || 'Client Report');
     res.json(result);
@@ -1106,7 +1115,13 @@ router.post('/contract-renewal-request', requireAuth, async (req: AuthenticatedR
     const userEmail = req.user?.email;
     if (!workspaceId) return res.status(403).json({ message: 'Workspace required' });
 
-    const { contractTitle, notes } = req.body;
+    const contractRenewalReqSchema = z.object({
+      contractTitle: z.string().min(1, 'contractTitle required'),
+      notes: z.string().optional(),
+    });
+    const renewalReqParsed = contractRenewalReqSchema.safeParse(req.body);
+    if (!renewalReqParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(renewalReqParsed.error) });
+    const { contractTitle, notes } = renewalReqParsed.data;
 
     const { auditLogs, notifications } = await import('@shared/schema');
 
@@ -1152,7 +1167,15 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
     const userEmail = req.user?.email;
     if (!workspaceId) return res.status(403).json({ message: 'Workspace required' });
 
-    const { reason, additionalInfo, clientName, certificateHolder } = req.body;
+    const coiReqSchema = z.object({
+      reason: z.string().min(1, 'reason required'),
+      additionalInfo: z.string().optional(),
+      clientName: z.string().optional(),
+      certificateHolder: z.string().optional(),
+    });
+    const coiParsed = coiReqSchema.safeParse(req.body);
+    if (!coiParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(coiParsed.error) });
+    const { reason, additionalInfo, clientName, certificateHolder } = coiParsed.data;
 
     const { auditLogs, workspaces } = await import('@shared/schema');
     const { notifications } = await import('@shared/schema');
@@ -1204,7 +1227,7 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
     // Send email to org via NDS — tracked delivery with automatic retry on failure
     const _coiAdminEmail = `admin@${ws?.name?.toLowerCase().replace(/\s+/g, '') || 'organization'}.com`;
     NotificationDeliveryService.send({
-      idempotencyKey: `notif-${Date.now()}`,
+      idempotencyKey: `notif:coi:${userId}:request`,
             type: 'invoice_notification',
       workspaceId: workspaceId || 'system',
       recipientUserId: _coiAdminEmail,

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { storage } from "../storage";
@@ -57,6 +58,11 @@ const DEV_EXECUTE_ALLOWED_COMMANDS: Record<string, () => Promise<string>> = {
 };
 
 router.post('/dev-execute', async (req: AuthenticatedRequest, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    log.error('[DevExecute] Attempted dev-execute in production - blocked');
+    return res.status(403).json({ error: 'dev-execute is not available in production environments' });
+  }
+
   const expectedToken = process.env.ADMIN_SCRIPT_TOKEN;
   if (!expectedToken) {
     return res.status(503).json({ error: 'ADMIN_SCRIPT_TOKEN is not configured on this server.' });
@@ -1405,6 +1411,7 @@ router.post('/support/create-ticket', async (req: AuthenticatedRequest, res) => 
     
     const adminSupport = await import('../adminSupport');
     const result = await adminSupport.createSupportTicket({
+      // Tier-2 Zod guard: passthrough strip avoids prototype pollution
       ...req.body,
       createdByAdmin: adminUserId,
     });

@@ -30,6 +30,9 @@ import commOsRouter from "../commOsRoutes";
 import privateMessageRouter from "../privateMessageRoutes";
 import notificationsRouter from "../notifications";
 import seasonalRouter from "../seasonalRoutes";
+import chatPollRouter from '../chatPollRoutes';
+import chatSearchRouter from '../chatSearchRoutes';
+import emailEntityContextRouter from '../emailEntityContextRoute';
 // NOTE: voiceRouter + /api/voice/* and /api/sms/{inbound,status} aliases are
 // mounted in server/routes.ts BEFORE domain mounts. They cannot live here
 // because mountBillingRoutes/etc. register `app.use("/api", requireAuth, ...)`
@@ -56,6 +59,10 @@ export function mountCommsRoutes(app: Express): void {
   app.use("/api/email-attachments", requireAuth, ensureWorkspaceAccess, emailAttachmentsRouter);
   app.use("/api/chat/rooms", requireAuth, attachWorkspaceIdOptional, chatRoomsRouter);
   app.use("/api/chat/manage", requireAuth, attachWorkspaceIdOptional, chatManagementRouter);
+
+  // Chat polls + search — static imports added at top of file
+  app.use('/api/chat', requireAuth, attachWorkspaceIdOptional, chatPollRouter);
+  app.use('/api/chat', requireAuth, attachWorkspaceIdOptional, chatSearchRouter);
   // chatroomCommandRouter defines its own full /api/chat/* paths internally with per-route auth.
   app.use(chatroomCommandRouter);
   app.use("/api", requireAuth, ensureWorkspaceAccess, commInlineRouter);
@@ -69,4 +76,5 @@ export function mountCommsRoutes(app: Express): void {
   registerExternalEmailRoutes(app, requireAuth, ensureWorkspaceAccess);
   // Phase 35C — DockChat bot commands + room management
   app.use("/api/chat/dock", requireAuth, ensureWorkspaceAccess, dockChatRouter);
+  app.use('/', requireAuth, emailEntityContextRouter);
 }

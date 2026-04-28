@@ -8,7 +8,7 @@
 // MOUNT ORDER RULE: specific path prefixes BEFORE general path prefixes so
 // more-specific routers always get first pick of matching requests.
 import { sanitizeError } from '../../middleware/errorHandler';
-import type { Express } from "express";
+import { Router, type Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
 import { requirePlatformStaff, requireTrinityAccess, requirePlatformRole, AuthenticatedRequest } from "../../rbac";
@@ -54,7 +54,6 @@ import automationGovernanceRouter from "../automationGovernanceRoutes";
 import trinityIntelligenceRouter from "../trinityIntelligenceRoutes";
 import empireRouter from "../empireRoutes"; // /api/trinity/empire/* + /api/trinity/bluedot/*
 import trinityIntakeRouter from "../trinityIntakeRoutes";
-import { Router } from "express";
 import { runDomainHealthCheck } from "../../services/trinity/domainHealthValidator";
 import { trinityACC } from "../../services/ai-brain/trinityACCService";
 import { trinityThalamus } from "../../services/ai-brain/trinityThalamusService";
@@ -62,6 +61,8 @@ import agentActivityRouter from "../agentActivityRoutes";
 import trinityLimbicRouter from "../trinityLimbicRoutes";
 import trinityTransparencyRouter from "../trinityTransparencyRoutes";
 import trinityAgentDashboardRouter from "../trinityAgentDashboardRoutes";
+import aiBrainCapabilitiesRouter from '../ai-brain-capabilities';
+import { registerAiBrainMemoryRoutes } from '../aiBrainMemoryRoutes';
 
 const domainHealthRouter = Router();
 domainHealthRouter.get("/domain-health", requireAuth, requireTrinityAccess, (_req, res) => {
@@ -222,4 +223,6 @@ export function mountTrinityRoutes(app: Express): void {
 
   // ── Agent Spawning Activity (Phase 6) ─────────────────────────────────────
   app.use("/api/agent-activity", requireAuth, ensureWorkspaceAccess, agentActivityRouter);
+  app.use('/api/ai-brain', requireAuth, aiBrainCapabilitiesRouter);
+  registerAiBrainMemoryRoutes(app, requireAuth);
 }

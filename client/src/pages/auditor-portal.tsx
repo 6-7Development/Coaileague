@@ -45,17 +45,19 @@ export default function AuditorPortal() {
   const [selectedPeriod, setSelectedPeriod] = useState("current-month");
 
   // Fetch data
-  const { data: invoices = [] } = useQuery<Invoice[]>({
+  const { data: invoices = [], isLoading: invLoading, isError: invError } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
 
-  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
+  const { data: timeEntries = [], isLoading: timeLoading } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
   });
 
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employees = [], isLoading: empLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
+
+  const isLoading = invLoading || timeLoading || empLoading;
 
   const { data: clients = [] } = useClientLookup();
 
@@ -187,6 +189,19 @@ export default function AuditorPortal() {
 
     exportToCSV(payrollByEmployee, `payroll-summary-${selectedPeriod}`);
   };
+
+  if (isLoading) {
+    return (
+      <WorkspaceLayout maxWidth="7xl">
+        <div className="space-y-4 animate-pulse p-6">
+          <div className="h-8 w-64 bg-muted rounded-lg" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="bg-background rounded-xl border p-4 space-y-3"><div className="h-3 w-1/2 bg-muted rounded" /><div className="h-8 w-2/3 bg-muted rounded" /></div>)}
+          </div>
+        </div>
+      </WorkspaceLayout>
+    );
+  }
 
   return (
     <WorkspaceLayout maxWidth="7xl">

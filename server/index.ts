@@ -22,6 +22,7 @@ import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
 import { registerRoutes } from "./routes";
+import { stopBackupVerificationCron, stopStatusHealthLoop } from "./routes/statusRoutes";
 import { setupVite, serveStatic, log as viteLog } from "./vite";
 import { createLogger } from './lib/logger';
 import { pool } from "./db"; // Assuming 'pool' is your PostgreSQL client connection pool
@@ -30,6 +31,7 @@ import { CACHING } from './config/platformConfig';
 import { DOMAINS } from '@shared/platformConfig';
 import { startAutonomousScheduler } from "./services/autonomousScheduler";
 import { ensureRequiredTables } from "./services/dbMigrationService";
+import { stopDecemberHolidayCron } from "./services/holidayService";
 import { runLegacyBootstraps } from "./services/legacyBootstrapRegistry";
 import { ensureCriticalConstraints } from "./services/criticalConstraintsBootstrap";
 import { ensureWorkspaceIndexes } from "./services/workspaceIndexBootstrap";
@@ -343,7 +345,9 @@ const defaultOriginPatterns = defaultOrigins.map(
 );
 const fallbackOriginPatterns = [
   ...defaultOriginPatterns,
-  new RegExp(`^https?:\\/\\/([a-zA-Z0-9-]+\\.)*${DOMAINS.root.replace('.', '\\.')}$`),
+  new RegExp(`^https?:\/\/([a-zA-Z0-9-]+\.)*${DOMAINS.root.replace('.', '\\.')}$`),
+  // Railway deployment URLs — dev and staging environments
+  /^https?:\/\/[a-zA-Z0-9-]+\.up\.railway\.app$/,
   ...(isProdDeployment ? [] : [
     /^https?:\/\/localhost(?::\d+)?$/,
     /^https?:\/\/127\.0\.0\.1(?::\d+)?$/,
@@ -838,10 +842,30 @@ async function initializeCriticalServices() {
       const { probeDbConnection } = await import('./db');
       return await probeDbConnection();
     } catch { return false; }
-  })();
+  }).catch((err: any) => {
+      log.error(`[PostListen] Unhandled crash: ${err instanceof Error ? err.message : String(err)}`);
+    });
+
+  // ── CANONICAL SEED GATE ──────────────────────────────────────────────────────
+  // Seeds run ONCE when a new local dev environment is set up.
+  // On Railway (any environment) they NEVER run automatically — data persists
+  // in Neon across deploys. Seeding on Railway drowns the DB on every restart
+  // and adds 30-120s of serial DB round-trips to startup time.
+  //
+  // To seed manually on Railway: run `node server/scripts/run-seed.js` from CLI
+  // or set SEED_ON_STARTUP=true temporarily in Railway Variables tab (remove after).
+  //
+  // Local dev: seeds run automatically because RAILWAY_SERVICE_ID won't be set.
+  const isRailwayDeploy = !!process.env.RAILWAY_SERVICE_ID;
+  const seedExplicitlyEnabled = process.env.SEED_ON_STARTUP === 'true';
+  const shouldSeed = !isRailwayDeploy || seedExplicitlyEnabled;
 
   if (!dbAvailableForSeed) {
-    log.warn('Phase 1 seeding skipped — DB unreachable (will seed on next restart when DB is ready)');
+    log.warn('Phase 1 seeding skipped — DB unreachable');
+  } else if (isProductionEnv() && !seedExplicitlyEnabled) {
+    log.info('[Startup] Production environment — seeding skipped');
+  } else if (isRailwayDeploy && !seedExplicitlyEnabled) {
+    log.info('[Startup] Railway deployment detected — seeding skipped (data persists in Neon across deploys). Set SEED_ON_STARTUP=true to seed manually.');
   } else {
 
   // Seed development data (only runs in non-production, idempotent)
@@ -942,6 +966,18 @@ async function initializeCriticalServices() {
     log.error('Guard card enrichment failed', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
   }
 
+  // Monthly open shifts — Trinity automation testing
+  // Seeds current month with open/understaffed shifts so Trinity's fill-shift
+  // scanner, coverage gap detector, and HelpAI triggers all fire correctly.
+  // Proves in development that the entire automation chain works before production.
+  try {
+    const { seedMonthlyShifts } = await import("./services/developmentSeedShifts");
+    const shiftResult = await seedMonthlyShifts();
+    log.info('Monthly shift seed', { result: shiftResult.message });
+  } catch (error) {
+    log.error('Monthly shift seed failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
+  }
+
   // Contracts and incidents — both orgs
   try {
     const { runContractsAndIncidentsSeed } = await import("./services/developmentSeedContractsAndIncidents");
@@ -1035,7 +1071,9 @@ async function initializeAIBrainCore(): Promise<void> {
       //    per-organization history, culture, and operational preferences.
       const { trinitySomaticMarkerService } = await import('./services/ai-brain/trinitySomaticMarkerService');
       const { trinityNarrativeIdentityEngine } = await import('./services/ai-brain/trinityNarrativeIdentityEngine');
-      await trinitySomaticMarkerService.seedPlatformPatterns();
+      if (!process.env.RAILWAY_SERVICE_ID || process.env.SEED_ON_STARTUP === 'true') {
+        await trinitySomaticMarkerService.seedPlatformPatterns();
+      }
       log.info('Trinity somatic marker patterns seeded');
       const { pool } = await import('./db');
       // CATEGORY C — Raw SQL retained: Workspace ID scan for Trinity initialization | Tables: workspaces | Verified: 2026-03-23
@@ -1120,22 +1158,33 @@ async function initializeExtendedServices(): Promise<void> {
     }),
 
     timedInit('Question Bank Seeder (Phase 58)', async () => {
+      if (!!process.env.RAILWAY_SERVICE_ID && process.env.SEED_ON_STARTUP !== 'true') {
+        log.info('[QuestionBank] Railway deploy — skipping seed (data persists in Neon)');
+        return;
+      }
       const { seedDefaultQuestionBank } = await import('./services/recruitment/questionBankSeeder');
       const result = await seedDefaultQuestionBank();
       log.info(`Question Bank Seeder: ${result.seeded} seeded, ${result.skipped} skipped`);
     }),
 
     timedInit('ACME Candidate Seed (Phase 58)', async () => {
+      if (!!process.env.RAILWAY_SERVICE_ID && process.env.SEED_ON_STARTUP !== 'true') {
+        log.info('[ACMECandidates] Railway deploy — skipping seed');
+        return;
+      }
       const { seedAcmeCandidates } = await import('./services/recruitment/acmeCandidateSeed');
       const result = await seedAcmeCandidates();
       log.info(`ACME Candidate Seed: ${result.seeded} seeded, ${result.skipped} skipped`);
     }),
 
     timedInit('HelpAI System Connectivity', async () => {
-      // Seed Trinity's static knowledge modules into the DB (idempotent — skips if up-to-date)
-      const { trinityKnowledgeService } = await import('./services/ai-brain/trinityKnowledgeService');
-      await trinityKnowledgeService.seedStaticKnowledge();
-      log.info('Trinity static knowledge modules seeded');
+      // Seed Trinity's static knowledge modules — local dev only
+      // On Railway these are already in the DB from the initial manual seed
+      if (!process.env.RAILWAY_SERVICE_ID || process.env.SEED_ON_STARTUP === 'true') {
+        const { trinityKnowledgeService } = await import('./services/ai-brain/trinityKnowledgeService');
+        await trinityKnowledgeService.seedStaticKnowledge();
+        log.info('Trinity static knowledge modules seeded');
+      }
 
       // Register HelpAI knowledge tools in the tool capability registry
       const { toolCapabilityRegistry } = await import('./services/ai-brain/toolCapabilityRegistry');
@@ -1155,8 +1204,8 @@ async function initializeExtendedServices(): Promise<void> {
       const { registerVoiceActions } = await import('./services/trinityVoice/trinityVoiceActions');
       const { helpaiOrchestrator } = await import('./services/helpai/platformActionHub');
       registerVoiceActions(helpaiOrchestrator);
-      // Seed ACME sandbox with voice test data — DEV/TEST only
-      if (process.env.NODE_ENV !== 'production') {
+      // Seed ACME sandbox with voice test data — local dev only, never on Railway
+      if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_SERVICE_ID) {
         const { seedAcmeVoiceData } = await import('./services/trinityVoice/acmeSeed');
         await seedAcmeVoiceData();
       }
@@ -1720,10 +1769,79 @@ process.on('unhandledRejection', (reason: any, promise) => {
   // Architecture lint — non-blocking, just warns about violations
   runArchitectureLint();
 
+  // EMERGENCY: Add SW-killer and static-bypass BEFORE any auth middleware
+  // These routes must be accessible without authentication — they're needed
+  // to break the service worker cache loop that causes the black screen.
+  
+  // /clear-sw → forces browser to unregister all service workers
+  app.get('/clear-sw', (_req: any, res: any) => {
+    res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.send(`
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', async () => {
+  const keys = await caches.keys();
+  await Promise.all(keys.map(k => caches.delete(k)));
+  await self.registration.unregister();
+  const clients = await self.clients.matchAll({ type: 'window' });
+  clients.forEach(c => c.navigate(c.url));
+});
+`);
+  });
+
+  // /sw-health → returns JSON so browser can check if server is alive
+  app.get('/sw-health', (_req: any, res: any) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, ts: Date.now() });
+  });
+
   // PHASE 0: Register routes (required before anything else)
+  // ── EARLY STATIC FILE SERVING (CRITICAL — must run BEFORE registerRoutes) ──
+  // This ensures GET / and all client-side routes return HTML before any API
+  // middleware can intercept them. API routes (/api/*) are still handled by
+  // registerRoutes() below — express.static skips them automatically.
+  const path = await import('path');
+  const fs = await import('fs');
+  const distPath = path.default.resolve(process.cwd(), 'dist/public');
+  if (fs.default.existsSync(distPath)) {
+    const expressStaticMod = await import('express');
+    const expressStatic = expressStaticMod.default.static;
+    // Serve sw.js with no-cache so browser always gets latest version
+    app.get('/sw.js', (_req: any, res: any) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Content-Type', 'application/javascript');
+      res.sendFile(path.default.resolve(distPath, 'sw.js'));
+    });
+    // Serve static assets (JS, CSS, images) — skips /api/* routes automatically
+    app.use(expressStatic(distPath, { index: false }));
+    // SPA catch-all: serve index.html for all non-API navigation requests
+    app.get('*', (req: any, res: any, next: any) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
+        return next();
+      }
+      // Only intercept navigation requests (browser GET for pages)
+      const accept = req.headers.accept || '';
+      if (accept.includes('text/html') || accept === '*/*' || !req.path.includes('.')) {
+        return res.sendFile(path.default.resolve(distPath, 'index.html'));
+      }
+      next();
+    });
+    log.info('[Startup] Early static serving registered — SPA routes handled before API middleware');
+  } else {
+    // dist/public not built yet — serve placeholder for all non-API routes
+    app.get('*', (req: any, res: any, next: any) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) return next();
+      res.status(200).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CoAIleague</title></head><body style="margin:0;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui"><div style="text-align:center"><h1 style="color:#7c3aed">CoAIleague</h1><p>Deploying... <button onclick="location.reload()" style="background:#7c3aed;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer">Reload</button></p></div><script>setTimeout(()=>location.reload(),15000)</script></body></html>');
+    });
+    log.warn('[Startup] dist/public not found — static serving in fallback mode');
+  }
+
   try {
     log.info('Phase 0: Registering routes');
     server = await registerRoutes(app);
+    registerDaemon('DecemberHolidayCron', stopDecemberHolidayCron);
+    registerDaemon('BackupVerificationCron', stopBackupVerificationCron);
+    registerDaemon('StatusHealthLoop', stopStatusHealthLoop);
 
     // ── Semantic alias routes ────────────────────────────────────────────────
     // These provide canonical paths expected by the audit / frontend without
@@ -2124,7 +2242,48 @@ process.on('unhandledRejection', (reason: any, promise) => {
     // registration (no I/O), so this adds <1 ms before the port opens.
     const { crawlerPrerenderMiddleware } = await import('./middleware/crawlerPrerender');
     app.use(crawlerPrerenderMiddleware);
-    serveStatic(app);
+    try {
+      serveStatic(app);
+      log.info('[Startup] Static files registered from dist/public/');
+    } catch (staticErr: any) {
+      // dist/public/ doesn't exist — Vite build didn't run or failed.
+      // Register a fallback that serves a proper page instead of raw JSON.
+      log.error('[Startup] serveStatic failed — dist/public/ not found. Vite build may have failed.', {
+        error: staticErr?.message,
+      });
+      // Fallback: serve a bootstrap page for all non-API routes
+      app.use('*', (req: any, res: any) => {
+        if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
+          return res.status(503).json({ message: 'Service starting up', retry: true });
+        }
+        res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoAIleague — Loading</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { text-align: center; padding: 2rem; max-width: 400px; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #7c3aed; }
+    p { color: #94a3b8; margin-bottom: 1.5rem; }
+    button { background: #7c3aed; color: white; border: none; padding: 0.75rem 2rem;
+             border-radius: 8px; font-size: 1rem; cursor: pointer; }
+    button:hover { background: #6d28d9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>CoAIleague</h1>
+    <p>The platform is deploying. This usually takes under 2 minutes.</p>
+    <button onclick="window.location.reload()">Reload</button>
+  </div>
+  <script>setTimeout(() => window.location.reload(), 30000);</script>
+</body>
+</html>`);
+      });
+    }
   }
 
   try {
@@ -2194,13 +2353,18 @@ process.on('unhandledRejection', (reason: any, promise) => {
       }
     }
 
-    // PHASE 1: Critical services (run first, before any seeding tasks)
-    log.info('Phase 1: Critical services');
-    try {
-      await initializeCriticalServices();
-    } catch (err: any) {
-      log.error(`[CriticalServices] Failed (non-fatal): ${err.message}`);
-    }
+    // PHASE 1: Critical services — run in background so health check answers immediately
+    // The DB bootstraps (constraints, indexes, identity) are idempotent and non-blocking.
+    // If they fail, routes degrade gracefully via circuit-breaker — no 500 on first request.
+    log.info('Phase 1: Critical services (background)');
+    setImmediate(async () => {
+      try {
+        await initializeCriticalServices();
+        log.info('Phase 1: Critical services complete');
+      } catch (err: any) {
+        log.error(`[CriticalServices] Failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+      }
+    });
 
     // Non-critical seeding tasks — fire-and-forget (do NOT block Phase 2+)
     void (async () => {
@@ -2290,8 +2454,11 @@ process.on('unhandledRejection', (reason: any, promise) => {
       await new Promise(resolve => setTimeout(resolve, 5000));
       try {
         log.info('Deferred: Checking production database seed');
-        const seedResult = await runProductionSeed();
-        log.info('Production seed complete', { message: seedResult.message });
+        // Production seed only runs when explicitly enabled
+        if (process.env.SEED_ON_STARTUP === 'true') {
+          const seedResult = await runProductionSeed();
+          log.info('Production seed complete', { message: seedResult.message });
+        }
       } catch (error) {
         log.error('Production seed check failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
@@ -2300,6 +2467,60 @@ process.on('unhandledRejection', (reason: any, promise) => {
       try {
         log.info('Deferred: Running data corrections');
         await runDataCorrections();
+        // Auto-create missing tables that may not exist yet
+        try {
+          const { pool: missingTablePool } = await import('./db');
+          await missingTablePool.query(`CREATE TABLE IF NOT EXISTS ai_call_log (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            workspace_id VARCHAR, feature VARCHAR, model VARCHAR,
+            tokens_used INTEGER DEFAULT 0, cost_credits INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          )`);
+          await missingTablePool.query(`CREATE TABLE IF NOT EXISTS universal_audit_log (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            workspace_id VARCHAR, actor_type VARCHAR DEFAULT 'system',
+            actor_id VARCHAR, action VARCHAR NOT NULL,
+            entity_type VARCHAR, entity_id VARCHAR,
+            change_type VARCHAR DEFAULT 'action',
+            metadata JSONB DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW()
+          )`);
+          await missingTablePool.query('CREATE INDEX IF NOT EXISTS idx_ai_call_log_ws ON ai_call_log (workspace_id)');
+          await missingTablePool.query('CREATE INDEX IF NOT EXISTS idx_univ_audit_ws ON universal_audit_log (workspace_id, created_at)');
+          log.info('[Startup] Auto-created missing tables: ai_call_log, universal_audit_log');
+        // Auto-create core auth tables that may be missing
+        try {
+          const { pool: authPool } = await import('./db');
+          await authPool.query(`CREATE TABLE IF NOT EXISTS auth_tokens (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            user_id VARCHAR NOT NULL,
+            token_hash VARCHAR NOT NULL,
+            token_type VARCHAR DEFAULT 'session',
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            revoked_at TIMESTAMPTZ
+          )`);
+          await authPool.query(`CREATE TABLE IF NOT EXISTS auth_sessions (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            user_id VARCHAR NOT NULL,
+            session_id VARCHAR,
+            ip_address VARCHAR,
+            user_agent TEXT,
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            revoked_at TIMESTAMPTZ
+          )`);
+          await authPool.query('CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens (user_id)');
+          await authPool.query('CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions (user_id)');
+          log.info('[Startup] Auth tables verified: auth_tokens, auth_sessions');
+        } catch (authTableErr: any) {
+          log.warn('[Startup] Auth table create (non-fatal):', authTableErr?.message?.slice(0, 80));
+        }
+        } catch (tableErr: any) {
+          log.warn('[Startup] Missing table auto-create (non-fatal):', tableErr?.message?.slice(0, 80));
+        }
+        // Reset demo account locks in non-production (dev/staging Railway environments)
+        const { resetDemoAccountLocks } = await import('./services/productionSeed');
+        await resetDemoAccountLocks();
       } catch (error) {
         log.error('Data corrections failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
@@ -2315,8 +2536,10 @@ process.on('unhandledRejection', (reason: any, promise) => {
       await new Promise(resolve => setTimeout(resolve, 5000));
       try {
         log.info('Deferred: Seeding state regulatory knowledge base');
-        const { seedStateKnowledgeBase } = await import('./services/compliance/stateRegulatoryKnowledgeBase');
-        await seedStateKnowledgeBase();
+        if (process.env.SEED_ON_STARTUP === 'true') {
+          const { seedStateKnowledgeBase } = await import('./services/compliance/stateRegulatoryKnowledgeBase');
+          await seedStateKnowledgeBase();
+        }
         log.info('State regulatory knowledge base seeded');
       } catch (error) {
         log.error('State knowledge base seed failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
@@ -2432,6 +2655,7 @@ process.on('unhandledRejection', (reason: any, promise) => {
     try {
       const { helpAIProactiveMonitor } = await import('./services/helpai/helpAIProactiveMonitor');
       helpAIProactiveMonitor.start();
+      registerDaemon('HelpAIProactiveMonitor', () => helpAIProactiveMonitor.stop?.());
       log.info('HelpAI Proactive Monitor initialized — 5-minute per-workspace loop active');
     } catch (error) {
       log.error('Failed to initialize HelpAI Proactive Monitor', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
@@ -2602,15 +2826,21 @@ process.on('unhandledRejection', (reason: any, promise) => {
       try {
         const { platformActionHub } = await import('./services/helpai/platformActionHub');
         const actions = platformActionHub.getRegisteredActions();
+        const catalog = platformActionHub.getTrinityActionCatalog('root_admin');
+        const report = platformActionHub.getRegistryConsolidationReport();
         const byCategory = actions.reduce<Record<string, number>>((acc, a) => {
           acc[a.category] = (acc[a.category] || 0) + 1;
           return acc;
         }, {});
         log.info('[Audit] Trinity Action Surface', {
-          totalActions: actions.length,
+          executableHandlers: actions.length,
+          trinityCatalogActions: catalog.length,
+          maxCatalogActions: report.maxCatalogActions,
+          duplicateActionIds: report.duplicateActionIds,
+          legacyAliasActions: report.legacyAliasActions,
+          internalActions: report.internalActions,
           byCategory,
-          baseline: 684,
-          drift: actions.length - 684,
+          byOwnerDomain: report.byOwnerDomain,
         });
       } catch (err) {
         log.warn('[Startup] Failed to log Trinity action surface', err);

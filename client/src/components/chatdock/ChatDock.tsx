@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect, type TouchEvent as ReactTouchEvent } from "react";
+import { StatusBadge } from '@/components/ui/status-badge';
 import { createPortal } from "react-dom";
 import { useChatDock } from "@/contexts/ChatDockContext";
 import { useChatRoomSummaries, useChatUnreadTotal } from "@/hooks/useChatManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
-import { X, ArrowLeft, Send, Search, Users, MessageCircle, MessageSquare, ChevronRight, Loader2, WifiOff, Plus, MoreVertical, Paperclip, Image, Video, Mic, UserPlus, LogOut, EyeOff, VolumeX, Volume2, Trash2, Ban, Shield, Crown, Info, Settings, Check, CheckCheck, FileText, Reply, Pencil, Forward, Pin, SmilePlus, ExternalLink, XCircle, ArrowDown, ThumbsUp, Heart, Laugh, Frown, Flame, Headphones, Calendar, Phone, Mail, AlertCircle, MapPin, Download,  } from "lucide-react";
+import { X, ArrowLeft, Send, Search, Users, MessageCircle, MessageSquare, ChevronRight, Loader2, WifiOff, Plus, MoreVertical, Paperclip, Image, Video, Mic, UserPlus, LogOut, Eye, EyeOff, VolumeX, Volume2, Trash2, Ban, Shield, Crown, Info, Settings, Check, CheckCheck, FileText, Reply, Pencil, Forward, Pin, SmilePlus, ExternalLink, XCircle, ArrowDown, ThumbsUp, Heart, Laugh, Frown, Flame, Headphones, Calendar, Phone, Mail, AlertCircle, MapPin, Download,  } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -643,14 +644,36 @@ function RoomInfoPanel({
   );
 }
 
+// Real emoji reactions — professional set (no entertainment fluff)
 const QUICK_REACTIONS = [
-  { key: "thumbsup", icon: ThumbsUp, label: "Like" },
-  { key: "heart", icon: Heart, label: "Love" },
-  { key: "laugh", icon: Laugh, label: "Haha" },
-  { key: "star", icon: Shield, label: "Star" },
-  { key: "flame", icon: Flame, label: "Fire" },
-  { key: "frown", icon: Frown, label: "Sad" },
+  { key: "👍", emoji: "👍", icon: ThumbsUp, label: "Like" },
+  { key: "❤️", emoji: "❤️", icon: Heart, label: "Love" },
+  { key: "😂", emoji: "😂", icon: Laugh, label: "Haha" },
+  { key: "✅", emoji: "✅", icon: Check, label: "Acknowledged" },
+  { key: "👀", emoji: "👀", icon: Eye, label: "Seen" },
+  { key: "🔥", emoji: "🔥", icon: Flame, label: "Urgent" },
+  { key: "⚠️", emoji: "⚠️", icon: AlertCircle, label: "Attention" },
+  { key: "🎯", emoji: "🎯", icon: Check, label: "On it" },
 ];
+
+// Emoticon shortcuts mapped to emoji (WhatsApp-style)
+const EMOTICON_MAP: Record<string, string> = {
+  ':)': '😊', ':-)': '😊', ':D': '😄', ':-D': '😄',
+  ':P': '😛', ':-P': '😛', ':o': '😮', ':-o': '😮',
+  ':s': '😣', ':(': '😔', ':-(': '😔',
+  '<3': '❤️', '</3': '💔',
+  ':+1:': '👍', ':-1:': '👎',
+  ':thumbsup:': '👍', ':check:': '✅', ':fire:': '🔥',
+};
+
+function applyEmoticonShortcuts(text: string): string {
+  let result = text;
+  for (const [shortcut, emoji] of Object.entries(EMOTICON_MAP)) {
+    const escapedShortcut = shortcut.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp('(^|\\s)' + escapedShortcut + '(\\s|$)', 'g'), `$1${emoji}$2`);
+  }
+  return result;
+}
 
 function EmojiReactionBar({
   messageId,
@@ -670,16 +693,19 @@ function EmojiReactionBar({
   });
 
   return (
-    <div className="flex items-center gap-0.5 bg-card border border-border rounded-full shadow-sm px-1.5 py-0.5 z-50" data-testid={`reaction-bar-${messageId}`}>
+    <div
+      className="flex items-center bg-card border border-border rounded-full shadow-md px-2 py-1 gap-0.5 z-50 animate-in slide-in-from-bottom-1 fade-in duration-150"
+      data-testid={`reaction-bar-${messageId}`}
+    >
       {QUICK_REACTIONS.map((r) => (
         <button
           key={r.key}
-          className="p-0.5 text-foreground/70 hover:text-primary transition-colors"
+          className="flex items-center justify-center w-7 h-7 rounded-full text-base hover:bg-muted transition-all hover:scale-125 active:scale-100"
           onClick={(e) => { e.stopPropagation(); toggleReaction.mutate(r.key); }}
           data-testid={`reaction-${r.key}-${messageId}`}
-          aria-label={r.label}
+          title={r.label}
         >
-          <r.icon className="h-4 w-4" />
+          {r.emoji}
         </button>
       ))}
     </div>
@@ -728,7 +754,7 @@ function ReactionBadges({
             title={r.users.map(u => u.name).join(", ")}
             data-testid={`reaction-badge-${r.emoji}-${messageId}`}
           >
-            {IconComp ? <IconComp className="h-3 w-3" /> : <span>{r.emoji}</span>}
+            <span className="text-[11px] leading-none">{r.emoji}</span>
             <span>{r.count}</span>
           </button>
         );
@@ -1642,6 +1668,9 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
     return () => setActiveSessionId(null);
   }, [roomId, setActiveSessionId]);
   const [input, setInput] = useState("");
+  // @mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionAnchor, setMentionAnchor] = useState<number>(-1);
   const [showInfo, setShowInfo] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
@@ -1885,6 +1914,48 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
       sendMessage(text, userName, "support");
     }
     chatManager.updateRoomLastMessage(roomId, text, userName);
+
+    // @Trinity / @HelpAI mention triggers AI response
+    if (text.includes('@Trinity') || text.includes('@trinity')) {
+      fetch('/api/ai-brain/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: text.replace(/@Trinity/gi, '').trim(),
+          context: { source: 'chatdock', roomId, mode: 'operational' },
+        }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.response) {
+            // Trinity reacts ✅ to confirm she processed the message
+            fetch(`/api/chat/manage/messages/${roomId}/trinity-react`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ emoji: '✅', source: 'trinity_auto' }),
+            }).catch(() => null);
+            sendMessage(`🟣 **Trinity:** ${data.response}`, 'Trinity', 'bot');
+          }
+        })
+        .catch(() => null);
+    }
+    if (text.includes('@HelpAI') || text.includes('@helpai')) {
+      fetch('/api/helpai/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: text.replace(/@HelpAI/gi, '').trim(), roomId }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.response) {
+            sendMessage(`⭐ **HelpAI:** ${data.response}`, 'HelpAI', 'bot');
+          }
+        })
+        .catch(() => null);
+    }
     inputRef.current?.focus();
   }, [input, isConnected, sendMessage, sendRawMessage, userName, replyingTo, editingMessage, editMutation]);
 
@@ -2132,7 +2203,9 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
             )}
           </div>
         ) : (
-          wsMessages.map((msg, idx) => {
+          // Performance: render only the latest 200 messages in large rooms
+          // Scroll-to-top will load earlier history (future: intersection observer)
+          (wsMessages.length > 200 ? wsMessages.slice(-200) : wsMessages).map((msg, idx) => {
             const msgContent = msg.message || "";
             const isOwn = msg.senderId === user?.id;
             const isSystem = msg.isSystemMessage || msg.senderType === "system";
@@ -2408,7 +2481,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
       />
 
       <div
-        className="border-t border-border/30 chatdock-input-bar px-2 py-1.5"
+        className="border-t border-border/20 chatdock-input-bar px-2 py-2"
       >
         <div className="flex items-center gap-1.5">
           <div className="relative">
@@ -2468,14 +2541,77 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
               </div>
             )}
           </div>
+          {/* @mention picker — WhatsApp style */}
+          {mentionQuery !== null && (() => {
+            const BOT_MENTIONS = [
+              { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
+              { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
+            ];
+            const memberMentions = (members ?? []).map((m: any) => ({
+              id: `@${m.firstName}${m.lastName}`,
+              name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim(),
+              role: m.workspaceRole || 'Member',
+              badge: null as string | null,
+              color: null as string | null,
+            }));
+            const allMentions = [...BOT_MENTIONS, ...memberMentions];
+            const filtered = allMentions.filter(item => item.name.toLowerCase().includes(mentionQuery ?? '')).slice(0, 6);
+            return (
+              <div className="absolute bottom-full left-12 right-12 mb-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50 animate-in slide-in-from-bottom-1 fade-in duration-150" data-testid="mention-picker">
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">No matches for @{mentionQuery}</div>
+                ) : filtered.map(item => (
+                  <button
+                    key={item.id}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted transition-colors text-sm"
+                    data-testid={`mention-option-${item.id}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const before = input.slice(0, mentionAnchor);
+                      const after = input.slice(mentionAnchor + (mentionQuery?.length ?? 0) + 1);
+                      setInput(`${before}${item.id} ${after}`);
+                      setMentionQuery(null);
+                      setMentionAnchor(-1);
+                      setTimeout(() => inputRef.current?.focus(), 0);
+                    }}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                      style={{ background: item.color ?? 'hsl(var(--primary))' }}
+                    >
+                      {item.badge ?? item.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{item.name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{item.role}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           <Input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setInput(val);
+              // Detect @mention trigger
+              const cursor = e.target.selectionStart ?? val.length;
+              const before = val.slice(0, cursor);
+              const mentionMatch = before.match(/@([\w]*)$/);
+              if (mentionMatch) {
+                setMentionQuery(mentionMatch[1].toLowerCase());
+                setMentionAnchor(cursor - mentionMatch[0].length);
+              } else {
+                setMentionQuery(null);
+                setMentionAnchor(-1);
+              }
+            }}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } if (e.key === "Escape") { setReplyingTo(null); setEditingMessage(null); setInput(""); } }}
-            placeholder={editingMessage ? "Edit your message..." : replyingTo ? `Reply to ${replyingTo.senderName}...` : isConnected ? "Type a message..." : "Connecting..."}
+            placeholder={editingMessage ? "Edit message..." : replyingTo ? `↩ Reply to ${replyingTo.senderName}...` : isConnected ? "Message (@ to mention)..." : "Connecting..."}
             disabled={!isConnected}
-            className="text-sm flex-1 h-9 rounded-full bg-muted/50 border border-border/40 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/30"
+            className="text-sm flex-1 h-9 rounded-full bg-muted/40 border border-border/30 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/20 px-4"
             data-testid={`input-chat-msg-${roomId}`}
           />
           {!input.trim() && !editingMessage && (

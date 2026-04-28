@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { CONTACTS } from "@shared/platformConfig";
+import { TrinityBrainStatusPanel, AICreditBalancePanel } from "@/components/ai-brain";
 
 const pageConfig: CanvasPageConfig = {
   id: "support-manager-dashboard",
@@ -145,8 +146,8 @@ export default function SupportManagerDashboard() {
 
         {/* Trinity Brain + AI Credits */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* TrinityBrainStatusPanel removed */}
-          {/* AICreditBalancePanel removed */}
+          <TrinityBrainStatusPanel />
+          <AICreditBalancePanel />
         </div>
 
         {/* Access notice */}

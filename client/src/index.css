@@ -6520,3 +6520,291 @@ select:focus-visible,
    The global defaults from the top of this file (no custom html/body/
    #root rules) are the correct behavior: let the window scroll natively
    the way every other website on the internet does. */
+
+/* ============================================================================
+   PLATFORM UI POLISH — 2026-04-28
+   Toast, Schedule, ChatDock, Dialogs, Sheets, Documents
+   ============================================================================ */
+
+/* ── Toast animations ─────────────────────────────────────────────────────── */
+@keyframes u-toast-slide-up {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes u-toast-slide-down {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(4px) scale(0.98); }
+}
+
+/* ── Schedule grid improvements ───────────────────────────────────────────── */
+/* Status dot indicator on shift cards */
+.shift-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Shift card hover ring */
+[data-testid^="shift-"] {
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+[data-testid^="shift-"]:hover {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+/* OT warning badge pulse */
+.shift-ot-badge {
+  animation: ot-pulse 2s ease-in-out infinite;
+}
+@keyframes ot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* Open shift (unassigned) — subtle stripe pattern to indicate "needs fill" */
+.shift-open-indicator {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    hsl(var(--destructive) / 0.08) 4px,
+    hsl(var(--destructive) / 0.08) 8px
+  );
+}
+
+/* ── ChatDock message bubbles ─────────────────────────────────────────────── */
+.chat-bubble-own {
+  border-radius: 1rem 1rem 0.25rem 1rem;
+}
+.chat-bubble-other {
+  border-radius: 1rem 1rem 1rem 0.25rem;
+}
+/* Grouped: remove the tail on grouped messages */
+.chat-bubble-grouped-own {
+  border-radius: 1rem 1rem 0.25rem 1rem;
+}
+.chat-bubble-grouped-other {
+  border-radius: 0.25rem 1rem 1rem 0.25rem;
+}
+
+/* HelpAI bot messages — gold left border */
+.chat-bubble-helpai {
+  border-left: 2px solid hsl(38 92% 50%);
+}
+
+/* Trinity messages — purple left border */
+.chat-bubble-trinity {
+  border-left: 2px solid hsl(271 81% 56%);
+}
+
+/* Read receipt states */
+.chat-receipt-sent     { color: hsl(var(--muted-foreground)); }
+.chat-receipt-delivered{ color: hsl(var(--muted-foreground)); }
+.chat-receipt-read     { color: hsl(217 91% 60%); }
+
+/* ── Presence indicators ──────────────────────────────────────────────────── */
+.presence-online  { background: hsl(142 71% 45%); }
+.presence-away    { background: hsl(38 92% 50%); }
+.presence-offline { background: hsl(var(--muted-foreground) / 0.5); }
+.presence-on-shift { background: hsl(142 71% 45%); box-shadow: 0 0 0 2px hsl(142 71% 45% / 0.3); }
+.presence-ncns    { background: hsl(var(--destructive)); }
+
+/* ── Dialog / Sheet improvements ─────────────────────────────────────────── */
+/* Drag handle on bottom sheets */
+.sheet-drag-handle {
+  width: 2.5rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: hsl(var(--border));
+  margin: 0.75rem auto 0;
+  flex-shrink: 0;
+}
+
+/* Modal scrollable body — proper containment */
+.modal-body-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Document generation polish ───────────────────────────────────────────── */
+/* PDF preview frame */
+.pdf-preview-frame {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.08);
+}
+
+/* Document status badge */
+.doc-status-draft     { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.doc-status-pending   { background: hsl(38 92% 50% / 0.15); color: hsl(38 78% 38%); }
+.doc-status-signed    { background: hsl(142 71% 45% / 0.15); color: hsl(142 60% 30%); }
+.doc-status-expired   { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
+
+/* ── Trinity / HelpAI visual polish ──────────────────────────────────────── */
+/* Trinity thinking indicator */
+.trinity-thinking {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.trinity-thinking span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: hsl(271 81% 56%);
+  animation: trinity-think 1.4s ease-in-out infinite;
+}
+.trinity-thinking span:nth-child(2) { animation-delay: 0.2s; }
+.trinity-thinking span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes trinity-think {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+
+/* HelpAI gold accent */
+.helpai-accent { color: hsl(38 92% 50%); }
+.helpai-badge  { background: hsl(38 92% 50% / 0.12); color: hsl(38 78% 38%); border: 1px solid hsl(38 92% 50% / 0.3); }
+
+/* Trinity purple accent */
+.trinity-accent { color: hsl(271 81% 56%); }
+.trinity-badge  { background: hsl(271 81% 56% / 0.1); color: hsl(271 60% 40%); border: 1px solid hsl(271 81% 56% / 0.25); }
+
+/* ── Toast entry animation (for UniversalToast) ───────────────────────────── */
+@keyframes u-toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Mobile bottom sheet drag handle ─────────────────────────────────────── */
+@media (max-width: 639px) {
+  [role="dialog"][data-state="open"] {
+    /* Ensure safe area padding on mobile */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* ── Responsive card grids ────────────────────────────────────────────────── */
+.responsive-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+}
+
+/* ── Voice / audio message player ─────────────────────────────────────────── */
+.voice-message-player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 1rem;
+  background: hsl(var(--muted));
+  min-width: 140px;
+}
+.voice-waveform {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.voice-waveform-bar {
+  flex: 1;
+  border-radius: 1px;
+  background: hsl(var(--primary) / 0.4);
+  min-height: 3px;
+  transition: background 150ms ease;
+}
+.voice-waveform-bar.active { background: hsl(var(--primary)); }
+
+/* ============================================================================
+   END PLATFORM UI POLISH
+   ============================================================================ */
+
+/* ── Status indicator animations ─────────────────────────────── */
+@keyframes status-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+.status-ping {
+  animation: status-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ── Action result transitions ───────────────────────────────── */
+.action-result-enter {
+  animation: fade-in-up 200ms ease-out;
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Success/failure button states ───────────────────────────── */
+.btn-success {
+  @apply border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20;
+}
+.btn-failure {
+  @apply border-red-400 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20;
+}
+.btn-loading {
+  @apply opacity-70 cursor-not-allowed;
+}
+
+/* ── Card accent borders (left) ──────────────────────────────── */
+.card-accent-green  { border-left: 3px solid theme('colors.green.500'); }
+.card-accent-red    { border-left: 3px solid theme('colors.red.500'); }
+.card-accent-amber  { border-left: 3px solid theme('colors.amber.500'); }
+.card-accent-blue   { border-left: 3px solid theme('colors.blue.500'); }
+.card-accent-purple { border-left: 3px solid hsl(271 81% 56%); }
+
+/* ── Trinity insight card ─────────────────────────────────────── */
+.trinity-insight-card {
+  background: linear-gradient(135deg, hsl(271 81% 56% / 0.04) 0%, transparent 50%);
+  border-left: 3px solid hsl(271 81% 56% / 0.6);
+}
+.dark .trinity-insight-card {
+  background: linear-gradient(135deg, hsl(271 81% 56% / 0.08) 0%, transparent 50%);
+}
+
+/* ── Officer status live pulse ───────────────────────────────── */
+.officer-on-shift::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: theme('colors.green.500');
+  margin-right: 6px;
+  animation: status-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ── Responsive text scaling for desktop/large screens ─────────────── */
+/* text-sm is 14px (fine for mobile), but on 1440p+ it should scale up */
+@media (min-width: 1280px) {
+  /* Scale base text up for readability on large desktop monitors */
+  :root {
+    font-size: 15px;     /* slight upscale from 16px base */
+  }
+  
+  /* Tables, data grids, labels: step up one size on desktop */
+  .text-xs { font-size: 0.8rem !important; }       /* 12px → ~12px (keep compact) */
+  
+  /* Body text: ensure minimum readability on large screens */
+  p, .text-sm {
+    font-size: 0.9375rem; /* 15px on large screens */
+  }
+}
+
+@media (min-width: 1920px) {
+  /* Ultra-wide / 4K monitors: bump further */
+  :root {
+    font-size: 16px;
+  }
+  .text-sm { font-size: 1rem !important; }         /* 14px → 16px */
+  .text-xs { font-size: 0.875rem !important; }     /* 12px → 14px */
+  .text-base { font-size: 1.125rem !important; }   /* 16px → 18px */
+}

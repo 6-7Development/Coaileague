@@ -1666,3 +1666,41 @@ router.post("/mailbox/ensure-folders", requireAuth, async (req: Request, res: Re
 });
 
 export default router;
+
+/**
+ * POST /api/internal-email/react
+ * Trinity or user sends a reaction emoji (✅ 👀) to an email thread.
+ * Stored as a metadata tag on the email record.
+ * Non-destructive — existing reads/flags unaffected.
+ */
+router.post("/react", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as { id?: string };
+    if (!user?.id) return res.status(401).json({ error: "Authentication required" });
+
+    const { emailId, reaction, source } = req.body as { emailId?: string; reaction?: string; source?: string };
+    if (!emailId || !reaction) return res.status(400).json({ error: "emailId and reaction required" });
+
+    const VALID_REACTIONS = ['✅', '👀', '🔥', '⚠️', '📌'];
+    if (!VALID_REACTIONS.includes(reaction)) {
+      return res.status(400).json({ error: `Invalid reaction. Use one of: ${VALID_REACTIONS.join(', ')}` });
+    }
+
+    // Store reaction in email metadata — atomic JSONB update
+    await db.execute(sql`
+      UPDATE internal_emails
+      SET metadata = COALESCE(metadata, '{}')::jsonb || jsonb_build_object(
+        'trinityReaction', ${reaction},
+        'trinityReactionAt', ${new Date().toISOString()},
+        'trinityReactionBy', ${source ?? user.id}
+      )
+      WHERE id = ${emailId}
+    `);
+
+    log.info(`[EmailReact] ${reaction} on ${emailId} by ${source ?? user.id}`);
+    return res.json({ success: true, emailId, reaction });
+  } catch (error) {
+    log.error("[EmailReact] Error:", error);
+    return res.status(500).json({ error: "Failed to add reaction" });
+  }
+});
