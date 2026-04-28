@@ -34,21 +34,40 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  "fixed z-[2001] gap-3 bg-background p-3 md:p-4 shadow-sm transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] box-border",
+  [
+    "fixed z-[2001] bg-background/98 backdrop-blur-sm shadow-lg",
+    "transition ease-in-out",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=closed]:duration-250 data-[state=open]:duration-300",
+    "overflow-hidden box-border",
+  ].join(" "),
   {
     variants: {
       side: {
-        top: "inset-x-0 top-[3.5rem] border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top max-h-[calc(100dvh-3.5rem)]",
-        bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom rounded-t-xl max-h-[100dvh] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:max-w-xl md:max-w-2xl lg:max-w-3xl sm:mx-auto",
-        left: "left-0 top-[3.5rem] bottom-0 w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-        right:
-          "right-0 top-[3.5rem] bottom-0 w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+        top: [
+          "inset-x-0 top-[3.5rem] border-b rounded-b-xl",
+          "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+          "max-h-[calc(100dvh-3.5rem)]",
+        ].join(" "),
+        bottom: [
+          "inset-x-0 bottom-0 border-t rounded-t-2xl",
+          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          // Full-width on mobile, centered card on desktop
+          "max-h-[92dvh]",
+          "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "sm:max-w-xl sm:mx-auto sm:rounded-xl sm:border",
+        ].join(" "),
+        left: [
+          "left-0 top-0 bottom-0 w-[min(80vw,20rem)] border-r",
+          "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+        ].join(" "),
+        right: [
+          "right-0 top-0 bottom-0 w-[min(80vw,20rem)] border-l",
+          "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        ].join(" "),
       },
     },
-    defaultVariants: {
-      side: "right",
-    },
+    defaultVariants: { side: "right" },
   }
 )
 
@@ -90,6 +109,10 @@ const SheetContent = React.forwardRef<
           <SheetPrimitive.Title>Panel</SheetPrimitive.Title>
           <SheetPrimitive.Description>Panel content</SheetPrimitive.Description>
         </VisuallyHidden>
+        {/* Drag handle — bottom sheets only */}
+        {side === 'bottom' && (
+          <div className="sheet-drag-handle" aria-hidden="true" />
+        )}
         {children}
         {!hideBuiltInClose && (
           <div className={cn("absolute right-3 top-3 sm:right-4 sm:top-4 flex items-center z-10", MODAL_BUTTON_STYLES.buttonGap)}>

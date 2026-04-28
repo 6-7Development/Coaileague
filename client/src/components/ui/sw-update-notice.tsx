@@ -116,8 +116,9 @@ export function SWUpdateBanner() {
           background: 'hsl(var(--popover))',
           border: '1px solid hsl(var(--border))',
           borderRadius: '0.5rem',
-          boxShadow: '0 4px 24px hsl(var(--foreground) / 0.12), 0 1px 4px hsl(var(--foreground) / 0.06)',
-          padding: '0.75rem 1rem',
+          boxShadow: '0 2px 8px hsl(var(--foreground) / 0.08)',
+          padding: '0.625rem 0.75rem',
+          borderLeft: '3px solid hsl(var(--primary))',
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
@@ -126,64 +127,26 @@ export function SWUpdateBanner() {
           transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '2rem',
-            height: '2rem',
-            borderRadius: '50%',
-            background: 'hsl(var(--primary) / 0.1)',
-            flexShrink: 0,
-          }}
-        >
-          <ArrowUpCircle
-            className="h-4 w-4"
-            style={{ color: 'hsl(var(--primary))' }}
-          />
-        </div>
+        {/* Icon */}
+        <ArrowUpCircle className="h-4 w-4 shrink-0 text-primary" />
 
+        {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: 'hsl(var(--foreground))',
-              margin: 0,
-            }}
-          >
-            Update available
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, margin: 0, lineHeight: 1.3, color: 'hsl(var(--foreground))' }}>
+            New version available
           </p>
-          <p
-            style={{
-              fontSize: '0.75rem',
-              lineHeight: 1.3,
-              color: 'hsl(var(--muted-foreground))',
-              margin: '0.125rem 0 0 0',
-            }}
-          >
-            Refresh for the latest version
+          <p style={{ fontSize: '0.6875rem', margin: '0.1rem 0 0', lineHeight: 1.3, color: 'hsl(var(--muted-foreground))' }}>
+            Tap Update for the latest
           </p>
         </div>
 
+        {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-          <Button
-            size="sm"
-            onClick={handleRefresh}
-            data-testid="button-sw-refresh"
-          >
-            <RefreshCw className="h-3 w-3 mr-1.5" />
+          <Button size="sm" className="h-7 px-2.5 text-xs" onClick={handleRefresh} data-testid="button-sw-refresh">
+            <RefreshCw className="h-3 w-3 mr-1" />
             Update
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleDismiss}
-            data-testid="button-sw-dismiss"
-            aria-label="Dismiss update notification"
-          >
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleDismiss} data-testid="button-sw-dismiss" aria-label="Dismiss">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>

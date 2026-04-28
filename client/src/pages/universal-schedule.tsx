@@ -1618,30 +1618,38 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   
   // GetSling-style color-coding for shift status (uses explicit status fields only)
   // Blue=confirmed, Yellow=pending, Green=clocked-in, Red=unassigned, Purple=overtime
-  const getShiftStatusColor = (shift: Shift) => {
-    // Check if unassigned (red) - no employee assigned
+  const getShiftStatusColor = (shift: Shift): { bg: string; text: string; border: string; label: string; dot: string } => {
+    // Unassigned — needs coverage, urgent red
     if (!shift.employeeId) {
-      return { bg: '#ef4444', label: 'Unassigned' }; // Red
+      return { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5', dot: '#ef4444', label: 'Open — needs fill' };
     }
-    
-    // Check if employee is clocked in (green) - based on actual time clock status
+    // Cancelled
+    if (shift.status === 'cancelled' || shift.status === 'denied') {
+      return { bg: '#f9fafb', text: '#6b7280', border: '#d1d5db', dot: '#9ca3af', label: 'Cancelled' };
+    }
+    // Currently clocked in — active green
     const timeClockStatus = getShiftTimeClockStatus(shift);
     if (timeClockStatus.label === 'Active') {
-      return { bg: '#10b981', label: 'Clocked In' }; // Green
+      return { bg: '#f0fdf4', text: '#15803d', border: '#86efac', dot: '#22c55e', label: 'On Shift' };
     }
-    
-    // Check explicit overtime flag if available (purple)
+    // Overtime warning — amber
     if ((shift as any).isOvertime === true) {
-      return { bg: '#8b5cf6', label: 'Overtime' }; // Purple
+      return { bg: '#fffbeb', text: '#d97706', border: '#fcd34d', dot: '#f59e0b', label: 'Overtime' };
     }
-    
-    // Check status for pending/draft approval (yellow) vs confirmed (blue)
-    if (shift.status === 'draft' || shift.status === 'in_progress') {
-      return { bg: '#f59e0b', label: 'Pending' }; // Yellow
+    // Draft / pending approval — slate
+    if (shift.status === 'draft') {
+      return { bg: '#f8fafc', text: '#475569', border: '#cbd5e1', dot: '#94a3b8', label: 'Draft' };
     }
-    
-    // Default: confirmed/published/scheduled (blue)
-    return { bg: '#3b82f6', label: 'Confirmed' }; // Blue
+    // In progress / partial clock
+    if (shift.status === 'in_progress') {
+      return { bg: '#eff6ff', text: '#1d4ed8', border: '#93c5fd', dot: '#3b82f6', label: 'In Progress' };
+    }
+    // Completed
+    if (shift.status === 'completed') {
+      return { bg: '#f0fdf4', text: '#166534', border: '#86efac', dot: '#16a34a', label: 'Completed' };
+    }
+    // Confirmed / published / scheduled — primary blue
+    return { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', dot: '#3b82f6', label: 'Confirmed' };
   };
 
   // Helper for week navigation - accepts Date range from ScheduleToolbar
@@ -2502,9 +2510,10 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                                   height: rowHeight || 'calc(100% - 6px)',
                                   zIndex: 10 + rowIdx,
                                 }}
-                                className={`rounded-md px-2 py-1 cursor-pointer text-white flex flex-col justify-center overflow-hidden border transition-all duration-200 hover:shadow-sm hover:z-30 hover:-translate-y-px ${
-                                  isPendingShift ? 'border-amber-300/80 border-dashed' : 'border-white/20'
+                                className={`rounded-lg px-2 py-1 cursor-pointer flex flex-col justify-center overflow-hidden border transition-all duration-200 hover:shadow-md hover:z-30 hover:-translate-y-px active:scale-[0.98] ${
+                                  isPendingShift ? 'border-dashed border-amber-400' : ''
                                 } ${isProcessing ? 'trinity-shift-processing' : ''} ${justAssigned ? 'trinity-shift-assigned' : ''}`}
+                                style={{ color: statusColor.text, borderColor: isPendingShift ? undefined : statusColor.border }}
                               >
                                 <div
                                   onClick={(e) => {
@@ -2515,7 +2524,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                                   className="h-full flex flex-col justify-center relative"
                                 >
                                   <div className="flex items-center gap-1">
-                                    <div className="font-semibold truncate text-[11px] leading-snug">
+                                    <div className="font-semibold truncate text-[11px] leading-snug" style={{ color: statusColor.text }}>
                                       {formatTime(startTime)} - {formatTime(endTime)}
                                     </div>
                                     {shift.aiGenerated && (
