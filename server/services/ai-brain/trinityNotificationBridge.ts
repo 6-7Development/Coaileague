@@ -475,7 +475,7 @@ class TrinityNotificationBridge {
         for (const userId of payload.targetAudience.userIds) {
           try {
             await universalNotificationEngine.sendNotification({
-              idempotencyKey: `notif-${Date.now()}`,
+              idempotencyKey: `notif:bridge:${userId}:${payload.source || payload.category || 'notify'}`,
           type: 'system',
               title: payload.title,
               message: payload.message,

@@ -516,7 +516,7 @@ class WorkflowApprovalService {
           const result = await universalNotificationEngine.sendNotification({
             workspaceId: targetWorkspaceId,
             userId: user.id,
-            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif:ai_approval_needed:${approval.id}:${user.id}`,
           type: 'ai_approval_needed',
             title,
             message,

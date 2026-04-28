@@ -174,7 +174,7 @@ export class ServiceController {
     
     // Log the action via UniversalNotificationEngine for Trinity AI enrichment
     await universalNotificationEngine.sendNotification({
-      idempotencyKey: `notif-${Date.now()}`,
+      idempotencyKey: `notif:system_update:${userId}:${serviceName}:restart`,
           type: 'system_update',
       title: `Service Restart: ${serviceName}`,
       message: `AI Brain initiated restart of ${serviceName} service`,
@@ -242,7 +242,7 @@ export class FeatureToggleManager {
 
     // Create notification for the change via UniversalNotificationEngine
     await universalNotificationEngine.sendNotification({
-      idempotencyKey: `notif-${Date.now()}`,
+      idempotencyKey: `notif:system_update:${request.userId}:${request.featurePath}:toggle`,
           type: 'system_update',
       title: `Feature Toggle Updated`,
       message: `${request.featurePath} ${request.enabled ? 'enabled' : 'disabled'}: ${request.reason}`,

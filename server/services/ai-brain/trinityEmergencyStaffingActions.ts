@@ -194,7 +194,7 @@ export function registerEmergencyStaffingActions() {
     if (targetUserIds.length > 0) {
       await universalNotificationEngine.sendNotification({
         workspaceId,
-        idempotencyKey: `notif-${Date.now()}`,
+        idempotencyKey: `notif:emergency:${workspaceId}:${incidentId}:alert`,
           type: 'system',
         title: 'EMERGENCY ALERT',
         message,

@@ -3296,7 +3296,7 @@ class SubagentSupervisor {
       await universalNotificationEngine.sendNotification({
         workspaceId,
         targetRoles: ['root_admin', 'deputy_admin', 'sysop', 'support_manager'],
-        idempotencyKey: `notif-${Date.now()}`,
+        idempotencyKey: `notif:system:${intervention.id}:escalation`,
           type: 'system',
         title: `AI Subagent Escalation: ${request.severity.toUpperCase()}`,
         message: request.description,

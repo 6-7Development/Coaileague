@@ -646,7 +646,7 @@ async function sendManagementEscalation(
     await universalNotificationEngine.sendNotification({
       workspaceId,
       userId: 'system',
-      idempotencyKey: `notif-${Date.now()}`,
+      idempotencyKey: `notif:issue_detected:${task.id}:escalate`,
           type: 'issue_detected',
       title: `Trinity Agent Review Required: ${taskType}`,
       message: `Trinity was unable to complete "${taskType}" automatically via ${agentName}. Manual review required.`,

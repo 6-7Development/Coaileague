@@ -2202,7 +2202,7 @@ class AIBrainMasterOrchestrator {
               };
             }
             await universalNotificationEngine.sendNotification({
-              idempotencyKey: `notif-${Date.now()}`,
+              idempotencyKey: `notif:announcement:${workspaceId}:${request.actionId}:broadcast`,
           type: type || 'announcement',
               title,
               message,
