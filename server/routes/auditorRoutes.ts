@@ -397,7 +397,7 @@ auditorRouter.post('/audits/:id/extend', requireAuditor, async (req: any, res: R
 
 // ── Auditor Easy-Access Invite Endpoints ──────────────────────────────────────
 
-router.post('/invite-link', requireManager, async (req: any, res) => {
+auditorRouter.post('/invite-link', requireManager, async (req: any, res) => {
   try {
     const { email, name, agencyName, auditType, expiresInDays = 30 } = req.body;
     const workspaceId = req.user?.currentWorkspaceId;
@@ -421,7 +421,7 @@ router.post('/invite-link', requireManager, async (req: any, res) => {
   } catch(err: any) { log.error('[AuditorInvite]', err); res.status(500).json({ error: 'Failed' }); }
 });
 
-router.get('/claim/:token', async (req, res) => {
+auditorRouter.get('/claim/:token', async (req, res) => {
   try {
     const { token } = req.params;
     const { pool } = await import('../db');
