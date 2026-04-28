@@ -202,11 +202,17 @@ const DroppableSlot = ({ day, hour, children, onClick }: {
     <div
       ref={setNodeRef}
       onClick={onClick}
-      className={`relative h-16 border-b cursor-pointer transition-colors group ${
-        isOver ? 'bg-primary/10 border-primary/40' : 'hover:bg-primary/5'
+      className={`relative h-16 border-b cursor-pointer transition-all duration-100 group ${
+        isOver ? 'bg-primary/12 ring-1 ring-primary/40 ring-inset' : 'hover:bg-muted/40'
       }`}
       data-testid={`grid-cell-${day}-${hour}`}
     >
+      {/* GetSling-style: ghost preview when dragging over this cell */}
+      {isOver && (
+        <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/60 bg-primary/5 pointer-events-none z-20 flex items-center justify-center">
+          <span className="text-[10px] font-semibold text-primary/70">Drop here</span>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -225,10 +231,15 @@ const DroppableEmployeeRow = ({ employeeId, children, isDropTarget }: {
   return (
     <div ref={setNodeRef} className="relative">
       {isDropTarget && (
-        <div className="absolute inset-0 z-40 pointer-events-none border-2 border-dashed schedule-drop-zone-active transition-all duration-150" data-testid={`inline-drop-indicator-${employeeId}`}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[11px] font-bold text-primary bg-card/95 dark:bg-slate-800/95 px-3 py-1.5 rounded-md shadow-sm ring-1 ring-primary/20">
-              Reassign here
+        <div
+          className="absolute inset-0 z-40 pointer-events-none rounded-sm transition-all duration-100"
+          style={{ background: 'hsl(var(--primary) / 0.06)', outline: '2px dashed hsl(var(--primary) / 0.5)' }}
+          data-testid={`inline-drop-indicator-${employeeId}`}
+        >
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="text-[11px] font-semibold text-primary bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
+              Move shift here
             </span>
           </div>
         </div>
@@ -257,7 +268,11 @@ const InlineDraggableShift = ({ shift, children, canDrag, style: passedStyle, cl
     ...(transform ? {
       transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
       zIndex: 100,
-    } : {}),
+      // Fade the source shift while dragging (shows the gap — GetSling style)
+      opacity: 0.35,
+    } : {
+      opacity: 1,
+    }),
     opacity: isDragging ? 0.4 : undefined,
   };
 
@@ -287,11 +302,19 @@ const PendingChangesBar = ({
 }) => {
   if (count === 0) return null;
   return (
-    <div className="pending-changes-bar flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border-b-2 border-amber-400/60 dark:border-amber-600/60 z-50" data-testid="pending-changes-bar">
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 z-50 border-t"
+      style={{ background: 'hsl(38 92% 50% / 0.1)', borderColor: 'hsl(38 92% 50% / 0.4)' }}
+      data-testid="pending-changes-bar"
+    >
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <ArrowLeftRight className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-        <span className="text-sm font-semibold text-amber-800 dark:text-amber-200 truncate">
-          {count} unsaved reassignment{count !== 1 ? 's' : ''} — review before saving
+        {/* Animated indicator dot */}
+        <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'hsl(38 92% 50%)' }} />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: 'hsl(38 92% 50%)' }} />
+        </span>
+        <span className="text-sm font-semibold truncate" style={{ color: 'hsl(38 78% 35%)' }}>
+          {count} unsaved move{count !== 1 ? 's' : ''} — drag more or save to publish
         </span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -301,24 +324,26 @@ const PendingChangesBar = ({
           onClick={onDiscard}
           disabled={isSaving}
           data-testid="button-discard-pending"
-          className="text-amber-700 dark:text-amber-300 hover:text-amber-900"
+          className="h-8 text-xs"
+          style={{ color: 'hsl(38 78% 35%)' }}
         >
           <Undo2 className="h-3.5 w-3.5 mr-1" />
-          Discard
+          Undo all
         </Button>
         <Button
           size="sm"
           onClick={onSave}
           disabled={isSaving}
           data-testid="button-save-pending"
-          className="bg-amber-500 hover:bg-amber-600 text-white border-amber-600"
+          className="h-8 text-xs font-semibold"
+          style={{ background: 'hsl(38 92% 50%)', color: 'white', border: 'none' }}
         >
           {isSaving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
           ) : (
-            <Save className="h-3.5 w-3.5 mr-1" />
+            <CheckCircle className="h-3.5 w-3.5 mr-1" />
           )}
-          Save {count} Change{count !== 1 ? 's' : ''}
+          Publish {count} change{count !== 1 ? 's' : ''}
         </Button>
       </div>
     </div>
@@ -609,11 +634,14 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   
   // Drag state for DragOverlay
   const [activeEmployeeId, setActiveEmployeeId] = useState<string | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<{ day: number; hour: number } | null>(null);
+  const [draggedShift, setDraggedShift] = useState<Shift | null>(null);
   
   const handleDragStart = (event: any) => {
     const data = event.active.data.current;
     if (data?.type === 'inline-shift') {
       setDraggedShiftId(data.shift.id);
+      setDraggedShift(data.shift as Shift);
     } else {
       setActiveEmployeeId(event.active.id as string);
     }
@@ -658,7 +686,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     onSuccess: (count) => {
       setPendingReassignments(new Map());
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
-      toast({ title: `${count} shift${count !== 1 ? 's' : ''} reassigned`, description: 'All pending changes have been saved.' });
+      toast({ variant: 'success', title: `${count} shift${count !== 1 ? 's' : ''} saved`, description: 'Schedule updated successfully.' });
     },
     onError: (error: any) => {
       toast({ variant: 'destructive', title: 'Failed to save changes', description: parseScheduleError(error) });
@@ -669,7 +697,9 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     const { active, over } = event;
     setActiveEmployeeId(null);
     setDraggedShiftId(null);
+    setDraggedShift(null);
     setDropTargetEmployeeId(null);
+    setDragOverCell(null);
     if (!over) return;
 
     const activeData = active.data.current;
@@ -1700,8 +1730,14 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         const overData = event.over?.data.current;
         if (overData?.type === 'employee-drop-row') {
           setDropTargetEmployeeId(overData.employeeId);
+          setDragOverCell(null);
+        } else if (overData?.day !== undefined && overData?.hour !== undefined) {
+          // Cross-day drag — capture target cell for ghost preview
+          setDragOverCell({ day: overData.day, hour: overData.hour });
+          setDropTargetEmployeeId(null);
         } else {
           setDropTargetEmployeeId(null);
+          setDragOverCell(null);
         }
       }}
       onDragEnd={handleDragEnd}
@@ -3077,7 +3113,10 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     />
     
     {/* DragOverlay - shows full-opacity clone during drag */}
-    <DragOverlay dropAnimation={{ duration: 200, easing: 'ease-out' }}>
+    <DragOverlay
+      dropAnimation={{ duration: 150, easing: 'cubic-bezier(0.25, 0, 0.25, 1)' }}
+      modifiers={[]}
+    >
       {activeEmployeeId && employees.find(e => e.id === activeEmployeeId) ? (
         <div className="p-3 rounded-lg border border-primary bg-card cursor-grabbing opacity-100 shadow-2xl">
           {(() => {

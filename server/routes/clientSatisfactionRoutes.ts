@@ -2,6 +2,7 @@
  * MODULE 7 — Client Satisfaction Scoring
  */
 import { sanitizeError } from '../middleware/errorHandler';
+import { z } from 'zod';
 import { Router } from "express";
 import { randomUUID } from 'crypto';
 import { db } from "../db";
@@ -86,12 +87,25 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
+    const csrSchema = z.object({
+      client_id: z.string().uuid(),
+      check_in_type: z.string().max(50).optional(),
+      check_in_date: z.string().min(1),
+      conducted_by: z.string().optional(),
+      satisfaction_score: z.number().int().min(1).max(10).nullable().optional(),
+      nps_score: z.number().int().min(0).max(10).nullable().optional(),
+      feedback_text: z.string().max(5000).optional(),
+      issues_raised: z.boolean().optional(),
+      issues_resolved: z.boolean().optional(),
+      follow_up_required: z.boolean().optional(),
+    });
+    const csrParsed = csrSchema.safeParse(req.body);
+    if (!csrParsed.success) return res.status(400).json({ error: 'Validation failed', details: csrParsed.error.flatten() });
     const {
       client_id, check_in_type, check_in_date, conducted_by,
       satisfaction_score, nps_score, feedback_text, issues_raised,
       issues_resolved, follow_up_required
-    } = req.body;
-    if (!client_id || !check_in_date) return res.status(400).json({ error: "client_id and check_in_date required" });
+    } = csrParsed.data;
     const id = `csr-${randomUUID()}`;
     await db.$client.query(
       `INSERT INTO client_satisfaction_records
@@ -140,8 +154,17 @@ router.post("/concerns", requireAuth, async (req: AuthenticatedRequest, res) => 
   try {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
-    const { client_id, concern_type, severity, description, assigned_to, linked_incident_id } = req.body;
-    if (!client_id || !concern_type || !description) return res.status(400).json({ error: "client_id, concern_type, description required" });
+    const concernSchema = z.object({
+      client_id: z.string().uuid(),
+      concern_type: z.string().min(1).max(100),
+      severity: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+      description: z.string().min(1).max(5000),
+      assigned_to: z.string().optional(),
+      linked_incident_id: z.string().optional(),
+    });
+    const concParsed = concernSchema.safeParse(req.body);
+    if (!concParsed.success) return res.status(400).json({ error: 'Validation failed', details: concParsed.error.flatten() });
+    const { client_id, concern_type, severity, description, assigned_to, linked_incident_id } = concParsed.data;
     const id = `cc-${randomUUID()}`;
     await db.$client.query(
       `INSERT INTO client_concerns
@@ -184,7 +207,12 @@ router.patch("/concerns/:id/resolve", requireAuth, async (req: AuthenticatedRequ
   try {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
-    const { resolution_notes } = req.body;
+    const resolveSchema = z.object({
+      resolution_notes: z.string().min(1).max(5000),
+    });
+    const resolParsed = resolveSchema.safeParse(req.body);
+    if (!resolParsed.success) return res.status(400).json({ error: 'Validation failed', details: resolParsed.error.flatten() });
+    const { resolution_notes } = resolParsed.data;
     await db.$client.query(
       `UPDATE client_concerns SET status = 'resolved', resolution_notes = $1, resolved_at = NOW(), resolved_by = $2
        WHERE id = $3 AND workspace_id = $4`,

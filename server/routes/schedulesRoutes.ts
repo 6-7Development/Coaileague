@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { z } from 'zod';
 import { Router } from "express";
 import { db } from "../db";
 import {
@@ -96,7 +97,15 @@ router.post('/publish', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
-    const { weekStartDate, weekEndDate, shiftIds, title } = req.body;
+    const publishSchema = z.object({
+      weekStartDate: z.string().min(1),
+      weekEndDate: z.string().min(1),
+      shiftIds: z.array(z.string().uuid()).optional(),
+      title: z.string().max(200).optional(),
+    });
+    const parsed = publishSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+    const { weekStartDate, weekEndDate, shiftIds, title } = parsed.data;
     const { publishedSchedules } = await import("@shared/schema");
 
     if (!weekStartDate || !weekEndDate) {
@@ -296,7 +305,13 @@ router.post('/unpublish', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
-    const { weekStart, weekEnd } = req.body;
+    const unpublishSchema = z.object({
+      weekStart: z.string().min(1),
+      weekEnd: z.string().min(1),
+    });
+    const unparsed = unpublishSchema.safeParse(req.body);
+    if (!unparsed.success) return res.status(400).json({ error: 'Invalid request', details: unparsed.error.flatten() });
+    const { weekStart, weekEnd } = unparsed.data;
     if (!weekStart || !weekEnd) {
       return res.status(400).json({ message: "weekStart and weekEnd are required" });
     }
@@ -347,7 +362,13 @@ router.post('/apply-insight', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
-    const { insightId, actionData } = req.body;
+    const insightSchema = z.object({
+      insightId: z.string().min(1),
+      actionData: z.record(z.unknown()).optional(),
+    });
+    const insightParsed = insightSchema.safeParse(req.body);
+    if (!insightParsed.success) return res.status(400).json({ error: 'Invalid request', details: insightParsed.error.flatten() });
+    const { insightId, actionData } = insightParsed.data;
     
     if (!insightId || typeof insightId !== 'string') {
       return res.status(400).json({ message: "insightId is required and must be a string" });

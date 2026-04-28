@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { z } from 'zod';
 import { Router } from "express";
 import { db } from "../db";
 import { employees } from "@shared/schema";
@@ -57,7 +58,16 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    const { slots } = req.body;
+    const slotsSchema = z.object({
+      slots: z.array(z.object({
+        dayOfWeek: z.number().int().min(0).max(6),
+        startTime: z.string(),
+        endTime: z.string(),
+      })).min(1),
+    });
+    const slotsParsed = slotsSchema.safeParse(req.body);
+    if (!slotsParsed.success) return res.status(400).json({ error: 'Validation failed', details: slotsParsed.error.flatten() });
+    const { slots } = slotsParsed.data;
     const { availabilityService } = await import("../services/availabilityService");
 
     const employee = await db
@@ -90,7 +100,16 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { id } = req.params;
-    const updates = req.body;
+    const availUpdateSchema = z.object({
+      dayOfWeek: z.number().int().min(0).max(6).optional(),
+      startTime: z.string().optional(),
+      endTime: z.string().optional(),
+      isAvailable: z.boolean().optional(),
+      notes: z.string().max(500).optional(),
+    }).strip();
+    const availUpdateParsed = availUpdateSchema.safeParse(req.body);
+    if (!availUpdateParsed.success) return res.status(400).json({ error: 'Validation failed', details: availUpdateParsed.error.flatten() });
+    const updates = availUpdateParsed.data;
     const { availabilityService } = await import("../services/availabilityService");
 
     const updated = await availabilityService.updateAvailabilitySlot(workspaceId, id, updates);
@@ -153,7 +172,16 @@ router.post('/exception', requireAuth, async (req: AuthenticatedRequest, res) =>
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    const { startDate, endDate, requestType, reason, notes } = req.body;
+    const reqSchema = z.object({
+      startDate: z.string().min(1),
+      endDate: z.string().min(1),
+      requestType: z.enum(['time_off', 'schedule_change', 'availability_update', 'other']),
+      reason: z.string().max(1000).optional(),
+      notes: z.string().max(500).optional(),
+    });
+    const reqParsed = reqSchema.safeParse(req.body);
+    if (!reqParsed.success) return res.status(400).json({ error: 'Validation failed', details: reqParsed.error.flatten() });
+    const { startDate, endDate, requestType, reason, notes } = reqParsed.data;
     const { availabilityService } = await import("../services/availabilityService");
 
     const employee = await db
@@ -231,7 +259,15 @@ router.get('/understaffing', requireManager, async (req: AuthenticatedRequest, r
 router.post('/suggest-schedule', requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
-    const { startDate, endDate, shiftsPerDay, shiftDurationHours } = req.body;
+    const genSchema = z.object({
+      startDate: z.string().min(1),
+      endDate: z.string().min(1),
+      shiftsPerDay: z.number().int().min(1).max(24).default(1),
+      shiftDurationHours: z.number().min(1).max(24).default(8),
+    });
+    const genParsed = genSchema.safeParse(req.body);
+    if (!genParsed.success) return res.status(400).json({ error: 'Validation failed', details: genParsed.error.flatten() });
+    const { startDate, endDate, shiftsPerDay, shiftDurationHours } = genParsed.data;
     const { availabilityService } = await import("../services/availabilityService");
 
     const suggestion = await availabilityService.suggestOptimalSchedule(workspaceId, {
