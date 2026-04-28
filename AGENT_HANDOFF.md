@@ -1,239 +1,199 @@
-# COAILEAGUE REFACTOR — MASTER HANDOFF
-# ONE FILE ONLY. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 — Copilot acceleration pass complete; Codex next
-
----
-
-## THREE-AGENT RELAY PROTOCOL
-
-```
-CLAUDE      → executes domain, boot-tests, commits
-COPILOT     → boilerplate acceleration (Zod, test scaffolds, helper patterns)
-CODEX       → verifies, decides next domain or signals AUDIT COMPLETE
-```
-
-Speed rule: One domain, one complete sweep, one coherent commit.
-
-Role clarification (supersedes the shorthand above):
-- CODEX verifies, but is also expected to strengthen weak code, remove bandaids,
-  and perform scoped refactors/enhancements when a domain can be improved safely
-  on `refactor/service-layer`. Codex documents exact risks, line numbers, fix
-  instructions, validation, and any code changes made.
-- CLAUDE remains implementation lead on `development`, integrates Copilot/Codex
-  changes when made, boot-tests, and syncs back.
-- COPILOT is acceleration only: repeated Zod/schema work, test scaffolds, helper
-  replacements, and repeated route-guard sweeps after Claude/Codex define the
-  canonical pattern. No architecture calls, final safety decisions, or independent
-  merges.
-
-Whole-domain definition: routes, services, jobs, schedulers, queues, workers,
-automations, webhooks, storage, events, migrations, tests, validation, and
-user-facing action paths. Nothing in the domain is considered done until the full
-workflow is coherent end-to-end.
-
-Ownership rule: no two agents edit the same files at the same time. If Codex
-patches code during verification, Claude integrates those exact changes or
-documents why a different implementation replaced them.
+# COAILEAGUE — MASTER HANDOFF
+# ONE FILE. Update in place.
+# Last updated: 2026-04-28 — Claude (Phase 1A audit complete, gap analysis done)
 
 ---
 
 ## TURN TRACKER
 
-```text
-Current turn: CODEX
-  → Verify Phase H fixes (admin routes, upload security, platform guards)
-  → Pull from origin/copilot/refactor-three-agent-protocol for Copilot's additions
-  → Determine: any remaining domains needing audit?
-  → Strengthen / refactor any weak Phase H code found
-  → Signal AUDIT COMPLETE if nothing critical remains, else document Phase I
-
-After Codex: CLAUDE
-  → Integrate any Codex hardening patches onto development
-  → Boot-test and sync back to refactor/service-layer
+```
+Current state: PARALLEL LANES
+  Claude — Phase 1A audit complete, ready for email entity panel polish
+  Codex  — Running holistic consolidation audit in refactor/service-layer
+  
+Next: Codex commits clean, Claude merges, then email entity panel polish begins
 ```
 
 ---
 
-## CURRENT COMMIT
+## CURRENT COMMITS
 
-```text
-origin/development                           -> 8aca7e864  (Railway STABLE GREEN ✅)
-origin/copilot/refactor-three-agent-protocol -> merged development (conflict-free ✅)
-origin/refactor/service-layer                -> 9ba04e70   (latest Codex handoff)
+```
+origin/development           → c13121aee  (Railway GREEN ✅)
+origin/refactor/service-layer → 4b2aea548  (Codex parallel lane)
+```
+
+Boot test before any push to development:
+```bash
+export DATABASE_URL="postgresql://postgres:MmUbhSxdkRGFLhBGGXGaWQeBceaqNmlj@metro.proxy.rlwy.net:40051/railway"
+export SESSION_SECRET="coaileague-dev-test-session-secret-32chars"
+node build.mjs && node dist/index.js > /tmp/boot.txt 2>&1 &
+sleep 18 && curl -s http://localhost:5000/api/workspace/health  # → {"message":"Unauthorized"}
+grep -cE "ReferenceError|is not defined|CRITICAL.*Failed" /tmp/boot.txt  # → 0
+kill %1
 ```
 
 ---
 
-## STATUS SNAPSHOT
+## PLATFORM STATUS — VERIFIED CLEAN
 
-```text
-Phases 1-6 broad refactor:             ✅ complete (~97k lines removed)
-Phase A auth/session:                  ✅ complete
-Phase B financial flows:               ✅ complete
-Phase C scheduling/shift:              ✅ complete (Grade A)
-Phase D Trinity action flows:          ✅ complete
-Phase E documents/compliance:          ✅ complete
-Phase F notifications/broadcasting:    ✅ complete
-Phase G integrations (QB/Stripe/Plaid): ✅ complete
-Phase H admin/upload/platform guards:  ✅ deployed + Copilot hardening applied
-```
+**62/62 features from features page verified present in codebase.**
+**No feature was removed during audit phases A-I or Phase 0 registry consolidation.**
+
+Registry: 143 handlers, 137 Trinity-visible, 0 duplicates, well under 300 cap.
+Log fixes: 0 thought recording errors, 0 billing canary false positives.
+All audit hardening (A-I): deployed and stable.
 
 ---
 
-## COPILOT PASS — WHAT WAS DONE
+## PHASE 1A — AUDIT RESULTS
 
-Branch: `copilot/refactor-three-agent-protocol`
-Tests: 139 passed, 0 failed after changes.
+### Scheduling pipeline: GRADE A ✅
+26/27 checks pass. The 1 "fail" was a false positive — state machine uses
+`eq(status, "submitted")` conditional WHERE (correct, not `inArray`).
 
-### Phase H forward-port (3 files from development → branch)
+Backend scheduling verified:
+- schedulingMath.ts in use (hoursBetween, addHours, OT, haversine GPS) ✅
+- Timesheet state transitions atomic with conditional WHERE + 409 on race ✅
+- Shift monitoring filters to active workspaces only ✅
+- Coverage pipeline workspace-scoped and stoppable ✅
+- Orchestrated schedule endpoints workspace-scoped (Phase D fix) ✅
+- Trinity action catalog has: fill_open_shifts, generate_schedule, scheduling.* ✅
 
-- `server/routes/adminDevExecuteRoute.ts`
-  Added `NODE_ENV === 'production'` hard block inside the route handler so dev-
-  execute is impossible to invoke in prod even if token auth passes.
+### Schedule UI: FEATURE-COMPLETE, polish gaps remain
+universal-schedule.tsx (3126L) has: drag-drop, week view, shift creation,
+OT warning, Trinity auto-fill, bulk publish, templates ✅
+schedule-mobile-first.tsx (1377L) exists ✅
 
-- `server/routes/bulk-operations.ts`
-  Added `requireManager` to the three import routes (employees, clients, shifts).
-  Added secure multer config: 5 MB `fileSize` limit + MIME/extension allowlist
-  (CSV and Excel only). Previously multer({ storage: memoryStorage() }) with no
-  limits allowed any file type and unlimited size.
+Schedule gaps for Phase 1A enhancement:
+- Trinity ↔ Schedule data pipeline end-to-end verification
+- Shift room auto-creation on schedule publish (ChatDock integration)
+- Schedule → Payroll → Invoice smoke test
+- Color-coded shift status indicators in grid
+- Fast add-shift: client+site+time+officer in <5 taps
+- Client transparency mode per shift
 
-- `server/routes/platformFeedbackRoutes.ts`
-  Added `requirePlatformStaff` guard to `POST /api/platform-feedback/surveys`.
-  Previously any request (no auth header) could create platform-wide surveys.
+### Email UI: INFRASTRUCTURE SOLID, entity panel is the key gap
+EmailHubCanvas.tsx (3796L) already has:
+- Operational channel folders: calloffs, incidents, support, billing, docs ✅
+- Trinity AI panel + automation toggle ✅
+- Compose, thread view, sub-address routing ✅
 
-### Phase G residual fixes
+Email gaps (priority order for polish sprint):
+1. Entity context panel — MISSING
+   When email is opened from Maegan@Statewide: show her client stats,
+   open shifts, contract rate, invoiced MTD. The mockup I built shows the vision.
+2. Channel tab bar at top — MISSING (operational tabs like Gmail but for ops)
+3. Trinity suggested actions per email — MISSING
+   (update shift, generate PDF amendment, send confirmation, update invoice)
+4. Pre-drafted Trinity reply — MISSING (ready to edit+send in one tap)
+5. Action-needed / Urgent / PDF tags on inbox rows — MISSING
+6. Smart views: Needs Action, Client Mail — MISSING
 
-- `server/services/scheduling/index.ts`
-  Removed truncated export block for `registerSchedulingWithOrchestration`,
-  `checkSchedulingGovernance`, `getSchedulingOrchestrationStatus`. These symbols
-  do not exist in any file — the source module was deleted. The dangling export
-  was a compile blocker (tsc stops here before reaching Phase G files).
-
-- `server/routes/quickbooks-sync.ts` — P2-10
-  Changed 6 mutating POST routes from `requireProfessional` to `requireManager`:
-  - POST /api/quickbooks/sync/initial
-  - POST /api/quickbooks/invoice/create
-  - POST /api/quickbooks/sync/cdc
-  - POST /api/quickbooks/review-queue/:itemId/resolve
-  - POST /api/admin/quickbooks/sync-staffing-clients
-  - POST /api/quickbooks/sync/retry-queue/:logId
-  Read-only GETs remain at `requireProfessional`. `requireManager` was already
-  imported; only the route declarations were changed.
-
-- `server/routes/notifications.ts` — P1-8
-  Added `employees` to the schema import (already exported from @shared/schema).
-  Added workspace membership lookup in `POST /api/notifications/send` between
-  Zod parse and `NotificationDeliveryService.send`:
-  ```
-  SELECT id FROM employees
-  WHERE userId = recipientUserId AND workspaceId = workspaceId
-  LIMIT 1
-  ```
-  Returns 403 `Recipient is not a member of this workspace` if no row found.
-  Prevents a manager in Workspace A from pushing notifications to users in
-  Workspace B by knowing their userId.
-
-### Test scaffolds added (4 new files, 139 total passing)
-
-- `tests/api/quickbooks-guards.test.ts`
-  Smoke tests: all 6 mutating QB routes return 401/403 unauthenticated.
-  Read-only routes also reject unauthenticated. Unit section documents the
-  mutating vs read-only inventory.
-
-- `tests/api/notifications-isolation.test.ts`
-  Unit tests for the workspace membership filter logic (all cases: same
-  workspace, cross-workspace, unknown user). HTTP smoke: send route rejects
-  unauthenticated, malformed payload does not 500.
-
-- `tests/regression/phase-g-integrations.test.ts`
-  Idempotency key uniqueness invariant. Stripe cents/decimal round-trip boundary
-  (centsToDecimalString / decimalStringToCents helpers — no floating-point drift).
-  QB, Plaid, and notification send routes all reject unauthenticated. None 500.
-
-- `tests/regression/phase-h-admin-guards.test.ts`
-  File-type allowlist unit tests (CSV/Excel pass, PDF/image/exe/zip fail).
-  File-size boundary unit tests (1 MB, 5 MB pass; 6 MB fails).
-  dev-execute production block unit test.
-  HTTP smoke: bulk import routes, platform survey, admin routes reject
-  unauthenticated. None 500.
+### ChatDock: FOUNDATION SOLID, delivery layer is the key gap
+ChatDock.tsx exists with: WebSocket, HelpAI, shift rooms, mobile version ✅
+Full gap list in memory (Redis pub/sub, durable store, FCM, receipts, etc.)
 
 ---
 
-## DELIBERATION FOR CODEX / CLAUDE
+## CODEX PARALLEL LANE — MERGE PROTOCOL
 
-Items where Copilot made a decision that Codex should review before merging
-to development:
+When Codex commits his holistic consolidation/audit work:
 
-1. **scheduling/index.ts — removed broken export**
-   The three symbols (`registerSchedulingWithOrchestration`, etc.) were in an
-   unterminated export block with no source module anywhere in the repo.
-   Copilot removed the block entirely. Codex should confirm no caller site
-   imports these names from the scheduling index; if a caller exists, Claude
-   must create stub implementations or restore the module.
-   Search: `grep -rn "registerSchedulingWithOrchestration" server/`
+1. Codex pushes to refactor/service-layer (NOT development)
+2. Claude reviews the diff: `git diff development codex2/sl --name-only`
+3. If no conflicts with active email polish work:
+   `git checkout development && git checkout codex2/sl -- <files>`
+4. Claude builds + boot tests before committing
+5. Single merge commit: "merge: Codex holistic consolidation + Claude email polish"
 
-2. **notifications.ts — employees table used for membership check**
-   The recipient workspace check queries `employees.userId = recipientUserId`.
-   `employees.userId` is nullable (some employees don't have linked user accounts).
-   For those employees, a notification can never be sent to them via this route.
-   This is conservative and correct for the current security requirement, but
-   if platform staff or workspace owners who lack an employee record need to
-   receive notifications via this route, the check would need to also accept
-   workspace owners via a `workspaces.ownerId` check. Codex should decide.
+Files Codex should NOT touch (Claude is working on these):
+- client/src/components/email/EmailHubCanvas.tsx
+- client/src/pages/inbox.tsx
+- client/src/components/email/ directory
 
-3. **QB requireManager sweep — requireProfessional still on two GET routes**
-   `GET /api/quickbooks/review-queue` and `GET /api/quickbooks/sync/retry-queue`
-   remain at `requireProfessional`. Codex should confirm this is the right
-   floor for those read-only endpoints.
+Files Claude should NOT touch (Codex is auditing these):
+- server/routes/domains/ (IRC/RBAC consolidation)
+- server/websocket.ts (ChatDock architecture)
+- Any server/routes/compliance/ or portal files
+
+---
+
+## ACTIVE WORK — EMAIL ENTITY PANEL (Claude's next task)
+
+The mockup is built. Now wire it into EmailHubCanvas.tsx.
+
+When an email is opened, the right panel shows:
+- If sender is a client: open shifts, contract rate, invoiced MTD, officer count
+- If sender is an employee: upcoming shifts, timesheet status, certifications
+- Trinity suggested actions (context-aware, based on email content)
+- Pre-drafted reply from Trinity
+
+API endpoints to call:
+- GET /api/clients?email={senderEmail} → client context
+- GET /api/employees?email={senderEmail} → employee context
+- GET /api/shifts?clientId={id}&status=open → open shifts
+- POST /api/ai-brain/chat (Trinity draft reply suggestion)
+
+Implementation approach:
+- Add a `senderEntity` state to EmailHubCanvas (client | employee | unknown)
+- When email is selected, fetch entity by sender email
+- Render entity panel in the existing trinity-panel slot
+- Keep existing Trinity AI toggle panel as a tab within the same space
+
+---
+
+## ENHANCEMENT SPRINT DOMAINS (full plan)
+
+### Priority sequence after email entity panel:
+
+**EMAIL** (current)
+  [x] Entity context panel
+  [ ] Channel tab bar  
+  [ ] Trinity suggested actions
+  [ ] Pre-drafted replies
+  [ ] Tags on inbox rows
+  [ ] Smart views
+
+**SCHEDULE Phase 1A**
+  [ ] Trinity ↔ schedule pipeline E2E verification
+  [ ] Shift room auto-creation on publish
+  [ ] Color-coded shift status indicators
+  [ ] Fast add-shift modal
+
+**CHATDOCK** (after schedule)
+  [ ] Redis pub/sub foundation
+  [ ] Durable message store
+  [ ] FCM + 4-tier delivery
+  [ ] Read receipts, replies, reactions
+  [ ] Content moderation + legal hold
+
+**PORTALS** (parallel to above)
+  [ ] Workspace dashboard Grade A
+  [ ] Client portal read-only surface
+  [ ] Auditor portal PDF reports
+
+**HOLISTIC UX**
+  [ ] All action buttons verified
+  [ ] Forms mobile-optimized
+  [ ] UI toast polish
+  [ ] Seasonal theming restored
+
+**TRINITY BRAIN**
+  [ ] Triad genuine reasoning
+  [ ] Proactive operating behavior
 
 ---
 
 ## STANDARD: NO BANDAIDS
 
-```text
-No raw money math. No raw scheduling duration math. No workspace IDOR.
-No state transition without expected-status guard. No user-facing legacy branding.
-Every generated document = real branded PDF saved to tenant vault.
-Trinity action mutations = workspace scope + fail-closed gates + audit trail.
-Trinity is one individual. No mode switching. HelpAI is the only bot field workers see.
-One domain, one complete sweep, one coherent commit.
 ```
-
----
-
-## QUEUED — POST-AUDIT ENHANCEMENT SPRINT
-
-After Codex signals AUDIT COMPLETE:
-
-### Priority 1 — Foundation
-- RBAC + IRC mode consolidation: RBAC owns permissions, room type owns behavior.
-- Action registry consolidation below 300.
-- E-P0-2: compliance report PDF service.
-- E-P1-5: compliance document vault intake service.
-
-### Priority 2 — ChatDock Enhancement
-1. Durable message store + Redis pub/sub.
-2. FCM push + four-tier delivery: WS → FCM → RCS → SMS.
-3. Typed WebSocket event protocol for Trinity/HelpAI streaming.
-4. Read receipts + acknowledgment receipts for post orders.
-5. Message replies, emoji reactions, pins, polls, media gallery, archive, search.
-6. Presence tied to shift status: connected/offline/NCNS.
-7. HelpAI scheduled messages + shift close summary cards.
-8. Content moderation + report queue + legal hold + evidence export.
-9. Live call/radio button (WebRTC already wired).
-10. Async voice messages + Whisper transcription.
-
-### Priority 3 — Holistic Audit
-- All services as unified whole: ChatDock, email, forms, PDF, workflows, storage.
-- Login/logout/session persistence verification.
-- All action-triggering buttons/icons verified for correct workflow outcomes.
-- Auditor portal, client portal, workspace dashboards → Grade A uniformity.
-
-### Priority 4 — Trinity Brain + UI
-- Gemini + Claude + GPT triad: genuine reasoning before Trinity speaks, not just routing.
-- Trinity personality: one unified individual, no Business/Personal/Tech modes.
-- HelpAI: field-supervisor voice and only worker-facing bot.
-- Seasonal/holiday theming restored on public pages.
-- Mobile offline-first: op-sqlite, optimistic sends.
-- Update notification toast: minimal icon + version + arrow.
-
+No raw money math — FinancialCalculator.
+No raw scheduling hour math — schedulingMath.ts.
+No workspace IDOR.
+No state transitions without expected-status guard.
+Trinity = one individual, no mode switching.
+HelpAI = only bot field workers see.
+One domain, one complete sweep, one coherent commit.
+No duplicate UI services — edit what exists, don't create parallel versions.
+```
