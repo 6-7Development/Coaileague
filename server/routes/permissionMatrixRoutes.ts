@@ -1,3 +1,4 @@
+import { z } from 'zod';
 /**
  * Permission Matrix Routes — Phase 9B
  * =====================================
@@ -70,11 +71,14 @@ router.patch('/', requireOwnerOrPlatformStaff, async (req, res) => {
   const workspaceId = authReq.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
 
-  const { role, featureKey, enabled } = req.body as {
-    role?: string;
-    featureKey?: string;
-    enabled?: boolean;
-  };
+  const permUpdateSchema = z.object({
+      role: z.string().min(1).max(100),
+      featureKey: z.string().min(1).max(100),
+      enabled: z.boolean(),
+    });
+    const permParsed = permUpdateSchema.safeParse(req.body);
+    if (!permParsed.success) return res.status(400).json({ error: 'Validation failed', details: permParsed.error.flatten() });
+    const { role, featureKey, enabled } = permParsed.data;
 
   if (!role || !featureKey || typeof enabled !== 'boolean') {
     return res.status(400).json({ error: 'role, featureKey, and enabled (boolean) are required' });
@@ -116,7 +120,9 @@ router.delete('/', requireOwnerOrPlatformStaff, async (req, res) => {
   const workspaceId = authReq.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
 
-  const { role, featureKey } = req.body as { role?: string; featureKey?: string };
+  const permGetSchema = z.object({ role: z.string().optional(), featureKey: z.string().optional() });
+    const permGetParsed = permGetSchema.safeParse(req.body);
+    const { role, featureKey } = permGetParsed.success ? permGetParsed.data : { role: undefined, featureKey: undefined };
 
   if (!role || !featureKey) {
     return res.status(400).json({ error: 'role and featureKey are required' });

@@ -250,8 +250,13 @@ function EmailListItem({
     "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
     "bg-orange-500/15 text-orange-600 dark:text-orange-400",
   ];
-  const avatarColor = email.type === 'system' 
-    ? "bg-primary/10 text-primary"
+  // Semantic avatar colors: client=blue, employee=green, system=purple, external=hash
+  const avatarColor = email.type === 'system'
+    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+    : email.senderType === 'client' || email.folderType === 'staffing'
+    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+    : email.senderType === 'employee' || email.folderType === 'calloffs'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
     : avatarColors[Math.abs((email.fromName || email.fromAddress).charCodeAt(0)) % avatarColors.length];
 
   const innerContent = isMobile ? (
@@ -372,13 +377,19 @@ function EmailListItem({
         
         <div className="flex items-center gap-1">
           {email.priority === 'urgent' && (
-            <Badge variant="destructive" className="shrink-0 text-[10px]">Urgent</Badge>
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">Urgent</span>
           )}
-          {email.priority === 'high' && !email.isRead && (
-            <Badge variant="outline" className="shrink-0 text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400">High</Badge>
+          {(email.aiCategory === 'action_required' || email.category === 'action_required') && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">Action needed</span>
           )}
-          {email.aiCategory === 'action_required' && (
-            <Badge variant="outline" className="shrink-0 text-[10px] border-amber-500/50 text-amber-600 dark:text-amber-400">Action</Badge>
+          {(email.attachments && email.attachments.length > 0 && email.attachments.some((a: any) => a.type?.includes('pdf') || a.name?.endsWith('.pdf'))) && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">PDF</span>
+          )}
+          {email.folderType === 'calloffs' && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-900/20 dark:border-rose-800">Calloff</span>
+          )}
+          {email.folderType === 'incidents' && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">Incident</span>
           )}
           <p className={cn("text-xs truncate flex-1 leading-normal", email.aiSummary ? "text-muted-foreground/70 italic" : "text-muted-foreground/60")}>
             {email.aiSummary || email.bodyText?.slice(0, 80) || 'No preview available'}
@@ -3771,13 +3782,12 @@ export function EmailHubCanvas() {
   };
 
   if (isMobile) {
-    const mobileFolderTabs: { folder: FolderType; icon: typeof Inbox; label: string }[] = [
+    const mobileFolderTabs: { folder: FolderType; icon: typeof Inbox; label: string; badge?: number }[] = [
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'inbox', icon: Inbox, label: 'Inbox' },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'starred', icon: Star, label: 'Starred' },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      { folder: 'sent', icon: Send, label: 'Sent' },
+      { folder: 'inbox', icon: Inbox, label: 'All' },
+      { folder: 'calloffs', icon: PhoneOff, label: 'Calloffs', badge: folders.find(f => f.folderType === 'calloffs')?.unreadCount },
+      { folder: 'incidents', icon: AlertOctagon, label: 'Incidents', badge: folders.find(f => f.folderType === 'incidents')?.unreadCount },
+      { folder: 'billing', icon: Receipt, label: 'Billing' },
       { folder: 'support', icon: Headphones, label: 'Support' },
     ];
 
