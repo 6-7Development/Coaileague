@@ -345,7 +345,9 @@ const defaultOriginPatterns = defaultOrigins.map(
 );
 const fallbackOriginPatterns = [
   ...defaultOriginPatterns,
-  new RegExp(`^https?:\\/\\/([a-zA-Z0-9-]+\\.)*${DOMAINS.root.replace('.', '\\.')}$`),
+  new RegExp(`^https?:\/\/([a-zA-Z0-9-]+\.)*${DOMAINS.root.replace('.', '\\.')}$`),
+  // Railway deployment URLs — dev and staging environments
+  /^https?:\/\/[a-zA-Z0-9-]+\.up\.railway\.app$/,
   ...(isProdDeployment ? [] : [
     /^https?:\/\/localhost(?::\d+)?$/,
     /^https?:\/\/127\.0\.0\.1(?::\d+)?$/,
