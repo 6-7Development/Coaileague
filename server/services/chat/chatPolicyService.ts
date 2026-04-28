@@ -9,19 +9,22 @@
  * chat-rooms.ts, and privateMessageRoutes.ts
  */
 
+import {
+  ROLE_GROUPS,
+  isPlatformStaffRole as isRbacPlatformStaffRole,
+} from '@shared/config/rbac';
+
 // ── Role classifications ───────────────────────────────────────────────────
 
 /** Platform staff who can cross-connect to any workspace for support */
 export const SUPPORT_STAFF_ROLES = [
-  'root_admin', 'deputy_admin', 'support_manager', 'support_agent',
-  'sysop', 'compliance_officer',
+  ...ROLE_GROUPS.PLATFORM_STAFF,
 ] as const;
 export type SupportStaffRole = typeof SUPPORT_STAFF_ROLES[number];
 
 /** Workspace-level management roles */
 export const MANAGER_ROLES = [
-  'org_owner', 'co_owner', 'org_manager', 'manager',
-  'department_manager', 'supervisor',
+  ...ROLE_GROUPS.WORKSPACE_LEADERSHIP,
 ] as const;
 
 /** Roles that cannot receive unsolicited DMs from non-staff users */
@@ -46,7 +49,7 @@ export const RESERVED_ROOM_PREFIXES = ['sys-', 'bot-', 'helpai-', 'trinity-'];
  * Support staff can cross-workspace and have elevated chat access.
  */
 export function isSupportStaffRole(role: string | null | undefined): boolean {
-  return SUPPORT_STAFF_ROLES.includes(role as SupportStaffRole);
+  return isRbacPlatformStaffRole(role);
 }
 
 /**

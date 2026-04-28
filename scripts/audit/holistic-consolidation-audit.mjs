@@ -137,7 +137,7 @@ function main() {
     summary: 'IRC/mode code still appears in permission-sensitive chat surfaces',
     evidence: files
       .filter((file) => /server\/(websocket|routes\/chat|services\/(chat|irc))/i.test(file))
-      .flatMap((file) => findLines(file, /\b(IRC|ircMode|mode\s*[=!]==|userMode|channelMode|operator|voice|ban|kick|join)\b.*\b(role|permission|auth|can|allowed|admin|manager|owner)\b|\b(role|permission|auth|can|allowed|admin|manager|owner)\b.*\b(IRC|ircMode|mode\s*[=!]==|userMode|channelMode|operator|voice|ban|kick|join)\b/gi, 4))
+      .flatMap((file) => findLines(file, /\b(IRC_EVENTS|irc:|ircMode|roomMode|targetRoomMode|userMode|channelMode|mode\s*[=!]==|MODE|KICK|BAN|MUTE|PROMOTE)\b.*\b(role|permission|auth|can|allowed|admin|manager|owner)\b|\b(role|permission|auth|can|allowed|admin|manager|owner)\b.*\b(IRC_EVENTS|irc:|ircMode|roomMode|targetRoomMode|userMode|channelMode|mode\s*[=!]==|MODE|KICK|BAN|MUTE|PROMOTE)\b/gi, 4))
       .slice(0, 20),
     recommendation: 'Move access decisions to RBAC helpers and leave room type/mode as behavior metadata only. Do this after scheduling polish, before ChatDock feature expansion.',
     owner: 'Codex',

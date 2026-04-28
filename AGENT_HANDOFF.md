@@ -1,6 +1,6 @@
 # COAILEAGUE - MASTER HANDOFF
 # ONE FILE. Update in place. Never create new handoff files.
-# Last updated: 2026-04-28 - Codex (synced Claude Phase 1A + Codex consolidation lane)
+# Last updated: 2026-04-28 - Codex (RBAC/IRC low-risk consolidation patch ready for Claude)
 
 ---
 
@@ -23,7 +23,7 @@ One domain, one complete sweep, one coherent commit.
 ```
 Current state: PARALLEL LANES
   Claude - Phase 1A scheduling audit complete; working email entity panel polish on development.
-  Codex  - Synced development into refactor lane; owns RBAC/IRC consolidation and server hardening.
+  Codex  - RBAC/IRC low-risk consolidation patch complete on refactor/service-layer.
   Copilot - Queued for narrow Zod/test batches only after the current lane is stable.
 
 Next merge target:
@@ -37,8 +37,8 @@ Next merge target:
 
 ```
 origin/development           -> 89264fa9  (Claude Phase 1A scheduling audit + email gap analysis)
-origin/refactor/service-layer -> 4fc03156  (Codex holistic consolidation harness)
-local Codex lane             -> merging development forward before next hardening patch
+origin/refactor/service-layer -> pending Codex RBAC/IRC low-risk consolidation patch
+local Codex lane             -> synced with development before patching
 ```
 
 Boot test before any push to development:
@@ -149,6 +149,33 @@ Fix direction:
 - Room type owns behavior only: Shift Room, Team Channel, Direct Message.
 - IRC/mode strings become internal routing metadata only.
 - Do not rewrite `server/websocket.ts` until ChatDock durable foundation has tests.
+
+### Codex Patch - RBAC/IRC Consolidation, Safe Slice
+This turn intentionally avoided the WebSocket core and Claude's email files.
+
+Files changed:
+- `server/services/chatParityService.ts`
+  - Removed local hard-coded `MANAGEMENT_ROLES` and `PLATFORM_STAFF_ROLES`.
+  - Delegates role classification to shared RBAC helpers from `@shared/config/rbac`.
+- `server/services/chat/chatPolicyService.ts`
+  - Derives support staff and workspace leadership groups from shared RBAC `ROLE_GROUPS`.
+  - Keeps the existing chat policy API so route callers do not churn.
+- `server/services/roomLifecycleService.ts`
+  - Accepts optional `platformRole` and passes it into `chatParityService.canCloseRoom()`.
+  - Fixes the double-check bug where platform staff could pass the route guard but fail service validation because platform role was dropped.
+- `server/routes/chat-rooms.ts`
+  - Forwards the authenticated user's platform role into room lifecycle close.
+- `scripts/audit/holistic-consolidation-audit.mjs`
+  - Narrows the RBAC/IRC scanner to real IRC/mode permission surfaces instead of generic role strings.
+
+Remaining RBAC/IRC work:
+- `server/websocket.ts` still has mode/IRC permission-sensitive logic. Leave it for the ChatDock durable-foundation sprint because that file is large and needs pinned tests before refactor.
+- `server/services/ircEventRegistry.ts` still exposes IRC-style moderation events. Keep as internal event metadata for now; do not let it become a permission source.
+
+Validation:
+- `npm run audit:consolidation` passes.
+- `node build.mjs` passes.
+- `git diff --check` clean.
 
 ### P0 - Claude Owns Later: ChatDock Durable Foundation
 Direct WebSocket/in-memory broadcast patterns remain around ChatDock. Before

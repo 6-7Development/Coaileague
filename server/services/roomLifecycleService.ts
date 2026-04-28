@@ -14,6 +14,7 @@ interface RoomLifecycleParams {
   actorId: string;
   actorName: string;
   actorRole: string;
+  platformRole?: string | null;
   reason?: string;
   initiatorType?: 'user' | 'system' | 'cron';
   ipAddress?: string;
@@ -49,6 +50,7 @@ export async function closeRoom(params: RoomLifecycleParams): Promise<{ success:
         reason: params.reason,
         actorName: params.actorName,
         actorRole: params.actorRole,
+        platformRole: params.platformRole,
       },
     },
     {
@@ -85,7 +87,7 @@ export async function closeRoom(params: RoomLifecycleParams): Promise<{ success:
         if (params.initiatorType !== 'system' && params.initiatorType !== 'cron') {
           const rbacCheck = chatParityService.canCloseRoom(
             params.actorRole,
-            null,
+            params.platformRole ?? null,
             conv.conversationType
           );
           if (!rbacCheck.allowed) {

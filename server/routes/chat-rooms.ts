@@ -2316,6 +2316,7 @@ router.post(
         actorId: userId,
         actorName: userName,
         actorRole: workspaceRole,
+        platformRole,
         reason: reason || undefined,
         initiatorType: 'user',
         ipAddress: authReq.ip,
