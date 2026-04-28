@@ -1,3 +1,4 @@
+import { requireAuth } from '../auth';
 /**
  * Audit Suite Routes — AI Regulatory Audit Suite (All 6 Phases)
  * ==============================================================
@@ -87,6 +88,9 @@ import {
 
 const log = createLogger('AuditSuiteRoutes');
 export const auditSuiteRouter = Router();
+
+// ── Global auth guard — all audit suite routes require auth ──────────────────
+auditSuiteRouter.use(requireAuth);
 
 // LAW P3: memory storage only — files stream to GCS, never touch Railway disk
 const upload = multer({
