@@ -1,5 +1,6 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
+import { z } from 'zod';
 import { storage } from "../storage";
 import { requireAuth, requireManager, requireOwner, type AuthenticatedRequest } from "../rbac";
 import { readLimiter } from "../middleware/rateLimiter";
@@ -233,8 +234,16 @@ router.post("/api/report-submissions", requireAuth, async (req: any, res) => {
 router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
+    const updateSubmissionSchema = z.object({
+      status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
+      content: z.string().optional(),
+      notes: z.string().optional(),
+      title: z.string().optional(),
+    });
+    const parsed = updateSubmissionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const submission = await storage.updateReportSubmission(id, req.body);
+    const submission = await storage.updateReportSubmission(id, parsed.data);
     res.json(submission);
   } catch (error) {
     log.error("Error updating report submission:", error);

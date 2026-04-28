@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { z } from 'zod';
 import { Router } from "express";
 import { db } from "../db";
 import {
@@ -96,12 +97,16 @@ router.post('/publish', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
-    const { weekStartDate, weekEndDate, shiftIds, title } = req.body;
+    const publishSchema = z.object({
+      weekStartDate: z.string().min(1, 'weekStartDate is required'),
+      weekEndDate: z.string().min(1, 'weekEndDate is required'),
+      shiftIds: z.array(z.string()).optional(),
+      title: z.string().optional(),
+    });
+    const parsed = publishSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
+    const { weekStartDate, weekEndDate, shiftIds, title } = parsed.data;
     const { publishedSchedules } = await import("@shared/schema");
-
-    if (!weekStartDate || !weekEndDate) {
-      return res.status(400).json({ message: "weekStartDate and weekEndDate are required" });
-    }
 
     const startDate = new Date(weekStartDate);
     const endDate = new Date(weekEndDate);
@@ -296,10 +301,13 @@ router.post('/unpublish', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
-    const { weekStart, weekEnd } = req.body;
-    if (!weekStart || !weekEnd) {
-      return res.status(400).json({ message: "weekStart and weekEnd are required" });
-    }
+    const unpublishSchema = z.object({
+      weekStart: z.string().min(1, 'weekStart is required'),
+      weekEnd: z.string().min(1, 'weekEnd is required'),
+    });
+    const parsed = unpublishSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
+    const { weekStart, weekEnd } = parsed.data;
 
     const startDate = new Date(weekStart);
     const endDate = new Date(weekEnd);
@@ -347,11 +355,13 @@ router.post('/apply-insight', requireManager, async (req: any, res) => {
     const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
-    const { insightId, actionData } = req.body;
-    
-    if (!insightId || typeof insightId !== 'string') {
-      return res.status(400).json({ message: "insightId is required and must be a string" });
-    }
+    const applyInsightSchema = z.object({
+      insightId: z.string().min(1, 'insightId is required'),
+      actionData: z.record(z.unknown()).optional(),
+    });
+    const parsed = applyInsightSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
+    const { insightId, actionData } = parsed.data;
 
     if (insightId.startsWith('open-shifts') || insightId.includes('autofill') || insightId.includes('staffing') || insightId === 'unassigned-warning') {
       const { trinityAutonomousScheduler } = await import('../services/scheduling/trinityAutonomousScheduler');

@@ -3,6 +3,7 @@
  */
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
+import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { db } from "../db";
 import { requireAuth } from "../auth";
@@ -86,12 +87,25 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
+    const recordSchema = z.object({
+      client_id: z.string().min(1, 'client_id is required'),
+      check_in_date: z.string().min(1, 'check_in_date is required'),
+      check_in_type: z.enum(['scheduled', 'ad_hoc', 'emergency', 'follow_up']).optional(),
+      conducted_by: z.string().optional(),
+      satisfaction_score: z.number().min(1).max(10).optional().nullable(),
+      nps_score: z.number().int().min(-100).max(100).optional().nullable(),
+      feedback_text: z.string().optional().nullable(),
+      issues_raised: z.array(z.string()).optional(),
+      issues_resolved: z.boolean().optional(),
+      follow_up_required: z.boolean().optional(),
+    });
+    const parsed = recordSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
     const {
       client_id, check_in_type, check_in_date, conducted_by,
       satisfaction_score, nps_score, feedback_text, issues_raised,
       issues_resolved, follow_up_required
-    } = req.body;
-    if (!client_id || !check_in_date) return res.status(400).json({ error: "client_id and check_in_date required" });
+    } = parsed.data;
     const id = `csr-${randomUUID()}`;
     await db.$client.query(
       `INSERT INTO client_satisfaction_records
@@ -140,8 +154,17 @@ router.post("/concerns", requireAuth, async (req: AuthenticatedRequest, res) => 
   try {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
-    const { client_id, concern_type, severity, description, assigned_to, linked_incident_id } = req.body;
-    if (!client_id || !concern_type || !description) return res.status(400).json({ error: "client_id, concern_type, description required" });
+    const concernSchema = z.object({
+      client_id: z.string().min(1, 'client_id is required'),
+      concern_type: z.string().min(1, 'concern_type is required'),
+      description: z.string().min(1, 'description is required'),
+      severity: z.enum(['minor', 'moderate', 'major', 'critical']).optional(),
+      assigned_to: z.string().optional().nullable(),
+      linked_incident_id: z.string().optional().nullable(),
+    });
+    const parsed = concernSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
+    const { client_id, concern_type, severity, description, assigned_to, linked_incident_id } = parsed.data;
     const id = `cc-${randomUUID()}`;
     await db.$client.query(
       `INSERT INTO client_concerns
@@ -184,7 +207,12 @@ router.patch("/concerns/:id/resolve", requireAuth, async (req: AuthenticatedRequ
   try {
     const wid = req.workspaceId!;
     const uid = req.user?.id;
-    const { resolution_notes } = req.body;
+    const resolveSchema = z.object({
+      resolution_notes: z.string().optional(),
+    });
+    const parsed = resolveSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
+    const { resolution_notes } = parsed.data;
     await db.$client.query(
       `UPDATE client_concerns SET status = 'resolved', resolution_notes = $1, resolved_at = NOW(), resolved_by = $2
        WHERE id = $3 AND workspace_id = $4`,
