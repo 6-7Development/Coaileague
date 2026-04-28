@@ -1,6 +1,6 @@
 ﻿# COAILEAGUE — MASTER HANDOFF
 # ONE FILE. Update in place. Never create new handoff files.
-# Last updated: 2026-04-27 — Codex (Phase 0 action registry consolidation complete; Claude verifies/merges next)
+# Last updated: 2026-04-28 — Codex (holistic consolidation sweep harness complete; Claude merges next)
 
 ---
 
@@ -22,10 +22,9 @@ One domain, one complete sweep, one coherent commit.
 
 ```
 Current turn: CLAUDE
-  → Verify/merge Codex Phase 0 action registry consolidation into development.
-  → Run build + boot validation.
-  → Confirm action-surface log shows Trinity catalog <300.
-  → Then start enhancement sprint Domain 1: Scheduling UI/UX + automation pipeline.
+  → Merge Codex holistic consolidation sweep from refactor/service-layer.
+  → Keep active polish work on development; do not collide with Codex/Copilot lanes.
+  → Then continue enhancement sprint Domain 1: Scheduling UI/UX + automation pipeline.
 ```
 
 ---
@@ -33,8 +32,8 @@ Current turn: CLAUDE
 ## CURRENT COMMIT STATE
 
 ```
-origin/development           → af832ce21  (Railway GREEN ✅ — log fixes deployed)
-origin/refactor/service-layer → pending Codex Phase 0 consolidation commit
+origin/development           → c13121ae  (Phase 0 action registry consolidation integrated)
+origin/refactor/service-layer → pending Codex holistic consolidation sweep commit
 ```
 
 ---
@@ -107,6 +106,108 @@ The full executable handler map remains backward-compatible so old exact IDs do 
 2. Run `node build.mjs` and boot validation on the normal development environment.
 3. Confirm the startup action-surface log appears after full startup and shows the Trinity catalog under 300.
 4. Then begin the enhancement sprint, with scheduling UX/automation first.
+
+---
+
+## CODEX HOLISTIC CONSOLIDATION SWEEP 1 — NON-INVASIVE HARNESS
+
+**Result:** COMPLETE on `refactor/service-layer`. This is intentionally a safe audit/coordination commit, not a broad rewrite. It adds a repeatable consolidation scanner and assigns owner lanes so Codex, Claude, and Copilot can move faster without touching the same files at the same time.
+
+**New command:**
+```bash
+npm run audit:consolidation
+```
+
+Windows Codex fallback:
+```powershell
+& "C:\Users\txpsi\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" scripts\audit\holistic-consolidation-audit.mjs
+```
+
+**Files changed:**
+- `scripts/audit/holistic-consolidation-audit.mjs`
+  - Scans `server/` and `client/src/` for the remaining broad cleanup classes Bryan listed.
+  - Buckets findings by priority, domain, owner, evidence line, and recommendation.
+  - Exits 0 by design; this is a planning/coordination harness, not a CI gate yet.
+- `package.json`
+  - Adds `audit:consolidation`.
+- `AGENT_HANDOFF.md`
+  - Adds this three-agent owner map.
+
+**Current scan result:**
+- 2,157 files scanned.
+- P0: 2 coordination blockers.
+- P1: 63 hardening/refactor candidates.
+- P2: 1 large-file decomposition inventory.
+
+**P0 — Codex owns next after Claude merge: RBAC + IRC mode consolidation**
+- Finding: IRC/mode code still appears in permission-sensitive ChatDock surfaces.
+- Evidence examples:
+  - `server/services/ircEventRegistry.ts` includes admin-style IRC concepts such as kick/ban/mute/promote/auth.
+  - `server/services/chatParityService.ts` still reasons about who can join rooms.
+  - `server/routes/chat-management.ts` has role/room mutation paths that should be reviewed against RBAC helpers.
+- Fix direction:
+  - RBAC owns permission decisions.
+  - Room type owns behavior: Shift Room, Team Channel, Direct Message.
+  - IRC/mode strings become internal routing metadata only, never user-facing authority.
+  - Do not rewrite `server/websocket.ts` until ChatDock durable foundation is pinned by tests.
+
+**P0 — Claude owns during ChatDock sprint: durable foundation before feature polish**
+- Finding: direct WebSocket/in-memory broadcast patterns remain around ChatDock.
+- Evidence examples:
+  - `server/config/chatServer.ts`
+  - `server/routes/chat-management.ts`
+  - `server/routes/chat-rooms.ts`
+  - `server/websocket.ts`
+- Fix direction:
+  - Durable message store with per-room sequence numbers.
+  - Redis pub/sub under `broadcastToWorkspace` for multi-replica Railway.
+  - FCM push before RCS/SMS fallbacks.
+  - Typed WebSocket events before read receipts, reactions, polls, media gallery, or voice.
+
+**P1 — Copilot acceleration lane: Zod boundary sweep**
+- Scanner surfaced route files where mutation handlers still read `req.body` without an obvious local `z.object(...).safeParse(req.body)` boundary.
+- Copilot should take these in small batches, add schemas, and leave behavior unchanged.
+- First high-value batches:
+  - Chat routes: `server/routes/chat-management.ts`, `server/routes/chat-rooms.ts`, `server/routes/chat-uploads.ts`, `server/routes/chat.ts`, `server/routes/chatInlineRoutes.ts`.
+  - Admin/AI routes: `server/routes/adminRoutes.ts`, `server/routes/ai-brain-routes.ts`, `server/routes/aiBrainControlRoutes.ts`, `server/routes/aiBrainInlineRoutes.ts`.
+  - Payroll/billing-adjacent routes: `server/routes/billing-api.ts`, `server/routes/billingSettingsRoutes.ts`, `server/routes/budgetRoutes.ts`.
+
+**P1 — Codex hardening lane: route mount, PDF/vault, payroll/ACH**
+- Duplicate mount inventory in `server/routes/domains/*` is heuristic, not automatically wrong. Codex should review one domain file at a time and either condense duplicate mounts or document why the split is intentional.
+- PDF/document/tax/paystub routes must be verified for real branded PDF generation, tenant vault persistence, and no raw data-only response when a document artifact is expected.
+- Payroll/ACH/Plaid/paystub path needs one full end-to-end ownership sweep:
+  - FinancialCalculator everywhere money mutates.
+  - ACH/Plaid idempotency.
+  - Employee ownership scoped by workspace.
+  - Paystub generated and stored before transfer/notification.
+
+**P1 — Claude polish lane: portals, dashboards, buttons, icons**
+- Scanner now highlights only generic quiet-state/mock/TODO copy candidates, not normal form placeholders.
+- Claude should keep using shared loading/empty/error components and verify every user-facing button/icon action has:
+  - disabled/loading state,
+  - success/error feedback,
+  - intended API call,
+  - coherent navigation/result.
+
+**P2 — large file decomposition inventory**
+- Current largest surviving files:
+  - `server/storage.ts`
+  - `server/websocket.ts`
+  - `server/services/ai-brain/aiBrainMasterOrchestrator.ts`
+  - `client/src/pages/settings.tsx`
+  - `server/routes/voiceRoutes.ts`
+- Rule: split only after behavior is pinned by tests and only by domain boundary. No cosmetic churn before live.
+
+**Coordination rule from this point forward:**
+- Claude continues polish/domain implementation on `development`.
+- Codex owns verification, hardening, RBAC/IRC consolidation design, route mount review, and workflow safety sweeps on `refactor/service-layer`.
+- Copilot owns narrow repeated-pattern patches only: Zod schemas, test stubs, import-safe mechanical consistency.
+- One domain per commit. No two agents edit the same large core file at once.
+
+**Claude next:**
+1. Merge this non-invasive Codex harness commit into `development`.
+2. Run `npm run audit:consolidation` once from `development` to confirm the scanner works after merge.
+3. Continue scheduling polish. Do not start ChatDock feature expansion until the durable foundation and RBAC/IRC split are scheduled.
 
 ---
 
