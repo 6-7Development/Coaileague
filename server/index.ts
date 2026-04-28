@@ -844,12 +844,26 @@ async function initializeCriticalServices() {
       log.error(`[PostListen] Unhandled crash: ${err instanceof Error ? err.message : String(err)}`);
     });
 
+  // ── CANONICAL SEED GATE ──────────────────────────────────────────────────────
+  // Seeds run ONCE when a new local dev environment is set up.
+  // On Railway (any environment) they NEVER run automatically — data persists
+  // in Neon across deploys. Seeding on Railway drowns the DB on every restart
+  // and adds 30-120s of serial DB round-trips to startup time.
+  //
+  // To seed manually on Railway: run `node server/scripts/run-seed.js` from CLI
+  // or set SEED_ON_STARTUP=true temporarily in Railway Variables tab (remove after).
+  //
+  // Local dev: seeds run automatically because RAILWAY_SERVICE_ID won't be set.
+  const isRailwayDeploy = !!process.env.RAILWAY_SERVICE_ID;
+  const seedExplicitlyEnabled = process.env.SEED_ON_STARTUP === 'true';
+  const shouldSeed = !isRailwayDeploy || seedExplicitlyEnabled;
+
   if (!dbAvailableForSeed) {
-    log.warn('Phase 1 seeding skipped — DB unreachable (will seed on next restart when DB is ready)');
-  } else if (isProductionEnv()) {
-    // PRODUCTION: skip all dev seeding — it adds 30-120s to startup time
-    // and the data already exists from previous boots
-    log.info('[Startup] Production environment — skipping all dev seed operations');
+    log.warn('Phase 1 seeding skipped — DB unreachable');
+  } else if (isProductionEnv() && !seedExplicitlyEnabled) {
+    log.info('[Startup] Production environment — seeding skipped');
+  } else if (isRailwayDeploy && !seedExplicitlyEnabled) {
+    log.info('[Startup] Railway deployment detected — seeding skipped (data persists in Neon across deploys). Set SEED_ON_STARTUP=true to seed manually.');
   } else {
 
   // Seed development data (only runs in non-production, idempotent)
@@ -1043,7 +1057,9 @@ async function initializeAIBrainCore(): Promise<void> {
       //    per-organization history, culture, and operational preferences.
       const { trinitySomaticMarkerService } = await import('./services/ai-brain/trinitySomaticMarkerService');
       const { trinityNarrativeIdentityEngine } = await import('./services/ai-brain/trinityNarrativeIdentityEngine');
-      await trinitySomaticMarkerService.seedPlatformPatterns();
+      if (!process.env.RAILWAY_SERVICE_ID || process.env.SEED_ON_STARTUP === 'true') {
+        await trinitySomaticMarkerService.seedPlatformPatterns();
+      }
       log.info('Trinity somatic marker patterns seeded');
       const { pool } = await import('./db');
       // CATEGORY C — Raw SQL retained: Workspace ID scan for Trinity initialization | Tables: workspaces | Verified: 2026-03-23
@@ -1128,22 +1144,33 @@ async function initializeExtendedServices(): Promise<void> {
     }),
 
     timedInit('Question Bank Seeder (Phase 58)', async () => {
+      if (!!process.env.RAILWAY_SERVICE_ID && process.env.SEED_ON_STARTUP !== 'true') {
+        log.info('[QuestionBank] Railway deploy — skipping seed (data persists in Neon)');
+        return;
+      }
       const { seedDefaultQuestionBank } = await import('./services/recruitment/questionBankSeeder');
       const result = await seedDefaultQuestionBank();
       log.info(`Question Bank Seeder: ${result.seeded} seeded, ${result.skipped} skipped`);
     }),
 
     timedInit('ACME Candidate Seed (Phase 58)', async () => {
+      if (!!process.env.RAILWAY_SERVICE_ID && process.env.SEED_ON_STARTUP !== 'true') {
+        log.info('[ACMECandidates] Railway deploy — skipping seed');
+        return;
+      }
       const { seedAcmeCandidates } = await import('./services/recruitment/acmeCandidateSeed');
       const result = await seedAcmeCandidates();
       log.info(`ACME Candidate Seed: ${result.seeded} seeded, ${result.skipped} skipped`);
     }),
 
     timedInit('HelpAI System Connectivity', async () => {
-      // Seed Trinity's static knowledge modules into the DB (idempotent — skips if up-to-date)
-      const { trinityKnowledgeService } = await import('./services/ai-brain/trinityKnowledgeService');
-      await trinityKnowledgeService.seedStaticKnowledge();
-      log.info('Trinity static knowledge modules seeded');
+      // Seed Trinity's static knowledge modules — local dev only
+      // On Railway these are already in the DB from the initial manual seed
+      if (!process.env.RAILWAY_SERVICE_ID || process.env.SEED_ON_STARTUP === 'true') {
+        const { trinityKnowledgeService } = await import('./services/ai-brain/trinityKnowledgeService');
+        await trinityKnowledgeService.seedStaticKnowledge();
+        log.info('Trinity static knowledge modules seeded');
+      }
 
       // Register HelpAI knowledge tools in the tool capability registry
       const { toolCapabilityRegistry } = await import('./services/ai-brain/toolCapabilityRegistry');
@@ -1163,8 +1190,8 @@ async function initializeExtendedServices(): Promise<void> {
       const { registerVoiceActions } = await import('./services/trinityVoice/trinityVoiceActions');
       const { helpaiOrchestrator } = await import('./services/helpai/platformActionHub');
       registerVoiceActions(helpaiOrchestrator);
-      // Seed ACME sandbox with voice test data — DEV/TEST only
-      if (process.env.NODE_ENV !== 'production') {
+      // Seed ACME sandbox with voice test data — local dev only, never on Railway
+      if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_SERVICE_ID) {
         const { seedAcmeVoiceData } = await import('./services/trinityVoice/acmeSeed');
         await seedAcmeVoiceData();
       }
@@ -2306,8 +2333,11 @@ process.on('unhandledRejection', (reason: any, promise) => {
       await new Promise(resolve => setTimeout(resolve, 5000));
       try {
         log.info('Deferred: Checking production database seed');
-        const seedResult = await runProductionSeed();
-        log.info('Production seed complete', { message: seedResult.message });
+        // Production seed only runs when explicitly enabled
+        if (process.env.SEED_ON_STARTUP === 'true') {
+          const seedResult = await runProductionSeed();
+          log.info('Production seed complete', { message: seedResult.message });
+        }
       } catch (error) {
         log.error('Production seed check failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
@@ -2334,8 +2364,10 @@ process.on('unhandledRejection', (reason: any, promise) => {
       await new Promise(resolve => setTimeout(resolve, 5000));
       try {
         log.info('Deferred: Seeding state regulatory knowledge base');
-        const { seedStateKnowledgeBase } = await import('./services/compliance/stateRegulatoryKnowledgeBase');
-        await seedStateKnowledgeBase();
+        if (process.env.SEED_ON_STARTUP === 'true') {
+          const { seedStateKnowledgeBase } = await import('./services/compliance/stateRegulatoryKnowledgeBase');
+          await seedStateKnowledgeBase();
+        }
         log.info('State regulatory knowledge base seeded');
       } catch (error) {
         log.error('State knowledge base seed failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
