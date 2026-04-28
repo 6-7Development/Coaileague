@@ -272,7 +272,7 @@ const TrainingModuleLearning = lazy(() => import("@/pages/training-certification
 const Insurance = lazy(() => import("@/pages/insurance"));
 const Budgeting = lazy(() => import("@/pages/budgeting"));
 const AIIntegrations = lazy(() => import("@/pages/ai-integrations"));
-const EmployeeRecognition = lazy(() => import("@/pages/employee-recognition"));
+const EmployeeRecognition = lazy(() => import("@/pages/recognition"));
 const AlertConfiguration = lazy(() => import("@/pages/alert-configuration"));
 const AccountingIntegrations = lazy(() => import("@/pages/accounting-integrations"));
 const FinanceHub = lazy(() => import("@/pages/finance-hub"));
