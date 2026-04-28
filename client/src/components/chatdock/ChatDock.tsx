@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect, type TouchEvent as ReactTouchEvent } from "react";
+import { StatusBadge } from '@/components/ui/status-badge';
 import { createPortal } from "react-dom";
 import { useChatDock } from "@/contexts/ChatDockContext";
 import { useChatRoomSummaries, useChatUnreadTotal } from "@/hooks/useChatManager";

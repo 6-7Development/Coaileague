@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
+import { StatusBadge, MetricCard, MetricGrid, ActionResult } from "@/components/ui/metric-card";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -106,15 +107,11 @@ export default function OrgOwnerDashboard() {
     },
     onSuccess: () => {
       toast({
-        title: "✅ Owner PIN saved",
+        title: "Owner PIN saved",
         description: "Trinity and support agents can now verify you with this PIN.",
       });
       setPinInput("");
-      setModalPinInput("");
-      setShowPinSetupModal(false); // Always close modal on success
-      // Invalidate all PIN and workspace queries to update UI
       queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/owner/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/workspace/current"] });
     },
     onError: (err: any) => {
       toast({
@@ -174,19 +171,22 @@ export default function OrgOwnerDashboard() {
   } = useQuery<any[]>({
     queryKey: ["/api/invoices"],
     staleTime: 60_000,
-    retry: (failureCount: number, error: any) => {
-      // Don't retry on 429 — wait for rate limit to clear
-      if (error?.status === 429) return false;
-      return failureCount < 2;
-    },
   });
 
   const isDashboardLoading =
     workspaceLoading || clientsLoading || employeesLoading || invoicesLoading;
-  // Only workspace is critical — clients/employees/invoices show with placeholder data
-  const isDashboardError = workspaceIsError;
-  const dashboardError = workspaceError;
-  // Non-critical errors are surfaced inline as empty states, not full page errors
+  const isDashboardError =
+    workspaceIsError ||
+    pinStatusIsError ||
+    clientsIsError ||
+    employeesIsError ||
+    invoicesIsError;
+  const dashboardError =
+    workspaceError ||
+    pinStatusError ||
+    clientsError ||
+    employeesError ||
+    invoicesError;
 
   const orgCode = workspace?.orgId || workspace?.organizationId || null;
   const clientList = Array.isArray(clients) ? clients : (clients as any)?.data ?? [];

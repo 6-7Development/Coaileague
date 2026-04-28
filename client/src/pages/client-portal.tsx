@@ -28,6 +28,7 @@ import {
 import type { Invoice, Client } from "@shared/schema";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import DockChatWidget from "@/components/client-portal/DockChatWidget";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe } from "@stripe/stripe-js";
@@ -46,6 +47,13 @@ function formatDate(d: string | Date | null | undefined) {
 function getDaysUntilDue(due: string | Date | null | undefined): number | null {
   if (!due) return null;
   return Math.ceil((new Date(due).getTime() - Date.now()) / 86_400_000);
+}
+
+// Officer status indicator for live coverage widget
+function OfficerStatusDot({ status }: { status: string }) {
+  if (status === 'on_shift') return <span className="flex items-center gap-1.5"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" /></span><span className="text-xs text-green-600 dark:text-green-400 font-medium">On shift</span></span>;
+  if (status === 'scheduled') return <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-400" /><span className="text-xs text-blue-600 dark:text-blue-400">Scheduled</span></span>;
+  return <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-300" /><span className="text-xs text-muted-foreground">Off duty</span></span>;
 }
 
 function statusBadge(status: string) {

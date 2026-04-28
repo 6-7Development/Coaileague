@@ -6725,3 +6725,59 @@ select:focus-visible,
 /* ============================================================================
    END PLATFORM UI POLISH
    ============================================================================ */
+
+/* ── Status indicator animations ─────────────────────────────── */
+@keyframes status-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+.status-ping {
+  animation: status-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ── Action result transitions ───────────────────────────────── */
+.action-result-enter {
+  animation: fade-in-up 200ms ease-out;
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Success/failure button states ───────────────────────────── */
+.btn-success {
+  @apply border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20;
+}
+.btn-failure {
+  @apply border-red-400 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20;
+}
+.btn-loading {
+  @apply opacity-70 cursor-not-allowed;
+}
+
+/* ── Card accent borders (left) ──────────────────────────────── */
+.card-accent-green  { border-left: 3px solid theme('colors.green.500'); }
+.card-accent-red    { border-left: 3px solid theme('colors.red.500'); }
+.card-accent-amber  { border-left: 3px solid theme('colors.amber.500'); }
+.card-accent-blue   { border-left: 3px solid theme('colors.blue.500'); }
+.card-accent-purple { border-left: 3px solid hsl(271 81% 56%); }
+
+/* ── Trinity insight card ─────────────────────────────────────── */
+.trinity-insight-card {
+  background: linear-gradient(135deg, hsl(271 81% 56% / 0.04) 0%, transparent 50%);
+  border-left: 3px solid hsl(271 81% 56% / 0.6);
+}
+.dark .trinity-insight-card {
+  background: linear-gradient(135deg, hsl(271 81% 56% / 0.08) 0%, transparent 50%);
+}
+
+/* ── Officer status live pulse ───────────────────────────────── */
+.officer-on-shift::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: theme('colors.green.500');
+  margin-right: 6px;
+  animation: status-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
