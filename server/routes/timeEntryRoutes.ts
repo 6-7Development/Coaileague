@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { Router } from "express";
 import { requireAuth } from "../auth";
 import { requireManager, type AuthenticatedRequest } from "../rbac";
@@ -316,7 +317,7 @@ const router = Router();
       }
       const rejectBodySchema = z.object({ reason: z.string().optional() });
       const rejectParsed = rejectBodySchema.safeParse(req.body);
-      if (!rejectParsed.success) return res.status(400).json({ error: 'Invalid request body', details: rejectParsed.error.issues });
+      if (!rejectParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(rejectParsed.error) });
       const { reason } = rejectParsed.data;
       
       const timeEntry = await storage.getTimeEntry(req.params.id, workspaceId);
@@ -436,7 +437,7 @@ const router = Router();
       }
       const bulkApproveSchema = z.object({ timeEntryIds: z.array(z.string()).min(1, 'timeEntryIds must be a non-empty array') });
       const bulkParsed = bulkApproveSchema.safeParse(req.body);
-      if (!bulkParsed.success) return res.status(400).json({ error: 'Invalid request body', details: bulkParsed.error.issues });
+      if (!bulkParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(bulkParsed.error) });
       const { timeEntryIds } = bulkParsed.data;
 
       // Prevent self-approval: get all employee IDs for the time entries
@@ -618,7 +619,7 @@ const router = Router();
         accuracy: z.number().optional(),
       });
       const gpsParsed = gpsSchema.safeParse(req.body);
-      if (!gpsParsed.success) return res.status(400).json({ error: 'Invalid request body', details: gpsParsed.error.issues });
+      if (!gpsParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(gpsParsed.error) });
       const { latitude, longitude, accuracy } = gpsParsed.data;
 
       const [activeEntry] = await db.select({ id: timeEntriesTable.id, shiftId: timeEntriesTable.shiftId })
@@ -693,7 +694,7 @@ const router = Router();
         reasonDetail: z.string().min(1, 'reasonDetail required'),
       });
       const overrideParsed = manualOverrideSchema.safeParse(req.body);
-      if (!overrideParsed.success) return res.status(400).json({ error: 'Invalid request body', details: overrideParsed.error.issues });
+      if (!overrideParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(overrideParsed.error) });
       const { shiftId, siteId, siteName, reasonCode, reasonDetail } = overrideParsed.data;
 
       const id = (await import('crypto')).randomUUID();
@@ -848,7 +849,7 @@ const router = Router();
 
       const breakSchema = z.object({ breakType: z.string().optional() });
       const breakParsed = breakSchema.safeParse(req.body);
-      if (!breakParsed.success) return res.status(400).json({ error: 'Invalid request body', details: breakParsed.error.issues });
+      if (!breakParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(breakParsed.error) });
       const { breakType } = breakParsed.data;
       const updated = await storage.updateTimeEntry(req.params.id, workspace.id, {
         status: 'on_break',
@@ -929,7 +930,7 @@ router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, r
       endDate: z.string().min(1, 'endDate required'),
     });
     const calcParsed = calcHoursSchema.safeParse(req.body);
-    if (!calcParsed.success) return res.status(400).json({ error: 'Invalid request body', details: calcParsed.error.issues });
+    if (!calcParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(calcParsed.error) });
     const { employeeId, startDate, endDate } = calcParsed.data;
 
     // @ts-expect-error — TS migration: fix in refactoring sprint

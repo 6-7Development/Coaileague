@@ -6,6 +6,7 @@
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
+import { formatZodIssues } from '../middleware/validateRequest';
 import { Router, Request, Response } from 'express';
 import { contractPipelineService } from '../services/contracts/contractPipelineService';
 import { z } from 'zod';
@@ -233,7 +234,7 @@ router.post('/:id/decline', async (req: AuthenticatedRequest, res: Response) => 
   try {
     const declineSchema = z.object({ reason: z.string().optional() });
     const declineParsed = declineSchema.safeParse(req.body);
-    if (!declineParsed.success) return res.status(400).json({ error: 'Invalid request body', details: declineParsed.error.issues });
+    if (!declineParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(declineParsed.error) });
     const { reason } = declineParsed.data;
     const contract = await contractPipelineService.declineProposal(
       req.params.id,
@@ -492,7 +493,7 @@ publicPortalRouter.post('/:token/decline', async (req: Request, res: Response) =
 
     const portalDeclineSchema = z.object({ reason: z.string().optional() });
     const portalDeclineParsed = portalDeclineSchema.safeParse(req.body);
-    if (!portalDeclineParsed.success) return res.status(400).json({ error: 'Invalid request body', details: portalDeclineParsed.error.issues });
+    if (!portalDeclineParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(portalDeclineParsed.error) });
     const { reason } = portalDeclineParsed.data;
     const contract = await contractPipelineService.declineProposal(
       result.contract!.id,
@@ -521,7 +522,7 @@ publicPortalRouter.post('/:token/request-changes', async (req: Request, res: Res
 
     const requestChangesSchema = z.object({ changesRequested: z.string().min(1, 'changesRequested is required') });
     const changesParsed = requestChangesSchema.safeParse(req.body);
-    if (!changesParsed.success) return res.status(400).json({ error: 'Invalid request body', details: changesParsed.error.issues });
+    if (!changesParsed.success) return res.status(400).json({ error: 'Invalid request body', details: formatZodIssues(changesParsed.error) });
     const { changesRequested } = changesParsed.data;
 
     const contract = await contractPipelineService.requestChanges(

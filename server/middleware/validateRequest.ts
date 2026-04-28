@@ -31,8 +31,9 @@ declare global {
 /**
  * Format ZodError issues into a client-safe array of { field, message } objects.
  * Does NOT expose internal Zod internals or stack traces.
+ * Exported for use in route handlers that call safeParse() directly.
  */
-function formatZodIssues(err: ZodError): Array<{ field: string; message: string }> {
+export function formatZodIssues(err: ZodError): Array<{ field: string; message: string }> {
   return err.issues.map((issue) => ({
     field: issue.path.join('.') || '(root)',
     message: issue.message,
