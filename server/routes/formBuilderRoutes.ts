@@ -586,10 +586,8 @@ router.post("/forms/:formId/submissions/:submissionId/submit", async (req: Authe
     if (routingRules?.approverUserId) {
       try {
         await NotificationDeliveryService.send({
-          idempotencyKey: `notif-${Date.now()}`,
+          idempotencyKey: `notif:form_submission:${submissionId}:review`,
             type: 'document_requires_signature',
-          workspaceId,
-          recipientUserId: routingRules.approverUserId,
           channel: 'in_app',
           subject: `Form needs review: ${form.name}`,
           body: {
@@ -716,10 +714,8 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
     if (submission.submittedBy) {
       try {
         await NotificationDeliveryService.send({
-          idempotencyKey: `notif-${Date.now()}`,
+          idempotencyKey: `notif:form_submission:${submissionId}:decision`,
             type: 'document_requires_signature',
-          workspaceId,
-          recipientUserId: submission.submittedBy,
           channel: 'in_app',
           subject: `Form ${approved ? "approved" : "rejected"}: ${form?.name || ""}`,
           body: {

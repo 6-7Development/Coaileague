@@ -700,7 +700,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
               try {
                 const { NotificationDeliveryService } = await import("../services/notificationDeliveryService");
                 await NotificationDeliveryService.send({
-                  idempotencyKey: `notif-${Date.now()}`,
+                  idempotencyKey: `notif:shift:${shift.id}:assigned:${empId}`,
             type: "shift_assignment",
                   workspaceId,
                   recipientUserId: empId,
@@ -709,7 +709,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
                   body: {
                     title: "New Shift Assigned",
                     body: `You've been assigned to ${shift.title || 'a shift'} on ${new Date(shift.startTime).toLocaleDateString()}`,
-                    idempotencyKey: `notif-${Date.now()}`,
+                    idempotencyKey: `notif:shift:${shift.id}:reminder:${empId}`,
             type: "shift_reminder",
                     url: "/schedule",
                     shiftId: shift.id,
@@ -914,7 +914,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
         try {
           const { NotificationDeliveryService } = await import("../services/notificationDeliveryService");
           await NotificationDeliveryService.send({
-            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif:shift:${shift.id}:assigned:${shift.employeeId}`,
             type: "shift_assignment",
             workspaceId,
             recipientUserId: shift.employeeId,
@@ -923,7 +923,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
             body: {
               title: "New Shift Assigned",
               body: `You've been assigned to ${shift.title || 'a shift'} on ${shiftDate}`,
-              idempotencyKey: `notif-${Date.now()}`,
+              idempotencyKey: `notif:shift:${shift.id}:reminder:${shift.employeeId}`,
             type: "shift_reminder",
               url: "/schedule",
               shiftId: shift.id,

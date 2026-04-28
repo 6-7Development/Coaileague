@@ -2771,7 +2771,7 @@ router.post('/portal/:accessToken/invoice/:invoiceId/dispute', async (req, res) 
               source: 'client_portal',
               action: 'Review invoice and contact client within 48 hours.',
             },
-            idempotencyKey: `client_portal_dispute-${invoiceId}-${Date.now()}`,
+            idempotencyKey: `client_portal_dispute:${invoiceId}`,
           });
         }
       } catch (notifyErr: unknown) {

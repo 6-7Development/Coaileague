@@ -338,7 +338,7 @@ spsDocumentRouter.post('/:id/send', async (req: any, res) => {
       }
 
       if (subject && html) {
-        await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+        await NotificationDeliveryService.send({ idempotencyKey: `notif:sps_doc:${doc.id}:sent`,
             type: 'sps_document', workspaceId: workspaceId || 'system', recipientUserId: doc.recipientEmail, channel: 'email', body: { to: doc.recipientEmail, subject, html } });
       }
     } catch (emailErr) {
