@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { requireManager, type AuthenticatedRequest } from "../rbac";
@@ -32,6 +33,39 @@ import {
   shifts
 } from '@shared/schema';
 const log = createLogger('EngagementRoutes');
+
+
+
+// ── Input validation schemas ────────────────────────────────────────────────
+const suggestionCreateSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  category: z.string().max(100).optional(),
+  suggestionText: z.string().max(5000).optional(),
+  isAnonymous: z.boolean().default(false),
+});
+
+const suggestionStatusSchema = z.object({
+  status: z.enum(['pending', 'under_review', 'accepted', 'rejected', 'implemented']),
+  actionNotes: z.string().max(2000).optional(),
+});
+
+const bonusApprovalSchema = z.object({
+  status: z.string().max(50),
+  hasMonetaryReward: z.boolean().optional(),
+  bonusAmount: z.number().min(0).max(100000).optional(),
+  actionNotes: z.string().max(2000).optional(),
+});
+
+const engagementPeriodSchema = z.object({
+  periodStart: z.string().min(1),
+  periodEnd: z.string().min(1),
+  employeeId: z.string().optional(),
+});
+
+const actionNotesSchema = z.object({
+  actionNotes: z.string().min(1).max(2000),
+});
 
 
 const router = Router();
@@ -136,10 +170,20 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
         return res.status(404).json({ message: "Pulse survey template not found" });
       }
       
+      const templateUpdateSchema = z.object({
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().max(2000).optional(),
+        questions: z.array(z.unknown()).optional(),
+        frequency: z.string().max(50).optional(),
+        isActive: z.boolean().optional(),
+        targetAudience: z.string().max(100).optional(),
+      }).strip();
+      const templateUpdateParsed = templateUpdateSchema.safeParse(req.body);
+      if (!templateUpdateParsed.success) return res.status(400).json({ error: 'Validation failed', details: templateUpdateParsed.error.flatten() });
       const [updated] = await db
         .update(pulseSurveyTemplates)
         .set({
-          ...req.body,
+          ...templateUpdateParsed.data,
           updatedAt: new Date()
         })
         .where(eq(pulseSurveyTemplates.id, id))
@@ -178,7 +222,13 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       }
       
       // Calculate engagement and sentiment scores from actual responses
-      const { responses } = req.body;
+      const surveyResponseBodySchema = z.object({
+        responses: z.record(z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])).optional(),
+        surveyToken: z.string().optional(),
+      });
+      const respBodyParsed = surveyResponseBodySchema.safeParse(req.body);
+      if (!respBodyParsed.success) return res.status(400).json({ error: 'Validation failed', details: respBodyParsed.error.flatten() });
+      const { responses } = respBodyParsed.data;
       let engagementScore = 50; // Default neutral
       let sentimentScore = 50; // Default neutral
       
@@ -574,11 +624,20 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
         return res.status(404).json({ message: "Suggestion not found" });
       }
       
+      const suggestionUpdateSchema = z.object({
+        status: z.enum(['pending', 'under_review', 'accepted', 'rejected', 'implemented']).optional(),
+        actionNotes: z.string().max(2000).optional(),
+        title: z.string().max(200).optional(),
+        description: z.string().max(5000).optional(),
+      }).strip();
+      const suggestionUpdateParsed = suggestionUpdateSchema.safeParse(req.body);
+      if (!suggestionUpdateParsed.success) return res.status(400).json({ error: 'Validation failed', details: suggestionUpdateParsed.error.flatten() });
+      const updateData = suggestionUpdateParsed.data;
       const [updated] = await db
         .update(anonymousSuggestions)
         .set({
-          ...req.body,
-          statusUpdatedAt: req.body.status !== existing[0].status ? new Date() : existing[0].statusUpdatedAt,
+          ...updateData,
+          statusUpdatedAt: updateData.status && updateData.status !== existing[0].status ? new Date() : existing[0].statusUpdatedAt,
           updatedAt: new Date()
         })
         .where(eq(anonymousSuggestions.id, id))
@@ -747,7 +806,9 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
     try {
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
-      const { actionNotes } = req.body;
+      const notesParsed = actionNotesSchema.safeParse(req.body);
+    if (!notesParsed.success) return res.status(400).json({ error: 'Validation failed', details: notesParsed.error.flatten() });
+    const { actionNotes } = notesParsed.data;
       
       const existing = await db
         .select()
@@ -935,7 +996,9 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
   router.post('/health-scores/calculate-batch', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const { periodStart, periodEnd } = req.body;
+      const periodParsed = engagementPeriodSchema.safeParse(req.body);
+    if (!periodParsed.success) return res.status(400).json({ error: 'Validation failed', details: periodParsed.error.flatten() });
+    const { periodStart, periodEnd } = periodParsed.data;
       
       if (!periodStart || !periodEnd) {
         return res.status(400).json({ message: "periodStart and periodEnd are required" });
@@ -1006,7 +1069,16 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
   router.post('/benchmarks/calculate', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const { benchmarkType, targetId, targetName, periodStart, periodEnd } = req.body;
+      const benchSchema = z.object({
+      benchmarkType: z.string().min(1).max(50),
+      targetId: z.string().optional(),
+      targetName: z.string().max(200).optional(),
+      periodStart: z.string().min(1),
+      periodEnd: z.string().min(1),
+    });
+    const benchParsed = benchSchema.safeParse(req.body);
+    if (!benchParsed.success) return res.status(400).json({ error: 'Validation failed', details: benchParsed.error.flatten() });
+    const { benchmarkType, targetId, targetName, periodStart, periodEnd } = benchParsed.data;
       
       if (!benchmarkType || !periodStart || !periodEnd) {
         return res.status(400).json({ message: "benchmarkType, periodStart, and periodEnd are required" });

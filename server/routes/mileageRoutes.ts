@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Router } from "express";
 import { storage } from "../storage";
 import { db } from "../db";
@@ -165,8 +166,10 @@ router.post("/:id/reject", requireManager, async (req: AuthenticatedRequest, res
   try {
     const workspaceId = req.workspaceId!;
     const user = req.user;
-    const { reason } = req.body;
-    if (!reason) return res.status(400).json({ message: "Rejection reason required" });
+    const rejectSchema = z.object({ reason: z.string().min(1).max(1000) });
+    const rejectParsed = rejectSchema.safeParse(req.body);
+    if (!rejectParsed.success) return res.status(400).json({ message: 'Rejection reason required' });
+    const { reason } = rejectParsed.data;
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const log = await storage.rejectMileageLog(req.params.id, workspaceId, user.id, reason);
     if (!log) return res.status(404).json({ message: "Not found" });

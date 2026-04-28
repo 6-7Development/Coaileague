@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { storage } from "../storage";
@@ -234,7 +235,15 @@ router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) =
   try {
     const { id } = req.params;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const submission = await storage.updateReportSubmission(id, req.body);
+    const subUpdateSchema = z.object({
+      content: z.string().max(50000).optional(),
+      status: z.string().max(50).optional(),
+      title: z.string().max(200).optional(),
+      reviewNotes: z.string().max(2000).optional(),
+    }).strip();
+    const subUpdateParsed = subUpdateSchema.safeParse(req.body);
+    if (!subUpdateParsed.success) return res.status(400).json({ error: 'Validation failed', details: subUpdateParsed.error.flatten() });
+    const submission = await storage.updateReportSubmission(id, subUpdateParsed.data);
     res.json(submission);
   } catch (error) {
     log.error("Error updating report submission:", error);
@@ -245,7 +254,13 @@ router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) =
 router.post("/api/report-submissions/:id/review", requireManager, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { approved, reviewNotes } = req.body;
+    const reviewSchema = z.object({
+      approved: z.boolean(),
+      reviewNotes: z.string().max(2000).optional(),
+    });
+    const reviewParsed = reviewSchema.safeParse(req.body);
+    if (!reviewParsed.success) return res.status(400).json({ error: 'Validation failed', details: reviewParsed.error.flatten() });
+    const { approved, reviewNotes } = reviewParsed.data;
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
 

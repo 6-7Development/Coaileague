@@ -716,6 +716,28 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
 
     const overData = over.data.current as { day: number; hour: number };
     if (overData?.day === undefined || overData?.hour === undefined) return;
+
+    // CROSS-DAY DRAG: if an existing shift was dragged to a different day/time slot
+    if (activeData?.type === 'inline-shift' && draggedShift) {
+      const shift = draggedShift as Shift;
+      const { day, hour } = overData;
+      const newDate = new Date(weekStart);
+      newDate.setDate(newDate.getDate() + day);
+      const newDateStr = newDate.toISOString().split('T')[0];
+      const hourStr = hour.toString().padStart(2, '0');
+      const endHour = Math.min(hour + 8, 23).toString().padStart(2, '0');
+
+      // Stage the date change as a pending reassignment (reuses existing staging architecture)
+      setPendingReassignments(prev => {
+        const next = new Map(prev);
+        next.set(`${shift.id}-date`, { newEmployeeId: shift.employeeId ?? '', originalEmployeeId: shift.employeeId ?? null, newDate: newDateStr, newStartTime: `${hourStr}:00`, newEndTime: `${endHour}:00` } as any);
+        return next;
+      });
+      toast({ variant: 'info', title: `Shift moved to ${newDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`, description: 'Click Publish to save changes' });
+      return;
+    }
+
+    // NEW SHIFT via employee drag-to-cell
     const employeeId = active.id as string;
     const { day, hour } = overData;
 
@@ -734,11 +756,6 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     });
     setModalPosition({ day, hour });
     setShowShiftModal(true);
-
-    toast({
-      title: 'Shift Draft Created',
-      description: 'Review and save shift details',
-    });
   };
   
   // State management
@@ -1742,6 +1759,45 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       }}
       onDragEnd={handleDragEnd}
     >
+      {/* WEEK SUMMARY BAR — GetSling-style analytics strip */}
+      {isManager && (
+        <div className="flex items-center gap-4 px-3 py-1.5 border-b bg-muted/30 text-xs shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="text-muted-foreground">Coverage:</span>
+            <span className="font-semibold text-foreground">
+              {Math.round(((filteredShifts.filter(s => s.employeeId).length / Math.max(filteredShifts.length, 1)) * 100))}%
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span className="text-muted-foreground">Shifts:</span>
+            <span className="font-semibold text-foreground">{filteredShifts.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <span className="text-muted-foreground">Open:</span>
+            <span className="font-semibold text-destructive">{filteredShifts.filter(s => !s.employeeId).length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="text-muted-foreground">OT risk:</span>
+            <span className="font-semibold text-amber-600 dark:text-amber-400">
+              {filteredShifts.filter(s => (s as any).isOvertime).length}
+            </span>
+          </div>
+          {pendingReassignments.size > 0 && (
+            <div className="ml-auto flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+              </span>
+              {pendingReassignments.size} unsaved
+            </div>
+          )}
+        </div>
+      )}
+
       {/* GETSLING-STYLE: Fixed height container - schedule dominates viewport, minimal chrome */}
       <div className="flex h-[calc(100vh-6.5rem)] bg-background overflow-hidden overflow-x-hidden">
         {/* Left Filters Panel - COLLAPSIBLE (default collapsed for max schedule space) */}
