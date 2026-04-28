@@ -22,7 +22,7 @@ One domain, one complete sweep, one coherent commit.
 
 ```
 Current state: PARALLEL LANES
-  Claude - Phase 1A scheduling audit complete; working email entity panel polish on development.
+  Claude - Email entity context panel + Trinity suggested actions landed on development.
   Codex  - RBAC/IRC low-risk consolidation patch complete on refactor/service-layer.
   Copilot - Queued for narrow Zod/test batches only after the current lane is stable.
 
@@ -36,7 +36,7 @@ Next merge target:
 ## CURRENT COMMITS
 
 ```
-origin/development           -> 1855a1db  (Codex audit harness merged into development)
+origin/development           -> bd340828  (email entity context panel + Trinity suggested actions)
 origin/refactor/service-layer -> pending Codex RBAC/IRC low-risk consolidation patch
 local Codex lane             -> synced with latest development before push
 ```
@@ -95,13 +95,9 @@ Remaining Phase 1A enhancement gaps:
 `client/src/components/email/EmailHubCanvas.tsx` already has operational channel
 folders, Trinity panel, compose, thread view, and sub-address routing.
 
-Email polish priority:
-1. Entity context panel in existing right-side Trinity panel.
-2. Channel tab bar at top.
-3. Trinity suggested actions per email.
-4. Pre-drafted Trinity reply.
-5. Action-needed / urgent / PDF tags on inbox rows.
-6. Smart views: Needs Action, Client Mail.
+Email polish status:
+- Done on development: entity context panel and Trinity suggested actions.
+- Remaining: channel tab bar, pre-drafted Trinity reply, action-needed/urgent/PDF tags, and smart views.
 
 Claude owns email polish. Codex must not edit:
 - `client/src/components/email/EmailHubCanvas.tsx`
@@ -233,15 +229,15 @@ Claude should avoid while Codex is hardening:
 
 ---
 
-## ACTIVE WORK - EMAIL ENTITY PANEL (Claude)
+## ACTIVE WORK - EMAIL POLISH (Claude)
 
-Wire into existing `EmailHubCanvas.tsx`.
+Entity context panel landed in `EmailHubCanvas.tsx` on development.
 
-When an email is opened, the right panel shows:
-- If sender is a client: open shifts, contract rate, invoiced MTD, officer count.
-- If sender is an employee: upcoming shifts, timesheet status, certifications.
-- Trinity suggested actions based on email content.
-- Pre-drafted reply from Trinity.
+Remaining email polish:
+- Channel tab bar.
+- Pre-drafted Trinity reply.
+- Action-needed / urgent / PDF tags on inbox rows.
+- Smart views.
 
 Use existing components and routes where possible. Do not create a duplicate email hub.
 
@@ -250,9 +246,9 @@ Use existing components and routes where possible. Do not create a duplicate ema
 ## ENHANCEMENT SPRINT PRIORITY
 
 **EMAIL** (current)
-- Entity context panel.
+- Entity context panel. (done)
 - Channel tab bar.
-- Trinity suggested actions.
+- Trinity suggested actions. (done)
 - Pre-drafted replies.
 - Tags on inbox rows.
 - Smart views.
