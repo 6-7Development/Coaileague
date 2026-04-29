@@ -14,6 +14,7 @@ import {
 import { eq, and, gte, lte, desc, sql, isNotNull, lt, count } from 'drizzle-orm';
 import { addYears, format, startOfMonth, endOfMonth } from 'date-fns';
 import { createLogger } from '../lib/logger';
+import { calculateOvertimePay, calculateRegularPay } from './financialCalculator';
 const log = createLogger('complianceReports');
 
 
@@ -491,7 +492,10 @@ export async function generateOvertimeSummaryReport(
       const overtimeHours = Math.max(0, Math.min(totalHours - 40, 20));
       const doubleTimeHours = Math.max(0, totalHours - 60);
       
-      const overtimePayDue = (overtimeHours * hourlyRate * 0.5) + (doubleTimeHours * hourlyRate);
+      // Use FinancialCalculator for precision (decimal.js avoids floating-point drift)
+      const otPayString = calculateOvertimePay(String(overtimeHours), String(hourlyRate), '0.5');
+      const dtPayString = calculateRegularPay(String(doubleTimeHours), String(hourlyRate));
+      const overtimePayDue = Number(otPayString) + Number(dtPayString);
 
       if (overtimeHours > 0 || doubleTimeHours > 0) {
         records.push({

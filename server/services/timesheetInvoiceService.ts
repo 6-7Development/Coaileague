@@ -18,6 +18,7 @@ import {
 import { eq, and, gte, lte, desc, sql, isNull, inArray } from 'drizzle-orm';
 import { format, differenceInMinutes, differenceInDays } from 'date-fns';
 import PDFDocument from 'pdfkit';
+import { calculateRegularPay, calculateOvertimePay } from './financialCalculator';
 import { getUncachableResendClient, isResendConfigured } from './emailCore';
 import { createLogger } from '../lib/logger';
 const log = createLogger('timesheetInvoiceService');
@@ -129,9 +130,10 @@ export async function generateInvoiceFromTimesheets(
     if (overtimeHours > 0) {
       // CHECK-2 FIX: Split into distinct regular and overtime line items so overtime
       // pay at 1.5x appears as a separate billable entry — not bundled into base rate.
-      const regularAmount = regularHours * rate;
-      const otRate = rate * 1.5;
-      const otAmount = overtimeHours * otRate;
+      // Use FinancialCalculator for precision (decimal.js, not float arithmetic)
+      const regularAmount = Number(calculateRegularPay(String(regularHours), String(rate)));
+      const otRate = Number(calculateRegularPay('1.5', String(rate)));
+      const otAmount = Number(calculateOvertimePay(String(overtimeHours), String(rate), '1.5'));
 
       lineItemsData.push({
         description: `${employeeName} - Regular Hours (${dateStr}) (${regularHours.toFixed(2)} hrs)`,
@@ -151,7 +153,7 @@ export async function generateInvoiceFromTimesheets(
       totalHours += totalEntryHours;
       subtotal += regularAmount + otAmount;
     } else {
-      const amount = totalEntryHours * rate;
+      const amount = Number(calculateRegularPay(String(totalEntryHours), String(rate)));
       lineItemsData.push({
         description: `${employeeName} - Regular Hours (${dateStr}) (${totalEntryHours.toFixed(2)} hrs)`,
         quantity: totalEntryHours,
@@ -171,7 +173,7 @@ export async function generateInvoiceFromTimesheets(
       };
     }
     employeeBreakdown[entry.employeeId].hours += totalEntryHours;
-    employeeBreakdown[entry.employeeId].amount += totalEntryHours * rate;
+    employeeBreakdown[entry.employeeId].amount += Number(calculateRegularPay(String(totalEntryHours), String(rate)));
   }
 
   const taxAmount = subtotal * (taxRate / 100);
@@ -345,7 +347,7 @@ export async function getUninvoicedTimeEntries(workspaceId: string, clientId?: s
 
     const hours = differenceInMinutes(entry.clockOut, entry.clockIn) / 60;
     const rate = entry.hourlyRate ? Number(entry.hourlyRate) : 0;
-    const amount = hours * rate;
+    const amount = Number(calculateRegularPay(String(hours), String(rate)));
 
     const employeeName = entry.employeeFirstName
       ? `${entry.employeeFirstName} ${entry.employeeLastName || ''}`.trim()
@@ -1040,8 +1042,8 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
         const entryRegularHours = entryTotalHours - entryOtHours;
         empRegularHours += entryRegularHours;
         empOtHours += entryOtHours;
-        empRegularAmount += entryRegularHours * rate;
-        empOtAmount += entryOtHours * (rate * 1.5);
+        empRegularAmount += Number(calculateRegularPay(String(entryRegularHours), String(rate)));
+        empOtAmount += Number(calculateOvertimePay(String(entryOtHours), String(rate), '1.5'));
       }
 
       // Regular hours line item — always present
@@ -1084,10 +1086,10 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
       const dateStr = format(entry.clockIn, 'MMM d, yyyy');
 
       if (overtimeHours > 0) {
-        // CHECK-2 FIX: Distinct regular and overtime line items
-        const regularAmount = regularHours * rate;
-        const otRate = rate * 1.5;
-        const otAmount = overtimeHours * otRate;
+        // CHECK-2 FIX: Distinct regular and overtime line items, using FinancialCalculator for precision
+        const regularAmount = Number(calculateRegularPay(String(regularHours), String(rate)));
+        const otRate = Number(calculateRegularPay('1.5', String(rate)));
+        const otAmount = Number(calculateOvertimePay(String(overtimeHours), String(rate), '1.5'));
 
         lineItemsData.push({
           description: `${employeeName} - Regular Hours (${dateStr}) (${regularHours.toFixed(2)} hrs)`,
@@ -1113,7 +1115,7 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
         employeeBreakdown[entry.employeeId].hours += totalEntryHours;
         employeeBreakdown[entry.employeeId].amount += regularAmount + otAmount;
       } else {
-        const amount = totalEntryHours * rate;
+        const amount = Number(calculateRegularPay(String(totalEntryHours), String(rate)));
         lineItemsData.push({
           description: `${employeeName} - Regular Hours (${dateStr}) (${totalEntryHours.toFixed(2)} hrs)`,
           quantity: totalEntryHours,
