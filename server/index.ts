@@ -844,7 +844,7 @@ async function initializeCriticalServices() {
       const { probeDbConnection } = await import('./db');
       return await probeDbConnection();
     } catch { return false; }
-  }).catch((err: any) => {
+  })().catch((err: any) => {
       log.error(`[PostListen] Unhandled crash: ${err instanceof Error ? err.message : String(err)}`);
     });
 
