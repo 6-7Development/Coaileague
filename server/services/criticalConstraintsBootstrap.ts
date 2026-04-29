@@ -1682,6 +1682,54 @@ const constraints: CriticalConstraint[] = [
       `);
     },
   },
+  // ── ChatDock 360 — Pillar 1: Room Identity Lock ──────────────────────────
+  {
+    name: 'chat_conversations_shift_unique_index',
+    rationale: 'CD-1: UNIQUE(shift_id, workspace_id) on chat_conversations prevents duplicate shift rooms. Without this, two concurrent shift-start events create two rooms for the same shift — officers split across ghost rooms and messages are lost. Partial index: only where shift_id IS NOT NULL.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_indexes
+         WHERE tablename = 'chat_conversations'
+           AND indexname = 'uq_chat_conv_shift_workspace'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_chat_conv_shift_workspace
+          ON chat_conversations (shift_id, workspace_id)
+          WHERE shift_id IS NOT NULL
+      `);
+    },
+  },
+  {
+    name: 'chat_conversations_type_check_constraint',
+    rationale: 'CD-2: conversationType is varchar — any string accepted at DB level. CHECK constraint enforces canonical values: open_chat, shift_chat, dm_user, dm_support, dm_bot, dm_group. Route-level validation alone is not enough — direct DB writes bypass it.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.check_constraints
+         WHERE constraint_name = 'chk_chat_conv_type'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      // First fix any existing invalid values
+      await pool.query(`
+        UPDATE chat_conversations
+        SET conversation_type = 'open_chat'
+        WHERE conversation_type NOT IN (
+          'open_chat','shift_chat','dm_user','dm_support','dm_bot','dm_group'
+        )
+      `).catch(() => null);
+      await pool.query(`
+        ALTER TABLE chat_conversations
+          ADD CONSTRAINT chk_chat_conv_type
+          CHECK (conversation_type IN (
+            'open_chat','shift_chat','dm_user','dm_support','dm_bot','dm_group'
+          ))
+      `);
+    },
+  },
   {
     name: 'shifts_deleted_at_column',
     rationale: 'Soft-delete column added after initial schema definition; ALTER TABLE is idempotent via IF NOT EXISTS',

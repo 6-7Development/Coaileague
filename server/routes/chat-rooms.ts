@@ -382,6 +382,28 @@ router.post(
         }
       }
 
+      // CD-1 FIX: Shift rooms must be unique per (shift_id, workspace_id)
+      // Check BEFORE the 30-second name dedup — catches concurrent manager creates
+      if (shiftData) {
+        const [existingShiftRoom] = await db
+          .select({ id: chatConversations.id, subject: chatConversations.subject })
+          .from(chatConversations)
+          .where(and(
+            eq(chatConversations.workspaceId, workspaceId),
+            eq(chatConversations.shiftId, shiftData.id),
+          ))
+          .limit(1);
+
+        if (existingShiftRoom) {
+          return res.status(201).json({
+            success: true,
+            conversation: { id: existingShiftRoom.id, subject: existingShiftRoom.subject, shiftId: shiftData.id },
+            deduplicated: true,
+            message: 'Shift room already exists — returning existing room.',
+          });
+        }
+      }
+
       // Deduplication: Check if user already created a room with same name in last 30 seconds
       const roomName = subject || (shiftData ? `Shift: ${shiftData.title}` : "New Workroom");
       const thirtySecondsAgo = new Date(Date.now() - 30000);
