@@ -241,6 +241,28 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
             <Badge variant={client.isActive ? "default" : "secondary"} data-testid={`badge-status-${client.id}`}>
               {client.isActive ? 'Active' : 'Inactive'}
             </Badge>
+            {/* Portal Invite Visual State Machine — Synapse-Standard Phase 2
+                pending/invited → ORANGE border  (awaiting client action)
+                accepted        → GREEN  border  (handshake complete)
+                expired         → RED    border  (> 7 days, Reaper swept) */}
+            {(client as any).portalVisualStatus && (client as any).portalVisualStatus !== 'accepted' && (
+              <Badge
+                variant="outline"
+                data-testid={`badge-portal-status-${client.id}`}
+                className={(() => {
+                  switch ((client as any).portalVisualStatus) {
+                    case 'expired':  return 'text-[10px] border-red-500 text-red-600 dark:text-red-400';
+                    case 'pending':
+                    case 'invited':  return 'text-[10px] border-orange-500 text-orange-600 dark:text-orange-400';
+                    default:         return 'text-[10px] border-gray-400 text-gray-600';
+                  }
+                })()}
+              >
+                {(client as any).portalVisualStatus === 'expired'  ? 'Invite Expired' :
+                 (client as any).portalVisualStatus === 'invited'  ? 'Invite Pending' :
+                 (client as any).portalVisualStatus === 'pending'  ? 'Invite Sent' : null}
+              </Badge>
+            )}
             {!client.isActive && c.collectionsStatus && c.collectionsStatus !== 'none' && (
               <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600 dark:text-yellow-400" data-testid={`badge-collections-${client.id}`}>
                 {c.collectionsStatus === 'active' ? 'In Collections' : c.collectionsStatus === 'written_off' ? 'Written Off' : c.collectionsStatus === 'resolved' ? 'Resolved' : c.collectionsStatus}

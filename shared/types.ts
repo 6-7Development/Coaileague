@@ -23,6 +23,12 @@ export type PaginatedResponse<T> = {
 
 export type ClientWithInvoiceCount = Client & {
   invoiceCount: number;
+  // Portal invite visual state machine (Synapse-Standard Phase 2)
+  // pending | invited → border-orange-500
+  // accepted         → border-green-500
+  // expired          → border-red-500
+  portalVisualStatus?: 'pending' | 'invited' | 'accepted' | 'expired' | null;
+  portalBorderClass?: string;
 };
 
 // ============================================================================

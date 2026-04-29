@@ -21,6 +21,7 @@ import {
   shifts,
   clientPortalAccess,
   auditLogs,
+  clientPortalInviteTokens,
 } from '@shared/schema';
 import { z } from "zod";
 import { requireAuth } from "../auth";
@@ -126,8 +127,60 @@ router.get('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest,
       workspaceId,
       ...validated
     });
+
+    // ── Phase 2 Surgical: Enrich with portal invite visual status ─────────────
+    // Queries latest invite per client in one batch; avoids N+1 queries.
+    // Returns portalVisualStatus: pending|invited|accepted|expired for UI borders.
+    let enrichedData = result.data;
+    if (result.data.length > 0) {
+      try {
+        const clientIds = result.data.map(c => c.id);
+        const latestInvites = await db
+          .select({
+            clientId: clientPortalInviteTokens.clientId,
+            isUsed: clientPortalInviteTokens.isUsed,
+            expiresAt: clientPortalInviteTokens.expiresAt,
+            createdAt: clientPortalInviteTokens.createdAt,
+          })
+          .from(clientPortalInviteTokens)
+          .where(and(
+            eq(clientPortalInviteTokens.workspaceId, workspaceId),
+            sql`${clientPortalInviteTokens.clientId} = ANY(${sql.raw(`ARRAY[${clientIds.map(id => `'${id}'`).join(',')}]`)})`
+          ));
+
+        // Build a lookup map: clientId → latest invite
+        const inviteMap = new Map<string, typeof latestInvites[0]>();
+        for (const inv of latestInvites) {
+          const existing = inviteMap.get(inv.clientId);
+          if (!existing || new Date(inv.createdAt as any) > new Date(existing.createdAt as any)) {
+            inviteMap.set(inv.clientId, inv);
+          }
+        }
+
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        enrichedData = result.data.map(client => {
+          const inv = inviteMap.get(client.id);
+          if (!inv) return client;
+          const isExpired = now > new Date(inv.expiresAt as any).getTime() ||
+            (now - new Date(inv.createdAt as any).getTime() > SEVEN_DAYS);
+          const visualStatus = inv.isUsed ? 'accepted'
+            : isExpired ? 'expired'
+            : 'invited';
+          const borderClass = visualStatus === 'accepted' ? 'border-green-500'
+            : visualStatus === 'expired' ? 'border-red-500'
+            : 'border-orange-500';
+          return { ...client, portalVisualStatus: visualStatus, portalBorderClass: borderClass };
+        });
+      } catch (enrichErr) {
+        log.warn('[ClientRoutes] Portal status enrichment failed (non-fatal):', enrichErr);
+      }
+    }
+    // ── END ENRICHMENT ────────────────────────────────────────────────────────
+
     const ctx = createFilterContext(req);
-    res.json({ ...result, data: filterClientsForResponse(result.data, ctx) });
+    res.json({ ...result, data: filterClientsForResponse(enrichedData, ctx) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

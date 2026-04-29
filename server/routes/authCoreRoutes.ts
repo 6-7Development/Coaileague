@@ -3,8 +3,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { AUTH } from '../config/platformConfig';
 import { db, pool, isDbCircuitOpen } from "../db";
-import { users, platformRoles, employees, workspaces, expenseCategories } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { users, platformRoles, employees, workspaces, expenseCategories, clients, clientPortalInviteTokens } from "@shared/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
 ;
 import { isProduction } from '../lib/isProduction';
 
@@ -540,6 +540,60 @@ router.post("/api/auth/login", async (req, res) => {
         log.warn(`[Auth] SECURITY: Platform-role user ${user.id} (${activePlatformRole.role}) has no phone for SMS OTP gate`);
       }
     }
+
+    // ── PHASE 2 SURGICAL: Invitation Status Gate ──────────────────────────────
+    // Spec §3: EXPIRED users must not be able to login with temp password.
+    // Check if this user came in via a client portal invite and that invite
+    // is now expired. Also flips status INVITED → ACTIVE on first successful login.
+    if (user.role === 'client') {
+      try {
+        const [clientRecord] = await db
+          .select({ id: clients.id, clientOnboardingStatus: (clients as any).clientOnboardingStatus })
+          .from(clients)
+          .where(eq(clients.userId, user.id))
+          .limit(1);
+
+        if (clientRecord) {
+          // Check if there's an active (non-expired, non-used) or used invite
+          const [invite] = await db
+            .select({ isUsed: clientPortalInviteTokens.isUsed, expiresAt: clientPortalInviteTokens.expiresAt, createdAt: clientPortalInviteTokens.createdAt })
+            .from(clientPortalInviteTokens)
+            .where(eq(clientPortalInviteTokens.clientId, clientRecord.id))
+            .orderBy(desc(clientPortalInviteTokens.createdAt))
+            .limit(1);
+
+          if (invite) {
+            const now = Date.now();
+            const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+            const created = invite.createdAt ? new Date(invite.createdAt as any).getTime() : now;
+            const isExpired = now > new Date(invite.expiresAt as any).getTime() || (now - created > SEVEN_DAYS);
+
+            // EXPIRED gate: block login for expired, non-accepted invites (RED border → blocked)
+            if (isExpired && !invite.isUsed) {
+              log.warn(`[Auth] EXPIRED INVITE: Client user ${user.id} attempted login on expired invitation`);
+              recordIpAuthFailure(ip);
+              return res.status(403).json({
+                message: 'Your invitation has expired. Please contact your account manager for a new invitation.',
+                code: 'INVITATION_EXPIRED',
+                visualStatus: 'expired',
+              });
+            }
+
+            // HANDSHAKE FLIP: First successful login → flip INVITED → ACTIVE (GREEN border)
+            if (clientRecord.clientOnboardingStatus !== 'active') {
+              await db.update(clients)
+                .set({ clientOnboardingStatus: 'active' as any, updatedAt: new Date() })
+                .where(eq(clients.id, clientRecord.id));
+              log.info(`[Auth] Handshake complete — client ${clientRecord.id} flipped INVITED→ACTIVE`);
+            }
+          }
+        }
+      } catch (inviteCheckErr) {
+        // Non-fatal: log but don't block login if invite check fails
+        log.warn('[Auth] Invite status check failed (non-fatal):', inviteCheckErr);
+      }
+    }
+    // ── END INVITATION STATUS GATE ────────────────────────────────────────────
 
     // FIX [SESSION FIXATION]: Rotate the session ID before assigning the authenticated
     // userId. Without regenerate(), an attacker who planted a pre-login session cookie
