@@ -31,7 +31,7 @@ import {
   TRINITY_ALLOWED_ROLES,
   type} from '@/config/trinity';
 import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
-import {Eye, X,
+import {X,
   Send,
   Loader2,
   GripHorizontal,
@@ -152,7 +152,6 @@ const defaultContext: TrinityModalContextType = {
   messages: [],
   setMessages: () => {},
   clearMessages: () => {},
-  mode: 'business',
   pendingPrompt: null,
   setPendingPrompt: () => {},
   pendingAutoSubmit: false,
@@ -698,10 +697,6 @@ function PreviewPanel({ preview, onApply, onCancel }: {
   // Check if user is platform staff using TRINITY_ALLOWED_ROLES (centralized config)
   const isPlatformStaff = user?.role && 
     (TRINITY_ALLOWED_ROLES.platformRoles as readonly string[]).includes(user.role);
-  
-  // Filter modes - only show Guru to platform staff (support agents)
-    return true;
-  });
   
   return (
     <div className="flex gap-1 p-1 bg-muted rounded-lg">
