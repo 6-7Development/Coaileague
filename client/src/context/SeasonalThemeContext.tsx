@@ -10,8 +10,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 // useQuery removed — seasonal state is static (no API call)
-import { SEASONAL_EFFECTS_CONFIG } from '@/config/seasonalThemes';
-import { setGlobalSeasonalState, type HolidayKey } from '@/config/mascotConfig';
 import { useAuth } from '@/hooks/useAuth';
 
 export type SeasonId = 
@@ -191,14 +189,10 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
     if (!profile) return;
     
     // Map SeasonId to HolidayKey (they're compatible types)
-    const holidayKey = profile.seasonId as HolidayKey;
-    const isEnabled = profile.isHoliday && profile.seasonId !== 'default';
-    
-    setGlobalSeasonalState(isEnabled, holidayKey);
+        const isEnabled = profile.isHoliday && profile.seasonId !== 'default';
     
     // Cleanup: reset to default on unmount
     return () => {
-      setGlobalSeasonalState(false, 'default');
     };
   }, [profile?.seasonId, profile?.isHoliday]);
   
