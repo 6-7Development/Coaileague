@@ -331,7 +331,7 @@ export class UsageTracker {
     const monthlyAllocation = tierConfig.monthlyTokens;
     const allowsOverage = tier !== 'free'; // free tier is hard-capped; paid tiers bill overages automatically
     
-    // Get credit balance from credits ledger (would integrate with creditsLedgerService)
+    // Get token balance from tokenManager (canonical token ledger)
     // For now, return the monthly allocation as balance
     const balance = monthlyAllocation;
     const usedThisMonth = 0; // Would track from credits ledger

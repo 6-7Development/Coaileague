@@ -40,7 +40,7 @@ const stripe = new Proxy({} as Stripe, {
 
 export const billingRouter = Router();
 
-import { subscriptionTiers, orgSubscriptions, creditBalances, platformInvoices, employees } from '@shared/schema';
+import { subscriptionTiers, orgSubscriptions, platformInvoices, employees } from '@shared/schema';
 import { createLogger } from '../lib/logger';
 const log = createLogger('BillingApi');
 

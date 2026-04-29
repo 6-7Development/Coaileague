@@ -2596,6 +2596,16 @@ self.addEventListener('activate', async () => {
           )`);
           await missingTablePool.query('CREATE INDEX IF NOT EXISTS idx_ai_call_log_ws ON ai_call_log (workspace_id)');
           await missingTablePool.query('CREATE INDEX IF NOT EXISTS idx_univ_audit_ws ON universal_audit_log (workspace_id, created_at)');
+          // Ensure all required columns exist regardless of when the table was created
+          await missingTablePool.query(`
+            ALTER TABLE universal_audit_log
+              ADD COLUMN IF NOT EXISTS action_description TEXT,
+              ADD COLUMN IF NOT EXISTS outcome VARCHAR,
+              ADD COLUMN IF NOT EXISTS resolution_tier VARCHAR,
+              ADD COLUMN IF NOT EXISTS changes JSONB,
+              ADD COLUMN IF NOT EXISTS before_state JSONB,
+              ADD COLUMN IF NOT EXISTS after_state JSONB
+          `);
           log.info('[Startup] Auto-created missing tables: ai_call_log, universal_audit_log');
         // Auto-create core auth tables that may be missing
         try {

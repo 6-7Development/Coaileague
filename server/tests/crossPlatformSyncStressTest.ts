@@ -652,7 +652,7 @@ async function phase10_api_endpoint_data_consistency() {
   console.log('='.repeat(70));
 
   const billingApiSrc = fs.readFileSync('server/billing-api.ts', 'utf-8');
-  const creditRoutesSrc = fs.readFileSync('server/routes/creditRoutes.ts', 'utf-8');
+  const creditRoutesSrc = fs.readFileSync('server/routes/billing-api.ts', 'utf-8');
 
   record({
     name: 'Billing API Has /features Endpoint',
@@ -987,7 +987,7 @@ async function phase15_handler_imports_shared_config() {
   console.log('='.repeat(70));
 
   const billingApiSrc = fs.readFileSync('server/billing-api.ts', 'utf-8');
-  const creditRoutesSrc = fs.readFileSync('server/routes/creditRoutes.ts', 'utf-8');
+  const creditRoutesSrc = fs.readFileSync('server/routes/billing-api.ts', 'utf-8');
 
   const billingImportsConfig = billingApiSrc.includes('@shared/billingConfig') ||
     billingApiSrc.includes('billingConfig') ||

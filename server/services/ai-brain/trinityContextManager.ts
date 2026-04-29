@@ -392,18 +392,18 @@ class TrinityContextManager {
         return {};
       }
 
-      const creditBalance = creditsAccount.currentBalance;
-      const creditAllocation = creditsAccount.monthlyAllocation;
-      const creditPercentUsed = creditAllocation > 0 
-        ? Math.round(((creditAllocation - creditBalance) / creditAllocation) * 100)
+      const tokenBalance = creditsAccount.currentBalance;
+      const tokenAllocation = creditsAccount.monthlyAllocation;
+      const tokenPercentUsed = tokenAllocation > 0 
+        ? Math.round(((tokenAllocation - tokenBalance) / tokenAllocation) * 100)
         : 0;
 
-      log.info(`[TrinityContext] Credit awareness loaded for ${workspaceId}: ${creditBalance}/${creditAllocation} (${creditPercentUsed}% used)`);
+      log.info(`[TrinityContext] Token awareness loaded for ${workspaceId}: ${tokenBalance}/${tokenAllocation} (${tokenPercentUsed}% used)`);
 
       return {
-        creditBalance,
-        creditAllocation,
-        creditPercentUsed,
+        tokenBalance,
+        tokenAllocation,
+        tokenPercentUsed,
       };
     } catch (error) {
       log.warn('[TrinityContext] Failed to load credit balance:', error);
@@ -563,7 +563,7 @@ class TrinityContextManager {
     let promptContext = '';
 
     // Add workspace context with Trinity token/action awareness (legacy field names retained)
-    if (context.memory.workspaceContext.workspaceName || context.memory.workspaceContext.creditBalance !== undefined) {
+    if (context.memory.workspaceContext.workspaceName || context.memory.workspaceContext.tokenBalance !== undefined) {
       promptContext += `## Current Context\n`;
       if (context.memory.workspaceContext.workspaceName) {
         promptContext += `- Workspace: ${context.memory.workspaceContext.workspaceName}\n`;
@@ -572,7 +572,7 @@ class TrinityContextManager {
       promptContext += `- Subscription: ${context.memory.workspaceContext.subscriptionTier || 'free'}\n`;
       
       // TRINITY TOKEN/ACTION AWARENESS: Include monthly usage status for self-aware decision making
-      if (context.memory.workspaceContext.creditBalance !== undefined) {
+      if (context.memory.workspaceContext.tokenBalance !== undefined) {
         const creditBalance = context.memory.workspaceContext.creditBalance;
         const creditAllocation = context.memory.workspaceContext.creditAllocation || 0;
         const creditPercentUsed = context.memory.workspaceContext.creditPercentUsed || 0;

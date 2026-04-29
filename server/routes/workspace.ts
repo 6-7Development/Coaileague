@@ -7,7 +7,6 @@ import {
   employees,
   orgSubscriptions,
   subscriptionTiers,
-  creditBalances,
   usageCaps,
   workspaceUsageTracking,
 } from '@shared/schema';
@@ -241,38 +240,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
           creditAllocation: freeTier.baseCredits,
         }).onConflictDoNothing();
 
-        await db.insert(creditBalances).values({
-          workspaceId: workspace.id,
-          subscriptionCredits: freeTier.baseCredits,
-          carryoverCredits: 0,
-          purchasedCredits: 0,
-        }).onConflictDoNothing();
-
-        // Create current-period usage cap
-        const now = new Date();
-        const billingCycle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        await db.insert(usageCaps).values({
-          workspaceId: workspace.id,
-          billingCycle,
-          aiScheduledShiftsUsed: 0,
-          aiScheduledShiftsCap: 100,
-          analyticsReportsUsed: 0,
-          analyticsReportsCap: 50,
-          contractReviewsUsed: 0,
-          contractReviewsCap: 25,
-          botInteractionsToday: 0,
-          botInteractionsDailyCap: 500,
-          botInteractionsLastReset: now,
-        }).onConflictDoNothing();
-      }
-    } catch (subError: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      log.error(`[Workspace Create] Subscription/balance init failed (non-blocking):`, subError.message);
-    }
-
-    try {
-      const { provisionWorkspace } = await import('../services/workspaceProvisioningService');
-      await provisionWorkspace({ workspaceId: workspace.id, ownerId: userId });
+        // Token balance managed by tokenManager — no manual credit_balances insert needed
     } catch (provError: unknown) {
       log.warn(`[Workspace Create] Provisioning failed (non-blocking):`, (provError as any)?.message);
     }

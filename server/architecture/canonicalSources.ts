@@ -14,10 +14,10 @@ export const CANONICAL_SOURCES = {
 
   // ─── CREDITS & BILLING ────────────────────────────────────────────────────
   credits: {
-    balance:       'GET /api/credits/balance',         // creditRoutes.ts — authoritative balance + creditsUsed
-    usageBreakdown:'GET /api/credits/usage-breakdown', // creditRoutes.ts — per-feature usage ledger
-    transactions:  'GET /api/credits/transactions',    // creditRoutes.ts — full audit trail
-    packs:         'GET /api/credits/packs',           // creditRoutes.ts — available purchase packs
+    balance:       'GET /api/billing/token-state',     // billing-api.ts — token balance via tokenManager
+    usageBreakdown:'GET /api/billing/usage-history',   // billing-api.ts — per-feature token usage
+    transactions:  'GET /api/billing/usage-history',   // billing-api.ts — token usage audit trail
+    packs:         'GET /api/billing/subscription',    // billing-api.ts — subscription tiers
     // NOTE: /api/billing/credits* and /api/billing/subscription.credits are
     // derived views for the billing UI only. They MUST NOT be used by widgets,
     // dashboard cards, or any component that displays a credit number to the user.

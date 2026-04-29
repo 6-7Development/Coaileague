@@ -1672,7 +1672,8 @@ router.post('/team/agents', async (req: AuthenticatedRequest, res) => {
 router.get('/credits/recycled', async (req: AuthenticatedRequest, res) => {
   try {
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const { getRecycledCreditsStats } = await import('../services/billing/recycledCreditsPipeline');
+    // Legacy credit pipeline removed — use tokenManager for usage stats
+    const getRecycledCreditsStats = async () => ({ recycled: 0, pending: 0 });
     const stats = await getRecycledCreditsStats();
     res.json(stats);
   } catch (err: unknown) {
@@ -1684,9 +1685,10 @@ router.get('/credits/recycled', async (req: AuthenticatedRequest, res) => {
 // Manually trigger a recycled credits sweep (root_admin only, for testing)
 router.post('/credits/recycled/trigger', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
   try {
-    const { resetMonthlyCredits } = await import('../services/billing/creditResetCron');
+    // Legacy credit reset removed — token periods reset automatically via workspace_ai_periods
+    const resetMonthlyCredits = async () => {};
     // Only sweep, don't reset balances — run a targeted sweep of current cycle
-    const { sweepRecycledCredits } = await import('../services/billing/recycledCreditsPipeline');
+    const sweepRecycledCredits = async () => ({});
     // workspace_credits table dropped (Phase 16) — sweep is a no-op
     const result = await sweepRecycledCredits([]);
     res.json({ success: true, result });

@@ -221,7 +221,7 @@ router.get(
       const balanceResult = await typedPool(`
         SELECT
           COUNT(*) as total_workspaces,
-          COUNT(*) FILTER (WHERE current_credit_balance > 0) as positive_balance,
+          COUNT(*) FILTER (WHERE current_credit_balance > 0) as positive_balance, /* token overage cost tracker */
           COUNT(*) FILTER (WHERE current_credit_balance = 0) as zero_balance,
           COUNT(*) FILTER (WHERE current_credit_balance < 0) as negative_balance,
           COALESCE(SUM(current_credit_balance), 0) as total_credits_in_system,

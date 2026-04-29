@@ -260,7 +260,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: any, res
       res.json({
         canUse: canUse.canUse,
         reason: canUse.reason,
-        creditBalance: canUse.creditBalance,
+        tokenBalance: canUse.tokenBalance ?? canUse.creditBalance ?? 0,
         activeTasks: canUse.activeTasks,
         maxConcurrent: canUse.maxConcurrent,
         config: {

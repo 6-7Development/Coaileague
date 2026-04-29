@@ -3,6 +3,7 @@ import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { useLocation } from "wouter";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 // Platform role dashboards (lazy-loaded)
 const RootAdminDashboard     = lazy(() => import("./dashboards/RootAdminDashboard"));
@@ -77,6 +78,7 @@ export default function Dashboard() {
     isPlatformStaff,
     platformRole,
     isLoading: accessLoading,
+    error: accessError,
   } = useWorkspaceAccess();
 
   useEffect(() => {
@@ -94,6 +96,17 @@ export default function Dashboard() {
 
   if (accessLoading) {
     return <LoadingSpinner />;
+  }
+
+  if (accessError) {
+    return (
+      <div className="p-6">
+        <DashboardLoadError
+          message={accessError instanceof Error ? accessError.message : "Failed to load workspace access"}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
   }
 
   const DashboardComponent = selectDashboard(

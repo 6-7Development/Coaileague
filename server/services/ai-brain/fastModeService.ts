@@ -266,7 +266,7 @@ class FastModeService {
   async canUseFastMode(workspaceId: string, estimatedCredits: number): Promise<{
     canUse: boolean;
     reason?: string;
-    creditBalance: number;
+    tokenBalance: number;
     activeTasks: number;
     maxConcurrent: number;
   }> {
@@ -278,7 +278,7 @@ class FastModeService {
       return {
         canUse: false,
         reason: `Insufficient credits. Need ${requiredCredits}, have ${balance}`,
-        creditBalance: balance,
+        tokenBalance: balance,
         activeTasks: this.getActiveTaskCount(workspaceId),
         maxConcurrent: FAST_MODE_CONFIG.maxConcurrentTasksPerWorkspace
       };
@@ -290,7 +290,7 @@ class FastModeService {
       return {
         canUse: false,
         reason: `Maximum concurrent fast mode tasks reached (${activeTasks}/${FAST_MODE_CONFIG.maxConcurrentTasksPerWorkspace})`,
-        creditBalance: balance,
+        tokenBalance: balance,
         activeTasks,
         maxConcurrent: FAST_MODE_CONFIG.maxConcurrentTasksPerWorkspace
       };
@@ -298,7 +298,7 @@ class FastModeService {
     
     return {
       canUse: true,
-      creditBalance: balance,
+      tokenBalance: balance,
       activeTasks,
       maxConcurrent: FAST_MODE_CONFIG.maxConcurrentTasksPerWorkspace
     };
