@@ -26,12 +26,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-    TRINITY_BRANDING, 
+  TRINITY_BRANDING, 
   TRINITY_MOBILE_CONFIG,
   TRINITY_ALLOWED_ROLES,
-  type} from '@/config/trinity';
+} from '@/config/trinity';
 import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
-import {Eye, X,
+import { Eye, X,
   Send,
   Loader2,
   GripHorizontal,
@@ -50,7 +50,6 @@ import {Eye, X,
   Briefcase,
   Heart,
   Activity,
-  Eye,
   Undo2,
   Play,
   Mic,
@@ -152,7 +151,6 @@ const defaultContext: TrinityModalContextType = {
   messages: [],
   setMessages: () => {},
   clearMessages: () => {},
-  mode: 'business',
   pendingPrompt: null,
   setPendingPrompt: () => {},
   pendingAutoSubmit: false,
@@ -691,31 +689,6 @@ function PreviewPanel({ preview, onApply, onCancel }: {
         </Button>
       </div>
     </motion.div>
-  );
-}
-
-  
-  // Check if user is platform staff using TRINITY_ALLOWED_ROLES (centralized config)
-  const isPlatformStaff = user?.role && 
-    (TRINITY_ALLOWED_ROLES.platformRoles as readonly string[]).includes(user.role);
-  
-  // Filter modes - only show Guru to platform staff (support agents)
-    return true;
-  });
-  
-  return (
-    <div className="flex gap-1 p-1 bg-muted rounded-lg">
-        return (
-          <button
-            className={['flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all', isActive 
-                ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm" 
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'].join(' ')}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
