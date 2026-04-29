@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { db } from '../db';
-import { hasManagerAccess } from '../rbac';
+import { hasManagerAccess, requireAuth } from '../rbac';
 import {
   flexContractors, flexAvailability, flexGigs,
   flexGigApplications, flexGigRatings, users

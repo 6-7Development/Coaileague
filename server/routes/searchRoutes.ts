@@ -4,6 +4,7 @@
  * deep links, rate limiting (30 req/min/user), and search query logging.
  */
 
+import { requireAuth } from '../rbac';
 import { sanitizeError } from '../middleware/errorHandler';
 import type { Express, Request, Response } from 'express';
 import express from 'express';
