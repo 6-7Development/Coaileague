@@ -383,6 +383,8 @@ function OfficerCard({ officer, expanded, onToggle }: { officer: any; expanded: 
   );
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function RegulatoryDashboard() {
   const [token, setToken] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");

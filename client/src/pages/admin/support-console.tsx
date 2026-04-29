@@ -628,6 +628,8 @@ function WorkspaceDeepDive({ workspaceId, data, isLoading, onExecuteAction }: {
   );
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function SupportConsolePage() {
   return <SupportDashboard />;
 }

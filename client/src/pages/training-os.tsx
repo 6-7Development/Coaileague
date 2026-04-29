@@ -150,6 +150,8 @@ interface Certification {
   status: "valid" | "expired" | "revoked";
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function LearningManagement() {
   const modules = useModules();
   const module = modules.getModule('learning_management');

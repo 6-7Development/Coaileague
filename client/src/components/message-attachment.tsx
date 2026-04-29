@@ -15,6 +15,8 @@ interface MessageAttachmentProps {
   className?: string;
 }
 
+const ImageLightbox = ({ src, alt, onClose }: any) => <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onClick={onClose}><img src={src} alt={alt} className="max-w-full max-h-full object-contain" /></div>;
+
 export function MessageAttachment({ url, name, type, className = "" }: MessageAttachmentProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 

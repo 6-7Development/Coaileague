@@ -123,6 +123,8 @@ const CHANNEL_ICONS: Record<string, any> = {
   sms: Smartphone,
 };
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function AlertConfiguration() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('configuration');

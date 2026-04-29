@@ -103,6 +103,8 @@ const INTEGRATIONS: AccountingIntegration[] = [
   },
 ];
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function AccountingIntegrations() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();

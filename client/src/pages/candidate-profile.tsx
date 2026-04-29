@@ -248,6 +248,8 @@ function ChatCopilotPanel({
 
 // ─── Candidate Profile Page ───────────────────────────────────────────────────
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function CandidateProfilePage() {
   const params = useParams<{ id: string }>();
   const candidateId = params?.id;

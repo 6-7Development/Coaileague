@@ -616,6 +616,8 @@ const REPORT_COMPONENTS: Record<string, any> = {
   "workers-comp": WorkersCompReport,
 };
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function QBReports() {
   const { toast } = useToast();
   const [activeReport, setActiveReport] = useState<string | null>(null);

@@ -2865,6 +2865,7 @@ function DesktopChatFAB() {
  * and the BubblePopup panel via a portal. On mobile, the FAB is hidden —
  * mobile uses UniversalFAB instead.
  */
+
 export function UnifiedChatBubble() {
   const { closeBubble } = useChatDock();
   const [location] = useLocation();

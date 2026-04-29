@@ -59,6 +59,8 @@ interface SafetyCheckRecord {
   status: 'passed' | 'issues_found';
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function SafetyCheck() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();

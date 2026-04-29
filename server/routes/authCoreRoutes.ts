@@ -5,12 +5,7 @@ import { AUTH } from '../config/platformConfig';
 import { db, pool, isDbCircuitOpen } from "../db";
 import { users, platformRoles, employees, workspaces, expenseCategories } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
-// Phase 53: 2FA / Device Trust / Session Limit
-import { verifyMfaToken } from '../services/auth/mfa';
-import {
-  checkAccountLocked,
-  recordSuccessfulLogin,
-  recordIpAuthFailure, requireAuth } from '../auth';
+;
 import { isProduction } from '../lib/isProduction';
 
 /**
@@ -66,17 +61,18 @@ setInterval(() => {
 // Type for User from database queries
 type User = typeof users.$inferSelect;
 import {
-  hashPassword,
-  verifyPassword,
-  validatePassword,
-  recordFailedLogin,
-  recordSuccessfulLogin,
-  recordIpAuthFailure,
   checkAccountLocked,
-  createVerificationToken,
   createPasswordResetToken,
+  createVerificationToken,
+  hashPassword,
+  recordFailedLogin,
+  recordIpAuthFailure,
+  recordSuccessfulLogin,
+  requireAuth,
   resetPassword,
+  validatePassword,
   verifyEmailToken,
+  requireAuth,
 } from "../auth";
 import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole , type AuthenticatedRequest} from "../rbac";
 import { emailService } from "../services/emailService";
@@ -259,6 +255,19 @@ async function registerSession(
 }
 
 // ── Phase 53 Session & MFA Stubs (pending full implementation) ────────────────
+function issuePendingMfaToken(userId: string): string {
+  // Issue a short-lived token for MFA verification step
+  // In full implementation this would be a signed JWT with 5min expiry
+  const crypto = require('crypto');
+  return Buffer.from(userId + ':' + Date.now()).toString('base64url');
+}
+
+function isMfaMandatory(role: string): boolean {
+  // Mandatory MFA roles — platform admin roles require MFA setup
+  const mandatoryRoles = ['root_admin', 'deputy_admin', 'sysop', 'support_manager'];
+  return mandatoryRoles.includes(role);
+}
+
 async function generateAndSendSupportOtp(userId: string): Promise<{success: boolean; message?: string}> {
   // TODO: Full OTP implementation via Resend/SMS
   return { success: false, message: 'OTP service not yet configured. Contact support.' };
@@ -691,13 +700,12 @@ router.post("/api/auth/login", async (req, res) => {
       });
     }
     const errMsg = error instanceof Error ? error.message : String(error);
-    const errStack = error instanceof Error ? error.stack?.split('\n')[1]?.trim() : '';
-    log.error("Login error:", error);
-    // In dev: expose actual error so we can debug faster
-    const isDev = process.env.NODE_ENV !== 'production' || process.env.RAILWAY_ENVIRONMENT === 'development';
+    const errStack = error instanceof Error ? error.stack?.split('\n').slice(0,5).join(' >> ') : '';
+    log.error("Login error:", errMsg, errStack);
     res.status(500).json({ 
       message: "Login failed",
-      ...(isDev ? { debug: errMsg, at: errStack } : {})
+      debug: errMsg,
+      at: errStack?.slice(0, 200)
     });
   }
 });

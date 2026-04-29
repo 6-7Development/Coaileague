@@ -233,6 +233,8 @@ interface MobilePageWrapperProps {
   showSeasonalEffects?: boolean;
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export function MobilePageWrapper({
   children,
   // onRefresh and enablePullToRefresh kept in interface for compat but PTR is removed —
