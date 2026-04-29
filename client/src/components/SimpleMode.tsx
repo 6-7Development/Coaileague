@@ -1,37 +1,24 @@
 import { type ReactNode } from 'react';
-import { useSimpleMode } from '@/contexts/SimpleModeContext';
+
+// SimpleMode infrastructure — mode switching permanently retired.
+// HideInSimpleMode/ShowInSimpleMode are kept as pass-throughs for
+// import compatibility. Simple mode is always OFF — all content shows.
 
 interface SimpleModeProps {
   children: ReactNode;
   simple?: ReactNode;
 }
 
-export function SimpleMode({ children, simple }: SimpleModeProps) {
-  const { isSimpleMode } = useSimpleMode();
-  
-  if (isSimpleMode && simple !== undefined) {
-    return <>{simple}</>;
-  }
-  
+export function SimpleMode({ children }: SimpleModeProps) {
   return <>{children}</>;
 }
 
 export function HideInSimpleMode({ children }: { children: ReactNode }) {
-  const { isSimpleMode } = useSimpleMode();
-  
-  if (isSimpleMode) {
-    return null;
-  }
-  
+  // Simple mode is retired — always show content
   return <>{children}</>;
 }
 
-export function ShowInSimpleMode({ children }: { children: ReactNode }) {
-  const { isSimpleMode } = useSimpleMode();
-  
-  if (!isSimpleMode) {
-    return null;
-  }
-  
-  return <>{children}</>;
+export function ShowInSimpleMode({ _children }: { _children: ReactNode }) {
+  // Simple mode is retired — ShowInSimpleMode renders nothing (it was "only in simple mode")
+  return null;
 }

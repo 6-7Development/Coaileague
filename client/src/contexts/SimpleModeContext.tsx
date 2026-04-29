@@ -1,118 +1,31 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useAuth } from '@/hooks/useAuth';
+// SimpleModeContext — simple mode permanently retired.
+// This stub preserves import compatibility across the codebase.
+// All components using useSimpleMode will receive isSimpleMode=false
+// (full-featured mode always active).
 
-type ViewModePreference = 'inherit' | 'simple' | 'pro';
-type ViewModeSource = 'user_fallback' | 'workspace_default' | 'workspace_forced' | 'employee_preference';
-
-interface ViewModeResponse {
-  effectiveMode: 'simple' | 'pro';
-  source: ViewModeSource;
-  isSimpleMode: boolean;
-  workspaceId: string | null;
-}
+import { createContext, useContext, type ReactNode } from 'react';
 
 interface SimpleModeContextType {
   isSimpleMode: boolean;
   toggleSimpleMode: () => void;
   setSimpleMode: (value: boolean) => void;
-  setViewModePreference: (preference: ViewModePreference) => void;
-  isLoading: boolean;
-  viewModeSource: ViewModeSource | null;
-  isProView: boolean;
-  currentWorkspaceId: string | null;
 }
 
-const SimpleModeContext = createContext<SimpleModeContextType | undefined>(undefined);
+const SimpleModeContext = createContext<SimpleModeContextType>({
+  isSimpleMode: false,        // Always full mode
+  toggleSimpleMode: () => {},  // No-op
+  setSimpleMode: () => {},     // No-op
+});
 
 export function SimpleModeProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [localSimpleMode, setLocalSimpleMode] = useState<boolean>(() => {
-    const stored = localStorage.getItem('simpleMode');
-    return stored === 'true';
-  });
-  const [viewModeSource, setViewModeSource] = useState<ViewModeSource | null>(null);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
-
-  // Fetch effective view mode from server (workspace-aware) - only when authenticated
-  const { data: viewMode, isLoading: viewModeLoading } = useQuery<ViewModeResponse>({
-    queryKey: ['/api/user/view-mode'],
-    enabled: !!user,
-    retry: false,
-    staleTime: 30000, // Cache for 30 seconds
-  });
-
-  // Mutation to update view mode preference
-  const updatePreferenceMutation = useMutation({
-    mutationFn: async (params: { simpleMode?: boolean; viewModePreference?: ViewModePreference }) => {
-      return apiRequest('PATCH', '/api/user/preferences', params);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user/view-mode'] });
-    },
-  });
-
-  // Sync with server response
-  useEffect(() => {
-    if (viewMode) {
-      setLocalSimpleMode(viewMode.isSimpleMode);
-      setViewModeSource(viewMode.source);
-      setCurrentWorkspaceId(viewMode.workspaceId);
-      localStorage.setItem('simpleMode', String(viewMode.isSimpleMode));
-      localStorage.setItem('viewModeWorkspace', viewMode.workspaceId || '');
-    }
-  }, [viewMode]);
-
-  // Set simple mode with workspace-aware preference
-  const setSimpleMode = useCallback((value: boolean) => {
-    setLocalSimpleMode(value);
-    localStorage.setItem('simpleMode', String(value));
-    
-    // Update both user-level and workspace-level preference
-    const preference: ViewModePreference = value ? 'simple' : 'pro';
-    updatePreferenceMutation.mutate({ 
-      simpleMode: value,
-      viewModePreference: preference 
-    });
-  }, [updatePreferenceMutation]);
-
-  // Set workspace-specific view mode preference
-  const setViewModePreference = useCallback((preference: ViewModePreference) => {
-    const isSimple = preference === 'simple';
-    setLocalSimpleMode(isSimple);
-    localStorage.setItem('simpleMode', String(isSimple));
-    
-    updatePreferenceMutation.mutate({ viewModePreference: preference });
-  }, [updatePreferenceMutation]);
-
-  const toggleSimpleMode = useCallback(() => {
-    setSimpleMode(!localSimpleMode);
-  }, [localSimpleMode, setSimpleMode]);
-
   return (
-    <SimpleModeContext.Provider 
-      value={{ 
-        isSimpleMode: localSimpleMode, 
-        isProView: !localSimpleMode,
-        toggleSimpleMode, 
-        setSimpleMode,
-        setViewModePreference,
-        isLoading: viewModeLoading,
-        viewModeSource,
-        currentWorkspaceId,
-      }}
-    >
+    <SimpleModeContext.Provider value={{ isSimpleMode: false, toggleSimpleMode: () => {}, setSimpleMode: () => {} }}>
       {children}
     </SimpleModeContext.Provider>
   );
 }
 
-export function useSimpleMode() {
-  const context = useContext(SimpleModeContext);
-  if (context === undefined) {
-    throw new Error('useSimpleMode must be used within a SimpleModeProvider');
-  }
-  return context;
+// Always returns { isSimpleMode: false } — mode switching retired.
+export function useSimpleMode(): SimpleModeContextType {
+  return useContext(SimpleModeContext);
 }
