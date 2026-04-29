@@ -10,7 +10,7 @@
  *   accepted → GREEN  border (handshake complete)
  *   expired  → RED    border (> 7 days or manually revoked)
  */
-import { db } from '../../db';
+import { db, pool } from '../../db';
 import { clientPortalInviteTokens, orgInvitations } from '@shared/schema';
 import { sql, lt, inArray, and } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
@@ -24,14 +24,17 @@ export async function runInviteReaper(): Promise<void> {
   let reaped = 0;
 
   try {
-    // Reap client portal invites (clientPortalInviteTokens)
-    const clientResult = await db.execute(sql`
+    // Reap client portal invites — flip invite_status to 'expired'
+    // Layer 3 Rule: UI reads status from DB — Reaper must have ALREADY flipped it
+    const clientResult = await pool.query(`
       UPDATE client_portal_invite_tokens
-      SET updated_at = NOW()
+      SET invite_status = 'expired',
+          updated_at = NOW()
       WHERE
-        created_at < ${cutoff}
+        created_at < $1
         AND is_used = false
-    `);
+        AND COALESCE(invite_status, 'invited') NOT IN ('active', 'expired', 'locked')
+    `, [cutoff]);
     reaped += (clientResult as any).rowCount || 0;
   } catch (err) {
     log.warn('[Reaper] client_portal_invite_tokens sweep failed (non-fatal):', err);

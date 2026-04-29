@@ -1520,6 +1520,73 @@ const constraints: CriticalConstraint[] = [
       );
     },
   },
+  // ── 360 Master Logic — Layer 1: Schema Rules ─────────────────────────────
+  {
+    name: 'invite_tokens_unique_email_workspace',
+    rationale: 'Anti-race condition: UNIQUE(email, workspace_id) on client_portal_invite_tokens prevents two concurrent manager requests from creating duplicate invites for the same recipient. DB engine rejects the second even at identical millisecond timestamps.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_indexes
+         WHERE tablename = 'client_portal_invite_tokens'
+           AND indexname = 'uq_invite_email_workspace'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      // Only index non-expired, non-used tokens — allows re-invite after expiry
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_invite_email_workspace
+          ON client_portal_invite_tokens (email, workspace_id)
+          WHERE is_used = false
+      `);
+    },
+  },
+  {
+    name: 'invite_tokens_status_and_activated_at',
+    rationale: 'Layer 1: Status enum (invited/active/expired/locked) + activated_at timestamp replace boolean is_used. Status is the single source of truth; UI reads it directly — never calculates color from timestamps.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'client_portal_invite_tokens'
+           AND column_name = 'invite_status'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invite_status_canonical') THEN
+            CREATE TYPE invite_status_canonical AS ENUM ('invited','active','expired','locked');
+          END IF;
+        END $$
+      `).catch(() => null);
+      // Add invite_status column (keeps is_used for backward compat)
+      await pool.query(`
+        ALTER TABLE client_portal_invite_tokens
+          ADD COLUMN IF NOT EXISTS invite_status VARCHAR(20) NOT NULL DEFAULT 'invited'
+      `);
+      // Add activated_at — set by the INVITED→ACTIVE handshake
+      await pool.query(`
+        ALTER TABLE client_portal_invite_tokens
+          ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ DEFAULT NULL
+      `);
+      // Backfill: used tokens = active, expired tokens = expired
+      await pool.query(`
+        UPDATE client_portal_invite_tokens
+        SET invite_status = CASE
+          WHEN is_used = true THEN 'active'
+          WHEN expires_at < NOW() THEN 'expired'
+          ELSE 'invited'
+        END
+        WHERE invite_status = 'invited'
+      `);
+      // Index for Reaper sweeps
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_invite_tokens_status
+          ON client_portal_invite_tokens (invite_status, created_at)
+      `);
+    },
+  },
   {
     name: 'shifts_deleted_at_column',
     rationale: 'Soft-delete column added after initial schema definition; ALTER TABLE is idempotent via IF NOT EXISTS',

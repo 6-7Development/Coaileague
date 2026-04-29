@@ -1949,6 +1949,17 @@ self.addEventListener('activate', async () => {
     registerDaemon('BackupVerificationCron', stopBackupVerificationCron);
     registerDaemon('StatusHealthLoop', stopStatusHealthLoop);
 
+    // ── Layer 4 Gatekeeper: INVITED clients → /verify-onboarding ────────────
+    // Pillar 2 Activation Sync: blocks dashboard access until status = ACTIVE
+    // Must mount AFTER registerRoutes (needs session/passport initialized)
+    try {
+      const { verifyOnboardingGate } = await import('./middleware/verifyOnboardingGate');
+      app.use(verifyOnboardingGate);
+      log.info('[Gate] verifyOnboardingGate active — INVITED clients redirected to /verify-onboarding');
+    } catch (gateErr) {
+      log.warn('[Gate] verifyOnboardingGate failed to mount (non-fatal):', gateErr);
+    }
+
     // ── Semantic alias routes ────────────────────────────────────────────────
     // These provide canonical paths expected by the audit / frontend without
     // duplicating logic — they proxy to existing route handlers or query DB.

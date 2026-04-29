@@ -580,11 +580,27 @@ router.post("/api/auth/login", async (req, res) => {
             }
 
             // HANDSHAKE FLIP: First successful login → flip INVITED → ACTIVE (GREEN border)
+            // Layer 4 Rule: set activated_at = NOW() simultaneously with status flip
             if (clientRecord.clientOnboardingStatus !== 'active') {
               await db.update(clients)
-                .set({ clientOnboardingStatus: 'active' as any, updatedAt: new Date() })
+                .set({
+                  clientOnboardingStatus: 'active' as any,
+                  updatedAt: new Date(),
+                  // activated_at = the exact moment of first login (Pillar 2, Step 4)
+                  activatedAt: new Date() as any,
+                } as any)
                 .where(eq(clients.id, clientRecord.id));
-              log.info(`[Auth] Handshake complete — client ${clientRecord.id} flipped INVITED→ACTIVE`);
+              // Also flip the invite token status to 'active' and set activated_at
+              await db.execute(
+                sql`UPDATE client_portal_invite_tokens
+                    SET invite_status = 'active',
+                        activated_at = NOW(),
+                        updated_at = NOW()
+                    WHERE client_id = ${clientRecord.id}
+                      AND is_used = true
+                      AND invite_status != 'active'`
+              ).catch(() => null); // non-fatal
+              log.info(`[Auth] Handshake complete — client ${clientRecord.id} flipped INVITED→ACTIVE, activated_at set`);
             }
           }
         }

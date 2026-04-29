@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import { Router } from 'express';
 import { db } from '../db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { clients, clientPortalInviteTokens, auditLogs, users, workspaces } from '@shared/schema';
 import { requireManagerOrPlatformStaff, type AuthenticatedRequest } from '../rbac';
 import { NotificationDeliveryService } from '../services/notificationDeliveryService';
@@ -239,25 +239,102 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
     const email = client.email || client.pocEmail;
     if (!email) return res.status(400).json({ message: 'Client has no email or POC email configured.' });
 
-    // ── UNIQUE GUARD: no duplicate pending invites (spec §1.2 Email Locking) ──
-    const [existingPending] = await db.select({ id: clientPortalInviteTokens.id })
-      .from(clientPortalInviteTokens)
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days (Reaper TTL)
+
+    // ── LAYER 2 TRINITY STEPS: Logic Gate ────────────────────────────────────
+    // Step 1: Search — find any existing invite for this email+workspace
+    const [existingInvite] = await db.select({
+      id: clientPortalInviteTokens.id,
+      isUsed: clientPortalInviteTokens.isUsed,
+      expiresAt: clientPortalInviteTokens.expiresAt,
+    }).from(clientPortalInviteTokens)
       .where(and(
         eq(clientPortalInviteTokens.email, email.toLowerCase().trim()),
         eq(clientPortalInviteTokens.workspaceId, workspaceId),
-        eq(clientPortalInviteTokens.isUsed, false),
       ))
+      .orderBy(desc(clientPortalInviteTokens.createdAt))
       .limit(1);
 
-    if (existingPending) {
-      return res.status(409).json({
-        message: 'A pending invitation already exists for this email. Revoke it first or wait for it to expire.',
-        code: 'DUPLICATE_INVITE',
+    // Step 2: Logic Gate — three branches
+    if (existingInvite) {
+      const isExpired = new Date(existingInvite.expiresAt as any) < new Date();
+
+      // Gate A: ACTIVE — block entirely ("User already active")
+      if (existingInvite.isUsed) {
+        return res.status(409).json({
+          message: 'This client already has an active portal account.',
+          code: 'ALREADY_ACTIVE',
+          visualStatus: 'active',
+        });
+      }
+
+      // Gate B: INVITED (still valid) — prompt resend ("Invite already pending")
+      if (!isExpired) {
+        return res.status(409).json({
+          message: 'An invitation is already pending for this email. Would you like to resend it?',
+          code: 'INVITE_PENDING',
+          existingInviteId: existingInvite.id,
+          visualStatus: 'invited',
+          canResend: true,
+        });
+      }
+
+      // Gate C: EXPIRED — reactivate record, update created_at, resend
+      // Rule: never create a duplicate row — update the existing one atomically
+      await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`UPDATE client_portal_invite_tokens
+              SET token = ${token},
+                  expires_at = ${expiresAt},
+                  is_used = false,
+                  invite_status = 'invited',
+                  created_at = NOW(),
+                  updated_at = NOW(),
+                  activated_at = NULL
+              WHERE id = ${existingInvite.id}`
+        );
+        // Trinity Audit — Who, What, Where, When, Why (rollback if this fails)
+        await tx.insert(auditLogs).values({
+          workspaceId,
+          userId: req.user?.id || 'system',
+          userEmail: req.user?.email || 'system',
+          action: 'client_portal_invite_reactivated' as any,
+          entityType: 'client',
+          entityId: clientId,
+          changes: {
+            who: req.user?.email || 'system',
+            what: 'invite_reactivated',
+            where: req.ip,
+            when: new Date().toISOString(),
+            why: 'Previous invite expired; manager requested reactivation',
+            email, newExpiresAt: expiresAt.toISOString(),
+          },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'] || null,
+        } as any);
+      });
+
+      const [wsRec] = await db.select({ orgCode: (workspaces as any).orgCode }).from(workspaces).where(eq((workspaces as any).id, workspaceId)).limit(1);
+      const reactivateOrgCode = wsRec?.orgCode || 'ORG';
+      const reactivateUrl = `${req.protocol}://${req.get('host')}/client-portal/setup?token=${token}&workspace=${workspaceId}&org=${reactivateOrgCode}`;
+
+      NotificationDeliveryService.send({
+        idempotencyKey: `portal-reactivate-${token.slice(0, 16)}`,
+        type: 'client_portal_invite',
+        workspaceId,
+        recipientUserId: email,
+        channel: 'email',
+        subject: 'Your Invitation Has Been Renewed',
+        body: { to: email, clientName: client.companyName || '', inviteUrl: reactivateUrl, expiresIn: '7 days', orgCode: reactivateOrgCode },
+      }).catch(err => log.warn('[PortalInvite] Reactivation NDS failed (non-fatal):', err));
+
+      return res.json({
+        success: true, message: 'Expired invitation reactivated and resent.',
+        inviteUrl: reactivateUrl, visualStatus: 'invited',
       });
     }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days (Reaper TTL)
+    // ── END LOGIC GATE ────────────────────────────────────────────────────────
 
     // ── ATOMIC: insert token + audit log ─────────────────────────────────────
     await db.transaction(async (tx) => {
@@ -267,6 +344,8 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
         email: email.toLowerCase().trim(),
         token,
         expiresAt,
+        // Step 3: Persist — status is canonical DB truth, not calculated in UI
+        ...(({ inviteStatus: 'invited' }) as any),
       });
 
       await tx.insert(auditLogs).values({
