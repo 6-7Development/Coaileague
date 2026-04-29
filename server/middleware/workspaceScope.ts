@@ -33,6 +33,8 @@ export async function enforceWorkspaceAccess(req: Request, res: Response, next: 
 
 export const ensureWorkspaceAccess: RequestHandler = async (req: Request, res: Response, next: NextFunction) => {
   const authReq = req as AuthenticatedRequest;
+  const method = req.method;
+  const path = req.path;
 
   // Dev bypass: test mode uses the Acme Security sandbox org (dev-acme-security-ws)
   // Session workspace + role are set by the requireAuth bypass — skip all DB lookups.
@@ -40,10 +42,12 @@ export const ensureWorkspaceAccess: RequestHandler = async (req: Request, res: R
     authReq.workspaceId = req.session?.workspaceId || 'dev-acme-security-ws';
     authReq.workspaceRole = (req.session?.workspaceRole as any) || 'org_owner';
     authReq.employeeId = req.session?.employeeId || 'dev-acme-emp-004';
+    log.debug('[ensureWorkspaceAccess] TEST MODE - workspace set to', { workspaceId: authReq.workspaceId });
     return next();
   }
 
   if (!authReq.user?.id) {
+    log.warn('[ensureWorkspaceAccess] No authenticated user', { path, method });
     return res.status(401).json({ error: 'Authentication required' });
   }
 
@@ -52,27 +56,42 @@ export const ensureWorkspaceAccess: RequestHandler = async (req: Request, res: R
   const platformRole = await getUserPlatformRole(userId);
   if (hasPlatformWideAccess(platformRole)) {
     authReq.platformRole = platformRole;
-    const requestedWorkspaceId =
+    // For platform-wide access, check all sources for workspace ID
+    // ORDER: query > params > body > already-set workspaceId > session
+    const requestedWorkspaceId = (authReq.query?.workspaceId as string) ||
+      (authReq.params?.workspaceId as string) ||
       authReq.body?.workspaceId ||
-      authReq.query?.workspaceId ||
-      authReq.params?.workspaceId;
+      authReq.workspaceId ||
+      req.session?.workspaceId;
+      
     if (requestedWorkspaceId) {
-      authReq.workspaceId = requestedWorkspaceId as string;
-    } else if (req.session?.workspaceId) {
-      authReq.workspaceId = req.session.workspaceId;
+      authReq.workspaceId = requestedWorkspaceId;
+      log.debug('[ensureWorkspaceAccess] Platform staff - workspace assigned', { 
+        workspaceId: requestedWorkspaceId,
+        userId,
+        source: authReq.query?.workspaceId ? 'query' : authReq.params?.workspaceId ? 'params' : 'session'
+      });
     }
     return next();
   }
 
-  const requestedWorkspaceId =
+  // For regular users: extract workspaceId with proper precedence
+  // ORDER: query > params > body > already-set workspaceId > session
+  const requestedWorkspaceId = (authReq.query?.workspaceId as string) ||
+    (authReq.params?.workspaceId as string) ||
     authReq.body?.workspaceId ||
-    authReq.query?.workspaceId ||
-    authReq.params?.workspaceId;
+    authReq.workspaceId;
 
   if (!requestedWorkspaceId && req.session?.workspaceId && req.session?.workspaceRole) {
     authReq.workspaceId = req.session.workspaceId;
     authReq.workspaceRole = req.session.workspaceRole as any;
     authReq.employeeId = req.session.employeeId || undefined;
+
+    log.debug('[ensureWorkspaceAccess] Using session workspace (fast-path)', {
+      workspaceId: req.session.workspaceId,
+      userId,
+      role: req.session.workspaceRole,
+    });
 
     // Still enforce suspension check for mutations even on session fast-path.
     // A cached session from before a workspace was suspended must not bypass this gate.
@@ -81,9 +100,17 @@ export const ensureWorkspaceAccess: RequestHandler = async (req: Request, res: R
         await assertWorkspaceActive(req.session.workspaceId);
       } catch (err: any) {
         if (err.name === 'WorkspaceNotFoundError') {
+          log.warn('[ensureWorkspaceAccess] Workspace not found on suspension check', {
+            workspaceId: req.session.workspaceId,
+            userId,
+          });
           return res.status(403).json({ error: err.message, code: 'WORKSPACE_NOT_FOUND' });
         }
         if (err.name === 'WorkspaceInactiveError') {
+          log.warn('[ensureWorkspaceAccess] Workspace inactive on mutation', {
+            workspaceId: req.session.workspaceId,
+            userId,
+          });
           return res.status(403).json({ error: err.message, code: 'WORKSPACE_INACTIVE' });
         }
         log.error('[workspaceScope] assertWorkspaceActive (session fast-path) unexpected error:', err);
