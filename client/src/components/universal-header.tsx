@@ -118,7 +118,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,  } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEADER_CONFIG, HEADER_SPACING, HEADER_HEIGHTS } from "@/config/headerConfig";
-import { getCurrentHoliday } from "@/config/mascotConfig";
 import { selectSidebarFamilies, selectCondensedMobileFamilies } from "@/lib/sidebarModules";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -190,7 +189,6 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
   // Detect Christmas season only if seasonal theming is not disabled
   useEffect(() => {
     // Check if seasonal theming is disabled via environment variable
-    const disableSeasonal = import.meta.env.VITE_DISABLE_SEASONAL_THEMING === 'true';
     if (disableSeasonal) {
       setIsChristmas(false);
       return;
@@ -202,14 +200,12 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
         if (data?.isDisabled || data?.forceDeactivated) {
           setIsChristmas(false);
         } else {
-          const holiday = getCurrentHoliday();
-          setIsChristmas(holiday?.key === 'christmas');
+                    setIsChristmas(holiday?.key === 'christmas');
         }
       })
       .catch(() => {
         // On error, fall back to date check
-        const holiday = getCurrentHoliday();
-        setIsChristmas(holiday?.key === 'christmas');
+                setIsChristmas(holiday?.key === 'christmas');
       });
   }, []);
 

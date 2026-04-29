@@ -28,21 +28,25 @@ export default function OrgManagerDashboard() {
   });
 
   const { data: pendingTimeOff = [], isError: pendingTimeOffIsError, error: pendingTimeOffError, refetch: refetchPendingTimeOff } = useQuery<any[]>({
+    retry: false,
     queryKey: ["/api/time-off-requests/pending"],
     staleTime: 30000,
   });
 
   const { data: pendingTimesheetEdits = [], isError: pendingTimesheetEditsIsError, error: pendingTimesheetEditsError, refetch: refetchPendingTimesheetEdits } = useQuery<any[]>({
+    retry: false,
     queryKey: ["/api/timesheet-edit-requests/pending"],
     staleTime: 30000,
   });
 
   const { data: pendingShifts = [], isError: pendingShiftsIsError, error: pendingShiftsError, refetch: refetchPendingShifts } = useQuery<any[]>({
+    retry: false,
     queryKey: ["/api/shift-actions/pending"],
     staleTime: 30000,
   });
 
   const { data: pendingExpenses = [], isError: pendingExpensesIsError, error: pendingExpensesError, refetch: refetchPendingExpenses } = useQuery<any[]>({
+    retry: false,
     queryKey: ["/api/expenses/pending-approval"],
     staleTime: 30000,
   });

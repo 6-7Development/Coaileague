@@ -623,23 +623,40 @@ router.patch('/escalated/:id/assign', requirePlatformStaff, async (req: Authenti
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const ticket = await db.query.supportTickets.findFirst({
-      where: eq(supportTickets.id, id),
-    });
-
-    if (!ticket || !ticket.isEscalated) {
-      return res.status(404).json({ message: "Escalated ticket not found" });
-    }
-
+    // Phase 3A — Atomic assignment: only assign if not already assigned to someone else
+    // Drizzle UPDATE returns empty array if WHERE condition not met (row already claimed)
     const [updatedTicket] = await db.update(supportTickets)
       .set({
         platformAssignedTo: staffId || userId,
         status: 'in_progress',
         updatedAt: new Date(),
       })
-      .from(supportTickets)
-      .where(and(eq(supportTickets.id, id), eq(supportTickets.workspaceId, workspaceId!)))
+      .where(and(
+        eq(supportTickets.id, id),
+        eq(supportTickets.workspaceId, workspaceId!),
+        eq(supportTickets.isEscalated, true),
+        // Only assign if currently unassigned — prevents double-claim race condition
+        isNull(supportTickets.platformAssignedTo),
+      ))
       .returning();
+
+    if (!updatedTicket) {
+      // Row was already assigned — return 409 Conflict, not silent 200
+      const [existing] = await db.select({
+        id: supportTickets.id,
+        assignedTo: supportTickets.platformAssignedTo,
+        isEscalated: supportTickets.isEscalated,
+      }).from(supportTickets).where(eq(supportTickets.id, id)).limit(1);
+
+      if (!existing || !existing.isEscalated) {
+        return res.status(404).json({ message: 'Escalated ticket not found' });
+      }
+      return res.status(409).json({
+        message: 'This ticket was already assigned to another agent.',
+        assignedTo: existing.assignedTo,
+        code: 'ALREADY_ASSIGNED',
+      });
+    }
 
     res.json(updatedTicket);
   } catch (error) {

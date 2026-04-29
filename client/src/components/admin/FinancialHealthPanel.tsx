@@ -355,8 +355,9 @@ export function FinancialHealthPanel() {
     critical: { icon: <XCircle className="h-5 w-5 text-destructive" />, label: "Critical", badge: "destructive" as const },
   };
 
-  const status = report?.overallStatus ?? "healthy";
-  const cfg = statusConfig[status];
+  // Phase 3C: Typed fallback — statusConfig[unknown_status] returns undefined, crashing .icon/.badge
+  const status = (report?.overallStatus ?? "healthy") as keyof typeof statusConfig;
+  const cfg = statusConfig[status] ?? statusConfig["healthy"];
 
   if (isLoading) {
     return (

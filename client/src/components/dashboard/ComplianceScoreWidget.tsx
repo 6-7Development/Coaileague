@@ -29,6 +29,7 @@ interface ComplianceScore {
 export function ComplianceScoreWidget(): JSX.Element {
   const [, setLocation] = useLocation();
   const { data, isLoading } = useQuery<ComplianceScore>({
+    retry: false,
     queryKey: ["/api/compliance/matrix/my-score"],
     staleTime: 5 * 60 * 1000,
   });

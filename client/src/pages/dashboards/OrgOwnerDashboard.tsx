@@ -72,6 +72,7 @@ export default function OrgOwnerDashboard() {
     error: workspaceError,
     refetch: refetchWorkspace,
   } = useQuery<WorkspaceSummary>({
+    retry: false,
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
@@ -170,6 +171,7 @@ export default function OrgOwnerDashboard() {
     error: invoicesError,
     refetch: refetchInvoices,
   } = useQuery<any[]>({
+    retry: false,
     queryKey: ["/api/invoices"],
     staleTime: 60_000,
   });

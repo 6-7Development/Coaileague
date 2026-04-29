@@ -14,7 +14,7 @@ import { registerExternalEmailRoutes } from "../externalEmailRoutes";
 import dockChatRouter from "../dockChatRoutes";
 import broadcastRouter from "../broadcasts";
 import messageBridgeRouter from "../messageBridgeRoutes";
-import mascotRouter from "../mascot-routes";
+// mascot-routes removed
 import emailRouter from "../emails";
 import emailUnsubscribeRouter from "../emailUnsubscribe";
 import internalEmailRouter from "../internalEmails";
@@ -48,7 +48,7 @@ export function mountCommsRoutes(app: Express): void {
   // /api/announcements is a canonical alias for /api/broadcasts (same router, same auth).
   app.use("/api/announcements", requireAuth, ensureWorkspaceAccess, broadcastRouter);
   app.use("/api/bridges", requireAuth, ensureWorkspaceAccess, messageBridgeRouter);
-  app.use("/api/mascot", mascotRouter);
+  // /api/mascot removed — mascot system purged
   app.use("/api/emails", requireAuth, ensureWorkspaceAccess, emailRouter);
   // emailUnsubscribeRouter handles /api/email/unsubscribe — intentionally public (no auth).
   app.use("/api/email", emailUnsubscribeRouter);

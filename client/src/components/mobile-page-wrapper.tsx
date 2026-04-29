@@ -9,100 +9,15 @@ import { ReactNode, useState, useEffect } from 'react';
 import { useIsMobile, useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { MOBILE_CONFIG } from "@/config/mobileConfig";
-import { useSeasonalTheme, SeasonId, EffectType } from "@/context/SeasonalThemeContext";
+// SeasonalTheme removed
 import { Sparkles, Snowflake, Heart, Sun, Leaf, Moon, PartyPopper, Gift } from 'lucide-react';
 
 // ============================================================================
 // SEASONAL MINI HANDLER FOR MOBILE
 // ============================================================================
 
-interface SeasonalMiniConfig {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  gradient: string;
-  accentColor: string;
-  particleColor: string;
-}
 
-const SEASONAL_CONFIG: Record<SeasonId, SeasonalMiniConfig> = {
-  winter: {
-    icon: Snowflake,
-    label: 'Winter Mode',
-    gradient: 'from-blue-400/20 to-cyan-400/10',
-    accentColor: 'text-blue-400',
-    particleColor: '#87CEEB',
-  },
-  christmas: {
-    icon: Gift,
-    label: 'Holiday Season',
-    gradient: 'from-red-500/20 to-green-500/10',
-    accentColor: 'text-red-400',
-    particleColor: '#FF6B6B',
-  },
-  newYear: {
-    icon: PartyPopper,
-    label: 'New Year',
-    gradient: 'from-yellow-400/20 to-purple-400/10',
-    accentColor: 'text-yellow-400',
-    particleColor: '#FFD700',
-  },
-  valentines: {
-    icon: Heart,
-    label: 'Valentine\'s',
-    gradient: 'from-pink-400/20 to-red-400/10',
-    accentColor: 'text-pink-400',
-    particleColor: '#FF69B4',
-  },
-  spring: {
-    icon: Sparkles,
-    label: 'Spring',
-    gradient: 'from-green-300/20 to-pink-300/10',
-    accentColor: 'text-green-400',
-    particleColor: '#98FB98',
-  },
-  easter: {
-    icon: Sparkles,
-    label: 'Easter',
-    gradient: 'from-purple-300/20 to-yellow-300/10',
-    accentColor: 'text-purple-400',
-    particleColor: '#DDA0DD',
-  },
-  summer: {
-    icon: Sun,
-    label: 'Summer Mode',
-    gradient: 'from-orange-400/20 to-yellow-400/10',
-    accentColor: 'text-orange-400',
-    particleColor: '#FFB347',
-  },
-  fall: {
-    icon: Leaf,
-    label: 'Autumn',
-    gradient: 'from-orange-500/20 to-red-500/10',
-    accentColor: 'text-orange-500',
-    particleColor: '#D2691E',
-  },
-  halloween: {
-    icon: Moon,
-    label: 'Spooky Season',
-    gradient: 'from-orange-600/20 to-purple-600/10',
-    accentColor: 'text-orange-500',
-    particleColor: '#FF7518',
-  },
-  thanksgiving: {
-    icon: Leaf,
-    label: 'Thanksgiving',
-    gradient: 'from-amber-500/20 to-orange-500/10',
-    accentColor: 'text-amber-500',
-    particleColor: '#DAA520',
-  },
-  default: {
-    icon: Sparkles,
-    label: 'Normal Mode',
-    gradient: 'from-primary/10 to-primary/5',
-    accentColor: 'text-primary',
-    particleColor: '#38bdf8',
-  },
-};
+
 
 // Mobile Seasonal Banner Component
 function MobileSeasonalBanner({ 
@@ -110,11 +25,9 @@ function MobileSeasonalBanner({
   isHoliday, 
   holidayName,
   effectType,
-}: { 
-  seasonId: SeasonId; 
+}: {
   isHoliday: boolean; 
   holidayName: string | null;
-  effectType: EffectType;
 }) {
   const config = SEASONAL_CONFIG[seasonId] || SEASONAL_CONFIG.default;
   const IconComponent = config.icon;
@@ -152,14 +65,9 @@ function MobileSeasonalBanner({
 }
 
 // Mini Seasonal Effects Overlay for Mobile
-function MobileSeasonalEffects({ 
-  effectType, 
-  intensity,
-  seasonId,
-}: { 
-  effectType: EffectType; 
+// MobileSeasonalEffects removed
+: {
   intensity: number;
-  seasonId: SeasonId;
 }) {
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
   const config = SEASONAL_CONFIG[seasonId] || SEASONAL_CONFIG.default;
@@ -230,7 +138,6 @@ interface MobilePageWrapperProps {
   className?: string;
   withBottomNav?: boolean;
   showSeasonalBanner?: boolean;
-  showSeasonalEffects?: boolean;
 }
 
 const Icon = ({ name, className }: any) => <span className={className}>●</span>;
@@ -242,17 +149,17 @@ export function MobilePageWrapper({
   className,
   withBottomNav = false,
   showSeasonalBanner = true,
-  showSeasonalEffects = true,
 }: MobilePageWrapperProps) {
   const isMobile = useIsMobile();
 
   const { 
     seasonId, 
     isHoliday, 
-    holidayName, 
-    primaryEffect, 
+    holidayName,
     effectIntensity 
-  } = useSeasonalTheme();
+  // Seasonal effects removed — always default
+  const primaryEffect = 'none' as const;
+  const effectIntensity = 0;
 
   return (
     <div 
@@ -262,13 +169,6 @@ export function MobilePageWrapper({
       )}
       data-testid="mobile-page-wrapper"
     >
-      {showSeasonalEffects && isMobile && (
-        <MobileSeasonalEffects 
-          effectType={primaryEffect} 
-          intensity={effectIntensity}
-          seasonId={seasonId}
-        />
-      )}
       
       {showSeasonalBanner && isMobile && (
         <MobileSeasonalBanner 
