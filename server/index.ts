@@ -2936,6 +2936,8 @@ self.addEventListener('activate', async () => {
     log.info('Full startup complete', { totalTimeMs: totalTime, listenTimeMs: listenTime, userAccessPercent: Math.round(listenTime/totalTime*100) });
 
     // Log Trinity domain health summary + action count after all registrations complete
+    // 15s delay: aiBrainActionRegistry.initialize() now awaits all modules inline,
+    // but some async startup jobs fire after server.listen(). 15s ensures all are done.
     setTimeout(async () => {
       try {
         const { logDomainHealthSummary } = await import('./services/trinity/domainHealthValidator');
@@ -2945,26 +2947,30 @@ self.addEventListener('activate', async () => {
       }
       try {
         const { platformActionHub } = await import('./services/helpai/platformActionHub');
-        const actions = platformActionHub.getRegisteredActions();
-        const catalog = platformActionHub.getTrinityActionCatalog('root_admin');
+        const actions = platformActionHub.getRegisteredActions() ?? [];
+        if (actions.length === 0) {
+          log.warn('[Startup] Trinity action surface: 0 actions registered at 15s — registry may still be loading');
+          return;
+        }
+        const catalog = platformActionHub.getTrinityActionCatalog('root_admin') ?? [];
         const report = platformActionHub.getRegistryConsolidationReport();
         const byCategory = actions.reduce<Record<string, number>>((acc, a) => {
-          acc[a.category] = (acc[a.category] || 0) + 1;
+          if (a?.category) acc[a.category] = (acc[a.category] || 0) + 1;
           return acc;
         }, {});
-        log.info('[Audit] Trinity Action Surface', {
+        log.info('[Audit] ✅ Trinity Action Surface', {
           executableHandlers: actions.length,
           trinityCatalogActions: catalog.length,
-          maxCatalogActions: report.maxCatalogActions,
-          duplicateActionIds: report.duplicateActionIds,
-          legacyAliasActions: report.legacyAliasActions,
-          internalActions: report.internalActions,
+          maxCatalogActions: report?.maxCatalogActions ?? 280,
+          duplicateActionIds: report?.duplicateActionIds ?? [],
+          legacyAliasActions: report?.legacyAliasActions ?? 0,
+          internalActions: report?.internalActions ?? 0,
           byCategory,
-          byOwnerDomain: report.byOwnerDomain,
+          byOwnerDomain: report?.byOwnerDomain ?? {},
         });
       } catch (err) {
         log.warn('[Startup] Failed to log Trinity action surface', err);
       }
-    }, 5000);
+    }, 15000);
   })();
 })();

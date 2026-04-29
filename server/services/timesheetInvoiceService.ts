@@ -1267,10 +1267,17 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
  * time entries exist. Called from the startup scheduler in server/index.ts.
  */
 export async function runScheduledClientInvoiceAutoGeneration(): Promise<void> {
+  // Skip system/platform/demo workspaces — they have no real billing data
+  const SYSTEM_WORKSPACE_PREFIXES = ['platform-workspace', 'coaileague-platform', 'demo-workspace', 'system'];
+  
   const allWorkspaces = await db.select({ id: workspaces.id, name: workspaces.name })
     .from(workspaces);
 
   for (const ws of allWorkspaces) {
+    // Skip system workspaces — no real clients or billing data
+    if (SYSTEM_WORKSPACE_PREFIXES.some(prefix => ws.id.startsWith(prefix) || ws.name?.toLowerCase().includes('demo'))) {
+      continue;
+    }
     try {
       const summary = await getUninvoicedTimeEntries(ws.id);
       if (Object.keys(summary.summary.byClient).length === 0) continue;

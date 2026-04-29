@@ -1438,6 +1438,62 @@ const constraints: CriticalConstraint[] = [
     },
   },
   {
+    name: 'workspace_onboarding_states_table',
+    rationale: 'OnboardingStateMachine.loadState() queries workspace_onboarding_states but the table does not exist, causing [OnboardingStateMachine] Failed to load state on every boot.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'workspace_onboarding_states'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS workspace_onboarding_states (
+          id           VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          workspace_id VARCHAR NOT NULL UNIQUE,
+          state_data   JSONB NOT NULL DEFAULT '{}'::jsonb,
+          current_step VARCHAR(100),
+          status       VARCHAR(50) DEFAULT 'in_progress',
+          started_at   TIMESTAMPTZ DEFAULT NOW(),
+          completed_at TIMESTAMPTZ,
+          created_at   TIMESTAMPTZ DEFAULT NOW(),
+          updated_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      await pool.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_onboarding_states_ws
+           ON workspace_onboarding_states (workspace_id)`
+      );
+    },
+  },
+  {
+    name: 'id_sequences_org_kind_unique_index',
+    rationale: 'id_sequences.uniqueOrgKind declared in Drizzle schema but not propagated by drizzle-kit push. Without it, concurrent ensureOrgIdentifiersInTx calls insert multiple (orgId, kind) rows. Then the atomic UPDATE hits all rows, multiple calls get issued=1, both generate EMP-ORG-00001, and the second INSERT into external_identifiers fails with duplicate key. One unique index eliminates the race entirely.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_indexes
+         WHERE tablename = 'id_sequences'
+           AND indexname = 'id_sequences_org_kind_idx'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      // Remove duplicate rows first (keep lowest id per orgId+kind)
+      await pool.query(`
+        DELETE FROM id_sequences a
+        USING id_sequences b
+        WHERE a.id > b.id
+          AND a.org_id = b.org_id
+          AND a.kind = b.kind
+      `);
+      await pool.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS id_sequences_org_kind_idx
+           ON id_sequences (org_id, kind)`
+      );
+    },
+  },
+  {
     name: 'trinity_rate_limit_log_table',
     rationale: 'trinity_rate_limit_log table and unique index on (workspace_id, window_start) required by aiCallWrapper.ts ON CONFLICT clause. Missing index causes [err] "there is no unique or exclusion constraint matching the ON CONFLICT specification" on every AI call.',
     isPresent: async () => {
