@@ -1,9 +1,16 @@
 /**
  * Server-Side Input Sanitization
  * Protects against XSS, injection attacks, and malicious content
+ *
+ * Uses serverSanitizer (pure Node.js, zero dependencies) instead of
+ * isomorphic-dompurify / jsdom which is incompatible with Node 22.11
+ * on Railway (ERR_REQUIRE_ESM via html-encoding-sniffer → @exodus/bytes).
  */
 
-import DOMPurify from 'isomorphic-dompurify';
+import {
+  sanitizeChatMessage as _sanitizeChatMessage,
+  sanitizePlainText as _sanitizePlainText,
+} from './serverSanitizer';
 
 /**
  * Sanitize chat message content
@@ -11,45 +18,7 @@ import DOMPurify from 'isomorphic-dompurify';
  * SECURITY: Normalizes all links to prevent reverse tabnabbing
  */
 export function sanitizeChatMessage(message: string): string {
-  if (!message || typeof message !== 'string') {
-    return '';
-  }
-
-  // Trim and limit length
-  const trimmed = message.trim().slice(0, 10000); // 10k char max
-
-  // Remove any existing hooks to prevent accumulation
-  DOMPurify.removeAllHooks();
-
-  // Add hook to normalize ALL <a> tags - strip attacker rel and force noopener noreferrer
-  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    if (node.tagName === 'A') {
-      // Always set target to _blank for external links
-      if (node.hasAttribute('href')) {
-        node.setAttribute('target', '_blank');
-      }
-      // CRITICAL: Remove any existing rel attribute (attacker controlled)
-      // Then add our safe rel attribute
-      node.removeAttribute('rel');
-      node.setAttribute('rel', 'noopener noreferrer');
-    }
-  });
-
-  // Configure DOMPurify for chat messages
-  // Allow basic formatting: bold, italic, links, line breaks
-  const clean = DOMPurify.sanitize(trimmed, {
-    ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'a', 'br', 'p', 'code', 'pre'],
-    ALLOWED_ATTR: ['href'], // Only allow href - target and rel are forced by hook
-    ALLOW_DATA_ATTR: false,
-    RETURN_DOM: false,
-    RETURN_DOM_FRAGMENT: false,
-    RETURN_TRUSTED_TYPE: false,
-  });
-
-  // Cleanup hooks after use
-  DOMPurify.removeAllHooks();
-
-  return clean;
+  return _sanitizeChatMessage(message);
 }
 
 /**
@@ -57,18 +26,7 @@ export function sanitizeChatMessage(message: string): string {
  * Use for usernames, titles, metadata
  */
 export function sanitizePlainText(text: string): string {
-  if (!text || typeof text !== 'string') {
-    return '';
-  }
-
-  // Strip all HTML and trim
-  const clean = DOMPurify.sanitize(text, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
-    RETURN_DOM: false,
-  });
-
-  return clean.trim().slice(0, 1000); // 1k char max for metadata
+  return _sanitizePlainText(text);
 }
 
 /**

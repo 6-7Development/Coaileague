@@ -15,7 +15,7 @@
  * 10. ✅ Response timeout protection (prevent hanging requests)
  */
 
-import DOMPurify from 'isomorphic-dompurify';
+import { stripAllHtml } from '../lib/serverSanitizer';
 
 export interface AIRequestContext {
   workspaceId: string;
@@ -136,7 +136,7 @@ export class AIGuardRails {
     }
 
     // 3. Sanitize input - Remove HTML/XSS vectors
-    const sanitizedInput = DOMPurify.sanitize(input, { ALLOWED_TAGS: [] }).trim();
+    const sanitizedInput = stripAllHtml(input).trim();
 
     // 4. Prompt injection protection - Flag suspicious patterns
     if (this.containsPromptInjection(sanitizedInput)) {
@@ -190,7 +190,7 @@ export class AIGuardRails {
     let outputStr = typeof output === 'string' ? output : JSON.stringify(output);
 
     // 2. Sanitize output - Remove any HTML/script tags
-    const sanitizedOutput = DOMPurify.sanitize(outputStr, { ALLOWED_TAGS: [] });
+    const sanitizedOutput = stripAllHtml(outputStr);
 
     // 3. Validate JSON if expected to be JSON
     if (output instanceof Object) {
