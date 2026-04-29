@@ -109,7 +109,7 @@ import { TrinityTrainingPanel } from '@/components/schedule/TrinityTrainingPanel
 import { ScheduleUploadPanel } from '@/components/schedule/ScheduleUploadPanel';
 import { ViewModeToggle } from '@/components/schedule/ViewModeToggle';
 import { TrinitySchedulingProgress } from '@/components/schedule/TrinitySchedulingProgress';
-import { TrinityStatusBar, TrinityThinkingPanel } from '@/components/schedule/TrinitySchedulingFeedback';
+import { TrinityStatusBar } from '@/components/schedule/TrinitySchedulingFeedback';
 import { useTrinitySchedulingProgress } from '@/hooks/use-trinity-scheduling-progress';
 import { ShiftCreationModal, type ShiftFormData, DAYS_OF_WEEK, POST_ORDER_TEMPLATES } from '@/components/schedule/ShiftCreationModal';
 import { DuplicateShiftModal, SwapRequestModal, EditShiftModal, ShiftActionDialog, EscalationMatrixDialog } from '@/components/schedule/ScheduleDialogs';
@@ -1353,7 +1353,15 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   const handleToolbarAutoFill = useCallback(() => {
     triggerAIFillMutation.mutate();
   }, [triggerAIFillMutation]);
-  
+
+  const handleToolbarOptimizeSchedule = useCallback(() => {
+    triggerSchedulingMutation.mutate('optimize');
+  }, [triggerSchedulingMutation]);
+
+  const handleToolbarFullGenerate = useCallback(() => {
+    triggerSchedulingMutation.mutate('full_generate');
+  }, [triggerSchedulingMutation]);
+
   const handleToolbarToggleAutomation = useCallback(() => {
     toggleAutomationMutation.mutate(!automationEnabled);
   }, [toggleAutomationMutation, automationEnabled]);
@@ -1861,6 +1869,8 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
           openShiftsCount={scheduleStats.openShifts}
           automationEnabled={automationEnabled}
           isAutoFilling={triggerAIFillMutation.isPending}
+          isOptimizing={triggerSchedulingMutation.isPending && (triggerSchedulingMutation.variables as any) === 'optimize'}
+          isGenerating={triggerSchedulingMutation.isPending && (triggerSchedulingMutation.variables as any) === 'full_generate'}
           isTogglingAutomation={toggleAutomationMutation.isPending}
           viewMode={viewMode}
           selectedDay={selectedDay}
@@ -1869,6 +1879,8 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
           onCreateShift={handleToolbarCreateShift}
           onPublish={handleToolbarPublish}
           onAutoFill={handleToolbarAutoFill}
+          onOptimizeSchedule={isManager ? handleToolbarOptimizeSchedule : undefined}
+          onFullGenerate={isManager ? handleToolbarFullGenerate : undefined}
           onToggleAutomation={handleToolbarToggleAutomation}
           onOpenTrinityInsights={handleToolbarOpenTrinityInsights}
           onOpenTrinityChat={openTrinityChat}
@@ -1894,8 +1906,28 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
           />
         )}
 
-        {/* Trinity Live Scheduling Status Bar - Shows prominent feedback during automation */}
-        <TrinityStatusBar session={session} />
+        {/* Trinity Live Scheduling Status Bar - inline feedback during and after automation */}
+        <TrinityStatusBar
+          session={session}
+          onReview={() => {
+            if (schedulingResult) {
+              setShowSchedulingSummary(true);
+            } else if (completionResult) {
+              setSchedulingResult({
+                success: true,
+                sessionId: completionResult.sessionId,
+                executionId: completionResult.executionId || completionResult.sessionId,
+                totalMutations: completionResult.mutationCount,
+                mutations: completionResult.mutations || [],
+                summary: completionResult.summary,
+                aiSummary: completionResult.aiSummary || '',
+                requiresVerification: completionResult.requiresVerification,
+              });
+              setShowSchedulingSummary(true);
+            }
+          }}
+          onDismiss={clearSession}
+        />
         
         {/* Trinity Legacy Progress - Uses data from parent hook to avoid duplicate WebSocket */}
         <TrinitySchedulingProgress embedded progressData={activeProgress} />
@@ -2686,32 +2718,8 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
 
         </div>
 
-        {/* Trinity Thinking Panel - Fixed at bottom when processing */}
-        <TrinityThinkingPanel 
-          thoughts={session.thoughts} 
-          isWorking={trinityWorking} 
-          onClear={clearSession}
-          onReviewRequested={() => {
-            if (schedulingResult) {
-              setShowSchedulingSummary(true);
-            } else if (completionResult) {
-              setSchedulingResult({
-                success: true,
-                sessionId: completionResult.sessionId,
-                executionId: completionResult.executionId || completionResult.sessionId,
-                totalMutations: completionResult.mutationCount,
-                mutations: completionResult.mutations || [],
-                summary: completionResult.summary,
-                aiSummary: completionResult.aiSummary || '',
-                requiresVerification: completionResult.requiresVerification,
-              });
-              setShowSchedulingSummary(true);
-            } else {
-              queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-              toast({ title: 'Schedule Updated', description: 'Shifts have been refreshed with latest data.' });
-            }
-          }}
-        />
+        {/* TrinityThinkingPanel removed — review/dismiss actions are now in TrinityStatusBar above;
+            the universal header's TrinityThoughtBar shows persistent Trinity session status */}
 
         {/* Trinity Insights Slide-in Panel - hidden when Trinity is actively scheduling to avoid duplicate AI processing */}
         {showTrinityInsights && !trinityWorking && (
