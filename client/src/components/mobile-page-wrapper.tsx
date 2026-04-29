@@ -2,134 +2,16 @@
  * Mobile Page Wrapper & Layout Primitives
  * Optimized container for mobile pages with safe areas and responsive layouts
  * Uses centralized MOBILE_CONFIG for all sizing and behavior
- * Now with Universal Seasonal Handler integration for holidays and themed effects
  */
 
 import { ReactNode, useState, useEffect } from 'react';
 import { useIsMobile, useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { MOBILE_CONFIG } from "@/config/mobileConfig";
-// SeasonalTheme removed
-import { Sparkles, Snowflake, Heart, Sun, Leaf, Moon, PartyPopper, Gift } from 'lucide-react';
 
 // ============================================================================
-// SEASONAL MINI HANDLER FOR MOBILE
+// MOBILE PAGE WRAPPER
 // ============================================================================
-
-
-
-
-// Mobile Seasonal Banner Component
-function MobileSeasonalBanner({ 
-  seasonId, 
-  isHoliday, 
-  holidayName,
-  effectType,
-}: {
-  isHoliday: boolean; 
-  holidayName: string | null;
-}) {
-  const config = SEASONAL_CONFIG[seasonId] || SEASONAL_CONFIG.default;
-  const IconComponent = config.icon;
-  
-  // Only show banner if it's a holiday or non-default season
-  if (seasonId === 'default' && !isHoliday) return null;
-  
-  return (
-    <div
-      className={cn(
-        'px-3 py-2 flex items-center gap-2 border-b border-border/50',
-        `bg-gradient-to-r ${config.gradient}`
-      )}
-      data-testid="mobile-seasonal-banner"
-    >
-      <div className={cn('animate-pulse', config.accentColor)}>
-        <IconComponent className="w-4 h-4" />
-      </div>
-      <span className="text-xs font-medium text-foreground/80">
-        {isHoliday && holidayName ? holidayName : config.label}
-      </span>
-      {effectType !== 'none' && (
-        <div className="ml-auto flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground capitalize">
-            {effectType}
-          </span>
-          <div 
-            className="w-1.5 h-1.5 rounded-full animate-ping"
-            style={{ backgroundColor: config.particleColor }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Mini Seasonal Effects Overlay for Mobile
-// MobileSeasonalEffects removed
-: {
-  intensity: number;
-}) {
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
-  const config = SEASONAL_CONFIG[seasonId] || SEASONAL_CONFIG.default;
-  
-  useEffect(() => {
-    if (effectType === 'none' || intensity === 0) {
-      setParticles([]);
-      return;
-    }
-    
-    // Create fewer particles for mobile performance
-    const particleCount = Math.floor(intensity * 8);
-    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: -10,
-      delay: Math.random() * 5,
-    }));
-    setParticles(newParticles);
-  }, [effectType, intensity]);
-  
-  if (effectType === 'none' || particles.length === 0) return null;
-  
-  return (
-    <>
-      <div 
-        className="pointer-events-none fixed inset-0 overflow-hidden z-10"
-        data-testid="mobile-seasonal-effects"
-      >
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            className="absolute animate-mobile-float-down"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              animationDelay: `${p.delay}s`,
-              animationDuration: '8s',
-            }}
-          >
-            <div
-              className="w-2 h-2 rounded-full opacity-60"
-              style={{ backgroundColor: config.particleColor }}
-            />
-          </div>
-        ))}
-      </div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes mobile-float-down {
-          0% { transform: translateY(-10px) translateX(0); opacity: 0; }
-          10% { opacity: 0.6; }
-          50% { transform: translateY(50vh) translateX(15px); }
-          90% { opacity: 0.4; }
-          100% { transform: translateY(100vh) translateX(-8px); opacity: 0; }
-        }
-        .animate-mobile-float-down {
-          animation: mobile-float-down ease-in-out infinite;
-        }
-      `}} />
-    </>
-  );
-}
 
 interface MobilePageWrapperProps {
   children: React.ReactNode;
@@ -137,10 +19,8 @@ interface MobilePageWrapperProps {
   enablePullToRefresh?: boolean;
   className?: string;
   withBottomNav?: boolean;
-  showSeasonalBanner?: boolean;
+  showSeasonalBanner?: boolean; // kept for API compat, no longer renders anything
 }
-
-const Icon = ({ name, className }: any) => <span className={className}>●</span>;
 
 export function MobilePageWrapper({
   children,
@@ -148,37 +28,15 @@ export function MobilePageWrapper({
   // the platform syncs live via WebSocket + background polling.
   className,
   withBottomNav = false,
-  showSeasonalBanner = true,
 }: MobilePageWrapperProps) {
-  const isMobile = useIsMobile();
-
-  const { 
-    seasonId, 
-    isHoliday, 
-    holidayName,
-    effectIntensity 
-  // Seasonal effects removed — always default
-  const primaryEffect = 'none' as const;
-  const effectIntensity = 0;
-
   return (
-    <div 
+    <div
       className={cn(
         "w-full relative flex flex-col min-h-full overflow-x-hidden",
         className
       )}
       data-testid="mobile-page-wrapper"
     >
-      
-      {showSeasonalBanner && isMobile && (
-        <MobileSeasonalBanner 
-          seasonId={seasonId}
-          isHoliday={isHoliday}
-          holidayName={holidayName}
-          effectType={primaryEffect}
-        />
-      )}
-      
       <div
         id="mobile-scroll-container"
         className={cn(
@@ -192,6 +50,10 @@ export function MobilePageWrapper({
     </div>
   );
 }
+
+// ============================================================================
+// MOBILE PAGE HEADER
+// ============================================================================
 
 /**
  * MobilePageHeader - Sticky mobile-friendly page header
@@ -285,6 +147,10 @@ export function MobilePageHeader({
   );
 }
 
+// ============================================================================
+// MOBILE GRID
+// ============================================================================
+
 /**
  * MobileGrid - Responsive grid that adapts to screen size
  * Uses MOBILE_CONFIG for columns configuration
@@ -359,6 +225,10 @@ export function MobileGrid({
     </div>
   );
 }
+
+// ============================================================================
+// MOBILE CARD
+// ============================================================================
 
 /**
  * MobileCard - Mobile-optimized card with touch feedback
