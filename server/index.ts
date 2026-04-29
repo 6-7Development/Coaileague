@@ -859,6 +859,73 @@ async function initializeCriticalServices() {
   const seedExplicitlyEnabled = process.env.SEED_ON_STARTUP === 'true';
   const shouldSeed = !isRailwayDeploy || seedExplicitlyEnabled;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ALWAYS-RUN: Ensure dev/test accounts exist with correct credentials.
+  // This runs even on Railway where SEED_ON_STARTUP=false because test logins
+  // must work on the development deployment for demos and QA.
+  // Only active when NOT in production (production env never has test accounts).
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (!isProductionEnv() && dbAvailableForSeed) {
+    try {
+      const bcrypt = await import('bcryptjs');
+      const PASS_HASH = await bcrypt.hash('admin123', 10);
+      const { pool: devPool } = await import('./db');
+
+      // Ensure workspace exists
+      await devPool.query(`
+        INSERT INTO workspaces (id, name, owner_id, subscription_tier, subscription_status, business_category, created_at, updated_at)
+        VALUES ('dev-acme-security-ws','ACME Security Services','dev-owner-001','enterprise','active','security',NOW(),NOW())
+        ON CONFLICT (id) DO NOTHING
+      `).catch(() => null);
+
+      // Upsert ACME owner — always with correct password + workspace
+      await devPool.query(`
+        INSERT INTO users (id, email, first_name, last_name, password_hash, role, email_verified, current_workspace_id, created_at, updated_at, login_attempts, mfa_enabled)
+        VALUES ('dev-owner-001','owner@acme-security.test','Marcus','Rivera',$1,'user',true,'dev-acme-security-ws',NOW(),NOW(),0,false)
+        ON CONFLICT (id) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
+          email_verified = true,
+          current_workspace_id = 'dev-acme-security-ws',
+          login_attempts = 0,
+          updated_at = NOW()
+      `, [PASS_HASH]).catch(() => null);
+
+      // Also update by email in case user exists with different ID
+      await devPool.query(`
+        UPDATE users SET
+          password_hash = $1,
+          email_verified = true,
+          current_workspace_id = 'dev-acme-security-ws',
+          login_attempts = 0,
+          updated_at = NOW()
+        WHERE email = 'owner@acme-security.test'
+      `, [PASS_HASH]).catch(() => null);
+
+      // Ensure workspace member record
+      await devPool.query(`
+        INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at)
+        VALUES (gen_random_uuid(),'dev-acme-security-ws','dev-owner-001','org_owner',NOW())
+        ON CONFLICT DO NOTHING
+      `).catch(() => null);
+
+      // Ensure employee record (for workspace role resolution)
+      await devPool.query(`
+        INSERT INTO employees (id, workspace_id, user_id, first_name, last_name, email, hourly_rate, workspace_role, status, is_active, created_at, updated_at)
+        VALUES ('dev-acme-emp-004','dev-acme-security-ws','dev-owner-001','Marcus','Rivera','owner@acme-security.test','45.00','org_owner','active',true,NOW(),NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          user_id = 'dev-owner-001',
+          workspace_role = 'org_owner',
+          status = 'active',
+          is_active = true,
+          updated_at = NOW()
+      `).catch(() => null);
+
+      log.info('[DevAccounts] ACME test account ready: owner@acme-security.test / admin123');
+    } catch (err: any) {
+      log.error('[DevAccounts] Failed to ensure dev accounts:', err?.message);
+    }
+  }
+
   if (!dbAvailableForSeed) {
     log.warn('Phase 1 seeding skipped — DB unreachable');
   } else if (isProductionEnv() && !seedExplicitlyEnabled) {
@@ -873,6 +940,7 @@ async function initializeCriticalServices() {
     log.info('Development seed', { result: seedResult.message });
   } catch (error) {
     log.error('Development seed failed', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
+
   }
 
   // Seed comprehensive Acme Security demo workspace (demo-workspace-00000000)
