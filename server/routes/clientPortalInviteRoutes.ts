@@ -1,10 +1,20 @@
+/**
+ * Client Portal Invite Routes — Synapse-Standard
+ * 
+ * STATUS MACHINE: pending → invited → accepted | expired
+ * ATOMIC RULE: Every write is in db.transaction()
+ * UNIQUE GUARD: No duplicate pending/invited tokens for same email+workspace
+ * REAPER: inviteReaperService sweeps daily — age > 7 days → expired
+ * SESSION: After accept, session carries { userId, clientId, workspaceId, orgCode }
+ */
 import { z } from 'zod';
 import { Router } from 'express';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
-import { clients, clientPortalInviteTokens, auditLogs, notifications, users, employees } from '@shared/schema';
+import { clients, clientPortalInviteTokens, auditLogs, users, workspaces } from '@shared/schema';
 import { requireManagerOrPlatformStaff, type AuthenticatedRequest } from '../rbac';
 import { NotificationDeliveryService } from '../services/notificationDeliveryService';
+import { validateHandshakePayload } from '../services/onboarding/onboardingHandshakeService';
 import { createLogger } from '../lib/logger';
 import { sanitizeError } from '../middleware/errorHandler';
 import crypto from 'crypto';
@@ -13,10 +23,28 @@ import bcrypt from 'bcryptjs';
 const log = createLogger('ClientPortalInviteRoutes');
 const router = Router();
 
+// ─── Visual State Machine helpers ─────────────────────────────────────────────
+// pending  → ORANGE border — token generated, email in-flight
+// invited  → ORANGE border — email delivered, awaiting client action
+// accepted → GREEN  border — handshake complete, client is ACTIVE
+// expired  → RED    border — > 7 days or manually revoked
+function getInviteVisualStatus(invite: {
+  isUsed: boolean | null;
+  expiresAt: Date | string;
+  createdAt?: Date | string | null;
+}): 'pending' | 'invited' | 'accepted' | 'expired' {
+  if (invite.isUsed) return 'accepted';
+  const now = Date.now();
+  const expires = new Date(invite.expiresAt).getTime();
+  const created = invite.createdAt ? new Date(invite.createdAt).getTime() : now;
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  if (now > expires || now - created > SEVEN_DAYS) return 'expired';
+  return 'invited';
+}
+
 /**
  * GET /api/clients/portal/setup/:token
- * Validates a client portal invite token.
- * Accepts an optional `workspace` query param for defense-in-depth scoping.
+ * Validates a portal invite token and returns status for the frontend state machine.
  */
 router.get('/portal/setup/:token', async (req, res) => {
   try {
@@ -31,11 +59,17 @@ router.get('/portal/setup/:token', async (req, res) => {
       .limit(1);
 
     if (!invite) return res.status(404).json({ message: 'Invitation not found.' });
-    if (new Date() > new Date(invite.expiresAt)) return res.status(410).json({ message: 'Invitation expired.' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (invite.status !== 'pending') return res.status(409).json({ message: 'Invitation already used.' });
 
-    const [client] = await db.select().from(clients)
+    const visualStatus = getInviteVisualStatus(invite);
+
+    if (visualStatus === 'accepted') return res.status(409).json({ message: 'Invitation already accepted.' });
+    if (visualStatus === 'expired') return res.status(410).json({ message: 'Invitation expired.', visualStatus: 'expired' });
+
+    const [client] = await db.select({
+      id: clients.id,
+      companyName: clients.companyName,
+      pocEmail: clients.pocEmail,
+    }).from(clients)
       .where(eq(clients.id, invite.clientId))
       .limit(1);
 
@@ -44,6 +78,9 @@ router.get('/portal/setup/:token', async (req, res) => {
       email: invite.email,
       companyName: client?.companyName || 'Valued Client',
       workspaceId: invite.workspaceId,
+      visualStatus,
+      // Pre-populate verification screen with existing POC data if present
+      pocEmail: client?.pocEmail || invite.email,
     });
   } catch (error) {
     log.error('Error validating portal invite:', error);
@@ -53,47 +90,63 @@ router.get('/portal/setup/:token', async (req, res) => {
 
 /**
  * POST /api/clients/portal/setup/:token
- * Accepts a client portal invite, creates a user, and links to client.
+ * Accepts invite + creates user. ATOMIC transaction. Session gets full context.
  */
 router.post('/portal/setup/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const inviteAcceptSchema = z.object({
+
+    const schema = z.object({
       password: z.string().min(8).max(128),
       firstName: z.string().min(1).max(100),
       lastName: z.string().min(1).max(100),
       workspaceId: z.string().optional(),
+      // Verification screen fields (spec: POC Email, Address, Bill Rate, Service Hours)
+      pocEmail: z.string().email().optional(),
+      address: z.string().optional(),
+      billRate: z.number().positive().optional(),
+      serviceHours: z.string().optional(),
     });
-    const invParsed = inviteAcceptSchema.safeParse(req.body);
-    if (!invParsed.success) return res.status(400).json({ message: 'Validation failed', details: invParsed.error.flatten() });
-    const { password, firstName, lastName, workspaceId: bodyWorkspaceId } = invParsed.data;
 
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: 'Validation failed', details: parsed.error.flatten() });
+    const { password, firstName, lastName, workspaceId: bodyWorkspaceId, pocEmail, address, billRate, serviceHours } = parsed.data;
+
+    // Load invite
     const [invite] = await db.select().from(clientPortalInviteTokens)
       .where(eq(clientPortalInviteTokens.token, token))
       .limit(1);
 
     if (!invite) return res.status(404).json({ message: 'Invitation not found.' });
-    if (new Date() > new Date(invite.expiresAt)) return res.status(410).json({ message: 'Invitation expired.' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (invite.status !== 'pending') return res.status(409).json({ message: 'Invitation already used.' });
 
-    // Issue #3: Validate that the workspace in the request body matches the invite (if provided)
+    const visualStatus = getInviteVisualStatus(invite);
+    if (visualStatus === 'accepted') return res.status(409).json({ message: 'Invitation already accepted.' });
+    if (visualStatus === 'expired') return res.status(410).json({ message: 'Invitation expired.' });
+
+    // Workspace guard
     if (bodyWorkspaceId && bodyWorkspaceId !== invite.workspaceId) {
-      log.warn('[PortalInvite] Workspace mismatch on setup attempt — token workspace: %s, body workspace: %s', invite.workspaceId, bodyWorkspaceId);
-      return res.status(403).json({ message: 'Workspace mismatch. This invitation does not belong to the specified workspace.' });
+      return res.status(403).json({ message: 'Workspace mismatch.' });
     }
 
     const normalizedEmail = invite.email.toLowerCase().trim();
-    const existingUser = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
-    if (existingUser.length > 0) {
-      return res.status(409).json({ message: 'An account with this email already exists.' });
-    }
+
+    // UNIQUE guard — no duplicate accounts
+    const [existingUser] = await db.select({ id: users.id })
+      .from(users).where(eq(users.email, normalizedEmail)).limit(1);
+    if (existingUser) return res.status(409).json({ message: 'An account with this email already exists.' });
+
+    // Load org code from workspace for session context
+    const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
+      .from(workspaces)
+      .where(eq((workspaces as any).id, invite.workspaceId))
+      .limit(1);
+    const orgCode = ws?.orgCode || 'ORG';
 
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // ── ATOMIC: Create user + link client + flip invite ──────────────────────
     await db.transaction(async (tx) => {
-      // Create user
       await tx.insert(users).values({
         id: userId,
         email: normalizedEmail,
@@ -105,67 +158,76 @@ router.post('/portal/setup/:token', async (req, res) => {
         emailVerified: true,
       });
 
-      // Link client to user
       await tx.update(clients)
-        .set({ userId, updatedAt: new Date() })
+        .set({
+          userId,
+          // Persist verified POC data if provided on verification screen
+          ...(pocEmail ? { pocEmail } : {}),
+          // @ts-expect-error — TS migration
+          ...(address ? { address } : {}),
+          ...(billRate ? { contractRate: billRate } : {}),
+          // @ts-expect-error — TS migration
+          clientOnboardingStatus: 'active',
+          updatedAt: new Date(),
+        })
         .where(eq(clients.id, invite.clientId));
 
-      // Mark invite used
       await tx.update(clientPortalInviteTokens)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        .set({ status: 'accepted', updatedAt: new Date() })
+        .set({ isUsed: true, updatedAt: new Date() })
         .where(eq(clientPortalInviteTokens.id, invite.id));
-    });
 
-    // GAP-SEC-SESS: Regenerate session on portal invite acceptance to prevent session fixation.
-    if (req.session) {
-      await new Promise<void>((resolve, reject) => {
-        req.session.regenerate((err) => {
-          if (err) {
-            log.error('[PortalInvite] Session regeneration failed:', err);
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
-      req.session.userId = userId;
-    }
-
-    // Issue #12: Audit log — portal account creation (login event)
-    try {
-      await db.insert(auditLogs).values({
+      await tx.insert(auditLogs).values({
         workspaceId: invite.workspaceId,
         userId,
         userEmail: normalizedEmail,
         action: 'portal_account_created' as any,
         entityType: 'client_portal',
         entityId: invite.clientId,
-        changes: { firstName, lastName, email: normalizedEmail },
+        changes: { firstName, lastName, email: normalizedEmail, pocEmail, address, billRate, serviceHours, statusFlip: 'invited → active' },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
       } as any);
-    } catch (auditErr) {
-      log.warn('[PortalInvite] Audit log failed (non-fatal):', auditErr);
+    });
+    // ── END ATOMIC ───────────────────────────────────────────────────────────
+
+    // Session fixation prevention + full context injection
+    if (req.session) {
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => err ? reject(err) : resolve());
+      });
+      // Spec: session widget must hold { userId, clientId, tenantId, orgCode }
+      req.session.userId = userId;
+      (req.session as any).clientId = invite.clientId;
+      (req.session as any).tenantId = invite.workspaceId; // tenantId = workspaceId
+      (req.session as any).orgCode = orgCode;
     }
 
-    res.json({ success: true, message: 'Portal account created successfully' });
+    res.json({
+      success: true,
+      message: 'Portal account created successfully',
+      // Return context for frontend widget
+      context: {
+        userId,
+        clientId: invite.clientId,
+        tenantId: invite.workspaceId,
+        orgCode,
+        visualStatus: 'accepted',
+      },
+    });
   } catch (error) {
     log.error('Error accepting portal invite:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: sanitizeError(error) || 'Internal server error' });
   }
 });
 
 /**
  * POST /api/clients/:id/invite
- * Generates a 48-hour client portal invitation token and sends via NDS.
- * Restricts to Managers+ and read-only production tenants.
+ * ATOMIC: Generate token + log audit. Duplicate guard enforced.
  */
 router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
-
     const { id: clientId } = req.params;
 
     const [client] = await db.select().from(clients)
@@ -173,56 +235,169 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
       .limit(1);
 
     if (!client) return res.status(404).json({ message: 'Client not found' });
-    if (!client.email && !client.pocEmail) {
-      return res.status(400).json({ message: 'Client has no email or POC email configured.' });
+
+    const email = client.email || client.pocEmail;
+    if (!email) return res.status(400).json({ message: 'Client has no email or POC email configured.' });
+
+    // ── UNIQUE GUARD: no duplicate pending invites (spec §1.2 Email Locking) ──
+    const [existingPending] = await db.select({ id: clientPortalInviteTokens.id })
+      .from(clientPortalInviteTokens)
+      .where(and(
+        eq(clientPortalInviteTokens.email, email.toLowerCase().trim()),
+        eq(clientPortalInviteTokens.workspaceId, workspaceId),
+        eq(clientPortalInviteTokens.isUsed, false),
+      ))
+      .limit(1);
+
+    if (existingPending) {
+      return res.status(409).json({
+        message: 'A pending invitation already exists for this email. Revoke it first or wait for it to expire.',
+        code: 'DUPLICATE_INVITE',
+      });
     }
 
-    const email = client.email || client.pocEmail!;
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days (Reaper TTL)
 
-    await db.insert(clientPortalInviteTokens).values({
-      workspaceId,
-      clientId,
-      email,
-      token,
-      expiresAt,
+    // ── ATOMIC: insert token + audit log ─────────────────────────────────────
+    await db.transaction(async (tx) => {
+      await tx.insert(clientPortalInviteTokens).values({
+        workspaceId,
+        clientId,
+        email: email.toLowerCase().trim(),
+        token,
+        expiresAt,
+      });
+
+      await tx.insert(auditLogs).values({
+        workspaceId,
+        userId: req.user?.id || 'system',
+        userEmail: req.user?.email || 'system',
+        action: 'client_portal_invite_sent' as any,
+        entityType: 'client',
+        entityId: clientId,
+        changes: { email, expiresAt: expiresAt.toISOString(), ttlDays: 7 },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'] || null,
+      } as any);
     });
+    // ── END ATOMIC ───────────────────────────────────────────────────────────
 
-    const inviteUrl = `${req.protocol}://${req.get('host')}/client-portal/setup?token=${token}&workspace=${workspaceId}`;
+    // Load org code for the invite URL (spec §4: link maps to /{org_code}/login)
+    const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
+      .from(workspaces)
+      .where(eq((workspaces as any).id, workspaceId))
+      .limit(1);
+    const orgCode = ws?.orgCode || 'ORG';
 
-    await NotificationDeliveryService.send({
-      idempotencyKey: `notif-${Date.now()}`,
-            type: 'client_portal_invite',
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    // Spec §4: /{org_code}/login as the unified login entry point
+    const inviteUrl = `${baseUrl}/client-portal/setup?token=${token}&workspace=${workspaceId}&org=${orgCode}`;
+
+    // NDS send — fire after transaction committed (non-blocking to client)
+    NotificationDeliveryService.send({
+      idempotencyKey: `portal-invite-${token.slice(0, 16)}`,
+      type: 'client_portal_invite',
       workspaceId,
-      recipientUserId: email, // NDS handles email delivery if userId is not found
+      recipientUserId: email,
       channel: 'email',
       subject: 'Invitation to Client Portal',
       body: {
         to: email,
-        clientName: client.companyName || `${client.firstName} ${client.lastName}`,
+        clientName: client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim(),
         inviteUrl,
-        expiresIn: '48 hours'
-      }
+        expiresIn: '7 days',
+        orgCode,
+      },
+    }).catch((err) => log.warn('[PortalInvite] NDS send failed (non-fatal):', err));
+
+    res.json({
+      success: true,
+      message: 'Invitation sent',
+      inviteUrl, // Return for admin display
+      expiresAt: expiresAt.toISOString(),
+      visualStatus: 'invited', // ORANGE border state
     });
-
-    // Audit Log
-    await db.insert(auditLogs).values({
-      workspaceId,
-      userId: req.user?.id || 'system',
-      userEmail: req.user?.email || 'system',
-      action: 'client_portal_invite_sent' as any,
-      entityType: 'client',
-      entityId: clientId,
-      changes: { email, expiresAt: expiresAt.toISOString() },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'] || null,
-    } as any);
-
-    res.json({ success: true, message: 'Invitation sent' });
   } catch (error) {
     log.error('Error sending client portal invite:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Internal server error' });
+  }
+});
+
+/**
+ * DELETE /api/clients/portal/invite/:inviteId/revoke
+ * Manually revoke a pending invite — sets expired state (RED border).
+ */
+router.delete('/portal/invite/:inviteId/revoke', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
+
+    const [invite] = await db.select().from(clientPortalInviteTokens)
+      .where(and(
+        eq(clientPortalInviteTokens.id, req.params.inviteId),
+        eq(clientPortalInviteTokens.workspaceId, workspaceId),
+      ))
+      .limit(1);
+
+    if (!invite) return res.status(404).json({ message: 'Invite not found.' });
+    if (invite.isUsed) return res.status(409).json({ message: 'Cannot revoke an accepted invite.' });
+
+    await db.transaction(async (tx) => {
+      // Force-expire: set expiresAt to the past (Reaper canonical pattern)
+      await tx.update(clientPortalInviteTokens)
+        .set({ expiresAt: new Date(0), updatedAt: new Date() })
+        .where(eq(clientPortalInviteTokens.id, invite.id));
+
+      await tx.insert(auditLogs).values({
+        workspaceId,
+        userId: req.user?.id || 'system',
+        userEmail: req.user?.email || 'system',
+        action: 'client_portal_invite_revoked' as any,
+        entityType: 'client_portal',
+        entityId: invite.clientId,
+        changes: { revokedInviteId: invite.id, email: invite.email },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'] || null,
+      } as any);
+    });
+
+    res.json({ success: true, message: 'Invitation revoked.', visualStatus: 'expired' });
+  } catch (error) {
+    log.error('Error revoking invite:', error);
+    res.status(500).json({ message: sanitizeError(error) || 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/clients/portal/invite/status
+ * Returns all invites for the workspace with visual state machine status.
+ * Used to render the Orange/Red/Green border system in the UI.
+ */
+router.get('/portal/invite/status', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
+
+    const invites = await db.select().from(clientPortalInviteTokens)
+      .where(eq(clientPortalInviteTokens.workspaceId, workspaceId));
+
+    const withVisualStatus = invites.map((inv) => ({
+      ...inv,
+      visualStatus: getInviteVisualStatus(inv),
+      // Border colors for frontend: orange=invited/pending, green=accepted, red=expired
+      borderClass: (() => {
+        const s = getInviteVisualStatus(inv);
+        if (s === 'accepted') return 'border-green-500';
+        if (s === 'expired') return 'border-red-500';
+        return 'border-orange-500'; // pending | invited
+      })(),
+    }));
+
+    res.json(withVisualStatus);
+  } catch (error) {
+    log.error('Error fetching invite status:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

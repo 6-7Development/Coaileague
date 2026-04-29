@@ -40,6 +40,62 @@ export function mountClientRoutes(app: Express): void {
   // Client Portal Invite — Manager+ only, NDS tracked
   app.use("/api/clients", clientPortalInviteRouter);
 
+  // ── Spec §4: /{org_code}/login — Unified Login Entry Point ──────────────────
+  // Redirects org-scoped login URL to the main login with org pre-filled
+  app.get("/:orgCode/login", (req: any, res: any) => {
+    const { orgCode } = req.params;
+    if (!orgCode || orgCode.length < 2 || orgCode.length > 20) {
+      return res.redirect('/login');
+    }
+    // Redirect to main login with orgCode pre-populated as a query param
+    res.redirect(`/login?org=${encodeURIComponent(orgCode.toUpperCase())}`);
+  });
+
+  // ── Spec §4: Handshake Confirmation — flips INVITED → ACTIVE ────────────────
+  // Called when client clicks Confirm on the verification screen.
+  // Requires all: POC Email, Address, Bill Rate, Service Hours.
+  app.post("/api/clients/portal/handshake/confirm", requireAuth, async (req: any, res: any) => {
+    try {
+      const { flipInvitedToActive, validateHandshakePayload } = await import("../services/onboarding/onboardingHandshakeService");
+      const payload = { ...req.body, userId: req.session?.userId || req.user?.id };
+
+      // Pre-flight check — Confirm button should already be disabled on frontend,
+      // but we double-enforce server-side
+      const { valid, missing } = validateHandshakePayload(payload);
+      if (!valid) {
+        return res.status(400).json({
+          message: `Verification incomplete. Missing required fields: ${missing.join(', ')}`,
+          missing,
+          confirmEnabled: false,
+        });
+      }
+
+      const result = await flipInvitedToActive(payload);
+
+      // Inject full context into session widget (spec §4)
+      if (req.session) {
+        req.session.userId = result.userId;
+        (req.session as any).clientId = result.clientId;
+        (req.session as any).tenantId = result.workspaceId;
+        (req.session as any).orgCode = result.orgCode;
+      }
+
+      res.json({
+        success: true,
+        visualStatus: 'accepted',
+        borderClass: 'border-green-500',
+        context: {
+          userId: result.userId,
+          clientId: result.clientId,
+          tenantId: result.workspaceId,
+          orgCode: result.orgCode,
+        },
+      });
+    } catch (err: any) {
+      res.status(400).json({ message: err?.message || 'Handshake failed' });
+    }
+  });
+
   // Client portal dashboard — quick summary for portal users
   app.get("/api/client-portal/dashboard", requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
     try {

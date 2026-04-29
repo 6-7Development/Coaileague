@@ -1047,3 +1047,17 @@ export type InsertClientServiceRequest = z.infer<typeof insertClientServiceReque
 export type ClientServiceRequest = typeof clientServiceRequests.$inferSelect;
 
 export * from './extended';
+
+// ============================================================================
+// CLIENT PORTAL INVITE TOKENS — v2 (Synapse-Standard)
+// STATUS MACHINE: pending → invited → accepted | expired
+// UNIQUE: (email, workspace_id) in pending/invited state enforced at route level
+// REAPER: Background job sweeps every 24h — if age > 7 days AND status in (pending, invited) → expired
+// ============================================================================
+// NOTE: The table definition above (clientPortalInviteTokens) is the canonical
+// source. The extensions below document the status values and invariants:
+//   status = 'pending'  → token generated, email not yet confirmed sent
+//   status = 'invited'  → email delivered, awaiting client action  [ORANGE BORDER]
+//   status = 'accepted' → client completed setup                   [GREEN BORDER]
+//   status = 'expired'  → token age > 7 days OR manual revocation  [RED BORDER]
+// The Reaper cron at server/services/onboarding/inviteReaperService.ts enforces this.
