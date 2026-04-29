@@ -65,6 +65,8 @@ function selectDashboard(
     case "shift_leader":          return SupervisorDashboard;
     case "auditor":               return AuditorDashboard;
     case "contractor":            return ContractorDashboard;
+    case "employee":
+    case "staff":                 return WorkerDashboard;
     default:                      return WorkerDashboard;
   }
 }

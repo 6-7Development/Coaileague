@@ -1,6 +1,8 @@
 // Custom session-based authentication
-import { secureFetch } from "@/lib/csrf";
-import { useQuery } from "@tanstack/react-query";
+import { secureFetch, clearCsrfToken } from "@/lib/csrf";
+import { listenForTabEvents } from "@/lib/tabSync";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
 // Extended user type including platform role and workspace role for RBAC
@@ -27,6 +29,34 @@ interface AuthResponse {
 }
 
 export function useAuth() {
+  const queryClient = useQueryClient();
+
+  // Cross-tab logout / workspace-switch detection via BroadcastChannel.
+  // performLogout() calls broadcastLogout() which posts to 'coaileague_session'.
+  // Any other open tab receives it here and clears auth state immediately —
+  // no 60-second lag waiting for the next refetch.
+  useEffect(() => {
+    const unlisten = listenForTabEvents({
+      onLogout: () => {
+        clearCsrfToken();
+        queryClient.setQueryData(['/api/auth/me'], null);
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      },
+      onWorkspaceSwitch: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      },
+    });
+    const handleSessionExpired = () => {
+      clearCsrfToken();
+      queryClient.setQueryData(['/api/auth/me'], null);
+    };
+    window.addEventListener('session:expired', handleSessionExpired);
+    return () => {
+      unlisten();
+      window.removeEventListener('session:expired', handleSessionExpired);
+    };
+  }, [queryClient]);
+
   const { data, isLoading, isFetching, error } = useQuery<AuthResponse | null>({
     queryKey: ["/api/auth/me"],
     // Retry up to 8 times for server errors (5xx / network) — DB may be briefly unavailable

@@ -78,7 +78,11 @@ function useStableViewportHeight() {
       }
     };
 
-    const handleOrientation = () => setTimeout(handleWindowResize, 200);
+    let orientationTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleOrientation = () => {
+      if (orientationTimer) clearTimeout(orientationTimer);
+      orientationTimer = setTimeout(handleWindowResize, 200);
+    };
 
     if (vv) {
       vv.addEventListener("resize", handleVVResize);
@@ -87,6 +91,7 @@ function useStableViewportHeight() {
     window.addEventListener("orientationchange", handleOrientation);
 
     return () => {
+      if (orientationTimer) clearTimeout(orientationTimer);
       if (vv) vv.removeEventListener("resize", handleVVResize);
       window.removeEventListener("resize", handleWindowResize);
       window.removeEventListener("orientationchange", handleOrientation);

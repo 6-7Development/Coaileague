@@ -190,6 +190,9 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: 0,
       retry: (failureCount, error) => {
+        // 401 is a definitive auth answer — never retry; retrying causes log spam
+        // and can trigger multiple redirect cycles during session expiry.
+        if (error instanceof ApiError && error.status === 401) return false;
         if (error instanceof ApiError && error.status < 500) return false;
         return failureCount < 2;
       },

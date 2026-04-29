@@ -9,10 +9,12 @@
 import { Router } from 'express';
 import { requireAuth, type AuthenticatedRequest } from '../auth';
 import { db } from '../db';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { createLogger } from '../lib/logger';
+import { supportTickets } from '@shared/schema';
 
 const log = createLogger('ChatPolls');
 const router = Router();
@@ -89,7 +91,8 @@ router.get('/conversations/:conversationId/polls', requireAuth, async (req: Auth
     `);
     return res.json(result.rows ?? []);
   } catch (err: any) {
-    return res.json([]);
+    log.error('[ChatPolls] Failed to fetch polls:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch polls' });
   }
 });
 
@@ -131,6 +134,32 @@ router.get('/polls/:pollId', requireAuth, async (req: AuthenticatedRequest, res)
     return res.json(result.rows[0]);
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to fetch poll' });
+  }
+});
+
+// GET /api/chat/tickets/:ticketId — used by HelpDeskProgressHeader
+router.get('/tickets/:ticketId', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { ticketId } = req.params;
+    const ticket = await db.query.supportTickets.findFirst({
+      where: eq(supportTickets.id, ticketId),
+      columns: {
+        id: true,
+        ticketNumber: true,
+        status: true,
+        subject: true,
+        priority: true,
+        isEscalated: true,
+        createdAt: true,
+        updatedAt: true,
+        workspaceId: true,
+      },
+    });
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    return res.json(ticket);
+  } catch (err: any) {
+    log.error('[ChatTickets] Fetch error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch ticket' });
   }
 });
 

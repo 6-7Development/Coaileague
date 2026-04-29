@@ -487,8 +487,9 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
       where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as any),
     });
 
-    for (const staff of platformStaff) {
-      await notificationEngine.sendNotification({
+    // Use Promise.allSettled so a single failed notification doesn't abort the rest
+    const notifyResults = await Promise.allSettled(platformStaff.map(staff =>
+      notificationEngine.sendNotification({
         workspaceId: ticket.workspaceId || 'platform',
         userId: staff.userId,
         type: 'support_escalation',
@@ -501,6 +502,13 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
           ticketNumber: ticket.ticketNumber,
           skipFeatureCheck: true,
         },
+      })
+    ));
+    const failed = notifyResults.filter(r => r.status === 'rejected');
+    if (failed.length > 0) {
+      log.warn(`[Escalation] ${failed.length}/${platformStaff.length} escalation notifications failed`, {
+        ticketId: ticket.id,
+        errors: failed.map(r => (r as PromiseRejectedResult).reason?.message),
       });
     }
 

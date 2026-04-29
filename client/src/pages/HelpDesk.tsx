@@ -533,7 +533,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  const { data: motdResponse, error: motdError } = useQuery<{ motd: any, acknowledged: boolean }>({
  queryKey: ['/api/helpdesk/motd', isConnected],
  queryFn: async () => {
-   const res = await fetch('/api/helpdesk/motd', { credentials: 'include' });
+   const res = await secureFetch('/api/helpdesk/motd', { credentials: 'include' });
    if (!res.ok) throw new Error('Failed to fetch MOTD');
    return res.json();
  },
@@ -1230,7 +1230,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  formData.append('conversationId', conversationToJoin);
  formData.append('isPublic', 'true');
 
- const response = await fetch('/api/chat/upload', {
+ const response = await secureFetch('/api/chat/upload', {
  method: 'POST',
  body: formData,
  credentials: 'include',

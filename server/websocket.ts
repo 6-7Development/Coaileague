@@ -58,7 +58,8 @@ setInterval(() => {
 
 export function createWsAuthToken(userId: string, workspaceId?: string, role?: string): string {
   const token = randomUUID() + '-' + Date.now().toString(36);
-  _wsAuthTokens.set(token, { userId, workspaceId, role, expiresAt: Date.now() + 60_000 });
+  // 10s TTL — short enough that a cross-device logout within the window can't reuse the token
+  _wsAuthTokens.set(token, { userId, workspaceId, role, expiresAt: Date.now() + 10_000 });
   return token;
 }
 

@@ -940,7 +940,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
               type: "shift_reminder",
               url: "/schedule",
               shiftId: shift.id,
-            }
+            },
+            idempotencyKey: `shift-${shift.id}-assigned-${shift.employeeId}`,
           });
         } catch (_pushErr) {
           log.warn('[Shifts] Push notification failed for shift update via NDS:', _pushErr);
