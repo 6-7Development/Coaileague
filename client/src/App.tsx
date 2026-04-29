@@ -79,6 +79,7 @@ import { ChatDockProvider } from "@/contexts/ChatDockContext";
 import { UnifiedChatBubble } from "@/components/chatdock/ChatDock";
 import { TrinityActivityBar } from "@/components/trinity/TrinityActivityBar";
 import { TrinityThoughtBar } from "@/components/chatdock/TrinityThoughtBar";
+import { SafeSection } from "@/components/ui/safe-section";
 import { TrinityTaskWidget } from "@/components/trinity/TrinityTaskWidget";
 // FloatingTrinityButton removed - redundant with header Trinity access
 import { HeaderTrinityButton } from "@/components/header-trinity-button";
@@ -1451,7 +1452,9 @@ function AppContent() {
             )}
 
             {/* Trinity OS thought bar — persistent status below header */}
-            <TrinityThoughtBar className="border-b border-cyan-500/20" />
+            <SafeSection name="TrinityThoughtBar">
+              <TrinityThoughtBar className="border-b border-cyan-500/20" />
+            </SafeSection>
             {/* Trinity activity bar — below nav, above content */}
             <TrinityActivityBar />
 
@@ -1991,7 +1994,9 @@ function AppContent() {
             
 
               {/* Trinity OS thought bar — persistent status */}
-              <TrinityThoughtBar className="border-b border-cyan-500/20" />
+              <SafeSection name="TrinityThoughtBar">
+                <TrinityThoughtBar className="border-b border-cyan-500/20" />
+              </SafeSection>
               {/* Trinity activity bar — below nav banners, above content */}
               <TrinityActivityBar />
 

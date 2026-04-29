@@ -1344,19 +1344,23 @@ const constraints: CriticalConstraint[] = [
     name: 'universal_audit_log_action_description',
     rationale: 'universal_audit_log is missing action_description and changes columns. trinityResolutionFabric.recordOutcome INSERTs with both on every resolution cycle, producing [42703]: column "action_description" of relation "universal_audit_log" does not exist — logged as [ResolutionFabric] Failed to record outcome on every automation run.',
     isPresent: async () => {
+      // Check for BOTH columns — if either is missing, apply runs
       const { rows } = await pool.query(
-        `SELECT 1 FROM information_schema.columns
-         WHERE table_name = 'universal_audit_log' AND column_name = 'action_description'`,
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_name = 'universal_audit_log'
+           AND column_name IN ('action_description', 'changes', 'before_state', 'after_state', 'outcome', 'resolution_tier')`,
       );
-      return rows.length > 0;
+      return rows.length >= 6; // All 6 columns must exist
     },
     apply: async () => {
-      await pool.query(
-        `ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS action_description TEXT`,
-      );
-      await pool.query(
-        `ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS changes JSONB`,
-      );
+      await pool.query(`
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS action_description TEXT;
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS outcome VARCHAR;
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS resolution_tier VARCHAR;
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS changes JSONB;
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS before_state JSONB;
+        ALTER TABLE universal_audit_log ADD COLUMN IF NOT EXISTS after_state JSONB;
+      `);
     },
   },
   {

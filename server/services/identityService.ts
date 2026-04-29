@@ -94,17 +94,19 @@ async function ensureOrgIdentifiersInTx(
     try {
       // Create external identifier
       log.info(`[Identity] Inserting org external ID into database...`);
-      // Use ON CONFLICT DO NOTHING to prevent transaction abort from cascading
-      // (PostgreSQL marks entire tx as aborted after any error, breaking subsequent queries)
-      const { pool: identityPool } = await import('./db' as any).catch(() => ({ pool: null }));
-      if (identityPool) {
-        await identityPool.query(
+      // Use raw pool query with ON CONFLICT DO NOTHING to prevent PostgreSQL
+      // from marking the whole Drizzle transaction as ABORTED on a unique violation.
+      // Pool import is at module level in db.ts; use pool directly.
+      try {
+        const { pool: pgPool } = await import("../db");
+        await pgPool.query(
           `INSERT INTO external_identifiers (entity_type, entity_id, external_id, org_id, is_primary)
            VALUES ($1, $2, $3, NULL, true)
            ON CONFLICT DO NOTHING`,
           ['org', orgId, externalId]
         );
-      } else {
+      } catch (_poolErr: any) {
+        // Pool import failed — fall back to Drizzle (may abort tx on conflict)
         await tx.insert(externalIdentifiers).values({
           entityType: 'org',
           entityId: orgId,
