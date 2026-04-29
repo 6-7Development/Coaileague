@@ -6,7 +6,7 @@ import { db } from '../db';
 import { orgInvitations, proposals } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { trinityOutreachService } from '../services/trinityOutreachService';
-import { requireManager } from '../rbac';
+import { requireAuth, requireManager } from '../rbac';
 import { z } from 'zod';
 import '../types';
 

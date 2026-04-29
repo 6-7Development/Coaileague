@@ -5,7 +5,7 @@ import { leads, activities, deals, users } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import '../types';
 import { platformEventBus } from '../services/platformEventBus';
-import { requireManager } from '../rbac';
+import { requireAuth, requireManager } from '../rbac';
 import { createLogger } from '../lib/logger';
 import { z } from 'zod';
 const log = createLogger('LeadCrmRoutes');

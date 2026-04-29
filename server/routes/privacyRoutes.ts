@@ -15,6 +15,7 @@
  *   GET  /api/privacy/retention-policies     — List all retention policies (platform staff)
  */
 
+import { requireAuth } from '../rbac';
 import { sanitizeError } from '../middleware/errorHandler';
 import type { Express, Request, Response } from 'express';
 import express from 'express';

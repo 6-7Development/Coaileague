@@ -1,3 +1,4 @@
+import { requireAuth } from '../rbac';
 import { sanitizeError } from '../middleware/errorHandler';
 import type { Express } from 'express';
 import { Router, Request, Response } from 'express';

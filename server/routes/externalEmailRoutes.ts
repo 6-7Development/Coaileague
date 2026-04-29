@@ -1,3 +1,4 @@
+import { requireAuth } from '../rbac';
 import type { Express } from 'express';
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
