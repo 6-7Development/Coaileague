@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MessageSquare, ShieldCheck, Bell, Clock, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { Link } from "wouter";
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function SmsConsent() {
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);

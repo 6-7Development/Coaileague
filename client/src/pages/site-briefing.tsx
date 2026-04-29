@@ -329,6 +329,8 @@ function BriefingCard({ briefing, onEdit, onDelete }: { briefing: SiteBriefing; 
   );
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function SiteBriefingPage() {
   const { user } = useAuth();
   const workspaceId = (user as any)?.workspaceId;

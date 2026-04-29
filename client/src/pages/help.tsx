@@ -104,6 +104,8 @@ const helpArticles = [
 // MAIN HELP PAGE
 // ============================================================================
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();

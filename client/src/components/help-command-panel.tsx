@@ -68,6 +68,8 @@ interface HelpCommandPanelProps {
   onExecuteCommand?: (command: string) => void;
 }
 
+const DialogStyledHeader = ({ children, ...props }: any) => <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-4" {...props}>{children}</div>;
+
 export function HelpCommandPanel({ 
   open, 
   onClose, 

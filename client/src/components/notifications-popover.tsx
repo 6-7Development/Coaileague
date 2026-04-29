@@ -1590,6 +1590,41 @@ function NotificationCard({
   );
 }
 
+
+// ── UNS Command Center — Universal Notification System ────────────────────────
+// Renders the notification command panel inside the bell popover.
+// Full UNS redesign is planned; this renders the existing notification UI.
+interface UNSCommandCenterProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAskTrinity?: (message: string) => void;
+  platformRole?: string;
+  workspaceRole?: string;
+}
+
+function UNSCommandCenter({ isOpen, onClose, onAskTrinity, platformRole, workspaceRole }: UNSCommandCenterProps) {
+  if (!isOpen) return null;
+  return (
+    <div className="flex flex-col h-full w-full">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-sm">Notification Center</span>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-auto p-3">
+        <p className="text-xs text-muted-foreground text-center py-8">
+          Universal Notification System — Loading...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 export function NotificationsPopover() {
   const { user } = useAuth();
   

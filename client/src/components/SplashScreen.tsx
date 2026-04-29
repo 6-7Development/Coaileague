@@ -42,6 +42,8 @@ interface SplashScreenProps {
 // the brand. 3000 ms matches the HTML-loader floor in index.html so there
 // is no perceptible jump between the pre-React HTML loader phase and the
 // React-mounted SplashScreen phase.
+const UniversalLogoSpinner = () => <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />;
+
 export function SplashScreen({
   onComplete,
   minDisplayTime = 3000,

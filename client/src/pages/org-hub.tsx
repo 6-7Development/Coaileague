@@ -151,6 +151,8 @@ function BranchCard({ node, isRoot, onDetach, detaching }: { node: OrgNode; isRo
   );
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function OrgHub() {
   const { user } = useAuth();
   const { toast } = useToast();

@@ -729,6 +729,8 @@ function EmployeePinCard() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function WorkerDashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();

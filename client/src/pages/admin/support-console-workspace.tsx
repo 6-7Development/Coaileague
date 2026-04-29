@@ -37,6 +37,8 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
+const Icon = ({ name, className }: any) => <span className={className}>●</span>;
+
 export default function SupportConsoleWorkspacePage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
