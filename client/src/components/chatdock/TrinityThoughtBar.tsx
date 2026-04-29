@@ -302,10 +302,15 @@ export function TrinityThoughtBar({
     }
   }, [isProcessing, state]);
 
-  const colors = getBroadcastColor("trinity", state) ?? {
+  const FALLBACK_COLORS = {
     primary: "#8B5CF6", dim: "#8B5CF633", glow: "#8B5CF644",
     text: "#DDD6FE", border: "#8B5CF666",
   };
+  let colors = FALLBACK_COLORS;
+  try {
+    const _c = getBroadcastColor("trinity", state);
+    if (_c && typeof _c.primary === "string") colors = _c;
+  } catch { /* use fallback */ }
   const hasAutonomousScheduleActivity = !!activeSchedulingOperation;
   const isTrinityActive = isProcessing || state === "active" || hasAutonomousScheduleActivity;
   const displayPhrase = state === "offline"
@@ -321,7 +326,7 @@ export function TrinityThoughtBar({
       style={{
         height: undefined, // set via CSS classes
         backgroundColor: "#0F172A",
-        borderBottom: `1px solid ${colors.border}`,
+        borderBottom: `1px solid ${(colors?.border ?? FALLBACK_COLORS.border)}`,
       }}
       role="status"
       aria-live={state === "critical" ? "assertive" : "polite"}
@@ -354,7 +359,7 @@ export function TrinityThoughtBar({
           className="absolute inset-x-0 pointer-events-none"
           style={{
             height: "1px",
-            background: `linear-gradient(90deg, transparent, ${colors.primary}22, transparent)`,
+            background: `linear-gradient(90deg, transparent, ${(colors?.primary ?? FALLBACK_COLORS.primary)}22, transparent)`,
             animation: "coai-scan-line 5s linear infinite",
             top: 0,
           }}
@@ -367,7 +372,7 @@ export function TrinityThoughtBar({
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(90deg, transparent 0%, ${colors.primary}08 50%, transparent 100%)`,
+            background: `linear-gradient(90deg, transparent 0%, ${(colors?.primary ?? FALLBACK_COLORS.primary)}08 50%, transparent 100%)`,
             animation: "coai-shimmer-sweep 2.5s linear infinite",
             backgroundSize: "200% 100%",
           }}
@@ -383,7 +388,7 @@ export function TrinityThoughtBar({
         aria-expanded={mobileExpanded}
       >
         {/* Icon */}
-        <TrinityIcon color={colors.primary} active={isTrinityActive} critical={state === "critical"} />
+        <TrinityIcon color={(colors?.primary ?? FALLBACK_COLORS.primary)} active={isTrinityActive} critical={state === "critical"} />
 
         {/* Phrase */}
         <span
@@ -392,7 +397,7 @@ export function TrinityThoughtBar({
             fontSize: "11px",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: colors.text,
+            color: (colors?.text ?? FALLBACK_COLORS.text),
             opacity: phraseVisible ? 1 : 0,
             transition: "opacity 0.3s",
           }}
@@ -401,14 +406,14 @@ export function TrinityThoughtBar({
         </span>
 
         {/* Dots */}
-        <BouncingDots color={colors.primary} active={isTrinityActive} />
+        <BouncingDots color={(colors?.primary ?? FALLBACK_COLORS.primary)} active={isTrinityActive} />
       </button>
 
       {/* Mobile expanded panel */}
       {mobileExpanded && (
         <div
           className="sm:hidden px-3 pb-2 space-y-2"
-          style={{ borderTop: `1px solid ${colors.border}` }}
+          style={{ borderTop: `1px solid ${(colors?.border ?? FALLBACK_COLORS.border)}` }}
         >
           <ThreadPills threads={threads} colors={colors} state={state} />
           <CognitiveLayers activeModel={activeModel} modelStatus={modelStatus} state={state} />
@@ -419,13 +424,13 @@ export function TrinityThoughtBar({
       <div className="hidden sm:flex items-center h-12 px-3 gap-3">
         {/* Left: Trinity identity */}
         <div className="flex items-center gap-1.5 flex-shrink-0 w-36">
-          <TrinityIcon color={colors.primary} active={isTrinityActive} critical={state === "critical"} />
+          <TrinityIcon color={(colors?.primary ?? FALLBACK_COLORS.primary)} active={isTrinityActive} critical={state === "critical"} />
           <span
             style={{
               fontSize: "11px",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: colors.text,
+              color: (colors?.text ?? FALLBACK_COLORS.text),
               fontWeight: 700,
             }}
           >
@@ -447,7 +452,7 @@ export function TrinityThoughtBar({
 
         {/* Left-center: Current action */}
         <div className="flex-shrink-0 w-52 min-w-0">
-          <div style={{ fontSize: "10px", color: colors.dim === "#7C3AED33" ? "#8B5CF6" : colors.text, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1px" }}>
+          <div style={{ fontSize: "10px", color: (colors?.dim ?? FALLBACK_COLORS.dim) === "#7C3AED33" ? "#8B5CF6" : (colors?.text ?? FALLBACK_COLORS.text), letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1px" }}>
             {currentTrinityAction 
               ? `TRINITY ACTION (${currentTrinityAction.domain.toUpperCase()})`
               : state === "critical" ? "CRITICAL ALERT" : state === "fallback" ? "FALLBACK MODE" : "CURRENT ACTION"}
@@ -455,7 +460,7 @@ export function TrinityThoughtBar({
           <div
             style={{
               fontSize: "13px",
-              color: colors.text,
+              color: (colors?.text ?? FALLBACK_COLORS.text),
               opacity: phraseVisible ? 1 : 0,
               transition: "opacity 0.3s ease",
               whiteSpace: "nowrap",
@@ -472,7 +477,7 @@ export function TrinityThoughtBar({
             <div style={{ 
               fontSize: "9px", 
               marginTop: "2px",
-              color: colors.text + "99",
+              color: (colors?.text ?? FALLBACK_COLORS.text) + "99",
               display: "flex",
               alignItems: "center",
               gap: "4px"
@@ -480,14 +485,14 @@ export function TrinityThoughtBar({
               <div style={{
                 height: "4px",
                 width: "40px",
-                backgroundColor: colors.text + "22",
+                backgroundColor: (colors?.text ?? FALLBACK_COLORS.text) + "22",
                 borderRadius: "2px",
                 overflow: "hidden"
               }}>
                 <div style={{
                   height: "100%",
                   width: `${currentTrinityAction.progress}%`,
-                  backgroundColor: colors.primary,
+                  backgroundColor: (colors?.primary ?? FALLBACK_COLORS.primary),
                   transition: "width 0.3s ease"
                 }} />
               </div>
@@ -523,7 +528,7 @@ export function TrinityThoughtBar({
           ) : completionFlash ? (
             <span style={{ color: "#22C55E", fontSize: "12px", fontWeight: 700 }}>&#10003;</span>
           ) : (
-            <BouncingDots color={colors.primary} active={isTrinityActive} />
+            <BouncingDots color={(colors?.primary ?? FALLBACK_COLORS.primary)} active={isTrinityActive} />
           )}
         </div>
       </div>
@@ -616,7 +621,7 @@ function ThreadPills({
   state,
 }: {
   threads: TrinityThreadStatus[];
-  colors: ReturnType<typeof getBroadcastColor>;
+  colors: ReturnType<typeof getBroadcastColor> | { primary: string; dim: string; glow: string; text: string; border: string };
   state: CoAIStatusState;
 }) {
   return (
@@ -632,13 +637,13 @@ function ThreadPills({
               letterSpacing: "0.06em",
               padding: "1px 5px",
               borderRadius: "3px",
-              border: `1px solid ${isCrit ? "#EF4444" : isActive ? colors.primary : colors.border}`,
+              border: `1px solid ${isCrit ? "#EF4444" : isActive ? (colors?.primary ?? FALLBACK_COLORS.primary) : (colors?.border ?? FALLBACK_COLORS.border)}`,
               backgroundColor: isCrit
                 ? "#EF444422"
                 : isActive
-                ? `${colors.primary}22`
+                ? `${(colors?.primary ?? FALLBACK_COLORS.primary)}22`
                 : "transparent",
-              color: isCrit ? "#FCA5A5" : isActive ? colors.text : `${colors.text}55`,
+              color: isCrit ? "#FCA5A5" : isActive ? (colors?.text ?? FALLBACK_COLORS.text) : `${(colors?.text ?? FALLBACK_COLORS.text)}55`,
               animation: isCrit ? "coai-critical-pulse 1s infinite" : undefined,
               whiteSpace: "nowrap",
             }}
