@@ -2774,7 +2774,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
           </div>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-auto p-0 border border-border bg-popover shadow-lg overflow-visible z-50" 
+          className="w-auto p-0 border border-border/60 bg-popover/95 backdrop-blur-xl shadow-xl overflow-visible z-50 rounded-2xl" 
           style={{ overflow: 'visible' }}
           align="end"
           sideOffset={8}

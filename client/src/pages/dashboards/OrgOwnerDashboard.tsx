@@ -297,7 +297,7 @@ export default function OrgOwnerDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{orgName} - Owner Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{orgName} - Owner Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Welcome back, {user?.firstName || user?.email?.split("@")[0] || "Owner"}
           </p>
@@ -499,7 +499,7 @@ export default function OrgOwnerDashboard() {
                 Outstanding AR
               </p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {formatCurrency(outstandingTotal)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -514,7 +514,7 @@ export default function OrgOwnerDashboard() {
                 Active Clients
               </p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{activeClients}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{activeClients}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {activeClients === 0
                 ? "Add a client to unlock billing and scheduling"
@@ -529,7 +529,7 @@ export default function OrgOwnerDashboard() {
                 Total Employees
               </p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{totalEmployees}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{totalEmployees}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {totalEmployees <= 1
                 ? "Invite your first team members to expand operations"
@@ -544,7 +544,7 @@ export default function OrgOwnerDashboard() {
                 Total Invoices
               </p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{invoiceList.length}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{invoiceList.length}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {invoiceList.length === 0
                 ? "Create an invoice to start revenue tracking"

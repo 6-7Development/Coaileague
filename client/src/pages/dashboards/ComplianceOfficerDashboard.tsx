@@ -18,45 +18,45 @@ export default function ComplianceOfficerDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Compliance & AI Governance</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Compliance & AI Governance</h1>
           <p className="text-sm text-muted-foreground mt-1">Platform-wide compliance monitoring, audits, and AI governance</p>
         </div>
 
         {/* Quick stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Compliance</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">Monitor</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">Monitor</p>
             <p className="text-xs text-muted-foreground mt-1">Platform compliance status</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Bell className="w-4 h-4 text-teal-600 dark:text-teal-400" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Oversight</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">Review</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">Review</p>
             <p className="text-xs text-muted-foreground mt-1">AI governance queue</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attestations</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">Audit</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">Audit</p>
             <p className="text-xs text-muted-foreground mt-1">Policy compliance tracking</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Retention</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">Configure</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">Configure</p>
             <p className="text-xs text-muted-foreground mt-1">Data retention policies</p>
           </div>
         </div>
@@ -79,9 +79,9 @@ export default function ComplianceOfficerDashboard() {
             </Button>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-muted rounded-lg">
+              <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                 <FileText className="w-5 h-5 text-foreground" />
               </div>
               <div>

@@ -32,42 +32,42 @@ export default function DeputyAdminDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Platform Operations</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Platform Operations</h1>
           <p className="text-sm text-muted-foreground mt-1">Assist with platform administration and user management</p>
         </div>
 
         {/* Metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active Orgs</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.summary?.totalWorkspaces ?? "—"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{stats?.summary?.totalWorkspaces ?? "—"}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Open Tickets</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.support?.openTickets ?? "—"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{stats?.support?.openTickets ?? "—"}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Escalations</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{stats?.support?.unresolvedEscalations ?? "—"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{stats?.support?.unresolvedEscalations ?? "—"}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Avg Response</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {stats?.support?.avgFirstResponseHours != null
                 ? `${stats.support.avgFirstResponseHours.toFixed(1)}h`
                 : "—"}
@@ -102,9 +102,9 @@ export default function DeputyAdminDashboard() {
           </div>
 
           {/* Workspace support */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-muted rounded-lg">
+              <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                 <Settings className="w-5 h-5 text-foreground" />
               </div>
               <div>

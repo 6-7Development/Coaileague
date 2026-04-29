@@ -50,7 +50,7 @@ export default function AuditorDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Audit View — {orgName}</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Audit View — {orgName}</h1>
           <p className="text-sm text-muted-foreground mt-1">Read-only compliance and audit access</p>
         </div>
 
@@ -70,10 +70,10 @@ export default function AuditorDashboard() {
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Compliance documents */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
+                <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                   <FileText className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
@@ -100,9 +100,9 @@ export default function AuditorDashboard() {
           </div>
 
           {/* Audit trail */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-muted rounded-lg">
+              <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                 <CheckCircle className="w-5 h-5 text-foreground" />
               </div>
               <div>

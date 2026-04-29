@@ -44,33 +44,33 @@ export default function SysopDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">System Operations Center</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">System Operations Center</h1>
           <p className="text-sm text-muted-foreground mt-1">Monitor infrastructure, databases, and system performance</p>
         </div>
 
         {/* Metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CPU</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {stats?.system?.cpu != null ? `${Math.round(stats.system.cpu)}%` : "—"}
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Server className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Memory</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {stats?.system?.memory != null ? `${Math.round(stats.system.memory)}%` : "—"}
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Database className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Database</p>
@@ -78,12 +78,12 @@ export default function SysopDashboard() {
             <p className={`text-2xl font-bold ${dbColor} capitalize`}>{dbStatus}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Server className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Uptime</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {stats?.system?.uptimeSeconds != null ? formatUptime(stats.system.uptimeSeconds) : "—"}
             </p>
           </div>
@@ -97,9 +97,9 @@ export default function SysopDashboard() {
         </div>
 
         {/* Infrastructure quick actions */}
-        <div className="bg-card border border-border rounded-lg p-5">
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-muted rounded-lg">
+            <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
               <Server className="w-5 h-5 text-foreground" />
             </div>
             <div>

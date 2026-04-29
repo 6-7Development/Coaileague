@@ -98,44 +98,44 @@ export default function SupervisorDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Site Supervisor Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Site Supervisor Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">{orgName}</p>
         </div>
 
         {/* Metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-green-600 dark:text-green-400" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">On Shift</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {shifts.filter((s: any) => s.status === "active" || s.status === "clocked_in").length || "—"}
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Today's Shifts</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{todayShifts.length || "—"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{todayShifts.length || "—"}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-orange-500" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Open Incidents</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{openIncidents.length || "0"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{openIncidents.length || "0"}</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">My Status</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {clockStatus?.isClockedIn ? "On" : "Off"}
             </p>
           </div>
@@ -144,10 +144,10 @@ export default function SupervisorDashboard() {
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Today's schedule */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
+                <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                   <Calendar className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
@@ -176,9 +176,9 @@ export default function SupervisorDashboard() {
           </div>
 
           {/* Incidents & actions */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-muted rounded-lg">
+              <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                 <FileText className="w-5 h-5 text-foreground" />
               </div>
               <div>

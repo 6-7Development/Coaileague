@@ -81,47 +81,47 @@ export default function ContractorDashboard() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">My Assignments</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">My Assignments</h1>
           <p className="text-sm text-muted-foreground mt-1">Welcome back, {firstName}</p>
         </div>
 
         {/* Metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Briefcase className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assignments</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{upcomingShifts.length || "—"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{upcomingShifts.length || "—"}</p>
             <p className="text-xs text-muted-foreground mt-1">Upcoming</p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-4 h-4 text-primary" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hours This Period</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">
+            <p className="text-2xl font-bold text-foreground tracking-tight">
               {earningsData?.hoursWorked != null ? earningsData.hoursWorked.toFixed(1) : "—"}
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-orange-500" />
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Docs Pending</p>
             </div>
-            <p className="text-2xl font-bold text-foreground">{pendingDocs.length || "0"}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{pendingDocs.length || "0"}</p>
           </div>
         </div>
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Upcoming shifts */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
+                <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                   <Calendar className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
@@ -147,10 +147,10 @@ export default function ContractorDashboard() {
           </div>
 
           {/* Documents */}
-          <div className="bg-card border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group card-float-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
+                <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/15 transition-colors">
                   <FileText className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
