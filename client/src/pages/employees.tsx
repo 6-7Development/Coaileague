@@ -179,7 +179,7 @@ function getRoleDot(workspaceRole: string | null | undefined, isArmed: boolean |
     onToggleSelect: (id: string) => void;
   }) => {
     return (
-      <Card className={`hover-elevate transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`} data-testid={`card-employee-${employee.id}`}>
+      <Card className={['hover-elevate transition-colors', isSelected ? 'border-primary bg-primary/5' : ''].join(' ')} data-testid={`card-employee-${employee.id}`}>
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <div className="pt-1">

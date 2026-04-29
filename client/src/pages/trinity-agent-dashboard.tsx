@@ -711,11 +711,9 @@ export default function TrinityAgentDashboard() {
                       {(escalationsData?.escalations ?? []).map(e => (
                         <div
                           key={e.ticket_id}
-                          className={`p-3 rounded-lg border transition-all ${
-                            e.sla_breached
+                          className={['p-3 rounded-lg border transition-all', e.sla_breached
                               ? 'bg-red-500/10 border-red-500/30'
-                              : 'bg-yellow-500/10 border-yellow-500/20'
-                          }`}
+                              : 'bg-yellow-500/10 border-yellow-500/20'].join(' ')}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>

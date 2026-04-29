@@ -451,11 +451,9 @@ export default function PrivateMessages() {
                   key={conv.id}
                   onClick={() => setSelectedConversation(conv.id)}
                   data-testid={`conversation-${conv.id}`}
-                  className={`w-full p-3 rounded-lg mb-1 text-left transition-colors ${
-                    selectedConversation === conv.id
+                  className={['w-full p-3 rounded-lg mb-1 text-left transition-colors', selectedConversation === conv.id
                       ? "bg-purple-500/10 border border-purple-500/20"
-                      : "hover-elevate"
-                  }`}
+                      : "hover-elevate"].join(' ')}
                 >
                   <div className="flex items-start gap-3">
                     <div className="relative">
@@ -614,11 +612,9 @@ export default function PrivateMessages() {
                             )}
                           </div>
                           <div
-                            className={`p-3 rounded-lg ${
-                              isOwnMessage
+                            className={['p-3 rounded-lg', isOwnMessage
                                 ? "bg-purple-600 text-white"
-                                : "bg-purple-100 dark:bg-purple-950/50 border border-purple-200/50 dark:border-purple-800/50"
-                            }`}
+                                : "bg-purple-100 dark:bg-purple-950/50 border border-purple-200/50 dark:border-purple-800/50"].join(' ')}
                           >
                             {msg.attachmentUrl && (
                               <div className="mb-2">

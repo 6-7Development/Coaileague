@@ -623,7 +623,7 @@ function NegotiationsTab({ negotiations, isLoading, onContractCreated }: { negot
               <h5 className="text-[10px] font-bold text-muted-foreground uppercase">Schedule</h5>
               <div className="grid grid-cols-4 gap-1">
                 {DAYS.map(day => (
-                  <div key={day} className={`text-[9px] text-center py-1 rounded border ${(threadData.thread.proposalData as any)?.schedule?.[day] ? 'bg-primary/10 border-primary/20 text-primary font-bold' : 'text-muted-foreground/40'}`}>
+                  <div key={day} className={['text-[9px] text-center py-1 rounded border', (threadData.thread.proposalData as any)?.schedule?.[day] ? 'bg-primary/10 border-primary/20 text-primary font-bold' : 'text-muted-foreground/40'].join(' ')}>
                     {day}
                   </div>
                 ))}

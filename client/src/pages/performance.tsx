@@ -144,7 +144,7 @@ function RatingStars({ value }: { value: number | null }) {
   return (
     <span className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} className={`h-3.5 w-3.5 ${s <= value ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`} />
+        <Star key={s} className={['h-3.5 w-3.5', s <= value ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'].join(' ')} />
       ))}
     </span>
   );

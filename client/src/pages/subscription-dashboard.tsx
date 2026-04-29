@@ -307,7 +307,7 @@ export default function SubscriptionDashboard() {
 
       {isTrialing && trialDays !== null && (
         <Card
-          className={`border ${trialDays <= 2 ? "border-destructive/60" : "border-yellow-500/40"}`}
+          className={['border', trialDays <= 2 ? "border-destructive/60" : "border-yellow-500/40"].join(' ')}
           data-testid="banner-trial"
         >
           <CardContent className="flex flex-wrap items-center gap-3 pt-4 pb-4">

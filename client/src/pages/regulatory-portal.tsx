@@ -178,11 +178,9 @@ export default function RegulatoryPortal() {
             return (
               <div key={s.step} className="flex items-center gap-2 min-w-0">
                 <div className={`flex items-center gap-2 flex-shrink-0 ${isActive ? "opacity-100" : isComplete ? "opacity-100" : "opacity-40"}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                    isComplete ? "bg-[#ffc83c] border-[#ffc83c]" :
+                  <div className={['w-8 h-8 rounded-full flex items-center justify-center border-2', isComplete ? "bg-[#ffc83c] border-[#ffc83c]" :
                     isActive ? "border-[#ffc83c] bg-[#ffc83c]/10" :
-                    "border-slate-600 bg-transparent"
-                  }`}>
+                    "border-slate-600 bg-transparent"].join(' ')}>
                     {isComplete ? (
                       <CheckCircle2 size={14} className="text-[#0f172a]" />
                     ) : (

@@ -251,11 +251,9 @@ export default function SafetyHub() {
               <div className="space-y-1">
                 {panics.data?.alerts?.map((a: any) => (
                   <DsDataRow key={a.id} data-testid={`row-panic-${a.id}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      a.status === "active" ? "bg-[var(--ds-danger)]/20 text-[var(--ds-danger)] animate-pulse" : 
+                    <div className={['w-8 h-8 rounded-full flex items-center justify-center shrink-0', a.status === "active" ? "bg-[var(--ds-danger)]/20 text-[var(--ds-danger)] animate-pulse" : 
                       a.status === "acknowledged" ? "bg-[var(--ds-warning)]/20 text-[var(--ds-warning)]" : 
-                      "bg-[var(--ds-navy-light)] text-[var(--ds-text-muted)]"
-                    }`}>
+                      "bg-[var(--ds-navy-light)] text-[var(--ds-text-muted)]"].join(' ')}>
                       <AlertTriangle size={16} />
                     </div>
                     <div className="flex-1 min-w-0">

@@ -970,7 +970,7 @@ export default function Billing() {
                 return (
                   <Card 
                     key={tier.id} 
-                    className={`relative ${tier.popular ? 'border-primary shadow-sm' : ''} ${isCurrent ? 'border-primary/50 bg-primary/5' : ''}`}
+                    className={['relative', tier.popular ? 'border-primary shadow-sm' : '', isCurrent ? 'border-primary/50 bg-primary/5' : ''].join(' ')}
                     data-testid={`card-tier-${tier.id}`}
                   >
                     {tier.popular && (
@@ -1839,7 +1839,7 @@ export default function Billing() {
                   {(paymentMethodsData?.paymentMethods || []).map(pm => (
                     <div
                       key={pm.id}
-                      className={`flex flex-wrap items-center justify-between gap-3 p-4 rounded-md border ${pm.isDefault ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                      className={['flex flex-wrap items-center justify-between gap-3 p-4 rounded-md border', pm.isDefault ? 'border-primary/40 bg-primary/5' : 'border-border'].join(' ')}
                       data-testid={`card-payment-method-${pm.id}`}
                     >
                       <div className="flex items-center gap-3">

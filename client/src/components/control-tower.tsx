@@ -470,11 +470,9 @@ export function ControlTower() {
               {aiBrainData?.services?.slice(0, 2).map((service) => (
                 <Badge
                   key={service.name}
-                  className={`text-xs cursor-pointer ${
-                    service.status === 'running' 
+                  className={['text-xs cursor-pointer', service.status === 'running' 
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                  }`}
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'].join(' ')}
                   onClick={() => {
                     if (service.status === 'running') {
                       pauseServiceMutation.mutate({ serviceName: service.name, reason: 'Manual pause from Control Tower' });

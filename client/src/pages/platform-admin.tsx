@@ -458,11 +458,9 @@ function PlatformRolesManager() {
                 {PLATFORM_ROLES.map((role) => (
                   <div
                     key={role.value}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      newRole === role.value
+                    className={['p-3 rounded-lg border cursor-pointer transition-colors', newRole === role.value
                         ? 'border-primary bg-primary/10'
-                        : 'hover:bg-muted'
-                    }`}
+                        : 'hover:bg-muted'].join(' ')}
                     onClick={() => setNewRole(role.value)}
                     data-testid={`role-option-${role.value}`}
                   >

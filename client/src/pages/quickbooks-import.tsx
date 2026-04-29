@@ -1352,9 +1352,7 @@ export default function QuickBooksImportPage() {
                   return (
                     <label
                       key={cust.qboId}
-                      className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 hover-elevate cursor-pointer ${
-                        cust.isVendor ? 'opacity-50 bg-muted/30' : ''
-                      }`}
+                      className={['flex items-center gap-2 sm:gap-4 p-3 sm:p-4 hover-elevate cursor-pointer', cust.isVendor ? 'opacity-50 bg-muted/30' : ''].join(' ')}
                       data-testid={`row-customer-${cust.qboId}`}
                     >
                       <Checkbox
@@ -1441,9 +1439,7 @@ export default function QuickBooksImportPage() {
                   return (
                     <label
                       key={emp.qboId}
-                      className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 hover-elevate cursor-pointer ${
-                        !emp.active ? 'opacity-50 bg-muted/30' : ''
-                      }`}
+                      className={['flex items-center gap-2 sm:gap-4 p-3 sm:p-4 hover-elevate cursor-pointer', !emp.active ? 'opacity-50 bg-muted/30' : ''].join(' ')}
                       data-testid={`row-employee-${emp.qboId}`}
                     >
                       <Checkbox

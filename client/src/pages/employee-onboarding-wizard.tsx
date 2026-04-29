@@ -666,9 +666,7 @@ export default function EmployeeOnboardingWizard() {
               {STEPS.map((s, i) => (
                 <div
                   key={s.id}
-                  className={`h-1.5 flex-1 max-w-[2rem] rounded-full transition-colors ${
-                    i < step ? 'bg-primary' : i === step ? 'bg-primary/50' : 'bg-muted'
-                  }`}
+                  className={['h-1.5 flex-1 max-w-[2rem] rounded-full transition-colors', i < step ? 'bg-primary' : i === step ? 'bg-primary/50' : 'bg-muted'].join(' ')}
                 />
               ))}
             </div>
@@ -1026,7 +1024,7 @@ export default function EmployeeOnboardingWizard() {
                       return (
                         <div
                           key={day}
-                          className={`flex items-center gap-2 p-2.5 rounded-md border cursor-pointer transition-colors ${checked ? 'border-primary bg-primary/5' : ''}`}
+                          className={['flex items-center gap-2 p-2.5 rounded-md border cursor-pointer transition-colors', checked ? 'border-primary bg-primary/5' : ''].join(' ')}
                           onClick={() => setField(field, !checked)}
                           data-testid={`toggle-${field}`}
                         >
@@ -1109,13 +1107,11 @@ export default function EmployeeOnboardingWizard() {
                         <button
                           key={c.id}
                           onClick={() => setCurrentDocIdx(i)}
-                          className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-                            i === currentDocIdx
+                          className={['text-xs px-2.5 py-1 rounded-md border transition-colors', i === currentDocIdx
                               ? 'border-primary bg-primary/10 font-medium'
                               : c.status === 'signed'
                               ? 'border-green-500/50 bg-green-500/5 text-muted-foreground'
-                              : 'border-muted text-muted-foreground'
-                          }`}
+                              : 'border-muted text-muted-foreground'].join(' ')}
                           data-testid={`tab-doc-${i}`}
                         >
                           {c.status === 'signed' ? '✓ ' : ''}{c.documentTitle.split(':')[0].slice(0, 22)}

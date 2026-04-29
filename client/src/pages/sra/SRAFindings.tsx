@@ -297,7 +297,7 @@ export default function SRAFindings() {
                         <Badge className={`${SEVERITY_COLORS[f.severity] || "bg-muted text-muted-foreground"} text-xs`}>
                           {f.severity}
                         </Badge>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[f.status] || "bg-muted/30 text-muted-foreground"}`}>
+                        <span className={['text-xs px-2 py-0.5 rounded-full font-medium', STATUS_COLORS[f.status] || "bg-muted/30 text-muted-foreground"].join(' ')}>
                           {f.status.replace("_", " ")}
                         </span>
                         <span className="text-xs text-gray-400">

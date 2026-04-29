@@ -201,9 +201,7 @@ function StageColumn({
 
   return (
     <div
-      className={`flex-shrink-0 w-64 border-r flex flex-col transition-colors ${
-        isDragOver ? "bg-accent/30" : ""
-      }`}
+      className={['flex-shrink-0 w-64 border-r flex flex-col transition-colors', isDragOver ? "bg-accent/30" : ""].join(' ')}
       onDragOver={(e) => {
         e.preventDefault();
         setIsDragOver(true);

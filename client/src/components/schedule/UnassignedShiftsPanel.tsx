@@ -131,7 +131,7 @@ export function UnassignedShiftsPanel({
                     return (
                       <div 
                         key={shift.id}
-                        className={`p-3 rounded-lg border ${urgent ? 'border-amber-500 bg-amber-500/5' : 'border-border'}`}
+                        className={['p-3 rounded-lg border', urgent ? 'border-amber-500 bg-amber-500/5' : 'border-border'].join(' ')}
                         data-testid={`unassigned-shift-${shift.id}`}
                       >
                         <div className="flex items-start justify-between gap-2">

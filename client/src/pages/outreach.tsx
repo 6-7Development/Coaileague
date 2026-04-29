@@ -280,15 +280,11 @@ export default function OutreachPage() {
                       return (
                         <div
                           key={index}
-                          className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
-                            isSelected ? "border-primary bg-primary/5" : "hover-elevate"
-                          } ${isBlocked ? "opacity-50" : ""}`}
+                          className={['flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors', isSelected ? "border-primary bg-primary/5" : "hover-elevate", isBlocked ? "opacity-50" : ""].join(' ')}
                           onClick={() => !isBlocked && hasEmail && toggleProspect(index)}
                           data-testid={`card-prospect-${index}`}
                         >
-                          <div className={`mt-1 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                            isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
-                          }`}>
+                          <div className={['mt-1 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0', isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"].join(' ')}>
                             {isSelected && <CheckCircle className="h-3 w-3 text-primary-foreground" />}
                           </div>
 

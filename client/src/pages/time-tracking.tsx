@@ -1036,7 +1036,7 @@ export default function TimeTracking() {
           <div className="flex items-center h-12 px-2 gap-1">
             <button
               onClick={() => setView('clock')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors ${view === 'clock' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+              className={['flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors', view === 'clock' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'].join(' ')}
               data-testid="button-mobile-nav-clock"
             >
               <Clock className="w-4 h-4 shrink-0" />
@@ -1044,7 +1044,7 @@ export default function TimeTracking() {
             </button>
             <button
               onClick={() => setView('timesheet')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors ${view === 'timesheet' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+              className={['flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors', view === 'timesheet' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'].join(' ')}
               data-testid="button-mobile-nav-timesheet"
             >
               <Calendar className="w-4 h-4 shrink-0" />
@@ -1054,7 +1054,7 @@ export default function TimeTracking() {
               <>
                 <button
                   onClick={() => setView('approvals')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors relative ${view === 'approvals' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                  className={['flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors relative', view === 'approvals' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'].join(' ')}
                   data-testid="button-mobile-nav-approvals"
                 >
                   <div className="relative">
@@ -1070,7 +1070,7 @@ export default function TimeTracking() {
                 {!isSimpleMode && (
                   <button
                     onClick={() => setView('reports')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors ${view === 'reports' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                    className={['flex-1 flex items-center justify-center gap-1.5 h-10 rounded-lg text-sm font-medium transition-colors', view === 'reports' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'].join(' ')}
                     data-testid="button-mobile-nav-reports"
                   >
                     <BarChart2 className="w-4 h-4 shrink-0" />
@@ -1092,13 +1092,11 @@ export default function TimeTracking() {
               {isMobile ? (
                 <div className="space-y-3">
                   {/* Status Hero Widget */}
-                  <div className={`rounded-2xl overflow-hidden shadow-sm border ${
-                    currentlyClocked
+                  <div className={['rounded-2xl overflow-hidden shadow-sm border', currentlyClocked
                       ? onBreak
                         ? 'border-orange-200 dark:border-orange-800/50'
                         : 'border-emerald-200 dark:border-emerald-800/50'
-                      : 'border-border'
-                  }`}>
+                      : 'border-border'].join(' ')}>
                     {/* Status top strip */}
                     <div
                       className="h-1.5 w-full"
@@ -1112,18 +1110,14 @@ export default function TimeTracking() {
                     <div className="bg-card p-4">
                       {/* Header row: status badge + elapsed time */}
                       <div className="flex items-center justify-between mb-3">
-                        <div className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
-                          currentlyClocked
+                        <div className={['flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full', currentlyClocked
                             ? onBreak
                               ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
                               : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${
-                            currentlyClocked
+                            : 'bg-muted text-muted-foreground'].join(' ')}>
+                          <div className={['w-1.5 h-1.5 rounded-full', currentlyClocked
                               ? onBreak ? 'bg-orange-500' : 'bg-emerald-500 animate-pulse'
-                              : 'bg-muted-foreground/50'
-                          }`} />
+                              : 'bg-muted-foreground/50'].join(' ')} />
                           {currentlyClocked ? (onBreak ? 'On Break' : 'On Shift') : 'Off Shift'}
                         </div>
 
@@ -1432,11 +1426,9 @@ export default function TimeTracking() {
                             </div>
                             <div className="flex items-center justify-between gap-2 mt-0.5">
                               <p className="text-xs text-muted-foreground capitalize truncate">{emp.workspaceRole?.replace(/_/g, ' ')}</p>
-                              <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 ${
-                                status === 'clocked_in' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                              <div className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0', status === 'clocked_in' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
                                 status === 'on_break' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
-                                'bg-muted dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                              }`}>
+                                'bg-muted dark:bg-gray-800 text-gray-700 dark:text-gray-300'].join(' ')}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${
                                   status === 'clocked_in' ? 'bg-green-500' :
                                   status === 'on_break' ? 'bg-orange-500' :
@@ -1631,11 +1623,9 @@ export default function TimeTracking() {
                             return (
                               <th 
                                 key={idx} 
-                                className={`px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium uppercase min-w-[48px] sm:min-w-[80px] ${
-                                  isToday ? 'bg-primary/10 text-foreground' : 
+                                className={['px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium uppercase min-w-[48px] sm:min-w-[80px]', isToday ? 'bg-primary/10 text-foreground' : 
                                   isWeekend ? 'bg-muted/30 text-muted-foreground' : 
-                                  'text-muted-foreground'
-                                }`}
+                                  'text-muted-foreground'].join(' ')}
                               >
                                 <div>{format(day, isMobile ? 'EEEEE' : 'EEE')}</div>
                                 <div className="text-xs sm:text-sm font-bold">{format(day, 'd')}</div>
@@ -1683,9 +1673,7 @@ export default function TimeTracking() {
                                 return (
                                   <td 
                                     key={idx} 
-                                    className={`px-2 py-3 text-center cursor-pointer hover-elevate transition-colors ${
-                                      isToday ? 'bg-blue-50' : isWeekend ? 'bg-muted/30 dark:bg-gray-800/50' : ''
-                                    }`}
+                                    className={['px-2 py-3 text-center cursor-pointer hover-elevate transition-colors', isToday ? 'bg-blue-50' : isWeekend ? 'bg-muted/30 dark:bg-gray-800/50' : ''].join(' ')}
                                     onClick={() => {
                                       if (dayData.entries.length > 0) {
                                         setSelectedDayDetail({ employee: emp, date: day, entries: dayData.entries });

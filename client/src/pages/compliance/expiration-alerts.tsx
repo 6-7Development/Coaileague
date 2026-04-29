@@ -269,9 +269,7 @@ export default function ExpirationAlerts() {
                 {expiring.map((item) => (
                   <div
                     key={item.document.id}
-                    className={`flex items-center justify-between gap-2 p-4 border rounded-lg cursor-pointer hover-elevate ${
-                      item.isUrgent ? 'border-red-200 bg-red-50/50 dark:bg-red-950/10' : ''
-                    }`}
+                    className={['flex items-center justify-between gap-2 p-4 border rounded-lg cursor-pointer hover-elevate', item.isUrgent ? 'border-red-200 bg-red-50/50 dark:bg-red-950/10' : ''].join(' ')}
                     onClick={() => item.employee && navigate(`/security-compliance/employee/${item.employee.id}`)}
                     data-testid={`expiring-doc-${item.document.id}`}
                   >

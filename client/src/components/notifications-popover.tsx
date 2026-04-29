@@ -992,13 +992,11 @@ function NotificationDetailModal({
             : 'bg-muted'
         }`}>
           <div className="flex items-start gap-2 sm:gap-3">
-            <div className={`shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
-              isCritical 
+            <div className={['shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center', isCritical 
                 ? 'bg-red-600 dark:bg-red-800' 
                 : isHigh 
                 ? 'bg-amber-100 dark:bg-amber-900' 
-                : 'bg-primary/10'
-            }`}>
+                : 'bg-primary/10'].join(' ')}>
               <TrinityLogo size={20} />
             </div>
             <div className="flex-1 min-w-0">
@@ -1008,18 +1006,14 @@ function NotificationDetailModal({
                 {humanizeTitle(notification.title)}
               </h2>
               <div className="flex items-center gap-2 mt-1">
-                <Badge className={`text-[10px] px-1.5 sm:px-2 py-0.5 ${
-                  isCritical 
+                <Badge className={['text-[10px] px-1.5 sm:px-2 py-0.5', isCritical 
                     ? 'bg-red-400 text-white border-red-400' 
                     : isHigh 
                     ? 'bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200' 
-                    : 'bg-primary/10 text-primary'
-                }`}>
+                    : 'bg-primary/10 text-primary'].join(' ')}>
                   {(notification.priority ?? 'info').toUpperCase()}
                 </Badge>
-                <span className={`text-[10px] sm:text-xs ${
-                  isCritical ? 'text-white/70' : isHigh ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
-                }`}>
+                <span className={['text-[10px] sm:text-xs', isCritical ? 'text-white/70' : isHigh ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'].join(' ')}>
                   {safeFormatTimestamp(notification.createdAt)}
                 </span>
               </div>
@@ -1571,11 +1565,9 @@ function NotificationCard({
             {notification.statusTag && (
               <div className={compact ? "mt-1 ml-9" : "mt-2 ml-12"}>
                 <Badge 
-                  className={`${compact ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-bold ${
-                    notification.statusTag === 'ACTION REQUIRED' 
+                  className={[compact ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5', 'font-bold', notification.statusTag === 'ACTION REQUIRED' 
                       ? 'bg-amber-500 text-white' 
-                      : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                  }`}
+                      : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'].join(' ')}
                 >
                   {notification.statusTag}
                 </Badge>
@@ -1713,7 +1705,7 @@ function UNSCommandCenter({ isOpen, onClose, onAskTrinity, platformRole, workspa
               return (
                 <div
                   key={notification.id}
-                  className={`group flex gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer relative ${idx > 0 ? 'border-t border-border/30' : ''}`}
+                  className={['group flex gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer relative', idx > 0 ? 'border-t border-border/30' : ''].join(' ')}
                 >
                   {/* Unread dot */}
                   {isUnread && (
@@ -2493,15 +2485,13 @@ function NotificationsPopoverInner({ user }: { user: any }) {
             <div className={`flex items-center gap-1.5 min-w-max ${compact ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
               <button
                 onClick={() => setTopicFilter('all')}
-                className={`inline-flex items-center gap-1 rounded-full border text-[10px] font-medium transition-colors px-2.5 py-0.5 whitespace-nowrap ${
-                  topicFilter === 'all'
+                className={['inline-flex items-center gap-1 rounded-full border text-[10px] font-medium transition-colors px-2.5 py-0.5 whitespace-nowrap', topicFilter === 'all'
                     ? 'bg-foreground text-background border-foreground'
-                    : 'bg-transparent text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-muted-foreground/60'
-                }`}
+                    : 'bg-transparent text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-muted-foreground/60'].join(' ')}
                 data-testid="topic-chip-all"
               >
                 All
-                <span className={`${topicFilter === 'all' ? 'bg-background/20' : 'bg-muted-foreground/15'} rounded-full px-1 text-[9px]`}>{allCount}</span>
+                <span className={[topicFilter === 'all' ? 'bg-background/20' : 'bg-muted-foreground/15', 'rounded-full px-1 text-[9px]'].join(' ')}>{allCount}</span>
               </button>
               {topicsWithNotifs.map(topic => {
                 const count = tabPool.filter(n => (TOPIC_TYPE_MAP[topic] ?? []).includes(n.subCategory ?? '')).length;
@@ -2510,15 +2500,13 @@ function NotificationsPopoverInner({ user }: { user: any }) {
                   <button
                     key={topic}
                     onClick={() => setTopicFilter(isActive ? 'all' : topic)}
-                    className={`inline-flex items-center gap-1 rounded-full border text-[10px] font-medium transition-colors px-2.5 py-0.5 whitespace-nowrap ${
-                      isActive
+                    className={['inline-flex items-center gap-1 rounded-full border text-[10px] font-medium transition-colors px-2.5 py-0.5 whitespace-nowrap', isActive
                         ? 'bg-foreground text-background border-foreground'
-                        : 'bg-transparent text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-muted-foreground/60'
-                    }`}
+                        : 'bg-transparent text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-muted-foreground/60'].join(' ')}
                     data-testid={`topic-chip-${topic}`}
                   >
                     {TOPIC_LABELS[topic]}
-                    <span className={`${isActive ? 'bg-background/20' : 'bg-muted-foreground/15'} rounded-full px-1 text-[9px]`}>{count}</span>
+                    <span className={[isActive ? 'bg-background/20' : 'bg-muted-foreground/15', 'rounded-full px-1 text-[9px]'].join(' ')}>{count}</span>
                   </button>
                 );
               })}
@@ -2541,9 +2529,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
             <Button
               variant={subFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              className={`h-7 text-xs px-3 rounded-full whitespace-nowrap ${
-                subFilter === 'all' ? '' : 'border-muted-foreground/30'
-              }`}
+              className={['h-7 text-xs px-3 rounded-full whitespace-nowrap', subFilter === 'all' ? '' : 'border-muted-foreground/30'].join(' ')}
               onClick={() => setSubFilter('all')}
               data-testid="subfilter-all"
             >

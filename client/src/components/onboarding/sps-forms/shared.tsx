@@ -68,9 +68,7 @@ export function OnboardingProgressBar({
           return (
             <div
               key={step}
-              className={`flex-1 h-1.5 rounded-full transition-colors ${
-                done ? 'bg-primary' : active ? 'bg-primary/40' : 'bg-muted'
-              }`}
+              className={['flex-1 h-1.5 rounded-full transition-colors', done ? 'bg-primary' : active ? 'bg-primary/40' : 'bg-muted'].join(' ')}
             />
           );
         })}
@@ -288,9 +286,7 @@ export function FileUploader({
     <div className="space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
       <div
-        className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-          value ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'
-        }`}
+        className={['border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors', value ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/50'].join(' ')}
         onClick={() => inputRef.current?.click()}
         onDragOver={e => e.preventDefault()}
         onDrop={e => {
@@ -364,9 +360,7 @@ export function AckCheckbox({
     <div className="space-y-1">
       <label
         htmlFor={id}
-        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-          checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-        }`}
+        className={['flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors', checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'].join(' ')}
       >
         <input
           id={id}

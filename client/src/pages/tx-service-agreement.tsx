@@ -318,7 +318,7 @@ export default function TxServiceAgreement() {
           {STEPS.map((s, i) => (
             <span
               key={s}
-              className={`text-xs ${i === step ? "text-primary font-medium" : i < step ? "text-muted-foreground" : "text-muted-foreground/40"}`}
+              className={['text-xs', i === step ? "text-primary font-medium" : i < step ? "text-muted-foreground" : "text-muted-foreground/40"].join(' ')}
             >
               {s}
             </span>

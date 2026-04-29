@@ -658,11 +658,9 @@ function SigningTab() {
                     {Array.from({ length: Number(seq.total_signers) }).map((_, i) => (
                       <div
                         key={i}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                          i < Number(seq.signed_count)
+                        className={['w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium', i < Number(seq.signed_count)
                             ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}
+                            : "bg-muted text-muted-foreground"].join(' ')}
                         data-testid={`badge-signer-${seq.id}-${i}`}
                       >
                         {i < Number(seq.signed_count) ? <CheckCircle className="w-3.5 h-3.5" /> : i + 1}

@@ -140,9 +140,7 @@ function DocDot({ present, label }: { present: boolean; label: string }) {
   return (
     <span
       title={label}
-      className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-        present ? "bg-green-400" : "bg-destructive/40"
-      }`}
+      className={['inline-block w-2.5 h-2.5 rounded-full flex-shrink-0', present ? "bg-green-400" : "bg-destructive/40"].join(' ')}
     />
   );
 }
@@ -192,11 +190,9 @@ function CompanyTab() {
               <div
                 key={slot.key}
                 data-testid={`slot-${slot.key}`}
-                className={`flex items-center justify-between rounded-md border p-3 gap-3 ${
-                  slot.uploaded
+                className={['flex items-center justify-between rounded-md border p-3 gap-3', slot.uploaded
                     ? "border-green-500/30 bg-green-500/5"
-                    : "border-border bg-muted/30"
-                }`}
+                    : "border-border bg-muted/30"].join(' ')}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {slot.uploaded ? (
@@ -494,11 +490,9 @@ function StaffTab() {
                         <div
                           key={key}
                           data-testid={`packet-doc-${key}`}
-                          className={`rounded-md border p-2.5 ${
-                            present
+                          className={['rounded-md border p-2.5', present
                               ? "border-green-500/30 bg-green-500/5"
-                              : "border-border bg-muted/20"
-                          }`}
+                              : "border-border bg-muted/20"].join(' ')}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start gap-2 min-w-0">
@@ -893,11 +887,9 @@ function AuditorTab() {
                     <div
                       key={key}
                       data-testid={`auditor-doc-${key}-${selected.id}`}
-                      className={`rounded-md border p-3 ${
-                        present
+                      className={['rounded-md border p-3', present
                           ? "border-green-500/30 bg-green-500/5"
-                          : "border-destructive/20 bg-destructive/5"
-                      }`}
+                          : "border-destructive/20 bg-destructive/5"].join(' ')}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 min-w-0">

@@ -255,7 +255,7 @@ export default function ComparePage() {
                   .map((feature, idx) => (
                     <div 
                       key={feature.name} 
-                      className={`grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 py-3 items-center ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}
+                      className={['grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 py-3 items-center', idx % 2 === 0 ? '' : 'bg-muted/10'].join(' ')}
                     >
                       <div className="text-sm">{feature.name}</div>
                       <div className="text-center flex flex-col items-center gap-1">

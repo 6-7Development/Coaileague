@@ -197,11 +197,9 @@ function InterviewTranscript({ messages }: { messages: TranscriptMessage[] }) {
             <span className="text-xs text-muted-foreground px-1">
               {isAI ? "Trinity AI" : m.sender_name}
             </span>
-            <div className={`rounded-md px-3 py-2 text-sm leading-relaxed max-w-[90%] whitespace-pre-wrap ${
-              isAI
+            <div className={['rounded-md px-3 py-2 text-sm leading-relaxed max-w-[90%] whitespace-pre-wrap', isAI
                 ? "bg-muted text-foreground"
-                : "bg-violet-600/10 text-foreground border border-violet-500/20"
-            }`}>
+                : "bg-violet-600/10 text-foreground border border-violet-500/20"].join(' ')}>
               {m.message}
             </div>
             <span className="text-xs text-muted-foreground/60 px-1">

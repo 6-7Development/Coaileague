@@ -333,11 +333,9 @@ export default function Diagnostics() {
                           key={user.userId}
                           onClick={() => setSelectedUserId(user.userId)}
                           data-testid={`user-result-${user.userId}`}
-                          className={`w-full p-3 rounded-lg text-left transition-colors ${
-                            selectedUserId === user.userId
+                          className={['w-full p-3 rounded-lg text-left transition-colors', selectedUserId === user.userId
                               ? "bg-primary/10 border border-primary/20"
-                              : "hover-elevate"
-                          }`}
+                              : "hover-elevate"].join(' ')}
                         >
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10">

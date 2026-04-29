@@ -477,9 +477,7 @@ export function ShiftCreationModal({
                     return (
                       <div
                         key={order.id}
-                        className={`border rounded-md p-2 cursor-pointer transition-colors ${
-                          isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                        }`}
+                        className={['border rounded-md p-2 cursor-pointer transition-colors', isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'].join(' ')}
                         onClick={() => togglePostOrder(order.id)}
                         data-testid={`post-order-${order.id}`}
                       >

@@ -167,7 +167,7 @@ export default function ComplianceReportsPage() {
                 {reportTypes?.reportTypes?.map((type) => (
                   <Card 
                     key={type.id} 
-                    className={`cursor-pointer transition-all ${selectedType === type.id ? 'ring-2 ring-primary bg-muted/50' : ''}`}
+                    className={['cursor-pointer transition-all', selectedType === type.id ? 'ring-2 ring-primary bg-muted/50' : ''].join(' ')}
                     onClick={() => setSelectedType(type.id)}
                     data-testid={`card-report-type-${type.id}`}
                   >

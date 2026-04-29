@@ -532,15 +532,13 @@ export default function DocumentSigningPortal({ token }: { token: string }) {
                       <div
                         key={entry.field.id}
                         ref={el => { fieldRefs.current[entry.field.id] = el; }}
-                        className={`border-2 rounded-md p-3 space-y-2 transition-all cursor-pointer ${
-                          isComplete
+                        className={['border-2 rounded-md p-3 space-y-2 transition-all cursor-pointer', isComplete
                             ? "border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-950/20"
                             : isActive
                               ? "border-amber-400 dark:border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 shadow-sm"
                               : isRequired
                                 ? "border-amber-200 dark:border-amber-800 hover-elevate"
-                                : "hover-elevate"
-                        }`}
+                                : "hover-elevate"].join(' ')}
                         onClick={() => setActiveFieldId(isActive ? null : entry.field.id)}
                         data-testid={`field-item-${entry.field.id}`}
                       >

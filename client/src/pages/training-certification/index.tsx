@@ -374,7 +374,7 @@ export default function TrainingCertificationPage() {
                       <CardContent className="p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
-                            <div className={`mt-0.5 rounded-full p-1.5 ${expired ? 'bg-red-500/10' : expiringSoon ? 'bg-yellow-500/10' : 'bg-green-500/10'}`}>
+                            <div className={['mt-0.5 rounded-full p-1.5', expired ? 'bg-red-500/10' : expiringSoon ? 'bg-yellow-500/10' : 'bg-green-500/10'].join(' ')}>
                               {expired ? <XCircle className="w-4 h-4 text-red-500" /> : expiringSoon ? <Clock className="w-4 h-4 text-yellow-500" /> : <Award className="w-4 h-4 text-green-500" />}
                             </div>
                             <div>

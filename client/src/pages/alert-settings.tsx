@@ -310,7 +310,7 @@ export default function AlertSettings() {
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-lg ${config.isEnabled ? 'bg-primary/10' : 'bg-muted'}`}>
+                              <div className={['p-2 rounded-lg', config.isEnabled ? 'bg-primary/10' : 'bg-muted'].join(' ')}>
                                 <Icon className={`w-5 h-5 ${config.isEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                               </div>
                               <div>
@@ -463,11 +463,9 @@ export default function AlertSettings() {
                           return (
                             <div
                               key={alert.id}
-                              className={`p-4 rounded-lg border ${
-                                alert.isAcknowledged
+                              className={['p-4 rounded-lg border', alert.isAcknowledged
                                   ? 'bg-muted/30 border-border'
-                                  : 'bg-card border-orange-500/30'
-                              }`}
+                                  : 'bg-card border-orange-500/30'].join(' ')}
                               data-testid={`alert-history-${alert.id}`}
                             >
                               <div className="flex items-start justify-between gap-3">

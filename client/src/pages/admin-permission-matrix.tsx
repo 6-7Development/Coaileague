@@ -288,11 +288,9 @@ export default function AdminPermissionMatrixPage() {
                     setPendingToggles({});
                   }}
                   data-testid={`btn-select-org-${ws.id}`}
-                  className={`w-full text-left rounded-md p-2.5 transition-colors hover-elevate ${
-                    selectedWorkspace?.id === ws.id
+                  className={['w-full text-left rounded-md p-2.5 transition-colors hover-elevate', selectedWorkspace?.id === ws.id
                       ? "bg-primary/10 text-primary"
-                      : ""
-                  }`}
+                      : ""].join(' ')}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">

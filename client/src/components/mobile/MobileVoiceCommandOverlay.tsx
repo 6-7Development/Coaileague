@@ -296,9 +296,7 @@ export function MobileVoiceCommandOverlay({
               
               <div className="flex items-center gap-2">
                 <div 
-                  className={`flex items-center gap-2 px-2 py-1 rounded-full transition-colors ${
-                    fastModeEnabled ? 'bg-amber-500/20 border border-amber-500/50' : 'bg-muted'
-                  }`}
+                  className={['flex items-center gap-2 px-2 py-1 rounded-full transition-colors', fastModeEnabled ? 'bg-amber-500/20 border border-amber-500/50' : 'bg-muted'].join(' ')}
                   data-testid="container-fast-mode-toggle"
                 >
                   <Zap className={`h-3 w-3 ${fastModeEnabled ? 'text-amber-500' : 'text-muted-foreground'}`} />

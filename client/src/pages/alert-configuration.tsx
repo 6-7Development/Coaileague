@@ -375,7 +375,7 @@ export default function AlertConfiguration() {
                       return (
                         <div 
                           key={item.id}
-                          className={`flex items-start gap-4 p-4 rounded-lg border ${!item.isAcknowledged ? 'bg-destructive/5 border-destructive/20' : ''}`}
+                          className={['flex items-start gap-4 p-4 rounded-lg border', !item.isAcknowledged ? 'bg-destructive/5 border-destructive/20' : ''].join(' ')}
                           data-testid={`history-item-${item.id}`}
                         >
                           <div className={`p-2 rounded-lg ${SEVERITY_COLORS[item.severity]}`}>

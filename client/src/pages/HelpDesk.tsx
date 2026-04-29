@@ -2225,7 +2225,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <div className={`${bubbleColor} shadow-sm p-2 sm:p-2.5 ${groupedRadius} hover:shadow-md transition-all min-w-0`}>
  {!isSelf && !isGrouped && (
  <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 min-w-0 max-w-full">
- <span className={`text-[11px] sm:text-xs font-semibold ${isSelf ? 'text-primary-foreground/80' : 'text-primary'} truncate`}>
+ <span className={['text-[11px] sm:text-xs font-semibold', isSelf ? 'text-primary-foreground/80' : 'text-primary', 'truncate'].join(' ')}>
  {role === 'bot' ? 'Trinity Support' : actualName.split('(')[0].trim()}
  {getRoleIcon(role)}
  </span>
@@ -2261,7 +2261,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <HDFormattedMessage text={msg.message} />
  </div>
  
- <div className={`flex items-center justify-end gap-1 mt-0.5 ${isSelf ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+ <div className={['flex items-center justify-end gap-1 mt-0.5', isSelf ? 'text-primary-foreground/70' : 'text-muted-foreground'].join(' ')}>
  {(msg as any).isEdited && (
  <span className="text-[9px] italic" data-testid={`edited-indicator-${idx}`}>(edited)</span>
  )}
@@ -2697,13 +2697,9 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <ContextMenu key={u.id}>
  <ContextMenuTrigger>
  <div 
- className={`
- flex items-center gap-1.5 p-1.5 rounded-lg cursor-pointer transition-all border
- ${selectedUserId === u.id 
+ className={['flex items-center gap-1.5 p-1.5 rounded-lg cursor-pointer transition-all border', selectedUserId === u.id 
  ? 'bg-muted shadow-sm border-primary/50 ring-1 ring-primary/20' 
- : 'bg-card hover:bg-muted border-border hover:border-primary/30'
- }
- `}
+ : 'bg-card hover:bg-muted border-border hover:border-primary/30'].join(' ')}
  onClick={() =>setSelectedUserId(u.id)}
  data-testid={`user-${u.id}`}
  role="option"

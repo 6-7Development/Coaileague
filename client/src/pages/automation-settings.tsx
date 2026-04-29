@@ -146,7 +146,7 @@ function AutomationCard({ icon, title, subtitle, enabled, onToggle, testId, chil
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card className={`transition-all duration-200 ${enabled ? 'border-primary/20' : ''}`}>
+    <Card className={['transition-all duration-200', enabled ? 'border-primary/20' : ''].join(' ')}>
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <button
@@ -155,7 +155,7 @@ function AutomationCard({ icon, title, subtitle, enabled, onToggle, testId, chil
             onClick={() => enabled && setExpanded(v => !v)}
             data-testid={`${testId}-expand`}
           >
-            <div className={`p-2 rounded-md ${enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+            <div className={['p-2 rounded-md', enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'].join(' ')}>
               {icon}
             </div>
             <div className="flex-1 min-w-0">

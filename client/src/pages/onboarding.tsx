@@ -100,13 +100,11 @@ function TaskItem({
   
   return (
     <div 
-      className={`flex items-start gap-4 p-4 rounded-lg border transition-all ${
-        isCompleted 
+      className={['flex items-start gap-4 p-4 rounded-lg border transition-all', isCompleted 
           ? 'bg-green-500/5 border-green-500/20' 
           : isSkipped 
           ? 'bg-muted/50 border-muted opacity-60' 
-          : 'bg-card hover-elevate'
-      }`}
+          : 'bg-card hover-elevate'].join(' ')}
       data-testid={`task-item-${task.id}`}
     >
       <div className="mt-0.5">

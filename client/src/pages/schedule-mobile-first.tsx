@@ -675,33 +675,27 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
           <div className="flex bg-primary-foreground/15 rounded p-0.5 gap-0.5">
             <button
               onClick={() => setViewMode('my')}
-              className={`flex-1 py-0.5 text-[10px] font-semibold rounded transition-all ${
-                viewMode === 'my' 
+              className={['flex-1 py-0.5 text-[10px] font-semibold rounded transition-all', viewMode === 'my' 
                   ? 'bg-primary-foreground text-primary shadow-sm' 
-                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'
-              }`}
+                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'].join(' ')}
               data-testid="tab-my-schedule"
             >
               My Schedule
             </button>
             <button
               onClick={() => setViewMode('full')}
-              className={`flex-1 py-0.5 text-[10px] font-semibold rounded transition-all ${
-                viewMode === 'full' 
+              className={['flex-1 py-0.5 text-[10px] font-semibold rounded transition-all', viewMode === 'full' 
                   ? 'bg-primary-foreground text-primary shadow-sm' 
-                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'
-              }`}
+                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'].join(' ')}
               data-testid="tab-full-schedule"
             >
               Full Team
             </button>
             <button
               onClick={() => setViewMode('pending')}
-              className={`flex-1 py-0.5 text-[10px] font-semibold rounded transition-all relative ${
-                viewMode === 'pending' 
+              className={['flex-1 py-0.5 text-[10px] font-semibold rounded transition-all relative', viewMode === 'pending' 
                   ? 'bg-primary-foreground text-primary shadow-sm' 
-                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'
-              }`}
+                  : 'text-primary-foreground/90 hover:bg-primary-foreground/10'].join(' ')}
               data-testid="tab-pending"
             >
               Pending
@@ -727,23 +721,19 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
               <button
                 key={day.toISOString()}
                 onClick={() => setSelectedDate(day)}
-                className={`flex flex-col items-center justify-center min-h-[28px] py-0 rounded transition-all ${
-                  isSelected 
+                className={['flex flex-col items-center justify-center min-h-[28px] py-0 rounded transition-all', isSelected 
                     ? 'bg-primary-foreground text-primary shadow-sm' 
-                    : 'text-primary-foreground/90 hover:bg-primary-foreground/10'
-                }`}
+                    : 'text-primary-foreground/90 hover:bg-primary-foreground/10'].join(' ')}
                 data-testid={`day-tab-${format(day, 'yyyy-MM-dd')}`}
               >
-                <span className={`text-[7px] uppercase font-medium leading-none ${isSelected ? 'text-primary/70' : 'opacity-70'}`}>
+                <span className={['text-[7px] uppercase font-medium leading-none', isSelected ? 'text-primary/70' : 'opacity-70'].join(' ')}>
                   {format(day, 'EEE').slice(0, 2)}
                 </span>
                 <span className={`text-[11px] font-bold leading-none ${dayIsToday && !isSelected ? 'text-yellow-300' : ''}`}>
                   {format(day, 'd')}
                 </span>
                 {dayShiftCount > 0 && (
-                  <div className={`w-1 h-1 rounded-full ${
-                    isSelected ? 'bg-primary' : 'bg-primary-foreground/50'
-                  }`} />
+                  <div className={['w-1 h-1 rounded-full', isSelected ? 'bg-primary' : 'bg-primary-foreground/50'].join(' ')} />
                 )}
               </button>
             );
@@ -984,12 +974,12 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
                       })
                     ) : (
                       <div className="flex items-center py-3 px-3 gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0 ${dayIsToday ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground'}`}>
+                        <div className={['w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0', dayIsToday ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground'].join(' ')}>
                           <div className="text-sm font-bold leading-none">{format(day, 'd')}</div>
                           <div className="text-[9px] uppercase leading-none mt-0.5 opacity-70">{format(day, 'EEE')}</div>
                         </div>
                         <div className="flex-1 flex items-center gap-2">
-                          <span className={`text-sm font-medium ${dayIsToday ? 'text-foreground' : 'text-muted-foreground/70'}`}>
+                          <span className={['text-sm font-medium', dayIsToday ? 'text-foreground' : 'text-muted-foreground/70'].join(' ')}>
                             {dayIsToday ? 'No shift today' : 'Day off'}
                           </span>
                           {!dayIsToday && (
@@ -1021,11 +1011,9 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
                 return (
                   <div key={dayStr} className="border-b border-border last:border-b-0">
                     {/* Day Header - Blue theme matching brand colors */}
-                    <div className={`flex items-center gap-3 px-3 py-2.5 overflow-hidden ${
-                      dayIsToday 
+                    <div className={['flex items-center gap-3 px-3 py-2.5 overflow-hidden', dayIsToday 
                         ? 'bg-primary text-primary-foreground' 
-                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100'
-                    }`}>
+                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100'].join(' ')}>
                       <div className="text-center min-w-[48px] shrink-0">
                         <div className="text-lg font-bold leading-none">{format(day, 'd')}</div>
                         <div className="text-[10px] uppercase font-semibold opacity-80 leading-none mt-0.5">{format(day, 'EEE')}</div>

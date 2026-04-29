@@ -218,7 +218,7 @@ function CsvImportPanel({
       )}
 
       {importResult && (
-        <div className={`rounded-md border p-3 space-y-2 ${importResult.success ? "border-green-500/40 bg-green-500/5" : "border-yellow-500/40 bg-yellow-500/5"}`}>
+        <div className={['rounded-md border p-3 space-y-2', importResult.success ? "border-green-500/40 bg-green-500/5" : "border-yellow-500/40 bg-yellow-500/5"].join(' ')}>
           <div className="flex flex-wrap gap-3 text-sm">
             <span className="text-green-600 font-medium">Imported: {importResult.imported}</span>
             <span className="text-muted-foreground">Duplicates skipped: {importResult.skippedDuplicates}</span>

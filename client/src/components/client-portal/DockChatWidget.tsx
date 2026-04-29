@@ -402,11 +402,9 @@ export default function DockChatWidget({
                     key={type}
                     data-testid={`card-report-type-${type}`}
                     onClick={() => setReportType(type)}
-                    className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-md border text-center transition-colors cursor-pointer ${
-                      isSelected
+                    className={['group relative flex flex-col items-center gap-1.5 p-3 rounded-md border text-center transition-colors cursor-pointer', isSelected
                         ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-sm dockchat-card-selected"
-                        : "border-border hover-elevate"
-                    }`}
+                        : "border-border hover-elevate"].join(' ')}
                   >
                     {isSelected && (
                       <div className="absolute top-1 right-1">

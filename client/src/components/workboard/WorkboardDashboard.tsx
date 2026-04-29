@@ -445,11 +445,9 @@ function SubmitTaskDialog({ isMobile }: { isMobile: boolean }) {
             </Select>
           </div>
           
-          <div className={`flex items-center justify-between gap-2 p-3 rounded-lg border ${
-            fastModeEnabled ? 'bg-amber-500/10 border-amber-500/50' : 'bg-muted/50'
-          }`}>
+          <div className={['flex items-center justify-between gap-2 p-3 rounded-lg border', fastModeEnabled ? 'bg-amber-500/10 border-amber-500/50' : 'bg-muted/50'].join(' ')}>
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-full ${fastModeEnabled ? 'bg-amber-500/20' : 'bg-muted'}`}>
+              <div className={['p-2 rounded-full', fastModeEnabled ? 'bg-amber-500/20' : 'bg-muted'].join(' ')}>
                 <Zap className={`h-4 w-4 ${fastModeEnabled ? 'text-amber-500' : 'text-muted-foreground'}`} />
               </div>
               <div>

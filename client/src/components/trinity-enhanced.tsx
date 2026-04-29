@@ -333,11 +333,9 @@ export const TrinityEnhancedThoughtProcess: React.FC<TrinityEnhancedProps> = ({
 
       <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
         <div
-          className={`h-full transition-all duration-300 ${
-            phase === 'complete'
+          className={['h-full transition-all duration-300', phase === 'complete'
               ? 'bg-gradient-to-r from-green-500 to-emerald-500 w-full'
-              : 'bg-gradient-to-r from-purple-500 to-blue-500 w-2/3 animate-pulse'
-          }`}
+              : 'bg-gradient-to-r from-purple-500 to-blue-500 w-2/3 animate-pulse'].join(' ')}
         />
       </div>
 

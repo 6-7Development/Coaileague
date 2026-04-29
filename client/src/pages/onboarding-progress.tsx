@@ -216,9 +216,7 @@ export default function OnboardingProgressPage() {
                     {steps.map((step) => (
                       <div
                         key={step.id}
-                        className={`flex items-center gap-3 rounded-md px-3 py-2 ${
-                          step.status === "completed" ? "bg-muted/30" : "bg-card"
-                        }`}
+                        className={['flex items-center gap-3 rounded-md px-3 py-2', step.status === "completed" ? "bg-muted/30" : "bg-card"].join(' ')}
                         data-testid={`step-${step.id}`}
                       >
                         {step.status === "completed" ? (

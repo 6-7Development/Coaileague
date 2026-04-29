@@ -159,7 +159,7 @@ export default function WellnessPage() {
             <div className="text-2xl font-bold" data-testid="text-active-sessions">{activeCount}</div>
           </CardContent>
         </Card>
-        <Card className={`hover-elevate \${overdueCount > 0 ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
+        <Card className={['hover-elevate \', overdueCount > 0 ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-900/10' : ''].join(' ')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
             <CardTitle className="text-sm font-medium">Overdue Check-ins</CardTitle>
             <AlertTriangle className={`h-4 w-4 \${overdueCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />

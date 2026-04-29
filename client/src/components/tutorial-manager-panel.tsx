@@ -274,11 +274,9 @@ export function TutorialManagerPanel({ isOpen, onClose }: TutorialManagerPanelPr
                   <button
                     key={tutorial.id}
                     onClick={() => setSelectedTutorial(tutorial)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all hover-elevate active-elevate-2 ${
-                      selectedTutorial?.id === tutorial.id
+                    className={['w-full text-left p-3 rounded-lg border transition-all hover-elevate active-elevate-2', selectedTutorial?.id === tutorial.id
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
-                        : 'border-slate-200 dark:border-slate-800'
-                    }`}
+                        : 'border-slate-200 dark:border-slate-800'].join(' ')}
                     data-testid={`tutorial-${tutorial.id}`}
                   >
                     <div className="flex items-start gap-3">

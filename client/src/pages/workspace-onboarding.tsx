@@ -452,7 +452,7 @@ export default function WorkspaceOnboarding() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${flow?.automationSettings.autoSchedule ? 'bg-green-500/10' : 'bg-muted'}`}>
+                <div className={['p-2 rounded-lg', flow?.automationSettings.autoSchedule ? 'bg-green-500/10' : 'bg-muted'].join(' ')}>
                   <Calendar className={`h-5 w-5 ${flow?.automationSettings.autoSchedule ? 'text-green-600' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
@@ -464,7 +464,7 @@ export default function WorkspaceOnboarding() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${flow?.automationSettings.autoInvoice ? 'bg-green-500/10' : 'bg-muted'}`}>
+                <div className={['p-2 rounded-lg', flow?.automationSettings.autoInvoice ? 'bg-green-500/10' : 'bg-muted'].join(' ')}>
                   <Receipt className={`h-5 w-5 ${flow?.automationSettings.autoInvoice ? 'text-green-600' : 'text-muted-foreground'}`} />
                 </div>
                 <div>
@@ -476,7 +476,7 @@ export default function WorkspaceOnboarding() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${flow?.automationSettings.autoPayroll ? 'bg-green-500/10' : 'bg-muted'}`}>
+                <div className={['p-2 rounded-lg', flow?.automationSettings.autoPayroll ? 'bg-green-500/10' : 'bg-muted'].join(' ')}>
                   <DollarSign className={`h-5 w-5 ${flow?.automationSettings.autoPayroll ? 'text-green-600' : 'text-muted-foreground'}`} />
                 </div>
                 <div>

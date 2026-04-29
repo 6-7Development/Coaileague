@@ -87,7 +87,7 @@ function ScenarioCard({ scenario }: { scenario: ScenarioResult }) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-start gap-3">
-            <div className={`mt-0.5 p-2 rounded-md ${scenario.status === "PASS" ? "bg-emerald-100 dark:bg-emerald-900/30" : scenario.status === "FAIL" ? "bg-red-100 dark:bg-red-900/30" : "bg-slate-100 dark:bg-slate-800"}`}>
+            <div className={['mt-0.5 p-2 rounded-md', scenario.status === "PASS" ? "bg-emerald-100 dark:bg-emerald-900/30" : scenario.status === "FAIL" ? "bg-red-100 dark:bg-red-900/30" : "bg-slate-100 dark:bg-slate-800"].join(' ')}>
               <Icon className={`h-4 w-4 ${scenario.status === "PASS" ? "text-emerald-600 dark:text-emerald-400" : scenario.status === "FAIL" ? "text-red-500" : "text-slate-400"}`} />
             </div>
             <div>
@@ -147,7 +147,7 @@ function SummaryBar({ summary, runAt }: { summary: ScenariosResponse["summary"];
   const allPass = summary.failed === 0 && summary.skipped === 0;
 
   return (
-    <div className={`rounded-md border px-4 py-3 flex flex-wrap items-center gap-4 ${allPass ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" : summary.failed > 0 ? "border-red-400 bg-red-50 dark:bg-red-950/20" : "border-amber-400 bg-amber-50 dark:bg-amber-950/20"}`}>
+    <div className={['rounded-md border px-4 py-3 flex flex-wrap items-center gap-4', allPass ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" : summary.failed > 0 ? "border-red-400 bg-red-50 dark:bg-red-950/20" : "border-amber-400 bg-amber-50 dark:bg-amber-950/20"].join(' ')}>
       {allPass
         ? <ShieldCheck className="h-5 w-5 text-emerald-600 flex-shrink-0" />
         : summary.failed > 0

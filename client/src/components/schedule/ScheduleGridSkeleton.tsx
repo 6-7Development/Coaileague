@@ -57,7 +57,7 @@ function WeekSkeletonGrid({ rowCount }: { rowCount: number }) {
       </div>
 
       {Array.from({ length: rowCount }).map((_, rowIndex) => (
-        <div key={rowIndex} className={`flex border-b ${rowIndex % 2 === 0 ? 'bg-white/70 dark:bg-slate-900/50' : 'bg-slate-50/80 dark:bg-slate-800/40'}`}
+        <div key={rowIndex} className={['flex border-b', rowIndex % 2 === 0 ? 'bg-white/70 dark:bg-slate-900/50' : 'bg-slate-50/80 dark:bg-slate-800/40'].join(' ')}
           style={{ minHeight: getRandomShiftPattern(rowIndex + 2, 4) ? '110px' : '64px' }}
         >
           <div className="w-[200px] min-w-[200px] px-3 py-2.5 border-r flex-shrink-0 bg-slate-50/90 dark:bg-slate-800/80">
@@ -141,7 +141,7 @@ function DaySkeletonGrid({ rowCount }: { rowCount: number }) {
       </div>
 
       {Array.from({ length: rowCount }).map((_, rowIndex) => (
-        <div key={rowIndex} className={`flex border-b ${rowIndex % 2 === 0 ? 'bg-white/70 dark:bg-slate-900/50' : 'bg-slate-50/80 dark:bg-slate-800/40'}`}
+        <div key={rowIndex} className={['flex border-b', rowIndex % 2 === 0 ? 'bg-white/70 dark:bg-slate-900/50' : 'bg-slate-50/80 dark:bg-slate-800/40'].join(' ')}
           style={{ minHeight: getRandomShiftPattern(rowIndex, 3) ? '120px' : '72px' }}
         >
           <div className="w-[160px] min-w-[160px] flex-shrink-0 px-3 py-2.5 border-r bg-slate-50/90 dark:bg-slate-800/80">

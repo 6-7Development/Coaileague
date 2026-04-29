@@ -530,15 +530,13 @@ export default function CreateOrg() {
                   <button
                     key={step.id}
                     onClick={() => goToStep(idx)}
-                    className={`flex-1 min-w-0 py-1.5 px-2 rounded-md text-xs text-center transition-colors ${
-                      isCurrent
+                    className={['flex-1 min-w-0 py-1.5 px-2 rounded-md text-xs text-center transition-colors', isCurrent
                         ? "bg-primary text-primary-foreground"
                         : isCompleted
                         ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                         : isSkipped
                         ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                        : "bg-muted text-muted-foreground"].join(' ')}
                     data-testid={`step-indicator-${idx}`}
                   >
                     <span className="truncate block">{step.title}</span>

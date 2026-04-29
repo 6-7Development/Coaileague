@@ -707,11 +707,9 @@ function PreviewPanel({ preview, onApply, onCancel }: {
     <div className="flex gap-1 p-1 bg-muted rounded-lg">
         return (
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-              isActive 
+            className={['flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all', isActive 
                 ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm" 
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-            }`}
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'].join(' ')}
           >
             <Icon className="h-3.5 w-3.5" />
           </button>
@@ -1441,11 +1439,9 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                           {msg.role === 'user' ? 'You' : 'Trinity'}
                         </p>
                         <div
-                          className={`rounded-md px-3 py-2.5 overflow-hidden ${
-                            msg.role === 'user'
+                          className={['rounded-md px-3 py-2.5 overflow-hidden', msg.role === 'user'
                               ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-sm shadow-sm"
-                              : 'bg-muted border border-border/60 rounded-tl-sm'
-                          }`}
+                              : 'bg-muted border border-border/60 rounded-tl-sm'].join(' ')}
                         >
                           {msg.images && msg.images.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-1.5">
@@ -1690,11 +1686,9 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                         {msg.role === 'user' ? 'You' : 'Trinity'}
                       </p>
                       <div
-                        className={`rounded-md px-3 py-2.5 overflow-hidden ${
-                          msg.role === 'user'
+                        className={['rounded-md px-3 py-2.5 overflow-hidden', msg.role === 'user'
                             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-sm shadow-sm"
-                            : 'bg-muted border border-border/60 rounded-tl-sm'
-                        }`}
+                            : 'bg-muted border border-border/60 rounded-tl-sm'].join(' ')}
                       >
                         {msg.images && msg.images.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-1.5">

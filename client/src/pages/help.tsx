@@ -380,13 +380,11 @@ export default function Help() {
                           </div>
                         )}
                         <div
-                          className={`max-w-[80%] rounded-md px-3 py-2 text-sm leading-relaxed ${
-                            msg.role === "user"
+                          className={['max-w-[80%] rounded-md px-3 py-2 text-sm leading-relaxed', msg.role === "user"
                               ? "bg-violet-600 text-white"
                               : msg.role === "system"
                                 ? "bg-yellow-50 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-900/50"
-                                : "bg-muted"
-                          }`}
+                                : "bg-muted"].join(' ')}
                         >
                           {msg.isMarkdown && msg.role !== "user"
                             ? <RenderMarkdown text={msg.content} />

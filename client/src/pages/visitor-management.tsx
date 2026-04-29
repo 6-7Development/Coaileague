@@ -126,7 +126,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
             {visitors.map((v: any) => (
               <div
                 key={v.id}
-                className={`p-3 rounded-md border flex items-center justify-between gap-3 flex-wrap ${v.isOverstay ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}
+                className={['p-3 rounded-md border flex items-center justify-between gap-3 flex-wrap', v.isOverstay ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''].join(' ')}
                 data-testid={`card-active-visitor-${v.id}`}
               >
                 <div className="flex-1 min-w-0">

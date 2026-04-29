@@ -525,14 +525,12 @@ export default function ModuleLearningPage() {
               <div
                 key={s.id}
                 data-testid={`sidebar-section-${i}`}
-                className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm ${
-                  current ? 'bg-primary/10 text-primary font-medium' : done ? 'text-muted-foreground' : 'text-muted-foreground/60'
-                }`}
+                className={['flex items-center gap-2 rounded-md px-2 py-2 text-sm', current ? 'bg-primary/10 text-primary font-medium' : done ? 'text-muted-foreground' : 'text-muted-foreground/60'].join(' ')}
               >
                 {done ? (
                   <CheckCircle className="w-4 h-4 shrink-0 text-green-500" />
                 ) : (
-                  <span className={`w-4 h-4 shrink-0 rounded-full border text-xs flex items-center justify-center ${current ? 'border-primary text-primary' : 'border-muted-foreground/30'}`}>{i + 1}</span>
+                  <span className={['w-4 h-4 shrink-0 rounded-full border text-xs flex items-center justify-center', current ? 'border-primary text-primary' : 'border-muted-foreground/30'].join(' ')}>{i + 1}</span>
                 )}
                 <span className="line-clamp-2 leading-snug">{s.title}</span>
               </div>
@@ -540,10 +538,8 @@ export default function ModuleLearningPage() {
           })}
           {finalExamQuestions.length > 0 && (
             <div
-              className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm ${
-                // @ts-expect-error — TS migration: fix in refactoring sprint
-                step === 'final_exam' ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground/60'
-              }`}
+              className={['flex items-center gap-2 rounded-md px-2 py-2 text-sm', // @ts-expect-error — TS migration: fix in refactoring sprint
+                step === 'final_exam' ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground/60'].join(' ')}
             >
               <ClipboardList className="w-4 h-4 shrink-0" />
               Final Exam

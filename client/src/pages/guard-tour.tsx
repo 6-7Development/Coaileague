@@ -606,7 +606,7 @@ function PatrolReport({ tourId }: { tourId: string }) {
             <Card key={cp.id}>
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cp.scanCount > 0 ? "bg-green-500" : "bg-muted-foreground/30"}`} />
+                  <div className={['w-2.5 h-2.5 rounded-full shrink-0', cp.scanCount > 0 ? "bg-green-500" : "bg-muted-foreground/30"].join(' ')} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{cp.name}</p>
                     <p className="text-xs text-muted-foreground">

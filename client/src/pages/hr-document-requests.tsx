@@ -306,11 +306,9 @@ export default function HrDocumentRequests() {
                           key={key}
                           data-testid={`doc-type-${key}`}
                           onClick={() => toggleDocType(key)}
-                          className={`w-full text-left p-3 rounded-md border transition-colors ${
-                            isSelected
+                          className={['w-full text-left p-3 rounded-md border transition-colors', isSelected
                               ? "border-primary bg-primary/5"
-                              : "border-border hover-elevate"
-                          }`}
+                              : "border-border hover-elevate"].join(' ')}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`mt-0.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
@@ -393,9 +391,7 @@ export default function HrDocumentRequests() {
                         <div
                           key={emp.employeeId}
                           data-testid={`employee-row-${emp.employeeId}`}
-                          className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
-                            isSelected ? "border-primary bg-primary/5" : "border-border hover-elevate"
-                          }`}
+                          className={['flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors', isSelected ? "border-primary bg-primary/5" : "border-border hover-elevate"].join(' ')}
                           onClick={() => toggleEmployee(emp.employeeId)}
                         >
                           <Checkbox

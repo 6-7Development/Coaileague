@@ -371,11 +371,9 @@ export default function EndUserControls() {
                       <button
                         key={ws.id}
                         onClick={() => setSelectedWorkspace(ws.id)}
-                        className={`w-full p-3 rounded-lg border text-left transition-colors hover-elevate ${
-                          selectedWorkspace === ws.id 
+                        className={['w-full p-3 rounded-lg border text-left transition-colors hover-elevate', selectedWorkspace === ws.id 
                             ? 'border-primary bg-primary/5' 
-                            : 'border-border'
-                        }`}
+                            : 'border-border'].join(' ')}
                         data-testid={`button-workspace-${ws.id}`}
                       >
                         <div className="flex items-start justify-between gap-2">

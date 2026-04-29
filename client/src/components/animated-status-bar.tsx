@@ -76,23 +76,17 @@ export function AnimatedStatusBar({
         <span>is typing</span>
         <div className="flex gap-1">
           <motion.div
-            className={`w-1.5 h-1.5 rounded-full ${
-              typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"
-            }`}
+            className={['w-1.5 h-1.5 rounded-full', typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"].join(' ')}
             animate={{ scale: [1, 1.3, 1] }}
             transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
           />
           <motion.div
-            className={`w-1.5 h-1.5 rounded-full ${
-              typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"
-            }`}
+            className={['w-1.5 h-1.5 rounded-full', typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"].join(' ')}
             animate={{ scale: [1, 1.3, 1] }}
             transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
           />
           <motion.div
-            className={`w-1.5 h-1.5 rounded-full ${
-              typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"
-            }`}
+            className={['w-1.5 h-1.5 rounded-full', typingUser.isStaff ? "bg-muted/30" : "bg-blue-500"].join(' ')}
             animate={{ scale: [1, 1.3, 1] }}
             transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
           />

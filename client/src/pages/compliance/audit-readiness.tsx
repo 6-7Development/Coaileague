@@ -94,9 +94,7 @@ function DocUploadSlot({
 
   return (
     <div
-      className={`flex items-center justify-between p-3 rounded-md border ${
-        doc.uploaded ? "bg-green-900/10 border-green-800/40" : "bg-slate-800 border-slate-700"
-      }`}
+      className={['flex items-center justify-between p-3 rounded-md border', doc.uploaded ? "bg-green-900/10 border-green-800/40" : "bg-slate-800 border-slate-700"].join(' ')}
       data-testid={`doc-slot-${doc.key}`}
     >
       <div className="flex items-center gap-3 min-w-0">
@@ -278,12 +276,10 @@ export default function AuditReadiness() {
                   <p className="text-muted-foreground text-sm mt-3 text-center">Overall Audit Readiness</p>
                   <Badge
                     variant="outline"
-                    className={`mt-2 ${
-                      readiness.score >= 85 ? "bg-green-900/40 text-green-400 border-green-800" :
+                    className={['mt-2', readiness.score >= 85 ? "bg-green-900/40 text-green-400 border-green-800" :
                       readiness.score >= 70 ? "bg-blue-900/40 text-blue-400 border-blue-800" :
                       readiness.score >= 50 ? "bg-amber-900/40 text-amber-400 border-amber-800" :
-                      "bg-red-900/40 text-red-400 border-red-800"
-                    }`}
+                      "bg-red-900/40 text-red-400 border-red-800"].join(' ')}
                   >
                     {readiness.score >= 85 ? "Audit Ready" :
                      readiness.score >= 70 ? "Mostly Ready" :

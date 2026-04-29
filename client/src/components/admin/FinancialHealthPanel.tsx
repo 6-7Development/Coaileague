@@ -414,13 +414,11 @@ export function FinancialHealthPanel() {
           {report.alerts.map((alert, i) => (
             <div
               key={i}
-              className={`flex items-start gap-2 p-3 rounded-md text-sm ${
-                alert.severity === "critical"
+              className={['flex items-start gap-2 p-3 rounded-md text-sm', alert.severity === "critical"
                   ? "bg-destructive/10 border border-destructive/20 text-destructive"
                   : alert.severity === "warning"
                   ? "bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-300"
-                  : "bg-muted border border-border"
-              }`}
+                  : "bg-muted border border-border"].join(' ')}
               data-testid={`alert-financial-${i}`}
             >
               {alert.severity === "critical" ? (

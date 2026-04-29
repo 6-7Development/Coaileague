@@ -112,11 +112,9 @@ export function PlatformFeedbackSurvey({ open, onClose, workspaceId }: Props) {
                 className="focus:outline-none transition-transform active:scale-110"
               >
                 <Star
-                  className={`h-10 w-10 transition-colors ${
-                    filled
+                  className={['h-10 w-10 transition-colors', filled
                       ? "fill-yellow-400 text-yellow-400"
-                      : "text-muted-foreground/40"
-                  }`}
+                      : "text-muted-foreground/40"].join(' ')}
                 />
               </button>
             );
@@ -134,11 +132,9 @@ export function PlatformFeedbackSurvey({ open, onClose, workspaceId }: Props) {
               type="button"
               data-testid={`answer-${q.id}-${opt}`}
               onClick={() => setAnswer(q.id, opt)}
-              className={`px-8 py-3 rounded-md border text-sm font-medium transition-colors ${
-                answers[q.id] === opt
+              className={['px-8 py-3 rounded-md border text-sm font-medium transition-colors', answers[q.id] === opt
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted/30 text-foreground hover-elevate"
-              }`}
+                  : "border-border bg-muted/30 text-foreground hover-elevate"].join(' ')}
             >
               {opt}
             </button>
@@ -158,11 +154,9 @@ export function PlatformFeedbackSurvey({ open, onClose, workspaceId }: Props) {
           {(q.options || []).map((opt) => (
             <div
               key={opt}
-              className={`flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
-                answers[q.id] === opt
+              className={['flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors', answers[q.id] === opt
                   ? "border-primary bg-primary/10"
-                  : "border-border hover-elevate"
-              }`}
+                  : "border-border hover-elevate"].join(' ')}
               onClick={() => setAnswer(q.id, opt)}
             >
               <RadioGroupItem

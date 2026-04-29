@@ -467,7 +467,7 @@ export default function EmployeePacketPortal() {
             {STEPS.map((s, i) => (
               <span
                 key={s}
-                className={`text-xs ${i === step ? "text-primary font-medium" : i < step ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                className={['text-xs', i === step ? "text-primary font-medium" : i < step ? "text-muted-foreground" : "text-muted-foreground/50"].join(' ')}
               >
                 {s}
               </span>

@@ -564,11 +564,9 @@ export function ShiftBottomSheet({
                                             : [...current, day.value];
                                           field.onChange(updated);
                                         }}
-                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                                          isSelected
+                                        className={['px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors', isSelected
                                             ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted hover:bg-muted/80'
-                                        }`}
+                                            : 'bg-muted hover:bg-muted/80'].join(' ')}
                                         data-testid={`day-button-${day.value}`}
                                       >
                                         {day.label}

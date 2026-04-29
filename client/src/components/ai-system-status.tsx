@@ -54,11 +54,9 @@ export function AISystemStatusBanner() {
   return (
     <Alert 
       data-testid="banner-ai-status"
-      className={`rounded-none border-x-0 border-t-0 py-2 ${
-        isEmergency 
+      className={['rounded-none border-x-0 border-t-0 py-2', isEmergency 
           ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' 
-          : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
-      }`}
+          : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'].join(' ')}
     >
       <div className="flex items-center gap-2 max-w-screen-xl mx-auto">
         {isEmergency ? (

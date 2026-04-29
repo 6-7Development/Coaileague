@@ -302,7 +302,7 @@ export default function SRAReportBuilder() {
                 <Card
                   key={section.index}
                   data-testid={`section-card-${section.index}`}
-                  className={`border transition-colors ${section.verified ? "border-green-200 bg-green-50/50" : "border-border"}`}
+                  className={['border transition-colors', section.verified ? "border-green-200 bg-green-50/50" : "border-border"].join(' ')}
                 >
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-start gap-2">

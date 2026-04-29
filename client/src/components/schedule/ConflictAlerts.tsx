@@ -129,11 +129,9 @@ export function ConflictAlerts({
                 {visibleConflicts.map(conflict => (
                   <div 
                     key={conflict.id}
-                    className={`rounded-md border p-1.5 ${
-                      conflict.severity === 'error' 
+                    className={['rounded-md border p-1.5', conflict.severity === 'error' 
                         ? 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30' 
-                        : 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
-                    }`}
+                        : 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'].join(' ')}
                     data-testid={`conflict-${conflict.id}`}
                   >
                     <div className="flex items-start gap-1.5">

@@ -161,9 +161,7 @@ const DraggableEmployee = ({ employee, isSelected, onSelect, getEmployeeColor }:
       {...listeners}
       {...attributes}
       onClick={onSelect}
-      className={`p-3 rounded-md border cursor-grab active:cursor-grabbing transition-all ${
-        isSelected ? 'border-primary bg-primary/10' : 'border-border'
-      } ${isDragging ? 'z-50' : ''} hover-elevate`}
+      className={['p-3 rounded-md border cursor-grab active:cursor-grabbing transition-all', isSelected ? 'border-primary bg-primary/10' : 'border-border', isDragging ? 'z-50' : '', 'hover-elevate'].join(' ')}
       data-testid={`employee-card-${employee.id}`}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -202,9 +200,7 @@ const DroppableSlot = ({ day, hour, children, onClick }: {
     <div
       ref={setNodeRef}
       onClick={onClick}
-      className={`relative h-16 border-b cursor-pointer transition-all duration-100 group ${
-        isOver ? 'bg-primary/12 ring-1 ring-primary/40 ring-inset' : 'hover:bg-muted/40'
-      }`}
+      className={['relative h-16 border-b cursor-pointer transition-all duration-100 group', isOver ? 'bg-primary/12 ring-1 ring-primary/40 ring-inset' : 'hover:bg-muted/40'].join(' ')}
       data-testid={`grid-cell-${day}-${hour}`}
     >
       {/* GetSling-style: ghost preview when dragging over this cell */}
@@ -2046,9 +2042,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                   data-testid={`month-cell-${cellDate.getFullYear()}-${cellDate.getMonth() + 1}-${cellDate.getDate()}`}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className={`text-xs font-medium ${
-                      isToday ? 'text-primary font-bold' : 'text-foreground/80'
-                    }`}>
+                    <span className={['text-xs font-medium', isToday ? 'text-primary font-bold' : 'text-foreground/80'].join(' ')}>
                       {cellDate.getDate()}
                     </span>
                     {totalHours > 0 && (
@@ -2069,11 +2063,9 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                       return (
                         <div
                           key={shift.id}
-                          className={`rounded-md px-1.5 py-1 text-[10px] leading-snug cursor-pointer transition-all duration-150 hover:shadow-sm hover:-translate-y-px ${
-                            isOpen
+                          className={['rounded-md px-1.5 py-1 text-[10px] leading-snug cursor-pointer transition-all duration-150 hover:shadow-sm hover:-translate-y-px', isOpen
                               ? 'border border-dashed border-emerald-400 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                              : 'text-white'
-                          }`}
+                              : 'text-white'].join(' ')}
                           style={isOpen ? undefined : { backgroundColor: shiftColor.bg }}
                           onClick={(e) => {
                             e.stopPropagation();

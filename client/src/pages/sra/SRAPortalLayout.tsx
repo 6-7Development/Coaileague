@@ -92,11 +92,9 @@ export default function SRAPortalLayout({ children, activeRoute }: SRAPortalLayo
               <Link key={item.route} href={item.route}>
                 <a
                   data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm transition-colors ${
-                    isActive
+                  className={['flex items-center gap-3 px-4 py-2.5 rounded-md text-sm transition-colors', isActive
                       ? "bg-[#1a3a6b] text-white"
-                      : "text-blue-200 hover:bg-blue-900/40 hover:text-white"
-                  }`}
+                      : "text-blue-200 hover:bg-blue-900/40 hover:text-white"].join(' ')}
                   onClick={() => setNavOpen(false)}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />

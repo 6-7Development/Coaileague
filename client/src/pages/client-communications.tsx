@@ -135,9 +135,7 @@ function ThreadListItem({ thread, selected, onClick }: { thread: Thread; selecte
     <button
       onClick={onClick}
       data-testid={`button-thread-${thread.id}`}
-      className={`w-full text-left px-4 py-3 transition-colors border-b border-border hover-elevate ${slaHighlight} ${
-        selected ? "bg-accent/60" : "bg-transparent"
-      }`}
+      className={['w-full text-left px-4 py-3 transition-colors border-b border-border hover-elevate', slaHighlight, selected ? "bg-accent/60" : "bg-transparent"].join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

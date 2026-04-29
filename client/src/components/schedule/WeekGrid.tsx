@@ -286,11 +286,9 @@ export function WeekGrid({
             {conflictBadge && (
               <Badge
                 variant="outline"
-                className={`absolute bottom-0.5 left-0.5 text-[7px] px-0.5 py-0 ${
-                  conflictBadge.severity === 'error'
+                className={['absolute bottom-0.5 left-0.5 text-[7px] px-0.5 py-0', conflictBadge.severity === 'error'
                     ? 'bg-red-100 dark:bg-red-900/60 border-red-500 text-red-700 dark:text-red-300'
-                    : 'bg-yellow-100 dark:bg-yellow-900/60 border-yellow-500 text-yellow-700 dark:text-yellow-300'
-                }`}
+                    : 'bg-yellow-100 dark:bg-yellow-900/60 border-yellow-500 text-yellow-700 dark:text-yellow-300'].join(' ')}
               >
                 {conflictBadge.type}
               </Badge>
@@ -379,13 +377,11 @@ export function WeekGrid({
             return (
               <div
                 key={i}
-                className={`flex-1 min-w-[128px] text-center py-2.5 border-r border-slate-200/60 dark:border-slate-700/60 last:border-r-0 cursor-pointer transition-colors ${
-                  isToday
+                className={['flex-1 min-w-[128px] text-center py-2.5 border-r border-slate-200/60 dark:border-slate-700/60 last:border-r-0 cursor-pointer transition-colors', isToday
                     ? 'bg-blue-100 dark:bg-blue-900/40'
                     : (isSat || isSun)
                       ? 'bg-emerald-50/40 dark:bg-emerald-900/10'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
-                }`}
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'].join(' ')}
                 onClick={() => onDaySelect(day)}
                 data-testid={`week-day-header-${i}`}
               >
@@ -436,9 +432,7 @@ export function WeekGrid({
                   return (
                     <div
                       key={dayIdx}
-                      className={`flex-1 min-w-[128px] border-r border-emerald-200/40 dark:border-emerald-800/30 last:border-r-0 relative ${
-                        isToday ? 'bg-emerald-100/40 dark:bg-emerald-900/30' : ''
-                      }`}
+                      className={['flex-1 min-w-[128px] border-r border-emerald-200/40 dark:border-emerald-800/30 last:border-r-0 relative', isToday ? 'bg-emerald-100/40 dark:bg-emerald-900/30' : ''].join(' ')}
                       data-testid={`week-open-cell-${dayIdx}`}
                     >
                       <DayCellTimeline dayShifts={unassigned} variant="unassigned" />
@@ -490,9 +484,7 @@ export function WeekGrid({
                 return (
                   <div
                     key={dayIdx}
-                    className={`flex-1 min-w-[128px] border-r border-sky-200/40 dark:border-sky-800/30 last:border-r-0 relative ${
-                      isToday ? 'bg-sky-100/30 dark:bg-sky-900/20' : ''
-                    }`}
+                    className={['flex-1 min-w-[128px] border-r border-sky-200/40 dark:border-sky-800/30 last:border-r-0 relative', isToday ? 'bg-sky-100/30 dark:bg-sky-900/20' : ''].join(' ')}
                     style={{ minHeight: `${maxAvailH}px` }}
                     data-testid={`week-available-cell-${dayIdx}`}
                   >
@@ -537,11 +529,9 @@ export function WeekGrid({
               return (
                 <div
                   key={emp.id}
-                  className={`flex border-b border-slate-200/60 dark:border-slate-700/60 transition-colors ${
-                    empIndex % 2 === 0
+                  className={['flex border-b border-slate-200/60 dark:border-slate-700/60 transition-colors', empIndex % 2 === 0
                       ? 'bg-white/70 dark:bg-slate-900/50'
-                      : 'bg-slate-50/80 dark:bg-slate-800/40'
-                  }`}
+                      : 'bg-slate-50/80 dark:bg-slate-800/40'].join(' ')}
                   style={{ minHeight: `${dynamicMinHeight}px` }}
                   data-testid={`week-employee-row-${emp.id}`}
                 >
@@ -591,9 +581,7 @@ export function WeekGrid({
                     return (
                       <div
                         key={dayIdx}
-                        className={`flex-1 min-w-[128px] border-r border-slate-200/40 dark:border-slate-700/40 last:border-r-0 relative group/cell transition-colors ${
-                          isToday ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
-                        } ${isWeekend ? 'bg-slate-100/50 dark:bg-slate-800/50' : ''}`}
+                        className={['flex-1 min-w-[128px] border-r border-slate-200/40 dark:border-slate-700/40 last:border-r-0 relative group/cell transition-colors', isToday ? 'bg-blue-50/30 dark:bg-blue-900/10' : '', isWeekend ? 'bg-slate-100/50 dark:bg-slate-800/50' : ''].join(' ')}
                         data-testid={`week-cell-${emp.id}-${dayIdx}`}
                       >
                         {trinityWorking && dayShifts.length === 0 && empIndex % 2 === dayIdx % 2 && (

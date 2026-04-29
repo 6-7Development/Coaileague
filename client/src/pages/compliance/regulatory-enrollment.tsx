@@ -162,11 +162,9 @@ export default function RegulatoryEnrollmentPage() {
 
       {/* Deadline alert */}
       {deadline && (
-        <div className={`flex items-start gap-3 rounded-md p-3 border text-sm ${
-          isOverdue ? 'border-red-700/50 bg-red-950/30 text-red-300'
+        <div className={['flex items-start gap-3 rounded-md p-3 border text-sm', isOverdue ? 'border-red-700/50 bg-red-950/30 text-red-300'
           : daysRemaining <= 7 ? 'border-amber-700/50 bg-amber-950/30 text-amber-300'
-          : 'border-[#ffc83c]/30 bg-[#ffc83c]/5 text-[#ffc83c]/80'
-        }`}>
+          : 'border-[#ffc83c]/30 bg-[#ffc83c]/5 text-[#ffc83c]/80'].join(' ')}>
           <Clock className="w-4 h-4 mt-0.5 shrink-0" />
           <div>
             {isOverdue
@@ -181,18 +179,16 @@ export default function RegulatoryEnrollmentPage() {
       <div className="flex items-center gap-2" data-testid="enrollment-stepper">
         {STEP_LABELS.map((label, i) => (
           <div key={i} className="flex items-center gap-2 flex-1">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold shrink-0 ${
-              i < step ? 'bg-[#ffc83c] text-[#0f172a]'
+            <div className={['flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold shrink-0', i < step ? 'bg-[#ffc83c] text-[#0f172a]'
               : i === step ? 'bg-[#ffc83c]/20 text-[#ffc83c] border border-[#ffc83c]/50'
-              : 'bg-muted text-muted-foreground'
-            }`}>
+              : 'bg-muted text-muted-foreground'].join(' ')}>
               {i < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
             </div>
             <span className={`text-xs hidden sm:inline ${i === step ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
               {label}
             </span>
             {i < STEP_LABELS.length - 1 && (
-              <div className={`h-px flex-1 ${i < step ? 'bg-[#ffc83c]/40' : 'bg-border'}`} />
+              <div className={['h-px flex-1', i < step ? 'bg-[#ffc83c]/40' : 'bg-border'].join(' ')} />
             )}
           </div>
         ))}
@@ -264,11 +260,9 @@ export default function RegulatoryEnrollmentPage() {
                   key={opt.id}
                   data-testid={`option-credential-${opt.id}`}
                   onClick={() => setSelected(opt.id)}
-                  className={`w-full text-left p-4 rounded-md border transition-colors ${
-                    isSelected
+                  className={['w-full text-left p-4 rounded-md border transition-colors', isSelected
                       ? 'border-[#ffc83c]/60 bg-[#ffc83c]/5'
-                      : 'border-border bg-muted/20 hover-elevate'
-                  }`}
+                      : 'border-border bg-muted/20 hover-elevate'].join(' ')}
                 >
                   <div className="flex items-start gap-3">
                     <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${isSelected ? 'text-[#ffc83c]' : opt.color}`} />

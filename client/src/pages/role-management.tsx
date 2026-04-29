@@ -189,9 +189,7 @@ export default function RoleManagement() {
                     {filteredEmployees.map((employee) => (
                       <div
                         key={employee.id}
-                        className={`flex items-center justify-between gap-2 p-4 rounded-lg border hover-elevate cursor-pointer transition-colors ${
-                          selectedEmployee?.id === employee.id ? 'border-primary bg-primary/5' : ''
-                        }`}
+                        className={['flex items-center justify-between gap-2 p-4 rounded-lg border hover-elevate cursor-pointer transition-colors', selectedEmployee?.id === employee.id ? 'border-primary bg-primary/5' : ''].join(' ')}
                         onClick={() => { setSelectedEmployee(employee); setNewRole(employee.role); }}
                         data-testid={`employee-item-${employee.id}`}
                       >

@@ -359,13 +359,11 @@ export default function SpsOnboardingWizard() {
                   // Only allow jumping to completed steps or current
                   if (done || step <= currentStep) goToStep(step);
                 }}
-                className={`flex-shrink-0 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  active
+                className={['flex-shrink-0 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors', active
                     ? 'bg-primary text-primary-foreground'
                     : done
                     ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                    : 'bg-muted text-muted-foreground cursor-default'
-                }`}
+                    : 'bg-muted text-muted-foreground cursor-default'].join(' ')}
               >
                 {done && !active && <CheckCircle2 className="inline h-3 w-3 mr-1" />}
                 {step}. {label}

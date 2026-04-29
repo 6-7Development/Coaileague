@@ -559,9 +559,7 @@ export default function OrgManagement() {
                           setSelectedOrg(org);
                           setMemberSearchQuery("");
                         }}
-                        className={`w-full p-4 text-left hover-elevate flex items-center justify-between gap-3 transition-colors ${
-                          selectedOrg?.id === org.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''
-                        }`}
+                        className={['w-full p-4 text-left hover-elevate flex items-center justify-between gap-3 transition-colors', selectedOrg?.id === org.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''].join(' ')}
                         data-testid={`button-org-${org.id}`}
                       >
                         <div className="min-w-0 flex-1">

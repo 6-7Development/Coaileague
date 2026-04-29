@@ -254,12 +254,10 @@ function EmployeeLeaderboard({ employees }: { employees: EmployeePerformance[] }
     <div className="space-y-3">
       {employees.slice(0, 5).map((emp, index) => (
         <div key={emp.employeeId} className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            index === 0 ? 'bg-cyan-500/20 text-cyan-600' :
+          <div className={['w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold', index === 0 ? 'bg-cyan-500/20 text-cyan-600' :
             index === 1 ? 'bg-slate-400/20 text-slate-500' :
             index === 2 ? 'bg-teal-500/20 text-teal-600' :
-            'bg-muted text-muted-foreground'
-          }`}>
+            'bg-muted text-muted-foreground'].join(' ')}>
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
@@ -423,11 +421,9 @@ function AIInsightsPanel({
                 {anomalies.slice(0, 5).map((anomaly, i) => (
                   <div 
                     key={i} 
-                    className={`flex items-start gap-3 p-3 rounded-md ${
-                      anomaly.severity === 'high' ? 'bg-red-500/10 border border-red-500/20' :
+                    className={['flex items-start gap-3 p-3 rounded-md', anomaly.severity === 'high' ? 'bg-red-500/10 border border-red-500/20' :
                       anomaly.severity === 'medium' ? 'bg-teal-500/10 border border-teal-500/20' :
-                      'bg-cyan-500/10 border border-cyan-500/20'
-                    }`}
+                      'bg-cyan-500/10 border border-cyan-500/20'].join(' ')}
                   >
                     <Badge 
                       variant={anomaly.severity === 'high' ? 'destructive' : 'secondary'}
@@ -1311,12 +1307,10 @@ export default function Analytics() {
                     <div className="space-y-3">
                       {(performance.data?.employees ?? []).slice(0, 10).map((emp, index) => (
                         <div key={emp.employeeId} className="flex items-center gap-3 p-3 rounded-md bg-muted/50 hover-elevate">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                            index === 0 ? 'bg-yellow-500/20 text-yellow-600' :
+                          <div className={['w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold', index === 0 ? 'bg-yellow-500/20 text-yellow-600' :
                             index === 1 ? 'bg-slate-400/20 text-slate-500' :
                             index === 2 ? 'bg-orange-500/20 text-orange-600' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
+                            'bg-muted text-muted-foreground'].join(' ')}>
                             {index + 1}
                           </div>
                           <div className="flex-1 min-w-0">

@@ -315,7 +315,7 @@ function ClientMessagesTab({ clientId }: { clientId: string }) {
                     key={t.id}
                     onClick={() => setSelectedId(t.id)}
                     data-testid={`button-portal-thread-${t.id}`}
-                    className={`w-full text-left px-3 py-2.5 border-b border-border hover-elevate transition-colors ${selectedId === t.id ? "bg-accent/60" : ""}`}
+                    className={['w-full text-left px-3 py-2.5 border-b border-border hover-elevate transition-colors', selectedId === t.id ? "bg-accent/60" : ""].join(' ')}
                   >
                     <p className="text-sm font-medium truncate">{t.subject}</p>
                     {t.lastMessagePreview && (
@@ -1787,7 +1787,7 @@ export default function ClientPortal() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium text-sm">{p.expected_visitor_name}</p>
                             {p.expected_visitor_company && <p className="text-xs text-muted-foreground">{p.expected_visitor_company}</p>}
-                            <Badge variant="secondary" className={`text-xs border-0 ${p.status === 'pending' ? 'bg-blue-500/10 text-blue-600' : p.status === 'checked_in' ? 'bg-green-500/10 text-green-600' : ''}`}>
+                            <Badge variant="secondary" className={['text-xs border-0', p.status === 'pending' ? 'bg-blue-500/10 text-blue-600' : p.status === 'checked_in' ? 'bg-green-500/10 text-green-600' : ''].join(' ')}>
                               {p.status.replace('_', ' ')}
                             </Badge>
                           </div>

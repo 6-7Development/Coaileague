@@ -1009,11 +1009,9 @@ export default function LeadersHub() {
                         className="flex items-start gap-4 p-3 rounded-lg hover-elevate"
                         data-testid={`action-item-${action.id}`}
                       >
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                          action.status === 'completed' ? 'bg-muted/10 text-primary' :
+                        <div className={['h-8 w-8 rounded-full flex items-center justify-center shrink-0', action.status === 'completed' ? 'bg-muted/10 text-primary' :
                           action.status === 'pending' ? 'bg-blue-500/10 text-blue-600' :
-                          'bg-destructive/10 text-destructive'
-                        }`}>
+                          'bg-destructive/10 text-destructive'].join(' ')}>
                           {action.status === 'completed' && <CheckCircle2 className="h-4 w-4" />}
                           {action.status === 'pending' && <Clock className="h-4 w-4" />}
                           {action.status === 'failed' && <AlertCircle className="h-4 w-4" />}

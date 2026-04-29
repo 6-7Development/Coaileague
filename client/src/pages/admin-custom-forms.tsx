@@ -251,7 +251,7 @@ function SortableFieldCard({ field, isSelected, onClick, onDelete, onDuplicate }
     <div ref={setNodeRef} style={style}>
       <div
         onClick={onClick}
-        className={`group flex gap-2 p-3 rounded-md border bg-card cursor-pointer transition-colors ${isSelected ? "ring-2 ring-primary border-primary/30 bg-primary/5" : "hover:bg-muted/30"}`}
+        className={['group flex gap-2 p-3 rounded-md border bg-card cursor-pointer transition-colors', isSelected ? "ring-2 ring-primary border-primary/30 bg-primary/5" : "hover:bg-muted/30"].join(' ')}
       >
         <button
           {...attributes} {...listeners}

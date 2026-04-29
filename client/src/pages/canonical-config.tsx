@@ -479,11 +479,9 @@ export default function CanonicalConfigPage() {
                         key={group.id}
                         data-testid={`group-item-${group.group_key}`}
                         onClick={() => setSelectedGroup(group.group_key)}
-                        className={`w-full text-left px-2.5 py-2 rounded-md text-sm flex items-center justify-between gap-2 hover-elevate transition-colors ${
-                          selectedGroup === group.group_key
+                        className={['w-full text-left px-2.5 py-2 rounded-md text-sm flex items-center justify-between gap-2 hover-elevate transition-colors', selectedGroup === group.group_key
                             ? "bg-primary/10 text-primary font-medium"
-                            : "text-foreground"
-                        }`}
+                            : "text-foreground"].join(' ')}
                       >
                         <span className="truncate">{group.label}</span>
                         <div className="flex items-center gap-1.5 flex-shrink-0">

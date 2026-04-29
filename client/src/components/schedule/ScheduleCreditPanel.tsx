@@ -139,15 +139,13 @@ export function OperationVisibilityPanel({
                 title={`${STEP_LABELS[step]} - ${stepStatus}${stepData?.durationMs ? ` (${stepData.durationMs}ms)` : ''}`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                    isCompleted
+                  className={['w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all', isCompleted
                       ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
                       : isFailed
                       ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
                       : isActive
                       ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 animate-pulse'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
+                      : 'bg-muted text-muted-foreground'].join(' ')}
                 >
                   {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : 
                    isFailed ? <XCircle className="w-3.5 h-3.5" /> :

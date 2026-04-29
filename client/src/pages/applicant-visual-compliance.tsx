@@ -195,11 +195,9 @@ export default function ApplicantVisualCompliance() {
             const isUploading = uploadingSlot === slot.type;
 
             return (
-              <Card key={slot.type} className={`border-2 transition-colors ${
-                latest?.status === 'passed'  ? 'border-green-200 bg-green-50/50' :
+              <Card key={slot.type} className={['border-2 transition-colors', latest?.status === 'passed'  ? 'border-green-200 bg-green-50/50' :
                 latest?.status === 'flagged' ? 'border-red-200 bg-red-50/50' :
-                'border-slate-200'
-              }`}>
+                'border-slate-200'].join(' ')}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">

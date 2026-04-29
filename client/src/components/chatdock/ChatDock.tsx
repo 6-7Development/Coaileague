@@ -562,7 +562,7 @@ function RoomInfoPanel({
             <div key={u.id} className="flex items-center gap-2 px-3 py-2" data-testid={`live-member-${u.id}`}>
               <div className="relative flex-shrink-0">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className={`text-xs font-semibold ${isBot ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-amber-500 text-white' : 'bg-primary/10 text-primary'}`}>
+                  <AvatarFallback className={['text-xs font-semibold', isBot ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-amber-500 text-white' : 'bg-primary/10 text-primary'].join(' ')}>
                     {(u.name || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

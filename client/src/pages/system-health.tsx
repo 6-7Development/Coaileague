@@ -624,13 +624,11 @@ export default function SystemHealth() {
     category: 'admin',
     headerActions: (
       <div className="flex items-center gap-4">
-        <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-          data.platformReadiness === "ready"
+        <div className={['px-4 py-2 rounded-lg flex items-center gap-2', data.platformReadiness === "ready"
             ? "bg-emerald-500/10 text-emerald-600"
             : data.platformReadiness === "degraded"
             ? "bg-amber-500/10 text-amber-600"
-            : "bg-red-500/10 text-red-600"
-        }`} data-testid="badge-platform-status">
+            : "bg-red-500/10 text-red-600"].join(' ')} data-testid="badge-platform-status">
           <div className={`w-2 h-2 rounded-full ${status.color} animate-pulse`} />
           <span className="text-sm font-medium">{status.label}</span>
         </div>

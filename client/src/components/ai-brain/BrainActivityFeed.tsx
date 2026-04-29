@@ -52,11 +52,9 @@ export function BrainActivityFeed() {
             {entries.map(entry => (
               <div
                 key={entry.id}
-                className={`rounded-lg border p-2.5 text-xs ${
-                  entry.status === 'success' ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' :
+                className={['rounded-lg border p-2.5 text-xs', entry.status === 'success' ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' :
                   entry.status === 'error'   ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10' :
-                  'border-border bg-muted/30'
-                }`}
+                  'border-border bg-muted/30'].join(' ')}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium">{entry.action}</span>

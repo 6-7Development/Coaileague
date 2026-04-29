@@ -400,9 +400,7 @@ export default function InboxPage() {
 
   const EmailListItem = ({ email }: { email: Email }) => (
     <div
-      className={`p-4 border-b cursor-pointer hover-elevate active:bg-muted/50 transition-colors ${
-        !email.isRead ? "bg-primary/5" : ""
-      } ${selectedEmail?.id === email.id && !isMobile ? "bg-muted" : ""}`}
+      className={['p-4 border-b cursor-pointer hover-elevate active:bg-muted/50 transition-colors', !email.isRead ? "bg-primary/5" : "", selectedEmail?.id === email.id && !isMobile ? "bg-muted" : ""].join(' ')}
       onClick={() => handleEmailClick(email)}
       data-testid={`email-item-${email.id}`}
     >
@@ -754,7 +752,7 @@ export default function InboxPage() {
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className={`${selectedEmail ? "w-2/5 xl:w-1/3 border-r" : "flex-1"} overflow-hidden`}>
+          <div className={[selectedEmail ? "w-2/5 xl:w-1/3 border-r" : "flex-1", 'overflow-hidden'].join(' ')}>
             <ScrollArea className="h-full">
               {emailsLoading ? (
                 <div className="p-4 space-y-4">
