@@ -1762,6 +1762,38 @@ const constraints: CriticalConstraint[] = [
       `);
     },
   },
+  // ── Client Portal 360 — Schema Hardening ────────────────────────────────
+  {
+    name: 'clients_unique_email_workspace',
+    rationale: 'CP-1: UNIQUE(email, workspace_id) on clients prevents duplicate client records. Without this, two managers creating the same client simultaneously both succeed — billing splits across ghost records. Partial index: only non-inactive clients.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_indexes
+         WHERE tablename = 'clients'
+           AND indexname = 'uq_clients_email_workspace'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      // Keep most recently updated record per email+workspace
+      await pool.query(`
+        DELETE FROM clients a
+        USING clients b
+        WHERE a.id > b.id
+          AND lower(a.email) = lower(b.email)
+          AND a.workspace_id = b.workspace_id
+          AND a.email IS NOT NULL
+          AND COALESCE(a.is_active, true) = true
+          AND COALESCE(b.is_active, true) = true
+      `).catch(() => null);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_clients_email_workspace
+          ON clients (lower(email), workspace_id)
+          WHERE email IS NOT NULL
+            AND COALESCE(is_active, true) = true
+      `);
+    },
+  },
   {
     name: 'shifts_deleted_at_column',
     rationale: 'Soft-delete column added after initial schema definition; ALTER TABLE is idempotent via IF NOT EXISTS',

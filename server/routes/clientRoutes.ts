@@ -265,6 +265,26 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       }
     }
 
+    // CP-14 FIX: Duplicate client company guard
+    // Rule: same company name in same workspace = reject with 409, not silent duplicate
+    // Two managers creating same client simultaneously → second gets conflict, not ghost record
+    const [existingByCompany] = await db
+      .select({ id: clients.id, companyName: clients.companyName })
+      .from(clients)
+      .where(and(
+        eq(clients.workspaceId, workspaceId),
+        sql`lower(${clients.companyName}) = lower(${validated.companyName})`,
+      ))
+      .limit(1);
+
+    if (existingByCompany) {
+      return res.status(409).json({
+        message: `A client named "${existingByCompany.companyName}" already exists in this workspace.`,
+        code: 'DUPLICATE_CLIENT',
+        existingId: existingByCompany.id,
+      });
+    }
+
     const client = await storage.createClient({
       ...validated,
       userId: userId || validated.userId || null,
