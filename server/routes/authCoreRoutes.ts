@@ -1055,6 +1055,14 @@ router.get("/api/auth/check", async (req, res) => {
 });
 
 // ============================================================================
+// Extend Session — resets the session idle timer without a full /me round-trip
+// ============================================================================
+
+router.post("/api/auth/extend-session", requireAuth, (req, res) => {
+  req.session.touch();
+  res.json({ success: true, expiresAt: new Date(Date.now() + (req.session.cookie.maxAge ?? 3600_000)).toISOString() });
+});
+
 // Logout
 // ============================================================================
 

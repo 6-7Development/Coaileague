@@ -644,10 +644,21 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       let shift: typeof import('@shared/schema').shifts.$inferSelect;
       try {
         shift = await db.transaction(async (tx) => {
-          // RC5 (Phase 2): Advisory lock serializes concurrent requests per employee.
-          // The PostgreSQL exclusion constraint `no_overlapping_employee_shifts` (btree_gist)
-          // atomically rejects any INSERT that creates an overlap — 23P01 is caught below.
-          // The application-level SELECT overlap check has been permanently retired.
+          // RC5 (Phase 2): Two-layer atomic overlap prevention.
+          //
+          // Layer 1 — Advisory lock (this block):
+          //   pg_advisory_xact_lock serializes concurrent transactions for the same
+          //   employee within the same DB connection pool. Held for the duration of
+          //   the transaction, released automatically on commit/rollback. Hash is
+          //   per-employee so unrelated employees don't block each other.
+          //
+          // Layer 2 — Exclusion constraint (migration 0003):
+          //   `no_overlapping_employee_shifts` (btree_gist on tstzrange) atomically
+          //   rejects any INSERT/UPDATE that would create a time overlap for the same
+          //   (workspace_id, employee_id) pair. Catches races that advisory locks miss
+          //   (e.g., requests on different DB connections). Returns PG error 23P01.
+          //
+          // Do NOT remove either layer — they handle distinct failure modes.
           for (const empId of assignedEmpIds) {
             await tx.execute(sql`SELECT pg_advisory_xact_lock(abs(hashtext(${empId})))`);
           }

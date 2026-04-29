@@ -885,8 +885,14 @@ router.post('/tickets/:id/close', requirePlatformStaff, async (req, res) => {
           </p>
         </div>
       `;
-      await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
-            type: 'support_ticket_confirmation', workspaceId: ticket.workspaceId || 'system', recipientUserId: guestEmail, channel: 'email', body: { to: guestEmail, subject: `Support Ticket Closed: ${ticket.ticketNumber}`, html: emailHtml } });
+      await NotificationDeliveryService.send({
+        idempotencyKey: `ticket-${id}-closure`,
+        type: 'support_ticket_confirmation',
+        workspaceId: ticket.workspaceId || 'system',
+        recipientUserId: guestEmail,
+        channel: 'email',
+        body: { to: guestEmail, subject: `Support Ticket Closed: ${ticket.ticketNumber}`, html: emailHtml },
+      });
     } catch (emailError) {
       log.error('Failed to send support summary email:', emailError);
     }
@@ -947,18 +953,26 @@ router.patch('/tickets/:id/status', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    // Optimistic locking: accept optional expectedStatus to prevent concurrent overwrites
-    const { expectedStatus } = req.body;
+    // Optimistic locking via expectedStatus (coarse) or lockVersion (precise)
+    const { expectedStatus, lockVersion } = req.body;
     if (expectedStatus && ticket.status !== expectedStatus) {
       return res.status(409).json({
         message: `Conflict: ticket status is now '${ticket.status}', expected '${expectedStatus}'`,
         currentStatus: ticket.status,
+        lockVersion: ticket.lockVersion,
+      });
+    }
+    if (lockVersion !== undefined && ticket.lockVersion !== lockVersion) {
+      return res.status(409).json({
+        message: `Conflict: ticket was modified concurrently (lockVersion mismatch)`,
+        currentLockVersion: ticket.lockVersion,
       });
     }
 
     const updatedTicket = await storage.updateSupportTicket(id, {
       status,
       // @ts-expect-error — TS migration: fix in refactoring sprint
+      lockVersion: (ticket.lockVersion ?? 0) + 1,
       updatedAt: new Date(),
     }, user.currentWorkspaceId);
 

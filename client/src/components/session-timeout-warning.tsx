@@ -101,11 +101,13 @@ export function SessionTimeoutWarning() {
 
   const stayLoggedIn = async () => {
     try {
-      await apiRequest("GET", "/api/auth/me");
+      // POST /api/auth/extend-session calls req.session.touch() on the server,
+      // actually resetting the session idle timer — GET /api/auth/me only reads it.
+      await apiRequest("POST", "/api/auth/extend-session");
       setShowWarning(false);
       startTimers();
     } catch (error) {
-      console.error("Failed to refresh session:", error);
+      console.error("Failed to extend session:", error);
       handleLogout();
     }
   };
