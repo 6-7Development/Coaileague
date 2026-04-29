@@ -185,7 +185,8 @@ export function getStatusState(
  * Returns the color token set for an entity in a given state.
  */
 export function getBroadcastColor(entity: CoAIEntity, state: CoAIStatusState): ColorToken {
-  return entity === "trinity" ? TRINITY_COLORS[state] : HELPAI_COLORS[state];
+  const map = entity === "trinity" ? TRINITY_COLORS : HELPAI_COLORS;
+  return map[state] ?? map.idle;
 }
 
 /**

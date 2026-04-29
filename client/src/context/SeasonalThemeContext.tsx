@@ -217,25 +217,25 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
     isLoading,
     error: error as Error | null,
     
-    seasonId: profile.seasonId,
-    isHoliday: profile.isHoliday,
-    holidayName: profile.holidayName,
-    
-    forceDarkMode: profile.theme.forceDarkMode,
+    seasonId: profile?.seasonId ?? DEFAULT_PROFILE.seasonId,
+    isHoliday: profile?.isHoliday ?? DEFAULT_PROFILE.isHoliday,
+    holidayName: profile?.holidayName ?? DEFAULT_PROFILE.holidayName,
+
+    forceDarkMode: profile?.theme?.forceDarkMode ?? DEFAULT_PROFILE.theme.forceDarkMode,
     effectsEnabled,
-    
-    primaryEffect: profile.effects.primary,
-    effectIntensity: profile.effects.intensity,
-    
+
+    primaryEffect: profile?.effects?.primary ?? DEFAULT_PROFILE.effects.primary,
+    effectIntensity: profile?.effects?.intensity ?? DEFAULT_PROFILE.effects.intensity,
+
     seasonalColors: {
-      primary: profile.theme.primaryColor,
-      secondary: profile.theme.secondaryColor,
-      accent: profile.theme.accentColor,
-      glow: profile.theme.glowColor,
+      primary: profile?.theme?.primaryColor ?? DEFAULT_PROFILE.theme.primaryColor,
+      secondary: profile?.theme?.secondaryColor ?? DEFAULT_PROFILE.theme.secondaryColor,
+      accent: profile?.theme?.accentColor ?? DEFAULT_PROFILE.theme.accentColor,
+      glow: profile?.theme?.glowColor ?? DEFAULT_PROFILE.theme.glowColor,
     },
-    
-    mascotThoughts: profile.mascotHints.seasonalThoughts,
-    mascotEmotes: profile.mascotHints.seasonalEmotes,
+
+    mascotThoughts: profile?.mascotHints?.seasonalThoughts ?? DEFAULT_PROFILE.mascotHints.seasonalThoughts,
+    mascotEmotes: profile?.mascotHints?.seasonalEmotes ?? DEFAULT_PROFILE.mascotHints.seasonalEmotes,
     
     refetch,
   };
@@ -274,12 +274,12 @@ export function useSeasonalEffect() {
   const { profile, effectsEnabled } = useSeasonalTheme();
   
   return {
-    enabled: effectsEnabled && profile?.effects.primary !== 'none',
-    type: profile?.effects.primary || 'none',
-    intensity: profile?.effects.intensity || 0,
-    cadence: profile?.effects.cadence || 'medium',
-    accumulation: profile?.effects.accumulation || false,
-    accumulationCycle: profile?.effects.accumulationCycle,
+    enabled: effectsEnabled && profile?.effects?.primary !== 'none',
+    type: profile?.effects?.primary || 'none',
+    intensity: profile?.effects?.intensity || 0,
+    cadence: profile?.effects?.cadence || 'medium',
+    accumulation: profile?.effects?.accumulation || false,
+    accumulationCycle: profile?.effects?.accumulationCycle,
   };
 }
 
