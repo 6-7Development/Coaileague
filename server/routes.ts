@@ -1028,6 +1028,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   mountSchedulingRoutes(app); // /api/shifts, /api/schedules, /api/staffing
   log.info('[ROUTE-INIT] step: mount-time');
   mountTimeRoutes(app);       // /api/time, /api/timesheet
+  // ── THOUGHT STATUS: mount BEFORE mountTrinityRoutes to bypass requireTrinityAccess gate ──
+  // The general app.use("/api/trinity", requireTrinityAccess, ...) in mountTrinityRoutes
+  // intercepts ALL /api/trinity/* requests first. Thought-status is a lightweight status
+  // endpoint that all authenticated workspace members should access — not just platform staff.
+  app.use('/api/trinity/thought-status', requireAuth, ensureWorkspaceAccess, trinityThoughtStatusRouter);
+
   log.info('[ROUTE-INIT] step: mount-trinity');
   mountTrinityRoutes(app);    // /api/trinity/*, /api/ai/*
   log.info('[ROUTE-INIT] step: mount-workforce');
@@ -1044,7 +1050,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/wellness', ensureWorkspaceAccess, wellnessRoutes);
   app.use('/api/training-certification', ensureWorkspaceAccess, trainingCertificationRouter);
   app.use('/api/alert-configs', ensureWorkspaceAccess, alertConfigRouter);
-  app.use('/api/trinity/thought-status', ensureWorkspaceAccess, trinityThoughtStatusRouter);
   app.use('/api/platform-config', platformConfigValuesRouter);
 
   // ── Marketing: Enterprise Inquiry (public, inline — no domain file needed) ─

@@ -189,10 +189,9 @@ export function mountTrinityRoutes(app: Express): void {
   app.use("/api/trinity", empireRouter);
   app.use("/api/trinity", trinityAlertsRouter);
   app.use("/api/trinity", requireAuth, requireTrinityAccess, trinityInsightsRouter);
-  app.use("/api/trinity", requireAuth, ensureWorkspaceAccess, trinityThoughtStatusRouter);
-  // requireAuth fires first: populates req.user, checks account lock, emits auth telemetry.
-  // requirePlatformStaff then does the DB-level platform-role gate.
-  // Both guards must be present — requirePlatformStaff alone skips the account-lock check.
+  // NOTE: trinityThoughtStatusRouter is mounted BEFORE this block in routes.ts
+  // (at /api/trinity/thought-status with requireAuth + ensureWorkspaceAccess)
+  // to bypass the requireTrinityAccess gate above. Do NOT re-mount here.
   app.use("/api/trinity", requireAuth, requirePlatformStaff, trinityMiscRouter); // platform-staff gate — must be last
 
   // ── Trinity Intelligence — Phases A-D (Regulatory, Financial, Autonomous, Officer) ──
