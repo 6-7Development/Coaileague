@@ -65,6 +65,7 @@ import { UniversalConfigProvider } from "@/providers/universal-config-provider";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useTrinityNotificationRouting } from "@/hooks/use-trinity-notification-routing";
 import { useChatManagerInit, useChatManagerWebSocketBridge } from "@/hooks/useChatManager";
 import { useIsMobile, ResponsiveAppFrame } from "@/hooks/use-mobile";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";

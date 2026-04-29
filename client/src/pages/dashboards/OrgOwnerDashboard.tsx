@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
-import { StatusBadge, MetricCard, MetricGrid, ActionResult } from "@/components/ui/metric-card";
+import { MetricCard, MetricGrid } from "@/components/ui/metric-card";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { queryClient, apiRequest } from "@/lib/queryClient";
