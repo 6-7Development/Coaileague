@@ -3117,7 +3117,7 @@ If no significant insight, respond with:
 
         return {
           id: session.id,
-          mode: (session.mode || 'business') as ConversationMode,
+          mode: 'business' as const, // Trinity is unified — always 'business'
           startedAt: session.startedAt || session.createdAt!,
           lastActivityAt: session.lastActivityAt || session.createdAt!,
           turnCount: session.turnCount || 0,
