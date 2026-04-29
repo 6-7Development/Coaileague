@@ -955,7 +955,7 @@ export default function Analytics() {
                         <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
                             <Pie
-                              data={timeUsage.data.byClient.slice(0, 6)}
+                              data={(timeUsage.data?.byClient ?? []).slice(0, 6)}
                               cx="50%"
                               cy="50%"
                               innerRadius={60}
@@ -966,7 +966,7 @@ export default function Analytics() {
                               label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                               labelLine={false}
                             >
-                              {timeUsage.data.byClient.slice(0, 6).map((_, index) => (
+                              {(timeUsage.data?.byClient ?? []).slice(0, 6).map((_, index) => (
                                 <Cell key={`cell-${index}`} fill={CHART_SERIES[index % CHART_SERIES.length]} />
                               ))}
                             </Pie>
@@ -1074,7 +1074,7 @@ export default function Analytics() {
                               nameKey="status"
                               label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
                             >
-                              {scheduling.data.byStatus.map((_, index) => (
+                              {(scheduling.data?.byStatus ?? []).map((_, index) => (
                                 <Cell key={`cell-${index}`} fill={CHART_SERIES[index % CHART_SERIES.length]} />
                               ))}
                             </Pie>
@@ -1228,7 +1228,7 @@ export default function Analytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {revenue.data.byClient.slice(0, 5).map((client, index) => (
+                      {(revenue.data?.byClient ?? []).slice(0, 5).map((client, index) => (
                         <div key={client.clientId} className="flex items-center gap-4">
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
                             {index + 1}
@@ -1309,7 +1309,7 @@ export default function Analytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {performance.data.employees.slice(0, 10).map((emp, index) => (
+                      {(performance.data?.employees ?? []).slice(0, 10).map((emp, index) => (
                         <div key={emp.employeeId} className="flex items-center gap-3 p-3 rounded-md bg-muted/50 hover-elevate">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
                             index === 0 ? 'bg-yellow-500/20 text-yellow-600' :

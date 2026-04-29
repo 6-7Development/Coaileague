@@ -326,7 +326,7 @@ export default function OwnerAnalytics() {
 
         {data?.alerts && data.alerts.length > 0 && (
           <div className="space-y-2">
-            {data.alerts.slice(0, 3).map((alert, i) => (
+            {(data.alerts ?? []).slice(0, 3).map((alert, i) => (
               <Alert 
                 key={i} 
                 variant={alert.type === 'warning' ? 'destructive' : 'default'}
@@ -443,7 +443,7 @@ export default function OwnerAnalytics() {
                     <CardContent>
                       <Progress value={data.featureAdoptionScore} className="mb-4" />
                       <div className="space-y-3">
-                        {data.topFeatures.slice(0, 5).map((feature, i) => (
+                        {(data.topFeatures ?? []).slice(0, 5).map((feature, i) => (
                           <div key={i} className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline">{feature.featureCategory}</Badge>
@@ -507,7 +507,7 @@ export default function OwnerAnalytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {data.teamActivity.slice(0, 5).map((member, i) => (
+                      {(data.teamActivity ?? []).slice(0, 5).map((member, i) => (
                         <div key={i} className="flex items-center justify-between gap-2" data-testid={`row-team-member-${i}`}>
                           <div className="flex items-center gap-3">
                             <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
@@ -764,7 +764,7 @@ export default function OwnerAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {data.topFeatures.map((feature, i) => (
+                    {(data.topFeatures ?? []).map((feature, i) => (
                       <div key={i} className="flex items-center gap-4" data-testid={`row-feature-${i}`}>
                         <div className="flex-1">
                           <div className="flex items-center justify-between gap-2 mb-1">

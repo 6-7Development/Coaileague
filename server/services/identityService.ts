@@ -94,13 +94,25 @@ async function ensureOrgIdentifiersInTx(
     try {
       // Create external identifier
       log.info(`[Identity] Inserting org external ID into database...`);
-      await tx.insert(externalIdentifiers).values({
-        entityType: 'org',
-        entityId: orgId,
-        externalId: externalId,
-        orgId: null, // Orgs don't have a parent org
-        isPrimary: true,
-      });
+      // Use ON CONFLICT DO NOTHING to prevent transaction abort from cascading
+      // (PostgreSQL marks entire tx as aborted after any error, breaking subsequent queries)
+      const { pool: identityPool } = await import('./db' as any).catch(() => ({ pool: null }));
+      if (identityPool) {
+        await identityPool.query(
+          `INSERT INTO external_identifiers (entity_type, entity_id, external_id, org_id, is_primary)
+           VALUES ($1, $2, $3, NULL, true)
+           ON CONFLICT DO NOTHING`,
+          ['org', orgId, externalId]
+        );
+      } else {
+        await tx.insert(externalIdentifiers).values({
+          entityType: 'org',
+          entityId: orgId,
+          externalId: externalId,
+          orgId: null,
+          isPrimary: true,
+        });
+      }
       log.info(`[Identity] Org external ID insert successful!`);
       
       // Success!

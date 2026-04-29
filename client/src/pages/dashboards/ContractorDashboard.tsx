@@ -8,6 +8,7 @@ import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
+import { SafeSection } from "@/components/ui/safe-section";
 
 const pageConfig: CanvasPageConfig = {
   id: "contractor-dashboard",

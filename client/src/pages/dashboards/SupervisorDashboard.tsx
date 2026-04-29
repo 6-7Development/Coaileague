@@ -10,6 +10,7 @@ import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import { SafeSection } from "@/components/ui/safe-section";
 
 const pageConfig: CanvasPageConfig = {
   id: "supervisor-dashboard",

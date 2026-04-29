@@ -587,7 +587,7 @@ function WorkspaceDeepDive({ workspaceId, data, isLoading, onExecuteAction }: {
               <p className="text-xs text-muted-foreground">No recent tickets</p>
             ) : (
               <div className="space-y-2">
-                {data.recentSupportTickets.slice(0, 6).map((t: any) => (
+                {(data.recentSupportTickets ?? []).slice(0, 6).map((t: any) => (
                   <div key={t.id} className="text-sm" data-testid={`ws-ticket-${t.id}`}>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{t.ticket_number}</span>
@@ -610,7 +610,7 @@ function WorkspaceDeepDive({ workspaceId, data, isLoading, onExecuteAction }: {
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5">
-              {data.trinityActivity.slice(0, 5).map((a: any, i: number) => (
+              {(data.trinityActivity ?? []).slice(0, 5).map((a: any, i: number) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
                   <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${a.success !== false ? 'bg-green-500' : 'bg-red-500'}`} />
                   <div className="flex-1">

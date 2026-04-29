@@ -240,7 +240,7 @@ export default function CashFlowDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {data.topOverdueInvoices.map(inv => (
+              {(data.topOverdueInvoices ?? []).map(inv => (
                 <div
                   key={inv.id}
                   data-testid={`overdue-invoice-${inv.id}`}

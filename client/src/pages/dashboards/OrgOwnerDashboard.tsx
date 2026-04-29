@@ -37,6 +37,7 @@ import { toast } from "@/hooks/use-toast";
 import { ComplianceScoreWidget } from "@/components/dashboard/ComplianceScoreWidget";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { TrinityApprovalQueue } from "@/components/trinity/TrinityApprovalQueue";
+import { SafeSection } from "@/components/ui/safe-section";
 
 const pageConfig: CanvasPageConfig = {
   id: "org-owner-dashboard",

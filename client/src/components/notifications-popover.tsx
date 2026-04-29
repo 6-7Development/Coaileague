@@ -270,7 +270,7 @@ function usePendingClears() {
     // Check bulk pending IDs
     _pendingBulkIds?.forEach(id => {
       if (confirmedClearedIds.has(id) || !responseIds.has(id)) {
-        _pendingBulkIds!.delete(id);
+        _pendingBulkIds?.delete(id);
         changed = true;
       }
     });
@@ -1077,7 +1077,7 @@ function NotificationDetailModal({
         
         {/* Action Buttons - compact on mobile */}
         <div className="p-3 sm:p-4 pt-0 flex flex-wrap gap-2 border-t mt-2">
-          {hasActions && notification.actions!.map((action, idx) => (
+          {hasActions && (notification.actions ?? []).map((action, idx) => (
             <Button
               key={idx}
               variant={idx === 0 ? 'default' : 'outline'}
@@ -1426,7 +1426,7 @@ function NotificationCard({
                 {/* Action Buttons - Right Side */}
                 {hasActions && (
                   <div className={`flex ${compact ? 'flex-row flex-wrap gap-1.5' : 'flex-col gap-2'} shrink-0`}>
-                    {notification.actions!.map((action, idx) => (
+                    {(notification.actions ?? []).map((action, idx) => (
                       <Button
                         key={idx}
                         variant={isCritical ? 'secondary' : 'outline'}
@@ -1522,7 +1522,7 @@ function NotificationCard({
                 {/* Action Buttons */}
                 {hasActions && (
                   <div className={`flex flex-wrap ${compact ? 'gap-1 mt-1.5' : 'gap-2 mt-2'}`}>
-                    {notification.actions!.map((action, idx) => (
+                    {(notification.actions ?? []).map((action, idx) => (
                       <Button
                         key={idx}
                         variant="outline"

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
+import { SafeSection } from "@/components/ui/safe-section";
 
 const pageConfig: CanvasPageConfig = {
   id: "auditor-dashboard",

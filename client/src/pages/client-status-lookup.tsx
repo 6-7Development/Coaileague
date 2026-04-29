@@ -213,7 +213,7 @@ export default function ClientStatusLookup({ tempCode: initialTempCode }: Client
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {data.requests.map((req, idx) => (
+                    {(data.requests ?? []).map((req, idx) => (
                       <div 
                         key={idx} 
                         className="flex items-center justify-between gap-2 p-3 bg-muted/30 rounded-lg"
@@ -240,7 +240,7 @@ export default function ClientStatusLookup({ tempCode: initialTempCode }: Client
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {data.shifts.map((shift, idx) => (
+                    {(data.shifts ?? []).map((shift, idx) => (
                       <div 
                         key={idx} 
                         className="p-4 bg-muted/30 rounded-lg"

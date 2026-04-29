@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { TrinityApprovalQueue } from "@/components/trinity/TrinityApprovalQueue";
+import { SafeSection } from "@/components/ui/safe-section";
 
 const pageConfig: CanvasPageConfig = {
   id: "org-manager-dashboard",

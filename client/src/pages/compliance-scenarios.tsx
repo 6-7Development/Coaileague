@@ -305,7 +305,7 @@ export default function ComplianceScenariosPage() {
             <SummaryBar summary={data.summary} runAt={data.runAt} />
 
             <div className="space-y-4">
-              {data.scenarios.map(scenario => (
+              {(data.scenarios ?? []).map(scenario => (
                 <ScenarioCard key={scenario.scenarioId} scenario={scenario} />
               ))}
             </div>

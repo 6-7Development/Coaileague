@@ -368,7 +368,7 @@ function ForecastTab({ data }: { data: ForecastResult | undefined }) {
     );
   }
 
-  const chartData = data.forecasts.map((f) => ({
+  const chartData = (data.forecasts ?? []).map((f) => ({
     name: formatMonth(f.month),
     "Projected": f.projectedRevenue,
     "Known Contracts": f.knownContractRevenue,
@@ -426,7 +426,7 @@ function ForecastTab({ data }: { data: ForecastResult | undefined }) {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {data.forecasts.map((f) => (
+        {(data.forecasts ?? []).map((f) => (
           <Card key={f.month}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -455,7 +455,7 @@ function ForecastTab({ data }: { data: ForecastResult | undefined }) {
           </CardHeader>
           <CardContent>
             <ul className="space-y-1">
-              {data.keyAssumptions.map((a, i) => (
+              {(data.keyAssumptions ?? []).map((a, i) => (
                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                   <span className="mt-1 shrink-0">•</span>
                   <span>{a}</span>
@@ -531,7 +531,7 @@ function Asc606Tab({ data }: { data: Asc606Report | undefined }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {data.checklist.map((item) => (
+            {(data.checklist ?? []).map((item) => (
               <div key={item.step} className="flex items-center gap-3">
                 {checklistIcons[item.status]}
                 <div className="flex-1">
