@@ -72,7 +72,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
         sla: '< 30 min'
       }
     };
-    return tiers[tier];
+    return tiers[tier] ?? tiers.free;
   };
 
   const getPriorityColor = (score: number) => {

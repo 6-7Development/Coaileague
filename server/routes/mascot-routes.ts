@@ -1328,9 +1328,44 @@ router.get('/seasonal/state', async (req, res) => {
     if (seasonalCache && (now - seasonalCache.timestamp) < SEASONAL_CACHE_TTL) {
       return res.json(seasonalCache.data);
     }
-    const workspaceId = req.session?.activeWorkspaceId ?? undefined;
-    const profile = await generateSeasonalProfile(workspaceId);
-    
+
+    // SeasonalSubagent orchestration is disabled — return default (non-seasonal) profile.
+    // Seasonal theming is server-controlled; clients must respect this decision.
+    const profile = {
+      seasonId: 'default',
+      holidayName: null,
+      isHoliday: false,
+      theme: {
+        forceDarkMode: false,
+        primaryColor: '#38bdf8',
+        secondaryColor: '#a855f7',
+        accentColor: '#ffffff',
+        glowColor: '#38bdf8',
+      },
+      effects: {
+        primary: 'none',
+        secondary: null,
+        cadence: 'medium',
+        intensity: 0,
+        accumulation: false,
+        accumulationCycle: null,
+      },
+      ornaments: {
+        enabled: false,
+        types: [],
+        colors: [],
+        density: 'sparse',
+      },
+      mascotHints: {
+        preferredZones: ['corners'],
+        avoidEffectZones: true,
+        seasonalEmotes: ['idle'],
+        seasonalThoughts: ["Let's get to work!"],
+      },
+      validUntil: new Date(now + 3600000).toISOString(),
+      aiGenerated: false,
+    };
+
     const responseData = {
       success: true,
       profile,
@@ -1340,7 +1375,7 @@ router.get('/seasonal/state', async (req, res) => {
     res.json(responseData);
   } catch (error) {
     log.error('[Seasonal] Error generating profile:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to generate seasonal profile',
       fallback: {
         seasonId: 'default',

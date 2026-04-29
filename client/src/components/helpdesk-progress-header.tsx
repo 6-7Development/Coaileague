@@ -175,12 +175,12 @@ export function HelpDeskProgressHeader({
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge 
-              variant="secondary" 
-              className={cn("text-white text-xs", priorityConfig[ticketData.priority].color)}
+            <Badge
+              variant="secondary"
+              className={cn("text-white text-xs", (priorityConfig[ticketData.priority] ?? priorityConfig.normal).color)}
               data-testid="priority-badge"
             >
-              {priorityConfig[ticketData.priority].label}
+              {(priorityConfig[ticketData.priority] ?? priorityConfig.normal).label}
             </Badge>
             {isStaffUser && ticketData.slaRemaining > 0 && (
               <Badge variant="outline" className="text-xs" data-testid="sla-badge">
