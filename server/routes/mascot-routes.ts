@@ -110,6 +110,115 @@ async function executeMascotAction<T>(
 }
 import { getSeasonalSubagent } from '../services/ai-brain/seasonalSubagent';
 
+// ---------------------------------------------------------------------------
+// Seasonal helper stubs — thin wrappers around SeasonalSubagent so that route
+// handlers don't call undefined globals and throw ReferenceError at runtime.
+// ---------------------------------------------------------------------------
+
+interface SeasonalCommand {
+  action: 'force_activate' | 'force_deactivate' | 'enable' | 'preview';
+  holidayId?: string;
+  reason?: string;
+}
+
+interface SeasonalCommandResult {
+  success: boolean;
+  message: string;
+  newState?: Record<string, unknown>;
+}
+
+// In-memory manager registry (frontend components register on mount)
+const _activeManagers = new Set<string>();
+
+function getCurrentSeasonId(): string {
+  const subagent = getSeasonalSubagent();
+  return subagent.getActiveTheme()?.holiday?.id ?? 'default';
+}
+
+function shouldForceDarkMode(): boolean {
+  const subagent = getSeasonalSubagent();
+  const theme = subagent.getActiveTheme();
+  // Winter/Christmas themes force dark mode so snow is visible
+  return ['winter', 'christmas', 'newYear'].includes(theme?.holiday?.id ?? '');
+}
+
+async function runSeasonalHealthCheck(): Promise<Record<string, unknown>> {
+  const subagent = getSeasonalSubagent();
+  const theme = subagent.getActiveTheme();
+  return {
+    status: 'ok',
+    disabled: subagent.isSeasonalDisabled(),
+    activeTheme: theme?.holiday?.id ?? null,
+    activeManagers: _activeManagers.size,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+async function generateAIHealthReport(): Promise<Record<string, unknown>> {
+  const subagent = getSeasonalSubagent();
+  const theme = subagent.getActiveTheme();
+  return {
+    summary: subagent.isSeasonalDisabled()
+      ? 'Seasonal theming is currently disabled via AI Brain orchestration.'
+      : `Active theme: ${theme?.holiday?.name ?? 'none'}. ${_activeManagers.size} manager(s) registered.`,
+    activeTheme: theme ?? null,
+    activeManagers: Array.from(_activeManagers),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function executeSeasonalCommand(command: SeasonalCommand): Promise<SeasonalCommandResult> {
+  const subagent = getSeasonalSubagent();
+  switch (command.action) {
+    case 'force_activate': {
+      if (!command.holidayId) return { success: false, message: 'holidayId required for force_activate' };
+      const result = await subagent.forceActivateHoliday(command.holidayId);
+      return result
+        ? { success: true, message: `Activated ${command.holidayId}`, newState: { theme: result } }
+        : { success: false, message: `Holiday '${command.holidayId}' not found` };
+    }
+    case 'force_deactivate': {
+      const result = await subagent.forceDeactivateTheme(command.reason);
+      return { success: result.success, message: result.message };
+    }
+    case 'enable': {
+      const result = await subagent.enableSeasonalTheming();
+      return { success: result.success, message: result.message };
+    }
+    case 'preview': {
+      if (!command.holidayId) return { success: false, message: 'holidayId required for preview' };
+      const preview = await subagent.previewHolidayTheme(command.holidayId);
+      return preview
+        ? { success: true, message: `Preview for ${command.holidayId}`, newState: { preview } }
+        : { success: false, message: `Holiday '${command.holidayId}' not found` };
+    }
+    default:
+      return { success: false, message: `Unknown action: ${(command as any).action}` };
+  }
+}
+
+function getSupportOverrides(): Record<string, unknown> {
+  const subagent = getSeasonalSubagent();
+  return {
+    disabled: subagent.isSeasonalDisabled(),
+    activeTheme: subagent.getActiveTheme()?.holiday?.id ?? null,
+  };
+}
+
+function registerSeasonalManager(managerId: string): void {
+  _activeManagers.add(managerId);
+}
+
+function unregisterSeasonalManager(managerId: string): void {
+  _activeManagers.delete(managerId);
+}
+
+function getActiveManagers(): string[] {
+  return Array.from(_activeManagers);
+}
+
+// ---------------------------------------------------------------------------
+
 const router = Router();
 
 interface MascotInsight {

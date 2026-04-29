@@ -115,7 +115,8 @@ router.post('/polls/:pollId/vote', requireAuth, async (req: AuthenticatedRequest
       WHERE id = ${pollId} AND is_closed = false AND expires_at > NOW()
     `);
     const result = await db.execute(sql`SELECT * FROM chat_polls WHERE id = ${pollId}`);
-    return res.json(result.rows?.[0] ?? { error: 'Poll not found or expired' });
+    if (!result.rows?.[0]) return res.status(404).json({ error: 'Poll not found or expired' });
+    return res.json(result.rows[0]);
   } catch (err: any) {
     log.error('[ChatPolls] Vote error:', err?.message);
     return res.status(500).json({ error: 'Failed to record vote' });

@@ -623,23 +623,36 @@ router.patch('/escalated/:id/assign', requirePlatformStaff, async (req: Authenti
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const ticket = await db.query.supportTickets.findFirst({
-      where: eq(supportTickets.id, id),
-    });
-
-    if (!ticket || !ticket.isEscalated) {
-      return res.status(404).json({ message: "Escalated ticket not found" });
-    }
-
+    // Atomic claim: only assigns if ticket is escalated AND not yet claimed by another agent
     const [updatedTicket] = await db.update(supportTickets)
       .set({
         platformAssignedTo: staffId || userId,
         status: 'in_progress',
         updatedAt: new Date(),
       })
-      .from(supportTickets)
-      .where(and(eq(supportTickets.id, id), eq(supportTickets.workspaceId, workspaceId!)))
+      .where(
+        and(
+          eq(supportTickets.id, id),
+          eq(supportTickets.workspaceId, workspaceId!),
+          eq(supportTickets.isEscalated, true),
+          isNull(supportTickets.platformAssignedTo),
+        )
+      )
       .returning();
+
+    if (!updatedTicket) {
+      // Either ticket not found, not escalated, or already claimed by another agent
+      const existing = await db.query.supportTickets.findFirst({
+        where: eq(supportTickets.id, id),
+      });
+      if (!existing || !existing.isEscalated) {
+        return res.status(404).json({ message: "Escalated ticket not found" });
+      }
+      return res.status(409).json({
+        message: "Ticket already assigned to another agent",
+        assignedTo: existing.platformAssignedTo,
+      });
+    }
 
     res.json(updatedTicket);
   } catch (error) {
@@ -905,6 +918,25 @@ router.patch('/tickets/:id/status', async (req: AuthenticatedRequest, res) => {
     const ticket = await storage.getSupportTicket(id, user.currentWorkspaceId);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    // State machine: enforce valid transitions; closed is terminal
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+      open:                   ['in_progress', 'waiting_for_customer', 'on_hold', 'closed'],
+      in_progress:            ['waiting_for_customer', 'resolved', 'on_hold', 'closed'],
+      waiting_for_customer:   ['in_progress', 'resolved', 'on_hold', 'closed'],
+      on_hold:                ['open', 'in_progress', 'closed'],
+      resolved:               ['open', 'closed'],
+      closed:                 [], // terminal — no transitions allowed
+    };
+    const currentStatus = ticket.status as string;
+    const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(status)) {
+      return res.status(422).json({
+        message: `Invalid transition: '${currentStatus}' → '${status}' is not allowed`,
+        currentStatus,
+        allowedTransitions: allowed,
+      });
     }
 
     // Optimistic locking: accept optional expectedStatus to prevent concurrent overwrites

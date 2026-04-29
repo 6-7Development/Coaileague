@@ -298,6 +298,9 @@ interface WebSocketClient extends WebSocket {
 
   // Workspace role (set on join_conversation from employee record)
   workspaceRole?: string;
+
+  // Per-connection session re-validation timestamp (epoch ms)
+  lastSessionCheck?: number;
 }
 
 interface ChatMessagePayload {
@@ -1411,8 +1414,25 @@ export function setupWebSocket(server: Server) {
     
     // This is the actual message processor (called after auth or from buffer)
     const MAX_WS_MESSAGE_BYTES = 512 * 1024; // 512 KB per message — prevents memory exhaustion
+    const SESSION_RECHECK_MS = 5 * 60 * 1000; // Re-validate session every 5 minutes
     const processMessage = async (data: Buffer | ArrayBuffer | Buffer[]) => {
       try {
+        // Per-message session re-validation (throttled to every 5 min per connection).
+        // This ensures revoked sessions are evicted even on long-lived connections.
+        if (ws.serverAuth?.userId) {
+          const now = Date.now();
+          if (!ws.lastSessionCheck || now - ws.lastSessionCheck > SESSION_RECHECK_MS) {
+            ws.lastSessionCheck = now;
+            const valid = await revalidateUserAuth(ws);
+            if (!valid) {
+              log.warn('[WebSocket] Session revoked — closing connection', { userId: ws.serverAuth.userId });
+              ws.send(JSON.stringify({ type: 'session_expired', message: 'Your session has expired. Please log in again.' }));
+              ws.close(1008, 'Session expired');
+              return;
+            }
+          }
+        }
+
         // Enforce message size limit BEFORE toString() to prevent large-buffer DoS
         const byteLength = Buffer.isBuffer(data)
           ? data.length

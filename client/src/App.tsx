@@ -1329,7 +1329,7 @@ function AppContent() {
               <Route path="/audit-verify/:auditId" component={AuditVerificationPortal} />
               <Route path="/audit-chatdock/:auditId" component={AuditChatdock} />
               <Route path="/citation-resolve/:citationId" component={CitationResolve} />
-              <Route path="/admin/security" component={AdminSecurity} />
+              <Route path="/admin/security"><RBACRoute require="platform_staff"><ErrorBoundary><AdminSecurity /></ErrorBoundary></RBACRoute></Route>
               {/* Phase 33 — SRA Partner Portal (government blue, outside main auth) */}
               <Route path="/regulatory-audit/login" component={SRALogin} />
               <Route path="/regulatory-audit/apply" component={SRAApply} />
@@ -1475,7 +1475,7 @@ function AppContent() {
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
                 <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
                 <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
-                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><RBACRoute require="platform_staff"><ErrorBoundary><PlatformOps /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
@@ -1765,16 +1765,16 @@ function AppContent() {
                     <ErrorBoundary><BreachResponse /></ErrorBoundary>
                   </PlatformAdminRoute>
                 </Route>
-                <Route path="/automation/audit-log"><ErrorBoundary><AutomationAuditLog /></ErrorBoundary></Route>
-                <Route path="/automation/settings"><ErrorBoundary><AutomationSettings /></ErrorBoundary></Route>
+                <Route path="/automation/audit-log"><RBACRoute require="platform_staff"><ErrorBoundary><AutomationAuditLog /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/automation/settings"><RBACRoute require="platform_staff"><ErrorBoundary><AutomationSettings /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/ai/brain">
                   <RBACRoute require="platform_staff">
                     <ErrorBoundary><AIBrainDashboard /></ErrorBoundary>
                   </RBACRoute>
                 </Route>
-                <Route path="/ai/orchestration"><ErrorBoundary><OrchestrationDashboard /></ErrorBoundary></Route>
-                <Route path="/ai/audit-log-viewer"><ErrorBoundary><AIAuditLogViewer /></ErrorBoundary></Route>
-                <Route path="/ai/workboard"><ErrorBoundary><WorkboardDashboard /></ErrorBoundary></Route>
+                <Route path="/ai/orchestration"><RBACRoute require="platform_staff"><ErrorBoundary><OrchestrationDashboard /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/ai/audit-log-viewer"><RBACRoute require="platform_staff"><ErrorBoundary><AIAuditLogViewer /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/ai/workboard"><RBACRoute require="platform_staff"><ErrorBoundary><WorkboardDashboard /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/trinity-insights">
                   <RBACRoute require="platform_staff">
                     <ErrorBoundary><TrinityInsights /></ErrorBoundary>
@@ -1813,7 +1813,7 @@ function AppContent() {
                 {/* HelpDesk IRC/MSN-style chat interface with WebSocket */}
                 <Route path="/chat/:roomId">{(params: { roomId: string }) => <ErrorBoundary><HelpDesk roomId={params.roomId} forceMobileLayout={true} /></ErrorBoundary>}</Route>
                 <Route path="/inbox"><ErrorBoundary><EmailIntelligence /></ErrorBoundary></Route>
-                <Route path="/support/ai-console"><ErrorBoundary><SupportAIConsole /></ErrorBoundary></Route>
+                <Route path="/support/ai-console"><RBACRoute require="platform_staff"><ErrorBoundary><SupportAIConsole /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/employee-onboarding"><ErrorBoundary><EmployeeOnboardingDashboard /></ErrorBoundary></Route>
                 <Route path="/employee-packets"><ErrorBoundary><EmployeePackets /></ErrorBoundary></Route>
                 <Route path="/onboarding-hub"><ErrorBoundary><Suspense fallback={<PageLoader />}><OnboardingHub /></Suspense></ErrorBoundary></Route>
@@ -2013,7 +2013,7 @@ function AppContent() {
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
                 <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
                 <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
-                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><RBACRoute require="platform_staff"><ErrorBoundary><PlatformOps /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
@@ -2135,10 +2135,10 @@ function AppContent() {
                     <ErrorBoundary><AIBrainDashboard /></ErrorBoundary>
                   </RBACRoute>
                 </Route>
-                <Route path="/ai/orchestration"><ErrorBoundary><OrchestrationDashboard /></ErrorBoundary></Route>
-                <Route path="/ai/workboard"><ErrorBoundary><WorkboardDashboard /></ErrorBoundary></Route>
-                <Route path="/ai/audit-log-viewer"><ErrorBoundary><AIAuditLogViewer /></ErrorBoundary></Route>
-                <Route path="/support/ai-console"><ErrorBoundary><SupportAIConsole /></ErrorBoundary></Route>
+                <Route path="/ai/orchestration"><RBACRoute require="platform_staff"><ErrorBoundary><OrchestrationDashboard /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/ai/workboard"><RBACRoute require="platform_staff"><ErrorBoundary><WorkboardDashboard /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/ai/audit-log-viewer"><RBACRoute require="platform_staff"><ErrorBoundary><AIAuditLogViewer /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/support/ai-console"><RBACRoute require="platform_staff"><ErrorBoundary><SupportAIConsole /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/trinity-insights">
                   <RBACRoute require="platform_staff">
                     <ErrorBoundary><TrinityInsights /></ErrorBoundary>
@@ -2274,8 +2274,8 @@ function AppContent() {
                 <Route path="/pto"><ErrorBoundary><HRPTO /></ErrorBoundary></Route>
                 <Route path="/flex-staffing"><ErrorBoundary><FlexStaffing /></ErrorBoundary></Route>
                 <Route path="/availability"><ErrorBoundary><AvailabilityPage /></ErrorBoundary></Route>
-                <Route path="/automation/settings"><ErrorBoundary><AutomationSettings /></ErrorBoundary></Route>
-                <Route path="/automation/audit-log"><ErrorBoundary><AutomationAuditLog /></ErrorBoundary></Route>
+                <Route path="/automation/settings"><RBACRoute require="platform_staff"><ErrorBoundary><AutomationSettings /></ErrorBoundary></RBACRoute></Route>
+                <Route path="/automation/audit-log"><RBACRoute require="platform_staff"><ErrorBoundary><AutomationAuditLog /></ErrorBoundary></RBACRoute></Route>
                 <Route path="/settings/email"><ErrorBoundary><EmailManagement /></ErrorBoundary></Route>
                 <Route path="/settings/dns-guide"><ErrorBoundary><DnsSetupGuide /></ErrorBoundary></Route>
                 <Route path="/settings/hiring"><ErrorBoundary><HiringSettingsPage /></ErrorBoundary></Route>

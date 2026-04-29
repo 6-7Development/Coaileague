@@ -1176,24 +1176,28 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
           k => k !== 'aiGenerated' && (validated as any)[k] !== undefined
         );
         if (isManualEdit) {
-          storage.createAuditLog({
-            workspaceId,
-            userId,
-            action: 'manual_shift_edit',
-            actionDescription: isManualAssignment
-              ? `Manager manually assigned employee to shift "${shift.title || shift.id}" — Trinity locked from auto-reassignment`
-              : `Manager manually edited shift "${shift.title || shift.id}"`,
-            entityType: 'shift',
-            entityId: shift.id,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            before: shiftBeforeState,
-            after: shift,
-            metadata: {
-              changedFields: Object.keys(validated),
-              isManuallyLocked: isManualAssignment,
-              complianceTag: 'trinity_correction_tracking',
-            },
-          }).catch(err => log.warn('[ShiftAudit] Failed to write audit log:', err));
+          try {
+            await storage.createAuditLog({
+              workspaceId,
+              userId,
+              action: 'manual_shift_edit',
+              actionDescription: isManualAssignment
+                ? `Manager manually assigned employee to shift "${shift.title || shift.id}" — Trinity locked from auto-reassignment`
+                : `Manager manually edited shift "${shift.title || shift.id}"`,
+              entityType: 'shift',
+              entityId: shift.id,
+              // @ts-expect-error — TS migration: fix in refactoring sprint
+              before: shiftBeforeState,
+              after: shift,
+              metadata: {
+                changedFields: Object.keys(validated),
+                isManuallyLocked: isManualAssignment,
+                complianceTag: 'trinity_correction_tracking',
+              },
+            });
+          } catch (auditErr) {
+            log.error('[ShiftAudit] Failed to write audit log — shift edit succeeded but audit trail incomplete:', auditErr);
+          }
         }
       }
 
@@ -1227,7 +1231,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                 );
                 if (distanceM > geofenceRadiusMeters) {
                   log.warn(`[ShiftGPS] Shift ${shift.id} completed ${distanceM.toFixed(0)}m outside site geofence (threshold: ${geofenceRadiusMeters}m) — flagging out-of-bounds`);
-                  storage.createAuditLog({
+                  await storage.createAuditLog({
                     workspaceId,
                     userId: userId!,
                     action: 'scheduling_gps_out_of_bounds',
@@ -2674,8 +2678,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                 if (distanceM > geofenceRadius) {
                   log.warn(`[ShiftGPS] Shift ${req.params.shiftId} started ${distanceM.toFixed(0)}m outside site geofence (threshold: ${geofenceRadius}m)`);
 
-                  // Write audit log entry (non-blocking)
-                  storage.createAuditLog({
+                  // Write audit log entry
+                  await storage.createAuditLog({
                     workspaceId: employee.workspaceId,
                     userId: userId!,
                     action: 'scheduling_gps_out_of_bounds',
