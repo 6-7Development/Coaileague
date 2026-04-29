@@ -116,7 +116,80 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
     });
 
     const rows = await q(`SELECT * FROM incident_reports WHERE id = $1`, [id]);
-    res.status(201).json(rows[0]);
+    const incident = rows[0];
+
+    // DV-18 FIX: Auto-vault PDF on incident submit
+    // Law: every incident report must be a real branded PDF in the document vault
+    // Non-blocking — incident creation succeeds even if PDF generation fails
+    setImmediate(async () => {
+      try {
+        const { saveToVault } = await import('../services/documents/businessFormsVaultService');
+        const { PDFDocument } = await import('pdf-lib');
+
+        const doc = await PDFDocument.create();
+        const page = doc.addPage([612, 792]); // Letter size
+        const { StandardFonts } = await import('pdf-lib');
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+
+        const { rgb } = await import('pdf-lib');
+        // Header
+        page.drawRectangle({ x: 0, y: 742, width: 612, height: 50, color: rgb(0.08, 0.08, 0.2) });
+        page.drawText('INCIDENT REPORT', { x: 30, y: 760, size: 18, font: boldFont, color: rgb(1, 1, 1) });
+        page.drawText(incident.incident_number || id.slice(0, 8).toUpperCase(), {
+          x: 450, y: 760, size: 11, font, color: rgb(0.8, 0.8, 0.8),
+        });
+
+        // Body
+        const lines = [
+          `Title: ${incident.title}`,
+          `Type: ${incident.incident_type}`,
+          `Severity: ${incident.severity?.toUpperCase()}`,
+          `Occurred: ${incident.occurred_at ? new Date(incident.occurred_at).toLocaleString() : 'Unknown'}`,
+          `Location: ${incident.location_address || 'Not provided'}`,
+          '',
+          'Description:',
+          ...(incident.raw_description || '').match(/.{1,90}/g) || ['None provided'],
+        ];
+        let y = 700;
+        for (const line of lines) {
+          page.drawText(line, { x: 30, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
+          y -= 16;
+          if (y < 60) break;
+        }
+        // Footer
+        page.drawText(`Generated: ${new Date().toISOString()} | Coaileague WorkforceOS`, {
+          x: 30, y: 20, size: 8, font, color: rgb(0.5, 0.5, 0.5),
+        });
+
+        const pdfBytes = await doc.save();
+        const pdfBuffer = Buffer.from(pdfBytes);
+
+        const vaultResult = await saveToVault({
+          workspaceId,
+          documentTitle: `Incident Report — ${incident.title}`,
+          category: 'incident_report',
+          relatedEntityType: 'incident_report',
+          relatedEntityId: id,
+          generatedBy: userId,
+          pdfBuffer,
+        });
+
+        if (vaultResult.success && vaultResult.vault) {
+          await pool.query(
+            `UPDATE incident_reports
+             SET final_pdf_url = $1, document_vault_id = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [vaultResult.vault.fileUrl, vaultResult.vault.id, id]
+          );
+          log.info(`[IncidentPipeline] PDF vaulted for incident ${incident.incident_number} — vault id ${vaultResult.vault.id}`);
+        }
+      } catch (pdfErr: any) {
+        log.warn(`[IncidentPipeline] PDF vault failed for ${id} (non-fatal):`, pdfErr?.message);
+      }
+    });
+
+    res.status(201).json(incident);
   } catch (e: unknown) {
     log.error("[IncidentPipeline] Create error:", e);
     res.status(500).json({ error: "Internal server error" });

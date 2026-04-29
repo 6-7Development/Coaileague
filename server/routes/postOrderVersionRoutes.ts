@@ -287,6 +287,58 @@ router.post("/versions/:versionId/acknowledge", requireAuth, async (req: Authent
       metadata: { versionId, empId, method: acknowledgment_method }
     }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
+    // DV-19 FIX: Vault PDF — chain of custody for post order acknowledgment
+    // Law: officer acknowledgments must be a real branded PDF in vault (SPS compliance)
+    // Fire-and-forget — acknowledgment succeeds even if PDF fails
+    setImmediate(async () => {
+      try {
+        const { saveToVault } = await import('../services/documents/businessFormsVaultService');
+        const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+
+        const doc = await PDFDocument.create();
+        const page = doc.addPage([612, 792]);
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+
+        // Header
+        page.drawRectangle({ x: 0, y: 742, width: 612, height: 50, color: rgb(0.08, 0.08, 0.2) });
+        page.drawText('POST ORDER ACKNOWLEDGMENT', { x: 30, y: 760, size: 15, font: boldFont, color: rgb(1, 1, 1) });
+
+        const lines = [
+          `Version: ${version.version_number}`,
+          `Acknowledged At: ${new Date().toLocaleString()}`,
+          `Method: ${acknowledgment_method || 'manual'}`,
+          `Officer ID: ${empId}`,
+          `Site ID: ${version.site_id}`,
+          `IP Address: ${req.ip || 'Unknown'}`,
+          '',
+          'By acknowledging, the officer confirms they have read and understood the post orders.',
+        ];
+        let y = 700;
+        for (const line of lines) {
+          page.drawText(line, { x: 30, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
+          y -= 18;
+        }
+        page.drawText(`Generated: ${new Date().toISOString()} | Coaileague WorkforceOS`, {
+          x: 30, y: 20, size: 8, font, color: rgb(0.5, 0.5, 0.5),
+        });
+
+        const pdfBuffer = Buffer.from(await doc.save());
+        await saveToVault({
+          workspaceId: wid,
+          documentTitle: `Post Order Acknowledgment — v${version.version_number}`,
+          category: 'compliance',
+          relatedEntityType: 'post_order_acknowledgment',
+          relatedEntityId: id,
+          generatedBy: empId,
+          pdfBuffer,
+        });
+        log.info(`[PostOrder] Acknowledgment vaulted — version ${version.version_number}, officer ${empId}`);
+      } catch (vaultErr: any) {
+        log.warn(`[PostOrder] Vault PDF failed (non-fatal):`, vaultErr?.message);
+      }
+    });
+
     res.json({ success: true, acknowledgedCount: acked, pendingCount: Math.max(0, total - acked) });
   } catch (err: unknown) {
     res.status(500).json({ error: sanitizeError(err) });

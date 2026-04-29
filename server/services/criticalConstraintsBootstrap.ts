@@ -1762,7 +1762,39 @@ const constraints: CriticalConstraint[] = [
       `);
     },
   },
-  // ── Client Portal 360 — Schema Hardening ────────────────────────────────
+  // ── Document Vault 360 — Schema Hardening ───────────────────────────────
+  {
+    name: 'document_vault_status_column',
+    rationale: 'DV-6: document_vault has no status column — lifecycle tracking impossible. Without draft/final/superseded/archived/locked states, there is no way to enforce immutability, evidence holds, or version supersession. UI cannot show document lifecycle state.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'document_vault'
+           AND column_name = 'status'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`
+        ALTER TABLE document_vault
+          ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'final'
+      `);
+      // Backfill: existing records are final (already persisted)
+      await pool.query(`
+        UPDATE document_vault SET status = 'final' WHERE status IS NULL OR status = ''
+      `).catch(() => null);
+      // Add CHECK constraint to enforce the enum
+      await pool.query(`
+        ALTER TABLE document_vault
+          ADD CONSTRAINT chk_doc_vault_status
+          CHECK (status IN ('draft','final','superseded','archived','locked'))
+      `).catch(() => null); // Non-fatal if constraint already exists
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS doc_vault_status_idx
+          ON document_vault (workspace_id, status)
+      `);
+    },
+  },
   {
     name: 'clients_unique_email_workspace',
     rationale: 'CP-1: UNIQUE(email, workspace_id) on clients prevents duplicate client records. Without this, two managers creating the same client simultaneously both succeed — billing splits across ghost records. Partial index: only non-inactive clients.',
