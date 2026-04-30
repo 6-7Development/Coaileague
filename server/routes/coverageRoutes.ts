@@ -24,6 +24,21 @@ interface AuthenticatedRequest {
 
 const coverageRouter = Router();
 
+coverageRouter.get('/', requireAuth as any, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const statusFilter = (req as any).query?.status as string | undefined;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace context required' });
+    const status = await coveragePipeline.getCoverageStatus(workspaceId);
+    // Return shifts array for marketplace UI
+    const shifts = (status as any)?.pendingOffers ?? (status as any)?.activeRequests ?? [];
+    res.json({ shifts, status });
+  } catch (e: any) {
+    log.error('[CoverageRoutes] GET / failed:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 coverageRouter.post('/accept/:offerId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { offerId } = req.params;

@@ -98,7 +98,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
-    const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
+    const workspace = await storage.getWorkspace(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
     const { weekStartDate, weekEndDate, shiftIds, title } = req.body;
@@ -147,7 +147,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
 
       // AUDIT LOG: Publish action
       await storage.createAuditLog({
-        workspaceId: workspace.id,
+        workspaceId: workspaceId,
         action: 'schedule_published',
         entityType: 'schedule',
         entityId: published.id,
@@ -186,7 +186,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
         notificationHelpers.createSchedulePublishedNotification(
           { storage, broadcastNotification },
           {
-            workspaceId: workspace.id,
+            workspaceId: workspaceId,
             userId: emp.userId!,
             weekStart: weekStartFormatted,
             weekEnd: weekEndFormatted,
@@ -274,7 +274,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
       category: 'scheduling',
       title: `Schedule Published: ${published.title}`,
       description: `${published.totalShifts} shifts published covering ${employeesAffected} employee(s) for the week of ${weekStartDate}`,
-      workspaceId: workspace.id,
+      workspaceId: workspaceId,
       userId,
       metadata: {
         scheduleId: published.id,
@@ -298,7 +298,7 @@ router.post('/unpublish', requireManager, async (req: any, res) => {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
-    const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
+    const workspace = await storage.getWorkspace(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
     const { weekStart, weekEnd } = req.body;
@@ -344,16 +344,14 @@ router.post('/unpublish', requireManager, async (req: any, res) => {
   }
 });
 
-router.post('/apply-insight', requireManager, async (req: any, res) => {
+router.post('/apply-insight', requireManager, async (req: AuthenticatedRequest, res) => {
   try {
-    const userId = req.user?.id || req.user?.claims?.sub;
-    const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
-    if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
-    const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
-    if (!workspace) return res.status(404).json({ message: "Workspace not found" });
-    
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId;
+    if (!userId || !workspaceId) return res.status(401).json({ message: 'Auth required' });
+
     const { insightId, actionData } = req.body;
-    
+
     if (!insightId || typeof insightId !== 'string') {
       return res.status(400).json({ message: "insightId is required and must be a string" });
     }
@@ -373,7 +371,7 @@ router.post('/apply-insight', requireManager, async (req: any, res) => {
       });
 
       trinityAutonomousScheduler.executeAutonomousScheduling({
-        workspaceId: userWorkspace.workspaceId,
+        workspaceId: workspaceId,
         userId,
         mode: 'current_week',
         prioritizeBy: 'urgency',
@@ -381,7 +379,7 @@ router.post('/apply-insight', requireManager, async (req: any, res) => {
         maxShiftsPerEmployee: 0,
         respectAvailability: true,
       }).then(result => {
-        broadcastToWorkspace(userWorkspace.workspaceId, {
+        broadcastToWorkspace(workspaceId, {
           type: 'trinity_scheduling_http_complete',
           sessionId,
           success: result.success,
@@ -391,7 +389,7 @@ router.post('/apply-insight', requireManager, async (req: any, res) => {
         });
       }).catch(err => {
         log.error('[Trinity Insight AutoFill] Background error:', err);
-        broadcastToWorkspace(userWorkspace.workspaceId, {
+        broadcastToWorkspace(workspaceId, {
           type: 'trinity_scheduling_error',
           sessionId,
           error: (err instanceof Error ? err.message : String(err)) || 'Auto-fill failed',

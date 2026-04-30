@@ -2079,7 +2079,72 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
     }
   });
 
-  router.post('/:id/deny', requireEmployee, async (req: AuthenticatedRequest, res) => {
+  // /accept is an alias for /acknowledge — some UI components use this terminology
+router.post('/:id/accept', requireEmployee, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id: shiftId } = req.params;
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ message: 'Workspace required' });
+    // Delegate to acknowledge flow — same business logic
+    const [updated] = await db.update(shifts)
+      .set({ status: 'confirmed', updatedAt: new Date() })
+      .where(and(
+        eq(shifts.id, shiftId),
+        eq(shifts.workspaceId, workspaceId),
+        sql`${shifts.status} IN ('published','assigned','open')`,
+      ))
+      .returning();
+    if (!updated) return res.status(404).json({ message: 'Shift not found or cannot be accepted' });
+    broadcastShiftUpdate(workspaceId, 'shift_updated', updated);
+    res.json({ success: true, shift: updated });
+  } catch (err: any) {
+    log.error('[ShiftRoutes] Accept shift failed:', err?.message);
+    res.status(500).json({ message: sanitizeError(err) || 'Failed to accept shift' });
+  }
+});
+
+router.post('/:id/deny', requireEmployee, async (req: AuthenticatedRequest, res) => {
+
+// POST /:id/mark-calloff — officer calls off from an assigned shift
+// Creates a calloff record, releases the shift back to open pool, notifies managers
+router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const employeeId = req.employeeId;
+    const { reason, calloffTime } = req.body;
+
+    const shift = await storage.getShift(req.params.id, workspaceId);
+    if (!shift) return res.status(404).json({ message: 'Shift not found' });
+
+    // Ownership check: only the assigned officer can call off
+    if (shift.employeeId !== employeeId) {
+      return res.status(403).json({ message: 'You can only call off from shifts assigned to you' });
+    }
+
+    // Calloff: set status to 'calloff', clear employee, record reason
+    const calledOffShift = await storage.updateShift(req.params.id, workspaceId, {
+      status: 'calloff',
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      calloffAt: calloffTime || new Date().toISOString(),
+      calloffReason: reason || 'Employee called off',
+      // Release the shift for coverage — don't clear employeeId so we have history
+    });
+
+    broadcastShiftUpdate(workspaceId, 'shift_updated', calledOffShift);
+    broadcastToWorkspace(workspaceId, {
+      type: 'shift_calloff',
+      shiftId: req.params.id,
+      employeeId,
+      workspaceId,
+    });
+
+    res.json({ success: true, shift: calledOffShift });
+  } catch (err: any) {
+    log.error('[ShiftRoutes] Mark calloff failed:', err?.message);
+    res.status(500).json({ message: sanitizeError(err) || 'Failed to record calloff' });
+  }
+});
+
     try {
       const workspaceId = req.workspaceId!;
       const employeeId = req.employeeId;

@@ -859,8 +859,10 @@ export default function WorkerDashboard() {
       apiRequest("POST", `/api/shifts/${shiftId}/acknowledge`, {}),
     onSuccess: () => {
       toast({ title: "Shift confirmed", description: "You're booked for this shift." });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/schedules/week/stats"] });
     },
     onError: (err: any) => {
       toast({

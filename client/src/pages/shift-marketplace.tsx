@@ -556,21 +556,21 @@ function CoveragePoolTab() {
   });
 
   const { data: coverageData, isLoading } = useQuery<any>({
-    queryKey: ["/api/coverage-marketplace", workspaceId, statusFilter],
+    queryKey: ["/api/coverage", workspaceId, statusFilter],
     enabled: !!workspaceId,
     queryFn: () =>
-      fetch(`/api/coverage-marketplace?workspaceId=${workspaceId}&status=${statusFilter}`, {
+      fetch(`/api/coverage?workspaceId=${workspaceId}&status=${statusFilter}`, {
         credentials: 'include',
       }).then(r => r.json()),
   });
 
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["/api/coverage-marketplace"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/coverage"] });
   }
 
   const postShift = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("POST", "/api/coverage-marketplace", { ...data, workspaceId }),
+      apiRequest("POST", "/api/coverage/trigger", { ...data, workspaceId }),
     onSuccess: () => {
       invalidate();
       setShowPost(false);
@@ -582,7 +582,7 @@ function CoveragePoolTab() {
 
   const claimShift = useMutation({
     mutationFn: (id: string) =>
-      apiRequest("POST", `/api/coverage-marketplace/${id}/claim`, {
+      apiRequest("POST", `/api/coverage/accept/${id}`, {
         workspaceId,
         claimedByEmployeeId: user?.id,
         claimedByName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email,
@@ -593,7 +593,7 @@ function CoveragePoolTab() {
 
   const approveShift = useMutation({
     mutationFn: (id: string) =>
-      apiRequest("POST", `/api/coverage-marketplace/${id}/approve`, {
+      apiRequest("POST", `/api/coverage/accept/${id}`, {
         workspaceId,
         approvedBy: user?.id,
       }),

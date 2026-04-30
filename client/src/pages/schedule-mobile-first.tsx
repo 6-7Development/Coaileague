@@ -461,32 +461,34 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
   const handleAcceptShift = async (shift: Shift) => {
     try {
-      // 'draft → open' is the valid transition for officer acknowledging their assigned shift
-      await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
-        status: 'open' 
-      });
+      // POST /acknowledge is the dedicated officer acceptance endpoint
+      // It sets status='confirmed' and records the officer's acknowledgment
+      await apiRequest('POST', `/api/shifts/${shift.id}/acknowledge`, {});
+      // Global refresh — invalidate all shift queries so the UI snaps to new state
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({ title: "Shift accepted" });
-    } catch (error) {
-      toast({ 
-        title: "Failed to accept shift", 
-        variant: "destructive" 
+      queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
+      toast({ title: 'Shift accepted', description: 'You are confirmed for this shift.' });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to accept shift',
+        description: error?.message || 'Please try again',
+        variant: 'destructive',
       });
     }
   };
 
   const handleDeclineShift = async (shift: Shift) => {
     try {
-      await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
-        status: 'cancelled',
-        employeeId: null
-      });
+      // POST /deny is the dedicated officer decline endpoint
+      await apiRequest('POST', `/api/shifts/${shift.id}/deny`, {});
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
-      toast({ title: "Shift declined" });
-    } catch (error) {
-      toast({ 
-        title: "Failed to decline shift", 
-        variant: "destructive" 
+      queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
+      toast({ title: 'Shift declined', description: 'Your supervisor has been notified.' });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to decline shift',
+        description: error?.message || 'Please try again',
+        variant: 'destructive',
       });
     }
   };
