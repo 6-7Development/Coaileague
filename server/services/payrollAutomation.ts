@@ -28,6 +28,7 @@ import { assertNoPeriodOverlap } from './payroll/payrollLedger';
 import { calculatePayrollTaxes, type PayPeriod as TaxPayPeriod, type FilingStatus as TaxFilingStatus } from './billing/payrollTaxService';
 import { getTaxRules, computeProgressiveStateTax, TAX_REGISTRY_VERSION, TAX_REGISTRY_EFFECTIVE_YEAR } from './tax/taxRulesRegistry';
 import { claimPayrollTimeEntries } from './payroll/payrollTimeEntryClaimer';
+import { AtomicFinancialLockService } from './atomicFinancialLockService';
 import { multiplyFinancialValues, addFinancialValues, toFinancialString } from './financialCalculator';
 const PRE_TAX_BENEFIT_TYPES = ['401k', 'health_insurance', 'dental_insurance', 'vision_insurance'];
 const POST_TAX_BENEFIT_TYPES = ['life_insurance', 'other'];
@@ -1641,6 +1642,7 @@ export class PayrollAutomationEngine {
         throw new Error(`Payroll run ${payrollRunId} not found`);
       }
 
+<<<<<<< HEAD
       if (timeEntryIds && timeEntryIds.length > 0) {
         // Inspect current claim state so we can split entries into
         // already-claimed-by-this-run, claimed-by-another-run, and unclaimed.
@@ -1676,6 +1678,20 @@ export class PayrollAutomationEngine {
         } else {
           log.info(`[AI Payroll™] Approved run ${payrollRunId}: all ${alreadyClaimedHere} entries already claimed at run creation — no-op`);
         }
+=======
+      // Bulk-claim source time entries atomically via canonical claimer.
+      // The workspace scope is read off the run row we just locked — there is
+      // no workspaceId parameter on this method's signature.
+      if (timeEntryIds && timeEntryIds.length > 0) {
+        const claimed = await claimPayrollTimeEntries({
+          workspaceId: row.workspaceId,
+          timeEntryIds,
+          payrollRunId,
+          requireAll: true,
+          tx,
+        });
+        log.info(`[AI Payroll™] Claimed ${claimed.claimedCount}/${claimed.requestedCount} entries for run ${payrollRunId}`);
+>>>>>>> origin/claude/fix-financial-locking-timeout-6AR5Y
       } else {
         log.info(`[AI Payroll™] Approved run ${payrollRunId} with no timeEntryIds passed — assuming creation-time claim path`);
       }
@@ -1762,16 +1778,14 @@ export async function voidPayrollRun(
         }).where(eq(payrollEntries.id, entry.id));
       }
 
-      // Reset payrolledAt on all time entries linked to this run so they are eligible
-      // for re-processing in the next payroll run. Without this, voided entries would
-      // be permanently locked out of future payrolls.
-      const resetResult = await tx
-        .update(timeEntries)
-        .set({ payrolledAt: null, payrollRunId: null, updatedAt: new Date() })
-        .where(eq(timeEntries.payrollRunId, runId))
-        .returning({ id: timeEntries.id });
-      if (resetResult.length > 0) {
-        log.info(`[AI Payroll] Void: reset payrolledAt on ${resetResult.length} time entries (run ${runId})`);
+      // Release time_entries via the canonical gatekeeper. The run's status is
+      // now 'draft' (set above in this same tx), so PAYROLL_RELEASABLE_STATUSES
+      // permits release. If a future caller skips the status flip and tries to
+      // void a 'disbursing'/'paid'/'completed'/'partial' run, releaseFromPayroll
+      // throws FinancialLockConflict instead of silently breaking the audit chain.
+      const { released } = await AtomicFinancialLockService.releaseFromPayroll(runId, tx);
+      if (released > 0) {
+        log.info(`[AI Payroll] Void: released ${released} time entries from run ${runId}`);
       }
     });
 

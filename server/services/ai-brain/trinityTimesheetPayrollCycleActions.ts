@@ -9,6 +9,7 @@ import { runWeeklyBillingCycle } from '../quickbooksClientBillingSync';
 import { platformEventBus } from '../platformEventBus';
 import { createLogger } from '../../lib/logger';
 import { calculatePayrollEstimate } from '../payroll/payrollEstimateMath';
+import { AtomicFinancialLockService, FinancialLockConflict } from '../atomicFinancialLockService';
 const log = createLogger('trinityTimesheetPayrollCycleActions');
 
 function mkAction(actionId: string, fn: (params: any) => Promise<any>, category: string = 'automation'): ActionHandler {
@@ -144,6 +145,17 @@ export function registerTimesheetPayrollCycleActions() {
     // GAP-20 FIX: workspaceId is now required and added to every WHERE clause so this action
     // cannot be aimed at a time entry in a foreign workspace.
     if (!timeEntryId || !workspaceId) return { error: 'timeEntryId and workspaceId required' };
+    // Trinity must respect the financial lock — once an entry's invoice/run has
+    // crossed into a finalized status, corrections must flow through credit
+    // memos or payroll adjustments, not direct mutation.
+    try {
+      await AtomicFinancialLockService.assertCanModify(timeEntryId);
+    } catch (err) {
+      if (err instanceof FinancialLockConflict) {
+        return { error: err.message, code: 'FINANCIAL_LOCK', reason: err.reason };
+      }
+      throw err;
+    }
     const updates: any = { status: 'correction_pending', updatedAt: new Date() };
     if (correctedClockIn) updates.clockIn = new Date(correctedClockIn);
     if (correctedClockOut) updates.clockOut = new Date(correctedClockOut);

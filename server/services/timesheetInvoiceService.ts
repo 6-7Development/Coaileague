@@ -20,6 +20,7 @@ import { format, differenceInMinutes, differenceInDays } from 'date-fns';
 import PDFDocument from 'pdfkit';
 import { calculateRegularPay, calculateOvertimePay } from './financialCalculator';
 import { getUncachableResendClient, isResendConfigured } from './emailCore';
+import { AtomicFinancialLockService } from './atomicFinancialLockService';
 import { createLogger } from '../lib/logger';
 const log = createLogger('timesheetInvoiceService');
 
@@ -184,29 +185,7 @@ export async function generateInvoiceFromTimesheets(
   const timeEntryIds = [...new Set(lineItemsData.map(item => item.timeEntryId))];
 
   const { invoice, insertedLineItems } = await db.transaction(async (tx) => {
-    // ── STEP 1: Atomically claim the source time entries ─────────────────
-    // Update billedAt to NOW() only for entries that are still approved
-    // and unbilled. If even one entry was already claimed (race condition or
-    // duplicate invoice attempt), abort the entire transaction.
-    const claimed = await tx.update(timeEntries)
-      .set({ billedAt: new Date(), updatedAt: new Date() })
-      .where(and(
-        eq(timeEntries.workspaceId, workspaceId),
-        eq(timeEntries.clientId, clientId),
-        eq(timeEntries.status, 'approved'),
-        isNull(timeEntries.billedAt),
-        inArray(timeEntries.id, timeEntryIds),
-      ))
-      .returning({ id: timeEntries.id });
-
-    if (claimed.length !== timeEntryIds.length) {
-      throw new Error(
-        `Timesheet invoice aborted: ${timeEntryIds.length - claimed.length} of ${timeEntryIds.length} ` +
-        `entries were already billed or unavailable. No invoice was created.`
-      );
-    }
-
-    // ── STEP 2: Create the invoice header ────────────────────────────────
+    // ── STEP 1: Create the draft invoice header ──────────────────────────
     const [inv] = await tx.insert(invoices)
       .values({
         workspaceId,
@@ -223,7 +202,7 @@ export async function generateInvoiceFromTimesheets(
       })
       .returning();
 
-    // ── STEP 3: Create the line items ─────────────────────────────────────
+    // ── STEP 2: Create the line items ─────────────────────────────────────
     const items = await tx.insert(invoiceLineItems)
       .values(
         lineItemsData.map(item => ({
@@ -238,15 +217,17 @@ export async function generateInvoiceFromTimesheets(
       )
       .returning();
 
-    // ── STEP 4: Link entries back to the invoice ──────────────────────────
-    // Sets invoiceId on each time entry so they appear as invoiced everywhere
-    // in the platform — not just via invoice_line_items join.
-    await tx.update(timeEntries)
-      .set({ invoiceId: inv.id, updatedAt: new Date() })
-      .where(and(
-        eq(timeEntries.workspaceId, workspaceId),
-        inArray(timeEntries.id, claimed.map(e => e.id)),
-      ));
+    // ── STEP 3: Atomically attach approved, unbilled time_entries via the
+    // canonical staging gatekeeper. Throws FinancialStageError if any
+    // candidate has been claimed by a concurrent invoice — that rolls back
+    // STEP 1 + STEP 2 so no orphan invoice is left behind.
+    await AtomicFinancialLockService.stageForInvoice({
+      workspaceId,
+      clientId,
+      invoiceId: inv.id,
+      timeEntryIds,
+      tx,
+    });
 
     return { invoice: inv, insertedLineItems: items };
   });
@@ -1144,29 +1125,7 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
   const timeEntryIds = [...new Set(lineItemsData.map(item => item.timeEntryId))];
 
   const { invoice, insertedLineItems } = await db.transaction(async (tx) => {
-    // ── STEP 1: Atomically claim the source time entries ─────────────────
-    // Update billedAt to NOW() only for entries that are still approved
-    // and unbilled. If even one entry was already claimed (race condition or
-    // duplicate invoice attempt), abort the entire transaction.
-    const claimed = await tx.update(timeEntries)
-      .set({ billedAt: new Date(), updatedAt: new Date() })
-      .where(and(
-        eq(timeEntries.workspaceId, workspaceId),
-        eq(timeEntries.clientId, clientId),
-        eq(timeEntries.status, 'approved'),
-        isNull(timeEntries.billedAt),
-        inArray(timeEntries.id, timeEntryIds),
-      ))
-      .returning({ id: timeEntries.id });
-
-    if (claimed.length !== timeEntryIds.length) {
-      throw new Error(
-        `Timesheet invoice aborted: ${timeEntryIds.length - claimed.length} of ${timeEntryIds.length} ` +
-        `entries were already billed or unavailable. No invoice was created.`
-      );
-    }
-
-    // ── STEP 2: Create the invoice header ────────────────────────────────
+    // ── STEP 1: Create the draft invoice header ──────────────────────────
     const [inv] = await tx.insert(invoices)
       .values({
         workspaceId,
@@ -1183,7 +1142,7 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
       })
       .returning();
 
-    // ── STEP 3: Create the line items ─────────────────────────────────────
+    // ── STEP 2: Create the line items ─────────────────────────────────────
     const items = await tx.insert(invoiceLineItems)
       .values(
         lineItemsData.map(item => ({
@@ -1198,15 +1157,15 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
       )
       .returning();
 
-    // ── STEP 4: Link entries back to the invoice ──────────────────────────
-    // Sets invoiceId on each time entry so they appear as invoiced everywhere
-    // in the platform — not just via invoice_line_items join.
-    await tx.update(timeEntries)
-      .set({ invoiceId: inv.id, updatedAt: new Date() })
-      .where(and(
-        eq(timeEntries.workspaceId, workspaceId),
-        inArray(timeEntries.id, claimed.map(e => e.id)),
-      ));
+    // ── STEP 3: Atomic stage via the canonical gatekeeper. Rolls back
+    // STEP 1 + STEP 2 if a concurrent invoice has already claimed any entry.
+    await AtomicFinancialLockService.stageForInvoice({
+      workspaceId,
+      clientId,
+      invoiceId: inv.id,
+      timeEntryIds,
+      tx,
+    });
 
     return { invoice: inv, insertedLineItems: items };
   });
