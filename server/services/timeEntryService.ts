@@ -7,6 +7,7 @@ import { db } from "../db";
 import { timeEntries, employees, clients } from "@shared/schema";
 import { and, eq, gte, lte, desc } from "drizzle-orm";
 import type { InsertTimeEntry, TimeEntry } from "@shared/schema";
+import { splitEntryAcrossDays } from "./payroll/shiftSplitter";
 
 export interface TimeEntryQuery {
   employeeId?: string;
@@ -295,7 +296,9 @@ export async function getPendingTimeEntries(
 
 /**
  * Calculate total hours for payroll period
- * Missing 8hr/day threshold required by A3 spec — added daily OT calculation
+ * Daily-OT-over-8h and weekly-OT-over-40h are computed FLSA-style. Shifts that
+ * cross midnight are split per calendar day via splitEntryAcrossDays so the
+ * daily-8h bucket sees only the minutes that fell on each day.
  */
 export async function calculatePayrollHours(
   employeeId: string,
@@ -313,12 +316,15 @@ export async function calculatePayrollHours(
   const entriesByDay: Record<string, number> = {};
 
   for (const entry of entries) {
-    const billableHours = calculateBillableHours(entry);
-    const billableMinutes = billableHours * 60;
-    totalMinutes += billableMinutes;
-
-    const dayKey = new Date(entry.clockIn).toISOString().split('T')[0];
-    entriesByDay[dayKey] = (entriesByDay[dayKey] || 0) + billableMinutes;
+    if (!entry.clockOut) continue;
+    // Split each entry across the calendar days it actually spans. A 10pm→6am
+    // shift contributes 2h to day-A and 6h to day-B — not 8h to whichever day
+    // the clock-in happened on.
+    const segments = splitEntryAcrossDays(new Date(entry.clockIn), new Date(entry.clockOut));
+    for (const seg of segments) {
+      totalMinutes += seg.minutes;
+      entriesByDay[seg.dayKey] = (entriesByDay[seg.dayKey] || 0) + seg.minutes;
+    }
   }
 
   // Calculate daily overtime (any hours over 8 per day)
@@ -331,7 +337,7 @@ export async function calculatePayrollHours(
 
   const totalHours = totalMinutes / 60;
   const weeklyOvertimeMinutes = Math.max(0, totalMinutes - 2400); // 40 hours * 60 minutes
-  
+
   // Overtime is the greater of (total hours over 40/week) or (sum of daily hours over 8)
   // This is a common labor law standard (e.g., California)
   const overtimeMinutes = Math.max(weeklyOvertimeMinutes, dailyOvertimeMinutes);
