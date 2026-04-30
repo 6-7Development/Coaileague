@@ -230,90 +230,83 @@ function generateDigestEmailHtml(data: DigestData, workspaceName: string): strin
 
   const yesterdayHours = data.yesterdayTimeEntries.reduce((t, e) => t + e.duration, 0);
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; margin: 0; padding: 20px;">
-      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Good Morning, \${data.employee.name.split(' ')[0]}!</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f1f5f9;padding:20px 0;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 24px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">Good Morning, ${data.employee.name.split(' ')[0]}!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">${todayDate}</p>
-        </div>
+        <tr>
+          <td style="background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);padding:24px;text-align:center;">
+            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">Good Morning, \${data.employee.name.split(' ')[0]}!</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:8px 0 0 0;font-size:14px;">\${todayDate}</p>
+          </td>
+        </tr>
 
-        <!-- Content -->
-        <div style="padding: 24px;">
-          
-          <!-- Quick Stats -->
-          <div style="display: flex; gap: 12px; margin-bottom: 24px;">
-            <div style="flex: 1; background: #f0fdf4; padding: 16px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 28px; font-weight: bold; color: #16a34a;">${data.weeklyHours}</div>
-              <div style="font-size: 12px; color: #15803d;">Hours This Week</div>
-            </div>
-            <div style="flex: 1; background: #eff6ff; padding: 16px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 28px; font-weight: bold; color: #2563eb;">${data.upcomingShifts.length}</div>
-              <div style="font-size: 12px; color: #1d4ed8;">Upcoming Shifts</div>
-            </div>
-            <div style="flex: 1; background: #faf5ff; padding: 16px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 28px; font-weight: bold; color: #9333ea;">${data.unreadNotifications}</div>
-              <div style="font-size: 12px; color: #7e22ce;">Unread Alerts</div>
-            </div>
-          </div>
+        <!-- Stats Row -->
+        <tr>
+          <td style="padding:20px 24px 0 24px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td width="48%" style="background:#f0fdf4;padding:16px;border-radius:12px;text-align:center;">
+                  <div style="font-size:24px;font-weight:700;color:#16a34a;">\${data.weeklyHours}</div>
+                  <div style="font-size:12px;color:#15803d;margin-top:4px;">Hours This Week</div>
+                </td>
+                <td width="4%"></td>
+                <td width="48%" style="background:#eff6ff;padding:16px;border-radius:12px;text-align:center;">
+                  <div style="font-size:24px;font-weight:700;color:#1d4ed8;">\${data.upcomingShifts.length}</div>
+                  <div style="font-size:12px;color:#1e40af;margin-top:4px;">Upcoming Shifts</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-          <!-- Upcoming Shifts -->
-          <div style="margin-bottom: 24px;">
-            <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 12px 0;">📅 Today's Schedule</h2>
-            ${shiftsHtml}
-          </div>
+        <!-- Shifts Section -->
+        <tr>
+          <td style="padding:20px 24px;">
+            <h2 style="font-size:16px;font-weight:600;color:#1e293b;margin:0 0 12px 0;">Your Upcoming Shifts</h2>
+            \${shiftsHtml}
+          </td>
+        </tr>
 
-          ${approvalsHtml ? `
-            <div style="margin-bottom: 24px;">
-              <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 12px 0;">📋 Action Required</h2>
-              ${approvalsHtml}
-            </div>
-          ` : ''}
-
-          ${complianceHtml ? `
-            <div style="margin-bottom: 24px;">
-              <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 12px 0;">🔔 Compliance Alerts</h2>
-              ${complianceHtml}
-            </div>
-          ` : ''}
-
-          ${yesterdayHours > 0 ? `
-            <div style="margin-bottom: 24px;">
-              <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 12px 0;">⏱️ Yesterday's Summary</h2>
-              <p style="color: #64748b;">You logged <strong>${Math.round(yesterdayHours * 10) / 10} hours</strong> across ${data.yesterdayTimeEntries.length} time entries.</p>
-            </div>
-          ` : ''}
-
-          <!-- CTA -->
-          <div style="text-align: center; margin-top: 32px;">
-            <a href="${PLATFORM.appUrl}/dashboard" 
-               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600;">
-              Open Dashboard
-            </a>
-          </div>
-        </div>
+        <!-- Pending Approvals -->
+        \${data.pendingApprovals > 0 ? \`
+        <tr>
+          <td style="padding:0 24px 20px 24px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#fef3c7;border-radius:12px;padding:16px;">
+              <tr>
+                <td>
+                  <p style="margin:0;font-size:14px;color:#92400e;">
+                    ⚠️ You have <strong>\${data.pendingApprovals} shift\${data.pendingApprovals > 1 ? 's' : ''}</strong> pending approval.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>\` : ''}
 
         <!-- Footer -->
-        <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            This is an automated daily digest from ${workspaceName} via CoAIleague™
-          </p>
-          <p style="color: #94a3b8; font-size: 12px; margin: 8px 0 0 0;">
-            <a href="${PLATFORM.appUrl}/settings/notifications" style="color: #64748b;">Manage notification preferences</a>
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+        <tr>
+          <td style="background:#f8fafc;padding:16px 24px;text-align:center;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;">CoAIleague · Workforce Management Platform</p>
+            <p style="margin:6px 0 0 0;font-size:12px;color:#94a3b8;">Have a great day! 💪</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
 }
 
 export async function sendDailyDigest(employeeId: string): Promise<{ success: boolean; error?: string }> {

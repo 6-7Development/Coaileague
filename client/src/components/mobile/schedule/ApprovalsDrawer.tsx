@@ -89,12 +89,13 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
     mutationFn: async (shiftIds: string[]) => {
       const total = shiftIds.length;
       let completed = 0;
-      
+
       for (const shiftId of shiftIds) {
-        // Use the dedicated approve endpoint — avoids ILLEGAL_SHIFT_TRANSITION
         await apiRequest('PATCH', `/api/shifts/${shiftId}/approve`);
         completed++;
         setBulkProgress({ current: completed, total });
+        // Throttle: 300ms between requests keeps us well under the 60 req/min rate limit
+        if (completed < total) await new Promise(r => setTimeout(r, 300));
       }
     },
     onSuccess: () => {

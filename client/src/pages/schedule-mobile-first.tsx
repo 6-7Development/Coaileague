@@ -226,7 +226,7 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
   // Fetch shifts for the week
   const weekEnd = addDays(weekStart, 7);
-  const { data: shifts = [], isLoading: shiftsLoading, isError: shiftsError } = useQuery<Shift[]>({
+  const { data: shifts = [], isLoading: shiftsLoading, isError: shiftsError, refetch: refetchShifts } = useQuery<Shift[]>({
     queryKey: ['/api/shifts', weekStart.toISOString(), weekEnd.toISOString()],
     queryFn: async () => {
       const res = await secureFetch(`/api/shifts?weekStart=${weekStart.toISOString()}&weekEnd=${weekEnd.toISOString()}`);
@@ -234,6 +234,9 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
       const json = await res.json();
       return Array.isArray(json) ? json : (json?.data ?? []);
     },
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    staleTime: 30_000,
   });
 
   // Fetch employees
@@ -462,13 +465,16 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
   const handleAcceptShift = async (shift: Shift) => {
     try {
-      // POST /acknowledge is the dedicated officer acceptance endpoint
-      // It sets status='confirmed' and records the officer's acknowledgment
-      await apiRequest('POST', `/api/shifts/${shift.id}/acknowledge`, {});
-      // Global refresh — invalidate all shift queries so the UI snaps to new state
+      // Route based on ownership:
+      // - Assigned to me (draft) → /acknowledge (confirm my shift)
+      // - Unassigned / open → /pickup (claim the open shift)
+      const isMyShift = shift.employeeId && shift.employeeId === currentEmployee?.id;
+      const endpoint = isMyShift ? 'acknowledge' : 'pickup';
+      await apiRequest('POST', `/api/shifts/${shift.id}/${endpoint}`, {});
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
-      toast({ title: 'Shift accepted', description: 'You are confirmed for this shift.' });
+      const msg = isMyShift ? 'You are confirmed for this shift.' : 'Shift claimed successfully.';
+      toast({ title: 'Shift accepted', description: msg });
     } catch (error: any) {
       toast({
         title: 'Failed to accept shift',
