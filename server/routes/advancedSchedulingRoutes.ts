@@ -219,6 +219,48 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/cancel', requireAuth, asyn
   }
 });
 
+// Approve a swap request (manager action)
+advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { swapId } = req.params;
+    const workspaceId = req.workspaceId || (req.user as any)?.currentWorkspaceId;
+    if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
+    const { shiftSwapRequests } = await import('@shared/schema');
+    const { db } = await import('../db');
+    const { eq, and } = await import('drizzle-orm');
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({ status: 'approved', updatedAt: new Date() } as any)
+      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as any).workspaceId, workspaceId) : undefined))
+      .returning();
+    if (!updated) return res.status(404).json({ error: 'Swap request not found' });
+    res.json({ success: true, swapRequest: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to approve swap request' });
+  }
+});
+
+// Reject a swap request (manager action)
+advancedSchedulingRouter.post('/swap-requests/:swapId/reject', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { swapId } = req.params;
+    const { reason } = req.body;
+    const workspaceId = req.workspaceId || (req.user as any)?.currentWorkspaceId;
+    if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
+    const { shiftSwapRequests } = await import('@shared/schema');
+    const { db } = await import('../db');
+    const { eq, and } = await import('drizzle-orm');
+    const [updated] = await db.update(shiftSwapRequests)
+      .set({ status: 'rejected', updatedAt: new Date(), ...(reason ? { rejectionReason: reason } : {}) } as any)
+      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as any).workspaceId, workspaceId) : undefined))
+      .returning();
+    if (!updated) return res.status(404).json({ error: 'Swap request not found' });
+    res.json({ success: true, swapRequest: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to reject swap request' });
+  }
+});
+
+
 // Legacy swap routes for backwards compatibility
 // ============================================================================
 // SHIFT DUPLICATION

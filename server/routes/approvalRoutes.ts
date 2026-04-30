@@ -288,4 +288,45 @@ router.post("/:id/cancel", async (req, res) => {
   }
 });
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timesheet Edit Requests — manager review of officer-submitted edit requests
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/timesheet-edit-requests/pending', requireAuth, async (req: any, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
+    const pending = await db.select().from(timesheetEditRequests)
+      .where(and(eq(timesheetEditRequests.workspaceId, workspaceId), eq(timesheetEditRequests.status, 'pending')))
+      .orderBy(desc(timesheetEditRequests.createdAt))
+      .limit(50);
+    res.json(pending);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/timesheet-edit-requests/:id/review', requireAuth, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { approved, reviewNotes } = req.body;
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
+    const [updated] = await db.update(timesheetEditRequests)
+      .set({
+        status: approved ? 'approved' : 'rejected',
+        reviewedBy: userId,
+        reviewedAt: new Date(),
+        reviewNotes: reviewNotes || null,
+      } as any)
+      .where(and(eq(timesheetEditRequests.id, id), eq(timesheetEditRequests.workspaceId, workspaceId)))
+      .returning();
+    if (!updated) return res.status(404).json({ error: 'Edit request not found' });
+    res.json({ success: true, request: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

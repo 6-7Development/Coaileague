@@ -3306,5 +3306,30 @@ router.post("/offers/:offerId/decline", requireAuth, async (req: AuthenticatedRe
   }
 });
 
+
+// POST /:id/proof-of-service — officer uploads proof of service for a completed shift
+// Stores the upload reference and marks the shift as verified
+router.post('/:id/proof-of-service', requireEmployee, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { proofType, fileUrl, notes } = req.body;
+    const shift = await storage.getShift(req.params.id, workspaceId);
+    if (!shift) return res.status(404).json({ message: 'Shift not found' });
+    // Store proof reference on shift record
+    const updated = await storage.updateShift(req.params.id, workspaceId, {
+      // @ts-expect-error — TS migration: proofOfService field
+      proofOfServiceUrl: fileUrl || null,
+      proofOfServiceType: proofType || 'document',
+      proofOfServiceNotes: notes || null,
+      proofSubmittedAt: new Date().toISOString(),
+    } as any);
+    broadcastShiftUpdate(workspaceId, 'shift_updated', updated);
+    res.json({ success: true, shift: updated });
+  } catch (err: any) {
+    log.error('[ShiftRoutes] proof-of-service failed:', err?.message);
+    res.status(500).json({ message: sanitizeError(err) || 'Failed to submit proof of service' });
+  }
+});
+
 export default router;
 

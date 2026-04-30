@@ -357,4 +357,71 @@ router.post('/schedule-shift', async (req: any, res) => {
   }
 });
 
+
+// GET /pending-approvals — list Trinity-generated actions pending human approval
+router.get('/pending-approvals', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
+    const { trinityProposedActions } = await import('@shared/schema').catch(() => ({ trinityProposedActions: null }));
+    if (!trinityProposedActions) return res.json({ approvals: [] });
+    const { db } = await import('../db');
+    const { eq, and, desc } = await import('drizzle-orm');
+    const pending = await db.select().from(trinityProposedActions)
+      .where(and(
+        eq((trinityProposedActions as any).workspaceId, workspaceId),
+        eq((trinityProposedActions as any).status, 'pending'),
+      ))
+      .orderBy(desc((trinityProposedActions as any).createdAt))
+      .limit(50);
+    res.json({ approvals: pending });
+  } catch (err: any) {
+    log.error('[TrinityScheduling] pending-approvals GET failed:', err?.message);
+    res.json({ approvals: [] }); // graceful empty on schema miss
+  }
+});
+
+// POST /pending-approvals/:id/approve
+router.post('/pending-approvals/:id/approve', requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
+    const { trinityProposedActions } = await import('@shared/schema').catch(() => ({ trinityProposedActions: null }));
+    if (!trinityProposedActions) return res.status(503).json({ error: 'Schema not available' });
+    const { db } = await import('../db');
+    const { eq } = await import('drizzle-orm');
+    const [updated] = await db.update(trinityProposedActions as any)
+      .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as any)
+      .where(eq((trinityProposedActions as any).id, id))
+      .returning();
+    res.json({ success: true, approval: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /pending-approvals/:id/reject
+router.post('/pending-approvals/:id/reject', requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
+    const { trinityProposedActions } = await import('@shared/schema').catch(() => ({ trinityProposedActions: null }));
+    if (!trinityProposedActions) return res.status(503).json({ error: 'Schema not available' });
+    const { db } = await import('../db');
+    const { eq } = await import('drizzle-orm');
+    const [updated] = await db.update(trinityProposedActions as any)
+      .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as any)
+      .where(eq((trinityProposedActions as any).id, id))
+      .returning();
+    res.json({ success: true, approval: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

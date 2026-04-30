@@ -1873,6 +1873,26 @@ router.post("/api/shift-templates", requireAuth, async (req: any, res) => {
   }
 });
 
+router.delete("/api/shift-templates/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ message: 'Workspace required' });
+    const { shiftTemplates } = await import('@shared/schema');
+    const { db } = await import('../db');
+    const { eq, and } = await import('drizzle-orm');
+    const [deleted] = await db.delete(shiftTemplates)
+      .where(and(eq(shiftTemplates.id, id), eq(shiftTemplates.workspaceId as any, workspaceId)))
+      .returning();
+    if (!deleted) return res.status(404).json({ message: 'Template not found' });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to delete template' });
+  }
+});
+
+
 // ─── Missing workspace / billing aliases ─────────────────────────────────────
 router.get("/api/workspace/current", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {

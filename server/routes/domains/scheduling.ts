@@ -80,6 +80,8 @@ export function mountSchedulingRoutes(app: Express): void {
   });
 
   app.use("/api/approvals", requireAuth, ensureWorkspaceAccess, approvalRoutes);
+  // Also mount approval routes at timesheet-edit-requests prefix for frontend compatibility
+  app.use("/api/timesheet-edit-requests", requireAuth, ensureWorkspaceAccess, approvalRoutes);
   registerAutonomousSchedulingRoutes(app);
   app.use("/api/orchestrated-schedule", requireAuth, ensureWorkspaceAccess, orchestratedScheduleRouter);
   app.use("/api/coverage", requireAuth, ensureWorkspaceAccess, coverageRouter);
