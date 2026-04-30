@@ -169,6 +169,7 @@ export default function TrinityTransparencyDashboard() {
       queryKey: ['/api/trinity/transparency/cost-breakdown', selectedMonth],
       queryFn: () =>
         fetchJson(`/api/trinity/transparency/cost-breakdown?month=${selectedMonth}`),
+      retry: false,
     });
 
   const {
@@ -184,6 +185,7 @@ export default function TrinityTransparencyDashboard() {
         fetchJson(
           `/api/trinity/transparency/actions?limit=20&offset=${actionsPage * 20}`,
         ),
+      retry: false,
     });
 
   const {
@@ -196,6 +198,7 @@ export default function TrinityTransparencyDashboard() {
     useQuery<{ success: boolean; decisions: Decision[]; total: number }>({
       queryKey: ['/api/trinity/transparency/decisions'],
       queryFn: () => fetchJson('/api/trinity/transparency/decisions?limit=20'),
+      retry: false,
     });
 
   // Phase 26 — Trinity voice/SMS/AI + subscription-gate activity
@@ -226,29 +229,23 @@ export default function TrinityTransparencyDashboard() {
     }>({
       queryKey: ['/api/trinity/transparency/trinity-activity'],
       queryFn: () => fetchJson('/api/trinity/transparency/trinity-activity?days=7&limit=100'),
+      retry: false,
     });
 
-  const isDashboardError =
-    overviewIsError ||
-    costsIsError ||
-    actionsIsError ||
-    decisionsIsError ||
-    trinityActivityIsError;
-  const dashboardError =
-    overviewError ||
-    costsError ||
-    actionsError ||
-    decisionsError ||
-    trinityActivityError;
+  // Only the overview is truly fatal — it drives the headline stats.
+  // Secondary sections (costs, actions, decisions, activity) fail gracefully
+  // with section-level empty states so one bad column doesn't crash everything.
+  const isDashboardError = overviewIsError;
+  const dashboardError = overviewError;
 
   useEffect(() => {
-    if (!dashboardError) return;
+    if (!overviewError) return;
     toast({
-      title: 'Failed to load transparency data',
-      description: dashboardError instanceof Error ? dashboardError.message : 'Unknown error',
+      title: 'Failed to load dashboard data',
+      description: 'Trinity overview is unavailable. Other sections may still work.',
       variant: 'destructive',
     });
-  }, [dashboardError, toast]);
+  }, [overviewError, toast]);
 
   const overview = overviewData?.overview;
 

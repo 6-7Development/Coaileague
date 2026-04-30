@@ -170,7 +170,7 @@ router.get('/actions', async (req: AuthenticatedRequest, res: Response) => {
          duration_ms,
          error_message,
          created_at,
-         metadata
+         parameters AS metadata
        FROM trinity_action_logs
        ${where}
        ORDER BY created_at DESC
@@ -362,7 +362,7 @@ router.get('/trinity-activity', async (req: AuthenticatedRequest, res: Response)
 
     const rows = (await pool.query(
       `SELECT id, action, entity_type, entity_id, actor_type,
-              metadata, created_at
+              COALESCE(metadata, '{}'::jsonb) AS metadata, created_at
          FROM universal_audit_trail
         WHERE workspace_id = $1
           AND created_at >= $2

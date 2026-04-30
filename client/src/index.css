@@ -6520,11 +6520,23 @@ select:focus-visible,
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 22px);
 }
 
-/* Mobile already has 120px bottom padding for the bottom nav — strip fits within that */
+/* Mobile: trademark strip sits ABOVE the 56px bottom nav, not behind it.
+   Bottom nav is z-index 1040; strip is z-index 900 so nav draws over strip.
+   But the strip text was bleeding into the nav area visually.
+   Solution: push strip up by exactly the nav height so text clears the nav. */
 @media (max-width: 768px) {
+  .trinity-trademark-strip {
+    bottom: calc(var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
+    /* Strip now floats above the nav — still below all modals/drawers */
+  }
+
   #main-content {
-    /* Mobile nav already provides 120px — no change needed; strip sits inside that space */
-    padding-bottom: 120px;
+    /* Nav (56px) + strip (22px) + safe area */
+    padding-bottom: calc(
+      var(--bottom-nav-height, 56px) +
+      22px +
+      env(safe-area-inset-bottom, 0px)
+    );
   }
 }
 
