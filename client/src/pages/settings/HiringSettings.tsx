@@ -51,7 +51,7 @@ export default function HiringSettingsPage() {
 
   useEffect(() => {
     if (data?.settings && !form) setForm(data.settings);
-  }, [data, form]);
+  }, []);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: HiringSettings) => {

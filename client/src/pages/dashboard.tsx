@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { useEffect, Suspense, lazy } from "react";
 import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useAuth } from "@/hooks/useAuth";
@@ -116,8 +117,10 @@ export default function Dashboard() {
   );
 
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <DashboardComponent />
-    </Suspense>
+    <ErrorBoundary componentName="Dashboard">
+      <Suspense fallback={<LoadingSpinner />}>
+        <DashboardComponent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

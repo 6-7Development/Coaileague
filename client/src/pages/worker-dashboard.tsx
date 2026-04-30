@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 /**
  * Worker Dashboard — Homebase-style command center for security guards and field workers
  *
@@ -731,7 +732,7 @@ function EmployeePinCard() {
 
 const Icon = ({ name, className }: any) => <span className={className}>●</span>;
 
-export default function WorkerDashboard() {
+function WorkerDashboardInner() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -1471,5 +1472,13 @@ export default function WorkerDashboard() {
         </DialogContent>
       </Dialog>
     </CanvasHubPage>
+  );
+}
+
+export default function WorkerDashboard() {
+  return (
+    <ErrorBoundary componentName="WorkerDashboard">
+      <WorkerDashboardInner />
+    </ErrorBoundary>
   );
 }

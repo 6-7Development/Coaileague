@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy, type TouchEvent as ReactTouchEvent } from "react";
 import { TrinityArrowMark } from "@/components/trinity-logo";
 import { secureFetch } from "@/lib/csrf";
@@ -3990,4 +3991,11 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 }
 
 // Default export for backward compatibility
-export default HelpDesk;
+function HelpDeskWithBoundary(props?: any) {
+  return (
+    <ErrorBoundary componentName="HelpDesk">
+      <HelpDesk {...props} />
+    </ErrorBoundary>
+  );
+}
+export default HelpDeskWithBoundary;

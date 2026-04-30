@@ -48,6 +48,7 @@ import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 import { ShiftCardSkeleton } from '@/components/ui/skeleton-loaders';
 import type { Shift, Employee, Client } from '@shared/schema';
 import { getShiftStatus, SHIFT_STATUS, type ShiftStatusConfig } from '@/constants/scheduling';
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 /**
  * Get shift status styling using centralized constants from /constants/scheduling.ts
@@ -134,7 +135,7 @@ function getPositionColor(title: string | null | undefined): string {
   return 'bg-slate-400'; // Default
 }
 
-export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMode?: 'my' | 'full' | 'pending' }) {
+function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' | 'full' | 'pending' }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
@@ -1424,5 +1425,13 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
     </div>
     </CanvasHubPage>
+  );
+}
+
+export default function ScheduleMobileFirst() {
+  return (
+    <ErrorBoundary componentName="ScheduleMobileFirst">
+      <ScheduleMobileFirstInner />
+    </ErrorBoundary>
   );
 }
