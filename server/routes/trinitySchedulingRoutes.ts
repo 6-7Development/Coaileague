@@ -1,5 +1,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
+import { requireAuth, requireManager } from '../auth';
+import type { AuthenticatedRequest } from '../auth';
 import { db } from "../db";
 import { shifts, employees, clients, supportTickets } from "@shared/schema";
 import { storage } from "../storage";
