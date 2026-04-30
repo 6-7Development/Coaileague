@@ -49,13 +49,21 @@ interface ScheduleGridProps {
   pendingShiftIds?: Set<string>;
 }
 
-type ShiftStatus = 'scheduled' | 'pending' | 'conflict' | 'published' | 'completed' | 'draft';
+type ShiftStatus = 'scheduled' | 'pending' | 'conflict' | 'published' | 'completed' | 'draft' | 'open' | 'assigned' | 'confirmed' | 'approved' | 'in_progress' | 'cancelled' | 'calloff' | 'no_show';
 
 const SHIFT_STATUS_GRADIENTS: Record<ShiftStatus, { gradient: string; border: string; text: string }> = {
   scheduled: { gradient: 'from-green-500/15 via-green-400/10 to-emerald-500/5', border: 'border-l-green-500', text: 'text-green-700 dark:text-green-300' },
   pending: { gradient: 'from-yellow-500/15 via-amber-400/10 to-orange-500/5', border: 'border-l-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
   conflict: { gradient: 'from-red-500/15 via-red-400/10 to-rose-500/5', border: 'border-l-red-500', text: 'text-red-700 dark:text-red-300' },
   published: { gradient: 'from-blue-500/15 via-blue-400/10 to-indigo-500/5', border: 'border-l-blue-500', text: 'text-blue-700 dark:text-blue-300' },
+  open: { gradient: 'from-amber-500/15 via-amber-400/10 to-yellow-500/5', border: 'border-l-amber-500', text: 'text-amber-700 dark:text-amber-300' },
+  assigned: { gradient: 'from-blue-500/15 via-blue-400/10 to-indigo-500/5', border: 'border-l-blue-400', text: 'text-blue-700 dark:text-blue-300' },
+  confirmed: { gradient: 'from-emerald-500/15 via-emerald-400/10 to-green-500/5', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  approved: { gradient: 'from-emerald-500/15 via-emerald-400/10 to-green-500/5', border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  in_progress: { gradient: 'from-violet-500/15 via-violet-400/10 to-purple-500/5', border: 'border-l-violet-500', text: 'text-violet-700 dark:text-violet-300' },
+  cancelled: { gradient: 'from-gray-500/10 via-gray-400/5 to-transparent', border: 'border-l-gray-400', text: 'text-gray-500 dark:text-gray-400' },
+  calloff: { gradient: 'from-red-500/10 via-red-400/5 to-transparent', border: 'border-l-red-400', text: 'text-red-600 dark:text-red-400' },
+  no_show: { gradient: 'from-red-500/10 via-red-400/5 to-transparent', border: 'border-l-red-500', text: 'text-red-700 dark:text-red-400' },
   completed: { gradient: 'from-gray-500/10 via-gray-400/5 to-slate-500/5', border: 'border-l-gray-400', text: 'text-gray-600 dark:text-gray-400' },
   draft: { gradient: 'from-purple-500/15 via-violet-400/10 to-purple-500/5', border: 'border-l-purple-500', text: 'text-purple-700 dark:text-purple-300' },
 };

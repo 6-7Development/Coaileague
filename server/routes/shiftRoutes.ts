@@ -1147,12 +1147,24 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             const from = currentShift.status as string;
             const to = validated.status as string;
             const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-              draft:     ['open', 'cancelled'],
-              open:      ['assigned', 'cancelled', 'draft'],
-              assigned:  ['open', 'cancelled'],
-              started:   [],
-              completed: [],
-              cancelled: [],
+              // Core workflow states
+              draft:        ['open', 'published', 'cancelled'],
+              open:         ['assigned', 'published', 'cancelled', 'draft'],
+              assigned:     ['open', 'published', 'cancelled'],
+              published:    ['open', 'assigned', 'cancelled'],
+              // Schema enum states
+              scheduled:    ['open', 'published', 'cancelled'],
+              confirmed:    ['published', 'open', 'cancelled'],
+              pending:      ['open', 'published', 'cancelled'],
+              approved:     ['published', 'open', 'cancelled'],
+              auto_approved:['published', 'open', 'cancelled'],
+              // Terminal states — use dedicated endpoints
+              in_progress:  [],
+              started:      [],
+              completed:    [],
+              cancelled:    [],
+              no_show:      [],
+              calloff:      [],
             };
             const allowed = ALLOWED_TRANSITIONS[from] ?? [];
             if (!allowed.includes(to)) {

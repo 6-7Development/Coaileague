@@ -184,11 +184,21 @@ export function getShiftStatus(shift: {
   // Use backend status field if available
   if (shift.status) {
     const normalizedStatus = shift.status.toLowerCase();
-    if (normalizedStatus === 'published' || normalizedStatus === 'confirmed') {
+    if (normalizedStatus === 'published' || normalizedStatus === 'confirmed' || normalizedStatus === 'scheduled' || normalizedStatus === 'approved' || normalizedStatus === 'auto_approved') {
       return shift.officerId ? SHIFT_STATUS.PUBLISHED : SHIFT_STATUS.UNFILLED;
+    }
+    if (normalizedStatus === 'open') {
+      // 'open' = draft acknowledged / ready for assignment
+      return shift.officerId ? SHIFT_STATUS.ASSIGNED : SHIFT_STATUS.DRAFT;
+    }
+    if (normalizedStatus === 'assigned' || normalizedStatus === 'in_progress') {
+      return SHIFT_STATUS.ASSIGNED;
     }
     if (normalizedStatus === 'draft' || normalizedStatus === 'pending') {
       return shift.officerId ? SHIFT_STATUS.ASSIGNED : SHIFT_STATUS.DRAFT;
+    }
+    if (normalizedStatus === 'no_show' || normalizedStatus === 'calloff' || normalizedStatus === 'cancelled') {
+      return SHIFT_STATUS.COMPLETED; // Show as grey — terminal states
     }
   }
 
