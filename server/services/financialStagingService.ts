@@ -384,14 +384,17 @@ export async function finalizeFinancialBatch(
     });
   }
 
-  // Approve payroll runs via the canonical approvePayrollRun helper so the
-  // approval audit + secondary time-entry claim runs through the same path
-  // every other caller uses.
+  // Approve payroll runs via the canonical approvePayrollRun helper.
+  //
+  // IMPORTANT: do NOT pass timeEntryIds here. processAutomatedPayroll already
+  // claimed (set payrolledAt + payrollRunId on) every source entry inside the
+  // run-creation transaction, so re-passing them would make the canonical
+  // claimer's `requireAll: true` guard throw — every staged run would fail to
+  // finalize. We pull the linked entry IDs only to extend the WORM lockout
+  // set returned to the caller.
   const finalizedRuns: FinalizeFinancialBatchResult['payrollRuns'] = [];
   for (const run of payrollTargets) {
     try {
-      // Pull the time entry IDs that belong to this run so the canonical
-      // claimer can re-mark them within the approval transaction.
       const runEntries = await db
         .select({ id: timeEntries.id })
         .from(timeEntries)
@@ -401,7 +404,7 @@ export async function finalizeFinancialBatch(
         ));
       const runEntryIds = runEntries.map(e => e.id);
 
-      await PayrollAutomationEngine.approvePayrollRun(run.id, approvedBy, runEntryIds);
+      await PayrollAutomationEngine.approvePayrollRun(run.id, approvedBy);
       runEntryIds.forEach(id => lockedTimeEntryIds.add(id));
       finalizedRuns.push({ payrollRunId: run.id, status: 'approved' });
     } catch (err: any) {

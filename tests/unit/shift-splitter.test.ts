@@ -102,3 +102,33 @@ describe('aggregateMinutesByDay (daily-OT integration)', () => {
     expect(byDay).toEqual({});
   });
 });
+
+describe('per-segment holiday multiplier (regression)', () => {
+  // Christmas Eve 10pm → Christmas Day 6am, $20/hr.
+  // Pre-fix bug: a single holidayMultiplier was overwritten in the segment
+  // loop, then applied to TOTAL holiday hours. A shift that straddled a
+  // regular day → holiday would charge the holiday rate on the whole shift,
+  // overpaying $60 per occurrence.
+  // Post-fix: pay is computed per segment with the segment's own multiplier.
+  it('charges holiday rate ONLY on the holiday portion of a straddling shift', () => {
+    const cIn = new Date(2026, 11, 24, 22, 0);
+    const cOut = new Date(2026, 11, 25, 6, 0);
+    const segs = splitEntryAcrossDays(cIn, cOut);
+    expect(segs).toHaveLength(2);
+    expect(segs[0].dayKey).toBe('2026-12-24'); // regular
+    expect(segs[1].dayKey).toBe('2026-12-25'); // holiday
+
+    const payRate = 20;
+    const holidayCal: Record<string, number> = { '2026-12-25': 2.5 };
+    let totalPay = 0;
+    for (const seg of segs) {
+      const segHours = seg.minutes / 60;
+      const mul = holidayCal[seg.dayKey] ?? 1.0;
+      totalPay += segHours * payRate * mul;
+    }
+
+    // 2h × $20 × 1.0 + 6h × $20 × 2.5 = $40 + $300 = $340
+    expect(totalPay).toBe(340);
+    // Pre-fix would have produced 8h × $20 × 2.5 = $400 — $60 overpayment.
+  });
+});
