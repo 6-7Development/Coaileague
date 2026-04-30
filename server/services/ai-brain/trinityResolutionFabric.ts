@@ -818,14 +818,37 @@ class TrinityResolutionFabricService {
     }
   }
 
+  /** Friendly display names for internal Trinity issue types */
+  private static readonly ISSUE_TITLES: Record<string, string> = {
+    license_expiring_soon:           'License Renewal',
+    provisional_authorization_expiring: 'Provisional Authorization',
+    shift_coverage_gap:              'Shift Coverage',
+    overtime_threshold_breach:       'Overtime Alert',
+    compliance_violation:            'Compliance Notice',
+    payroll_discrepancy:             'Payroll Review',
+    certification_expiry:            'Certification Renewal',
+    timesheet_anomaly:               'Timesheet Review',
+    scheduling_conflict:             'Schedule Conflict',
+    faq_learning_update:             'Knowledge Base Update',
+  };
+
   private async notifyOrgOwnerOfResolution(issue: TrinityIssue, actions: string[]): Promise<void> {
     try {
+      // Deterministic key: issue type + workspace + UTC date — prevents spam on re-runs
+      const dateKey = new Date().toISOString().slice(0, 10);
+      const idempotencyKey = `trinity-action-${issue.type}-${issue.workspaceId}-${dateKey}`;
+
+      const friendlyTitle = TrinityResolutionFabricService.ISSUE_TITLES[issue.type]
+        ?? issue.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+      const actionLines = actions.map(a => `• ${a}`).join('\n');
+
       await universalNotificationEngine.sendNotification({
         workspaceId: issue.workspaceId,
-        idempotencyKey: `notif-${Date.now()}`,
-          type: 'trinity_autonomous_action',
-        title: `Trinity took action: ${issue.type.replace(/_/g, ' ')}`,
-        message: `Trinity autonomously resolved an issue in your organization:\n\n${actions.map(a => `• ${a}`).join('\n')}\n\nNo action needed on your part.`,
+        idempotencyKey,
+        type: 'trinity_autonomous_action',
+        title: `Trinity: ${friendlyTitle}`,
+        message: `${actionLines}\n\nNo action needed on your part.`,
         severity: 'info',
         source: 'trinity_resolution_fabric',
       } as any);

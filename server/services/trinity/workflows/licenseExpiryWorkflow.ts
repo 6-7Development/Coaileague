@@ -44,34 +44,64 @@ export async function runLicenseExpiryAlerts(): Promise<void> {
       ),
     );
 
+  // ── Batch by workspace — one notification per workspace, not per officer ──
+  const today = now.toISOString().slice(0, 10);
+  const byWorkspace = new Map<string, typeof expiring>();
   for (const emp of expiring) {
     if (!emp.guardCardExpiryDate) continue;
-    const daysLeft = Math.ceil(
-      (new Date(emp.guardCardExpiryDate).getTime() - now.getTime()) / 86400000,
-    );
-    const isUrgent = daysLeft <= 30;
+    const list = byWorkspace.get(emp.workspaceId) || [];
+    list.push(emp);
+    byWorkspace.set(emp.workspaceId, list);
+  }
 
-    // Idempotency key: employeeId + alert type + date — prevents duplicate notifications
-    // on multi-replica deploys or if cron fires twice in same day
-    const today = new Date().toISOString().slice(0, 10);
-    const alertType = isUrgent ? 'urgent' : 'warning';
-    const idempotencyKey = `license-expiry-${emp.id}-${alertType}-${today}`;
+  for (const [workspaceId, officers] of byWorkspace) {
+    const urgent = officers.filter(e => {
+      const d = Math.ceil((new Date(e.guardCardExpiryDate!).getTime() - now.getTime()) / 86400000);
+      return d <= 30;
+    });
+    const warning = officers.filter(e => {
+      const d = Math.ceil((new Date(e.guardCardExpiryDate!).getTime() - now.getTime()) / 86400000);
+      return d > 30;
+    });
+
+    const hasUrgent = urgent.length > 0;
+    const total = officers.length;
+
+    // Build a clean, concise officer list (max 5 names to avoid notification overflow)
+    const officerLines = officers
+      .map(e => {
+        const d = Math.ceil((new Date(e.guardCardExpiryDate!).getTime() - now.getTime()) / 86400000);
+        return `${e.firstName} ${e.lastName} — ${d} day${d !== 1 ? 's' : ''} (${e.isArmed ? 'Armed' : 'Unarmed'})`;
+      })
+      .slice(0, 5);
+    if (officers.length > 5) officerLines.push(`…and ${officers.length - 5} more`);
+
+    const idempotencyKey = `license-expiry-batch-${workspaceId}-${today}`;
 
     platformEventBus
       .publish({
         type: 'license_expiring_soon',
         category: 'compliance',
-        title: `${isUrgent ? '⚠️ URGENT: ' : ''}Guard Card Expiring — ${emp.firstName} ${emp.lastName}`,
-        description: `${emp.isArmed ? 'Armed' : 'Unarmed'} officer's license expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Renewal must be initiated immediately to avoid work suspension.`,
-        workspaceId: emp.workspaceId,
+        title: hasUrgent
+          ? `⚠️ ${urgent.length} Officer License${urgent.length > 1 ? 's' : ''} Require Immediate Renewal`
+          : `${total} Officer License${total > 1 ? 's' : ''} Expiring — Action Required`,
+        description: [
+          hasUrgent
+            ? `${urgent.length} officer${urgent.length > 1 ? 's have' : ' has'} a license expiring within 30 days.`
+            : `${total} officer${total > 1 ? 's have' : ' has'} a license expiring within 60 days.`,
+          '',
+          officerLines.join('\n'),
+          '',
+          'Please coordinate renewals promptly to avoid scheduling disruptions.',
+        ].join('\n'),
+        workspaceId,
         idempotencyKey,
         metadata: {
-          employeeId: emp.id,
-          daysUntilExpiry: daysLeft,
-          expiryDate: emp.guardCardExpiryDate,
-          isArmed: emp.isArmed,
-          urgency: alertType,
-          idempotencyKey,
+          officerCount: total,
+          urgentCount: urgent.length,
+          warningCount: warning.length,
+          officerIds: officers.map(e => e.id),
+          batchDate: today,
         },
       })
       .catch(() => {});
@@ -97,24 +127,49 @@ export async function runLicenseExpiryAlerts(): Promise<void> {
       ),
     );
 
+  // ── Batch provisional auth alerts per workspace ──────────────────────────
+  const provByWorkspace = new Map<string, typeof approachingExpiry>();
   for (const emp of approachingExpiry) {
     if (!emp.workAuthorizationWindowExpires) continue;
-    const daysLeft = Math.ceil(
-      (new Date(emp.workAuthorizationWindowExpires).getTime() - now.getTime()) / 86400000,
-    );
+    const list = provByWorkspace.get(emp.workspaceId) || [];
+    list.push(emp);
+    provByWorkspace.set(emp.workspaceId, list);
+  }
+
+  for (const [workspaceId, officers] of provByWorkspace) {
+    const minDays = Math.min(...officers.map(e =>
+      Math.ceil((new Date(e.workAuthorizationWindowExpires!).getTime() - now.getTime()) / 86400000)
+    ));
+    const officerLines = officers
+      .map(e => {
+        const d = Math.ceil((new Date(e.workAuthorizationWindowExpires!).getTime() - now.getTime()) / 86400000);
+        return `${e.firstName} ${e.lastName} — ${d} day${d !== 1 ? 's' : ''} remaining`;
+      })
+      .slice(0, 5);
+    if (officers.length > 5) officerLines.push(`…and ${officers.length - 5} more`);
+
+    const idempotencyKey = `prov-auth-batch-${workspaceId}-${today}`;
 
     platformEventBus
       .publish({
         type: 'provisional_authorization_expiring',
         category: 'compliance',
-        title: `Action Required: ${emp.firstName} ${emp.lastName} — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`,
-        description: `Provisional work authorization expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Verify TOPS shows no denial/suspension. If license is issued, upload proof immediately. If not resolved, officer will be blocked from shifts.`,
-        workspaceId: emp.workspaceId,
+        title: `Action Required: ${officers.length} Provisional Authorization${officers.length > 1 ? 's' : ''} Expiring`,
+        description: [
+          `${officers.length} officer${officers.length > 1 ? 's have' : ' has'} a provisional work authorization window closing within ${minDays} day${minDays !== 1 ? 's' : ''}.`,
+          '',
+          officerLines.join('\n'),
+          '',
+          'Verify TOPS for no adverse action. Upload proof of license if issued. Unresolved officers will be blocked from shifts.',
+        ].join('\n'),
+        workspaceId,
+        idempotencyKey,
         metadata: {
-          employeeId: emp.id,
-          windowExpires: emp.workAuthorizationWindowExpires,
-          daysLeft,
+          officerCount: officers.length,
+          officerIds: officers.map(e => e.id),
+          minimumDaysLeft: minDays,
           actionRequired: 'verify_tops_no_adverse_action',
+          batchDate: today,
         },
       })
       .catch(() => {});
