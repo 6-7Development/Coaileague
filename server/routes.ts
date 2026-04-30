@@ -151,6 +151,12 @@ const log = createLogger('routes');
 export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
 
+  // Initialize WebSocket server immediately after HTTP server creation.
+  // This sets globalBroadcaster so broadcastToWorkspace() works from
+  // the first route invocation — prevents the "Global broadcaster not
+  // initialized for workspace broadcast" warning on every WS call.
+  setupWebSocket(server);
+
   // ============================================================================
   // STARTUP: SEED ROOT USER AND PLATFORM WORKSPACE (background, non-blocking)
   // ============================================================================
