@@ -259,6 +259,18 @@ export default function CredentialWalletPage() {
     onError: (err: any) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
   });
 
+  const renewMutation = useMutation({
+    mutationFn: (data: { id: string; expiryDate?: string; name?: string; certificationNumber?: string; status?: string }) =>
+      apiRequest('PATCH', `/api/credentials/${data.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/expiring'] });
+      toast({ title: 'Credential updated', description: 'Changes saved.' });
+    },
+    onError: (err: any) => toast({ title: 'Update failed', description: err.message, variant: 'destructive' }),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (id: string) => apiRequest('DELETE', `/api/credentials/${id}`),
     onSuccess: () => {

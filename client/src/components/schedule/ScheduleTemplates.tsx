@@ -80,6 +80,7 @@ export function ScheduleTemplates({
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shift-templates'] });
       toast({
         title: 'Template Saved',
         description: 'Your schedule template has been saved successfully.',
