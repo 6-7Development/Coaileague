@@ -2280,9 +2280,12 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  {!isSelf && !isGrouped && (
  <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 min-w-0 max-w-full">
  <span className={['text-[11px] sm:text-xs font-semibold', isSelf ? 'text-primary-foreground/80' : 'text-primary', 'truncate'].join(' ')}>
- {role === 'bot' ? 'Trinity Support' : actualName.split('(')[0].trim()}
+ {role === 'bot' ? 'HelpAI' : actualName.split('(')[0].trim()}
  {getRoleIcon(role)}
  </span>
+ {role === 'bot' && (
+ <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/20 leading-none">AI</span>
+ )}
  </div>
  )}
 

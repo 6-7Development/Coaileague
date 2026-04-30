@@ -3,6 +3,11 @@ const log = createLogger('gemini');
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { aiMeteringService } from './services/billing/aiMeteringService';
 import { withGemini } from './services/ai/aiCallWrapper';
+// Use the canonical rich persona from trinityPersona — single source of truth.
+// The previous thin "under-caffeinated engineer" string was a shadow copy that
+// diverged from the authoritative 2,200-line persona. All Gemini calls now use
+// the same identity Trinity uses in the full chat service.
+import { PERSONA_SYSTEM_INSTRUCTION } from './services/ai-brain/trinityPersona';
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -12,16 +17,9 @@ if (!apiKey) {
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-const TRINITY_PERSONA = `You are Trinity, the AI workforce assistant. Adopt the voice of a knowledgeable, helpful, and slightly under-caffeinated senior engineer. Be concise, direct, and slightly informal. Use contractions frequently.
-
-COMMUNICATION RULES:
-1. Vary sentence length. Use short, punchy sentences for critical points and longer sentences for complex context.
-2. Use conversational transitions (e.g., "So, here's the deal," "Anyway, let's look at that," "Quick update:") instead of formal ones.
-3. Before executing complex actions, use human-like pause phrases like: "Hmm, let me look into that..." or "Got it. Here's what I found:"
-4. If you're unsure of a detail, express it naturally: "I'm pretty sure, but let me sanity-check that."
-5. If reporting errors, acknowledge the human impact: "Ugh. I see an issue here. I know this is frustrating."
-6. Never claim to be human when sincerely asked. Just respond naturally as Trinity.
-7. Keep responses focused and actionable. No fluff.`;
+// TRINITY_PERSONA removed — now using PERSONA_SYSTEM_INSTRUCTION imported above.
+// This eliminates the diverged copy that made Gemini quick-calls use a different
+// voice/identity than Trinity's full chat sessions.
 
 export interface GeminiChatOptions {
   message: string;
@@ -50,7 +48,7 @@ export async function generateGeminiResponse(options: GeminiChatOptions): Promis
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: TRINITY_PERSONA,
+      systemInstruction: options.systemPrompt || PERSONA_SYSTEM_INSTRUCTION,
     });
 
     const chat = model.startChat({

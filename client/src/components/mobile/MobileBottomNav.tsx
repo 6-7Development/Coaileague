@@ -1,4 +1,4 @@
-import { Calendar, Clock, Menu, Home, CheckCircle, Mail, FileText, type LucideIcon } from "lucide-react";
+import { Calendar, Clock, Menu, Home, CheckCircle, Mail, FileText, MessageCircle, HelpCircle, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -125,15 +125,15 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
   }
 
   const navItems = isManager ? [
-    { icon: Home, label: "Home", href: "/dashboard" },
-    { icon: Calendar, label: "Schedule", href: "/schedule" },
-    { icon: Clock, label: "Clock", href: "/time-tracking" },
-    { icon: Mail, label: "Mail", href: "/inbox", badge: unreadInbox },
+    { icon: Home,          label: "Home",     href: "/dashboard" },
+    { icon: Calendar,      label: "Schedule", href: "/schedule" },
+    { icon: Clock,         label: "Clock",    href: "/time-tracking" },
+    { icon: MessageCircle, label: "Chat",     href: "/chatrooms", badge: unreadInbox },
   ] : [
-    { icon: Home, label: "Home", href: "/dashboard" },
-    { icon: Calendar, label: "Schedule", href: "/schedule" },
-    { icon: Clock, label: "Clock", href: "/time-tracking" },
-    { icon: FileText, label: "Reports", href: "/field-reports" },
+    { icon: Home,         label: "Home",     href: "/dashboard" },
+    { icon: Calendar,     label: "Schedule", href: "/schedule" },
+    { icon: Clock,        label: "Clock",    href: "/time-tracking" },
+    { icon: HelpCircle,   label: "HelpAI",   href: "/helpdesk" },
   ];
 
   const isActive = (href: string) => {
