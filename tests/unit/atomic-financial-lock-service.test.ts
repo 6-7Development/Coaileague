@@ -37,9 +37,17 @@ describe('AtomicFinancialLockService', () => {
       expect((INVOICE_LOCKED_STATUSES as readonly string[]).includes('paid')).toBe(true);
     });
 
-    it('processed and paid payroll runs lock underlying time entries', () => {
-      expect((PAYROLL_LOCKED_STATUSES as readonly string[]).includes('processed')).toBe(true);
+    it('disbursing and paid payroll runs lock underlying time entries', () => {
+      expect((PAYROLL_LOCKED_STATUSES as readonly string[]).includes('disbursing')).toBe(true);
       expect((PAYROLL_LOCKED_STATUSES as readonly string[]).includes('paid')).toBe(true);
+    });
+
+    it('approved and processed payroll runs are still releasable (matches existing void path)', () => {
+      // The void path in payrollAutomation.ts allows voiding pending/approved/
+      // processed runs back to draft and releasing time_entries. Disbursement
+      // is the actual point of no return.
+      expect((PAYROLL_RELEASABLE_STATUSES as readonly string[]).includes('approved')).toBe(true);
+      expect((PAYROLL_RELEASABLE_STATUSES as readonly string[]).includes('processed')).toBe(true);
     });
   });
 

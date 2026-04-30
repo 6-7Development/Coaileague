@@ -35,6 +35,16 @@ import { createLogger } from '../lib/logger';
 
 const log = createLogger('AtomicFinancialLockService');
 
+/**
+ * Drizzle executor — either the top-level db handle or a transaction handle
+ * passed in by an outer caller. Methods accept `tx?` so they compose inside
+ * an existing transaction without nesting (Postgres rejects nested
+ * transactions; Drizzle would silently use savepoints which is not what we
+ * want for lock semantics).
+ */
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbExecutor = typeof db | DbTransaction;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Status taxonomies
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,10 +68,13 @@ export const INVOICE_RELEASABLE_STATUSES = [
   'failed',
 ] as const;
 
-/** Payroll statuses that LOCK underlying time_entries. */
+/**
+ * Payroll statuses that LOCK underlying time_entries.
+ * Lock kicks in at disbursement, not approval — funds in flight or settled
+ * cannot be reversed without an adjustment entry. `approved` and `processed`
+ * are still reversible (matches the void path in payrollAutomation.ts).
+ */
 export const PAYROLL_LOCKED_STATUSES = [
-  'approved',
-  'processed',
   'disbursing',
   'paid',
   'completed',
@@ -69,7 +82,12 @@ export const PAYROLL_LOCKED_STATUSES = [
 ] as const;
 
 /** Payroll statuses that allow underlying time_entries to be RELEASED. */
-export const PAYROLL_RELEASABLE_STATUSES = ['draft', 'pending'] as const;
+export const PAYROLL_RELEASABLE_STATUSES = [
+  'draft',
+  'pending',
+  'approved',
+  'processed',
+] as const;
 
 export type InvoiceLockedStatus = typeof INVOICE_LOCKED_STATUSES[number];
 export type PayrollLockedStatus = typeof PAYROLL_LOCKED_STATUSES[number];
@@ -140,8 +158,12 @@ export const AtomicFinancialLockService = {
    * Read-only lock probe. Returns whether the entry is currently locked and,
    * if so, by which side of the pipeline.
    */
-  async isLocked(timeEntryId: string): Promise<{ locked: boolean; reason?: 'invoice' | 'payroll' | 'both' }> {
-    const rows = await db.execute(sql`
+  async isLocked(
+    timeEntryId: string,
+    tx?: DbExecutor,
+  ): Promise<{ locked: boolean; reason?: 'invoice' | 'payroll' | 'both' }> {
+    const exec = tx ?? db;
+    const rows = await exec.execute(sql`
       SELECT
         te.invoice_id        AS invoice_id,
         i.status             AS invoice_status,
@@ -174,8 +196,8 @@ export const AtomicFinancialLockService = {
    * mutation path on time_entries (manual edit, supervisor correction,
    * QuickBooks reverse-sync, etc.) before performing the write.
    */
-  async assertCanModify(timeEntryId: string): Promise<void> {
-    const status = await AtomicFinancialLockService.isLocked(timeEntryId);
+  async assertCanModify(timeEntryId: string, tx?: DbExecutor): Promise<void> {
+    const status = await AtomicFinancialLockService.isLocked(timeEntryId, tx);
     if (status.locked) {
       throw new FinancialLockConflict(
         status.reason ?? 'invoice',
@@ -196,12 +218,13 @@ export const AtomicFinancialLockService = {
     clientId: string;
     invoiceId: string;
     timeEntryIds: string[];
+    tx?: DbExecutor;
   }): Promise<{ attached: number }> {
     const { workspaceId, clientId, invoiceId, timeEntryIds } = opts;
     if (timeEntryIds.length === 0) return { attached: 0 };
     const uniqueIds = [...new Set(timeEntryIds)];
 
-    return await db.transaction(async (tx) => {
+    const runStage = async (tx: DbExecutor): Promise<{ attached: number }> => {
       const inv = await tx
         .select({ id: invoices.id, status: invoices.status, workspaceId: invoices.workspaceId, clientId: invoices.clientId })
         .from(invoices)
@@ -252,7 +275,9 @@ export const AtomicFinancialLockService = {
 
       log.info('Staged time entries for invoice', { workspaceId, invoiceId, attached: claimed.length });
       return { attached: claimed.length };
-    });
+    };
+
+    return opts.tx ? runStage(opts.tx) : db.transaction(runStage);
   },
 
   /**
@@ -261,8 +286,8 @@ export const AtomicFinancialLockService = {
    * releasable status (draft/cancelled/void/failed). Used for ghost prevention
    * when a draft invoice is voided or deleted before being sent.
    */
-  async releaseFromInvoice(invoiceId: string): Promise<{ released: number }> {
-    return await db.transaction(async (tx) => {
+  async releaseFromInvoice(invoiceId: string, outerTx?: DbExecutor): Promise<{ released: number }> {
+    const runRelease = async (tx: DbExecutor): Promise<{ released: number }> => {
       const inv = await tx
         .select({ id: invoices.id, status: invoices.status, workspaceId: invoices.workspaceId })
         .from(invoices)
@@ -287,7 +312,9 @@ export const AtomicFinancialLockService = {
 
       log.info('Released time entries from invoice', { invoiceId, released: released.length });
       return { released: released.length };
-    });
+    };
+
+    return outerTx ? runRelease(outerTx) : db.transaction(runRelease);
   },
 
   /**
@@ -298,21 +325,22 @@ export const AtomicFinancialLockService = {
     workspaceId: string;
     payrollRunId: string;
     timeEntryIds: string[];
+    tx?: DbExecutor;
   }): Promise<{ attached: number }> {
     const { workspaceId, payrollRunId, timeEntryIds } = opts;
     if (timeEntryIds.length === 0) return { attached: 0 };
     const uniqueIds = [...new Set(timeEntryIds)];
 
-    return await db.transaction(async (tx) => {
-      const run = await tx
+    const runStage = async (tx: DbExecutor): Promise<{ attached: number }> => {
+      const runRows = await tx
         .select({ id: payrollRuns.id, status: payrollRuns.status, workspaceId: payrollRuns.workspaceId })
         .from(payrollRuns)
         .where(eq(payrollRuns.id, payrollRunId))
         .for('update')
         .limit(1);
 
-      if (run.length === 0) throw new FinancialStageError(`Payroll run ${payrollRunId} not found`, uniqueIds.length);
-      const pr = run[0];
+      if (runRows.length === 0) throw new FinancialStageError(`Payroll run ${payrollRunId} not found`, uniqueIds.length);
+      const pr = runRows[0];
       if (pr.workspaceId !== workspaceId)
         throw new FinancialStageError(`Payroll run ${payrollRunId} belongs to a different workspace`, uniqueIds.length);
       if (pr.status !== 'draft')
@@ -352,23 +380,26 @@ export const AtomicFinancialLockService = {
 
       log.info('Staged time entries for payroll run', { workspaceId, payrollRunId, attached: claimed.length });
       return { attached: claimed.length };
-    });
+    };
+
+    return opts.tx ? runStage(opts.tx) : db.transaction(runStage);
   },
 
   /**
-   * RELEASE: detach time_entries from a draft/pending payroll run. Used when
-   * a payroll batch is discarded before processing.
+   * RELEASE: detach time_entries from a draft/pending/approved/processed
+   * payroll run. Used when a payroll batch is voided before disbursement.
+   * Refuses release once funds are in flight (disbursing/paid/completed).
    */
-  async releaseFromPayroll(payrollRunId: string): Promise<{ released: number }> {
-    return await db.transaction(async (tx) => {
-      const run = await tx
+  async releaseFromPayroll(payrollRunId: string, outerTx?: DbExecutor): Promise<{ released: number }> {
+    const runRelease = async (tx: DbExecutor): Promise<{ released: number }> => {
+      const runRows = await tx
         .select({ id: payrollRuns.id, status: payrollRuns.status, workspaceId: payrollRuns.workspaceId })
         .from(payrollRuns)
         .where(eq(payrollRuns.id, payrollRunId))
         .for('update')
         .limit(1);
-      if (run.length === 0) return { released: 0 };
-      const pr = run[0];
+      if (runRows.length === 0) return { released: 0 };
+      const pr = runRows[0];
 
       if (!(PAYROLL_RELEASABLE_STATUSES as readonly string[]).includes(pr.status ?? '')) {
         throw new FinancialLockConflict(
@@ -385,7 +416,9 @@ export const AtomicFinancialLockService = {
 
       log.info('Released time entries from payroll run', { payrollRunId, released: released.length });
       return { released: released.length };
-    });
+    };
+
+    return outerTx ? runRelease(outerTx) : db.transaction(runRelease);
   },
 
   /**

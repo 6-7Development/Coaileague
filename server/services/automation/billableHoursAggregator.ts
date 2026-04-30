@@ -462,20 +462,18 @@ export async function markEntriesAsBilled(params: {
 }
 
 /**
- * Unmark time entries when a draft invoice is cancelled/rejected
- * Restores entries to unbilled state so they can be picked up by the next invoice generation
+ * Unmark time entries when a draft invoice is cancelled/rejected.
+ * Restores entries to the unbilled pool so the next invoice run can pick them up.
+ *
+ * Routed through AtomicFinancialLockService.releaseFromInvoice — that gives us
+ * the "ghost prevention" guarantee: release is refused once the invoice has
+ * crossed into a locked status (sent/paid/etc.). Before this rewire, an
+ * accidental call on a sent invoice would silently strip the time_entry link
+ * and leave the receivable orphaned.
  */
 export async function unmarkEntriesAsBilled(invoiceId: string): Promise<number> {
-  const result = await db
-    .update(timeEntries)
-    .set({
-      billedAt: null,
-      invoiceId: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(timeEntries.invoiceId, invoiceId))
-    .returning();
-
-  log.info(`Unmarked ${result.length} entries from cancelled invoice ${invoiceId}`);
-  return result.length;
+  const { AtomicFinancialLockService } = await import('../atomicFinancialLockService');
+  const { released } = await AtomicFinancialLockService.releaseFromInvoice(invoiceId);
+  log.info(`Unmarked ${released} entries from cancelled invoice ${invoiceId}`);
+  return released;
 }
