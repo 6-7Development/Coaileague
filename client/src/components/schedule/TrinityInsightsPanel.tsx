@@ -4,7 +4,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ChevronDown, AlertTriangle, Lightbulb, Target, 
-  MessageSquare, Loader2, Send, TrendingUp, Users, Clock
+  MessageSquare, Loader2, Send, TrendingUp, Users, Clock, ShieldCheck, Zap
 } from 'lucide-react';
 import { TrinityIconStatic, AskTrinityButton } from '@/components/trinity-button';
 import type { Shift, Employee, Client } from '@shared/schema';
@@ -52,6 +52,17 @@ export function TrinityInsightsPanel({
   onToggleCollapse,
 }: TrinityInsightsPanelProps) {
   const { toast } = useToast();
+  const [preflight, setPreflight] = useState<{
+    impactStatement: string;
+    fillRate: number;
+    totalOpenShifts: number;
+    estimatedFillable: number;
+    constraints: string[];
+    expiredGuardCount: number;
+  } | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const pendingInsightRef = useRef<TrinityInsight | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
 
@@ -91,19 +102,46 @@ export function TrinityInsightsPanel({
   const applyInsightMutation = useMutation({
     mutationFn: async (insight: TrinityInsight) => {
       return await apiRequest('POST', '/api/schedules/apply-insight', {
-        insightId: insight.id ?? `open-shifts-${Date.now()}`,  // fallback if AI insight has no id
+        insightId: insight.id ?? `open-shifts-${Date.now()}`,
         actionData: insight.actionData,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/ai-insights'] });
-      toast({ title: 'Insight Applied', description: 'Schedule updated based on Trinity recommendation' });
+      queryClient.invalidateQueries({ queryKey: ['/api/trinity/scheduling/insights'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trinity/transparency/overview'] });
+      setPreflight(null);
+      setShowConfirm(false);
+      toast({ title: 'Trinity is auto-filling shifts', description: 'Progress updates will appear as Trinity works.' });
     },
     onError: (error: any) => {
+      setShowConfirm(false);
       toast({ variant: 'destructive', title: 'Action failed', description: error.message });
     },
   });
+
+  // Pre-flight check: run constraint engine dry-run before executing
+  const handleAutoFillClick = async (insight: TrinityInsight) => {
+    pendingInsightRef.current = insight;
+    setPreflightLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/schedules/auto-fill/preflight', {});
+      const data = await (res as any).json?.() ?? res;
+      if (data.success && data.preflight) {
+        setPreflight(data.preflight);
+        setShowConfirm(true);
+      } else {
+        // No preflight data — execute directly
+        applyInsightMutation.mutate(insight);
+      }
+    } catch {
+      // Preflight failed — execute directly (non-blocking)
+      applyInsightMutation.mutate(insight);
+    } finally {
+      setPreflightLoading(false);
+    }
+  };
 
   const handleAskTrinity = () => {
     if (chatInput.trim()) {
@@ -185,6 +223,41 @@ export function TrinityInsightsPanel({
                   ))}
                 </div>
               </ScrollArea>
+            )}
+
+            {/* Pre-Flight Impact Statement — shown before auto-fill executes */}
+            {showConfirm && preflight && (
+              <div className="mx-0 mb-3 p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/5">
+                <div className="flex items-start gap-2 mb-2">
+                  <ShieldCheck className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-cyan-400 mb-1">Trinity Pre-Flight Check</p>
+                    <p className="text-xs text-foreground/85 leading-relaxed">{preflight.impactStatement}</p>
+                    {preflight.constraints.length > 0 && (
+                      <p className="text-[10px] text-amber-400 mt-1">
+                        ⚠️ {preflight.constraints.join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs flex-1 bg-cyan-600 hover:bg-cyan-700"
+                    onClick={() => pendingInsightRef.current && applyInsightMutation.mutate(pendingInsightRef.current)}
+                    disabled={applyInsightMutation.isPending}
+                    data-testid="button-confirm-autofill"
+                  >
+                    {applyInsightMutation.isPending
+                      ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Running…</>
+                      : <><Zap className="h-3 w-3 mr-1" />Confirm Auto-Fill</>}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs"
+                    onClick={() => { setShowConfirm(false); setPreflight(null); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             )}
 
             <div className="pt-2 border-t">

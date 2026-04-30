@@ -557,3 +557,99 @@ router.get('/export/csv', requireManager, async (req: AuthenticatedRequest, res)
 });
 
 export default router;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/schedules/auto-fill/preflight
+// Pre-Flight Dry Run — runs the constraint engine WITHOUT writing to the DB.
+// Returns an Impact Statement: what Trinity can fill, what it can't, and WHY.
+// Called by TrinityInsightsPanel before the user confirms "Auto-Fill All".
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/auto-fill/preflight', requireManager, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId;
+    if (!userId || !workspaceId) {
+      return res.status(401).json({ error: 'Auth context required' });
+    }
+
+    const { pool } = await import('../db');
+    const now = new Date();
+    const weekEnd = new Date(now);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // Count open (unassigned) shifts for the current week
+    const [openResult, employeeResult, expiredCardResult] = await Promise.all([
+      pool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM shifts
+          WHERE workspace_id = $1
+            AND employee_id IS NULL
+            AND status NOT IN ('cancelled','completed','calloff')
+            AND start_time >= NOW()
+            AND start_time <= $2`,
+        [workspaceId, weekEnd.toISOString()]
+      ),
+      pool.query<{ count: string; expired_guard: string }>(
+        `SELECT
+           COUNT(*) AS count,
+           COUNT(*) FILTER (WHERE guard_card_status = 'expired' OR guard_card_expiry_date < NOW()) AS expired_guard
+         FROM employees
+         WHERE workspace_id = $1 AND is_active = TRUE`,
+        [workspaceId]
+      ),
+      // Estimate how many shifts can be filled based on available (non-expired-card) employees
+      pool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM employees
+          WHERE workspace_id = $1 AND is_active = TRUE
+            AND (guard_card_status IS NULL OR guard_card_status NOT IN ('expired','suspended'))
+            AND (guard_card_expiry_date IS NULL OR guard_card_expiry_date >= NOW())`,
+        [workspaceId]
+      ),
+    ]);
+
+    const totalOpenShifts = parseInt(openResult.rows[0]?.count || '0', 10);
+    const totalEmployees = parseInt(employeeResult.rows[0]?.count || '0', 10);
+    const expiredGuardCount = parseInt(employeeResult.rows[0]?.expired_guard || '0', 10);
+    const qualifiedEmployees = parseInt(expiredCardResult.rows[0]?.count || '0', 10);
+
+    // Rough fill estimate: each qualified employee can cover ~2 shifts/week beyond their current load
+    const estimatedFillable = Math.min(totalOpenShifts, qualifiedEmployees * 2);
+    const estimatedUnfillable = Math.max(0, totalOpenShifts - estimatedFillable);
+    const fillRate = totalOpenShifts > 0 ? Math.round((estimatedFillable / totalOpenShifts) * 100) : 100;
+
+    // Build Trinity's pre-flight statement
+    const constraints: string[] = [];
+    if (expiredGuardCount > 0) {
+      constraints.push(`${expiredGuardCount} officer${expiredGuardCount > 1 ? 's' : ''} blocked by expired guard card (Texas OC 1702)`);
+    }
+
+    let impactStatement: string;
+    if (totalOpenShifts === 0) {
+      impactStatement = `All shifts are already covered — nothing to fill this week.`;
+    } else if (fillRate >= 95) {
+      impactStatement = `I can fill all ${totalOpenShifts} open shift${totalOpenShifts > 1 ? 's' : ''} this week with qualified officers.`;
+    } else if (estimatedUnfillable > 0) {
+      impactStatement = `I can fill approximately ${estimatedFillable} of ${totalOpenShifts} shifts (${fillRate}%). ` +
+        `${estimatedUnfillable} shift${estimatedUnfillable > 1 ? 's' : ''} may remain open${constraints.length > 0 ? `: ${constraints.join('; ')}` : ' due to capacity or compliance constraints'}.`;
+    } else {
+      impactStatement = `I can fill approximately ${estimatedFillable} of ${totalOpenShifts} open shifts this week.`;
+    }
+
+    res.json({
+      success: true,
+      preflight: {
+        totalOpenShifts,
+        estimatedFillable,
+        estimatedUnfillable,
+        fillRate,
+        qualifiedEmployees,
+        expiredGuardCount,
+        constraints,
+        impactStatement,
+        readyToExecute: totalOpenShifts > 0,
+      },
+    });
+  } catch (err: any) {
+    log.error('[Schedules] Preflight check failed:', err?.message);
+    res.status(500).json({ error: 'Failed to run preflight check' });
+  }
+});

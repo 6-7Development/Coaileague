@@ -300,13 +300,38 @@ export function useTrinitySchedulingProgress(workspaceId?: string) {
             estimatedLaborCost: completionSummary.estimatedLaborCost || 0,
           },
           mutations: message.mutations || [],
-          aiSummary: message.aiSummary || `Trinity completed ${mutationCount} scheduling changes. ${completionSummary.openShiftsFilled || 0} open shifts filled, ${completionSummary.employeesSwapped || 0} optimizations made.`,
+          aiSummary: message.aiSummary ||
+            (() => {
+              const filled = completionSummary.openShiftsFilled || 0;
+              const remaining = completionSummary.openShiftsRemaining || 0;
+              const whyList = completionSummary.whyUnfilled as string[] | undefined;
+              let s = `Trinity filled ${filled} shift${filled !== 1 ? 's' : ''}.`;
+              if (remaining > 0 && whyList?.length) {
+                s += ` ${remaining} remain open: ${whyList.join('; ')}.`;
+              } else if (remaining > 0) {
+                s += ` ${remaining} shift${remaining !== 1 ? 's' : ''} remain open.`;
+              }
+              return s;
+            })(),
           requiresVerification: true,
           executionId: message.executionId,
         });
 
-        queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/schedules/week/stats"] });
+        // Global Refresh Signal — sweep ALL scheduling-related caches simultaneously
+        // so desktop grid, mobile schedule, insights panel, and approval queues
+        // all update in one shot. No more "I approved it but it still says Draft".
+        const schedulingKeys = [
+          ["/api/shifts"],
+          ["/api/schedules/week/stats"],
+          ["/api/schedules/ai-insights"],
+          ["/api/trinity/scheduling/insights"],
+          ["/api/trinity/transparency/overview"],
+          ["/api/compliance/tasks/pending"],
+          ["/api/shifts/stats"],
+          ["/api/time-entries"],
+          ["/api/invoices"],
+        ];
+        schedulingKeys.forEach(key => queryClient.invalidateQueries({ queryKey: key }));
 
         toast({
           title: 'Trinity Auto-Schedule Complete',
