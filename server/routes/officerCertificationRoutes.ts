@@ -861,8 +861,6 @@ router.get('/my-certificates', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-export default router;
-
 // ── Public router — no auth required ─────────────────────────────────────────
 // Mounted separately at /api/public/training/certification (no requireAuth)
 // Used by QR codes printed on physical certificates.
@@ -907,3 +905,5 @@ publicCertRouter.get('/verify/:certNumber', async (req, res) => {
     res.status(500).json({ message: 'Verification failed' });
   }
 });
+
+export default router;

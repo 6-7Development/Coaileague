@@ -171,8 +171,6 @@ router.post('/ical/subscribe', async (req: any, res: Response) => {
   }
 });
 
-export default router;
-
 export const icalPublicRouter = Router();
 
 icalPublicRouter.get('/api/schedule/ical/:token', async (req: Request, res: Response) => {
@@ -200,3 +198,5 @@ icalPublicRouter.get('/api/schedule/ical/:token', async (req: Request, res: Resp
     res.status(500).json({ error: sanitizeError(error) || 'Failed to generate calendar feed' });
   }
 });
+
+export default router;

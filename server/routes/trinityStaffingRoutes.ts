@@ -433,8 +433,6 @@ router.delete('/webhook-token', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-export default router;
-
 /**
  * PUBLIC WEBHOOK ROUTER
  * ======================
@@ -545,3 +543,5 @@ publicWebhookRouter.post('/webhook', async (req, res) => {
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
+
+export default router;
