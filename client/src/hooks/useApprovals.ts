@@ -44,6 +44,8 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
 
   return useQuery<ApprovalRequest[]>({
     queryKey: ['/api/approvals', { decision, scope, limit }],
+    staleTime: 30_000,   // Approvals don't change every second — prevent unnecessary refetches
+    retry: 1,            // One retry on network failure, then surface the error
     queryFn: async () => {
       const response = await secureFetch(`/api/approvals${queryString ? `?${queryString}` : ''}`, {
         credentials: 'include',

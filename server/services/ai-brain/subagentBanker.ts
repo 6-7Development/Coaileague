@@ -124,8 +124,8 @@ class SubagentBanker {
   private constructor() {
     log.info('[SubagentBanker] Initializing AI Brain Credit Management...');
     
-    setInterval(() => this.cleanupExpiredQuotes(), 60000);
-    setInterval(() => this.cleanupExpiredReservations(), 30000);
+    setInterval(() => this.cleanupExpiredQuotes(), 60000).unref();
+    setInterval(() => this.cleanupExpiredReservations(), 30000).unref();
   }
   
   static getInstance(): SubagentBanker {

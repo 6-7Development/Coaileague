@@ -225,7 +225,7 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
   // Fetch shifts for the week
   const weekEnd = addDays(weekStart, 7);
-  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<Shift[]>({
+  const { data: shifts = [], isLoading: shiftsLoading, isError: shiftsError } = useQuery<Shift[]>({
     queryKey: ['/api/shifts', weekStart.toISOString(), weekEnd.toISOString()],
     queryFn: async () => {
       const res = await secureFetch(`/api/shifts?weekStart=${weekStart.toISOString()}&weekEnd=${weekEnd.toISOString()}`);
@@ -806,7 +806,15 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
         )}
 
         <div className="pb-24">
-          {shiftsLoading || (viewMode === 'my' && !currentEmployee?.id) ? (
+          {shiftsError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
+                <span className="text-destructive text-lg">!</span>
+              </div>
+              <p className="text-sm font-medium text-foreground">Failed to load schedule</p>
+              <p className="text-xs text-muted-foreground mt-1">Check your connection and try again</p>
+            </div>
+          ) : shiftsLoading || (viewMode === 'my' && !currentEmployee?.id) ? (
             <div className="px-3 py-4 space-y-3">
               {[1, 2, 3].map(i => (
                 <ShiftCardSkeleton key={i} />

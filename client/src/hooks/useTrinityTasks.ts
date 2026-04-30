@@ -101,6 +101,8 @@ export function useTrinityTasks() {
 
   const approvalsQuery = useQuery<ApprovalRequest[]>({
     queryKey: ["/api/approvals", { decision: ["pending"], scope: "employee", limit: 25 }],
+    staleTime: 30_000,
+    retry: 1,
     queryFn: async () => {
       const res = await secureFetch(
         "/api/approvals?decision=pending&scope=employee&limit=25",
@@ -117,6 +119,7 @@ export function useTrinityTasks() {
 
   const onboardingQuery = useQuery<OnboardingProgress>({
     queryKey: ["/api/experience/onboarding/progress"],
+    staleTime: 120_000,
     queryFn: async () => {
       const res = await secureFetch("/api/experience/onboarding/progress", {
         credentials: "include",
@@ -131,6 +134,8 @@ export function useTrinityTasks() {
 
   const complianceQuery = useQuery<ComplianceTask[]>({
     queryKey: ["/api/compliance/tasks/pending"],
+    staleTime: 120_000,
+    retry: false,
     queryFn: async () => {
       const res = await secureFetch("/api/compliance/tasks/pending", {
         credentials: "include",
