@@ -530,6 +530,7 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
           title: `Timesheet Submitted — ${submitterName}`,
           message: `${submitterName} has submitted a timesheet for ${timesheet.periodStart} – ${timesheet.periodEnd} (${timesheet.totalHours} hours). Review and approve.`,
           severity: "info",
+          idempotencyKey: `timesheet-submit-${id}-${mgr.userId}`,
           metadata: {
             alertType: "timesheet_submitted",
             timesheetId: id,

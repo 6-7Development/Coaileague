@@ -722,44 +722,8 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
       });
     }
 
-    // ON-TIME CLOCK-IN: Notify assigned supervisors so they have real-time site awareness
-    if (lateClockInMinutes === 0) {
-      scheduleNonBlocking('time-entry.on-time-clock-in-supervisor-alert', async () => {
-        const employeeName = `${employee.firstName} ${employee.lastName}`;
-        const shiftLabel = resolvedShift
-          ? `${new Date(resolvedShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-          : 'scheduled time';
-        // Notify supervisors and field supervisors in the workspace
-        const workspaceSups = await db.select({ userId: employees.userId })
-          .from(employees)
-          .where(and(
-            eq(employees.workspaceId, workspaceId),
-            or(
-              eq(employees.workspaceRole as any, 'supervisor'),
-              eq(employees.workspaceRole as any, 'field_supervisor'),
-              eq(employees.workspaceRole as any, 'department_manager'),
-            )
-          ));
-        for (const s of workspaceSups) {
-          if (!s.userId) continue;
-          await universalNotificationEngine.sendNotification({
-            workspaceId,
-            userId: s.userId,
-            type: 'shift_confirmed',
-            title: `Officer On-Site — ${employeeName}`,
-            message: `${employeeName} clocked in on time at ${shiftLabel}.`,
-            severity: 'info',
-            metadata: {
-              alertType: 'clock_in_confirmed',
-              timeEntryId: newEntry.id,
-              employeeId: employee.id,
-              employeeName,
-              source: 'clock_in_enforcement',
-            },
-          });
-        }
-      });
-    }
+    // On-time clock-ins are visible on the schedule grid — no push notification needed.
+    // Only late/missed clock-ins generate supervisor alerts (see block above).
 
     // AI Brain: Emit clock-in telemetry for anomaly detection
     try {

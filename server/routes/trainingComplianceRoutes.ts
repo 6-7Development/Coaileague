@@ -473,28 +473,43 @@ router.post("/tcole-alerts", requireAuth, async (req: AuthenticatedRequest, res)
       });
     }
 
-    let count = 0;
-    for (const officer of belowRequired.rows) {
-      const completed = parseFloat(officer.hours_completed);
-      const remaining = requiredHours - completed;
-      
+    const count = belowRequired.rows.length;
+
+    if (count > 0) {
+      // Batch into one notification per workspace — not one per officer
+      const officerLines = belowRequired.rows
+        .map((o: any) => {
+          const completed = parseFloat(o.hours_completed);
+          const remaining = requiredHours - completed;
+          return `${o.first_name} ${o.last_name} — ${completed}/${requiredHours} hrs (${remaining.toFixed(1)} remaining)`;
+        })
+        .slice(0, 10);
+      if (belowRequired.rows.length > 10) officerLines.push(`…and ${belowRequired.rows.length - 10} more`);
+
+      const today = new Date().toISOString().slice(0, 10);
       platformEventBus.publish({
         type: 'tcole_compliance_warning',
         category: 'automation',
-        title: `TCOLE ${activeThreshold}-Day Alert: ${officer.first_name} ${officer.last_name}`,
-        description: `Officer has ${completed} of ${requiredHours} required TCOLE hours with ${diffDays} days until year-end. ${remaining} hours still needed.`,
+        title: `TCOLE Compliance: ${count} Officer${count > 1 ? 's' : ''} Below Required Hours`,
+        description: [
+          `${count} officer${count > 1 ? 's are' : ' is'} below the required ${requiredHours} TCOLE hours with ${diffDays} days remaining in ${year}.`,
+          '',
+          officerLines.join('\n'),
+          '',
+          'Enroll affected officers in upcoming TCOLE sessions to meet the annual requirement.',
+        ].join('\n'),
         workspaceId: wid,
-        metadata: { 
-          employeeId: officer.id, 
-          hoursCompleted: completed, 
-          hoursRemaining: remaining,
+        idempotencyKey: `tcole-compliance-${wid}-${activeThreshold}-${today}`,
+        metadata: {
+          officerCount: count,
+          officerIds: belowRequired.rows.map((o: any) => o.id),
+          requiredHours,
           daysUntilYearEnd: diffDays,
           threshold: activeThreshold,
+          year,
         }
       }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-      count++;
     }
-
     res.json({ 
       message: `TCOLE ${activeThreshold}-day compliance alerts sent`,
       alertsSent: count, 
