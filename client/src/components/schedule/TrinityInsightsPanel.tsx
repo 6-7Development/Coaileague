@@ -57,6 +57,7 @@ export function TrinityInsightsPanel({
 
   const { data: insights = [], isLoading } = useQuery<TrinityInsight[]>({
     queryKey: ['/api/trinity/scheduling/insights', weekStart.toISOString()],
+    staleTime: 0,  // always re-fetch — prevents stale 'N open shifts' after auto-fill runs
     queryFn: async () => {
       try {
         const res = await secureFetch(`/api/trinity/scheduling/insights?weekStart=${weekStart.toISOString()}&weekEnd=${weekEnd.toISOString()}`);
@@ -90,7 +91,7 @@ export function TrinityInsightsPanel({
   const applyInsightMutation = useMutation({
     mutationFn: async (insight: TrinityInsight) => {
       return await apiRequest('POST', '/api/schedules/apply-insight', {
-        insightId: insight.id,
+        insightId: insight.id ?? `open-shifts-${Date.now()}`,  // fallback if AI insight has no id
         actionData: insight.actionData,
       });
     },

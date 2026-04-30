@@ -301,6 +301,27 @@ router.post('/override-out-of-state/:employeeId', requireAuth, async (req, res) 
 });
 
 // ── Compliance tasks pending — feeds TrinityTaskWidget ───────────────────────
+
+// Humanize raw DB certification type codes → display labels
+const CERT_TYPE_LABELS: Record<string, string> = {
+  guard_card: 'Guard Card',
+  armed_guard_card: 'Armed Guard Card',
+  first_aid: 'First Aid Certification',
+  cpr: 'CPR Certification',
+  firearms: 'Firearms Certification',
+  handcuffing: 'Handcuffing Certification',
+  baton: 'Baton Certification',
+  background_check: 'Background Check',
+  driver_license: "Driver's License",
+  security_license: 'Security License',
+  unarmed_security: 'Unarmed Security License',
+  armed_security: 'Armed Security License',
+};
+function humanizeCertType(raw: string): string {
+  return CERT_TYPE_LABELS[raw]
+    ?? raw.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+}
+
 router.get('/tasks/pending', requireAuth, async (req, res) => {
   try {
     const workspaceId = req.workspaceId as string;
@@ -363,7 +384,7 @@ router.get('/tasks/pending', requireAuth, async (req, res) => {
       ...expiringCerts.map(c => ({
         id: `cert-expiry-${c.id}`,
         kind: 'compliance' as const,
-        title: `${c.certificationType} expiring soon`,
+        title: `${humanizeCertType(c.certificationType)} expiring soon`,
         description: c.expirationDate
           ? `Expires ${format(new Date(c.expirationDate), 'MMM d, yyyy')}`
           : 'Expiration date unknown',
@@ -387,7 +408,7 @@ router.get('/tasks/pending', requireAuth, async (req, res) => {
       ...pendingEnrollments.map(e => ({
         id: `enroll-${e.id}`,
         kind: 'compliance' as const,
-        title: `${e.credentialType ?? 'Credential'} enrollment pending`,
+        title: `${e.credentialType ? humanizeCertType(e.credentialType) : 'Credential'} enrollment pending`,
         description: e.deadline
           ? `Due ${format(new Date(e.deadline), 'MMM d, yyyy')}`
           : 'No due date set',

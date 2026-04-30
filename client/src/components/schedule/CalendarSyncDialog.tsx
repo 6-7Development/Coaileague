@@ -63,16 +63,22 @@ interface Subscription {
 }
 
 export function CalendarSyncDialog({ open, onOpenChange, employeeId }: CalendarSyncDialogProps) {
-  // V1.1 Feature Flag — calendar sync backend not yet deployed
+  // V1.1 Feature Flag — guard by open prop so it doesn't bleed into My Schedule view
+  if (!open) return null;
   return (
-    <div className="p-6 text-center space-y-3">
-      <div className="text-3xl">📅</div>
-      <p className="font-medium">Calendar Sync</p>
-      <p className="text-sm text-muted-foreground">
-        iCal import/export and calendar subscriptions launch in V1.1.
-      </p>
-      <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-full text-xs font-medium border border-amber-500/20">
-        Coming in V1.1
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => onOpenChange(false)}>
+      <div className="bg-card rounded-xl p-8 text-center space-y-3 max-w-sm mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="text-4xl">📅</div>
+        <p className="font-semibold text-lg">Calendar Sync</p>
+        <p className="text-sm text-muted-foreground">
+          iCal import/export and calendar subscriptions launch in V1.1.
+        </p>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-full text-xs font-medium border border-amber-500/20">
+          Coming in V1.1
+        </div>
+        <button onClick={() => onOpenChange(false)} className="block mx-auto text-xs text-muted-foreground hover:text-foreground mt-2">
+          Close
+        </button>
       </div>
     </div>
   );

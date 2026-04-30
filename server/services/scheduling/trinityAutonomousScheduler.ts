@@ -822,6 +822,8 @@ class TrinityAutonomousSchedulerService {
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         isNull(shifts.employeeId),
+        // Only include fillable statuses — exclude cancelled/completed
+        inArray(shifts.status as any, ['draft', 'open', 'published'] as any),
         gte(shifts.startTime, startDate),
         lte(shifts.startTime, endDate),
         or(

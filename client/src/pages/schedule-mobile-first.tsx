@@ -451,8 +451,9 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
 
   const handleAcceptShift = async (shift: Shift) => {
     try {
+      // 'draft → open' is the valid transition for officer acknowledging their assigned shift
       await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
-        status: 'confirmed' 
+        status: 'open' 
       });
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       toast({ title: "Shift accepted" });

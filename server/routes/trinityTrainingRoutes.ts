@@ -534,7 +534,7 @@ router.post('/schedule-month', requireAuth, async (req: AuthenticatedRequest, re
       demandDescription: params.demandDescription,
       message: fillOnly
         ? `Trinity filled ${schedResult.summary.totalAssigned} of ${schedResult.summary.totalProcessed} open shifts. ${schedResult.summary.totalFailed} unfilled.`
-        : `[${params.label}] Generated ${totalShiftsCreated} real-org shifts. Trinity assigned ${schedResult.summary.totalAssigned} of ${schedResult.summary.totalProcessed}.`,
+        : `Generated ${totalShiftsCreated} real-org shifts. Trinity assigned ${schedResult.summary.totalAssigned} of ${schedResult.summary.totalProcessed}.`,
       shiftsGenerated: totalShiftsCreated,
       assigned: schedResult.summary.totalAssigned,
       processed: schedResult.summary.totalProcessed,

@@ -44,7 +44,8 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
 
   const approveMutation = useMutation({
     mutationFn: async (shiftId: string) => {
-      await apiRequest('PATCH', `/api/shifts/${shiftId}`, { status: 'scheduled' });
+      // Use the dedicated approve endpoint — avoids ILLEGAL_SHIFT_TRANSITION
+      await apiRequest('PATCH', `/api/shifts/${shiftId}/approve`);
     },
     onMutate: async (shiftId) => {
       await queryClient.cancelQueries({ queryKey: ['/api/shifts'] });
@@ -53,7 +54,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
         if (!old) return old;
         return old.map((shift: any) => 
           shift.id === shiftId 
-            ? { ...shift, status: 'scheduled' }
+            ? { ...shift, status: 'open' }  // optimistic: approve moves to open/published
             : shift
         );
       });
@@ -90,7 +91,8 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
       let completed = 0;
       
       for (const shiftId of shiftIds) {
-        await apiRequest('PATCH', `/api/shifts/${shiftId}`, { status: 'scheduled' });
+        // Use the dedicated approve endpoint — avoids ILLEGAL_SHIFT_TRANSITION
+        await apiRequest('PATCH', `/api/shifts/${shiftId}/approve`);
         completed++;
         setBulkProgress({ current: completed, total });
       }
