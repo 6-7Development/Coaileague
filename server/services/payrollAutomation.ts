@@ -1464,6 +1464,31 @@ export class PayrollAutomationEngine {
           tx,
         });
         log.info(`[AI Payroll™] Claimed ${claimed.claimedCount}/${claimed.requestedCount} entries for run ${run.id} — within transaction`);
+
+        // Write per-entry FLSA-bucketed hours back to the source time_entries
+        // so downstream readers (billing path, margin report fallback) see
+        // accurate regular/OT/holiday splits. Without this, time_entries.
+        // overtimeHours stays NULL and the billing path bills everything at
+        // straight rate — silently understating revenue and inflating the
+        // computed gross margin.
+        for (const empSummary of aggregationResult.employeeSummaries) {
+          for (const entry of empSummary.entries) {
+            await tx.update(timeEntries)
+              .set({
+                regularHours: entry.regularHours.toFixed(2),
+                overtimeHours: entry.overtimeHours.toFixed(2),
+                holidayHours: entry.holidayHours.toFixed(2),
+                payableAmount: entry.totalPay.toFixed(2),
+                capturedPayRate: entry.payRate.toFixed(2),
+                updatedAt: new Date(),
+              })
+              .where(and(
+                eq(timeEntries.id, entry.timeEntryId),
+                eq(timeEntries.workspaceId, workspaceId),
+              ));
+          }
+        }
+        log.info(`[AI Payroll™] Wrote per-entry hours buckets back to ${allTimeEntryIds.length} time entries`);
       }
 
       // FIX-3: Ledger write INSIDE the payroll transaction.
@@ -1580,9 +1605,19 @@ export class PayrollAutomationEngine {
   }
   
   /**
-   * Approve payroll run (1% human QC step)
-   * Marks time entries as payrolled after approval
-   * BACKWARD COMPATIBLE: timeEntryIds optional for existing callers
+   * Approve payroll run (1% human QC step).
+   *
+   * Marks time entries as payrolled after approval. Idempotent w.r.t. the
+   * claim state of the source entries — the function tolerates being called
+   * for runs that already claimed entries at creation (processAutomatedPayroll
+   * path) AND for runs that defer the claim until approval. Callers can
+   * always pass the full timeEntryIds list without needing to know which
+   * workflow created the run.
+   *
+   * Behaviour per entry:
+   *   - already claimed by THIS run     → no-op (idempotent re-approval safe)
+   *   - already claimed by ANOTHER run  → throw (data-corruption guard)
+   *   - unclaimed                       → claim atomically inside this txn
    */
   static async approvePayrollRun(payrollRunId: string, approverId: string, timeEntryIds?: string[]): Promise<void> {
     // ATOMIC: both the payroll run status update and all time-entry markings execute
@@ -1606,18 +1641,43 @@ export class PayrollAutomationEngine {
         throw new Error(`Payroll run ${payrollRunId} not found`);
       }
 
-      // Bulk-claim source time entries atomically via canonical claimer.
       if (timeEntryIds && timeEntryIds.length > 0) {
-        const claimed = await claimPayrollTimeEntries({
-          workspaceId,
-          timeEntryIds,
-          payrollRunId,
-          requireAll: true,
-          tx,
-        });
-        log.info(`[AI Payroll™] Claimed ${claimed.claimedCount}/${claimed.requestedCount} entries for run ${payrollRunId}`);
+        // Inspect current claim state so we can split entries into
+        // already-claimed-by-this-run, claimed-by-another-run, and unclaimed.
+        const existing = await tx
+          .select({ id: timeEntries.id, payrollRunId: timeEntries.payrollRunId, payrolledAt: timeEntries.payrolledAt })
+          .from(timeEntries)
+          .where(and(
+            eq(timeEntries.workspaceId, row.workspaceId),
+            inArray(timeEntries.id, timeEntryIds),
+          ));
+
+        const claimedByOtherRun = existing.filter(e => e.payrolledAt !== null && e.payrollRunId && e.payrollRunId !== payrollRunId);
+        if (claimedByOtherRun.length > 0) {
+          throw new Error(
+            `[approvePayrollRun] Refusing to mark ${claimedByOtherRun.length} time entries already claimed by other payroll runs: ` +
+            claimedByOtherRun.slice(0, 5).map(e => `${e.id}→run:${e.payrollRunId}`).join(', ') +
+            (claimedByOtherRun.length > 5 ? ` +${claimedByOtherRun.length - 5} more` : '')
+          );
+        }
+
+        const alreadyClaimedHere = existing.filter(e => e.payrollRunId === payrollRunId).length;
+        const unclaimedIds = existing.filter(e => e.payrolledAt === null).map(e => e.id);
+
+        if (unclaimedIds.length > 0) {
+          const claimed = await claimPayrollTimeEntries({
+            workspaceId: row.workspaceId,
+            timeEntryIds: unclaimedIds,
+            payrollRunId,
+            requireAll: true,
+            tx,
+          });
+          log.info(`[AI Payroll™] Approved run ${payrollRunId}: ${alreadyClaimedHere} entries already claimed, claimed ${claimed.claimedCount} new`);
+        } else {
+          log.info(`[AI Payroll™] Approved run ${payrollRunId}: all ${alreadyClaimedHere} entries already claimed at run creation — no-op`);
+        }
       } else {
-        log.warn(`[AI Payroll™] Approved payroll ${payrollRunId} without marking entries - timeEntryIds not provided`);
+        log.info(`[AI Payroll™] Approved run ${payrollRunId} with no timeEntryIds passed — assuming creation-time claim path`);
       }
 
       return row;
@@ -1870,18 +1930,6 @@ export const detectPayPeriod = async (workspaceId: string) => {
     periodEnd: period.end,
     periodType: period.type
   };
-};
-
-export const calculatePayroll = (params: {
-  timeEntries: TimeEntry[];
-  employeeId: string;
-  employeeName: string;
-  hourlyRate: number;
-  taxState: string;
-}) => {
-  // Legacy function - use processAutomatedPayroll instead
-  log.warn('[AI Payroll™] Legacy calculatePayroll called - use processAutomatedPayroll with aggregator instead');
-  throw new Error('calculatePayroll is deprecated - use processAutomatedPayroll instead');
 };
 
 export const createAutomatedPayrollRun = async (params: {

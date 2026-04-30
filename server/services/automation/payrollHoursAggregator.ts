@@ -2,9 +2,10 @@ import { db } from "server/db";
 import { timeEntries, employees, workspaces, clients, shifts, employeePayrollInfo } from "@shared/schema";
 import { and, eq, gte, lte, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
 import { resolveRates, bucketHours, calculateAmount, roundHours } from "./rateResolver";
-import { getHolidayEntry, isHolidayDate } from "./holidayDetector";
+import { getHolidayEntry } from "./holidayDetector";
 import { calculatePayrollTaxes, type PayPeriod, type FilingStatus, type PayrollTaxBreakdown } from "../billing/payrollTaxService";
 import { PayrollAutomationEngine } from "../payrollAutomation";
+import { splitEntryAcrossDays } from "../payroll/shiftSplitter";
 import { createLogger } from "../../lib/logger";
 
 const log = createLogger('payroll-hours-aggregator');
@@ -251,30 +252,17 @@ export async function aggregatePayrollHours(params: {
     let employeeHolidayPay = 0;
     const employeeWarnings: string[] = [];
 
-    // Calculate cumulative hours for overtime calculation
+    // Calculate cumulative hours for overtime calculation. Track the active
+    // week as a YYYY-MM-DD key in workspace-local time, computed by the
+    // timezone-aware splitter — never via server-local Date math, which would
+    // misalign FLSA week boundaries for any workspace whose zone differs from
+    // the host process zone.
     let weeklyHoursSoFar = 0;
-    let currentWeekStart: Date | null = null;
-
-    // Helper: Get start of ISO week (Monday at midnight) for a given date
-    const getWeekStart = (date: Date): Date => {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-      d.setDate(diff);
-      d.setHours(0, 0, 0, 0); // Normalize to midnight for consistent comparison
-      return d;
-    };
+    let currentWeekKey: string | null = null;
 
     // Process each time entry for this employee
     for (const entry of sortedEntries) {
       const { timeEntry } = entry;
-
-      // Reset weekly hours when crossing week boundary (FLSA compliance)
-      const entryWeekStart = getWeekStart(timeEntry.clockIn);
-      if (currentWeekStart === null || entryWeekStart.getTime() !== currentWeekStart.getTime()) {
-        weeklyHoursSoFar = 0;
-        currentWeekStart = entryWeekStart;
-      }
 
       // Validate entry has required data
       if (!timeEntry.clockOut) {
@@ -299,40 +287,75 @@ export async function aggregatePayrollHours(params: {
         employeeWarnings.push(resolved.warningMessage!);
       }
 
-      // Calculate hours bucketing (regular, OT, holiday) using workspace settings
+      // Calculate hours bucketing (regular, OT, holiday) using workspace settings.
+      // Split the entry per calendar day so overnight/week-straddling shifts
+      // attribute hours to the day (and week) they actually occurred — FLSA
+      // weekly-40h and California-style daily-8h rules need per-day granularity.
+      // Pay amounts are computed per-segment too, so a shift that straddles
+      // two holidays with different multipliers earns the correct rate on
+      // each portion.
       const totalHours = parseFloat(timeEntry.totalHours);
-      
-      // 1099 contractors: ALL hours are regular — no overtime or holiday multipliers
-      // They are paid straight rate regardless of hours worked (no FLSA OT protection)
-      let hoursBucket: { regularHours: number; overtimeHours: number; holidayHours: number };
-      let holidayMultiplier = defaultHolidayMultiplier;
-      
+
+      const hoursBucket = { regularHours: 0, overtimeHours: 0, holidayHours: 0 };
+      let regularPay = 0;
+      let overtimePay = 0;
+      let holidayPay = 0;
+
+      const segments = splitEntryAcrossDays(new Date(timeEntry.clockIn), new Date(timeEntry.clockOut), workspaceTimezone);
+
       if (isContractor) {
-        hoursBucket = { regularHours: totalHours, overtimeHours: 0, holidayHours: 0 };
-      } else {
-        // Timezone-aware holiday detection using workspace holiday calendar
-        const holidayEntry = getHolidayEntry(timeEntry.clockIn, holidayCalendar, workspaceTimezone);
-        const isHoliday = !!holidayEntry;
-        if (holidayEntry?.payMultiplier) {
-          holidayMultiplier = holidayEntry.payMultiplier;
+        // 1099 contractors: ALL hours are regular — no overtime or holiday multipliers
+        // They are paid straight rate regardless of hours worked (no FLSA OT protection).
+        // Still walk segments so the weekly accumulator advances correctly for
+        // the next entry on a Sunday-night → Monday-morning straddler.
+        hoursBucket.regularHours = totalHours;
+        regularPay = calculateAmount(totalHours, resolved.payRate);
+        for (const seg of segments) {
+          if (currentWeekKey === null || seg.weekStartKey !== currentWeekKey) {
+            weeklyHoursSoFar = 0;
+            currentWeekKey = seg.weekStartKey;
+          }
+          weeklyHoursSoFar += seg.minutes / 60;
         }
-        
-        hoursBucket = bucketHours({
-          totalHours,
-          weeklyHoursSoFar,
-          enableDailyOvertime: enableDailyOT,
-          weeklyOvertimeThreshold: weeklyOTThreshold,
-          isHoliday,
-        });
+      } else {
+        // For W-2 employees: walk each per-day segment so weekly OT, daily OT,
+        // holiday detection, and pay math all key off the day each segment
+        // actually fell on.
+        for (const seg of segments) {
+          // Reset the weekly accumulator at each ISO-week boundary.
+          if (currentWeekKey === null || seg.weekStartKey !== currentWeekKey) {
+            weeklyHoursSoFar = 0;
+            currentWeekKey = seg.weekStartKey;
+          }
+
+          // Per-segment holiday detection — a shift that crosses midnight into
+          // a holiday only earns the holiday multiplier on the holiday portion.
+          const holidayEntry = getHolidayEntry(seg.segmentStart, holidayCalendar, workspaceTimezone);
+          const isHoliday = !!holidayEntry;
+          const segHolidayMultiplier = holidayEntry?.payMultiplier ?? defaultHolidayMultiplier;
+
+          const segHours = seg.minutes / 60;
+          const segBucket = bucketHours({
+            totalHours: segHours,
+            weeklyHoursSoFar,
+            enableDailyOvertime: enableDailyOT,
+            weeklyOvertimeThreshold: weeklyOTThreshold,
+            isHoliday,
+          });
+          hoursBucket.regularHours += segBucket.regularHours;
+          hoursBucket.overtimeHours += segBucket.overtimeHours;
+          hoursBucket.holidayHours += segBucket.holidayHours;
+
+          // Pay math per-segment so each holiday's multiplier is applied to
+          // its own hours — not the last-seen multiplier of the whole entry.
+          regularPay += calculateAmount(segBucket.regularHours, resolved.payRate);
+          overtimePay += calculateAmount(segBucket.overtimeHours, resolved.payRate * overtimeMultiplier);
+          holidayPay += calculateAmount(segBucket.holidayHours, resolved.payRate * segHolidayMultiplier);
+
+          weeklyHoursSoFar += segHours;
+        }
       }
 
-      // Update weekly hours accumulator for next entry
-      weeklyHoursSoFar += totalHours;
-
-      // Calculate pay amounts
-      const regularPay = calculateAmount(hoursBucket.regularHours, resolved.payRate);
-      const overtimePay = calculateAmount(hoursBucket.overtimeHours, resolved.payRate * overtimeMultiplier);
-      const holidayPay = calculateAmount(hoursBucket.holidayHours, resolved.payRate * holidayMultiplier);
       const totalPay = regularPay + overtimePay + holidayPay;
 
       // Get client name from batch-loaded map
