@@ -345,8 +345,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         log.warn('[Payroll] Failed to log webhook error to audit log', { error: webhookErr.message });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { broadcastToWorkspace: broadcastToWorkspace } = await import('../services/websocketService');
+      // broadcastToWorkspace imported statically
       broadcastToWorkspace(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_approved', proposalId: id });
       platformEventBus.publish({
         type: 'payroll_run_approved',
@@ -435,8 +434,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         complianceTag: 'soc2',
       }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err?.message }));
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { broadcastToWorkspace: broadcastToWorkspace } = await import('../services/websocketService');
+      // broadcastToWorkspace imported statically
       broadcastToWorkspace(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_rejected', proposalId: id });
 
       res.json({
@@ -667,8 +665,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         }
       ).catch(err => log.error('Failed to create payroll notification:', err));
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { broadcastToWorkspace: broadcastToWorkspace } = await import('../services/websocketService');
+      // broadcastToWorkspace imported statically
       broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: (payrollRun as any).id });
       platformEventBus.publish({
         type: 'payroll_run_created',
@@ -2304,8 +2301,8 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
     }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
 
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const { broadcastToWorkspace: bcastVoid } = await import('../services/websocketService');
-    bcastVoid(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
+    // broadcastToWorkspace already imported at top
+    broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
     platformEventBus.publish({
       type: 'payroll_run_voided',
       category: 'automation',
@@ -2430,8 +2427,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
       }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err?.message }));
 
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { broadcastToWorkspace } = await import('../services/websocketService');
+      // broadcastToWorkspace imported statically
       broadcastToWorkspace(workspaceId, {
         type: 'payroll_updated',
         action: 'paid',
