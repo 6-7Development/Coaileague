@@ -119,6 +119,12 @@ export const BACKEND_ROUTE_MANIFEST = [
   { method: "GET",    path: "/api/onboarding/progress",        file: "onboardingRoutes.ts" },
   { method: "POST",   path: "/api/onboarding/initialize",      file: "onboardingRoutes.ts" },
   { method: "GET",    path: "/api/onboarding/tasks",           file: "onboardingRoutes.ts" },
+
+  // ── Credentials (write) ──────────────────────────────────────────────────────
+  { method: "POST",   path: "/api/credentials",              file: "credentialRoutes.ts" },
+  { method: "PATCH",  path: "/api/credentials/:id",          file: "credentialRoutes.ts" },
+  { method: "DELETE", path: "/api/credentials/:id",          file: "credentialRoutes.ts" },
+  { method: "GET",    path: "/api/credentials/employee/:id", file: "credentialRoutes.ts" },
 ] as const;
 
 // ─── Test Runner ──────────────────────────────────────────────────────────────

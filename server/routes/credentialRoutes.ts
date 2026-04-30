@@ -146,4 +146,116 @@ router.get("/summary", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// ─── Write Endpoints ──────────────────────────────────────────────────────────
+
+// POST / — add a certification for an employee
+router.post("/", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!userId || !workspaceId) return res.status(401).json({ error: "Auth required" });
+
+    const { employeeId, name, issuingOrganization, certificationNumber,
+            issuedDate, expiryDate, certificateUrl, verificationUrl } = req.body;
+    if (!name || !issuedDate) return res.status(400).json({ error: "name and issuedDate required" });
+
+    let targetEmployeeId = employeeId;
+    if (!targetEmployeeId) {
+      const [emp] = await db.select({ id: employees.id })
+        .from(employees)
+        .where(and(eq(employees.userId, userId), eq(employees.workspaceId, workspaceId)))
+        .limit(1);
+      if (!emp) return res.status(404).json({ error: "Employee record not found" });
+      targetEmployeeId = emp.id;
+    }
+
+    const [created] = await db.insert(trainingCertifications).values({
+      workspaceId,
+      employeeId: targetEmployeeId,
+      name,
+      issuingOrganization: issuingOrganization || null,
+      certificationNumber: certificationNumber || null,
+      issuedDate: new Date(issuedDate),
+      expiryDate: expiryDate ? new Date(expiryDate) : null,
+      certificateUrl: certificateUrl || null,
+      verificationUrl: verificationUrl || null,
+      status: 'active',
+    } as any).returning();
+
+    log.info(`[Credentials] Created "${name}" for employee ${targetEmployeeId}`);
+    res.status(201).json({ success: true, credential: created });
+  } catch (err: any) {
+    log.error("[Credentials] POST failed:", err?.message);
+    res.status(500).json({ error: err.message || "Failed to create credential" });
+  }
+});
+
+// PATCH /:id — renew or update a credential
+router.patch("/:id", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ error: "Workspace required" });
+
+    const allowed = ['name','issuingOrganization','certificationNumber','issuedDate','expiryDate','certificateUrl','verificationUrl','status'];
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        updates[key] = (key === 'issuedDate' || key === 'expiryDate') && req.body[key]
+          ? new Date(req.body[key]) : (req.body[key] || null);
+      }
+    }
+
+    const [updated] = await db.update(trainingCertifications)
+      .set(updates as any)
+      .where(and(eq(trainingCertifications.id, req.params.id), eq(trainingCertifications.workspaceId, workspaceId)))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Credential not found" });
+    res.json({ success: true, credential: updated });
+  } catch (err: any) {
+    log.error("[Credentials] PATCH failed:", err?.message);
+    res.status(500).json({ error: err.message || "Failed to update credential" });
+  }
+});
+
+// DELETE /:id — soft delete (sets status=revoked)
+router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ error: "Workspace required" });
+
+    const [deleted] = await db.update(trainingCertifications)
+      .set({ status: 'revoked', updatedAt: new Date() } as any)
+      .where(and(eq(trainingCertifications.id, req.params.id), eq(trainingCertifications.workspaceId, workspaceId)))
+      .returning();
+
+    if (!deleted) return res.status(404).json({ error: "Credential not found" });
+    res.json({ success: true });
+  } catch (err: any) {
+    log.error("[Credentials] DELETE failed:", err?.message);
+    res.status(500).json({ error: err.message || "Failed to remove credential" });
+  }
+});
+
+// GET /employee/:employeeId — manager view of an officer's credentials
+router.get("/employee/:employeeId", async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(401).json({ error: "Workspace required" });
+
+    const creds = await db.select()
+      .from(trainingCertifications)
+      .where(and(
+        eq(trainingCertifications.employeeId, req.params.employeeId),
+        eq(trainingCertifications.workspaceId, workspaceId)
+      ))
+      .orderBy(desc(trainingCertifications.expiryDate));
+
+    res.json({ credentials: creds });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch credentials" });
+  }
+});
+
+
 export default router;

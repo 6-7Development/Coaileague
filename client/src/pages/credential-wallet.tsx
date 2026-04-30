@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { UniversalEmptyState } from "@/components/universal";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +20,15 @@ import {
   Calendar,
   Building2,
   Wallet,
+  Plus,
+  Trash2,
+  Edit2,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface Credential {
   id: string;
@@ -213,8 +221,11 @@ const pageConfig: CanvasPageConfig = {
 };
 
 export default function CredentialWalletPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("all");
   const [qrCredential, setQrCredential] = useState<Credential | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", issuingOrganization: "", certificationNumber: "", issuedDate: "", expiryDate: "", certificateUrl: "" });
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ credentials: Credential[]; employee: any }>({
     queryKey: ["/api/credentials/wallet"],
@@ -226,6 +237,36 @@ export default function CredentialWalletPage() {
 
   const { data: expiringData } = useQuery<{ critical: ExpiringItem[]; warning: ExpiringItem[]; total: number }>({
     queryKey: ["/api/credentials/expiring"],
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: typeof addForm) => apiRequest('POST', '/api/credentials', {
+      name: data.name,
+      issuingOrganization: data.issuingOrganization || undefined,
+      certificationNumber: data.certificationNumber || undefined,
+      issuedDate: data.issuedDate,
+      expiryDate: data.expiryDate || undefined,
+      certificateUrl: data.certificateUrl || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/expiring'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/summary'] });
+      setShowAddDialog(false);
+      setAddForm({ name: "", issuingOrganization: "", certificationNumber: "", issuedDate: "", expiryDate: "", certificateUrl: "" });
+      toast({ title: 'Credential added', description: 'Saved to your wallet.' });
+    },
+    onError: (err: any) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/credentials/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credentials/summary'] });
+      toast({ title: 'Credential removed' });
+    },
+    onError: (err: any) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
   });
 
   const credentials = walletData?.credentials || [];
