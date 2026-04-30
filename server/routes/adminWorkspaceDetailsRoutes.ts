@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { pool } from '../db';
-import { requirePlatformRole } from '../rbac';
+import { requirePlatformRole , requirePlatformStaff } from '../rbac';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('AdminWorkspaceDetails');
