@@ -146,6 +146,33 @@ export async function apiRequest(
       credentials: "include",
     });
 
+    // ── 404 Anomaly Detector ─────────────────────────────────────────────────
+    // If any API call returns 404, fire a "missing_link" event.
+    // This surfaces phantom routes immediately instead of silent blank screens.
+    if (res.status === 404 && method !== 'GET') {
+      // Only flag mutations — GET 404s are expected (resource not found)
+      const missingLinkEvent = {
+        type: 'missing_link',
+        url,
+        method,
+        timestamp: new Date().toISOString(),
+        page: typeof window !== 'undefined' ? window.location.pathname : '',
+      };
+      // Log to console with high visibility
+      console.error('[CoAIleague] 🔴 PHANTOM ROUTE DETECTED:', missingLinkEvent);
+      // Fire to audit log (non-blocking — don't await so it doesn't block the error flow)
+      fetch('/api/platform/audit-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ eventType: 'phantom_route', ...missingLinkEvent }),
+      }).catch(() => { /* non-blocking */ });
+      // Dispatch custom event so Trinity/monitoring can react
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('coaileague:phantom-route', { detail: missingLinkEvent }));
+      }
+    }
+
     if (res.status === 401) {
       const path = typeof window !== "undefined" ? window.location.pathname : "";
       const isOnPublicOrAuthPage = path === "/" || path === "/login" || path === "/register" ||
