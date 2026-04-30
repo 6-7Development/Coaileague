@@ -446,8 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WEBSOCKET SETUP
   // ============================================================================
   log.info('[ROUTE-INIT] step: websocket-setup');
-  const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = console.log('[ROUTE-INIT] step: websocket-setup');
-  ;
+  const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = await import("./websocket");
   notificationStateManager.setBroadcastFunction((ws, uid, type, data, count) =>
     broadcastNotification(ws, uid, type as any, data, count)
   );
