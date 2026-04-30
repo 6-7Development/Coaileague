@@ -37,7 +37,7 @@ import {
   clients,
   clientContracts,
 } from '@shared/schema';
-import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
   formatCurrency,
   sumFinancialValues,
@@ -151,6 +151,8 @@ export interface MarginReportResult {
     grossMarginPct: string;
     flagged: boolean;
   }>;
+  /** Data-quality warnings — surfaced when captured amounts had to be derived. */
+  warnings: string[];
 }
 
 // ─── Tool 1: stage_billing_run ──────────────────────────────────────────────
@@ -201,15 +203,28 @@ export async function stageBillingRun(
     }
     const clientName = client.companyName || `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim() || clientId;
 
-    // Data-integrity guard: refuse to bill a client without an executed contract.
+    // Data-integrity guard: refuse to bill a client without a binding,
+    // in-force contract. A `draft` or `sent` contract isn't an agreement; an
+    // `expired`/`terminated` one no longer authorizes billing. Only
+    // `accepted` and `executed` rows count, and the period being billed must
+    // overlap the contract's effective window.
     const contract = await db.query.clientContracts.findFirst({
       where: and(
         eq(clientContracts.workspaceId, workspaceId),
         eq(clientContracts.clientId, clientId),
+        inArray(clientContracts.status, ['accepted', 'executed']),
+        // Effective date must be on/before the period start (or unset).
+        or(isNull(clientContracts.effectiveDate), lte(clientContracts.effectiveDate, startDate.toISOString().slice(0, 10))),
+        // Term end date must be on/after the period end (or unset/open-ended).
+        or(isNull(clientContracts.termEndDate), gte(clientContracts.termEndDate, endDate.toISOString().slice(0, 10))),
       ),
     });
     if (!contract) {
-      skipped.push({ clientId, clientName, reason: 'No client contract on file — billing requires a contract' });
+      skipped.push({
+        clientId,
+        clientName,
+        reason: 'No binding contract covers this billing period — must be accepted/executed and within effectiveDate/termEndDate',
+      });
       continue;
     }
 
@@ -384,14 +399,11 @@ export async function finalizeFinancialBatch(
     });
   }
 
-  // Approve payroll runs via the canonical approvePayrollRun helper.
-  //
-  // IMPORTANT: do NOT pass timeEntryIds here. processAutomatedPayroll already
-  // claimed (set payrolledAt + payrollRunId on) every source entry inside the
-  // run-creation transaction, so re-passing them would make the canonical
-  // claimer's `requireAll: true` guard throw — every staged run would fail to
-  // finalize. We pull the linked entry IDs only to extend the WORM lockout
-  // set returned to the caller.
+  // Approve payroll runs via the canonical approvePayrollRun helper. We pass
+  // the linked entry IDs through; approvePayrollRun is idempotent w.r.t. claim
+  // state, so it correctly handles entries already claimed at run creation
+  // (processAutomatedPayroll path) and entries that need claiming at approval
+  // time alike.
   const finalizedRuns: FinalizeFinancialBatchResult['payrollRuns'] = [];
   for (const run of payrollTargets) {
     try {
@@ -404,7 +416,7 @@ export async function finalizeFinancialBatch(
         ));
       const runEntryIds = runEntries.map(e => e.id);
 
-      await PayrollAutomationEngine.approvePayrollRun(run.id, approvedBy);
+      await PayrollAutomationEngine.approvePayrollRun(run.id, approvedBy, runEntryIds);
       runEntryIds.forEach(id => lockedTimeEntryIds.add(id));
       finalizedRuns.push({ payrollRunId: run.id, status: 'approved' });
     } catch (err: any) {
@@ -443,6 +455,33 @@ export async function generateMarginReport(
 
   type Bucket = { clientId: string; clientName: string; billable: string; payable: string };
   const buckets = new Map<string, Bucket>();
+  const warnings: string[] = [];
+  let derivedBillable = 0;
+  let derivedPayable = 0;
+
+  // Compute a hours-times-rate fallback when captured amounts are null. The
+  // captured columns (billableAmount, payableAmount) are populated by the
+  // current pipelines, but legacy entries from before those columns existed
+  // can leave them null. Falling back to `totalHours * hourlyRate` avoids the
+  // silent zero-revenue / zero-cost bug; OT premium isn't reconstructable
+  // here so the fallback is conservative — flagged via warnings.
+  const deriveBillable = (row: { billableAmount: string | null; totalHours: string | null; hourlyRate: string | null }): string => {
+    if (row.billableAmount !== null && row.billableAmount !== undefined) return toFinancialString(row.billableAmount);
+    if (row.totalHours && row.hourlyRate) {
+      derivedBillable++;
+      return multiplyFinancialValues(toFinancialString(row.totalHours), toFinancialString(row.hourlyRate));
+    }
+    return '0.0000';
+  };
+  const derivePayable = (row: { payableAmount: string | null; totalHours: string | null; hourlyRate: string | null; capturedPayRate: string | null }): string => {
+    if (row.payableAmount !== null && row.payableAmount !== undefined) return toFinancialString(row.payableAmount);
+    const rate = row.capturedPayRate ?? row.hourlyRate;
+    if (row.totalHours && rate) {
+      derivedPayable++;
+      return multiplyFinancialValues(toFinancialString(row.totalHours), toFinancialString(rate));
+    }
+    return '0.0000';
+  };
 
   if (invoiceIds && invoiceIds.length > 0) {
     const rows = await db
@@ -471,6 +510,9 @@ export async function generateMarginReport(
         clientId: timeEntries.clientId,
         billableAmount: timeEntries.billableAmount,
         payableAmount: timeEntries.payableAmount,
+        totalHours: timeEntries.totalHours,
+        hourlyRate: timeEntries.hourlyRate,
+        capturedPayRate: timeEntries.capturedPayRate,
         clientName: clients.companyName,
       })
       .from(timeEntries)
@@ -482,11 +524,11 @@ export async function generateMarginReport(
     for (const row of entryRows) {
       const id = row.clientId || 'unknown';
       const b = buckets.get(id) || { clientId: id, clientName: row.clientName || 'Unknown', billable: '0.0000', payable: '0.0000' };
-      b.payable = sumFinancialValues([b.payable, toFinancialString(row.payableAmount ?? '0')]);
+      b.payable = sumFinancialValues([b.payable, derivePayable(row)]);
       // If we are computing margin from a window without explicit invoices,
       // use captured billableAmount as the bill-side reference.
       if (!invoiceIds || invoiceIds.length === 0) {
-        b.billable = sumFinancialValues([b.billable, toFinancialString(row.billableAmount ?? '0')]);
+        b.billable = sumFinancialValues([b.billable, deriveBillable(row)]);
       }
       buckets.set(id, b);
     }
@@ -498,6 +540,9 @@ export async function generateMarginReport(
         clientId: timeEntries.clientId,
         billableAmount: timeEntries.billableAmount,
         payableAmount: timeEntries.payableAmount,
+        totalHours: timeEntries.totalHours,
+        hourlyRate: timeEntries.hourlyRate,
+        capturedPayRate: timeEntries.capturedPayRate,
         clientName: clients.companyName,
       })
       .from(timeEntries)
@@ -511,8 +556,8 @@ export async function generateMarginReport(
     for (const row of rows) {
       const id = row.clientId || 'unknown';
       const b = buckets.get(id) || { clientId: id, clientName: row.clientName || 'Unknown', billable: '0.0000', payable: '0.0000' };
-      b.billable = sumFinancialValues([b.billable, toFinancialString(row.billableAmount ?? '0')]);
-      b.payable = sumFinancialValues([b.payable, toFinancialString(row.payableAmount ?? '0')]);
+      b.billable = sumFinancialValues([b.billable, deriveBillable(row)]);
+      b.payable = sumFinancialValues([b.payable, derivePayable(row)]);
       buckets.set(id, b);
     }
   }
@@ -542,7 +587,18 @@ export async function generateMarginReport(
     : '0.0000';
   const flagged = Number(grossMarginPct) < Number(MIN_GROSS_MARGIN_PCT);
 
-  log.info(`[FinStaging] generate_margin_report ws=${workspaceId} bill=${formatCurrency(totalBillable)} pay=${formatCurrency(totalPayable)} margin=${formatCurrency(grossMarginPct)}% flagged=${flagged}`);
+  if (derivedBillable > 0) {
+    warnings.push(
+      `${derivedBillable} time entries had a NULL billable_amount and were derived from totalHours × hourlyRate (no OT premium). Re-run the billing pipeline to populate captured amounts.`,
+    );
+  }
+  if (derivedPayable > 0) {
+    warnings.push(
+      `${derivedPayable} time entries had a NULL payable_amount and were derived from totalHours × payRate (no OT premium). Re-run the payroll aggregator to populate captured amounts.`,
+    );
+  }
+
+  log.info(`[FinStaging] generate_margin_report ws=${workspaceId} bill=${formatCurrency(totalBillable)} pay=${formatCurrency(totalPayable)} margin=${formatCurrency(grossMarginPct)}% flagged=${flagged} warnings=${warnings.length}`);
 
   return {
     workspaceId,
@@ -553,6 +609,7 @@ export async function generateMarginReport(
     marginFloorPct: MIN_GROSS_MARGIN_PCT,
     flagged,
     perClient,
+    warnings,
   };
 }
 

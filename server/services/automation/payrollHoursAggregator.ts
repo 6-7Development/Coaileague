@@ -252,19 +252,13 @@ export async function aggregatePayrollHours(params: {
     let employeeHolidayPay = 0;
     const employeeWarnings: string[] = [];
 
-    // Calculate cumulative hours for overtime calculation
+    // Calculate cumulative hours for overtime calculation. Track the active
+    // week as a YYYY-MM-DD key in workspace-local time, computed by the
+    // timezone-aware splitter — never via server-local Date math, which would
+    // misalign FLSA week boundaries for any workspace whose zone differs from
+    // the host process zone.
     let weeklyHoursSoFar = 0;
-    let currentWeekStart: Date | null = null;
-
-    // Helper: Get start of ISO week (Monday at midnight) for a given date
-    const getWeekStart = (date: Date): Date => {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-      d.setDate(diff);
-      d.setHours(0, 0, 0, 0); // Normalize to midnight for consistent comparison
-      return d;
-    };
+    let currentWeekKey: string | null = null;
 
     // Process each time entry for this employee
     for (const entry of sortedEntries) {
@@ -307,7 +301,7 @@ export async function aggregatePayrollHours(params: {
       let overtimePay = 0;
       let holidayPay = 0;
 
-      const segments = splitEntryAcrossDays(new Date(timeEntry.clockIn), new Date(timeEntry.clockOut));
+      const segments = splitEntryAcrossDays(new Date(timeEntry.clockIn), new Date(timeEntry.clockOut), workspaceTimezone);
 
       if (isContractor) {
         // 1099 contractors: ALL hours are regular — no overtime or holiday multipliers
@@ -317,10 +311,9 @@ export async function aggregatePayrollHours(params: {
         hoursBucket.regularHours = totalHours;
         regularPay = calculateAmount(totalHours, resolved.payRate);
         for (const seg of segments) {
-          const segWeekStart = getWeekStart(seg.segmentStart);
-          if (currentWeekStart === null || segWeekStart.getTime() !== currentWeekStart.getTime()) {
+          if (currentWeekKey === null || seg.weekStartKey !== currentWeekKey) {
             weeklyHoursSoFar = 0;
-            currentWeekStart = segWeekStart;
+            currentWeekKey = seg.weekStartKey;
           }
           weeklyHoursSoFar += seg.minutes / 60;
         }
@@ -330,10 +323,9 @@ export async function aggregatePayrollHours(params: {
         // actually fell on.
         for (const seg of segments) {
           // Reset the weekly accumulator at each ISO-week boundary.
-          const segWeekStart = getWeekStart(seg.segmentStart);
-          if (currentWeekStart === null || segWeekStart.getTime() !== currentWeekStart.getTime()) {
+          if (currentWeekKey === null || seg.weekStartKey !== currentWeekKey) {
             weeklyHoursSoFar = 0;
-            currentWeekStart = segWeekStart;
+            currentWeekKey = seg.weekStartKey;
           }
 
           // Per-segment holiday detection — a shift that crosses midnight into

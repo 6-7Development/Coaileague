@@ -295,15 +295,18 @@ export async function getPendingTimeEntries(
 }
 
 /**
- * Calculate total hours for payroll period
+ * Calculate total hours for payroll period.
  * Daily-OT-over-8h and weekly-OT-over-40h are computed FLSA-style. Shifts that
  * cross midnight are split per calendar day via splitEntryAcrossDays so the
- * daily-8h bucket sees only the minutes that fell on each day.
+ * daily-8h bucket sees only the minutes that fell on each day. Day boundaries
+ * are computed in `timeZone` (workspace zone) — pass it whenever you have it
+ * so PST workspaces don't get split at UTC midnight.
  */
 export async function calculatePayrollHours(
   employeeId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timeZone: string = 'UTC',
 ): Promise<{
   regularHours: number;
   overtimeHours: number;
@@ -317,10 +320,10 @@ export async function calculatePayrollHours(
 
   for (const entry of entries) {
     if (!entry.clockOut) continue;
-    // Split each entry across the calendar days it actually spans. A 10pm→6am
-    // shift contributes 2h to day-A and 6h to day-B — not 8h to whichever day
-    // the clock-in happened on.
-    const segments = splitEntryAcrossDays(new Date(entry.clockIn), new Date(entry.clockOut));
+    // Split each entry across the calendar days it actually spans, in the
+    // requested timezone. A 10pm→6am shift contributes 2h to day-A and 6h to
+    // day-B — not 8h to whichever day the clock-in happened on.
+    const segments = splitEntryAcrossDays(new Date(entry.clockIn), new Date(entry.clockOut), timeZone);
     for (const seg of segments) {
       totalMinutes += seg.minutes;
       entriesByDay[seg.dayKey] = (entriesByDay[seg.dayKey] || 0) + seg.minutes;
