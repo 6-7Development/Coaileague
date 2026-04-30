@@ -171,7 +171,7 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
       darkModeAppliedRef.current = false;
       previousThemeRef.current = null;
     }
-  }, [profile?.theme.forceDarkMode, profile?.seasonId]);
+  }, [profile?.theme?.forceDarkMode, profile?.seasonId]);
   
   useEffect(() => {
     if (!profile) return;
@@ -201,6 +201,7 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
     isLoading,
     error: error as Error | null,
     
+<<<<<<< HEAD
     seasonId: profile?.seasonId ?? 'default',
     isHoliday: profile?.isHoliday ?? false,
     holidayName: profile?.holidayName ?? null,
@@ -221,6 +222,27 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
     
     mascotThoughts: profile?.mascotHints?.seasonalThoughts ?? ["Let's get to work!"],
     mascotEmotes: profile?.mascotHints?.seasonalEmotes ?? ['idle', 'curious'],
+=======
+    seasonId: profile?.seasonId ?? DEFAULT_PROFILE.seasonId,
+    isHoliday: profile?.isHoliday ?? DEFAULT_PROFILE.isHoliday,
+    holidayName: profile?.holidayName ?? DEFAULT_PROFILE.holidayName,
+
+    forceDarkMode: profile?.theme?.forceDarkMode ?? DEFAULT_PROFILE.theme.forceDarkMode,
+    effectsEnabled,
+
+    primaryEffect: profile?.effects?.primary ?? DEFAULT_PROFILE.effects.primary,
+    effectIntensity: profile?.effects?.intensity ?? DEFAULT_PROFILE.effects.intensity,
+
+    seasonalColors: {
+      primary: profile?.theme?.primaryColor ?? DEFAULT_PROFILE.theme.primaryColor,
+      secondary: profile?.theme?.secondaryColor ?? DEFAULT_PROFILE.theme.secondaryColor,
+      accent: profile?.theme?.accentColor ?? DEFAULT_PROFILE.theme.accentColor,
+      glow: profile?.theme?.glowColor ?? DEFAULT_PROFILE.theme.glowColor,
+    },
+
+    mascotThoughts: profile?.mascotHints?.seasonalThoughts ?? DEFAULT_PROFILE.mascotHints.seasonalThoughts,
+    mascotEmotes: profile?.mascotHints?.seasonalEmotes ?? DEFAULT_PROFILE.mascotHints.seasonalEmotes,
+>>>>>>> origin/claude/fix-dashboard-crash-GIa2j
     
     refetch,
   };
@@ -259,12 +281,12 @@ export function useSeasonalEffect() {
   const { profile, effectsEnabled } = useSeasonalTheme();
   
   return {
-    enabled: effectsEnabled && profile?.effects.primary !== 'none',
-    type: profile?.effects.primary || 'none',
-    intensity: profile?.effects.intensity || 0,
-    cadence: profile?.effects.cadence || 'medium',
-    accumulation: profile?.effects.accumulation || false,
-    accumulationCycle: profile?.effects.accumulationCycle,
+    enabled: effectsEnabled && profile?.effects?.primary !== 'none',
+    type: profile?.effects?.primary || 'none',
+    intensity: profile?.effects?.intensity || 0,
+    cadence: profile?.effects?.cadence || 'medium',
+    accumulation: profile?.effects?.accumulation || false,
+    accumulationCycle: profile?.effects?.accumulationCycle,
   };
 }
 
@@ -272,10 +294,10 @@ export function useSeasonalOrnaments() {
   const { profile } = useSeasonalTheme();
   
   return {
-    enabled: profile?.ornaments.enabled || false,
-    types: profile?.ornaments.types || [],
-    colors: profile?.ornaments.colors || [],
-    density: profile?.ornaments.density || 'sparse',
+    enabled: profile?.ornaments?.enabled || false,
+    types: profile?.ornaments?.types || [],
+    colors: profile?.ornaments?.colors || [],
+    density: profile?.ornaments?.density || 'sparse',
   };
 }
 
@@ -283,8 +305,8 @@ export function useMascotSeasonalHints() {
   const { profile, mascotThoughts, mascotEmotes } = useSeasonalTheme();
   
   return {
-    preferredZones: profile?.mascotHints.preferredZones || ['corners'],
-    avoidEffectZones: profile?.mascotHints.avoidEffectZones ?? true,
+    preferredZones: profile?.mascotHints?.preferredZones || ['corners'],
+    avoidEffectZones: profile?.mascotHints?.avoidEffectZones ?? true,
     thoughts: mascotThoughts,
     emotes: mascotEmotes,
   };

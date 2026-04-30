@@ -147,9 +147,10 @@ export default function InsurancePage() {
           <p className="text-muted-foreground">Manage your insurance policies and compliance status.</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => generateCertMutation.mutate()}
+            disabled={generateCertMutation.isPending}
             data-testid="button-generate-cert"
           >
             <FileText className="mr-2 h-4 w-4" />

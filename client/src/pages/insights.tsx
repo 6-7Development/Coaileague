@@ -272,7 +272,7 @@ export default function Insights() {
           <p className="text-muted-foreground mb-4">
             Generate AI insights to discover cost savings, productivity improvements, and more
           </p>
-          <Button onClick={() => generateMutation.mutate()} data-testid="button-generate-empty">
+          <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} data-testid="button-generate-empty">
             <Sparkles className="h-4 w-4 mr-2" />
             Generate First Insights
           </Button>

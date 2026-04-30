@@ -1,5 +1,5 @@
 /**
- * CoAIleague Service Worker v4.7.0
+ * CoAIleague Service Worker v4.8.0
  * APK-ready with IndexedDB offline queue, SW update prompts, and enhanced caching.
  *
  * Canonical registration: navigator.serviceWorker.register('/sw.js').
@@ -21,9 +21,15 @@
  * - Cache versioning with automatic stale data purge on SW update
  */
 
+<<<<<<< HEAD
 const CACHE_VERSION = 13;
 const CACHE_NAME = 'coaileague-v4.9';
 const STATIC_CACHE = 'coaileague-static-v4.9';
+=======
+const CACHE_VERSION = 12;
+const CACHE_NAME = 'coaileague-v4.8';
+const STATIC_CACHE = 'coaileague-static-v4.8';
+>>>>>>> origin/claude/fix-dashboard-crash-GIa2j
 const API_CACHE = 'coaileague-api-v' + CACHE_VERSION;
 const offlineFallbackPage = '/offline.html';
 
@@ -105,7 +111,7 @@ function openDB() {
 }
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v4.7.0');
+  console.log('[SW] Installing service worker v4.8.0');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[SW] Caching app shell');
@@ -116,7 +122,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v4.7.0 — purging ALL old caches + standalone HTML bypass');
+  console.log('[SW] Activating service worker v4.8.0 — purging ALL old caches + standalone HTML bypass');
   event.waitUntil(
     Promise.all([
       // Delete ALL caches that aren't the current valid set — this purges any stale Vite module caches
@@ -155,7 +161,7 @@ self.addEventListener('activate', (event) => {
           // navigate() forces a full reload, bypassing any stale in-memory modules
           c.navigate(c.url).catch(() => {
             // fallback: postMessage if navigate fails
-            c.postMessage({ type: 'SW_UPDATED', version: 'v4.7.0' });
+            c.postMessage({ type: 'SW_UPDATED', version: 'v4.8.0' });
           });
         });
       });
@@ -788,7 +794,7 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'GET_VERSION') {
-    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.7.0' });
+    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.8.0' });
   }
 
   if (event.data?.type === 'CLEAR_ALL_CACHES') {
@@ -825,4 +831,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Service Worker loaded - v4.7.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');
+console.log('[SW] Service Worker loaded - v4.8.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');
