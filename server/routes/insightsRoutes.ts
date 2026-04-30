@@ -166,8 +166,9 @@ Respond with valid JSON array only.`
         const aiInsightsData = JSON.parse(aiContent);
         const insightsList = aiInsightsData.insights || [];
 
-        for (const insight of insightsList) {
-          const savedInsight = await db.insert(aiInsights).values({
+        // Batch insert all insights in one query instead of N sequential inserts
+        if (insightsList.length > 0) {
+          const insertRows = insightsList.map((insight: any) => ({
             workspaceId,
             title: insight.title || 'AI-Generated Insight',
             category: insight.category || 'efficiency_improvement',
@@ -181,7 +182,13 @@ Respond with valid JSON array only.`
             suggestedActions: insight.suggestedActions || [],
             estimatedImpact: insight.estimatedImpact || null,
             status: 'active',
-          }).returning();
+          }));
+          const savedInsights = await db.insert(aiInsights).values(insertRows).returning();
+          insights.push(...savedInsights);
+        }
+        /* placeholder — loop replaced by batch above */
+        for (const insight of []) {
+          const savedInsight: any[] = [];
           insights.push(savedInsight[0]);
         }
       } catch (parseError) {

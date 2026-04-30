@@ -959,7 +959,7 @@ router.get("/organizations/managed", requireAuth, async (req: AuthenticatedReque
 
     const mapWorkspace = async (workspace: any, isOwner: boolean, canManage: boolean) => {
       const emps = await storage.getEmployeesByWorkspace(workspace.id);
-      const clientList = await db.select().from(clients).where(eq(clients.workspaceId, workspace.id));
+      const clientList = await db.select({ id: clients.id }).from(clients).where(eq(clients.workspaceId, workspace.id)).limit(500);
       return {
         id: workspace.id,
         name: workspace.name,
