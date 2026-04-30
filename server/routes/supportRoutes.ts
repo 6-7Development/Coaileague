@@ -487,8 +487,9 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
       where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as any),
     });
 
-    for (const staff of platformStaff) {
-      await notificationEngine.sendNotification({
+    // Use Promise.allSettled so a single failed notification doesn't abort the rest
+    const notifyResults = await Promise.allSettled(platformStaff.map(staff =>
+      notificationEngine.sendNotification({
         workspaceId: ticket.workspaceId || 'platform',
         userId: staff.userId,
         type: 'support_escalation',
@@ -501,6 +502,13 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
           ticketNumber: ticket.ticketNumber,
           skipFeatureCheck: true,
         },
+      })
+    ));
+    const failed = notifyResults.filter(r => r.status === 'rejected');
+    if (failed.length > 0) {
+      log.warn(`[Escalation] ${failed.length}/${platformStaff.length} escalation notifications failed`, {
+        ticketId: ticket.id,
+        errors: failed.map(r => (r as PromiseRejectedResult).reason?.message),
       });
     }
 
@@ -881,8 +889,14 @@ router.post('/tickets/:id/close', requirePlatformStaff, async (req, res) => {
           </p>
         </div>
       `;
-      await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
-            type: 'support_ticket_confirmation', workspaceId: ticket.workspaceId || 'system', recipientUserId: guestEmail, channel: 'email', body: { to: guestEmail, subject: `Support Ticket Closed: ${ticket.ticketNumber}`, html: emailHtml } });
+      await NotificationDeliveryService.send({
+        idempotencyKey: `ticket-${id}-closure`,
+        type: 'support_ticket_confirmation',
+        workspaceId: ticket.workspaceId || 'system',
+        recipientUserId: guestEmail,
+        channel: 'email',
+        body: { to: guestEmail, subject: `Support Ticket Closed: ${ticket.ticketNumber}`, html: emailHtml },
+      });
     } catch (emailError) {
       log.error('Failed to send support summary email:', emailError);
     }
@@ -924,18 +938,45 @@ router.patch('/tickets/:id/status', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    // Optimistic locking: accept optional expectedStatus to prevent concurrent overwrites
-    const { expectedStatus } = req.body;
+    // State machine: enforce valid transitions; closed is terminal
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+      open:                   ['in_progress', 'waiting_for_customer', 'on_hold', 'closed'],
+      in_progress:            ['waiting_for_customer', 'resolved', 'on_hold', 'closed'],
+      waiting_for_customer:   ['in_progress', 'resolved', 'on_hold', 'closed'],
+      on_hold:                ['open', 'in_progress', 'closed'],
+      resolved:               ['open', 'closed'],
+      closed:                 [], // terminal — no transitions allowed
+    };
+    const currentStatus = ticket.status as string;
+    const allowed = ALLOWED_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(status)) {
+      return res.status(422).json({
+        message: `Invalid transition: '${currentStatus}' → '${status}' is not allowed`,
+        currentStatus,
+        allowedTransitions: allowed,
+      });
+    }
+
+    // Optimistic locking via expectedStatus (coarse) or lockVersion (precise)
+    const { expectedStatus, lockVersion } = req.body;
     if (expectedStatus && ticket.status !== expectedStatus) {
       return res.status(409).json({
         message: `Conflict: ticket status is now '${ticket.status}', expected '${expectedStatus}'`,
         currentStatus: ticket.status,
+        lockVersion: ticket.lockVersion,
+      });
+    }
+    if (lockVersion !== undefined && ticket.lockVersion !== lockVersion) {
+      return res.status(409).json({
+        message: `Conflict: ticket was modified concurrently (lockVersion mismatch)`,
+        currentLockVersion: ticket.lockVersion,
       });
     }
 
     const updatedTicket = await storage.updateSupportTicket(id, {
       status,
       // @ts-expect-error — TS migration: fix in refactoring sprint
+      lockVersion: (ticket.lockVersion ?? 0) + 1,
       updatedAt: new Date(),
     }, user.currentWorkspaceId);
 

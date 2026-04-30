@@ -13,6 +13,7 @@ import {
   insertTimeEntrySchema,
   shifts,
   sites,
+  workspaces,
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, inArray, sql, isNull, or, lt } from "drizzle-orm";
 import { z } from "zod";
@@ -633,7 +634,7 @@ const router = Router();
       if (!activeEntry) return res.status(404).json({ message: "No active clock-in session" });
 
       await db.update(timeEntriesTable)
-        .set({ lastGpsPingAt: new Date(), lastGpsPingLat: latitude, lastGpsPingLng: longitude })
+        .set({ lastGpsPingAt: new Date(), lastGpsPingLat: String(latitude), lastGpsPingLng: String(longitude) })
         .where(eq(timeEntriesTable.id, activeEntry.id));
 
       if (activeEntry.shiftId) {
@@ -932,8 +933,16 @@ router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, r
     if (!calcParsed.success) return res.status(400).json({ error: 'Invalid request body', details: calcParsed.error.issues });
     const { employeeId, startDate, endDate } = calcParsed.data;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const hours = await calculatePayrollHours(employeeId, new Date(startDate), new Date(endDate));
+    // Resolve workspace timezone so day boundaries align with the workspace's
+    // local clock — not the host process's. Default to UTC if unknown.
+    const wsId = (req as any).workspaceId || (req.user as any)?.currentWorkspaceId;
+    let timeZone = 'UTC';
+    if (wsId) {
+      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, wsId) });
+      if (ws?.timezone) timeZone = ws.timezone;
+    }
+
+    const hours = await calculatePayrollHours(employeeId, new Date(startDate), new Date(endDate), timeZone);
     res.json({ success: true, data: hours });
   } catch (error: unknown) {
     log.error('Error calculating payroll hours:', error);

@@ -431,7 +431,7 @@ export default function EmployeeFileCabinet() {
   }
 
   const actionButton = (
-    <Button onClick={() => generatePDFMutation.mutate()} data-testid="button-generate-pdf">
+    <Button onClick={() => generatePDFMutation.mutate()} disabled={generatePDFMutation.isPending} data-testid="button-generate-pdf">
       <FileDown className="h-4 w-4 mr-2" />
       Generate Onboarding Packet PDF
     </Button>

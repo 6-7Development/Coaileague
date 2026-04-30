@@ -6,7 +6,8 @@
 let cachedCsrfToken: string | null = null;
 let csrfTokenPromise: Promise<string> | null = null;
 let tokenFetchedAt: number = 0;
-const TOKEN_REFRESH_MS = 30 * 60 * 1000; // Refresh token every 30 minutes
+// 15 min — well under typical 30-min idle session timeout so token stays fresh
+const TOKEN_REFRESH_MS = 15 * 60 * 1000;
 
 /**
  * Get CSRF token, fetching if needed
@@ -25,11 +26,16 @@ export async function getCsrfToken(): Promise<string> {
   }
   
   // Fetch new token
-  csrfTokenPromise = fetch('/api/csrf-token', { 
+  csrfTokenPromise = fetch('/api/csrf-token', {
     credentials: 'include',
     headers: { 'Accept': 'application/json' }
   })
     .then(res => {
+      if (res.status === 401) {
+        // Session expired — signal app to log out gracefully
+        window.dispatchEvent(new CustomEvent('session:expired'));
+        throw new Error('Session expired');
+      }
       if (!res.ok) {
         throw new Error('Failed to fetch CSRF token');
       }

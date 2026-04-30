@@ -171,7 +171,7 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
       darkModeAppliedRef.current = false;
       previousThemeRef.current = null;
     }
-  }, [profile?.theme.forceDarkMode, profile?.seasonId]);
+  }, [profile?.theme?.forceDarkMode, profile?.seasonId]);
   
   useEffect(() => {
     if (!profile) return;
@@ -259,12 +259,12 @@ export function useSeasonalEffect() {
   const { profile, effectsEnabled } = useSeasonalTheme();
   
   return {
-    enabled: effectsEnabled && profile?.effects.primary !== 'none',
-    type: profile?.effects.primary || 'none',
-    intensity: profile?.effects.intensity || 0,
-    cadence: profile?.effects.cadence || 'medium',
-    accumulation: profile?.effects.accumulation || false,
-    accumulationCycle: profile?.effects.accumulationCycle,
+    enabled: effectsEnabled && profile?.effects?.primary !== 'none',
+    type: profile?.effects?.primary || 'none',
+    intensity: profile?.effects?.intensity || 0,
+    cadence: profile?.effects?.cadence || 'medium',
+    accumulation: profile?.effects?.accumulation || false,
+    accumulationCycle: profile?.effects?.accumulationCycle,
   };
 }
 
@@ -272,10 +272,10 @@ export function useSeasonalOrnaments() {
   const { profile } = useSeasonalTheme();
   
   return {
-    enabled: profile?.ornaments.enabled || false,
-    types: profile?.ornaments.types || [],
-    colors: profile?.ornaments.colors || [],
-    density: profile?.ornaments.density || 'sparse',
+    enabled: profile?.ornaments?.enabled || false,
+    types: profile?.ornaments?.types || [],
+    colors: profile?.ornaments?.colors || [],
+    density: profile?.ornaments?.density || 'sparse',
   };
 }
 
@@ -283,8 +283,8 @@ export function useMascotSeasonalHints() {
   const { profile, mascotThoughts, mascotEmotes } = useSeasonalTheme();
   
   return {
-    preferredZones: profile?.mascotHints.preferredZones || ['corners'],
-    avoidEffectZones: profile?.mascotHints.avoidEffectZones ?? true,
+    preferredZones: profile?.mascotHints?.preferredZones || ['corners'],
+    avoidEffectZones: profile?.mascotHints?.avoidEffectZones ?? true,
     thoughts: mascotThoughts,
     emotes: mascotEmotes,
   };

@@ -44,6 +44,7 @@ import { PLATFORM_WORKSPACE_ID } from '../billing/billingConstants';
 import { logActionAudit } from './actionAuditLogger';
 import { requiresFinancialApproval, actorMeetsApprovalRequirement } from './financialApprovalThresholds';
 import { trinityDeliberationLoop } from './trinityDeliberationLoop';
+import { AtomicFinancialLockService, FinancialLockConflict } from '../atomicFinancialLockService';
 const log = createLogger('actionRegistry');
 
 // ============================================================================
@@ -188,6 +189,7 @@ class AIBrainActionRegistry {
     this.registerMemoryOptimizationActions();
     this.registerBillingSettingsActions();
     this.registerInvoiceActions();
+    this.registerFinancialStagingActions();
     registerTrainingSessionActions();
     this.registerDisciplinaryActions();
 
@@ -1693,6 +1695,22 @@ class AIBrainActionRegistry {
           updates.totalHours = Math.round((new Date(updates.clockOut).getTime() - new Date(updates.clockIn).getTime()) / (1000 * 60 * 60) * 100) / 100;
         }
         if (Object.keys(updates).length === 0) return createResult(request.actionId, false, 'No valid fields to update', null, start);
+        // Refuse to mutate an entry that has crossed the financial point-of-no-return.
+        // Trinity must route corrections through credit memo / payroll adjustment instead.
+        try {
+          await AtomicFinancialLockService.assertCanModify(entryId);
+        } catch (err) {
+          if (err instanceof FinancialLockConflict) {
+            await logActionAudit({
+              actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+              userRole: request.userRole, platformRole: request.platformRole,
+              entityType: 'time_entry', entityId: entryId,
+              success: false, errorMessage: `Financial lock: ${err.reason}`, durationMs: Date.now() - start,
+            });
+            return createResult(request.actionId, false, err.message, { code: 'FINANCIAL_LOCK', reason: err.reason }, start);
+          }
+          throw err;
+        }
         const [updated] = await db.update(timeEntries)
           .set(updates)
           .where(and(eq(timeEntries.id, entryId), eq(timeEntries.workspaceId, request.workspaceId!)))
@@ -4404,6 +4422,186 @@ class AIBrainActionRegistry {
     // helpaiOrchestrator.registerAction(getInvoice);
     helpaiOrchestrator.registerAction(withAuditWrap(getInvoiceSummary, 'invoice')); // billing.invoice_summary
     log.info('[AI Brain] Invoice & analytics actions registered (2 actions)');
+  }
+
+  // ============================================================================
+  // FINANCIAL STAGING PIPELINE ACTIONS
+  // The canonical chain-of-custody mutators that move work-performed →
+  // revenue (invoices) and work-performed → payroll. Implementation lives in
+  // server/services/financialStagingService.ts; this method only exposes them
+  // to the action registry so Trinity can call them autonomously.
+  // ============================================================================
+
+  private registerFinancialStagingActions(): void {
+    const stageBillingRunAction: ActionHandler = {
+      actionId: 'finance.stage_billing_run',
+      name: 'Stage Billing Run',
+      category: 'invoicing',
+      description: 'Generate draft invoices grouped by client from approved time entries in the period. Refuses clients without an executed contract. Atomically claims source time entries.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+        const { startDate, endDate, clientIds, taxRate, dueInDays, notes } = request.payload || {};
+        if (!startDate || !endDate) return createResult(request.actionId, false, 'startDate and endDate required', null, start);
+        const { stageBillingRun } = await import('../financialStagingService');
+        const result = await stageBillingRun({
+          workspaceId: request.workspaceId,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          clientIds,
+          taxRate,
+          dueInDays,
+          notes,
+        });
+        return createResult(request.actionId, true, `Drafted ${result.totals.invoiceCount} invoices ($${result.totals.totalBillable})`, result, start);
+      },
+    };
+
+    const stagePayrollBatchAction: ActionHandler = {
+      actionId: 'finance.stage_payroll_batch',
+      name: 'Stage Payroll Batch',
+      category: 'payroll',
+      description: 'Aggregate approved time entries into a draft payroll run with FLSA-compliant 40h OT logic. Atomically claims source time entries inside the run transaction.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+        const { periodStart, periodEnd } = request.payload || {};
+        const { stagePayrollBatch } = await import('../financialStagingService');
+        const result = await stagePayrollBatch({
+          workspaceId: request.workspaceId,
+          userId: request.userId || 'system',
+          periodStart: periodStart ? new Date(periodStart) : undefined,
+          periodEnd: periodEnd ? new Date(periodEnd) : undefined,
+        });
+        return createResult(request.actionId, true, `Drafted payroll run for ${result.totals.employeeCount} employees ($${result.totals.totalGrossPay} gross)`, result, start);
+      },
+    };
+
+    const finalizeFinancialBatchAction: ActionHandler = {
+      actionId: 'finance.finalize_financial_batch',
+      name: 'Finalize Financial Batch',
+      category: 'invoicing',
+      description: 'Lock draft invoices and pending payroll runs. Once finalized, linked time entries become read-only via the WORM lock at the time-entry edit endpoint.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+
+        const gate = await requireDeliberationConsensus({
+          actionId: 'finance.finalize_financial_batch',
+          workspaceId: request.workspaceId,
+          description: `Finalize batch — invoices=${(request.payload?.invoiceIds ?? []).length}, payrollRuns=${(request.payload?.payrollRunIds ?? []).length}`,
+          userId: request.userId,
+        });
+        if (!gate.allowed) {
+          return createResult(request.actionId, false, gate.reason, null, start);
+        }
+
+        const { invoiceIds, payrollRunIds, reason } = request.payload || {};
+        const { finalizeFinancialBatch } = await import('../financialStagingService');
+        const result = await finalizeFinancialBatch({
+          workspaceId: request.workspaceId,
+          approvedBy: request.userId || 'system',
+          invoiceIds,
+          payrollRunIds,
+          reason,
+        });
+        return createResult(
+          request.actionId,
+          true,
+          `Locked ${result.invoices.length} invoices, ${result.payrollRuns.filter(p => p.status === 'approved').length} payroll runs, ${result.lockedTimeEntryIds.length} time entries`,
+          result,
+          start,
+        );
+      },
+    };
+
+    const generateMarginReportAction: ActionHandler = {
+      actionId: 'finance.generate_margin_report',
+      name: 'Generate Margin Report',
+      category: 'analytics',
+      description: 'Compute total billable vs total payable across a batch and per client. Flags any cohort where gross margin is below 20%.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        const { invoiceIds, payrollRunIds, startDate, endDate } = request.payload || {};
+        const { generateMarginReport } = await import('../financialStagingService');
+        const result = await generateMarginReport({
+          workspaceId: request.workspaceId,
+          invoiceIds,
+          payrollRunIds,
+          startDate: startDate ? new Date(startDate) : undefined,
+          endDate: endDate ? new Date(endDate) : undefined,
+        });
+        const flag = result.flagged ? ' (FLAGGED — below 20% floor)' : '';
+        return createResult(request.actionId, true, `Margin ${Number(result.grossMarginPct).toFixed(2)}%${flag}`, result, start);
+      },
+    };
+
+    const autoApproveByVarianceAction: ActionHandler = {
+      actionId: 'time.auto_approve_by_variance',
+      name: 'Variance-based Time-Entry Auto-Approval',
+      category: 'timekeeping',
+      description: 'Compare scheduled vs actual hours for a completed time entry. If variance < threshold (default 5%) AND GPS-verified, auto-approve. Otherwise flag for manual review with a reason recorded in entry notes.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+        const { entryId, thresholdPct, requireGpsVerified } = request.payload || {};
+        if (!entryId) return createResult(request.actionId, false, 'entryId required', null, start);
+        const { autoApproveByVariance } = await import('../timeEntryService');
+        const result = await autoApproveByVariance({
+          entryId,
+          approvedBy: request.userId || 'trinity-system',
+          thresholdPct,
+          requireGpsVerified,
+        });
+        return createResult(request.actionId, true, `${result.decision}: ${result.reason ?? ''}`, result, start);
+      },
+    };
+
+    const addPayrollAdjustmentAction: ActionHandler = {
+      actionId: 'finance.add_payroll_adjustment',
+      name: 'Add Payroll Line-Item Adjustment',
+      category: 'payroll',
+      description: 'Append a signed line-item adjustment (reimbursement, deduction, or correction) to a draft payroll entry. Net pay recomputes; bonuses must go through amendPayrollEntry to recompute taxable gross.',
+      requiredRoles: ['system', 'manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        if (!request.workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
+        const { payrollEntryId, kind, label, amount, reason } = request.payload || {};
+        if (!payrollEntryId || !kind || !label || amount === undefined) {
+          return createResult(request.actionId, false, 'payrollEntryId, kind, label, amount required', null, start);
+        }
+        const { addPayrollAdjustment } = await import('../financialStagingService');
+        const result = await addPayrollAdjustment({
+          workspaceId: request.workspaceId,
+          payrollEntryId,
+          kind,
+          label,
+          amount: Number(amount),
+          addedBy: request.userId || 'system',
+          reason,
+        });
+        return createResult(request.actionId, true, `${kind} adjustment $${amount} applied; net=$${result.newNetPay}`, result, start);
+      },
+    };
+
+    helpaiOrchestrator.registerAction(withAuditWrap(stageBillingRunAction, 'invoice'));
+    helpaiOrchestrator.registerAction(withAuditWrap(stagePayrollBatchAction, 'payroll_run'));
+    helpaiOrchestrator.registerAction(withAuditWrap(finalizeFinancialBatchAction, 'financial_batch'));
+    helpaiOrchestrator.registerAction(withAuditWrap(generateMarginReportAction, 'financial_report'));
+    helpaiOrchestrator.registerAction(withAuditWrap(addPayrollAdjustmentAction, 'payroll_entry'));
+    helpaiOrchestrator.registerAction(withAuditWrap(autoApproveByVarianceAction, 'time_entry'));
+    log.info('[AI Brain] Financial staging pipeline actions registered (6 actions)');
   }
 
   // ============================================================================

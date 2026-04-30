@@ -38,6 +38,7 @@ import {
 } from '@shared/schema';
 import { eq, and, gte, lte, isNull, desc, sql, ne, inArray } from "drizzle-orm";
 import { aggregateBillableHours, markEntriesAsBilled, unmarkEntriesAsBilled } from "./automation/billableHoursAggregator";
+import { AtomicFinancialLockService } from "./atomicFinancialLockService";
 import { platformEventBus } from "./platformEventBus";
 import { publishEvent } from "./orchestration/pipelineErrorHandler";
 import { calculateStateTax, calculateBonusTaxation } from "./taxCalculator";
@@ -106,6 +107,9 @@ export async function generateUsageBasedInvoices(workspaceId: string, generateDa
         ),
         allTimeEntryIds
       );
+      // B5: createInvoiceFromBillableSummary returns null when the umbrella zero-rate
+      // guard fires. The event has already been published; just skip this client.
+      if (!invoice) continue;
       generatedInvoices.push(invoice);
       // DUAL-EMIT LAW: publish invoice_created so Trinity + automationTriggerService
       // receive this event for nightly batch-generated invoices (not just manual creation).
@@ -225,6 +229,8 @@ export async function generateInvoiceForClient(
         ),
         allTimeEntryIds
       );
+      // B5: null = umbrella zero-rate guard fired. Event already emitted; just skip.
+      if (!invoice) continue;
       generatedInvoices.push(invoice);
       // DUAL-EMIT LAW: publish invoice_created so Trinity + automationTriggerService
       // receive this event for per-client auto-generated invoices.
@@ -313,7 +319,51 @@ async function createInvoiceFromBillableSummary(
   clientSummary: any, // ClientBillableSummary from aggregator
   warnings: string[],
   timeEntryIds: string[] // B1: received from caller for atomic marking
-) {
+): Promise<Invoice | null> {
+  // B5: Zero-Dollar Invoice umbrella guard.
+  // The per-employee B4 guard skips employees with no billing rate but still lets
+  // the invoice be created with empty line items, which marks billedAt on the
+  // time entries and orphans them from any future invoice. If every entry has
+  // no resolvable rate, refuse to create the invoice so the entries stay
+  // claimable on the next run once a rate is configured. Caller treats null as "skipped".
+  const allEntriesZeroRate = clientSummary.entries.every(
+    (e: any) => !e.billingRate || Number(e.billingRate) === 0
+  );
+  if (allEntriesZeroRate) {
+    const unbilledHours = clientSummary.entries.reduce(
+      (h: number, e: any) => h + (Number(e.totalHours) || 0),
+      0,
+    );
+    log.warn(
+      `[BillingAutomation] B5 ZERO-DOLLAR GUARD: Skipping ${clientSummary.clientName} — ` +
+      `no billing rate at shift, client, or workspace level (${unbilledHours.toFixed(2)}h held).`,
+    );
+    publishEvent(
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      platformEventBus.publish({
+        type: 'billing_rate_missing',
+        category: 'billing',
+        title: `Zero-Dollar Invoice Blocked: ${clientSummary.clientName}`,
+        description:
+          `Trinity blocked an invoice for ${clientSummary.clientName} because no billing rate ` +
+          `is configured. ${clientSummary.entries.length} entries (${unbilledHours.toFixed(2)}h) ` +
+          `will remain unbilled until a rate is set on the site, client contract, or workspace.`,
+        workspaceId,
+        metadata: {
+          clientId: clientSummary.clientId,
+          clientName: clientSummary.clientName,
+          unbilledHours,
+          entryCount: clientSummary.entries.length,
+          timeEntryIds: clientSummary.entries.map((e: any) => e.timeEntryId),
+          // @ts-expect-error — TS migration: fix in refactoring sprint
+          severity: 'revenue_risk',
+        },
+      }),
+      '[BillingAutomation] B5 zero-dollar guard event publish',
+    );
+    return null;
+  }
+
   // Get client rate configuration (for subscription billing if applicable)
   const [clientRate] = await db
     .select()
@@ -602,29 +652,7 @@ async function createInvoiceFromBillableSummary(
   // Previous approach (SELECT then INSERT) had a TOCTOU window where concurrent
   // calls all passed the SELECT check before any committed the UPDATE.
   const invoice = await db.transaction(async (tx) => {
-    // Step 1: Atomically claim the time entries by setting billedAt now.
-    // Concurrent transactions will block here until this TX commits/rolls back,
-    // then find billedAt already set and throw — preventing duplicate invoices.
-    let claimedIds: string[] = [];
-    if (timeEntryIds.length > 0) {
-      const claimed = await tx
-        .update(timeEntries)
-        .set({ billedAt: new Date(), updatedAt: new Date() })
-        .where(and(inArray(timeEntries.id, timeEntryIds), isNull(timeEntries.billedAt)))
-        .returning({ id: timeEntries.id });
-      claimedIds = claimed.map(r => r.id);
-
-      if (claimedIds.length === 0) {
-        throw new Error(`B1-CONCURRENT: All ${timeEntryIds.length} entries already claimed by concurrent run — aborting to prevent double-billing`);
-      }
-      if (claimedIds.length !== timeEntryIds.length) {
-        const missed = timeEntryIds.length - claimedIds.length;
-        throw new Error(`B1-CONCURRENT: ${missed}/${timeEntryIds.length} entries already claimed by concurrent run — aborting to prevent partial double-billing`);
-      }
-      log.info(`[BillingAutomation] B1-CLAIM: Atomically claimed ${claimedIds.length} entries before invoice insert`);
-    }
-
-    // Step 2: Create invoice in DRAFT status (requires manager approval before sending to client)
+    // Step 1: Create invoice in DRAFT status (requires manager approval before sending to client)
     const [inv] = await tx
       .insert(invoices)
       .values({
@@ -648,7 +676,7 @@ async function createInvoiceFromBillableSummary(
       })
       .returning();
 
-    // Create line items linking time entries to the invoice
+    // Step 2: Create line items linking time entries to the invoice.
     if (lineItems.length > 0) {
       await tx.insert(invoiceLineItems).values(
         lineItems.map((item, idx) => ({
@@ -672,14 +700,21 @@ async function createInvoiceFromBillableSummary(
       );
     }
 
-    // Step 3: Link invoice ID to the claimed entries.
-    // billedAt was already set atomically in Step 1; only invoiceId needs updating now.
-    if (claimedIds.length > 0) {
-      await tx
-        .update(timeEntries)
-        .set({ invoiceId: inv.id, updatedAt: new Date() })
-        .where(inArray(timeEntries.id, claimedIds));
-      log.info(`[BillingAutomation] B1-LINK: Linked ${claimedIds.length} entries to invoice ${inv.id}`);
+    // Step 3: Atomic stage via the canonical gatekeeper. Replaces the previous
+    // inline `update().set({ billedAt })` block, which was missing the
+    // status='approved' guard — that bug would let a billing run claim
+    // pending or rejected entries. stageForInvoice enforces approved + unbilled
+    // and rolls back the entire transaction (invoice + line items + ledger)
+    // if any candidate is unavailable.
+    if (timeEntryIds.length > 0) {
+      const { attached } = await AtomicFinancialLockService.stageForInvoice({
+        workspaceId,
+        clientId: clientSummary.clientId,
+        invoiceId: inv.id,
+        timeEntryIds,
+        tx,
+      });
+      log.info(`[BillingAutomation] Atomically staged ${attached} entries on invoice ${inv.id}`);
     }
 
     // Step 4 (FIX-3): Ledger write INSIDE the transaction.
@@ -1133,6 +1168,15 @@ export async function generateWeeklyInvoices(
         ),
         allTimeEntryIds
       );
+      // B5: null = umbrella zero-rate guard fired. Surface in skippedClients so the
+      // caller's response payload (and the manager dashboard) shows what was held back.
+      if (!invoice) {
+        skippedClients.push({
+          clientName: clientSummary.clientName,
+          reason: 'No billing rate configured at shift, client, or workspace level',
+        });
+        continue;
+      }
       generatedInvoices.push(invoice);
 
       // Spec Section 4.2: If auto_send_invoice is enabled, transition draft → sent

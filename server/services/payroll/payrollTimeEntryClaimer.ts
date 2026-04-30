@@ -2,6 +2,12 @@ import { db } from 'server/db';
 import { timeEntries } from '@shared/schema';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 
+// Accept either the top-level db handle or a Drizzle transaction handle —
+// callers compose this helper inside an outer db.transaction(...) and the
+// tx parameter there is structurally narrower than typeof db.
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbExecutor = typeof db | DbTransaction;
+
 export interface PayrollTimeEntryClaimResult {
   requestedCount: number;
   claimedCount: number;
@@ -15,7 +21,7 @@ export interface ClaimPayrollTimeEntriesParams {
   payrollRunId: string;
   requireAll?: boolean;
   claimedAt?: Date;
-  tx?: typeof db;
+  tx?: DbExecutor;
 }
 
 /**

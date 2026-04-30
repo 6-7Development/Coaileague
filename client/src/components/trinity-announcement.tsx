@@ -75,7 +75,7 @@ function AnnouncementBubble({
   announcement: AnnouncementType; 
   onDismiss: () => void;
 }) {
-  const style = typeStyles[announcement.type];
+  const style = typeStyles[announcement.type] ?? typeStyles.info;
   const Icon = style.icon;
   
   return (

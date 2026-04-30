@@ -1333,6 +1333,7 @@ function ConfirmationDialogs({
             <AlertDialogCancel data-testid="button-cancel-terminate">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => employee?.id && terminateMutation.mutate(employee.id)}
+              disabled={terminateMutation.isPending}
               className="bg-orange-600 hover:bg-orange-700"
               data-testid="button-confirm-terminate"
             >
@@ -1362,6 +1363,7 @@ function ConfirmationDialogs({
             <AlertDialogCancel data-testid="button-cancel-reactivate">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => employee?.id && reactivateMutation.mutate(employee.id)}
+              disabled={reactivateMutation.isPending}
               data-testid="button-confirm-reactivate"
             >
               {reactivateMutation.isPending ? "Reactivating..." : "Reactivate"}
@@ -1383,6 +1385,7 @@ function ConfirmationDialogs({
             <AlertDialogCancel data-testid="button-cancel-suspend">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => employee?.id && suspendMutation.mutate(employee.id)}
+              disabled={suspendMutation.isPending}
               className="bg-orange-600 hover:bg-orange-700"
               data-testid="button-confirm-suspend"
             >
@@ -1404,6 +1407,7 @@ function ConfirmationDialogs({
             <AlertDialogCancel data-testid="button-cancel-remove">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => employee?.id && removeMutation.mutate(employee.id)}
+              disabled={removeMutation.isPending}
               className="bg-destructive hover:bg-destructive/90"
               data-testid="button-confirm-remove"
             >

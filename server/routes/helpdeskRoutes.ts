@@ -17,7 +17,8 @@ import {
   employees,
   workspaces,
   helpaiSessions,
-  helpaiActionLog
+  helpaiActionLog,
+  userFeedback,
 } from '@shared/schema';
 import type { AuthenticatedRequest } from '../rbac';
 import { getUserPlatformRole, requirePlatformStaff } from '../rbac';
@@ -35,13 +36,38 @@ const router = Router();
 router.post("/feedback", async (req, res) => {
   try {
     const { category, message, rating, contactEmail, workspaceId } = req.body;
-    
-    // In a real app, we'd save this to a feedback table.
-    // For now, we log it and return success.
-    log.info(`[Feedback] Received ${category} feedback: ${rating}/5`, { workspaceId, contactEmail });
-    
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Feedback message is required' });
+    }
+
+    // Map category to feedback_type enum; default to 'general'
+    const CATEGORY_MAP: Record<string, 'bug' | 'feature_request' | 'improvement' | 'general' | 'complaint'> = {
+      bug: 'bug',
+      bug_report: 'bug',
+      feature: 'feature_request',
+      feature_request: 'feature_request',
+      improvement: 'improvement',
+      complaint: 'complaint',
+    };
+    const feedbackType = CATEGORY_MAP[category] ?? 'general';
+
+    // Anonymous public form — userId stored as contact email or sentinel
+    const userId = contactEmail?.trim() || 'anonymous';
+
+    await db.insert(userFeedback).values({
+      userId,
+      workspaceId: workspaceId || null,
+      type: feedbackType,
+      title: category ? `${category} feedback` : 'Platform feedback',
+      description: message.trim(),
+      isPublic: false,
+    });
+
+    log.info(`[Feedback] Saved ${feedbackType} feedback from ${userId}`, { workspaceId, rating });
     res.json({ success: true, message: "Thank you for your feedback!" });
   } catch (err: unknown) {
+    log.error('[Feedback] Failed to save feedback:', err);
     res.status(500).json({ error: sanitizeError(err) });
   }
 });
