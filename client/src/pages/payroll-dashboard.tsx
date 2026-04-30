@@ -340,8 +340,8 @@ export default function PayrollDashboard() {
 
   return (
     <CanvasHubPage config={pageConfig}>
+      <div className="pb-[calc(var(--bottom-nav-height,56px)+env(safe-area-inset-bottom,0px))] sm:pb-0">
       <>
-      {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="relative overflow-hidden border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800/50 dark:to-slate-900/50 shadow-sm">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-full" />
@@ -980,6 +980,7 @@ export default function PayrollDashboard() {
         </AlertDialogContent>
       </AlertDialog>
       </>
+      </div>
     </CanvasHubPage>
   );
 }

@@ -26,6 +26,7 @@ import { eq, and, desc } from "drizzle-orm";
 import {
   payrollTimesheets,
   payrollTimesheetEntries,
+  payrollTimesheetAudit,
   employees,
   auditLogs,
 } from "@shared/schema";

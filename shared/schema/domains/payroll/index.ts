@@ -660,6 +660,26 @@ export const insertPayrollTimesheetSchema = createInsertSchema(payrollTimesheets
 export type InsertPayrollTimesheet = z.infer<typeof insertPayrollTimesheetSchema>;
 export type PayrollTimesheet = typeof payrollTimesheets.$inferSelect;
 
+/**
+ * Payroll Timesheet Audit Log
+ * Tracks all state transitions and actions on payroll timesheets.
+ * Required by payrollTimesheetRoutes.ts — best-effort insert, never blocks transactions.
+ */
+export const payrollTimesheetAudit = pgTable("payroll_timesheet_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timesheetId: varchar("timesheet_id").notNull(),
+  workspaceId: varchar("workspace_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("payroll_timesheet_audit_timesheet_idx").on(table.timesheetId),
+  index("payroll_timesheet_audit_workspace_idx").on(table.workspaceId),
+]);
+export type PayrollTimesheetAudit = typeof payrollTimesheetAudit.$inferSelect;
+
 export const payrollTimesheetEntries = pgTable("payroll_timesheet_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   timesheetId: varchar("timesheet_id").notNull(),

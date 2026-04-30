@@ -2,7 +2,7 @@
  * Analytics AI Service — uses seeded data for AI-powered insights
  */
 import { analyticsStats } from './analyticsStats';
-import { createLogger } from './lib/logger';
+import { createLogger } from '../lib/logger';
 const log = createLogger('AnalyticsAIService');
 
 export const analyticsAIService = {

@@ -21,9 +21,9 @@
  * - Cache versioning with automatic stale data purge on SW update
  */
 
-const CACHE_VERSION = 11;
-const CACHE_NAME = 'coaileague-v4.7';
-const STATIC_CACHE = 'coaileague-static-v4.7';
+const CACHE_VERSION = 12;
+const CACHE_NAME = 'coaileague-v4.8';
+const STATIC_CACHE = 'coaileague-static-v4.8';
 const API_CACHE = 'coaileague-api-v' + CACHE_VERSION;
 const offlineFallbackPage = '/offline.html';
 

@@ -1,8 +1,8 @@
 /**
  * Analytics Data Service — queries real seeded data from shifts, invoices, employees
  */
-import { pool } from './db';
-import { createLogger } from './lib/logger';
+import { pool } from '../db';
+import { createLogger } from '../lib/logger';
 const log = createLogger('AnalyticsDataService');
 
 export const analyticsDataService = {

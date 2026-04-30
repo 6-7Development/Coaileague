@@ -1999,7 +1999,7 @@ body[data-public-route="true"] .fixed [data-testid*="banner"] {
   --panel-padding-mobile: 1rem;   /* 16px page padding */
 
   /* Mobile bottom nav height — used by MobilePageWrapper scroll container */
-  --bottom-nav-height: 64px;
+  --bottom-nav-height: 56px;  /* Canonical: matches MobileBottomNav actual height */
 
   /* Z-Index Scale for Layering (Unified — matches component z-values) */
   /* ═══════════════════════════════════════════════════════

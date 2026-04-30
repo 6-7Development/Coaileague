@@ -1248,7 +1248,7 @@ export default function Employees() {
 
   return (
     <CanvasHubPage config={{ ...employeesPageConfig, headerActions }}>
-      <div className="space-y-6">
+      <div className="space-y-6 pb-[calc(var(--bottom-nav-height,56px)+env(safe-area-inset-bottom,0px))] sm:pb-0">
         <ListFilterBar
           filters={employeeFilterConfigs}
           groupByOptions={employeeGroupByOptions}

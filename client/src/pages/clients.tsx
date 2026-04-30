@@ -462,6 +462,7 @@ export default function Clients() {
 
   return (
     <CanvasHubPage config={clientsPageConfig}>
+      <div className="pb-[calc(var(--bottom-nav-height,56px)+env(safe-area-inset-bottom,0px))] sm:pb-0">
       <UniversalModal open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <UniversalModalTrigger asChild>
           <span className="hidden" />
@@ -1113,6 +1114,7 @@ export default function Clients() {
           <DeactivatedClientsView workspaceId={isPlatformStaff ? selectedWorkspaceId : undefined} />
         </TabsContent>
       </Tabs>
+      </div>
     </CanvasHubPage>
   );
 }
