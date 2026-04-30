@@ -737,11 +737,7 @@ export default function ClientPortal() {
     mutationFn: async () => {
       // V1.1: Visitor pre-registration coming soon
       throw new Error('Visitor management launches in V1.1.');
-    }, // was: apiRequest('POST', '/api/visitor-management/pre-registrations', {
-      ...preRegForm,
-      expectedArrival: preRegForm.expectedArrival || undefined,
-      expectedDeparture: preRegForm.expectedDeparture || undefined,
-    }),
+    },
     onSuccess: () => {
       toast({ title: 'Pre-Registration Submitted', description: `${preRegForm.expectedVisitorName} has been pre-registered.` });
       queryClient.invalidateQueries({ queryKey: ['/api/visitor-management/pre-registrations'] });
