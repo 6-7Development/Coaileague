@@ -362,7 +362,7 @@ export default function AlertConfiguration() {
               <CardDescription>Recent alerts and their status</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[500px]">
+              <ScrollArea className="h-[min(500px,60dvh)]">
                 {historyLoading ? (
                   <div className="flex items-center justify-center h-32">
                     <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />

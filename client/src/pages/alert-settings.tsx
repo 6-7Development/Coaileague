@@ -456,7 +456,7 @@ export default function AlertSettings() {
                       <p className="text-sm mt-1">Alerts will appear here when triggered</p>
                     </div>
                   ) : (
-                    <ScrollArea className="h-[500px]">
+                    <ScrollArea className="h-[min(500px,60dvh)]">
                       <div className="space-y-3 pr-4">
                         {history.map((alert) => {
                           const info = ALERT_TYPE_INFO[alert.alertType];

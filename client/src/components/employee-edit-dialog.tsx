@@ -709,6 +709,7 @@ export function EmployeeEditDialog({
                   id="edit-hourlyRate"
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   value={formData.hourlyRate}
                   onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
                   data-testid="input-edit-rate"
@@ -819,6 +820,7 @@ export function EmployeeEditDialog({
                     type="number"
                     min={0}
                     max={200}
+                    inputMode="numeric"
                     value={formData.travelRadiusMiles}
                     onChange={(e) => setFormData({ ...formData, travelRadiusMiles: parseInt(e.target.value) || 25 })}
                     data-testid="input-edit-travel-radius"

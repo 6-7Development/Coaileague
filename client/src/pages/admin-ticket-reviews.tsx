@@ -114,7 +114,7 @@ export default function AdminTicketReviews() {
           <CardTitle>All Closed Tickets with Reviews</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[400px] sm:h-[600px]">
+          <ScrollArea className="h-[min(400px,55dvh)] sm:h-[600px]">
             <div className="space-y-4">
               {reviews && reviews.length > 0 ? (
                 reviews.map((review) => (

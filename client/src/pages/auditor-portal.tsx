@@ -391,7 +391,7 @@ export default function AuditorPortal() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[min(500px,60dvh)]">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -463,7 +463,7 @@ export default function AuditorPortal() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[min(500px,60dvh)]">
                   <Table>
                     <TableHeader>
                       <TableRow>

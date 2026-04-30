@@ -1,10 +1,13 @@
 {
   "name": "CoAIleague - AI Workforce Management",
   "short_name": "CoAIleague",
-  "description": "AI-powered workforce management platform with intelligent scheduling, time tracking, payroll automation, and incident reporting for security and field service teams",
-  "start_url": "/",
+  "description": "AI-powered workforce management for security and field service teams. Clock in/out, scheduling, payroll, and incident reporting \u2014 built for teams on the go.",
+  "start_url": "/?source=pwa",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
@@ -93,33 +96,74 @@
       "label": "Mobile Clock-In"
     }
   ],
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "shortcuts": [
     {
       "name": "Clock In/Out",
       "short_name": "Clock",
-      "description": "Start or end your shift",
-      "url": "/worker",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "description": "Record your shift start or end",
+      "url": "/clock?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "My Schedule",
       "short_name": "Schedule",
-      "description": "View your work schedule",
-      "url": "/schedule",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "description": "View your upcoming shifts",
+      "url": "/schedule?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Report Incident",
       "short_name": "Incident",
-      "description": "Report a security incident",
-      "url": "/worker/incidents",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "description": "File a security incident report",
+      "url": "/incidents/new?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Chat",
+      "description": "Open team chat",
+      "url": "/chatrooms?source=pwa-shortcut",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,
   "related_applications": [],
   "scope": "/",
   "lang": "en-US",
-  "dir": "ltr"
+  "dir": "ltr",
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "edge_side_panel": {
+    "preferred_width": 480
+  }
 }

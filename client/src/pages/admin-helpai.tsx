@@ -876,7 +876,7 @@ export default function AdminHelpAI() {
                   <h2 className="text-base font-semibold">Client Portal Reports</h2>
                 </div>
 
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[min(500px,60dvh)]">
                   {reportsLoading ? (
                     <div className="flex items-center justify-center h-32">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

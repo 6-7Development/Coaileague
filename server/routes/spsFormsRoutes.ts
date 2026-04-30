@@ -52,7 +52,13 @@ const upload = multer({
 });
 
 // ── Encryption helpers (AES-256-CBC) ─────────────────────────────────────────
+// SECURITY: FIELD_ENCRYPTION_KEY must be set in production via Railway env vars.
+// The placeholder below encrypts data but with a known key — anyone who reads this
+// source file can decrypt it. Set a random 32-char secret in Railway before go-live.
 const ENC_KEY = process.env.FIELD_ENCRYPTION_KEY || 'changeme-32-byte-key-placeholder!'; // 32 chars
+if (!process.env.FIELD_ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
+  console.error('[SECURITY] ⚠️  FIELD_ENCRYPTION_KEY is not set — SPS form data is encrypted with a known fallback key. Set FIELD_ENCRYPTION_KEY in Railway environment variables immediately.');
+}
 function encrypt(plain: string): string {
   const key = Buffer.from(ENC_KEY.slice(0, 32).padEnd(32, '0'));
   const iv = randomBytes(16);

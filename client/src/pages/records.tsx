@@ -38,7 +38,7 @@ export default function Records() {
 
   if (!module?.enabled) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-dvh">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Module Not Available</CardTitle>

@@ -48,7 +48,7 @@ export default function Homepage() {
   // Show a loading indicator while redirecting authenticated users to dashboard
   if (!isLoading && !isFetching && isAuthenticated) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
+      <div className="h-dvh w-full flex items-center justify-center bg-background">
         <UniversalSpinner size="md" label="Redirecting to your dashboard…" />
       </div>
     );
@@ -62,7 +62,7 @@ export default function Homepage() {
         canonical={`${DOMAINS.app}/`}
         structuredData={[STRUCTURED_DATA.organization, STRUCTURED_DATA.softwareApp]}
       />
-      <div className="min-h-screen bg-background overflow-x-hidden w-full">
+      <div className="min-h-dvh bg-background overflow-x-hidden w-full">
         <UniversalHeader variant="public" />
 
       {/* Hero Section */}

@@ -561,7 +561,7 @@ export default function Clients() {
                     <Label htmlFor="phone">Phone</Label>
                     <Input 
                       id="phone" 
-                      placeholder="Enter phone number" 
+                      placeholder="Enter phone number" inputMode="tel" autoComplete="tel" 
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       data-testid="input-client-phone" 

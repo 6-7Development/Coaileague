@@ -14,7 +14,7 @@ export default function DocumentFormPage() {
 
   if (!templateId) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-dvh">
         <p className="text-muted-foreground">No template specified.</p>
       </div>
     );
@@ -28,7 +28,7 @@ export default function DocumentFormPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background" data-testid="document-form-page">
+    <div className="flex flex-col min-h-dvh bg-background" data-testid="document-form-page">
       {/* Sticky header */}
       <header className="sticky top-0 z-[1020] flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-border bg-background">
         <Button

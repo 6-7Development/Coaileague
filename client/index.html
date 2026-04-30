@@ -65,9 +65,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, user-scalable=yes, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- black (not black-translucent) — translucent shifts page content up under the status bar -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="CoAIleague" />
-    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no" />
+    <!-- Allow telephone detection so field officers can tap-to-call from incident reports -->
+    <meta name="format-detection" content="telephone=yes, date=no, address=no, email=no, url=no" />
     <title>CoAIleague — AI-Powered Security Guard Workforce Management Software</title>
     <meta name="description" content="The AI workforce management platform built exclusively for security guard companies. Automate scheduling, payroll, compliance, and guard management with Trinity AI. Texas-based, nationwide reach." />
     <meta name="keywords" content="security guard workforce management software, security company scheduling software, guard management platform, security company payroll automation, AI scheduling security companies, security officer time tracking, security company compliance management, security company HR software" />

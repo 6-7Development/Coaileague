@@ -1502,7 +1502,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-paymentTerms">Payment Terms (Days)</Label>
-                  <Input id="edit-paymentTerms" type="number" min="0" placeholder="30" data-testid="input-edit-payment-terms"
+                  <Input id="edit-paymentTerms" type="number" min="0" inputMode="numeric" placeholder="30" data-testid="input-edit-payment-terms"
                     value={editFormData.paymentTermsDays} onChange={(e) => setEditFormData({ ...editFormData, paymentTermsDays: e.target.value })} />
                 </div>
                 <div className="space-y-2">
@@ -1553,22 +1553,22 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-contractRate">Base Contract Rate</Label>
-                  <Input id="edit-contractRate" type="number" min="0" step="0.01" placeholder="e.g. 22.50" data-testid="input-edit-contract-rate"
+                  <Input id="edit-contractRate" type="number" min="0" step="0.01" inputMode="decimal" placeholder="e.g. 22.50" data-testid="input-edit-contract-rate"
                     value={editFormData.contractRate} onChange={(e) => setEditFormData({ ...editFormData, contractRate: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-armedBillRate">Armed Officer Rate</Label>
-                  <Input id="edit-armedBillRate" type="number" min="0" step="0.01" placeholder="e.g. 27.00" data-testid="input-edit-armed-bill-rate"
+                  <Input id="edit-armedBillRate" type="number" min="0" step="0.01" inputMode="decimal" placeholder="e.g. 27.00" data-testid="input-edit-armed-bill-rate"
                     value={editFormData.armedBillRate} onChange={(e) => setEditFormData({ ...editFormData, armedBillRate: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-unarmedBillRate">Unarmed Officer Rate</Label>
-                  <Input id="edit-unarmedBillRate" type="number" min="0" step="0.01" placeholder="e.g. 18.00" data-testid="input-edit-unarmed-bill-rate"
+                  <Input id="edit-unarmedBillRate" type="number" min="0" step="0.01" inputMode="decimal" placeholder="e.g. 18.00" data-testid="input-edit-unarmed-bill-rate"
                     value={editFormData.unarmedBillRate} onChange={(e) => setEditFormData({ ...editFormData, unarmedBillRate: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-overtimeBillRate">Overtime Bill Rate</Label>
-                  <Input id="edit-overtimeBillRate" type="number" min="0" step="0.01" placeholder="e.g. 33.75" data-testid="input-edit-overtime-bill-rate"
+                  <Input id="edit-overtimeBillRate" type="number" min="0" step="0.01" inputMode="decimal" placeholder="e.g. 33.75" data-testid="input-edit-overtime-bill-rate"
                     value={editFormData.overtimeBillRate} onChange={(e) => setEditFormData({ ...editFormData, overtimeBillRate: e.target.value })} />
                 </div>
               </div>

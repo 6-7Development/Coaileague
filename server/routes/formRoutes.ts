@@ -350,7 +350,8 @@ router.get("/forms/signing/sequences", requireAuth, async (_req: AuthenticatedRe
 });
 
 router.post("/forms/signing/sequences", requireAuth, async (_req: AuthenticatedRequest, res) => {
-  res.status(201).json({ id: null, message: "Signing sequences not yet implemented" });
+  // V1.1: e-signature sequence creation not yet implemented
+  res.status(501).json({ error: "not_implemented", message: "Signing sequences are not yet available." });
 });
 
 router.get("/forms/:id/submissions", requireAuth, async (req: AuthenticatedRequest, res) => {

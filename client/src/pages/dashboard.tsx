@@ -24,7 +24,7 @@ const AuditorDashboard    = lazy(() => import("./dashboards/AuditorDashboard"));
 
 function LoadingSpinner() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen gap-4">
+    <div className="flex flex-col items-center justify-center h-dvh gap-4">
       <Suspense fallback={<div className="w-20 h-20" />}>
         <TrinityArrowMark size={80} />
       </Suspense>

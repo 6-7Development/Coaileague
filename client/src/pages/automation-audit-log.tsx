@@ -221,7 +221,7 @@ export default function AutomationAuditLog() {
               <CardDescription>Real-time log of all automation job executions with retry controls</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[500px]">
+              <ScrollArea className="h-[min(500px,60dvh)]">
                 {eventsLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

@@ -326,10 +326,10 @@ function ClientMessagesTab({ clientId }: { clientId: string }) {
         <CardDescription>Direct messages with your security provider</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="flex min-h-[400px] border-t">
+        <div className="flex min-h-[min(400px,55dvh)] border-t">
           {/* Thread List */}
           <div className="w-64 shrink-0 border-r">
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[min(400px,55dvh)]">
               {threadsLoading ? (
                 <div className="p-3 space-y-2">
                   {Array.from({ length: 3 }).map((_, i) => (

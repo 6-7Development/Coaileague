@@ -1005,7 +1005,7 @@ export default function RMSHub() {
   return (
     <DsPageWrapper className="flex gap-0 p-0" padding={false}>
       {/* Sidebar */}
-      <div className="w-64 border-r border-[var(--ds-border)] bg-[var(--ds-navy)] sticky top-0 z-20 h-screen overflow-y-auto hidden md:block flex-shrink-0">
+      <div className="w-64 border-r border-[var(--ds-border)] bg-[var(--ds-navy)] sticky top-0 z-20 h-dvh overflow-y-auto hidden md:block flex-shrink-0">
         <div className="p-6 space-y-8">
           <div>
             <div className="text-[10px] font-bold tracking-[0.2em] text-[var(--ds-text-muted)] mb-4 uppercase" style={{ fontFamily: 'var(--ds-font-display)' }}>
