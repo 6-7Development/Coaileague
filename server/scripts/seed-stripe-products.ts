@@ -133,50 +133,6 @@ async function createOneTimePrice(
  * Does NOT delete — Stripe keeps price history for existing subscriptions.
  * Sets active=false so they don't appear in new checkouts.
  */
-async function archiveLegacyProducts(): Promise<void> {
-  // Patterns that indicate legacy products to archive
-  const legacyNamePatterns = [
-    /^CoAIleague.*v1$/i,
-    /^WorkforceOS/i,
-    /^AutoForce/i,
-    /^Drill Consulting/i,
-    /legacy/i,
-    /^CoAIleague AI Credits — (5,000|25,000|100,000|500,000) Pack$/i, // Old credit pack names
-  ];
-
-  // Product names that MUST NOT be archived (even if they match a pattern)
-  const protectedNames = [
-    'CoAIleague Starter',
-    'CoAIleague Professional',
-    'CoAIleague Business',
-    'CoAIleague Enterprise',
-    'CoAIleague Strategic',
-  ];
-
-  let archived = 0;
-  let page = await stripe.products.list({ active: true, limit: 100 });
-
-  while (true) {
-    for (const product of page.data) {
-      const isProtected = protectedNames.some(n => product.name.includes(n));
-      const isLegacy = !isProtected && legacyNamePatterns.some(p => p.test(product.name));
-
-      if (isLegacy) {
-        await stripe.products.update(product.id, { active: false });
-        console.log(`  [archived] ${product.name} (${product.id})`);
-        archived++;
-      }
-    }
-    if (!page.has_more) break;
-    page = await stripe.products.list({ active: true, limit: 100, starting_after: page.data[page.data.length - 1].id });
-  }
-
-  if (archived === 0) {
-    console.log('  No legacy products found — catalog is clean ✅');
-  } else {
-    console.log(`  Archived ${archived} legacy product(s)`);
-  }
-}
 
 async function seedProducts() {
   console.log('\nCoAIleague Stripe Product Catalog Sync\n');

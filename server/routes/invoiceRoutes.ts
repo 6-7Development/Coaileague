@@ -578,8 +578,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // ── WRITE-PROTECT: Closed invoices cannot be re-sent ──────────────────────
       // GAP-31 FIX: Added 'refunded' — a refunded invoice must not be re-sent to client.
       const SEND_BLOCKED_STATUSES = ['paid', 'void', 'cancelled', 'refunded', 'disputed'] as const;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      if (SEND_BLOCKED_STATUSES.includes(invoice as any).status) {
+      if (SEND_BLOCKED_STATUSES.includes((invoice as any).status)) {
         return res.status(403).json({
           message: "This record has been closed and cannot be modified",
           code: 'RECORD_CLOSED',
@@ -1099,8 +1098,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // GAP-32 FIX: Added 'refunded' — a refunded invoice is a closed accounting record
       // and must not be mutated via PATCH. Issue a new credit memo to correct it.
       const CLOSED_STATUSES = ['paid', 'cancelled', 'void', 'refunded', 'disputed'] as const;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      if (CLOSED_STATUSES.includes(frozenCheck as any).status) {
+      if (CLOSED_STATUSES.includes((frozenCheck as any).status)) {
         return res.status(409).json({
           message: `Invoice ${frozenCheck.invoiceNumber || id} has status '${frozenCheck.status}' and cannot be modified. To correct a paid invoice, issue a credit memo or adjustment.`,
           code: 'INVOICE_CLOSED',

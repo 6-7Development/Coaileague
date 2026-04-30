@@ -3733,9 +3733,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const searchTerm = request.payload?.query || '';
-        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        const filtered = (contracts as any).filter(c => 
+        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as any).filter(c => 
           c.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.title?.toLowerCase().includes(searchTerm.toLowerCase())
         );
