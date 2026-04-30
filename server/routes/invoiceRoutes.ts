@@ -4,6 +4,11 @@ import { PLATFORM } from '../config/platformConfig';
 import { Router } from "express";
 import crypto from 'crypto';
 import {
+  generateInvoiceFromHours,
+} from '../services/timesheetInvoiceService';
+import { requireWorkspaceRole } from '../rbac';
+import type { Request, Response } from 'express';
+import {
   invoiceUpdateBodySchema,
   markPaidBodySchema,
   partialPaymentBodySchema,
@@ -2876,6 +2881,61 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
     return res.status(500).json({ message: 'Failed to create payment intent' });
   }
 });
+
+// ─── PATH ALIAS: /api/invoices/generate-from-hours ──────────────────────────
+// The timesheetInvoiceRouter handles this at /api/timesheet-invoices/generate-from-hours,
+// but the client calls /api/invoices/generate-from-hours. This alias keeps both paths
+// functional without duplicating the service logic.
+router.post(
+  '/generate-from-hours',
+  // @ts-expect-error — TS migration: requireWorkspaceRole type
+  requireWorkspaceRole(['org_owner', 'co_owner']),
+  async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'No workspace selected' });
+      }
+
+      const {
+        clientId,
+        startDate,
+        endDate,
+        hourlyRateOverride,
+        taxRate,
+        notes,
+        dueInDays,
+        groupByEmployee,
+        groupByProject,
+      } = req.body;
+
+      if (!clientId || !startDate || !endDate) {
+        return res.status(400).json({
+          error: 'clientId, startDate, and endDate are required',
+        });
+      }
+
+      const result = await generateInvoiceFromHours({
+        workspaceId,
+        clientId,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        hourlyRateOverride: hourlyRateOverride ? Number(hourlyRateOverride) : undefined,
+        taxRate: taxRate ? Number(taxRate) : undefined,
+        notes,
+        dueInDays: dueInDays ? Number(dueInDays) : undefined,
+        groupByEmployee: Boolean(groupByEmployee),
+        groupByProject: Boolean(groupByProject),
+      });
+
+      return res.json({ success: true, ...result });
+    } catch (error: unknown) {
+      return res.status(500).json({
+        error: sanitizeError(error) || 'Failed to generate invoice from hours',
+      });
+    }
+  },
+);
 
 export default router;
 

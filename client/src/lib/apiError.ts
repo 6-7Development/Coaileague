@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { deepToCamel } from './queryClient';
 
 export const AnyResponse = z.union([z.object({}).passthrough(), z.array(z.unknown())]);
 
@@ -48,9 +49,11 @@ export async function apiFetch<T>(
   }
 
   const json = await response.json();
+  // Incoming: snake_case → camelCase before Zod schema validation
+  const normalized = deepToCamel(json);
 
   try {
-    return schema.parse(json);
+    return schema.parse(normalized);
   } catch (validationError) {
     throw new ApiContractViolation(
       url,

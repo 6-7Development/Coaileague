@@ -6,6 +6,7 @@ import {
   employees,
   shifts,
   timeOffRequests,
+  ptoRequests,
   insertTimeOffRequestSchema,
   shiftActions,
   insertShiftActionSchema,
@@ -703,6 +704,63 @@ router.put("/api/timesheet-edit-requests/:id/review", requireManager, async (req
   } catch (error: unknown) {
     log.error("Error reviewing timesheet edit request:", error);
     res.status(500).json({ message: sanitizeError(error) || "Failed to review request" });
+  }
+});
+
+// ─── PATH ALIASES: /api/hr/pto → /api/pto ───────────────────────────────────
+// The payroll dashboard and HR pages call /api/hr/pto. The canonical PTO routes
+// are mounted directly at /api/pto above. These aliases forward to the same
+// underlying database queries so both URL patterns work identically.
+
+router.get('/api/hr/pto', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const workspaceId = req.workspaceId;
+  if (!workspaceId) return res.status(403).json({ message: 'Workspace context required' });
+  try {
+    const requests = await db
+      .select()
+      .from(ptoRequests)
+      .where(eq(ptoRequests.workspaceId, workspaceId))
+      .orderBy(desc(ptoRequests.createdAt));
+    return res.json(requests);
+  } catch (error: unknown) {
+    log.error('Error fetching HR PTO requests:', error);
+    return res.status(500).json({ message: sanitizeError(error) || 'Failed to fetch PTO requests' });
+  }
+});
+
+router.post('/api/hr/pto', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const workspaceId = req.workspaceId;
+  if (!workspaceId) return res.status(403).json({ message: 'Workspace context required' });
+  try {
+    const { insertPtoRequestSchema } = await import('@shared/schema');
+    const parsed = insertPtoRequestSchema.parse({ ...req.body, workspaceId });
+    const [created] = await db.insert(ptoRequests).values(parsed).returning();
+    return res.status(201).json(created);
+  } catch (error: unknown) {
+    log.error('Error creating HR PTO request:', error);
+    return res.status(500).json({ message: sanitizeError(error) || 'Failed to create PTO request' });
+  }
+});
+
+router.get('/api/hr/pto-accrual/run', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+  // PTO accrual calculation — returns accrual summary for the workspace
+  const workspaceId = req.workspaceId;
+  if (!workspaceId) return res.status(403).json({ message: 'Workspace context required' });
+  try {
+    const accruals = await db
+      .select({
+        employeeId: ptoRequests.employeeId,
+        totalHours: sql<number>`COALESCE(SUM(${ptoRequests.totalHours}), 0)`,
+        pendingCount: sql<number>`COUNT(CASE WHEN ${ptoRequests.status} = 'pending' THEN 1 END)`,
+        approvedCount: sql<number>`COUNT(CASE WHEN ${ptoRequests.status} = 'approved' THEN 1 END)`,
+      })
+      .from(ptoRequests)
+      .where(eq(ptoRequests.workspaceId, workspaceId))
+      .groupBy(ptoRequests.employeeId);
+    return res.json({ accruals, runAt: new Date().toISOString() });
+  } catch (error: unknown) {
+    log.error('Error running PTO accrual:', error);
+    return res.status(500).json({ message: sanitizeError(error) || 'Failed to run PTO accrual' });
   }
 });
 

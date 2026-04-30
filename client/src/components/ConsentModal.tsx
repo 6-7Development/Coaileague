@@ -12,32 +12,32 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface Agreement {
   id: string;
-  agreement_type: string;
+  agreementType: string;       // interceptor converts snake → camel on response
   version: string;
   title: string;
   content: string;
-  effective_date: string;
-  requires_explicit_signature: boolean;
+  effectiveDate: string;
+  requiresExplicitSignature: boolean;
 }
 
 interface ConsentPreferences {
-  trinity_voice_calls: boolean;
-  trinity_sms: boolean;
-  trinity_email: boolean;
-  trinity_interview_calls: boolean;
-  trinity_document_delivery: boolean;
-  trinity_onboarding_comms: boolean;
-  marketing_emails: boolean;
+  trinityVoiceCalls: boolean;       // interceptor converts camel → snake on request
+  trinitySms: boolean;
+  trinityEmail: boolean;
+  trinityInterviewCalls: boolean;
+  trinityDocumentDelivery: boolean;
+  trinityOnboardingComms: boolean;
+  marketingEmails: boolean;
 }
 
 const DEFAULT_PREFS: ConsentPreferences = {
-  trinity_voice_calls: true,
-  trinity_sms: true,
-  trinity_email: true,
-  trinity_interview_calls: true,
-  trinity_document_delivery: true,
-  trinity_onboarding_comms: true,
-  marketing_emails: false,
+  trinityVoiceCalls: true,
+  trinitySms: true,
+  trinityEmail: true,
+  trinityInterviewCalls: true,
+  trinityDocumentDelivery: true,
+  trinityOnboardingComms: true,
+  marketingEmails: false,
 };
 
 interface ConsentModalProps {
@@ -64,7 +64,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
         throw new Error("Please type your full name to confirm acceptance.");
       }
       const unread = pendingAgreements.filter(
-        (a) => a.requires_explicit_signature && !readMap[a.id]
+        (a) => a.requiresExplicitSignature && !readMap[a.id]
       );
       if (unread.length > 0) {
         throw new Error(`Please expand and read all agreements before signing: ${unread.map((a) => a.title).join(", ")}`);
@@ -72,7 +72,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
 
       const agreements = pendingAgreements.map((a) => ({
         id: a.id,
-        type: a.agreement_type,
+        type: a.agreementType,
         version: a.version,
       }));
 
@@ -162,7 +162,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
               <button
                 className="w-full flex items-start justify-between gap-2 px-3 py-3 text-left hover-elevate"
                 onClick={() => toggleExpand(agreement.id)}
-                data-testid={`agreement-toggle-${agreement.agreement_type}`}
+                data-testid={`agreement-toggle-${agreement.agreementType}`}
               >
                 {/* Left: icon + title */}
                 <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -197,7 +197,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
                   <ScrollArea className="h-44">
                     <p
                       className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words pr-2"
-                      data-testid={`agreement-content-${agreement.agreement_type}`}
+                      data-testid={`agreement-content-${agreement.agreementType}`}
                     >
                       {agreement.content}
                     </p>
@@ -208,7 +208,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
           ))}
 
           {/* Communication Consent */}
-          {pendingAgreements.some((a) => a.agreement_type === "trinity_consent") && (
+          {pendingAgreements.some((a) => a.agreementType === "trinity_consent") && (
             <div className="border rounded-md px-3 py-4 space-y-3">
               <p className="text-sm font-medium">Communication Preferences</p>
               <p className="text-xs text-muted-foreground">
@@ -216,13 +216,13 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
               </p>
               <div className="space-y-2.5">
                 {([
-                  ["trinity_voice_calls", "Voice calls for scheduling and updates"],
+                  ["trinityVoiceCalls", "Voice calls for scheduling and updates"],
                   ["trinity_sms", "Text messages (SMS) for alerts and reminders"],
                   ["trinity_email", "Email notifications and correspondence"],
                   ["trinity_interview_calls", "AI-conducted interview calls"],
                   ["trinity_document_delivery", "Electronic document delivery"],
                   ["trinity_onboarding_comms", "Onboarding guidance and follow-ups"],
-                  ["marketing_emails", "Platform updates and feature announcements (optional)"],
+                  ["marketingEmails", "Platform updates and feature announcements (optional)"],
                 ] as [keyof ConsentPreferences, string][]).map(([key, label]) => (
                   <div key={key} className="flex items-start gap-2.5">
                     <Checkbox
@@ -277,7 +277,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
         <div className="px-4 sm:px-6 py-3 border-t shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             Effective {pendingAgreements[0]
-              ? new Date(pendingAgreements[0].effective_date).toLocaleDateString()
+              ? new Date(pendingAgreements[0].effectiveDate).toLocaleDateString()
               : ""}
           </p>
           <Button

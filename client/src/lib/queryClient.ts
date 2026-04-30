@@ -5,6 +5,79 @@ import { toast } from "@/hooks/use-toast";
 // Re-export for backwards compatibility
 export { clearCsrfToken };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3: Global camelCase ↔ snake_case Interceptor
+// Drizzle returns snake_case column names from PostgreSQL. All frontend
+// interfaces use camelCase. This interceptor converts automatically so we
+// never have to touch individual files.
+//
+// RULES:
+//   Outgoing (request body)  → camelCase keys become snake_case
+//   Incoming (response JSON) → snake_case keys become camelCase
+//
+// SKIP LIST: keys that must never be transformed (file fields, Stripe IDs,
+// external service payloads that already expect snake_case from the provider).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SKIP_TRANSFORM = new Set([
+  // Stripe webhook fields come pre-snake_cased from Stripe
+  "client_secret", "payment_method", "payment_intent",
+  // Plaid passthrough fields
+  "account_id", "routing_number",
+  // Raw SQL / JSONB blobs stored verbatim — never transform their inner keys
+  "pre_edit_snapshot", "correction_data", "evidence_snapshot",
+  "risk_factors", "staged_metadata", "line_items", "shift_details",
+]);
+
+/** camelCase → snake_case  (e.g. "workspaceId" → "workspace_id") */
+function toSnakeCase(str: string): string {
+  return str.replace(/([A-Z])/g, (c) => `_${c.toLowerCase()}`);
+}
+
+/** snake_case → camelCase  (e.g. "workspace_id" → "workspaceId") */
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+type JsonObject = { [key: string]: JsonValue };
+type JsonArray = JsonValue[];
+
+/**
+ * Recursively converts all object keys to snake_case.
+ * Arrays are traversed but their items' types are preserved.
+ * Primitives are returned as-is.
+ */
+export function deepToSnake(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(deepToSnake);
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const snakeKey = SKIP_TRANSFORM.has(k) ? k : toSnakeCase(k);
+      out[snakeKey] = SKIP_TRANSFORM.has(k) ? v : deepToSnake(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Recursively converts all object keys to camelCase.
+ * Safe to call on any JSON value returned by the server.
+ */
+export function deepToCamel(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(deepToCamel);
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const camelKey = SKIP_TRANSFORM.has(k) ? k : toCamelCase(k);
+      out[camelKey] = SKIP_TRANSFORM.has(k) ? v : deepToCamel(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // Custom error class that includes HTTP status for better error handling
 export class ApiError extends Error {
   status: number;
@@ -68,7 +141,8 @@ export async function apiRequest(
     const res = await fetch(url, {
       method,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
+      // Outgoing: camelCase → snake_case before leaving the client
+      body: data ? JSON.stringify(deepToSnake(data)) : undefined,
       credentials: "include",
     });
 
@@ -100,7 +174,8 @@ export async function apiRequest(
             const retryRes = await fetch(url, {
               method,
               headers,
-              body: data ? JSON.stringify(data) : undefined,
+              // Outgoing: camelCase → snake_case on retry too
+              body: data ? JSON.stringify(deepToSnake(data)) : undefined,
               credentials: "include",
             });
             await throwIfResNotOk(retryRes);
@@ -179,7 +254,8 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    // Incoming: snake_case → camelCase on every GET response
+    return deepToCamel(await res.json()) as T;
   };
 
 export const queryClient = new QueryClient({
