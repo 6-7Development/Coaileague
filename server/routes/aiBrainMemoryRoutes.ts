@@ -5,6 +5,8 @@
  */
 
 import type { Express } from 'express';
+import { requireAuth } from '../rbac';
+import type { AuthenticatedRequest } from '../rbac';
 import { trinityMemoryService } from '../services/ai-brain/trinityMemoryService';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
