@@ -240,6 +240,20 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
     staleTime: 30_000,
   });
 
+  // Worker pay period earnings — shown in stats bar on My Schedule view
+  const { data: earningsData } = useQuery<{
+    hoursWorked: number;
+    earnings: number;
+    projectedEarnings: number;
+    hourlyRate: number;
+    payPeriodStart: string | null;
+    payPeriodEnd: string | null;
+  }>({
+    queryKey: ['/api/dashboard/worker-earnings'],
+    enabled: viewMode === 'my' && !!currentEmployee?.id,
+    staleTime: 60_000,
+  });
+
   // Fetch employees
   const { data: employees = [] } = useQuery<{ data: Employee[] }, Error, Employee[]>({
     queryKey: ['/api/employees'],
@@ -765,7 +779,9 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
           {format(selectedDate, 'EEE, MMM d')}
         </span>
         <span className="text-[9px] text-muted-foreground">
-          {weeklyHoursDisplay}
+          {viewMode === 'my' && earningsData?.earnings != null
+            ? `${weeklyHoursDisplay} · $${earningsData.earnings.toFixed(0)} earned`
+            : weeklyHoursDisplay}
         </span>
       </div>
       </div>{/* end sticky header block */}
@@ -1094,13 +1110,15 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
                               <Button
                                 size="sm"
                                 className="shrink-0 text-xs bg-red-600 hover:bg-red-700"
-                                disabled={!currentEmployee?.id}
+                                disabled={!currentEmployee?.id || claimingShiftId === shift.id}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleClaimShift(shift);
                                 }}
                               >
-                                Claim
+                                {claimingShiftId === shift.id ? (
+                                  <><span className="animate-spin mr-1">⟳</span> Claiming…</>
+                                ) : 'Claim'}
                               </Button>
                             </div>
                           );
