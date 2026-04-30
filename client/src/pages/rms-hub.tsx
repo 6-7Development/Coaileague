@@ -354,7 +354,7 @@ export default function RMSHub() {
   const custodyLog = useQuery<any>({ queryKey: ["/api/rms/evidence", selectedEvidenceId, "custody-log"], enabled: !!selectedEvidenceId });
 
   function invalidateAll() {
-    queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/rms") });
+    queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0]?.startsWith("/api/rms") });
   }
 
   const createIncident = useMutation({
@@ -1582,7 +1582,7 @@ export default function RMSHub() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {auditTrailDetail.data.trail.map((entry: any, i: number) => (
+                  {auditTrailDetail.data?.trail?.map((entry: any, i: number) => (
                     <div key={entry.id || i} data-testid={`row-audit-${entry.id}`} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

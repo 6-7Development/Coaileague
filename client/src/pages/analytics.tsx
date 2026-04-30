@@ -856,7 +856,7 @@ export default function Analytics() {
                         <div className="pt-4 border-t">
                           <div className="flex justify-between gap-2 text-sm">
                             <span className="text-muted-foreground">Active Employees</span>
-                            <span className="font-medium">{performance.data.employees.length}</span>
+                            <span className="font-medium">{performance.data?.employees?.length ?? 0}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -910,7 +910,7 @@ export default function Analytics() {
                   />
                   <MetricCard
                     title="Employees"
-                    value={formatNumber(timeUsage.data.byEmployee.length)}
+                    value={formatNumber(timeUsage.data?.byEmployee?.length ?? 0)}
                     subtitle="With time entries"
                     icon={Users}
                   />
@@ -923,9 +923,9 @@ export default function Analytics() {
                       <CardDescription>Top performers by hours tracked</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {timeUsage.data.byEmployee.length > 0 ? (
+                      {(timeUsage.data?.byEmployee?.length ?? 0) > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={timeUsage.data.byEmployee.slice(0, 10)} layout="vertical">
+                          <BarChart data={timeUsage.data?.byEmployee?.slice(0, 10)} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis type="number" className="text-xs" />
                             <YAxis dataKey="name" type="category" width={100} className="text-xs" />
@@ -1242,7 +1242,7 @@ export default function Analytics() {
                           />
                         </div>
                       ))}
-                      {revenue.data.byClient.length === 0 && (
+                      {(revenue.data?.byClient?.length ?? 0) === 0 && (
                         <p className="text-center text-muted-foreground py-8">No client revenue data available</p>
                       )}
                     </div>
@@ -1267,7 +1267,7 @@ export default function Analytics() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
                     title="Total Employees"
-                    value={performance.data.employees.length}
+                    value={performance.data?.employees?.length ?? 0}
                     subtitle="Active this period"
                     icon={Users}
                   />
@@ -1331,7 +1331,7 @@ export default function Analytics() {
                           </div>
                         </div>
                       ))}
-                      {performance.data.employees.length === 0 && (
+                      {(performance.data?.employees?.length ?? 0) === 0 && (
                         <p className="text-center text-muted-foreground py-8">No employee data available</p>
                       )}
                     </div>

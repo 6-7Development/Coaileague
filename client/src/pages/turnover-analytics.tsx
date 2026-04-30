@@ -106,7 +106,7 @@ export default function TurnoverAnalytics() {
   });
 
   const maxTerminations = data?.monthlyTrend
-    ? Math.max(...data.monthlyTrend.map((m) => m.terminations), 1)
+    ? Math.max(...(data?.monthlyTrend ?? []).map((m) => m.terminations), 1)
     : 1;
 
   return (
@@ -221,7 +221,7 @@ export default function TurnoverAnalytics() {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {data.monthlyTrend.map((m) => (
+                      {(data?.monthlyTrend ?? []).map((m) => (
                         <div key={m.month} className="flex items-center gap-3" data-testid={`row-month-${m.month}`}>
                           <span className="text-xs text-muted-foreground w-16 shrink-0">
                             {formatMonth(m.month)}
@@ -252,7 +252,7 @@ export default function TurnoverAnalytics() {
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      {data.attritionRisk.map((risk) => (
+                      {(data?.attritionRisk ?? []).map((risk) => (
                         <div
                           key={risk.role}
                           className="flex items-center justify-between gap-2 flex-wrap"
@@ -305,7 +305,7 @@ export default function TurnoverAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.byRole.map((r) => (
+                      {(data?.byRole ?? []).map((r) => (
                         <TableRow key={r.role} data-testid={`row-role-${r.role}`}>
                           <TableCell className="font-medium">{r.role}</TableCell>
                           <TableCell className="text-right">{r.active}</TableCell>
@@ -354,7 +354,7 @@ export default function TurnoverAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.recentTerminations.map((t) => (
+                      {(data?.recentTerminations ?? []).map((t) => (
                         <TableRow key={t.id} data-testid={`row-termination-${t.id}`}>
                           <TableCell className="font-medium">
                             {t.firstName} {t.lastName}

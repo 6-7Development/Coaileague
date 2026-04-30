@@ -689,7 +689,7 @@ export default function RegulatoryDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {violationsQuery.data.data.violations.map((v: any) => (
+                    {(violationsQuery.data?.data?.violations ?? []).map((v: any) => (
                       <TableRow key={v.id} data-testid={`row-violation-${v.id}`} className="border-slate-700">
                         <TableCell className="text-slate-300 text-sm">{new Date(v.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
@@ -737,7 +737,7 @@ export default function RegulatoryDashboard() {
                     <div className="p-3 rounded-md bg-slate-800 border border-slate-700">
                       <p className="text-slate-300 text-sm font-medium mb-2">State Minimum Coverage Requirements</p>
                       <div className="space-y-1">
-                        {insuranceQuery.data.data.stateMinimumCoverage.map((req: any, i: number) => (
+                        {(insuranceQuery.data?.data?.stateMinimumCoverage ?? []).map((req: any, i: number) => (
                           <div key={i} className="flex justify-between text-sm">
                             <span className="text-slate-400">{req.type?.replace(/_/g, " ")}</span>
                             <span className="text-white font-medium">${req.minimumAmount?.toLocaleString()}</span>
@@ -756,7 +756,7 @@ export default function RegulatoryDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {insuranceQuery.data.data.insuranceDocuments.map((doc: any) => (
+                        {(insuranceQuery.data?.data?.insuranceDocuments ?? []).map((doc: any) => (
                           <TableRow key={doc.id} className="border-slate-700">
                             <TableCell className="text-white text-sm">{doc.documentTitle ?? doc.documentType?.replace(/_/g, " ")}</TableCell>
                             <TableCell><StatusBadge status={doc.status} /></TableCell>
@@ -846,7 +846,7 @@ export default function RegulatoryDashboard() {
                         <p className="text-white text-sm">{vehiclesQuery.data.data.stateRequirement}</p>
                       </div>
                       {vehiclesQuery.data.data.vehiclePhotos?.length > 0 ? (
-                        <p className="text-green-400 text-sm">{vehiclesQuery.data.data.vehiclePhotos.length} vehicle photo(s) on file</p>
+                        <p className="text-green-400 text-sm">{vehiclesQuery.data?.data?.vehiclePhotos?.length} vehicle photo(s) on file</p>
                       ) : (
                         <div className="text-center py-6">
                           <AlertTriangle size={28} className="text-amber-400 mx-auto mb-2" />
@@ -971,7 +971,7 @@ export default function RegulatoryDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {incidentsQuery.data.data.incidents.map((inc: any) => (
+                      {(incidentsQuery.data?.data?.incidents ?? []).map((inc: any) => (
                         <TableRow key={inc.id} data-testid={`row-incident-${inc.id}`} className="border-slate-700">
                           <TableCell className="text-slate-300 text-sm">{inc.reportedAt ? new Date(inc.reportedAt).toLocaleDateString() : "—"}</TableCell>
                           <TableCell className="text-white text-sm">{inc.title ?? "Untitled"}</TableCell>

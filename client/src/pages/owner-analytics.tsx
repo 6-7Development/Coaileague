@@ -705,7 +705,7 @@ export default function OwnerAnalytics() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {teamData.topPerformers.map((performer, i) => (
+                        {teamData?.topPerformers?.map((performer, i) => (
                           <div key={i} className="flex items-center justify-between gap-2" data-testid={`row-top-performer-${i}`}>
                             <div className="flex items-center gap-3">
                               <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-medium text-sm">
@@ -734,7 +734,7 @@ export default function OwnerAnalytics() {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
-                        {teamData.recommendations.map((rec, i) => (
+                        {teamData?.recommendations?.map((rec, i) => (
                           <li key={i} className="flex items-start gap-2">
                             <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary" />
                             <span className="text-sm">{rec}</span>
@@ -946,7 +946,7 @@ export default function OwnerAnalytics() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {reconciliation.data.items.map((item, i) => (
+                          {reconciliation.data?.items?.map((item, i) => (
                             <TableRow key={item.clientId} data-testid={`row-reconciliation-${i}`}>
                               <TableCell className="font-medium">{item.clientName}</TableCell>
                               <TableCell className="text-right">{item.platformHours.toFixed(1)}h</TableCell>
