@@ -7,6 +7,7 @@ import { Bell, AlertTriangle, Info, Wrench, Check, Clock, X, Sparkles, Zap, Chev
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger,  } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { UniversalModal, UniversalModalContent } from '@/components/ui/universal-modal'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,  } from "@/components/ui/alert-dialog";
 ;
@@ -2715,16 +2716,60 @@ function NotificationsPopoverInner({ user }: { user: any }) {
     );
   };
 
+  const handleAskTrinityFromUNS = () => {
+    setOpen(false);
+    openTrinityModal();
+  };
+
   if (isMobile) {
     return (
       <>
         {/* Notification Bell Trigger */}
-        <div onClick={() => { chatDock?.closeBubble(); setOpen(true); }}>
-          <Bell className="h-5 w-5 text-foreground" />
-        </div>
-        
-        {/* No title so we control our own header; showCloseButton=false hides the built-in sheet buttons */}
-        
+        <button
+          type="button"
+          aria-label={totalUnread > 0 ? `Notifications — ${totalUnread} unread` : 'Notifications'}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className="relative inline-flex items-center justify-center w-9 h-9 rounded-full text-foreground hover:bg-accent transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            chatDock?.closeBubble();
+            setOpen(true);
+          }}
+          data-testid="button-notifications-mobile"
+        >
+          <Bell className="h-5 w-5" />
+          {totalUnread > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center px-1 pointer-events-none"
+              data-testid="badge-mobile-notifications-unread"
+            >
+              {totalUnread > 99 ? '99+' : totalUnread}
+            </span>
+          )}
+        </button>
+
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-md p-0 flex flex-col"
+            data-testid="sheet-notifications-mobile"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Notifications</SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <UNSCommandCenter
+                isOpen={open}
+                onClose={() => setOpen(false)}
+                onAskTrinity={handleAskTrinityFromUNS}
+                platformRole={accessPlatformRole || userPlatformRole || undefined}
+                workspaceRole={workspaceRole || undefined}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Notification Detail Modal - Shows structured breakdown */}
         <NotificationDetailModal
           notification={selectedNotification}
@@ -2737,11 +2782,6 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       </>
     );
   }
-
-  const handleAskTrinityFromUNS = () => {
-    setOpen(false);
-    openTrinityModal();
-  };
 
   return (
     <>
