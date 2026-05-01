@@ -398,6 +398,18 @@ export default function PrivateMessages() {
 
   // Mobile: show conversation list OR chat, Desktop: show both
   const showConversationsList = !isMobileDevice || !selectedConversation;
+  // Smart timestamp: Today → HH:MM, Yesterday → 'Yesterday', older → date
+  const formatConvTime = (ts: string | Date | null | undefined) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+    if (diffDays === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
   const showChatArea = !isMobileDevice || selectedConversation;
 
   const pageContent = (
@@ -463,51 +475,55 @@ export default function PrivateMessages() {
           ) : (
             <div className="p-2">
               {filteredConversations.map((conv) => (
-                <button
+                                <button
                   key={conv.id}
                   onClick={() => setSelectedConversation(conv.id)}
                   data-testid={`conversation-${conv.id}`}
-                  className={['w-full p-3 rounded-lg mb-1 text-left transition-colors', selectedConversation === conv.id
-                      ? "bg-purple-500/10 border border-purple-500/20"
-                      : "hover-elevate"].join(' ')}
+                  className={[
+                    'w-full text-left transition-colors border-b border-border/50 last:border-0',
+                    selectedConversation === conv.id
+                      ? "bg-purple-500/8"
+                      : "hover:bg-muted/40 active:bg-muted/60"
+                  ].join(' ')}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="relative">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
-                          {conv.recipientName.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    {/* Avatar with online dot */}
+                    <div className="relative shrink-0">
+                      <Avatar className="h-12 w-12">
+                        {(conv as any).recipientProfileImageUrl && (
+                          <AvatarImage src={(conv as any).recipientProfileImageUrl} alt={conv.recipientName} />
+                        )}
+                        <AvatarFallback className="text-sm font-bold text-white bg-gradient-to-br from-violet-500 to-purple-700">
+                          {conv.recipientName.split(" ").map((n: string) => n[0]).join("").slice(0,2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       {conv.isOnline && (
-                        <Circle className="absolute bottom-0 right-0 h-3 w-3 fill-green-500 text-green-500" />
+                        <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background block" />
                       )}
                     </div>
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium truncate">{conv.recipientName}</span>
-                        <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                          whispered
-                        </Badge>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className={["font-semibold text-[15px] truncate", (conv.unreadCount ?? 0) > 0 ? "text-foreground" : "text-foreground/90"].join(' ')}>
+                          {conv.recipientName}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {formatConvTime(conv.lastMessageAt)}
+                        </span>
                       </div>
-                      {conv.lastMessage && (
-                        <div 
-                          className="text-xs text-muted-foreground truncate"
-                          dangerouslySetInnerHTML={{ __html: sanitizeMessage(conv.lastMessage) }}
-                        />
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        {conv.lastMessageAt && (
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(conv.lastMessageAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        {conv.lastMessage ? (
+                          <div
+                            className={["text-[13px] truncate", (conv.unreadCount ?? 0) > 0 ? "text-foreground/80 font-medium" : "text-muted-foreground"].join(' ')}
+                            dangerouslySetInnerHTML={{ __html: sanitizeMessage(conv.lastMessage) }}
+                          />
+                        ) : (
+                          <span className="text-[13px] text-muted-foreground italic">No messages yet</span>
                         )}
                         {(conv.unreadCount ?? 0) > 0 && (
-                          <Badge variant="default" className="h-5 px-1.5 text-xs bg-purple-600">
-                            {conv.unreadCount}
-                          </Badge>
+                          <span className="shrink-0 min-w-[20px] h-5 rounded-full bg-purple-600 text-white text-[11px] font-bold flex items-center justify-center px-1.5">
+                            {conv.unreadCount! > 99 ? '99+' : conv.unreadCount}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -548,14 +564,17 @@ export default function PrivateMessages() {
                     <ArrowLeft className="h-5 w-5" />
                   </button>
                 )}
-                <div className="relative">
+                                <div className="relative shrink-0">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
-                      {currentConversation?.recipientName.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                    {(currentConversation as any)?.recipientProfileImageUrl && (
+                      <AvatarImage src={(currentConversation as any).recipientProfileImageUrl} alt={currentConversation?.recipientName} />
+                    )}
+                    <AvatarFallback className="text-sm font-bold text-white bg-gradient-to-br from-violet-500 to-purple-700">
+                      {currentConversation?.recipientName.split(" ").map((n: string) => n[0]).join("").slice(0,2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {currentConversation?.isOnline && (
-                    <Circle className="absolute bottom-0 right-0 h-3 w-3 fill-green-500 text-green-500" />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background block" />
                   )}
                 </div>
                 <div>

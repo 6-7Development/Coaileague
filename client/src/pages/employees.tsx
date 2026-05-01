@@ -44,8 +44,7 @@ import {
   Calendar,
   Loader2,
   Download,
-  X,
-} from "lucide-react";
+  X, ChevronRight} from "lucide-react";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SwipeToDelete } from "@/components/swipe-to-delete";
@@ -179,46 +178,77 @@ function getRoleDot(workspaceRole: string | null | undefined, isArmed: boolean |
     onToggleSelect: (id: string) => void;
   }) => {
     return (
-      <Card className={['hover-elevate transition-colors', isSelected ? 'border-primary bg-primary/5' : ''].join(' ')} data-testid={`card-employee-${employee.id}`}>
-        <CardContent className="p-3">
-          <div className="flex items-start gap-3">
-            <div className="pt-1">
-              <Checkbox 
-                checked={isSelected} 
-                onCheckedChange={() => onToggleSelect(employee.id)}
-                data-testid={`checkbox-select-employee-${employee.id}`}
-              />
-            </div>
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback style={{ backgroundColor: employee.color || '#3b82f6' }} className="text-sm font-semibold text-white">
-                {getInitials(employee.firstName, employee.lastName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0" data-testid={`text-employee-name-${employee.id}`}>
-                  <div className="text-sm max-sm:![font-size:14px] font-medium truncate text-foreground">
-                    <div className="flex items-center gap-1.5 truncate max-w-[180px] min-w-0" title={`${employee.firstName} ${employee.lastName}`}>
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${getRoleDot(employee.workspaceRole, (employee as any).isArmed)}`}
-                        title={(employee as any).isArmed ? 'Armed' : 'Unarmed'}
-                        data-testid={`dot-role-${employee.id}`}
-                      />
-                      {employee.firstName} {employee.lastName}
-                    </div>
-                    {employee.email && (
-                      <div className="text-[10px] text-muted-foreground truncate max-w-[180px]" title={employee.email}>
-                        {employee.email}
-                      </div>
-                    )}
-                  </div>
+      <Card className={['transition-colors', isSelected ? 'border-primary bg-primary/5' : 'border-transparent'].join(' ')} data-testid={`card-employee-${employee.id}`}
+        style={{ borderRadius: 0, boxShadow: 'none', borderBottom: '1px solid var(--border)' }}
+      >
+        <CardContent className="p-0">
+          <div className="flex items-center gap-0">
+            {/* Select checkbox — only visible when in bulk-select mode */}
+            {isSelected !== undefined && (
+              <div className={["flex items-center justify-center shrink-0 transition-all",
+                isSelected ? "w-10 opacity-100" : "w-0 overflow-hidden opacity-0 pointer-events-none"
+              ].join(' ')}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(employee.id)}
+                  data-testid={`checkbox-select-employee-${employee.id}`}
+                />
+              </div>
+            )}
+            {/* Row content */}
+            <div className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3">
+              {/* Avatar — large, with photo support */}
+              <Avatar className="h-11 w-11 shrink-0 ring-2 ring-background">
+                {(employee as any).profileImageUrl && (
+                  <AvatarImage src={(employee as any).profileImageUrl} alt={`${employee.firstName} ${employee.lastName}`} />
+                )}
+                <AvatarFallback
+                  className="text-sm font-bold text-white"
+                  style={{ backgroundColor: employee.color || '#7c3aed' }}
+                >
+                  {getInitials(employee.firstName, employee.lastName)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Name + details */}
+              <div className="flex-1 min-w-0" data-testid={`text-employee-name-${employee.id}`}>
+                {/* Name row */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${getRoleDot(employee.workspaceRole, (employee as any).isArmed)}`}
+                    title={(employee as any).isArmed ? 'Armed' : 'Unarmed'}
+                    data-testid={`dot-role-${employee.id}`}
+                  />
+                  <span className="font-semibold text-[15px] text-foreground truncate">
+                    {employee.firstName} {employee.lastName}
+                  </span>
                   {employee.employeeNumber && (
-                    <CanonicalIdBadge
-                      id={employee.employeeNumber}
-                      size="sm"
-                    />
+                    <span className="text-xs text-muted-foreground font-mono shrink-0">#{employee.employeeNumber}</span>
                   )}
                 </div>
+                {/* Role + onboarding */}
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className="text-xs text-muted-foreground">
+                    {employee.role || 'Officer'}
+                  </span>
+                  {employee.workspaceRole && employee.workspaceRole !== 'staff' && employee.workspaceRole !== 'employee' && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] h-4 px-1 ${getRoleBadgeColor(employee.workspaceRole)}`}
+                    >
+                      {ROLE_LABELS[normalizeRole(employee.workspaceRole)] || employee.workspaceRole}
+                    </Badge>
+                  )}
+                  {getOnboardingStatusBadge(employee.onboardingStatus ?? undefined)}
+                </div>
+                {/* Email sub-line */}
+                {employee.email && (
+                  <div className="text-[11px] text-muted-foreground truncate mt-0.5" title={employee.email}>
+                    {employee.email}
+                  </div>
+                )}
+              </div>
+              {/* Actions: menu + chevron */}
+              <div className="flex items-center gap-1 shrink-0">
                 {canManage && <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -312,76 +342,11 @@ function getRoleDot(workspaceRole: string | null | undefined, isArmed: boolean |
                     </AlertDialog>
                   </DropdownMenuContent>
                 </DropdownMenu>}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                  <div className="truncate max-w-[120px] min-w-0">
-                    {employee.role || "Employee"}
-                  </div>
-                </Badge>
-                {employee.workspaceRole && employee.workspaceRole !== 'staff' && employee.workspaceRole !== 'employee' && (
-                  <Badge 
-                    variant="outline" 
-                    className={`text-[10px] h-5 px-1.5 ${getRoleBadgeColor(employee.workspaceRole)}`}
-                  >
-                    {ROLE_LABELS[normalizeRole(employee.workspaceRole)] || employee.workspaceRole}
-                  </Badge>
-                )}
-                {getOnboardingStatusBadge(employee.onboardingStatus ?? undefined)}
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground pt-1">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  <div className="truncate max-w-[200px] min-w-0">
-                    <span className="truncate max-w-[120px]">{employee.email || "—"}</span>
-                  </div>
-                </span>
-                <span className="flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" />
-                  ${employee.hourlyRate || "0"}/hr
-                </span>
-                {managerMap[employee.id] && (
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`text-reports-to-${employee.id}`}>
-                    <Users className="h-3 w-3 shrink-0" />
-                    Reports to: <div className="truncate max-w-[180px] min-w-0 inline-block align-bottom"><span className="font-medium truncate max-w-[90px]">{managerMap[employee.id]}</span></div>
-                  </span>
-                )}
+                {/* Chevron — navigation indicator */}
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
               </div>
             </div>
           </div>
-          {/* Desktop only: Show action buttons (mobile uses 3-dot menu) */}
-          {!isMobile && employee.onboardingStatus === 'pending_review' && (
-            <Button
-              className="w-full mt-2 bg-orange-600 hover:bg-orange-700"
-              size="sm"
-              onClick={() => {
-                setSelectedEmployee(employee);
-                setApprovalPayRate(employee.hourlyRate || "");
-                setIsApprovalDialogOpen(true);
-              }}
-              disabled={isAnyMutationPending}
-              data-testid={`button-approve-${employee.id}`}
-            >
-              {approveMutation.isPending ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-2" />}
-              Approve & Set Pay Rate
-            </Button>
-          )}
-          {canManage && !isMobile && employee.onboardingStatus !== 'completed' && employee.onboardingStatus !== 'pending_review' && employee.id !== user?.employeeId && !employee.userId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={() => {
-                setSelectedEmployee(employee);
-                setIsInviteDialogOpen(true);
-              }}
-              disabled={isAnyMutationPending}
-              data-testid={`button-invite-${employee.id}`}
-            >
-              {inviteMutation.isPending ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Send className="h-3 w-3 mr-2" />}
-              Send Onboarding Invite
-            </Button>
-          )}
         </CardContent>
       </Card>
     );
@@ -1278,7 +1243,16 @@ export default function Employees() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-0 md:space-y-6">
+            {/* Mobile contact-list count header */}
+            {isMobile && (
+              <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+                <span className="text-sm font-semibold text-foreground">
+                  {filteredEmployees.length} Employee{filteredEmployees.length !== 1 ? 's' : ''}
+                </span>
+                <span className="text-xs text-muted-foreground">All employees</span>
+              </div>
+            )}
             {/* Header with Sorting */}
             {!isSimpleMode && !isMobile && (
               <div className="grid grid-cols-[1fr_200px_150px_100px_120px_48px] gap-4 px-6 py-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
@@ -1306,7 +1280,7 @@ export default function Employees() {
                 <div className="text-right flex items-center justify-end">Actions</div>
               </div>
             )}
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mobile-cols-1 overflow-x-auto">
+            <div className="flex flex-col md:grid md:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
               {employeesToDisplay.map((employee: Employee) => {
                 const employeeCard = (
                   <EmployeeCard
