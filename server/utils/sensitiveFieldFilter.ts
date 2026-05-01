@@ -337,7 +337,7 @@ export function createFilterContext(req: unknown): FilterContext {
 /**
  * Express middleware to attach filter context to the request.
  */
-export function attachFilterContext(req: unknown, res: any, next: () => void) {
+export function attachFilterContext(req: import("express").Request, res: import("express").Response, next: () => void) {
   req.filterContext = createFilterContext(req);
   next();
 }

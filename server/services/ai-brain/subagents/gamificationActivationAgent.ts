@@ -19,4 +19,9 @@ export const gamificationActivationAgent = {
     automationGatesUnlocked: 0,
     errors: [],
   }),
+  /** Whether gamification is active for this workspace. */
+  isGamificationEnabled: (_workspaceId: string): boolean => false,
+  /** Returns current automation gate status for a workspace. */
+  getAutomationGateStatus: async (_workspaceId: string): Promise<{ gates: Array<{ unlocked: boolean }> }> =>
+    ({ gates: [] }),
 };
