@@ -11,6 +11,8 @@ workforceos-platform.tar.gz.*
 # Sandbox/local-dev artifacts (not for git)
 .env
 .env.local
+package-lock.json
 sim_output/server.log
 sim_output/server.pid
 sim_output/run-dev.sh
+sim_output/verifier-run-*.log
