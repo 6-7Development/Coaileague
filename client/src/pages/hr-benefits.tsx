@@ -161,7 +161,7 @@ export default function HRBenefits() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <UniversalModal open={dialogOpen} onOpenChange={setDialogOpen}>
-              <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto">
+              <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
                 <UniversalModalHeader>
                   <UniversalModalTitle>Create Benefit Enrollment</UniversalModalTitle>
                 </UniversalModalHeader>

@@ -342,7 +342,7 @@ export default function InboxPage() {
 
   const ComposeDialog = () => (
     <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-      <DialogContent size="lg" className="max-h-[90vh] overflow-y-auto">
+      <DialogContent size="lg" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Message</DialogTitle>
         </DialogHeader>

@@ -184,7 +184,7 @@ export function ShiftDetailSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[100dvh] focus:outline-none">
+      <DrawerContent className="max-h-[80dvh] sm:max-h-[100ddvh] focus:outline-none">
         <div data-vaul-no-drag className="mx-auto w-full max-w-md overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
           <DrawerHeader className="pb-3 pt-2 px-4">
             <div className="flex items-center justify-between gap-2">

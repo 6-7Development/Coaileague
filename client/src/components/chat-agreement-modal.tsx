@@ -166,7 +166,7 @@ This is a legally binding agreement. Your acceptance creates enforceable obligat
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-slate-800 border border-primary/40 rounded-md shadow-sm w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-slate-800 border border-primary/40 rounded-md shadow-sm w-full max-w-lg max-h-[80dvh] sm:max-h-[95vh] sm:max-h-[80dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header - Compact for mobile */}
         <div className="p-3 sm:p-4 border-b border-primary/30 bg-slate-900 shrink-0">
           <div className="flex items-center gap-2">

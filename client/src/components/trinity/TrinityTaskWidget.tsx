@@ -498,7 +498,7 @@ export function TrinityTaskWidget() {
         </div>
       </UniversalModalHeader>
 
-      <ScrollArea className="max-h-[calc(60dvh-56px)] sm:max-h-[60vh] px-1 py-3 overflow-y-auto">
+      <ScrollArea className="flex-1 min-h-0 overflow-y-auto px-1 py-3">
         {isLoading && tasks.length === 0 ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
             <Bell className="h-4 w-4 mr-2 animate-pulse" /> Checking with Trinity…
@@ -506,7 +506,7 @@ export function TrinityTaskWidget() {
         ) : tasks.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             {grouped.approval.length > 0 && (
               <TaskSection
                 title="Waiting on you"

@@ -579,7 +579,7 @@ export default function TrinitySelfEditGovernancePage() {
       </Tabs>
 
       <UniversalModal open={!!selectedProposal} onOpenChange={() => setSelectedProposal(null)}>
-        <UniversalModalContent size="full" className="max-h-[90vh] overflow-y-auto" data-testid="dialog-proposal-detail">
+        <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto" data-testid="dialog-proposal-detail">
           {selectedProposal && (
             <>
               <UniversalModalHeader>

@@ -123,7 +123,7 @@ export function AccountSupportPanel({
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[90vh] p-0 overflow-y-auto">
+      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[80dvh] sm:max-h-[90vh] p-0 overflow-y-auto">
         {/* @ts-ignore */}
         <DialogStyledHeader variant="info" className="p-5 sm:p-6">
           <UniversalModalTitle className="flex items-center gap-3 text-xl sm:text-2xl text-inherit">
@@ -136,7 +136,7 @@ export function AccountSupportPanel({
         {/* @ts-ignore */}
         </DialogStyledHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)]">
+        <ScrollArea className="max-h-[calc(80dvh-120px)] sm:max-h-[calc(90vh-120px)]">
           <div className="p-6 space-y-6">
             {/* Account Overview Card */}
             <Card>

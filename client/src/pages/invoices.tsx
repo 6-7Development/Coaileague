@@ -1144,7 +1144,7 @@ export default function Invoices() {
             </ResponsiveDialog>
 
             {/* Invoice Review Dialog */}
-            <UniversalModal open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen} size="full" className="max-h-[90vh] overflow-y-auto">
+            <UniversalModal open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen} size="full" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
                 <UniversalModalHeader>
                   <UniversalModalTitle>Review Invoice</UniversalModalTitle>
                   <UniversalModalDescription>

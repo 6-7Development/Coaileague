@@ -847,7 +847,7 @@ function ContractDialog({ contract }: { contract: SpsDocument }) {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" data-testid={`button-view-contract-${contract.id}`}>View</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="border-b pb-4 mb-4">
           <div className="flex justify-between items-center pr-8">
             <DialogTitle>Client Service Contract: {contract.documentNumber}</DialogTitle>

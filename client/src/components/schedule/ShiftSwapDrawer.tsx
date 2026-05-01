@@ -246,7 +246,7 @@ export function ShiftSwapDrawer({
 
               <TabsContent value="request" className="mt-3">
                 {shift ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 pb-safe-mobile">
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="text-xs text-muted-foreground mb-1">Selected Shift</div>
                       <div className="flex items-center justify-between gap-2">

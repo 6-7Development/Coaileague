@@ -2378,7 +2378,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  </div>
 
  {replyingTo && (
- <div className="px-3 py-2 border-t border-border bg-muted/60 flex items-center gap-2" data-testid="reply-preview-bar">
+ <div className="px-3 py-2 border-t border-border bg-muted/60 flex items-center gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-testid="reply-preview-bar">
  <Reply className="w-4 h-4 text-primary shrink-0" />
  <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
  <span className="text-xs font-semibold text-primary">{replyingTo.senderName}</span>
@@ -2405,7 +2405,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
  {/* H005: Star Rating Widget - appears when HelpAI asks for rating */}
  {showRatingWidget && !ratingSubmitted && !isStaff && (
- <div className="border-t border-border bg-card p-3 sm:p-4" data-testid="helpai-rating-widget">
+ <div className="border-t border-border bg-card p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-testid="helpai-rating-widget">
  <div className="flex flex-col items-center gap-2">
  <p className="text-sm font-medium text-foreground"> How would you rate your support experience?</p>
  <div className="flex items-center gap-2" data-testid="star-rating-group">
@@ -3953,7 +3953,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <X className="w-6 h-6" />
  </Button>
  </div>
- <img src={lightboxData.src} alt="Preview" width={1200} height={800} className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg p-4" onClick={(e) =>e.stopPropagation()} />
+ <img src={lightboxData.src} alt="Preview" width={1200} height={800} className="max-w-[90vw] max-h-[80dvh] sm:max-h-[85dvh] object-contain rounded-lg p-4" onClick={(e) =>e.stopPropagation()} />
  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3 z-[6001]">
  <p className="text-center text-xs text-white/60" data-testid="text-lightbox-proof">
  Sent{lightboxData.senderName ? ` by ${lightboxData.senderName}` : ""}{lightboxData.timestamp ? ` on ${new Date(lightboxData.timestamp).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""} — Proof of Service Record

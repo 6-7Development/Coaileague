@@ -164,7 +164,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
   return (
     <>
       <UniversalModal open={open} onOpenChange={onOpenChange}>
-        <UniversalModalContent side="bottom" className="max-h-[calc(90dvh-56px)] sm:max-h-[90dvh] overflow-y-auto flex flex-col p-0 sm:max-w-3xl" showHomeButton={false}>
+        <UniversalModalContent side="bottom" className="max-h-[calc(80dvh-56px)] sm:max-h-[calc(90dvh-56px)] sm:max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto flex flex-col p-0 sm:max-w-3xl" showHomeButton={false}>
           <UniversalModalHeader className="px-4 pt-4 pb-2 border-b shrink-0">
             <UniversalModalTitle className="flex items-center gap-2">
               <Clock3 className="h-5 w-5 text-orange-600" />

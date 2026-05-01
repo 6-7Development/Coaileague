@@ -2682,7 +2682,7 @@ export default function TimeTracking() {
 
         {/* Clock In Dialog */}
         <UniversalModal open={clockInDialogOpen} onOpenChange={setClockInDialogOpen}>
-          <UniversalModalContent size="xl" hideBuiltInClose className="max-h-[90vh] p-0">
+          <UniversalModalContent size="xl" hideBuiltInClose className="max-h-[80dvh] sm:max-h-[90dvh] p-0">
             <DialogStyledHeader variant="info">
               <UniversalModalTitle className="text-inherit">Clock In</UniversalModalTitle>
               <UniversalModalDescription className="text-white/80">

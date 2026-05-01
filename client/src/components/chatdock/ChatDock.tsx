@@ -1071,7 +1071,7 @@ function ImageLightbox({
       <img
         src={data.src}
         alt="Full size preview"
-        className="max-w-full max-h-[85vh] object-contain rounded-lg p-4"
+        className="max-w-full max-h-[80dvh] sm:max-h-[85vh] object-contain rounded-lg p-4"
         onClick={(e) => e.stopPropagation()}
       />
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3 z-[6001]">

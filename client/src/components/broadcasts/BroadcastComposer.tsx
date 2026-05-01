@@ -441,7 +441,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
             </div>
           </ScrollArea>
 
-          <div className="flex gap-2 pt-3 pb-2 border-t shrink-0 bg-background">
+          <div className="flex gap-2 pt-3 border-t shrink-0 bg-background px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               type="button"
               variant="outline"

@@ -1647,7 +1647,7 @@ function UNSCommandCenter({ isOpen, onClose, onAskTrinity, platformRole, workspa
   };
 
   return (
-    <div className="flex flex-col h-[460px] max-h-[65vh] w-[400px] max-w-[calc(100vw-1.5rem)]">
+    <div className="flex flex-col h-[460px] max-h-[65dvh] w-[400px] max-w-[calc(100vw-1.5rem)]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 shrink-0">
         <div className="flex items-center gap-2">
@@ -1751,7 +1751,7 @@ function UNSCommandCenter({ isOpen, onClose, onAskTrinity, platformRole, workspa
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-border/40 p-2.5 flex gap-2 shrink-0">
+      <div className="border-t border-border/40 p-2.5 flex gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {pendingCount > 0 && (
           <Button onClick={onAskTrinity} size="sm" variant="outline" className="flex-1 gap-1 text-xs h-8">
             <Zap className="h-3 w-3 text-violet-500" />

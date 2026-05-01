@@ -50,7 +50,7 @@ const dialogContentVariants = cva(
     "ring-1 ring-inset ring-white/[0.06]",
     "rounded-xl",
     // Containment
-    "max-h-[calc(100dvh-2rem)] overflow-hidden",
+    "max-h-[80dvh] sm:max-h-[calc(100dvh-2rem)] overflow-hidden",
     "p-0",
     // Animation
     "duration-200",

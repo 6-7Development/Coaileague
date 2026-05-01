@@ -56,8 +56,7 @@ const sheetVariants = cva(
           "inset-x-0 bottom-0 border-t rounded-t-2xl",
           "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           // Full-width on mobile, centered card on desktop
-          "max-h-[calc(92dvh-56px)] sm:max-h-[92dvh]",
-          "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "max-h-[80dvh] sm:max-h-[92dvh]",
           "sm:max-w-xl sm:mx-auto sm:rounded-xl sm:border",
         ].join(" "),
         left: [
@@ -216,7 +215,7 @@ const SheetBody = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex-1 overflow-y-auto min-h-0 px-3 py-3 sm:px-5 sm:py-4",
+      "flex-1 overflow-y-auto min-h-0 px-3 py-3 sm:px-5 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
       className
     )}
     {...props}

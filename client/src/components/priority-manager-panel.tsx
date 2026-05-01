@@ -84,7 +84,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" className="max-h-[90vh] flex flex-col overflow-y-auto">
+      <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] flex flex-col overflow-y-auto">
         <UniversalModalHeader className="flex-shrink-0">
           <UniversalModalTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-blue-500" />

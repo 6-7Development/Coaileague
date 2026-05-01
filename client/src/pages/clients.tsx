@@ -467,7 +467,7 @@ export default function Clients() {
         <UniversalModalTrigger asChild>
           <span className="hidden" />
         </UniversalModalTrigger>
-            <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto">
+            <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
               <UniversalModalHeader>
                 <UniversalModalTitle>Add New {qb.entity('client')}</UniversalModalTitle>
                 <UniversalModalDescription>

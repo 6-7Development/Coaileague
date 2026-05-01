@@ -1304,7 +1304,7 @@ export default function PlatformAdmin() {
 
       {/* Platform Settings Dialog */}
       <UniversalModal open={showSettings} onOpenChange={setShowSettings}>
-        <UniversalModalContent size="xl" className="max-h-[85vh] overflow-y-auto">
+        <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[85dvh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />

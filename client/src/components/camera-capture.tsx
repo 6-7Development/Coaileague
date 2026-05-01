@@ -215,7 +215,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
       />
 
       <UniversalModal open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); else setIsOpen(true); }}>
-        <UniversalModalContent size="xl" className="p-0 max-h-[95vh]">
+        <UniversalModalContent size="xl" className="p-0 max-h-[80dvh] sm:max-h-[95vh]">
           <UniversalModalHeader className="p-4 pb-0">
             <UniversalModalTitle>Take Photo</UniversalModalTitle>
           </UniversalModalHeader>

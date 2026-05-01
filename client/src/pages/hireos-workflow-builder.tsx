@@ -152,7 +152,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
 
   return (
     <UniversalModal open={open} onOpenChange={onOpenChange}>
-      <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto">
+      <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>{step ? 'Edit Step' : 'Add New Step'}</UniversalModalTitle>
           <UniversalModalDescription>

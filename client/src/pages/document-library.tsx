@@ -139,7 +139,7 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <UniversalModal open={open} onOpenChange={onOpenChange}>
-      <UniversalModalContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <UniversalModalContent className="max-w-2xl max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>New Contract / Document</UniversalModalTitle>
           <UniversalModalDescription>Create a contract, proposal, NDA, or any document and send it for signing via email or internally.</UniversalModalDescription>

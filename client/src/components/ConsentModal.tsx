@@ -136,7 +136,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
     <Dialog open modal>
       <DialogContent
         size="xl"
-        className="max-h-[88dvh] flex flex-col p-0 gap-0"
+        className="max-h-[80dvh] sm:max-h-[88dvh] flex flex-col p-0 gap-0"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         hideBuiltInClose={true}

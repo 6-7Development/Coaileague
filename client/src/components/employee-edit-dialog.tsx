@@ -659,7 +659,7 @@ export function EmployeeEditDialog({
                       })()}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-[40vh]">
+                  <SelectContent className="max-h-[40dvh]">
                     {positionsByCategory.map(cat => (
                       <SelectGroup key={cat.id}>
                         <SelectLabel className="flex items-center gap-1.5 text-xs">

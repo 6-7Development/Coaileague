@@ -207,7 +207,7 @@ export function TrinityKnowledgePanel() {
       </p>
 
       <Dialog open={!!selectedModule} onOpenChange={open => !open && setSelectedModule(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[80dvh] sm:max-h-[85dvh] flex flex-col overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <FileText className="h-4 w-4" />

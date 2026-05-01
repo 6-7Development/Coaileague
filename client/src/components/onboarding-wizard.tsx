@@ -324,7 +324,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         "overflow-y-auto",
         isMobile 
           ? "!max-w-[75vw] !w-[75vw] !p-2 !max-h-[60vh] pb-safe mx-auto" 
-          : "max-w-4xl max-h-[90vh]"
+          : "max-w-4xl max-h-[80dvh] sm:max-h-[90dvh]"
       )}>
         <UniversalModalHeader className={cn(isMobile && "space-y-1")}>
           <div className={cn("flex justify-center", isMobile ? "mb-1" : "mb-4 md:mb-6")}>

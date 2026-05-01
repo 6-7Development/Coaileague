@@ -288,7 +288,7 @@ export default function ReviewDisputes() {
 
       {/* Dispute Review Dialog */}
       <UniversalModal open={!!selectedDispute} onOpenChange={() => setSelectedDispute(null)}>
-        <UniversalModalContent size="full" className="max-h-[90vh] overflow-y-auto">
+        <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />

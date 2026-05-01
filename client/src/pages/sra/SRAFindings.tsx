@@ -140,7 +140,7 @@ export default function SRAFindings() {
         {/* Create Finding Modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-card rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-card rounded-lg shadow-2xl w-full max-w-lg max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b">
                 <h2 className="text-lg font-semibold text-[#1a3a6b]">New Audit Finding</h2>
                 <button data-testid="button-close-finding-form" onClick={() => setShowForm(false)}>

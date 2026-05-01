@@ -1332,7 +1332,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
       </AlertDialog>
 
       <UniversalModal open={editDialogOpen} onOpenChange={(open) => { if (!open) handleClose(); else setEditDialogOpen(true); }}>
-        <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-client">
+        <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-client">
           <UniversalModalHeader>
             <div className="flex items-center justify-between w-full">
               <UniversalModalTitle>Edit Client</UniversalModalTitle>

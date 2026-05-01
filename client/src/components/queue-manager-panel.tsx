@@ -97,7 +97,7 @@ export function QueueManagerPanel({
   return (
     <>
       <UniversalModal open={isOpen} onOpenChange={onClose}>
-        <UniversalModalContent size="full" className="max-h-[90vh] flex flex-col overflow-y-auto">
+        <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] flex flex-col overflow-y-auto">
           <UniversalModalHeader className="flex-shrink-0">
             <div className="flex items-center gap-3 mb-2">
               <UnifiedBrandLogo size="sm" variant="icon" />
