@@ -62,7 +62,7 @@ export function TOSAgreementStep({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const result = await apiRequest("POST", "/api/tos/sign", {
+      const result = await apiRequest("POST", "/api/legal/accept-agreements", {
         email,
         fullName: fullName.trim(),
         initials: initials.trim().toUpperCase(),

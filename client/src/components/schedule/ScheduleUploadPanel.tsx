@@ -60,7 +60,7 @@ export function ScheduleUploadPanel() {
       formData.append("dateFormat", dateFormat);
       formData.append("timeFormat", timeFormat);
 
-      const res = await fetch("/api/trinity/import-schedule", {
+      const res = await fetch("/api/trinity/scheduling/import-schedule", {
         method: "POST",
         body: formData,
         credentials: "include",

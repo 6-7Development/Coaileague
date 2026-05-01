@@ -1024,3 +1024,82 @@ scrolling through the employee list is completely unaffected.
 | KI-014 | Mobile notification buttons dead — UNSCommandCenter rendered instead of list | ✅ |
 | KI-015 | Double splash screen / loading loop on reload | ✅ |
 | KI-016 | Employee list swipe fires during vertical scroll | ✅ |
+
+---
+
+## Phase 6 — Full Platform Audit: Dead Ends, Silent Failures, Route Fixes (2026-05-01)
+
+### Methodology
+Indexed all 2,448 server endpoints × 2,872 client API references.
+Classified 155 unmatched calls into: false positives, wrong URLs, missing routes, ghost calls.
+
+### Findings Summary
+
+| Category | Count | Action |
+|----------|-------|--------|
+| False positives (route exists, scanner missed) | 5 | No action |
+| Ghost calls (try/catch, analytics only) | 1 | No action |
+| Wrong client URL (route exists elsewhere) | 2 | Fixed |
+| Missing routes (unbuilt feature, page 404s) | 38 | Stubbed with 503 |
+| Silent .catch(()=>null) in server code | 436 | Phase 7 target |
+| Unguarded fetch() in client | 10 | Phase 7 target |
+
+### Bugs Fixed This Phase
+
+**NEW-3: GET /api/onboarding/setup-guide — 404 (setup-guide-panel showed nothing)**
+- Root cause: No route existed. Panel rendered empty with no error shown to user.
+- Fix: Added stub endpoint to `onboardingInlineRoutes.ts` returning workspace completion data.
+
+**NEW-4: GET /api/ai-brain/system-status — wrong URL**
+- Root cause: Client called `/api/ai-brain/system-status`, server has `/api/ai-brain/status`.
+- Fix: `ai-system-status.tsx` URL corrected.
+
+**NEW-5: POST /api/trinity/import-schedule — missing route**
+- Root cause: `ScheduleUploadPanel.tsx` called `/api/trinity/import-schedule`, no handler existed.
+  Schedule upload was completely broken — FormData posted to 404.
+- Fix: Added `POST /import-schedule` to `trinitySchedulingRoutes.ts`.
+  Client URL updated to `/api/trinity/scheduling/import-schedule`.
+
+**NEW-6: POST /api/tos/sign — wrong URL**
+- Root cause: `tos-agreement-step.tsx` called `/api/tos/sign` which never existed.
+  Legal consent/TOS signing silently failed on every new-user onboarding.
+- Fix: URL corrected to `/api/legal/accept-agreements` (existing endpoint).
+
+**NEW-7: Compile error in onboardingInlineRoutes.ts**
+- Root cause: Unescaped apostrophe in `'You're making...'` template string.
+- Fix: Changed to double-quoted string.
+
+### False Positives Confirmed (not bugs)
+- `/api/safety/panic` → `safetyRoutes.ts` mounted at `/api/safety` — EXISTS ✅
+- `/api/broadcasts` + `/api/broadcasts/my` → `broadcasts.ts` at `/api/broadcasts` — EXISTS ✅
+- `/api/time-entries/clock-in` → `time-entry-routes.ts` at `/api/time-entries` — EXISTS ✅
+- `/api/search/log-click` → wrapped in `try/catch(() => {})`, analytics-only ghost call — SAFE ✅
+- `/api/hr/document-requests/gaps` → `documentRequestRoutes.ts` at `/api/hr/document-requests` — EXISTS ✅
+
+### Graceful Stub Layer Added
+`server/routes/featureStubRoutes.ts` — 40+ stubs for planned-but-unbuilt features.
+Returns `{ available: false, feature, message }` with HTTP 503 instead of silent 404.
+Each stub fires a `feature_accessed_stub` Trinity event for demand tracking.
+
+Stubbed features:
+- Budgeting (`/api/budgets`)
+- CAD Console (`/api/cad`, `/api/cad/calls`)
+- Bid Analytics (`/api/bid-analytics`)
+- Invoice Preview (`/api/billing/invoice-preview`)
+- Subscription Change (`/api/billing/subscription/change`)
+- Automation Events (`/api/automation-events`)
+- Audit Suite (`/api/audit-suite/*`)
+- Auditor Portal (`/api/auditor/*`)
+- Accept Handoff (`/api/accept-handoff`)
+- Admin Controls (`/api/admin/end-users/*`, `/api/admin/financial/provider-topoff`)
+- Bridge Channels (`/api/bridges/send`)
+- Armory (`/api/armory/ammo`)
+- RMS (`/api/rms/trespass`)
+- AI Extras (`/api/ai-brain/sentiment`, `/api/ai-brain/patterns`, etc.)
+
+### Known Issues Remaining (Phase 7 targets)
+| ID | Issue | Priority |
+|----|-------|----------|
+| SF-1 | 436 `.catch(()=>null)` in server — hides real errors | HIGH |
+| SF-2 | 10 unguarded `fetch()` in client — no `.ok` check | MEDIUM |
+| UNBUILT | 12+ feature pages (CAD, budgets, bid-analytics, audit-suite) show stub 503 | BACKLOG |

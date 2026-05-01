@@ -139,6 +139,7 @@ import surveyRoutes, { surveyPublicRouter } from './routes/surveyRoutes';
 import wellnessRoutes from './routes/wellnessRoutes';
 import trainingCertificationRouter from './routes/trainingCertificationRoutes';
 import alertConfigRouter from './routes/alertConfigRoutes';
+import featureStubRouter from './routes/featureStubRoutes';
 import { trinityThoughtStatusRouter } from './routes/trinityThoughtStatusRoutes';
 import { platformConfigValuesRouter } from './routes/platformConfigValuesRoutes';
 import { ensureWorkspaceAccess } from './middleware/workspaceScope';
@@ -971,6 +972,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mega Phase: Legal consent (accept agreements, opt-out, consent prefs)
   // Note: /api/legal/opt-out is public (TCPA compliance), others require auth
   app.use("/api/legal", legalConsentRouter);
+  // Feature stubs — graceful 503 for unbuilt features.
+  // Mounted BEFORE domain routes so they are overridden when a real route is added.
+  app.use("/api", requireAuth, featureStubRouter);
   // Legal document downloads — DPA, AUP (Phase 52; public, no auth required)
   // MUST be mounted here, BEFORE any domain that uses app.use("/api", requireAuth, ...)
   // catch-alls (billing, compliance, comms). Route: GET /api/legal/dpa/download
