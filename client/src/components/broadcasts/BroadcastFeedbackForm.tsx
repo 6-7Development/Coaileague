@@ -3,6 +3,7 @@
  * Modal form for submitting feedback in response to a feedback_request broadcast
  */
 
+import React from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

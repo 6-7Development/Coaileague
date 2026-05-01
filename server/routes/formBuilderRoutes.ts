@@ -586,7 +586,7 @@ router.post("/forms/:formId/submissions/:submissionId/submit", async (req: Authe
     if (routingRules?.approverUserId) {
       try {
         await NotificationDeliveryService.send({
-          idempotencyKey: `notif-${Date.now()}`,
+          idempotencyKey: `notif-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`,
             type: 'document_requires_signature',
           workspaceId,
           recipientUserId: routingRules.approverUserId,
@@ -716,7 +716,7 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
     if (submission.submittedBy) {
       try {
         await NotificationDeliveryService.send({
-          idempotencyKey: `notif-${Date.now()}`,
+          idempotencyKey: `notif-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`,
             type: 'document_requires_signature',
           workspaceId,
           recipientUserId: submission.submittedBy,

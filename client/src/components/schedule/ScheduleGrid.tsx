@@ -4,6 +4,7 @@
  * Desktop-only drag-and-drop with screen-width guards
  */
 
+import React from 'react';
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { format, addHours, startOfDay, differenceInMinutes, isSameDay } from 'date-fns';
 import { cn, formatRoleDisplay } from '@/lib/utils';

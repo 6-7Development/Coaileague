@@ -327,8 +327,11 @@ export function getSession() {
   // Allow operators to override the cookie domain via env (e.g. for
   // multi-tenant subdomain deployments). Default to .coaileague.com in
   // prod, undefined (host-only) in dev.
+  // PERMANENT FIX: If APP_BASE_URL is a Railway URL, never set .coaileague.com domain
+  const _appBase = process.env.APP_BASE_URL || '';
+  const _onRailwayUrl = _appBase.includes('.up.railway.app');
   const cookieDomain = process.env.SESSION_COOKIE_DOMAIN
-    || (inProd ? '.coaileague.com' : undefined);
+    || (inProd && !_onRailwayUrl ? '.coaileague.com' : undefined);
 
   return session({
     secret: process.env.SESSION_SECRET!,

@@ -22,11 +22,13 @@ import { isProduction } from '../lib/isProduction';
  */
 function authCookieOptions() {
   const inProd = isProduction();
+  const appBaseUrl = process.env.APP_BASE_URL || '';
+  const isRailwayDeployment = appBaseUrl.includes('.up.railway.app');
   const domain = process.env.SESSION_COOKIE_DOMAIN
-    || (inProd ? '.coaileague.com' : undefined);
+    || (inProd && !isRailwayDeployment ? '.coaileague.com' : undefined);
   return {
     httpOnly: true,
-    secure: inProd,
+    secure: inProd || appBaseUrl.startsWith('https://'),
     sameSite: 'lax' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',

@@ -5,6 +5,7 @@
  * Section-by-section wizard, auto-save draft, restore banner, GPS capture,
  * Trinity validation on submit.
  */
+import React from 'react';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";

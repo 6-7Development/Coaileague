@@ -341,7 +341,7 @@ class PlatformMaintenanceService {
     try {
       await universalNotificationEngine.sendNotification({
         workspaceId: '*', // Platform-wide
-        idempotencyKey: `notif-${Date.now()}`,
+        idempotencyKey: `notif-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`,
           type: 'system',
         title: 'Support Audit',
         message,

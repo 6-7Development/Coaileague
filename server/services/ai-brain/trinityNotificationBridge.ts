@@ -475,7 +475,7 @@ class TrinityNotificationBridge {
         for (const userId of payload.targetAudience.userIds) {
           try {
             await universalNotificationEngine.sendNotification({
-              idempotencyKey: `notif-${Date.now()}`,
+              idempotencyKey: `notif-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`,
           type: 'system',
               title: payload.title,
               message: payload.message,

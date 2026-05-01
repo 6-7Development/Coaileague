@@ -12,6 +12,7 @@
  * - Client-Facing (3 docs)
  */
 
+import React from 'react';
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useEmployee } from "@/hooks/useEmployee";

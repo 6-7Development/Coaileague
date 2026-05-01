@@ -5,6 +5,7 @@
  * Actions hidden in expandable section for mobile space efficiency
  */
 
+import React from 'react';
 import { useState, memo } from 'react';
 import { format } from 'date-fns';
 import { useLocation } from 'wouter';

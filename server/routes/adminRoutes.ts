@@ -2157,7 +2157,7 @@ router.post('/compliance/notify-pending', async (req: AuthenticatedRequest, res)
         relatedEntityType: 'compliance',
         metadata: { pendingCount: count, reason: 'post_email_fix_notification', notifiedAt: new Date().toISOString() },
         createdBy: req.user.id,
-        idempotencyKey: `system-${Date.now()}-${owner.userId}`
+        idempotencyKey: `system-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}-${owner.userId}`
       });
       notified++;
     }
