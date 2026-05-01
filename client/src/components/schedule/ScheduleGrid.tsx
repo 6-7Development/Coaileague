@@ -69,12 +69,20 @@ const SHIFT_STATUS_GRADIENTS: Record<ShiftStatus, { gradient: string; border: st
 };
 
 const SHIFT_COLORS: Record<ShiftStatus, { bg: string; border: string; text: string }> = {
-  scheduled: { bg: 'bg-green-500/10', border: 'border-l-green-500', text: 'text-green-700 dark:text-green-300' },
-  pending: { bg: 'bg-yellow-500/10', border: 'border-l-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
-  conflict: { bg: 'bg-red-500/10', border: 'border-l-red-500', text: 'text-red-700 dark:text-red-300' },
-  published: { bg: 'bg-blue-500/10', border: 'border-l-blue-500', text: 'text-blue-700 dark:text-blue-300' },
-  completed: { bg: 'bg-gray-500/10', border: 'border-l-gray-400', text: 'text-gray-600 dark:text-gray-400' },
-  draft: { bg: 'bg-purple-500/10', border: 'border-l-purple-500', text: 'text-purple-700 dark:text-purple-300' },
+  scheduled:   { bg: 'bg-green-500/10',  border: 'border-l-green-500',   text: 'text-green-700 dark:text-green-300' },
+  pending:     { bg: 'bg-yellow-500/10', border: 'border-l-yellow-500',  text: 'text-yellow-700 dark:text-yellow-300' },
+  conflict:    { bg: 'bg-red-500/10',    border: 'border-l-red-500',     text: 'text-red-700 dark:text-red-300' },
+  published:   { bg: 'bg-blue-500/10',   border: 'border-l-blue-500',    text: 'text-blue-700 dark:text-blue-300' },
+  completed:   { bg: 'bg-gray-500/10',   border: 'border-l-gray-400',    text: 'text-gray-600 dark:text-gray-400' },
+  draft:       { bg: 'bg-purple-500/10', border: 'border-l-purple-500',  text: 'text-purple-700 dark:text-purple-300' },
+  open:        { bg: 'bg-orange-500/10', border: 'border-l-orange-500',  text: 'text-orange-700 dark:text-orange-300' },
+  assigned:    { bg: 'bg-blue-500/10',   border: 'border-l-blue-400',    text: 'text-blue-700 dark:text-blue-300' },
+  confirmed:   { bg: 'bg-emerald-500/10',border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  approved:    { bg: 'bg-emerald-500/10',border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  in_progress: { bg: 'bg-violet-500/10', border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300' },
+  cancelled:   { bg: 'bg-gray-500/10',   border: 'border-l-gray-400',    text: 'text-gray-500 dark:text-gray-400' },
+  calloff:     { bg: 'bg-red-500/10',    border: 'border-l-red-400',     text: 'text-red-600 dark:text-red-400' },
+  no_show:     { bg: 'bg-red-500/10',    border: 'border-l-red-500',     text: 'text-red-700 dark:text-red-400' },
 };
 
 const HOUR_WIDTH = 56;

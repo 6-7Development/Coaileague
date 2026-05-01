@@ -64,7 +64,7 @@ clockinPinRouter.post(
 
       const hash = await bcrypt.hash(pin.replace(/\D/g, ''), BCRYPT_ROUNDS);
       await pool.query(
-        `UPDATE employees SET clockin_pin_hash = $1 WHERE id = $2`,
+        `UPDATE employees SET clockin_pin_hash = $1 WHERE id = $2 AND workspace_id = $3`,
         [hash, employeeId],
       );
 
@@ -178,7 +178,7 @@ clockinPinRouter.delete(
       const emp = await getEmployee(employeeId, workspaceId);
       if (!emp) return res.status(404).json({ error: 'Employee not found' });
 
-      await pool.query(`UPDATE employees SET clockin_pin_hash = NULL WHERE id = $1`, [employeeId]);
+      await pool.query(`UPDATE employees SET clockin_pin_hash = NULL WHERE id = $1 AND workspace_id = $2`, [employeeId]);
       res.json({ success: true, message: 'PIN cleared' });
     } catch (err: unknown) {
       log.error('[PIN] clear error:', err);

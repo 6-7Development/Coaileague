@@ -22,6 +22,11 @@ import {
  * Generic sendEmail — thin wrapper around sendCanSpamCompliantEmail.
  * Used by externalEmailRoutes and any other caller that just needs a
  * simple {to, subject, html, text} interface.
+ *
+ * Failure semantics: returns { success: false } when Resend is not
+ * configured, but propagates the underlying reason so callers can mark
+ * the row as failed instead of silently writing status='sent'. Callers
+ * MUST check `result.success` before treating the send as delivered.
  */
 export async function sendEmail(opts: {
   to: string;
@@ -31,10 +36,19 @@ export async function sendEmail(opts: {
   from?: string;
   replyTo?: string;
   workspaceId?: string;
-}): Promise<{ id?: string; success: boolean }> {
+}): Promise<{ id?: string; success: boolean; error?: string }> {
+  if (!isResendConfigured()) {
+    // Trigger client construction once so the configured flag is set on first
+    // boot. getUncachableResendClient() is the canonical source of truth and
+    // also drives the production-mode "throw" behavior — relying on the
+    // cached `resendConfigured` flag alone produced a chicken-and-egg silent
+    // failure on the very first call after server start.
+    await getUncachableResendClient();
+  }
+
   if (!isResendConfigured()) {
     log.warn('[email] Resend not configured — email not sent to:', opts.to);
-    return { success: false };
+    return { success: false, error: 'Resend not configured' };
   }
 
   const result = await sendCanSpamCompliantEmail({
@@ -47,5 +61,12 @@ export async function sendEmail(opts: {
     workspaceId: opts.workspaceId,
   } as unknown as CanSpamEmailOptions);
 
-  return { id: (result as any)?.id, success: true };
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.reason || (result.error?.message ?? 'Email delivery failed'),
+    };
+  }
+
+  return { id: (result as any)?.data?.id, success: true };
 }

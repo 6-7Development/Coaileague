@@ -281,8 +281,8 @@ emailRouter.post('/send', async (req: AuthenticatedRequest, res) => {
     await pool.query(`
       UPDATE platform_email_addresses
       SET emails_sent_this_period = emails_sent_this_period + 1
-      WHERE id = $1
-    `, [addr.id]);
+      WHERE id = $1 AND workspace_id = $2
+    `, [addr.id, workspaceId]);
 
     return res.json({ success: true, emailId: emailResult.rows[0].id });
   } catch (err: unknown) {

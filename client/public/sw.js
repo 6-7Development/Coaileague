@@ -737,14 +737,49 @@ self.addEventListener('notificationclose', (event) => {
 
 self.addEventListener('periodicsync', (event) => {
   console.log('[SW] Periodic sync:', event.tag);
-  
+
   if (event.tag === 'refresh-schedule') {
     event.waitUntil(refreshScheduleData());
   }
   if (event.tag === 'refresh-notifications') {
     event.waitUntil(refreshNotifications());
   }
+  // D4 — keep ChatDock unread badges current while the app is backgrounded.
+  // Browsers only fire periodicsync at intervals (typically 12h+) so this
+  // complements (does not replace) the WebSocket unread sync that runs when
+  // the app is foregrounded.  When the badge count changes, the next
+  // foregrounded reconciliation will pick it up via /api/chat/rooms.
+  if (event.tag === 'refresh-chat-unread') {
+    event.waitUntil(refreshChatUnread());
+  }
 });
+
+async function refreshChatUnread() {
+  try {
+    const response = await fetch('/api/chat/unread-count');
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put('/api/chat/unread-count', response.clone());
+      try {
+        const data = await response.json();
+        const total = typeof data?.total === 'number' ? data.total : (data?.count || 0);
+        if (total > 0 && self.registration?.showNotification) {
+          await self.registration.showNotification('CoAIleague Messages', {
+            body: total === 1 ? 'You have 1 unread message' : `You have ${total} unread messages`,
+            badge: '/icons/badge.png',
+            icon: '/coaileague-logo.png',
+            tag: 'chatdock-unread',
+            renotify: false,
+            silent: true,
+            data: { url: '/chatrooms' },
+          });
+        }
+      } catch { /* json parse failure — non-fatal */ }
+    }
+  } catch (e) {
+    console.log('[SW] Background chat unread refresh failed (offline)');
+  }
+}
 
 async function refreshScheduleData() {
   console.log('[SW] Refreshing schedule data in background');

@@ -484,7 +484,7 @@ router.post("/report-lost/:assignmentId", async (req, res) => {
         );
 
         await client.query(
-          `UPDATE equipment_assignments SET deduction_amount = $1 WHERE id = $2`,
+          `UPDATE equipment_assignments SET deduction_amount = $1 WHERE id = $2 AND workspace_id = $3`,
           [deductionAmount, assignmentId]
         );
       }
