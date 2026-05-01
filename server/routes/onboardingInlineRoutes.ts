@@ -221,14 +221,15 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
       sentBy: userId,
     } as any);
 
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-    const host = req.get('host');
-    const onboardingUrl = `${protocol}://${host}/onboarding/${inviteToken}`;
+    // Use APP_URL when set (Railway production); fall back to request host
+    const appBase = process.env.APP_URL ||
+      `${process.env.NODE_ENV === 'production' ? 'https' : req.protocol}://${req.get('host')}`;
+    const onboardingUrl = `${appBase}/onboarding/${inviteToken}`;
 
     await sendOnboardingInviteEmail(email, {
       employeeName: `${firstName} ${lastName}`,
       workspaceName: workspace?.name || 'Our Team',
-      onboardingUrl,
+      inviteUrl: onboardingUrl,    // template field name
       expiresIn: '7 days',
     });
 
@@ -400,6 +401,16 @@ router.post('/complete', async (req: AuthenticatedRequest, res) => {
         .returning();
       return res.json(created[0]);
     }
+
+    // Also mark the employee record as onboarding completed
+    // so they appear as fully active in schedules and employee lists.
+    try {
+      const { employees: empTable } = await import('@shared/schema');
+      const { eq: eqOp } = await import('drizzle-orm');
+      await db.update(empTable)
+        .set({ onboardingStatus: 'completed', isActive: true })
+        .where(eqOp(empTable.userId, userId));
+    } catch (_) { /* non-blocking — user_onboarding row already saved */ }
 
     res.json(updated[0]);
   } catch (error) {

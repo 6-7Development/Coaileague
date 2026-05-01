@@ -785,3 +785,187 @@ Never merge to main without Bryan's explicit authorization.
 - Helpers: `parseTexasSecurityLevel`, `requiresPsychEval`, `requiresArmedCommission`
 - No DB migration needed — values match existing `employees.licenseType` varchar
 
+
+---
+
+## CANONICAL WORKFLOW: Employee Invite → Register → Persist → Schedule
+
+### Overview
+Two parallel invite systems coexist. The primary employee flow (from employees.tsx) uses the **Onboarding Invite** system.
+
+```
+MANAGER ACTION               SERVER                          DATABASE
+─────────────────────────────────────────────────────────────────────
+employees.tsx                                                
+  ⋮ menu → Send Invite       POST /api/onboarding/invite     onboarding_invites ← INSERT
+  inviteMutation fires       (onboardingInlineRoutes.ts)     ├── id (UUID)
+  Payload: {                 requireManager guard            ├── workspaceId
+    email,                   Role gate: no org_owner/co_owner├── email
+    firstName,               Allowlist: staff + mgr tiers    ├── firstName, lastName
+    lastName,                                                 ├── workspaceRole
+    role,                    ── generates inviteToken ──      ├── inviteToken (32B hex)
+    workspaceRole,           crypto.randomBytes(32)          ├── expiresAt (+7 days)
+    workspaceId              ── stores invite in DB ──       └── status: 'pending'
+  }                          storage.createOnboardingInvite
+
+                             ── builds invite URL ──          EMAIL SENT
+                             APP_URL || req.protocol+host     From: Resend
+                             /onboarding/{inviteToken}         Template: employeeInvitation
+                             ── sends email ──                CTA: "Complete Your Setup"
+                             sendOnboardingInviteEmail()       URL: /onboarding/{token}
+                               inviteUrl: onboardingUrl ✅ FIXED
+
+EMPLOYEE ACTION
+─────────────────────────────────────────────────────────────────────
+Employee receives email
+  Clicks "Complete Your Setup"
+  → Browser opens /onboarding/{token}
+  → App.tsx Route: /onboarding/:token
+  → <OnboardingWizard> component loads
+
+OnboardingWizard             GET /api/onboarding/invite/:token
+  reads token from URL        publicOnboardingRoutes.ts
+                              storage.getOnboardingInviteByToken(token)
+                              validates: !isUsed, !expired
+                              returns: invite details (pre-fills form)
+
+Employee completes wizard:
+  ── Step 1: Personal info   POST /api/onboarding/application  onboarding_applications ← INSERT
+  ── Step 2: Documents       PATCH /api/onboarding/application/:id
+  ── Step 3: Signatures      POST /api/onboarding/signatures   document_signatures ← INSERT
+
+REGISTRATION/COMPLETION
+─────────────────────────────────────────────────────────────────────
+  Already has account?       ── EXISTING USER PATH ──
+    → POST /api/onboarding/workspace-invite/accept-existing
+      Sets session.workspaceId, links employee record
+
+  New user?                  ── NEW USER REGISTRATION ──
+    → POST /api/onboarding/workspace-invite/register
+      Payload: { code, email, password, firstName, lastName }
+      
+      db.transaction():
+        INSERT users {          users table
+          id (UUID),            ├── id, email, passwordHash
+          email (normalized),   ├── firstName, lastName
+          passwordHash,         ├── currentWorkspaceId ← invite.workspaceId
+          emailVerified: true,  └── authProvider: 'email'
+          currentWorkspaceId
+        }
+        INSERT employees {      employees table
+          workspaceId,          ├── workspaceId (tenant-scoped)
+          userId,               ├── userId (linked to user)
+          firstName, lastName,  ├── firstName, lastName, email
+          workspaceRole,        ├── workspaceRole (from invite)
+          isActive: true,       ├── isActive: true
+          onboardingStatus:     └── onboardingStatus: 'in_progress'
+            'in_progress',      
+          hireDate: new Date()
+        }
+        UPDATE workspace_invites SET status='accepted'
+        UPDATE users SET currentWorkspaceId
+
+      ── Non-blocking (fire-and-forget) ──
+        platformEventBus.publish({ type: 'member_joined', ... })
+        audit_log INSERT: action='member_joined'
+        NotificationDeliveryService → notify workspace owner (in-app)
+        Cross-tenant score lookup (async, non-blocking)
+
+      ── Session set ──
+        req.session.userId = userId
+        req.session.workspaceId = workspaceId
+        req.session.workspaceRole = role
+
+      Response: { userId, workspaceId, role, landingPage, firstLogin: true }
+      → Client redirects to landingPage (role-based)
+
+ONBOARDING COMPLETION (wizard finish)
+─────────────────────────────────────────────────────────────────────
+  → POST /api/onboarding/complete
+    Updates user_onboarding table (progress tracking)
+    ✅ FIXED: Also updates employees.onboardingStatus = 'completed'
+    Response: updated user_onboarding row
+
+POST-REGISTRATION PERSISTENCE & SYNC
+─────────────────────────────────────────────────────────────────────
+  Employee now in system:
+    ✅ users table — account for login
+    ✅ employees table — workspace member (workspaceId-scoped)
+    ✅ session — authenticated, workspace bound
+    ✅ onboarding_invites — status='accepted'/'used'
+    ✅ audit_log — invite_created + member_joined entries
+    ✅ Trinity notified via member_joined event
+
+  Immediately available for:
+    ✅ /api/employees?workspaceId= — appears in employee list
+    ✅ Scheduling — employees queried by workspaceId (scoped)
+    ✅ Time tracking — clockIn/clockOut via employee record
+    ✅ Payroll — employee.payType, hourlyRate set at invite or onboarding
+    ✅ Compliance — licenseTypes from invite seed onboarding_checklists
+
+  QueryClient invalidation (client-side sync):
+    inviteMutation.onSuccess:
+      queryClient.invalidateQueries(['/api/employees', workspaceId])
+      → employees list refetches and shows new member
+
+DUAL INVITE SYSTEM (quick reference)
+─────────────────────────────────────────────────────────────────────
+┌─────────────────────────────────────────────────────────────────┐
+│ System 1: Onboarding Invite (PRIMARY — used by employees.tsx)   │
+│  Route:   POST /api/onboarding/invite                           │
+│  Table:   onboarding_invites                                     │
+│  URL:     /onboarding/{token}                                    │
+│  Flow:    Full onboarding wizard                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ System 2: Workspace Invite (hrInlineRoutes)                     │
+│  Route:   POST /api/hr/invites/create → /api/invites/create     │
+│  Table:   workspace_invites                                      │
+│  URL:     /accept-invite?code={CODE}                             │
+│  Flow:    Quick accept (existing users) or register page         │
+└─────────────────────────────────────────────────────────────────┘
+
+KNOWN ISSUES FIXED IN PHASE 4
+─────────────────────────────────────────────────────────────────────
+| KI-011 | Invite email had broken CTA — field name mismatch      |
+|         | Template expected 'inviteUrl', code passed 'onboardingUrl'|
+|         | Fixed: onboardingInlineRoutes.ts line ~250            |
+| KI-012 | Invite URL used req.protocol not APP_URL in production  |
+|         | Fixed: APP_URL env var used first, req fallback second |
+| KI-013 | POST /complete didn't update employee.onboardingStatus  |
+|         | Fixed: Added employees table update in /complete handler|
+
+---
+
+## Phase 4 — Mobile UI Polish + Invite Workflow Audit (2026-05-01)
+
+### Mobile UI Polish
+**employees.tsx — EmployeeCard rebuilt:**
+- Contact-list layout: full-bleed rows, no card shadows, border-b separators
+- Avatar: 44px with AvatarImage (profile photo) + purple gradient fallback
+- Name hierarchy: 15px semibold → role + status badge → email sub-line
+- Actions: DropdownMenu (⋮) + ChevronRight → right cluster
+- Count header: mobile shows "N Employees / All employees"
+- Checkboxes: animate in (w-0→w-10) only in bulk-select mode, no layout crowding
+
+**private-messages.tsx — conversation list polished:**
+- Avatar: 48px with AvatarImage + purple gradient fallback
+- Date-aware timestamps: today→HH:MM, yesterday→"Yesterday", week→"Mon", older→date
+- Unread: pill with min-width, purple-600, bold name+message when unread
+- Online dot: solid span with ring-2 ring-background halo
+- Full-bleed rows, border-b, no rounded corners — pure contact-list style
+
+### Invite Workflow Audit — Bugs Fixed
+| ID | Bug | Fix |
+|----|-----|-----|
+| KI-011 | Email CTA broken — `onboardingUrl` passed where `inviteUrl` expected | Field renamed in call site |
+| KI-012 | Invite URL used `req.protocol` not `APP_URL` (wrong in Railway prod) | APP_URL env var used first |
+| KI-013 | POST /complete didn't update `employee.onboardingStatus` | Added employees table update |
+
+### Full Workflow Verified
+✅ UI trigger → POST /api/onboarding/invite → DB insert → email sent  
+✅ Email CTA URL → /onboarding/:token → OnboardingWizard  
+✅ Registration → transaction(users INSERT + employees INSERT + invite UPDATE)  
+✅ Session set → employee immediately available in workspace  
+✅ QueryClient invalidation → employee list refreshes  
+✅ Schedule system uses workspaceId-scoped employee queries  
+✅ Onboarding completion → employee.onboardingStatus = 'completed'  
