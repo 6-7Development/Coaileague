@@ -349,13 +349,13 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
     }
 
     // LIFECYCLE STATUS GATE — hard block on suspended or pending officers
-    if ((employee as any).status === 'suspended') {
+    if ((employee.status as string | null | undefined) === 'suspended') {
       return res.status(403).json({
         error: 'EMPLOYEE_SUSPENDED',
         message: 'Your access has been temporarily suspended. Contact your supervisor.',
       });
     }
-    if ((employee as any).status === 'pending') {
+    if ((employee.status as string | null | undefined) === 'pending') {
       return res.status(403).json({
         error: 'EMPLOYEE_PENDING',
         message: 'Your account is pending activation. Contact your administrator.',

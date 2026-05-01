@@ -1344,3 +1344,45 @@ See "CANONICAL ROUTE MAP" section above — full domain → prefix index added.
 | .catch(()=>null) remaining | ~380 (352 fire-and-forget, 28 fixed) |
 | aria-label gaps fixed | 144 icon buttons across 41 files |
 | TypeScript 'as any' remaining | ~7,300 (Phase 9 target) |
+
+---
+
+## Phase 9 — Claude Code Merge Check + TS Financial Cleanup (2026-05-01)
+
+### Claude Code Branch Audit
+Checked all remote branches for unmerged work:
+- `claude/fix-bell-icon-modal-SoqPW` — Bell/notification fix. Our Phase 5 fix is SUPERIOR
+  (side=bottom, 82dvh, real notification list). Their version still had UNSCommandCenter.
+  No merge needed — we're ahead.
+- `claude/texas-licensing-framework-CXrDv` — TexasSecurityLevel enum + helpers.
+  **Already in our codebase** (absorbed in prior commit). No action needed.
+- All codex audit branches already merged into development via previous PRs.
+
+**Status: development branch is the most advanced — no merge action needed.**
+
+### TypeScript Cleanup — Financial Routes
+Removed unnecessary `as any` casts from three critical financial files:
+
+| File | Casts Removed | Pattern |
+|------|--------------|---------|
+| shiftRoutes.ts | 2 | `(shift as any).employeeId/.clientId` → `shift.employeeId/.clientId` |
+| payrollRoutes.ts | 7 | `(payrollRun as any).id/.status` → `payrollRun?.id/.status` |
+| time-entry-routes.ts | + | `(employee as any).status === 'X'` → typed narrowing |
+| shiftRoutes.ts | + | `(emp as any).status === 'X'` → typed narrowing |
+
+Fields that legitimately need `as any` (joined/computed, not in base schema):
+- `shift.assignedEmployeeIds` — array joined from shift_assignments table
+- `shift.siteName`, `shift.jobSiteName` — from client/site JOIN
+- `shift.requiredSkills` — from shift_requirements JOIN
+
+These are documented — the `as any` is intentional for JOIN result shapes.
+
+### Cumulative TypeScript Metrics (Phase 7-9)
+| Metric | Phase 7 | Phase 8 | Phase 9 |
+|--------|---------|---------|---------|
+| catch(e: any) | 246→0 | 0 | 0 |
+| .catch(()=>null) critical | 436 | 408 | 380 |
+| (req as any).workspaceId | 10→0 | 0 | 0 |
+| (shift as any) casts | ~11 | ~11 | **9** |
+| (payrollRun as any) casts | ~7 | ~7 | **0** |
+| aria-label gaps | — | 144→0 | 0 |

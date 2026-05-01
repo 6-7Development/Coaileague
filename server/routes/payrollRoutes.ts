@@ -645,9 +645,9 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         userRole: req.user?.role || 'user',
         action: 'create',
         entityType: 'payroll_run',
-        entityId: (payrollRun as any).id,
+        entityId: payrollRun?.id,
         actionDescription: `Payroll run created for period ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
-        changes: { after: { payrollRunId: (payrollRun as any).id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
+        changes: { after: { payrollRunId: payrollRun?.id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
       }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err?.message }));
@@ -659,7 +659,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         {
           workspaceId,
           userId,
-          payrollRunId: (payrollRun as any).id,
+          payrollRunId: payrollRun?.id,
           periodStart: periodStartStr,
           periodEnd: periodEndStr,
           createdBy: userId,
@@ -667,7 +667,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       ).catch(err => log.error('Failed to create payroll notification:', err));
 
       // broadcastToWorkspace imported statically
-      broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: (payrollRun as any).id });
+      broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: payrollRun?.id });
       platformEventBus.publish({
         type: 'payroll_run_created',
         category: 'automation',
@@ -676,7 +676,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         workspaceId,
         userId,
         metadata: {
-          payrollRunId: (payrollRun as any).id,
+          payrollRunId: payrollRun?.id,
           periodStart: periodStart.toISOString(),
           periodEnd: periodEnd.toISOString(),
           createdBy: userId,
@@ -694,8 +694,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         actorEmail: req.user?.email || null,
         description: `Payroll run created for period ${periodStartStr} to ${periodEndStr}`,
         relatedEntityType: 'payroll_run',
-        relatedEntityId: (payrollRun as any).id,
-        newState: { status: (payrollRun as any).status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
+        relatedEntityId: payrollRun?.id,
+        newState: { status: payrollRun?.status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
       }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err?.message }));

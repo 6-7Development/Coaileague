@@ -477,12 +477,12 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             ineligibleEmployees.push(`${empName}: Employee is not active (terminated or deactivated)`);
             continue;
           }
-          if ((emp as any).status === 'pending') {
+          if ((emp.status as string | null | undefined) === 'pending') {
             const empName = `${emp.firstName} ${emp.lastName}`;
             ineligibleEmployees.push(`${empName}: Employee is pending activation and cannot be scheduled`);
             continue;
           }
-          if ((emp as any).status === 'suspended') {
+          if ((emp.status as string | null | undefined) === 'suspended') {
             const empName = `${emp.firstName} ${emp.lastName}`;
             ineligibleEmployees.push(`${empName}: Employee is suspended and cannot be scheduled`);
             continue;
@@ -795,8 +795,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         why: 'Manager created shift via scheduling module',
         changes: {
           date: new Date(shift.startTime).toISOString().split('T')[0],
-          employeeId: (shift as any).employeeId,
-          clientId: (shift as any).clientId,
+          employeeId: shift.employeeId,
+          clientId: shift.clientId,
           location: validated.location,
           status: shift.status,
         },
