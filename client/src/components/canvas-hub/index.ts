@@ -32,3 +32,5 @@ export {
   type PageVariant,
   type CanvasPageConfig,
 } from "./CanvasHubRegistry"
+
+export { MobileResponsiveSheet } from "./MobileResponsiveSheet"

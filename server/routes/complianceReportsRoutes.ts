@@ -2,6 +2,7 @@
  * Compliance Reports Routes — /api/compliance-reports
  * Generate, list, and manage regulatory compliance reports.
  */
+import { complianceReports, workspaces } from "@shared/schema";
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";

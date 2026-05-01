@@ -13,6 +13,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "client", "src"),
       "@shared": path.resolve(__dirname, "shared"),
     },
+    moduleDirectories: ["node_modules", path.resolve(__dirname, "node_modules")],
   },
   root: path.resolve(__dirname, "client"),
   build: {
