@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-05-01T17:07:05.267Z",
+  "ranAt": "2026-05-01T17:34:46.701Z",
   "summary": {
-    "FATAL": 280,
+    "FATAL": 278,
     "WARN": 25,
     "INFO": 1
   },
@@ -22,18 +22,6 @@
       "severity": "FATAL",
       "group": "ghost-endpoint",
       "name": "client/src/components/chatdock/TrinityThoughtBar.tsx:155 → GET /api/trinity/active-operations",
-      "detail": "Frontend calls but no server route matches."
-    },
-    {
-      "severity": "FATAL",
-      "group": "ghost-endpoint",
-      "name": "client/src/components/clients-table.tsx:600 → POST /api/clients/:p/collections/start",
-      "detail": "Frontend calls but no server route matches."
-    },
-    {
-      "severity": "FATAL",
-      "group": "ghost-endpoint",
-      "name": "client/src/components/clients-table.tsx:617 → POST /api/clients/:p/collections/decline",
       "detail": "Frontend calls but no server route matches."
     },
     {

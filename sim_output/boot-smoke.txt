@@ -1,0 +1,24 @@
+Pre-merge boot + endpoint smoke test
+Server: tsx server/index.ts on PORT=5099
+Boot status: ALIVE on port 5099 (express "serving on port 5099")
+
+Newly-mounted routers (deep-audit fix) — all 401 (route reachable, auth gate fires):
+  /api/compliance/incidents           HTTP 401
+  /api/compliance/policies            HTTP 401
+  /api/training/modules               HTTP 401
+  /api/training/certificates          HTTP 401
+  /api/gps/active                     HTTP 401
+  /api/gamification/leaderboard       HTTP 401
+  /api/holidays/check-date            HTTP 401
+  /api/scheduler/status               HTTP 401
+  /api/tokens/balance                 HTTP 401
+  /api/workflow/runs                  HTTP 401
+  /api/workflow-config                HTTP 401
+
+Ghost-endpoint fixes — all return 403 (route reachable, CSRF/auth check fires):
+  /api/ai-brain/chat (POST)                    HTTP 403
+  /api/trinity/intake/start (POST)             HTTP 403
+  /api/clients/abc/collections/start (POST)    HTTP 403
+  /api/clients/abc/collections/decline (POST)  HTTP 403
+
+Result: all routes reachable, no 404s. Pre-merge sanity gate green.

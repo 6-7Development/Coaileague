@@ -891,6 +891,50 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
   }
 });
 
+// ─── POST /:id/collections/start — kick off the collections pipeline ────────
+// Owner clicks "Start collections" on a deactivated client in clients-table.tsx.
+// Service-layer (startCollections) was already wired to send emails and log
+// attempts; the HTTP route was never written, so the button silently 404'd.
+router.post('/:id/collections/start', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
+
+    const body = z.object({
+      outstandingAmount: z.number().nonnegative().optional(),
+    }).safeParse(req.body || {});
+    const outstanding = body.success ? body.data.outstandingAmount : undefined;
+
+    const result = await startCollections(workspaceId, req.params.id, userId || 'system', outstanding);
+    if (!result.success) return res.status(409).json({ error: result.error || 'Failed to start collections' });
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to start collections', message: err?.message });
+  }
+});
+
+// ─── POST /:id/collections/decline — record owner's decision not to pursue ──
+// Sister endpoint to /collections/start. Marks the client as decided-against,
+// writes a log entry capturing the reason, and returns success.
+router.post('/:id/collections/decline', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
+
+    const body = z.object({
+      reason: z.string().max(500).optional(),
+    }).safeParse(req.body || {});
+    const reason = body.success ? body.data.reason : undefined;
+
+    await declineCollections(workspaceId, req.params.id, userId || 'system', reason);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record collections decline', message: err?.message });
+  }
+});
+
 // ─── POST /:id/reactivate — dedicated reactivation endpoint ──────────────────
 router.post('/:id/reactivate', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {

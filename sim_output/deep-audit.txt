@@ -1,8 +1,6 @@
 FATAL	ghost-endpoint	client/src/components/PDFFieldPlacer.tsx:65 → PUT /api/documents/:p/signature-fields	Frontend calls but no server route matches.
 FATAL	ghost-endpoint	client/src/components/chatdock/TrinityThoughtBar.tsx:129 → GET /api/trinity/chat/thought-stream:p	Frontend calls but no server route matches.
 FATAL	ghost-endpoint	client/src/components/chatdock/TrinityThoughtBar.tsx:155 → GET /api/trinity/active-operations	Frontend calls but no server route matches.
-FATAL	ghost-endpoint	client/src/components/clients-table.tsx:600 → POST /api/clients/:p/collections/start	Frontend calls but no server route matches.
-FATAL	ghost-endpoint	client/src/components/clients-table.tsx:617 → POST /api/clients/:p/collections/decline	Frontend calls but no server route matches.
 FATAL	ghost-endpoint	client/src/components/command-palette.tsx:97 → POST /api/search/log-click	Frontend calls but no server route matches.
 FATAL	ghost-endpoint	client/src/components/command-palette.tsx:170 → GET /api/search	Frontend calls but no server route matches.
 FATAL	ghost-endpoint	client/src/components/consent-manager.tsx:87 → POST /api/privacy/cookie-consent	Frontend calls but no server route matches.

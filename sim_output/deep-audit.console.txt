@@ -6,19 +6,15 @@
 [6] Local imports with missing targets
 
 ═══════════════════════════════════════════════════════════════
-  Deep Audit:  FATAL=280  WARN=25  INFO=1
+  Deep Audit:  FATAL=278  WARN=25  INFO=1
 ═══════════════════════════════════════════════════════════════
 
-[ghost-endpoint]  total=253  fatal=253
+[ghost-endpoint]  total=251  fatal=251
   FATAL  client/src/components/PDFFieldPlacer.tsx:65 → PUT /api/documents/:p/signature-fields
          Frontend calls but no server route matches.
   FATAL  client/src/components/chatdock/TrinityThoughtBar.tsx:129 → GET /api/trinity/chat/thought-stream:p
          Frontend calls but no server route matches.
   FATAL  client/src/components/chatdock/TrinityThoughtBar.tsx:155 → GET /api/trinity/active-operations
-         Frontend calls but no server route matches.
-  FATAL  client/src/components/clients-table.tsx:600 → POST /api/clients/:p/collections/start
-         Frontend calls but no server route matches.
-  FATAL  client/src/components/clients-table.tsx:617 → POST /api/clients/:p/collections/decline
          Frontend calls but no server route matches.
   FATAL  client/src/components/command-palette.tsx:97 → POST /api/search/log-click
          Frontend calls but no server route matches.
@@ -34,7 +30,11 @@
          Frontend calls but no server route matches.
   FATAL  client/src/components/email/EmailHubCanvas.tsx:3823 → POST /api/external-emails
          Frontend calls but no server route matches.
-  ... 241 more
+  FATAL  client/src/components/email/EmailHubCanvas.tsx:3837 → POST /api/external-emails/:p/send
+         Frontend calls but no server route matches.
+  FATAL  client/src/components/employee-edit-dialog.tsx:331 → GET /api/manager-assignments/employee/:p
+         Frontend calls but no server route matches.
+  ... 239 more
 
 [stub-marker]  total=1  fatal=0
   INFO  client/src/pages/analytics-reports.tsx

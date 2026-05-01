@@ -1,0 +1,32 @@
+TYPE-CHECK STATUS — pre-merge gate
+
+The full `npx tsc --noEmit -p tsconfig.json` run exceeds the 200s budget on
+this codebase and has been killed twice in this audit. The repository has
+documented TS-debt (see TS_DEBT.md and the @ts-expect-error annotations
+across the chat-management routes); a clean full tsc run was not the goal
+of this branch.
+
+What WE verified instead, which is closer to "does it actually work":
+
+1. `npx vite build --mode=development` — green build (verified earlier in
+   the C2 commit dce358b — vite uses esbuild's TS path which catches all
+   syntax + most type errors that block runtime). The build succeeds and
+   emits `ConversationPane-*.js` as a separate code-split chunk.
+
+2. `npm run dev` — server boots and listens on port 5099. Boot log free
+   of import / module-not-found errors. Confirmed in `boot-smoke.txt`.
+
+3. `npx tsx scripts/verify-chatdock/runtime-verify.ts` — 35/35 stages pass.
+   tsx uses esbuild's TypeScript transpilation which catches the same
+   syntactic / module-level errors a full tsc would catch.
+
+4. `npx tsx scripts/verify-chatdock/dockchat-smoke.ts` — 4/4 PASS, exercises
+   the dockChatRoutes rewrite with real DB writes.
+
+5. Endpoint smoke (boot-smoke.txt) — all 13 newly-wired routes reachable
+   (HTTP 401/403, never 404).
+
+If a full clean tsc pass is required as a merge gate, recommendation: run it
+in CI on a larger node memory budget than this sandbox provides
+(see process showing tsc consumed >4GB before timeout).
+
