@@ -145,7 +145,7 @@ export function registerScheduleTimeclockActions() {
     // 6. All checks passed (or force override) — proceed
     const now = new Date();
     await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: now } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: now } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'shift_updated',
@@ -172,7 +172,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !workspaceId) return { error: 'shiftId and workspaceId required' };
     // Security FIX: workspaceId filter prevents cross-workspace unassign
     await db.update(shifts)
-      .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as any)
+      .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'shift_updated',
@@ -230,7 +230,7 @@ export function registerScheduleTimeclockActions() {
       return { error: 'shiftIds array or weekOf date required' };
     }
     const result = await db.update(shifts)
-      .set({ status: 'published', updatedAt: new Date() } as any)
+      .set({ status: 'published', updatedAt: new Date() } as Record<string, unknown>)
       .where(whereClause);
     await platformEventBus.publish({
       eventType: 'schedule_published',
@@ -246,7 +246,7 @@ export function registerScheduleTimeclockActions() {
     const { workspaceId, shiftIds } = params;
     if (!workspaceId || !shiftIds) return { error: 'workspaceId and shiftIds required' };
     await db.update(shifts)
-      .set({ status: 'draft', updatedAt: new Date() } as any)
+      .set({ status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.workspaceId, workspaceId), sql`${shifts.id} = ANY(${shiftIds})`));
     return { unpublished: true, count: shiftIds.length };
   }));
@@ -258,7 +258,7 @@ export function registerScheduleTimeclockActions() {
       ? and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, shiftId), eq(shifts.status, 'pending'))
       : and(eq(shifts.workspaceId, workspaceId), eq(shifts.status, 'pending'));
     await db.update(shifts)
-      .set({ status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(whereClause);
     return { approved: true, workspaceId };
   }));
@@ -268,13 +268,13 @@ export function registerScheduleTimeclockActions() {
     if (!workspaceId || !conflictingShiftId) return { error: 'workspaceId and conflictingShiftId required' };
     if (resolution === 'cancel') {
       await db.update(shifts)
-        .set({ status: 'cancelled', updatedAt: new Date() } as any)
+        .set({ status: 'cancelled', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, conflictingShiftId)));
       return { resolved: true, action: 'cancelled', shiftId: conflictingShiftId };
     }
     if (resolution === 'unassign') {
       await db.update(shifts)
-        .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as any)
+        .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, conflictingShiftId)));
       return { resolved: true, action: 'unassigned', shiftId: conflictingShiftId };
     }
@@ -397,7 +397,7 @@ export function registerScheduleTimeclockActions() {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + expiresHours);
     await db.update(shifts)
-      .set({ status: 'marketplace', updatedAt: new Date() } as any)
+      .set({ status: 'marketplace', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     return { posted: true, shiftId, expiresAt: expiresAt.toISOString() };
   }));
@@ -407,7 +407,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !employeeId) return { error: 'shiftId and employeeId required' };
     // G21-pattern FIX: isNull guard prevents double-award in concurrent marketplace claim
     const [awarded] = await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || ''), isNull(shifts.employeeId)))
       .returning();
     if (!awarded) return { awarded: false, reason: 'ALREADY_CLAIMED', shiftId };
@@ -436,7 +436,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !employeeId) return { error: 'shiftId and employeeId required' };
     // G21-pattern FIX: isNull guard prevents two officers both claiming an open coverage slot
     const [fulfilled] = await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || ''), isNull(shifts.employeeId)))
       .returning();
     if (!fulfilled) return { fulfilled: false, reason: 'ALREADY_FULFILLED', shiftId };

@@ -1026,7 +1026,7 @@ class AIBrainMasterOrchestrator {
             workspaceId: effectiveWs!,
             title: 'Payroll Run Created',
             description: `New payroll run for period ${periodStart} to ${periodEnd}`,
-            metadata: { payrollRunId: (created as any).id, periodStart, periodEnd, createdBy: request.userId },
+            metadata: { payrollRunId: ((created as {id?: string}).id), periodStart, periodEnd, createdBy: request.userId },
           }).catch(() => null);
 
           return {
@@ -3822,7 +3822,7 @@ class AIBrainMasterOrchestrator {
           const parts = event.type.split('.');   // ['brain', 'cerebellum', 'reportbot', 'completed']
           const regionName = parts[1]?.toUpperCase();
           const eventLabel = parts.slice(2).join('.');
-          log.info(`[Global Workspace] ${regionName} → ${eventLabel} (confidence: ${(event as any).metadata?.confidence ?? '?'})`);
+          log.info(`[Global Workspace] ${regionName} → ${eventLabel} (confidence: ${(event as Record<string,unknown>).metadata?.confidence ?? '?'})`);
         }
 
         // Phase 2 — Trinity Event Brain. Trinity explicitly reacts to the

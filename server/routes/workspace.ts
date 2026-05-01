@@ -31,7 +31,7 @@ interface AuthenticatedRequest extends Request {
     workspaceId?: string;
     currentWorkspaceId?: string;
     platformRole?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   workspaceId?: string;
   session?: unknown;

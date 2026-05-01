@@ -474,7 +474,7 @@ async function processIncident(
     occurredAt: occurredAt || now,
     submissionMethod: 'email',
     inboundEmailLogId: logId,
-  } as any).returning({ id: incidentReports.id });
+  } as Record<string, unknown>).returning({ id: incidentReports.id });
 
   // Store attachments in document vault if present (email storage quota enforced)
   const attachments = email.attachments || [];
@@ -505,7 +505,7 @@ async function processIncident(
         relatedEntityType: 'incident_report',
         relatedEntityId: report.id,
         uploadedBy: sender.id,
-      } as any);
+      } as Record<string, unknown>);
       if (attBytes > 0) {
         // Phase 26H — migrated from silent .catch(() => null) to labelled
         // scheduleNonBlocking for traceability (§B).
@@ -615,7 +615,7 @@ async function processDocs(
       uploadedBy: sender?.id ?? null,
       integrityHash,
       createdAt: new Date(),
-    } as any).returning({ id: documentVault.id });
+    } as Record<string, unknown>).returning({ id: documentVault.id });
     if (vaultEntry) {
       vaultIds.push(vaultEntry.id);
       if (attBytes > 0) {
@@ -847,7 +847,7 @@ async function processSupport(
     submissionMethod: 'email',
     emailCategory: category,
     inboundEmailLogId: logId,
-  } as any).returning({ id: supportTickets.id });
+  } as Record<string, unknown>).returning({ id: supportTickets.id });
 
   const routingNote = category === 'billing'
     ? 'Routed to finance team.'

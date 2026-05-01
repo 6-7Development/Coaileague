@@ -1606,7 +1606,7 @@ router.post("/trinity-halt", requireAuth, async (req: Request, res: Response) =>
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
 
     await db.update(workspaces)
-      .set({ trinityEmailHalted: halted } as any)
+      .set({ trinityEmailHalted: halted } as Record<string, unknown>)
       .where(eq(workspaces.id, workspaceId));
 
     log.info(`[TrinityInbox] Trinity email ${halted ? 'HALTED' : 'RESUMED'} for workspace ${workspaceId} by ${user.id}`);

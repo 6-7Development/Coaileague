@@ -89,17 +89,17 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
 
     const logs = events.map(event => ({
       id: event.id,
-      timestamp: (event as any).timestamp,
+      timestamp: (event as Record<string,unknown>).timestamp,
       actorType: event.actorType,
-      actorId: (event as any).actorId,
-      actorName: (event as any).actorName || 'Unknown',
-      action: (event as any).eventType,
-      resourceType: (event as any).aggregateType,
-      resourceId: (event as any).aggregateId,
-      status: (event as any).status === 'completed' ? '(success as any)' : (event as any).status === 'failed' ? 'failure' : 'warning',
+      actorId: (event as Record<string,unknown>).actorId,
+      actorName: (event as Record<string,unknown>).actorName || 'Unknown',
+      action: (event as Record<string,unknown>).eventType,
+      resourceType: (event as Record<string,unknown>).aggregateType,
+      resourceId: (event as Record<string,unknown>).aggregateId,
+      status: (event as Record<string,unknown>).status === 'completed' ? '(success as any)' : (event as Record<string,unknown>).status === 'failed' ? 'failure' : 'warning',
       details: typeof event.payload === 'object' && event.payload && 'description' in event.payload
         ? String(event.payload.description)
-        : `${(event as any).eventType} (on as any) ${(event as any).aggregateType}`,
+        : `${(event as Record<string,unknown>).eventType} (on as any) ${(event as Record<string,unknown>).aggregateType}`,
       ipAddress: event.ipAddress || undefined,
       userAgent: event.userAgent || undefined,
       verificationHash: event.actionHash || undefined,

@@ -79,7 +79,7 @@ router.get('/employee/:employeeId', requireAuth, async (req: AuthenticatedReques
     }));
 
     const tier1Tasks = tasks.filter((t: unknown) => t.tier === 1 && t.is_required);
-    const tier1Complete = tier1Tasks.every((t: any) =>
+    const tier1Complete = tier1Tasks.every((t: unknown) =>
       t.status === 'completed' || t.status === 'waived'
     );
 
@@ -321,7 +321,7 @@ router.get('/tier1-blocked/:employeeId', requireAuth, async (req: AuthenticatedR
     );
 
     const completedIds = new Set(completions.map((c: unknown) => c.task_template_id));
-    const blocked = tier1Templates.some((t: any) => !completedIds.has(t.id));
+    const blocked = tier1Templates.some((t: unknown) => !completedIds.has(t.id));
 
     return res.json({
       blocked,

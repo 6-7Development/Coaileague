@@ -719,7 +719,7 @@ class ElevatedSessionGuardian {
     try {
       const telemetryRecord: InsertSubagentTelemetry = {
         subagentId: event.subagentId,
-        workspaceId: (event as any).workspaceId || 'system',
+        workspaceId: (event as Record<string,unknown>).workspaceId || 'system',
         executionId: `tel-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
         actionId: event.actionId,
         status: event.status === 'success' ? 'completed' : event.status === 'failure' ? 'failed' : 'escalating',

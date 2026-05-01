@@ -139,7 +139,7 @@ export class EmployeeOnboardingPipelineService {
 
     // Check if all Tier 1 blocking steps are complete → trigger activation
     const tier1Blocking = steps.filter((s: unknown) => s.tier === 1 && s.blocking);
-    const tier1Done = tier1Blocking.every((s: any) => s.status === 'completed');
+    const tier1Done = tier1Blocking.every((s: unknown) => s.status === 'completed');
 
     if (tier1Done && pipeline.entity_type === 'employee') {
       await this.triggerActivationIfReady(pipeline);
@@ -209,7 +209,7 @@ export class EmployeeOnboardingPipelineService {
     const percent = Math.round((completed / steps.length) * 100);
 
     // Determine current tier
-    const pendingBlocking = steps.find((s: any) => s.status === 'pending' && s.blocking);
+    const pendingBlocking = steps.find((s: unknown) => s.status === 'pending' && s.blocking);
     const currentTier = pendingBlocking?.tier ?? 3;
 
     const blockers = steps

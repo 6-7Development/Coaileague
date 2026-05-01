@@ -395,8 +395,8 @@ router.post('/pending-approvals/:id/approve', requireManager, async (req: Authen
     const { db } = await import('../db');
     const { eq } = await import('drizzle-orm');
     const [updated] = await db.update(trinityProposedActions as any)
-      .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as any)
-      .where(eq((trinityProposedActions as any).id, id))
+      .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as Record<string, unknown>)
+      .where(eq(((trinityProposedActions as {id?: string}).id), id))
       .returning();
     res.json({ success: true, approval: updated });
   } catch (err: unknown) {
@@ -417,8 +417,8 @@ router.post('/pending-approvals/:id/reject', requireManager, async (req: Authent
     const { db } = await import('../db');
     const { eq } = await import('drizzle-orm');
     const [updated] = await db.update(trinityProposedActions as any)
-      .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as any)
-      .where(eq((trinityProposedActions as any).id, id))
+      .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as Record<string, unknown>)
+      .where(eq(((trinityProposedActions as {id?: string}).id), id))
       .returning();
     res.json({ success: true, approval: updated });
   } catch (err: unknown) {

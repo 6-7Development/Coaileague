@@ -144,7 +144,7 @@ router.patch("/api/pto/:id/approve", requireAuth, requireManager, async (req: Au
     const pto = approved as any;
     if (pto.employeeId && pto.startDate && pto.endDate) {
       await db.update(shifts)
-        .set({ status: 'cancelled' } as any)
+        .set({ status: 'cancelled' } as Record<string, unknown>)
         .where(and(
           eq(shifts.workspaceId, workspaceId),
           eq(shifts.employeeId, pto.employeeId),
@@ -461,7 +461,7 @@ router.get("/api/shift-actions/pending", requireManager, async (req: Authenticat
 
     const enriched = await Promise.all(
       pendingActions.map(async (action) => {
-        const employee = await storage.getEmployee((action as any).employeeId, workspaceId);
+        const employee = await storage.getEmployee((action as Record<string,unknown>).employeeId, workspaceId);
         const shift = action.shiftId
           ? await db
               .select()

@@ -370,7 +370,7 @@ router.post("/api/notifications/clear-all", requireAuth, async (req: Authenticat
         for (const mailboxId of mailboxIds) {
           await db
             .update(internalEmailRecipients)
-            .set({ isRead: true, readAt: new Date() } as any)
+            .set({ isRead: true, readAt: new Date() } as Record<string, unknown>)
             .where(and(
               eq(internalEmailRecipients.mailboxId, mailboxId),
               eq(internalEmailRecipients.isRead, false)

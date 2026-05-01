@@ -84,7 +84,7 @@ async function sendNDSToUsers(
       message,
       isRead: false,
       createdAt: now,
-    } as any);
+    } as Record<string, unknown>);
   }
 }
 

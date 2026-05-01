@@ -47,7 +47,7 @@ export async function softDelete(params: SoftDeleteParams): Promise<void> {
     .set({
       deletedAt: new Date(),
       deletedBy: userId,
-    } as any)
+    } as Record<string, unknown>)
     .where(where);
 
   try {

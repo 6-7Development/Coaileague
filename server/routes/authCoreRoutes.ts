@@ -617,7 +617,7 @@ router.post("/api/auth/login", async (req, res) => {
                   updatedAt: new Date(),
                   // activated_at = the exact moment of first login (Pillar 2, Step 4)
                   activatedAt: new Date() as any,
-                } as any)
+                } as Record<string, unknown>)
                 .where(eq(clients.id, clientRecord.id));
               // Also flip the invite token status to 'active' and set activated_at
               await db.execute(

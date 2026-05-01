@@ -58,7 +58,7 @@ export async function flipInvitedToActive(payload: HandshakePayload): Promise<Ha
   // 3. Load org code from workspace
   const [workspace] = await db.select({ orgCode: (workspaces as any).orgCode })
     .from(workspaces)
-    .where(eq((workspaces as any).id, invite.workspaceId))
+    .where(eq(((workspaces as {id?: string}).id), invite.workspaceId))
     .limit(1);
 
   const orgCode = workspace?.orgCode || 'ORG';

@@ -197,7 +197,7 @@ class TrinityBusinessIntelligence {
 
     if (query.employeeName) {
       const filtered = enrichedInvoices.filter(inv =>
-        inv.lineItems.some((li: any) =>
+        inv.lineItems.some((li: unknown) =>
           li.description?.toLowerCase().includes(query.employeeName!.toLowerCase()) ||
           (li.descriptionData?.officers || []).some((o: string) =>
             o.toLowerCase().includes(query.employeeName!.toLowerCase())

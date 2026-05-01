@@ -1827,7 +1827,7 @@ export class QuickBooksSyncService {
 
       if (!(idempotencyRecord as Record<string,unknown>).partnerInvoiceNumber) {
         await db.update(partnerInvoiceIdempotency)
-          .set({ partnerInvoiceNumber: trinityDocNumber } as any)
+          .set({ partnerInvoiceNumber: trinityDocNumber } as Record<string, unknown>)
           .where(eq(partnerInvoiceIdempotency.id, idempotencyRecord.id));
       }
 

@@ -113,7 +113,7 @@ async function persistSignerToDB(signer: ContractSigner): Promise<void> {
       notifiedAt: signer.notifiedAt || null,
       viewedAt: signer.viewedAt || null,
       accessToken: signer.accessToken || null,
-    } as any)
+    } as Record<string, unknown>)
     .onConflictDoUpdate({
       target: clientContractSignatures.id,
       set: {

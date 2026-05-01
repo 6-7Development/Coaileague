@@ -559,7 +559,7 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
       changesBefore: existing || null,
       changesAfter: client,
       createdAt: new Date(),
-    } as any);
+    } as Record<string, unknown>);
     
     res.json(filterClientForResponse(
       { ...client, shiftsClosedCount: wasJustDeactivated ? shiftsClosedCount : undefined },
@@ -760,9 +760,9 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
           } as any);
 
           await db.update(timeEntries as any)
-            .set({ invoiceId: finalInvoiceId } as any)
+            .set({ invoiceId: finalInvoiceId } as Record<string, unknown>)
             .where(and(
-              inArray((timeEntries as any).id, unbilledEntries.map(e => e.id)),
+              inArray(((timeEntries as {id?: string}).id), unbilledEntries.map(e => e.id)),
               eq((timeEntries as Record<string,unknown>).workspaceId as string, workspaceId),
             ));
 

@@ -134,7 +134,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       .orderBy(desc(invoices.createdAt))
       .limit(5);
 
-    recentInvoices.forEach(({ invoice, workspace }: any) => {
+    recentInvoices.forEach(({ invoice, workspace }: unknown) => {
       recentActivity.push({
         type: "invoice",
         description: `Invoice ${invoice.invoiceNumber} - $${invoice.total} - ${invoice.status}`,
@@ -154,7 +154,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       .orderBy(desc(supportTickets.createdAt))
       .limit(5), "recentTickets") ?? [];
 
-    recentTickets.forEach(({ ticket, workspace }: any) => {
+    recentTickets.forEach(({ ticket, workspace }: unknown) => {
       recentActivity.push({
         type: "support",
         description: `Support: ${ticket.subject || 'New ticket'} - ${ticket.status}`,
@@ -291,7 +291,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       .orderBy(desc(sql`revenue`))
       .limit(5);
 
-    const topWorkspaces = topWorkspacesData.map(({ workspace, subscription, revenue, employeeCount }: any) => ({
+    const topWorkspaces = topWorkspacesData.map(({ workspace, subscription, revenue, employeeCount }: unknown) => ({
       id: workspace.id,
       name: workspace.name,
       tier: subscription?.tier || workspace.subscriptionTier || "free",
@@ -498,7 +498,7 @@ export async function getPlatformUsers(req: Request, res: Response) {
       .innerJoin((platformRoles as any), eq(users.id, (platformRoles as any).userId))
       .orderBy(desc(users.createdAt));
 
-    res.json(platformUsers.map(({ user, platformRole }: any) => ({
+    res.json(platformUsers.map(({ user, platformRole }: unknown) => ({
       ...user,
       platformRole: platformRole.role
     })));

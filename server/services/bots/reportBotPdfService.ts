@@ -124,8 +124,8 @@ class ReportBotPdfService {
         }
       }
 
-      const siteName = (shift as any).siteName || (shift as any).jobSiteName || (shift as any).title || 'Site';
-      const siteAddress = (shift as any).siteAddress || '';
+      const siteName = (shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).jobSiteName || (shift as Record<string,unknown>).title || 'Site';
+      const siteAddress = (shift as Record<string,unknown>).siteAddress || '';
       const shiftStart = new Date(shift.startTime);
       const shiftEnd = new Date(shift.endTime);
 
@@ -299,7 +299,7 @@ class ReportBotPdfService {
       doc.font('Helvetica-Bold').text('Checkpoint Activity');
       doc.moveDown(0.3);
       for (const checkpoint of params.checkpoints) {
-        const scan = params.scans.find((s: any) => s.checkpointId === checkpoint.id);
+        const scan = params.scans.find((s: unknown) => s.checkpointId === checkpoint.id);
         const status = scan ? `Scanned at ${format(new Date(scan.scannedAt), 'HH:mm:ss')}` : 'Not scanned';
         doc.font('Helvetica').fontSize(9).text(`• ${checkpoint.name || checkpoint.id} — ${status}`);
       }

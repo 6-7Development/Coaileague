@@ -104,7 +104,7 @@ export interface HRISEvent extends Omit<TrinityEventContract, 'domain' | 'eventT
     conflictCount?: number;
     confidenceScore?: number;
     errorMessage?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -128,7 +128,7 @@ export interface RBACEvent extends Omit<TrinityEventContract, 'domain' | 'eventT
     permission?: string;
     reason?: string;
     policyId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -147,7 +147,7 @@ export interface ABACEvent extends Omit<TrinityEventContract, 'domain' | 'eventT
     conditions?: Record<string, unknown>;
     result?: 'allow' | 'deny';
     reason?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -172,7 +172,7 @@ export interface AuthEvent extends Omit<TrinityEventContract, 'domain' | 'eventT
     userAgent?: string;
     reason?: string;
     riskScore?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -200,7 +200,7 @@ export interface WorkflowEvent extends Omit<TrinityEventContract, 'domain' | 'ev
     totalSteps?: number;
     errorMessage?: string;
     approver?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -221,7 +221,7 @@ export interface WebhookEvent extends Omit<TrinityEventContract, 'domain' | 'eve
     endpoint?: string;
     statusCode?: number;
     errorMessage?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

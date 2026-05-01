@@ -107,7 +107,7 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
 
         const scoredCandidates = await scoreEmployeesForShift(workspaceId, {
           shiftId,
-          requiredSkills: (shift as any).requiredSkills || [],
+          requiredSkills: (shift as Record<string,unknown>).requiredSkills || [],
           requiredCertifications: shift.requiredCertifications || [],
           maxDistance: 50,
           maxPayRate: shift.payRate ? parseFloat(shift.payRate) : undefined,

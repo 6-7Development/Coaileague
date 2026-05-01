@@ -424,7 +424,7 @@ router.post('/command', requirePlatformStaff, async (req: Request, res: Response
           };
         },
         'help': async () => {
-          const actions = (helpaiOrchestrator as any).listActions();
+          const actions = (helpaiOrchestrator as Record<string, unknown>).listActions();
           const categories = [...new Set(actions.map(a => a.category))];
           return {
             response: `Available command categories: ${categories.join(', ')}. Try /list <category> for specific commands.`,
@@ -433,7 +433,7 @@ router.post('/command', requirePlatformStaff, async (req: Request, res: Response
           };
         },
         'list': async () => {
-          const actions = (helpaiOrchestrator as any).listActions();
+          const actions = (helpaiOrchestrator as Record<string, unknown>).listActions();
           const category = args || 'all';
           const filtered = category === 'all' 
             ? actions 

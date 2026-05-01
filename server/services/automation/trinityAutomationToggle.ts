@@ -1214,7 +1214,7 @@ class TrinityAutomationToggleService {
           const ttResult = await runStep('approve_entries', async () => {
             const updatedRows = await db
               .update(timeEntries)
-              .set({ status: 'approved', updatedAt: new Date() } as any)
+              .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
               .where(and(
                 eq(timeEntries.workspaceId, workspaceId),
                 eq(timeEntries.status, 'pending'),
@@ -1382,7 +1382,7 @@ class TrinityAutomationToggleService {
       .set({
         status: 'paused',
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(trinityAutomationRequests.id, requestId));
 
     // Converted to Drizzle ORM
@@ -1437,7 +1437,7 @@ class TrinityAutomationToggleService {
     };
 
     await db.update(trinityAutomationRequests)
-      .set({ updatedAt: new Date() } as any)
+      .set({ updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(trinityAutomationRequests.id, requestId));
 
     // CATEGORY C — Raw SQL retained: ::jsonb | Tables: trinity_automation_requests | Verified: 2026-03-23

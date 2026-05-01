@@ -413,7 +413,7 @@ router.post('/api/admin/quickbooks/sync-staffing-clients', requireAuth, requireM
           lastName: (newClient.fromName || '').split(' ').slice(1).join(' ') || '',
           status: 'lead',
           source: 'inbound_email',
-        } as any);
+        } as Record<string, unknown>);
 
         // Log to audit_logs
         await db.insert(auditLogs).values({

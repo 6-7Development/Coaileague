@@ -716,7 +716,7 @@ export async function migrateEmployeeIdsToNewOrgCode(
             await tx
               .update(externalIdentifiers)
               .set({ externalId: newExternalId })
-              .where(eq(externalIdentifiers.id, (extRecord as any).id));
+              .where(eq(externalIdentifiers.id, ((extRecord as {id?: string}).id)));
             
             // Update employees.employee_number
             await tx

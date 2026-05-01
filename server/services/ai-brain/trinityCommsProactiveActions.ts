@@ -121,7 +121,7 @@ export function registerCommsProactiveActions() {
       sendNow: true,
     } as any);
     if ((broadcast as any)?.id) {
-      await broadcastService.deliverBroadcast((broadcast as any).id, workspaceId).catch(() => null);
+      await broadcastService.deliverBroadcast(((broadcast as {id?: string}).id), workspaceId).catch(() => null);
     }
     return { posted: true, broadcastId: (broadcast as any)?.id, title };
   }));

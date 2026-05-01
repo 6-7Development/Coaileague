@@ -138,7 +138,7 @@ router.post('/portal/setup/:token', async (req, res) => {
     // Load org code from workspace for session context
     const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
       .from(workspaces)
-      .where(eq((workspaces as any).id, invite.workspaceId))
+      .where(eq(((workspaces as {id?: string}).id), invite.workspaceId))
       .limit(1);
     const orgCode = ws?.orgCode || 'ORG';
 
@@ -313,7 +313,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
         } as any);
       });
 
-      const [wsRec] = await db.select({ orgCode: (workspaces as any).orgCode }).from(workspaces).where(eq((workspaces as any).id, workspaceId)).limit(1);
+      const [wsRec] = await db.select({ orgCode: (workspaces as any).orgCode }).from(workspaces).where(eq(((workspaces as {id?: string}).id), workspaceId)).limit(1);
       const reactivateOrgCode = wsRec?.orgCode || 'ORG';
       const reactivateUrl = `${req.protocol}://${req.get('host')}/client-portal/setup?token=${token}&workspace=${workspaceId}&org=${reactivateOrgCode}`;
 
@@ -363,7 +363,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
     // Load org code for the invite URL (spec §4: link maps to /{org_code}/login)
     const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
       .from(workspaces)
-      .where(eq((workspaces as any).id, workspaceId))
+      .where(eq(((workspaces as {id?: string}).id), workspaceId))
       .limit(1);
     const orgCode = ws?.orgCode || 'ORG';
 

@@ -406,7 +406,7 @@ export async function addUpdate(update: Omit<PlatformUpdate, 'id'> & { visibilit
       isNew: update.isNew ?? true,
       priority: update.priority,
       learnMoreUrl: update.learnMoreUrl,
-      visibility: (update as any).visibility || 'all',
+      visibility: (update as Record<string,unknown>).visibility || 'all',
       workspaceId: update.workspaceId || null, // null = global, set = workspace-specific
       date: new Date(update.date),
     });

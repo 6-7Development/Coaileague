@@ -188,7 +188,7 @@ interface ScheduleOSInput {
   constraints?: {
     weekStart?: string;
     weekEnd?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

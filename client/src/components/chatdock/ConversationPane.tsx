@@ -110,7 +110,7 @@ function RoomInfoPanel({
   // fall back to DB participants for persisted group rooms.
   const useLive = liveUsers.length > 0;
   const displayCount = useLive ? liveUsers.length : dbParticipants.length;
-  const currentUserParticipant = dbParticipants.find((p: any) => p.participantId === user?.id);
+  const currentUserParticipant = dbParticipants.find((p: unknown) => p.participantId === user?.id);
   const isOwnerOrAdmin = currentUserParticipant && ["owner", "admin"].includes(currentUserParticipant.participantRole);
 
   return (
@@ -172,7 +172,7 @@ function RoomInfoPanel({
         })}
 
         {/* DB participants (group rooms with persisted membership) */}
-        {!useLive && dbParticipants.map((p: any) => (
+        {!useLive && dbParticipants.map((p: unknown) => (
           <div key={p.id} className="flex items-center gap-2 px-3 py-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
@@ -1085,7 +1085,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
   const reactionsMap = (reactionsData as any)?.reactions || {};
   const pinnedMessages = (pinnedData as any)?.messages || [];
   const searchHits = (searchResults as any)?.messages || [];
-  const searchHitIds = new Set(searchHits.map((m: any) => m.id));
+  const searchHitIds = new Set(searchHits.map((m: unknown) => m.id));
 
   const parentMessageCache = useMemo(() => {
     const cache: Record<string, { senderName: string; message: string }> = {};
@@ -1987,7 +1987,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
               { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
               { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
             ];
-            const memberMentions = (members ?? []).map((m: any) => ({
+            const memberMentions = (members ?? []).map((m: unknown) => ({
               id: `@${m.firstName}${m.lastName}`,
               name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim(),
               role: m.workspaceRole || 'Member',

@@ -1123,7 +1123,7 @@ async function notifyOrgOwnerOfAuditRequest(
         </div>
       </div>`;
   await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
-            type: 'regulatory_notification', workspaceId: (info as any).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
+            type: 'regulatory_notification', workspaceId: (info as Record<string,unknown>).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
     .catch((err: unknown) => {
       log.warn('[RegulatoryPortal] Org owner audit notification email failed (non-fatal):', (err as any)?.message);
     });

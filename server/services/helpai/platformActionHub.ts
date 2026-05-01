@@ -133,7 +133,7 @@ export interface ActionRequest {
     conversationId?: string;
     sessionId?: string;
     originalToolName?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

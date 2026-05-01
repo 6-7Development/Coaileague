@@ -33,7 +33,7 @@ export interface ResendInboundEmailLike {
   text?: string;
   html?: string;
   message_id?: string;
-  [k: string]: any;
+  [k: string]: unknown;
 }
 
 interface ParsedVerificationRequest {

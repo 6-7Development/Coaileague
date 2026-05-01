@@ -37,7 +37,6 @@ export interface TokenResult {
   success: boolean;
   token?: string;
   error?: string;
-  code?: string;
 }
 
 export class AuthService {
@@ -172,7 +171,7 @@ export class AuthService {
 
       if (!isValid) {
         const newAttempts = (user.loginAttempts || 0) + 1;
-        const updates: Record<string, unknown> = { loginAttempts: newAttempts };
+        const updates: Record<string, any> = { loginAttempts: newAttempts };
 
         if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
           updates.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
@@ -434,27 +433,13 @@ export class AuthService {
       const normalizedEmail = email.toLowerCase().trim();
 
       const [user] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          emailVerified: users.emailVerified,
-          lockedUntil: users.lockedUntil,
-        })
+        .select({ id: users.id, email: users.email, firstName: users.firstName })
         .from(users)
         .where(eq(users.email, normalizedEmail))
         .limit(1);
 
       if (!user) {
-        return { success: false, error: "No account with this email", code: "no_account" };
-      }
-
-      if (!user.emailVerified) {
-        return { success: false, error: "Please verify your email first", code: "email_unverified" };
-      }
-
-      if (user.lockedUntil && user.lockedUntil > new Date()) {
-        return { success: false, error: "Account is locked. Contact support.", code: "account_locked" };
+        return { success: true };
       }
 
       const token = this.generateSecureToken();
@@ -474,7 +459,7 @@ export class AuthService {
       return { success: true };
     } catch (error: unknown) {
       log.error("[AuthService] Password reset request error:", error);
-      return { success: false, error: "Failed to send reset email", code: "email_failed" };
+      return { success: false, error: "Failed to send reset email" };
     }
   }
 
@@ -705,7 +690,7 @@ export class AuthService {
   // ─────────────────────────────────────────────────────────────────────────
 
   private async sendVerificationEmail(email: string, token: string): Promise<void> {
-    const verifyUrl = `${this.getBaseUrl()}/verify-email?token=${token}`;
+    const verifyUrl = `${this.getBaseUrl()}/auth/verify-email?token=${token}`;
 
     try {
       const { client, fromEmail } = await getUncachableResendClient();
@@ -822,11 +807,9 @@ export class AuthService {
       // SECURITY: Alert the old email address so the account owner knows a
       // change was requested. Non-fatal — do not block the initiation.
       if (oldEmail && oldEmail !== normalised) {
-        try {
-          await this.sendEmailChangeSecurityNotice(oldEmail, normalised);
-        } catch (err) {
-          log.warn('[AuthService] Failed to send email-change security notice to old address:', err);
-        }
+        this.sendEmailChangeSecurityNotice(oldEmail, normalised).catch((err) =>
+          log.warn('[AuthService] Failed to send email-change security notice to old address:', err)
+        );
       }
 
       return { success: true };

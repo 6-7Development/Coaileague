@@ -322,7 +322,7 @@ async function suiteAutoFreeze() {
       entityType: 'organization', entityId, workspaceId: DEV_WORKSPACE,
     });
     // Mark as compliant first
-    await db.update(complianceWindows).set({ isCompliant: true } as any).where(eq(complianceWindows.id, window.id));
+    await db.update(complianceWindows).set({ isCompliant: true } as Record<string, unknown>).where(eq(complianceWindows.id, window.id));
     const result = await complianceEnforcementService.autoFreezeAccount('organization', entityId, window.id);
     assert(result.success === false, 'Should not freeze compliant entity');
     await cleanupTestEntity(entityId);
@@ -447,7 +447,7 @@ async function suiteAppealLogic() {
       workspaceId: DEV_WORKSPACE,
     });
     // Force re-freeze for testing
-    await db.update(complianceWindows).set({ isFrozen: true } as any)
+    await db.update(complianceWindows).set({ isFrozen: true } as Record<string, unknown>)
       .where(and(
         eq(complianceWindows.entityType, 'organization'),
         eq(complianceWindows.entityId, entityId),
@@ -479,7 +479,7 @@ async function suiteAppealLogic() {
       workspaceId: DEV_WORKSPACE,
     });
     // Force re-freeze to simulate extension expiry
-    await db.update(complianceWindows).set({ isFrozen: true } as any)
+    await db.update(complianceWindows).set({ isFrozen: true } as Record<string, unknown>)
       .where(and(
         eq(complianceWindows.entityType, 'organization'),
         eq(complianceWindows.entityId, entityId),
@@ -518,7 +518,7 @@ async function suiteFreezeLift() {
     await complianceEnforcementService.autoFreezeAccount('organization', entityId, window.id);
     // First freeze manually
     await db.update(accountFreezes)
-      .set({ status: 'active' } as any)
+      .set({ status: 'active' } as Record<string, unknown>)
       .where(and(
         eq(accountFreezes.entityType, 'organization'),
         eq(accountFreezes.entityId, entityId),
@@ -685,7 +685,7 @@ async function suiteAuditorPortal() {
     assert(followup.isCompleted === false, 'Followup should not be completed yet');
     // Mark completed
     const [completed] = await db.update(auditorFollowups)
-      .set({ isCompleted: true, completedAt: new Date(), outcome: 'COI received and verified' } as any)
+      .set({ isCompleted: true, completedAt: new Date(), outcome: 'COI received and verified' } as Record<string, unknown>)
       .where(eq(auditorFollowups.id, followup.id))
       .returning();
     assert(completed.isCompleted === true, 'Followup should be completed');

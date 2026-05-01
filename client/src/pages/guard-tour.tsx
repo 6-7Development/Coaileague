@@ -543,7 +543,7 @@ function PatrolReport({ tourId }: { tourId: string }) {
     const checkpointDetails = checkpoints.map((cp) => ({
       ...cp,
       scanCount: cpScanCounts[cp.id] || 0,
-      lastScan: scans.filter((s) => s.checkpointId === cp.id).sort((a: any, b: any) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime())[0],
+      lastScan: scans.filter((s) => s.checkpointId === cp.id).sort((a: unknown, b: unknown) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime())[0],
     }));
 
     return {

@@ -589,8 +589,8 @@ class QuickBooksOrchestrationService {
 
     return logs.map(log => ({
       ...log,
-      orchestrationId: (log as any).metadata?.orchestrationId,
-      operationName: (log as any).metadata?.operationName,
+      orchestrationId: (log as Record<string,unknown>).metadata?.orchestrationId,
+      operationName: (log as Record<string,unknown>).metadata?.operationName,
     }));
   }
 }

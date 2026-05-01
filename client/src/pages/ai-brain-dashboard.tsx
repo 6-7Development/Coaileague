@@ -274,11 +274,11 @@ function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
   }
 
   const signalKeys = Object.entries(stats.bySignalType || {})
-    .sort((a: any, b: any) => b[1] - a[1])
+    .sort((a: unknown, b: unknown) => b[1] - a[1])
     .slice(0, 8);
 
   const regionKeys = Object.entries(stats.byRegion || {})
-    .sort((a: any, b: any) => b[1] - a[1]);
+    .sort((a: unknown, b: unknown) => b[1] - a[1]);
 
   return (
     <div className="space-y-4">

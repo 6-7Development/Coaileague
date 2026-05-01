@@ -54,7 +54,7 @@ const getPostOrdersForShift = mkAction('postorders.get_for_shift', async (req) =
     if (orders.length === 0) {
       const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) }).catch(() => null);
       return createResult(req.actionId, true,
-        `No specific post orders on file for shift ${shiftId}. ${(shift as any)?.notes ? 'Shift notes: ' + (shift as any).notes : 'Officer should follow general company policy.'} Always call client contact if uncertain about site-specific procedures.`,
+        `No specific post orders on file for shift ${shiftId}. ${(shift as any)?.notes ? 'Shift notes: ' + (shift as Record<string,unknown>).notes : 'Officer should follow general company policy.'} Always call client contact if uncertain about site-specific procedures.`,
         { shiftId, orders: [], hasOrders: false, shiftNotes: (shift as any)?.notes || null }, start);
     }
 
@@ -343,7 +343,7 @@ const getPanicEvent = mkAction('safety.get_panic_event', async (req) => {
     if (!panicId) return createResult(req.actionId, false, 'panicId required', null, start);
     const event = await panicProtocolService.get(panicId);
     if (!event) return createResult(req.actionId, false, `Panic event ${panicId} not found`, null, start);
-    return createResult(req.actionId, true, `Panic event ${panicId}: status=${(event as any).status}`, { event }, start);
+    return createResult(req.actionId, true, `Panic event ${panicId}: status=${(event as Record<string,unknown>).status}`, { event }, start);
   } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }

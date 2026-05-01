@@ -1324,7 +1324,7 @@ class HelpAIOrchestrator {
     try {
       await db
         .update(helpaiSessions)
-        .set({ ...values, updatedAt: new Date() } as any)
+        .set({ ...values, updatedAt: new Date() } as Record<string, unknown>)
         .where(eq(helpaiSessions.id, sessionId));
     } catch (e) {
       log.error('[HelpAI Orchestrator] Session update failed:', e);

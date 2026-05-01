@@ -179,7 +179,7 @@ async function main() {
 
     // Update workspace with the new customer ID
     await db.update(workspaces)
-      .set({ stripeCustomerId: customer.id } as any)
+      .set({ stripeCustomerId: customer.id } as Record<string, unknown>)
       .where(eq(workspaces.id, ACME_WS_ID));
     log('Updated ACME workspace stripeCustomerId in DB');
   } else {
@@ -251,7 +251,7 @@ async function main() {
 
     // Update workspace with subscription ID
     await db.update(workspaces)
-      .set({ stripeSubscriptionId: subscriptionId } as any)
+      .set({ stripeSubscriptionId: subscriptionId } as Record<string, unknown>)
       .where(eq(workspaces.id, ACME_WS_ID));
     log('Updated ACME workspace stripeSubscriptionId in DB');
   }

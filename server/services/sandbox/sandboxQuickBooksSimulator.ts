@@ -913,7 +913,7 @@ export class SandboxQuickBooksSimulator {
         startTime: shift.startTime,
         endTime: shift.endTime,
         status: shift.status,
-        shiftType: (shift as any).shiftType,
+        shiftType: (shift as Record<string,unknown>).shiftType,
       });
     }
 

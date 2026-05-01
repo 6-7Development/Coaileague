@@ -606,7 +606,7 @@ class AIAnalyticsEngine {
         generatedBy: 'gemini-2.5-flash',
         confidence: String(insight.confidence * 100),
         actionable: true,
-        suggestedActions: (insight as any).followUpActions,
+        suggestedActions: (insight as Record<string,unknown>).followUpActions,
         status: insight.isRead ? 'dismissed' : 'active',
       });
 

@@ -656,8 +656,8 @@ aiBrainConsoleRouter.get('/history', requireSupportRole, async (req: Authenticat
     const actions = logs.map(log => ({
       actionId: log.action?.replace('ai_brain_console:', '') || '',
       category: log.targetType || 'console',
-      success: (log as any).metadata?.success ?? true,
-      message: (log as any).metadata?.message || '',
+      success: (log as Record<string,unknown>).metadata?.success ?? true,
+      message: (log as Record<string,unknown>).metadata?.message || '',
       timestamp: log.createdAt?.toISOString() || new Date().toISOString(),
     }));
     

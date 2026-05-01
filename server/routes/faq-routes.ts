@@ -37,7 +37,7 @@ function getEmbeddingClient(): OpenAI | null {
 async function checkSupportPoolAvailable(): Promise<boolean> {
   try {
     const { tokenManager } = await import('../services/billing/tokenManager');
-    return (tokenManager as any).checkSupportPoolAvailable();
+    return (tokenManager as Record<string, unknown>).checkSupportPoolAvailable();
   } catch {
     return true;
   }

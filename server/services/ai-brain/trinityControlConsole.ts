@@ -582,7 +582,7 @@ class TrinityControlConsoleService {
     // Sanitize payload before broadcasting
     const safePayload = sanitizePayload(payload);
     const payloadWorkspaceId = 'workspaceId' in payload.data 
-      ? (payload as any).data.workspaceId 
+      ? (payload as Record<string,unknown>).data.workspaceId 
       : undefined;
     
     this.activeStreams.forEach((subscribers) => {

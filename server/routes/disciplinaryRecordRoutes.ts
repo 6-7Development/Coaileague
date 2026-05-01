@@ -239,7 +239,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
     //    or contractor signs first, then the manager countersigns).
     try {
       const firstSigner = Array.isArray(signingSequence)
-        ? signingSequence.find((s: any) => s.order === 1)
+        ? signingSequence.find((s: unknown) => s.order === 1)
         : null;
       if (firstSigner && firstSigner.targetEmail) {
         const { documentSigningService } = await import(

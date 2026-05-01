@@ -346,8 +346,8 @@ export class AutomationEngine {
           });
         } else {
           decision = validation.data;
-          confidence = (decision as any).confidence || (decision as any).overallConfidence || 0.9;
-          reasoning = (decision as any).reasoning || 'AI decision';
+          confidence = (decision as Record<string,unknown>).confidence || (decision as Record<string,unknown>).overallConfidence || 0.9;
+          reasoning = (decision as Record<string,unknown>).reasoning || 'AI decision';
         }
       } catch (parseError) {
         // JSON parse failed - use fallback

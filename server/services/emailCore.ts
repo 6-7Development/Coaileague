@@ -77,7 +77,7 @@ async function getOrCreateUnsubscribeToken(email: string, workspaceId?: string):
     });
 
     return token;
-  } catch (error : unknown) {
+  } catch (error: unknown) {
     log.warn('[Email] Failed to get/create unsubscribe token:', (error instanceof Error ? error.message : String(error)));
     // Return a fallback token if DB fails - still allows email to be sent
     return generateUnsubscribeToken();
@@ -122,7 +122,7 @@ export async function isEmailUnsubscribed(
       case 'digests': return unsub.unsubscribeDigests || false;
       default: return false;
     }
-  } catch (error : unknown) {
+  } catch (error: unknown) {
     log.warn('[Email] Failed to check unsubscribe status:', (error instanceof Error ? error.message : String(error)));
     return false; // Default to allowing email on error
   }
@@ -271,8 +271,6 @@ const TRANSACTIONAL_EMAIL_TYPES = [
   // Scheduling approval/denial emails — employee cannot unsubscribe from shift approvals
   'shift_action',
   'timesheet',
-  // Inbound email forwarding — system-generated copies sent to workspace owners
-  'inbound_forward',
 ];
 
 /**
@@ -408,7 +406,7 @@ export async function sendCanSpamCompliantEmail(
 
     log.info(`[Email] Sent CAN-SPAM compliant ${emailType} email to ${to}`);
     return { success: true, data: result };
-  } catch (error : unknown) {
+  } catch (error: unknown) {
     log.error(`[Email] Error sending ${emailType} email to ${to}:`, (error instanceof Error ? error.message : String(error)));
     return { success: false, error };
   }
@@ -426,7 +424,7 @@ async function sendMeteredEmail(
   emailCategory: EmailCategory,
   sendFn: () => Promise<unknown>,
   metadata?: Record<string, unknown>
-): Promise<{ success: boolean; data?: unknown; error?: unknown }> {
+): Promise<{ success: boolean; data?: unknown; error?: unknown; skipped?: boolean; reason?: string }> {
   try {
     const result = await sendFn();
     
@@ -441,7 +439,7 @@ async function sendMeteredEmail(
     }
     
     return { success: true, data: result };
-  } catch (error : unknown) {
+  } catch (error: unknown) {
     log.error(`[Email] Error sending ${emailCategory} email:`, (error instanceof Error ? error.message : String(error)));
     return { success: false, error };
   }
@@ -451,7 +449,7 @@ async function getCredentials() {
   // Railway-only deployment. The legacy Replit connector fallback
   // (REPLIT_CONNECTORS_HOSTNAME + REPL_IDENTITY) has been removed —
   // Resend is now configured exclusively via the RESEND_API_KEY env
-  // variable. Canonical production detection per TRINITY.md §A.
+  // variable. Canonical production detection per CLAUDE.md §A.
   const isProd = isProduction();
 
   if (process.env.RESEND_API_KEY) {
@@ -475,7 +473,7 @@ export async function getUncachableResendClient() {
   const credentials = await getCredentials();
 
   if (!credentials) {
-    // Canonical production detection per TRINITY.md §A. The previous local
+    // Canonical production detection per CLAUDE.md §A. The previous local
     // check `NODE_ENV === 'production' || REPLIT_DEPLOYMENT` did not detect
     // Railway, which meant the noop client below fell through to the dev
     // fake-success branch on Railway deploys. Under that branch, a missing
@@ -492,7 +490,7 @@ export async function getUncachableResendClient() {
     return {
       client: {
         emails: {
-          send: async (params: Record<string, unknown>) => {
+          send: async (params: any) => {
             if (isProd) {
               log.error(`[EMAIL] PRODUCTION ERROR: Cannot send email to ${params.to} - Resend not configured. Subject: ${params.subject}`);
               throw new Error('Email delivery unavailable: Resend is not configured in production');
@@ -1596,7 +1594,7 @@ export async function sendPayStubEmail(
 
 // ============================================================================
 // CREDIT WARNING — Track A
-// Trigger: tokenManager.ts PHASE 16 — 25% and 10% thresholds
+// Trigger: creditManager.ts PHASE 16 — 25% and 10% thresholds
 // To: org_owner
 // ============================================================================
 export async function sendCreditWarningEmail(

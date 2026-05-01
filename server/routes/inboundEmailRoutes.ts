@@ -564,17 +564,17 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     : rawPayload;
 
   // Step 3: Parse fields
-  const resendEmailId = (payload as any).email_id || (rawPayload as any).id || undefined;
+  const resendEmailId = (payload as Record<string,unknown>).email_id || ((rawPayload as {id?: string}).id) || undefined;
   const toRaw = Array.isArray(payload.to) ? payload.to[0] : (payload.to || '');
   const toMatch = toRaw.match(/<?([^>]+)>?$/);
   const toEmail = (toMatch?.[1]?.trim() || toRaw).toLowerCase();
 
-  const fromRaw = (payload as any).from || '';
+  const fromRaw = (payload as Record<string,unknown>).from || '';
   const fromMatch = fromRaw.match(/^(?:"?([^"<]+)"?\s+)?<?([^>]+)>?$/);
   const fromEmail = fromMatch?.[2]?.trim() || fromRaw.trim();
   const fromName  = fromMatch?.[1]?.trim() || undefined;
 
-  const messageId   = (payload as any).message_id || payload.headers?.['message-id'] || payload.headers?.['Message-ID'] || undefined;
+  const messageId   = (payload as Record<string,unknown>).message_id || payload.headers?.['message-id'] || payload.headers?.['Message-ID'] || undefined;
   const inReplyTo   = payload.headers?.['in-reply-to'] || undefined;
   const references  = payload.headers?.['references'] || undefined;
   const subject     = payload.subject || '(no subject)';

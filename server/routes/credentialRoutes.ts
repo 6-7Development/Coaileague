@@ -225,7 +225,7 @@ router.delete("/:id", async (req: AuthenticatedRequest, res) => {
     if (!workspaceId) return res.status(401).json({ error: "Workspace required" });
 
     const [deleted] = await db.update(trainingCertifications)
-      .set({ status: 'revoked', updatedAt: new Date() } as any)
+      .set({ status: 'revoked', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(trainingCertifications.id, req.params.id), eq(trainingCertifications.workspaceId, workspaceId)))
       .returning();
 

@@ -366,7 +366,7 @@ router.post("/employees", async (req: Request, res: Response) => {
           hourlyRate: emp.hourlyRate?.toString() || null,
           isActive: true,
           onboardingStatus,
-        } as any);
+        } as Record<string, unknown>);
         imported++;
 
         // For employees with email, create a workspace invite and send onboarding email
@@ -385,7 +385,7 @@ router.post("/employees", async (req: Request, res: Response) => {
               inviteeRole: 'employee',
               status: 'pending',
               expiresAt,
-            } as any);
+            } as Record<string, unknown>);
 
             await emailService.sendEmployeeInvitation(workspaceId, emp.email, inviteCode, {
               firstName: emp.firstName || 'there',
@@ -671,7 +671,7 @@ router.post("/clients", async (req: Request, res: Response) => {
           pocPhone: client.pocPhone || null,
           pocEmail: client.pocEmail || null,
           isActive: true,
-        } as any);
+        } as Record<string, unknown>);
         imported++;
       } catch (error: unknown) {
         importErrors.push(`Row ${client.rowNumber}: ${sanitizeError(error)}`);

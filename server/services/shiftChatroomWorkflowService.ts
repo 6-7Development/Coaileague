@@ -381,8 +381,8 @@ class ShiftChatroomWorkflowService {
       (async () => {
         try {
           const { shiftChatroomBotProcessor } = await import('./bots/shiftChatroomBotProcessor');
-          const clientName = (shift as any).clientName || (shift as any).siteName || 'Client';
-          const siteAddress = (shift as any).siteAddress || (shift as any).jobSiteAddress || '';
+          const clientName = (shift as Record<string,unknown>).clientName || (shift as Record<string,unknown>).siteName || 'Client';
+          const siteAddress = (shift as Record<string,unknown>).siteAddress || (shift as Record<string,unknown>).jobSiteAddress || '';
           await shiftChatroomBotProcessor.sendWelcomeMessage(
             chatroomId,
             context.workspaceId,
@@ -1024,8 +1024,8 @@ class ShiftChatroomWorkflowService {
       `**Officer:** ${employeeName}`,
       `**Date:** ${format(new Date(shift.startTime), 'MMMM d, yyyy')}`,
       `**Shift:** ${format(new Date(shift.startTime), 'h:mm a')} – ${format(new Date(shift.endTime), 'h:mm a')}`,
-      `**Location:** ${(shift as any).siteName || (shift as any).jobSiteAddress || 'On file'}`,
-      `**Client:** ${(shift as any).clientName || 'On file'}`,
+      `**Location:** ${(shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).jobSiteAddress || 'On file'}`,
+      `**Client:** ${(shift as Record<string,unknown>).clientName || 'On file'}`,
       ``,
       `---`,
       ``,
@@ -1145,7 +1145,7 @@ class ShiftChatroomWorkflowService {
 
     let site = null;
     let contacts: (string | number | boolean | null)[] = [];
-    let address: string | null = (shift as any).jobSiteAddress || null;
+    let address: string | null = (shift as Record<string,unknown>).jobSiteAddress || null;
 
     if (shift.siteId) {
       const [siteResult] = await db.select().from(sites).where(eq(sites.id, shift.siteId));

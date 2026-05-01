@@ -75,7 +75,7 @@ export function findHoliday(date: Date, holidays: unknown[], timezone?: string):
   const dateStr = toLocalDateString(date, timezone);
 
   // Find matching holiday
-  const holiday = holidays.find((h: any) => {
+  const holiday = holidays.find((h: unknown) => {
     if (typeof h === 'string') {
       return h === dateStr;
     }

@@ -546,7 +546,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
     switch (event.type) {
       case "email.delivered": {
         // Extract invoiceId from Resend tags set at send time
-        const tags: Array<{ name: string; value: string }> = (event as any).data.tags || [];
+        const tags: Array<{ name: string; value: string }> = (event as Record<string,unknown>).data.tags || [];
         const invoiceTag = tags.find((t) => t.name === 'invoiceId');
         if (invoiceTag?.value) {
           const invoiceId = invoiceTag.value;
@@ -578,7 +578,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 metadata: {
                   invoiceNumber: inv.invoiceNumber,
                   deliveredTo: event.data.to?.join(', '),
-                  resendEventAt: (event as any).data.created_at || new Date().toISOString(),
+                  resendEventAt: (event as Record<string,unknown>).data.created_at || new Date().toISOString(),
                   source: 'resend_email.delivered_webhook',
                 },
               });
@@ -599,7 +599,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
       case "email.bounced": {
         // Hard bounces signal invalid/dead addresses. Auto-suppress to protect sender reputation.
         const bouncedAddresses: string[] = event.data.to ?? [];
-        const bounceResendId: string = (event as any).data.id || '';
+        const bounceResendId: string = (event as Record<string,unknown>).data.id || '';
         log.error(`[Resend] Hard bounce for ${bouncedAddresses.join(", ")}`);
         // Batch insert all bounces in one query (N+1 fix)
         if (bouncedAddresses.length > 0) {
@@ -611,7 +611,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 unsubscribeAll: true,
                 unsubscribeToken: crypto.randomBytes(32).toString('hex'),
                 unsubscribeSource: 'bounce' as const,
-                unsubscribeReason: `Hard bounce reported by Resend — email ID: ${(event as any).data?.id || 'unknown'}`,
+                unsubscribeReason: `Hard bounce reported by Resend — email ID: ${(event as Record<string,unknown>).data?.id || 'unknown'}`,
               })))
               .onConflictDoNothing();
           } catch (err: unknown) {
@@ -683,7 +683,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
       case "email.complained": {
         // Spam complaints damage sender reputation. Auto-suppress immediately.
         const complainedAddresses: string[] = event.data.to ?? [];
-        const complaintResendId: string = (event as any).data.id || '';
+        const complaintResendId: string = (event as Record<string,unknown>).data.id || '';
         log.error(`[Resend] Spam complaint from ${complainedAddresses.join(", ")}`);
         for (const email of complainedAddresses) {
           try {
@@ -694,7 +694,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 unsubscribeAll: true,
                 unsubscribeToken: crypto.randomBytes(32).toString('hex'),
                 unsubscribeSource: 'complaint',
-                unsubscribeReason: `Spam complaint reported by Resend — email ID: ${(event as any).data.id}`,
+                unsubscribeReason: `Spam complaint reported by Resend — email ID: ${(event as Record<string,unknown>).data.id}`,
               })
               .onConflictDoNothing();
           } catch (err: unknown) {
@@ -915,7 +915,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
           ) VALUES ($1,$2,'inbound',$3,$4,$5,$6,$7,$8,$9,'inbox',false,false,NOW())
           ON CONFLICT (resend_email_id) DO NOTHING
         `, [
-          (inboundEmail as any).id || msgId,
+          ((inboundEmail as {id?: string}).id) || msgId,
           msgId, fromEmail, fromName || null,
           [platformAddr], subject,
           emailBody.slice(0, 50000),
@@ -943,7 +943,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
             status: 'open',
             submissionMethod: 'email',
             emailCategory: routeType,
-            inboundEmailLogId: (inboundEmail as any).id || null,
+            inboundEmailLogId: ((inboundEmail as {id?: string}).id) || null,
           });
           log.info(`[Email→Ticket] Created ticket ${ticketNumber} from ${fromEmail} to ${platformAddr}`);
         } catch (ticketErr: unknown) {

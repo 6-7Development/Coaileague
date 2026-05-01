@@ -1019,7 +1019,7 @@ class TrinityMemoryService {
           contextMemory: contextPatch,
           updatedAt: new Date(),
           lastActivityAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(
           and(
             eq(trinityConversationSessions.id, sessionId),

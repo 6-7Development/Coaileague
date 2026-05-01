@@ -884,7 +884,7 @@ class TrinityProactiveScannerService {
           // workspace's invoice paid — a cross-tenant financial mutation. The compound WHERE on
           // both invoiceId and workspaceId makes the update structurally workspace-scoped.
           await db.update(invoices)
-            .set({ status: 'paid', updatedAt: new Date() } as any)
+            .set({ status: 'paid', updatedAt: new Date() } as Record<string, unknown>)
             .where(and(
               eq(invoices.id, invoiceId),
               eq(invoices.workspaceId, workspaceId),
@@ -950,7 +950,7 @@ class TrinityProactiveScannerService {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const removed = await db.update(shifts)
-            .set({ employeeId: null, status: 'open', notes: '[AUTO_REMOVED] License/certification expired', updatedAt: new Date() } as any)
+            .set({ employeeId: null, status: 'open', notes: '[AUTO_REMOVED] License/certification expired', updatedAt: new Date() } as Record<string, unknown>)
             .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.employeeId, officerId), gte(shifts.startTime, tomorrow)))
             .catch(() => null);
           return { handled: true, event: 'license_expiry', officerNotified: true, futureShiftsCleared: true };
@@ -973,13 +973,13 @@ class TrinityProactiveScannerService {
             const hasIssues = !(entry as unknown).clockOut || (entry as unknown).totalMinutes > 600 || (entry as unknown).totalMinutes < 0;
             if (!hasIssues) {
               await db.update(timeEntries)
-                .set({ status: 'approved', updatedAt: new Date() } as any)
+                .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
                 .where(and(eq(timeEntries.id, payload.timeEntryId), eq(timeEntries.workspaceId, workspaceId)))
                 .catch(() => null);
               return { handled: true, event: 'timesheet_submitted', autoApproved: true };
             } else {
               await db.update(timeEntries)
-                .set({ status: 'flagged', notes: '[AUTO_FLAGGED] Anomaly detected: ' + (!(entry as unknown).clockOut ? 'missing clock-out' : (entry as unknown).totalMinutes > 600 ? 'shift >10 hours' : 'invalid duration'), updatedAt: new Date() } as any)
+                .set({ status: 'flagged', notes: '[AUTO_FLAGGED] Anomaly detected: ' + (!(entry as unknown).clockOut ? 'missing clock-out' : (entry as unknown).totalMinutes > 600 ? 'shift >10 hours' : 'invalid duration'), updatedAt: new Date() } as Record<string, unknown>)
                 .where(and(eq(timeEntries.id, payload.timeEntryId), eq(timeEntries.workspaceId, workspaceId)))
                 .catch(() => null);
               return { handled: true, event: 'timesheet_submitted', autoApproved: false, flagged: true };

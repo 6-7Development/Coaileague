@@ -225,7 +225,7 @@ class ComplianceEnforcementService {
         isFrozen: isNowCompliant ? false : window.isFrozen, // auto-unfreeze if now compliant
         docApprovalDates: approvalDates,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(complianceWindows.id, window.id));
 
     if (isNowCompliant) {
@@ -236,7 +236,7 @@ class ComplianceEnforcementService {
           status: 'lifted',
           liftedAt: new Date(),
           liftReason: 'All required documents approved — compliance achieved',
-        } as any)
+        } as Record<string, unknown>)
         .where(and(
           eq(accountFreezes.entityType, entityType as any),
           eq(accountFreezes.entityId, entityId),
@@ -284,7 +284,7 @@ class ComplianceEnforcementService {
           isFrozen: true,
           frozenAt: new Date(),
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(complianceWindows.id, windowId));
 
       return newFreeze;
@@ -368,13 +368,13 @@ class ComplianceEnforcementService {
           extensionDeadline,
           isFrozen: false, // Unfreezes account until extension deadline
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(complianceWindows.id, window.id));
 
       // Update freeze to pending_appeal status
       if (activeFreeze) {
         await tx.update(accountFreezes)
-          .set({ status: 'pending_appeal' } as any)
+          .set({ status: 'pending_appeal' } as Record<string, unknown>)
           .where(eq(accountFreezes.id, activeFreeze.id));
       }
 
@@ -420,7 +420,7 @@ class ComplianceEnforcementService {
           liftedBy,
           liftReason,
           relatedTicketId,
-        } as any)
+        } as Record<string, unknown>)
         .where(and(
           eq(accountFreezes.entityType, entityType as any),
           eq(accountFreezes.entityId, entityId),
@@ -431,7 +431,7 @@ class ComplianceEnforcementService {
       if (!updated) return null;
 
       await tx.update(complianceWindows)
-        .set({ isFrozen: false, updatedAt: new Date() } as any)
+        .set({ isFrozen: false, updatedAt: new Date() } as Record<string, unknown>)
         .where(and(
           eq(complianceWindows.entityType, entityType as any),
           eq(complianceWindows.entityId, entityId),
@@ -498,7 +498,7 @@ class ComplianceEnforcementService {
       // Day 13 warning — FINAL WARNING: account freezes in 1 day
       if (daysElapsed >= 13 && !win.warning13DaySentAt) {
         await db.update(complianceWindows)
-          .set({ warning13DaySentAt: now, updatedAt: now } as any)
+          .set({ warning13DaySentAt: now, updatedAt: now } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
         warned13++;
         log.info(`[ComplianceEnforcement] Day-13 warning for ${win.entityType} ${win.entityId}`);
@@ -522,7 +522,7 @@ class ComplianceEnforcementService {
       // Day 11 warning — 3 days remaining
       else if (daysElapsed >= 11 && !win.warning11DaySentAt) {
         await db.update(complianceWindows)
-          .set({ warning11DaySentAt: now, updatedAt: now } as any)
+          .set({ warning11DaySentAt: now, updatedAt: now } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
         warned11++;
         log.info(`[ComplianceEnforcement] Day-11 warning for ${win.entityType} ${win.entityId}`);
@@ -634,7 +634,7 @@ class ComplianceEnforcementService {
             approvedDocTypes: updatedApproved,
             isCompliant: isStillCompliant,
             updatedAt: now,
-          } as any)
+          } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
 
         expired++;

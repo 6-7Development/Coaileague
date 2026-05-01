@@ -86,7 +86,7 @@ router.post('/application', publicFormLimiter, async (req, res) => {
       // Atomic UPDATE: only succeeds if is_used is currently false
       const [claimed] = await tx
         .update(onboardingInvites)
-        .set({ isUsed: true, acceptedAt: new Date() } as any)
+        .set({ isUsed: true, acceptedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(onboardingInvites.id, invite.id), eq(onboardingInvites.isUsed, false)))
         .returning({ id: onboardingInvites.id });
 

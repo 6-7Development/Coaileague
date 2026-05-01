@@ -1507,7 +1507,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
 
     if (action === 'freeze' || action === 'remove') {
       await db.transaction(async (tx) => {
-        await tx.update(users).set({ isSuspended: true, suspendedAt: new Date() } as any)
+        await tx.update(users).set({ isSuspended: true, suspendedAt: new Date() } as Record<string, unknown>)
           .where(eq(users.id, userId));
         if (action === 'remove' && targetRole) {
           await tx.update(platformRoles).set({
@@ -1518,7 +1518,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
         }
       });
     } else if (action === 'unfreeze' || action === 'reactivate') {
-      await db.update(users).set({ isSuspended: false, suspendedAt: null } as any)
+      await db.update(users).set({ isSuspended: false, suspendedAt: null } as Record<string, unknown>)
         .where(eq(users.id, userId));
     } else if (action === 'demote') {
       if (!targetRole) return res.status(400).json({ error: 'User has no platform role to demote' });

@@ -236,7 +236,7 @@ publicInviteRouter.post('/accept-invite', async (req, res) => {
           acceptedAt: new Date(),
           isUsed: true,
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(onboardingInvites.id, invite.id));
     });
 

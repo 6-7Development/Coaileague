@@ -297,7 +297,7 @@ export async function anonymizeEmployeeData(
         routingNumber: '000000000',
         accountNumberLast4: '0000',
         accountHolderName: 'DELETED',
-      } as any)
+      } as Record<string, unknown>)
       .where(and(eq(employeeBankAccounts.employeeId, employeeId), eq(employeeBankAccounts.workspaceId, workspaceId)))
       .catch(() => {}); // non-blocking — bank account fields may differ by schema version
 

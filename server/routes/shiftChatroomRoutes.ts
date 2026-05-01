@@ -285,7 +285,7 @@ async function appendAccessLog(darId: string, userId: string, action: string) {
     const existing = (dar?.accessLog as any[]) || [];
     const newEntry = { accessedBy: userId, accessedAt: new Date().toISOString(), action };
     await db.update(darReports)
-      .set({ accessLog: [...existing, newEntry] } as any)
+      .set({ accessLog: [...existing, newEntry] } as Record<string, unknown>)
       .where(eq(darReports.id, darId));
   } catch { /* access log write failure is non-blocking */ }
 }
@@ -321,7 +321,7 @@ router.post('/dar/:darId/approve', async (req: AuthenticatedRequest, res) => {
         approvedAt: new Date(),
         verificationNotes: notes || null,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'approved');
@@ -369,7 +369,7 @@ router.post('/dar/:darId/reject', async (req: AuthenticatedRequest, res) => {
         rejectedAt: new Date(),
         rejectionReason: parsed.data.reason,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'rejected');
@@ -401,7 +401,7 @@ router.post('/dar/:darId/escalate', async (req: AuthenticatedRequest, res) => {
         escalatedAt: new Date(),
         escalationReason: parsed.data.reason,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'escalated');
@@ -431,7 +431,7 @@ router.post('/dar/:darId/request-changes', async (req: AuthenticatedRequest, res
         changesRequestedAt: new Date(),
         changesRequestedNotes: parsed.data.notes,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'changes_requested');

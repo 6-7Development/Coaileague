@@ -209,7 +209,7 @@ async function getShiftRoomContext(conversationId: string): Promise<ShiftRoomCon
       }
     }
 
-    const siteName = (shift as any).siteName || (shift as any).jobSiteName || (shift as any).title || 'the site';
+    const siteName = (shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).jobSiteName || (shift as Record<string,unknown>).title || 'the site';
 
     return {
       conversationId,
@@ -220,9 +220,9 @@ async function getShiftRoomContext(conversationId: string): Promise<ShiftRoomCon
       siteName,
       shiftStart: new Date(shift.startTime),
       shiftEnd: new Date(shift.endTime),
-      siteLatitude: (shift as any).siteLatitude || null,
-      siteLongitude: (shift as any).siteLongitude || null,
-      siteRadius: (shift as any).siteRadius || 200,
+      siteLatitude: (shift as Record<string,unknown>).siteLatitude || null,
+      siteLongitude: (shift as Record<string,unknown>).siteLongitude || null,
+      siteRadius: (shift as Record<string,unknown>).siteRadius || 200,
     };
   } catch (err) {
     log.error('[ShiftBotOrchestrator] Error getting shift room context:', err);

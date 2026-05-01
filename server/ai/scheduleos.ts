@@ -531,7 +531,7 @@ Analyze the solution quality and provide:
         let tardyCount = 0;
         let onTimeCount = 0;
         for (const shift of shiftsForEmployee) {
-          const timeEntry = timeEntriesData.find((te: any) => {
+          const timeEntry = timeEntriesData.find((te: unknown) => {
             const clockInTime = new Date(te.clockIn);
             const shiftStart = new Date(shift.startTime);
             const timeDiff = Math.abs(clockInTime.getTime() - shiftStart.getTime());
@@ -556,7 +556,7 @@ Analyze the solution quality and provide:
 
         // Calculate no-call-no-show (scheduled shift with no time entry)
         const noCallNoShowCount = shiftsForEmployee.filter((shift: unknown) => {
-          const hasTimeEntry = timeEntriesData.some((te: any) => {
+          const hasTimeEntry = timeEntriesData.some((te: unknown) => {
             const clockInTime = new Date(te.clockIn);
             const shiftStart = new Date(shift.startTime);
             const timeDiff = Math.abs(clockInTime.getTime() - shiftStart.getTime());

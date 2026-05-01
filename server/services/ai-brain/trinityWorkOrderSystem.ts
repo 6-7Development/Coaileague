@@ -390,7 +390,7 @@ Return JSON:
           impact: a.impact || 'clarifying',
           resolved: false,
         })),
-        clarificationRequired: (parsed.ambiguities || []).some((a: any) => a.impact === 'blocking'),
+        clarificationRequired: (parsed.ambiguities || []).some((a: unknown) => a.impact === 'blocking'),
         status: 'intake',
         createdAt: new Date(),
         updatedAt: new Date(),

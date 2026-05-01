@@ -252,7 +252,7 @@ class TrinityScanOrchestrator {
       // Analyze automation patterns
       const actionTypes = new Map<string, number>();
       for (const action of actions) {
-        const type = (action as any).actionType || 'unknown';
+        const type = (action as Record<string,unknown>).actionType || 'unknown';
         actionTypes.set(type, (actionTypes.get(type) || 0) + 1);
       }
 

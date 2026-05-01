@@ -893,7 +893,7 @@ router.get('/stripe-health', requireAuth, async (req, res) => {
 
   try {
     const webhooks = await stripe.webhookEndpoints.list({ limit: 10 });
-    const ourWebhook = webhooks.data.find((w: any) =>
+    const ourWebhook = webhooks.data.find((w: unknown) =>
       typeof w.url === 'string' &&
       w.url.includes('coaileague.com') &&
       w.status === 'enabled'

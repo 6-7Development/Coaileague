@@ -187,7 +187,7 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
         changesBefore: existingPayrollSettings || null,
         changesAfter: persistedPayrollSettings,
         createdAt: new Date(),
-      } as any);
+      } as Record<string, unknown>);
     });
 
     // Phase 7: audit ALL billing settings changes unconditionally
@@ -351,7 +351,7 @@ router.patch("/clients/:clientId", requireManager, async (req: AuthenticatedRequ
       changesBefore: existing[0],
       changesAfter: settings,
       createdAt: new Date(),
-    } as any);
+    } as Record<string, unknown>);
 
     res.json({ settings });
   } catch (error: unknown) {

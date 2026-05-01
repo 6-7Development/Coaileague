@@ -55,7 +55,7 @@ async function cleanupHandoffTokens(): Promise<number> {
       handoffTokenExpiry: null,
       handoffStatus: 'handoff_expired',
       updatedAt: new Date(),
-    } as any)
+    } as Record<string, unknown>)
     .where(and(
       isNotNull((workspaces as any).handoffTokenExpiry),
       lt((workspaces as any).handoffTokenExpiry, threshold),

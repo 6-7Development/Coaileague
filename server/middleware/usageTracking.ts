@@ -19,7 +19,7 @@ export interface PartnerApiContext {
     requestId?: string;
     batchId?: string;
     webhookId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   req?: Request;
 }

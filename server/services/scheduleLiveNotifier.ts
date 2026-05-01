@@ -283,7 +283,7 @@ export async function onSchedulePublished(params: {
       // Group shifts by employeeId
       const shiftsByEmployee = new Map<string, typeof weekShifts>();
       for (const shift of weekShifts) {
-        const empId = (shift as any).employeeId;
+        const empId = (shift as Record<string,unknown>).employeeId;
         if (!empId) continue;
         if (!shiftsByEmployee.has(empId)) shiftsByEmployee.set(empId, []);
         shiftsByEmployee.get(empId)!.push(shift);

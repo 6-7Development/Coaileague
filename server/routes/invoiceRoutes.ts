@@ -2863,7 +2863,7 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
 
     // Store the paymentIntentId on the invoice so the webhook can match and mark paid
     await db.update(invoices)
-      .set({ stripePaymentIntentId: paymentIntent.id, updatedAt: new Date() } as any)
+      .set({ stripePaymentIntentId: paymentIntent.id, updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, portal.workspaceId)));
 
     return res.json({

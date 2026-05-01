@@ -107,7 +107,7 @@ export class IssueDetectionService {
    * Evaluate a single rule against data
    */
   private evaluateRule(rule: unknown, data: Record<string, unknown>): boolean {
-    return rule.conditions.some((condition: any) => {
+    return rule.conditions.some((condition: unknown) => {
       const fieldValue = data[condition.field];
 
       switch (condition.operator) {
@@ -248,7 +248,7 @@ export class IssueDetectionService {
             }
 
             // Update overall severity
-            if (aiAnalysis.additionalIssues.some((i: any) => i.severity === "critical")) {
+            if (aiAnalysis.additionalIssues.some((i: unknown) => i.severity === "critical")) {
               baseResult.overallSeverity = "critical";
             }
           }

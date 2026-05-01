@@ -872,7 +872,7 @@ billingRouter.post('/subscription/cancel', async (req: AuthenticatedRequest, res
       const { workspaces } = await import('../../shared/schema/domains/orgs');
       const { eq } = await import('drizzle-orm');
       await db.update(workspaces)
-        .set({ cancellationReason: reason, updatedAt: new Date() } as any)
+        .set({ cancellationReason: reason, updatedAt: new Date() } as Record<string, unknown>)
         .where(eq(workspaces.id, workspaceId));
     }
 

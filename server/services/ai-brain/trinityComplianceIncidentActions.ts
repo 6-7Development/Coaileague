@@ -345,7 +345,7 @@ export function registerComplianceIncidentActions() {
     const { workspaceId, employeeId, newRole, userId } = params;
     if (!workspaceId || !employeeId || !newRole) return { error: 'workspaceId, employeeId, newRole required' };
     await db.update(workspaceMembers)
-      .set({ role: newRole as any, updatedAt: new Date() } as any)
+      .set({ role: newRole as any, updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId, employeeId)));
     return { updated: true, employeeId, newRole };
   }));
@@ -373,7 +373,7 @@ export function registerComplianceIncidentActions() {
     if (lastDay) {
       const lastDayDate = new Date(lastDay);
       await db.update(shifts)
-        .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: '[OFFBOARDING] Shift opened due to employee offboarding' } as any)
+        .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: '[OFFBOARDING] Shift opened due to employee offboarding' } as Record<string, unknown>)
         .where(and(
           eq(shifts.workspaceId, workspaceId),
           eq(shifts.employeeId, employeeId),
@@ -381,7 +381,7 @@ export function registerComplianceIncidentActions() {
         ));
     }
     await db.update(employees)
-      .set({ status: 'offboarding', updatedAt: new Date() } as any)
+      .set({ status: 'offboarding', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(employees.id, employeeId));
     return { initiated: true, employeeId, lastDay, futureShiftsCleared: !!lastDay, checklistItems: ['final_timesheet_approval', 'equipment_return', 'exit_interview', 'final_paycheck', 'benefits_termination'] };
   }));
@@ -549,7 +549,7 @@ export function registerComplianceIncidentActions() {
           licenseTypes: config?.licenseTypes?.map((lt: unknown) => lt.code) || [],
           renewalPeriodMonths: config?.licenseRenewalPeriodMonths || 24,
           expiringDocumentsNext60Days: expiringInState,
-          armedRequiresSeparateLicense: config?.licenseTypes?.some((lt: any) => lt.armedAllowed && lt.code !== 'GUARD_CARD') ?? true,
+          armedRequiresSeparateLicense: config?.licenseTypes?.some((lt: unknown) => lt.armedAllowed && lt.code !== 'GUARD_CARD') ?? true,
         };
       })
     );

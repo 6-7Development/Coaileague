@@ -1763,7 +1763,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
    */
   async executeCapability(
     capability: string,
-    params: { employeeId: string; workspaceId: string; [key: string]: any },
+    params: { employeeId: string; workspaceId: string; [key: string]: unknown },
   ): Promise<{ success: boolean; message: string; data?: unknown }> {
     const { pool } = await import('../../db');
     const { employeeId, workspaceId } = params;

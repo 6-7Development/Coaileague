@@ -673,7 +673,7 @@ class TrinitySentinel {
         case 'restart': {
           log.info(`[TrinitySentinel] Restarting service ${action.target}`);
           const { serviceControlManager } = await import('./serviceControl');
-          const currentState = serviceControlManager.getServiceStatus(action as any).target;
+          const currentState = serviceControlManager.getServiceStatus(action as Record<string,unknown>).target;
           if (currentState) {
             await serviceControlManager.pauseService(action.target, 'sentinel-remediation');
             await serviceControlManager.resumeService(action.target, 'sentinel-remediation');

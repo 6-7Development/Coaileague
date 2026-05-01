@@ -1,4 +1,4 @@
-import { Router , Response } from "express";
+import { Router } from "express";
 import { db } from "../db";
 import { documentVault, insertDocumentVaultSchema, employees, orgDocumentSignatures } from "@shared/schema";
 import { eq, and, desc, ilike, count, sql, or, isNull, inArray } from "drizzle-orm";
@@ -9,6 +9,7 @@ import type { AuthenticatedRequest } from "../rbac";
 import { requirePlan } from '../tierGuards';
 import { universalAudit } from "../services/universalAuditService";
 import { downloadFileFromObjectStorage } from "../objectStorage";
+import { writeHardenedPdfHeaders } from "../lib/pdfResponseHeaders";
 import { createLogger } from '../lib/logger';
 const log = createLogger('DocumentVaultRoutes');
 
@@ -17,7 +18,7 @@ const OFFICER_ROLES = ['employee', 'contractor'];
 
 const MANAGER_ROLES = ["org_owner", "co_owner", "manager", "department_manager", "supervisor", "root_admin", "sysop"];
 
-function hasManagerRole(req: AuthenticatedRequest): boolean {
+function hasManagerRole(req: any): boolean {
   const role = req.workspaceRole || req.session?.workspaceRole || req.user?.platformRole;
   if (MANAGER_ROLES.includes(role)) return true;
   if (process.env.NODE_ENV !== 'production' && req.user?.id?.startsWith("dev-owner")) return true;
@@ -28,6 +29,97 @@ const router = Router();
 // Document vault is a Professional+ feature (document_vault, document_signing)
 router.use(requireAuth);
 router.use(requirePlan('professional'));
+
+// ─── Recycle bin — soft-deleted docs, restorable by managers ──────────────────
+// Soft-deleted vault rows still exist (for audit) but are filtered out of the
+// normal list view. The recycle-bin endpoints surface them so a manager can
+// review what was removed and restore by mistake.
+
+router.get("/recycle-bin", async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!hasManagerRole(req)) return res.status(403).json({ error: "Manager role required" });
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const [{ total } = { total: 0 }] = await db
+      .select({ total: count() })
+      .from(documentVault)
+      .where(and(
+        eq(documentVault.workspaceId, workspaceId),
+        sql`${documentVault.deletedAt} IS NOT NULL`,
+      ));
+
+    const items = await db
+      .select()
+      .from(documentVault)
+      .where(and(
+        eq(documentVault.workspaceId, workspaceId),
+        sql`${documentVault.deletedAt} IS NOT NULL`,
+      ))
+      .orderBy(desc(documentVault.deletedAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json({ items, total: Number(total || 0), limit, offset });
+  } catch (error: unknown) {
+    log.error("[Document Vault] Recycle-bin list error:", error);
+    res.status(500).json({ error: "Failed to list recycle bin" });
+  }
+});
+
+router.post("/:id/restore", async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!hasManagerRole(req)) return res.status(403).json({ error: "Manager role required" });
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+
+    const [existing] = await db
+      .select()
+      .from(documentVault)
+      .where(and(
+        eq(documentVault.id, req.params.id),
+        eq(documentVault.workspaceId, workspaceId),
+        sql`${documentVault.deletedAt} IS NOT NULL`,
+      ));
+
+    if (!existing) return res.status(404).json({ error: "Deleted document not found" });
+
+    const [restored] = await db
+      .update(documentVault)
+      .set({
+        deletedAt: null,
+        deletedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(documentVault.id, req.params.id), eq(documentVault.workspaceId, workspaceId)))
+      .returning();
+
+    await universalAudit.log({
+      workspaceId,
+      actorId: req.user?.id || 'unknown',
+      actorType: 'user',
+      changeType: 'update',
+      action: 'DOCUMENT_VAULT:RESTORED',
+      entityType: 'document_vault',
+      entityId: req.params.id,
+      entityName: existing.title,
+      metadata: {
+        category: existing.category,
+        wasSigned: existing.isSigned,
+        previouslyDeletedAt: existing.deletedAt,
+        previouslyDeletedBy: existing.deletedBy,
+      },
+    });
+
+    res.json({ success: true, document: restored });
+  } catch (error: unknown) {
+    log.error("[Document Vault] Restore error:", error);
+    res.status(500).json({ error: "Failed to restore document" });
+  }
+});
 
 router.get("/stats", async (req: AuthenticatedRequest, res) => {
   try {
@@ -74,17 +166,34 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
 
-    const { search, category, relatedEntityType, relatedEntityId, limit: qLimit, offset: qOffset } = req.query;
+    const {
+      search,
+      category,
+      relatedEntityType,
+      relatedEntityId,
+      from,
+      to,
+      signedOnly,
+      limit: qLimit,
+      offset: qOffset,
+    } = req.query;
     const limit = Math.min(Math.max(parseInt(qLimit as string) || 50, 1), 200);
     const offset = Math.max(parseInt(qOffset as string) || 0, 0);
 
     const conditions = [eq(documentVault.workspaceId, workspaceId), isNull(documentVault.deletedAt)];
 
+    // Free-text search across title, category, documentNumber, and tags so a
+    // user can find a doc by either its human label or its DOC-YYYYMMDD-NNNNN
+    // reference number. The tags column is a jsonb array — cast to text for
+    // the ilike match (matches each element's quoted form).
     if (search && typeof search === "string") {
+      const needle = `%${search}%`;
       conditions.push(
         or(
-          ilike(documentVault.title, `%${search}%`),
-          ilike(documentVault.category, `%${search}%`)
+          ilike(documentVault.title, needle),
+          ilike(documentVault.category, needle),
+          ilike(documentVault.documentNumber, needle),
+          sql`${documentVault.tags}::text ILIKE ${needle}`,
         )!
       );
     }
@@ -99,6 +208,20 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 
     if (relatedEntityId && typeof relatedEntityId === "string") {
       conditions.push(eq(documentVault.relatedEntityId, relatedEntityId));
+    }
+
+    // Date-range filter on createdAt — accepts either ISO string or yyyy-mm-dd
+    if (from && typeof from === "string") {
+      const d = new Date(from);
+      if (!isNaN(d.getTime())) conditions.push(sql`${documentVault.createdAt} >= ${d}`);
+    }
+    if (to && typeof to === "string") {
+      const d = new Date(to);
+      if (!isNaN(d.getTime())) conditions.push(sql`${documentVault.createdAt} <= ${d}`);
+    }
+
+    if (signedOnly === "true" || signedOnly === "1") {
+      conditions.push(eq(documentVault.isSigned, true));
     }
 
     // ── Check 12: Officer document scope ─────────────────────────────────────
@@ -249,7 +372,7 @@ async function streamVaultPdf(req: AuthenticatedRequest, res: Response, mode: 'a
     if (!doc) return res.status(404).json({ error: "Document not found" });
 
     // Officer scope — same rules as list (signatory or addressed-to)
-    const role = req.workspaceRole || req.workspaceRole || req.user?.platformRole || undefined;
+    const role = req.workspaceRole || (req as any).session?.workspaceRole || req.user?.platformRole || undefined;
     if (role && OFFICER_ROLES.includes(role)) {
       const userId = req.user?.id;
       if (!userId) return res.status(403).json({ error: "Unauthorized" });
@@ -279,6 +402,32 @@ async function streamVaultPdf(req: AuthenticatedRequest, res: Response, mode: 'a
     if (/^https?:\/\//i.test(fileUrl) || fileUrl.startsWith('internal://')) {
       log.warn(`[DocumentVault] download refused — fileUrl is not an internal storage path: ${fileUrl}`);
       return res.status(409).json({ error: "Document file is not available for streaming" });
+    }
+
+    // Defense in depth: vault-managed objects always live under
+    //   vault/<category>/<workspaceId>/<documentNumber>.pdf
+    // (see businessFormsVaultService.persistToVault). Refuse to stream any
+    // path that does not contain the requesting workspaceId as a segment,
+    // even though the WHERE clause above already enforces tenant scope.
+    // This blocks crafted-row scenarios (manual DB writes, future cache layers)
+    // and prevents cross-tenant content bleed.
+    if (fileUrl.startsWith('vault/') || fileUrl.startsWith('/vault/')) {
+      const segments = fileUrl.split('/').filter(Boolean);
+      if (!segments.includes(workspaceId)) {
+        log.error(`[DocumentVault] CROSS-TENANT PATH BLOCKED — doc=${doc.id} ws=${workspaceId} path=${fileUrl}`);
+        await universalAudit.log({
+          workspaceId,
+          actorId: req.user?.id || 'unknown',
+          actorType: 'user',
+          changeType: 'read',
+          action: 'DOCUMENT_VAULT:CROSS_TENANT_PATH_BLOCKED',
+          entityType: 'document_vault',
+          entityId: doc.id,
+          entityName: doc.title,
+          metadata: { fileUrl, requestingWorkspace: workspaceId },
+        });
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
 
     let buffer: Buffer;
@@ -317,15 +466,12 @@ async function streamVaultPdf(req: AuthenticatedRequest, res: Response, mode: 'a
       return res.status(409).json({ error: "Document integrity check failed" });
     }
 
-    const filename = `${doc.documentNumber || doc.id}.pdf`;
-    res.setHeader('Content-Type', doc.mimeType || 'application/pdf');
-    res.setHeader('Content-Length', String(buffer.length));
-    res.setHeader(
-      'Content-Disposition',
-      `${mode}; filename="${filename.replace(/[^A-Za-z0-9._-]/g, '_')}"`
-    );
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, no-store');
+    writeHardenedPdfHeaders(res, {
+      filename: `${doc.documentNumber || doc.id}.pdf`,
+      size: buffer.length,
+      mode,
+      contentType: doc.mimeType || 'application/pdf',
+    });
     return res.send(buffer);
   } catch (error: unknown) {
     log.error("[Document Vault] Stream error:", error);
@@ -375,6 +521,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
 
     const [doc] = await db
       .insert(documentVault)
+      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values({ ...parsed.data, integrityHash, createdAt: new Date() })
       .returning();
 
@@ -406,9 +553,40 @@ router.patch("/:id", async (req: AuthenticatedRequest, res) => {
     const [existing] = await db
       .select()
       .from(documentVault)
-      .where(and(eq(documentVault.id, req.params.id), eq(documentVault.workspaceId, workspaceId)));
+      .where(and(
+        eq(documentVault.id, req.params.id),
+        eq(documentVault.workspaceId, workspaceId),
+        isNull(documentVault.deletedAt),
+      ));
 
     if (!existing) return res.status(404).json({ error: "Document not found" });
+
+    // ── Immutability: signed/executed docs are legally binding ───────────────
+    // Once a document has been signed, the binary AND its core metadata are
+    // frozen. Tags and retentionUntil may still be amended (these are
+    // organizational fields, not part of the signed content), but title,
+    // category, file pointer, signature flag, and entity scope are locked.
+    const requested = (req.body || {}) as Record<string, unknown>;
+    const lockedFields = ['title', 'category', 'fileUrl', 'fileSizeBytes', 'mimeType', 'isSigned', 'relatedEntityType', 'relatedEntityId'];
+    const offendingLocked = lockedFields.filter(f => requested[f] !== undefined);
+    if (existing.isSigned && offendingLocked.length > 0) {
+      await universalAudit.log({
+        workspaceId,
+        actorId: req.user?.id || 'unknown',
+        actorType: 'user',
+        changeType: 'update',
+        action: 'DOCUMENT_VAULT:EDIT_DENIED_SIGNED',
+        entityType: 'document_vault',
+        entityId: req.params.id,
+        entityName: existing.title,
+        metadata: { attemptedFields: offendingLocked },
+      });
+      return res.status(409).json({
+        error: 'Document is signed and immutable',
+        lockedFields: offendingLocked,
+        editableFields: ['tags', 'retentionUntil'],
+      });
+    }
 
     const vaultUpdateSchema = z.object({
       title: z.string().min(1).optional(),
@@ -428,7 +606,7 @@ router.patch("/:id", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value !== undefined) updateData[key] = value;
     }
@@ -448,7 +626,7 @@ router.patch("/:id", async (req: AuthenticatedRequest, res) => {
       entityType: 'document_vault',
       entityId: req.params.id,
       entityName: existing.title,
-      metadata: { fieldsUpdated: Object.keys(parsed.data) },
+      metadata: { fieldsUpdated: Object.keys(parsed.data), wasSigned: existing.isSigned },
     });
 
     res.json(updated);
@@ -475,7 +653,33 @@ router.delete("/:id", async (req: AuthenticatedRequest, res) => {
 
     if (!existing) return res.status(404).json({ error: "Document not found" });
 
-    // Soft-delete — physically retains record for audit purposes
+    // ── Signed-doc deletion guard ────────────────────────────────────────────
+    // Signed documents are legally binding; deletion requires both an explicit
+    // ?force=true query and a deletion `reason` in the body. The reason is
+    // captured in the audit trail. Without both, signed deletes are refused.
+    const forceParam = (req.query.force as string | undefined)?.toLowerCase() === 'true';
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+    if (existing.isSigned) {
+      if (!forceParam || reason.length < 8) {
+        await universalAudit.log({
+          workspaceId,
+          actorId: req.user?.id || 'unknown',
+          actorType: 'user',
+          changeType: 'delete',
+          action: 'DOCUMENT_VAULT:DELETE_DENIED_SIGNED',
+          entityType: 'document_vault',
+          entityId: req.params.id,
+          entityName: existing.title,
+          metadata: { providedForce: forceParam, providedReasonLength: reason.length },
+        });
+        return res.status(409).json({
+          error: 'Signed documents cannot be deleted without a force flag and reason',
+          required: { force: true, reason: 'min 8 characters explaining why' },
+        });
+      }
+    }
+
+    // Soft-delete — physically retains record (and the GCS object) for audit
     await db
       .update(documentVault)
       .set({ deletedAt: new Date(), deletedBy: req.user?.id || 'unknown', updatedAt: new Date() })
@@ -486,11 +690,17 @@ router.delete("/:id", async (req: AuthenticatedRequest, res) => {
       actorId: req.user?.id || 'unknown',
       actorType: 'user',
       changeType: 'delete',
-      action: 'DOCUMENT_VAULT:SOFT_DELETED',
+      action: existing.isSigned ? 'DOCUMENT_VAULT:SIGNED_FORCE_DELETED' : 'DOCUMENT_VAULT:SOFT_DELETED',
       entityType: 'document_vault',
       entityId: req.params.id,
       entityName: existing.title,
-      metadata: { category: existing.category, softDelete: true, physicallyRetained: true },
+      metadata: {
+        category: existing.category,
+        wasSigned: existing.isSigned,
+        softDelete: true,
+        physicallyRetained: true,
+        reason: existing.isSigned ? reason : null,
+      },
     });
 
     res.json({ success: true, message: "Document soft-deleted — record retained for audit" });

@@ -871,15 +871,15 @@ async function phase13_pwa_manifest() {
 
   // Icons: 512x512 any + maskable
   const icons = manifestJson.icons || [];
-  const has512any = icons.some((i: any) => i.sizes === '512x512' && (i.purpose === 'any' || !i.purpose));
-  const has512mask = icons.some((i: any) => i.sizes === '512x512' && i.purpose === 'maskable');
+  const has512any = icons.some((i: unknown) => i.sizes === '512x512' && (i.purpose === 'any' || !i.purpose));
+  const has512mask = icons.some((i: unknown) => i.sizes === '512x512' && i.purpose === 'maskable');
   record({ name: 'Manifest: 512x512 Icon (any)', phase: 'PWA', passed: has512any, details: has512any ? '512x512 any icon present' : 'MISSING', severity: 'critical' });
   record({ name: 'Manifest: 512x512 Icon (maskable)', phase: 'PWA', passed: has512mask, details: has512mask ? '512x512 maskable present' : 'MISSING', severity: 'high' });
 
   // Screenshots: one wide, one narrow
   const screenshots = manifestJson.screenshots || [];
-  const hasWide = screenshots.some((s: any) => s.form_factor === 'wide');
-  const hasNarrow = screenshots.some((s: any) => s.form_factor === 'narrow');
+  const hasWide = screenshots.some((s: unknown) => s.form_factor === 'wide');
+  const hasNarrow = screenshots.some((s: unknown) => s.form_factor === 'narrow');
   record({ name: 'Manifest: Desktop Screenshot (wide)', phase: 'PWA', passed: hasWide, details: hasWide ? 'Wide screenshot present' : 'MISSING', severity: 'high' });
   record({ name: 'Manifest: Mobile Screenshot (narrow)', phase: 'PWA', passed: hasNarrow, details: hasNarrow ? 'Narrow screenshot present' : 'MISSING', severity: 'high' });
 

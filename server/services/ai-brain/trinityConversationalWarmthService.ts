@@ -178,7 +178,7 @@ class TrinityConversationalWarmthService {
       firstName: emp.firstName,
       lastName: emp.lastName,
       significantShares,
-      communicationStyle: memRows.find((r: any) => r.memoryKey === 'comm_style')?.memoryValue || 'standard',
+      communicationStyle: memRows.find((r: unknown) => r.memoryKey === 'comm_style')?.memoryValue || 'standard',
       lastRecognitionGiven: recogRows[0] ? `${recogRows[0].milestone_type} on ${new Date(recogRows[0].triggered_at).toLocaleDateString()}` : null,
       lastProactiveReachOut: null,
       recurringConcerns: concernRows.map((r: unknown) => r.memoryValue),

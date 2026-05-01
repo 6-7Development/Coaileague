@@ -337,7 +337,7 @@ class PolicyRulesAgent {
       const employeeIds = new Set<string>();
 
       for (const shift of clientShifts) {
-        let shiftHours = (shift as any).totalHours || 0;
+        let shiftHours = (shift as Record<string,unknown>).totalHours || 0;
         
         const breakRules = clientPolicy?.breakRules as { unpaidBreakMinutes?: number; autoDeductBreaks?: boolean } | null;
         if (breakRules?.autoDeductBreaks && shiftHours > 6) {

@@ -156,7 +156,7 @@ class AutomationTriggerService {
       // must remain in 'refunded' state. Forcing it back to 'paid' would erase the
       // refund record and cause the org ledger to overstate revenue.
       await db.update(invoices)
-        .set({ status: 'paid', updatedAt: new Date() } as any)
+        .set({ status: 'paid', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} NOT IN ('void', 'cancelled', 'refunded')`))
         .catch((e: unknown) => log.warn('[AutomationTrigger] invoice_paid DB update skipped:', e?.message));
       log.info(`[AutomationTrigger] invoice_paid — AR close-out complete for invoice ${invoiceId}`);
@@ -223,7 +223,7 @@ class AutomationTriggerService {
       if (!invoiceId) return;
       // Mark invoice status 'overdue' in DB (skip if already paid/void/cancelled)
       await db.update(invoices)
-        .set({ status: 'overdue', updatedAt: new Date() } as any)
+        .set({ status: 'overdue', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} NOT IN ('paid', 'void', 'cancelled')`))
         .catch((e: unknown) => log.warn('[AutomationTrigger] invoice_overdue status update skipped:', e?.message));
       // Trigger the automated collections sweep for this workspace
@@ -244,7 +244,7 @@ class AutomationTriggerService {
           .set({
             onboardingStatus: 'completed',
             updatedAt: new Date(),
-          } as any)
+          } as Record<string, unknown>)
           .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)));
 
         const managers = await db.select({
@@ -365,7 +365,7 @@ class AutomationTriggerService {
         required: ['triggerId'],
       },
       handler: async (params) => {
-        return await this.executeTrigger(params.triggerId, (params as any).force);
+        return await this.executeTrigger(params.triggerId, (params as Record<string,unknown>).force);
       },
     });
 
@@ -382,7 +382,7 @@ class AutomationTriggerService {
         },
       },
       handler: async (params) => {
-        return this.getExecutionHistory(params.workspaceId, (params as any).limit || 50);
+        return this.getExecutionHistory(params.workspaceId, (params as Record<string,unknown>).limit || 50);
       },
     });
 
@@ -404,7 +404,7 @@ class AutomationTriggerService {
         if (!trigger) {
           return { success: false, message: 'Trigger not found' };
         }
-        trigger.enabled = (params as any).enabled;
+        trigger.enabled = (params as Record<string,unknown>).enabled;
         trigger.updatedAt = new Date();
         await this.persistTrigger(trigger);
         return { success: true, trigger };

@@ -110,7 +110,7 @@ export class HelpaiIntegrationService {
         isEnabled: config.isEnabled,
         customEndpoint: config.customEndpoint,
         customConfig: config.customConfig
-          ? (config as any).customConfig
+          ? (config as Record<string,unknown>).customConfig
           : undefined,
         autoSyncEnabled: config.autoSyncEnabled,
         syncIntervalMinutes: config.syncIntervalMinutes,

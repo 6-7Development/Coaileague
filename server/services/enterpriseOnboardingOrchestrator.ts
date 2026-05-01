@@ -783,12 +783,12 @@ export class EnterpriseOnboardingOrchestrator {
     }
 
     // Build setup checklist and staffing email
-    const orgCode = (org as any).orgCode || null;
+    const orgCode = (org as Record<string,unknown>).orgCode || null;
     const staffingEmail = orgCode ? `staffing-${orgCode.toLowerCase()}@coaileague.com` : null;
     const setupChecklist = {
-      profile_complete: !!(org.name && (org as any).licenseNumber),
+      profile_complete: !!(org.name && (org as Record<string,unknown>).licenseNumber),
       staffing_email_known: !!orgCode,
-      subscription_active: (org as any).status === 'active',
+      subscription_active: (org as Record<string,unknown>).status === 'active',
       qb_connected: false, // populated below if needed
     };
     

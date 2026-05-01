@@ -330,8 +330,8 @@ router.get('/platform/activities', async (req, res) => {
     const liveActivities = activities.map((event) => ({
       id: event.id,
       timestamp: event.createdAt?.toISOString() || new Date().toISOString(),
-      user: (event as any).actorName || (event as any).actorId || 'System',
-      action: (event as any).payload?.description || `${(event as any).eventType}: ${(event as any).aggregateType}`,
+      user: (event as Record<string,unknown>).actorName || (event as Record<string,unknown>).actorId || 'System',
+      action: (event as Record<string,unknown>).payload?.description || `${(event as Record<string,unknown>).eventType}: ${(event as Record<string,unknown>).aggregateType}`,
       workspace: event.workspaceId || 'Platform',
       type: mapEventTypeToActivityType(event.eventType),
     }));
@@ -659,7 +659,7 @@ router.post('/support/change-role', async (req: AuthenticatedRequest, res) => {
 
 router.get('/support/sessions', async (req: AuthenticatedRequest, res) => {
   try {
-    const sessions = await (storage as any).getAllSupportSessions();
+    const sessions = await (storage as Record<string, unknown>).getAllSupportSessions();
     
     const enrichedSessions = await Promise.all(sessions.map(async (session: any) => {
       const workspace = await storage.getWorkspace(session.targetOrgId);
@@ -766,7 +766,7 @@ router.post('/support/sessions/end', async (req: AuthenticatedRequest, res) => {
     const actionsSummary = auditLogsList.map(log => ({
       action: log.action,
       severity: log.severity,
-      timestamp: (log as any).timestamp,
+      timestamp: (log as Record<string,unknown>).timestamp,
     }));
 
     const endedSession = await storage.endSupportSession(activeSession.id, actionsSummary);
@@ -2316,7 +2316,7 @@ router.get('/scheduler/jobs', async (req: AuthenticatedRequest, res) => {
     const out = jobs.map((j) => {
       const history = byJob.get(j.jobName) ?? [];
       const last = history[0] ?? null;
-      const lastCompleted = history.find((h: any) => h.status === 'completed') ?? null;
+      const lastCompleted = history.find((h: unknown) => h.status === 'completed') ?? null;
       const recentFailures = history.filter((h: unknown) => h.status === 'failed').length;
       return {
         jobName: j.jobName,

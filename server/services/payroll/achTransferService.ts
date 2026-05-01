@@ -126,7 +126,7 @@ export async function initiatePayrollAchTransfer(params: {
       await db.update(payStubs).set({
         plaidTransferStatus: 'payment_held',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payStubs.id, payStubId),
         eq(payStubs.workspaceId, workspaceId),
       ));
@@ -135,7 +135,7 @@ export async function initiatePayrollAchTransfer(params: {
       await db.update(payrollEntries).set({
         plaidTransferStatus: 'payment_held',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payrollEntries.id, payrollEntryId),
         eq(payrollEntries.workspaceId, workspaceId),
       ));
@@ -188,7 +188,7 @@ export async function initiatePayrollAchTransfer(params: {
         status: 'initiated',
         transferId: transfer.transferId,
         initiatedAt: new Date(),
-      } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+      } as Record<string, unknown>).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
     }
 
     if (payrollEntryId) {
@@ -197,7 +197,7 @@ export async function initiatePayrollAchTransfer(params: {
         plaidTransferStatus: 'pending',
         disbursementMethod: 'plaid_ach',
         disbursedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payrollEntries.id, payrollEntryId),
         eq(payrollEntries.workspaceId, workspaceId),
       ));
@@ -208,7 +208,7 @@ export async function initiatePayrollAchTransfer(params: {
         plaidTransferId: transfer.transferId,
         plaidTransferStatus: 'pending',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payStubs.id, payStubId),
         eq(payStubs.workspaceId, workspaceId),
       ));
@@ -220,7 +220,7 @@ export async function initiatePayrollAchTransfer(params: {
       await db.update(plaidTransferAttempts).set({
         status: 'failed',
         errorMessage: err?.message ?? String(err),
-      } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+      } as Record<string, unknown>).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
     }
     log.warn('[ACH] Transfer initiation failed:', err?.message ?? err);
     return { status: 'failed', reason: err?.message ?? String(err) };

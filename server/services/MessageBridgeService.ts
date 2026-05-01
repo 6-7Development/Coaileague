@@ -190,7 +190,7 @@ class MessageBridgeService {
     this.providerAdapters.set('messenger', {
       async send(params) {
         log.warn('Messenger channel not supported — use WhatsApp or SMS for external messaging', {
-          recipient: (params as any).recipientIdentity,
+          recipient: (params as Record<string,unknown>).recipientIdentity,
           channel: 'messenger',
           suggestion: 'Configure a WhatsApp or SMS bridge instead',
         });

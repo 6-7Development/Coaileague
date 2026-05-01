@@ -2554,7 +2554,7 @@ class AIBrainActionRegistry {
 
         try {
           const inserted = await db.transaction(async (tx) => {
-            const out = await tx.insert(invoiceLineItems).values(rows as any).returning();
+            const out = await tx.insert(invoiceLineItems).values(rows as Record<string, unknown>).returning();
             const newTotalCents = Math.round(parseFloat(String((invoice as Record<string, unknown>).total ?? '0')) * 100) + appendedTotalCents;
             await tx.update(invoices)
               .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as Record<string, unknown>)

@@ -166,13 +166,13 @@ export function registerDrugTestingActions() {
       .set({ 
         isActive: false, 
         notes: sql`COALESCE(notes, '') || '\nFAILED DRUG TEST - SUSPENDED'` 
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(employees.id, employeeId));
 
     // Cancel all future assigned shifts for the suspended employee
     const now = new Date();
     const cancelResult = await db.update(shifts)
-      .set({ status: 'cancelled' } as any)
+      .set({ status: 'cancelled' } as Record<string, unknown>)
       .where(and(
         eq(shifts.employeeId, employeeId),
         gte(shifts.startTime, now)

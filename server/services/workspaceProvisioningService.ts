@@ -75,7 +75,7 @@ export async function provisionWorkspace(params: {
       workspaceId,
       role: 'org_owner',
       status: 'active',
-    } as any).onConflictDoNothing();
+    } as Record<string, unknown>).onConflictDoNothing();
   } catch (err: unknown) {
     log.warn('[WorkspaceProvisioning] Owner membership init failed (non-blocking):', (err as any)?.message);
   }
@@ -87,7 +87,7 @@ export async function provisionWorkspace(params: {
       workspaceId,
       name: 'HQ',
       status: 'active',
-    } as any).onConflictDoNothing();
+    } as Record<string, unknown>).onConflictDoNothing();
   } catch (err: unknown) {
     log.warn('[WorkspaceProvisioning] Default HQ site init failed (non-blocking):', (err as any)?.message);
   }

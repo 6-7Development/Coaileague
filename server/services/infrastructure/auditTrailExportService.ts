@@ -541,7 +541,7 @@ class AuditTrailExportService {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
     const encrypted = Buffer.concat([cipher.update(data, 'utf8'), cipher.final()]);
-    const authTag = (cipher as any).getAuthTag();
+    const authTag = (cipher as Record<string, unknown>).getAuthTag();
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
   }
   

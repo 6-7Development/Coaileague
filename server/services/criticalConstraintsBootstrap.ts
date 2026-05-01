@@ -1723,7 +1723,7 @@ async function scanMissingColumns(schemaTables: Record<string, unknown>): Promis
         // `.getSQLType()` is a public method on every PgColumn subclass
         // (varchar, text, integer, timestamp, jsonb, etc.) and returns
         // the exact SQL type string we need for ADD COLUMN.
-        sqlType = (col as any).getSQLType();
+        sqlType = (col as Record<string, unknown>).getSQLType();
       } catch (err: unknown) {
         log.warn(
           `[missingColumnDrift] ${tableCfg.name}.${col.name}: could not resolve SQL type (${err?.message?.slice(0, 80)}), skipping`

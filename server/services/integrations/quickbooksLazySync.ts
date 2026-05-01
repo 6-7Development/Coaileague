@@ -309,7 +309,7 @@ async function saveQBId(
           quickbooksSyncStatus: 'synced',
           quickbooksLastSync: new Date(),
           quickbooksRealmId: realmId,
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(clients.id, entityId));
     } else if (entityType === 'employee') {
       await db.update(employees)
@@ -318,7 +318,7 @@ async function saveQBId(
           quickbooksSyncStatus: 'synced',
           quickbooksLastSync: new Date(),
           quickbooksRealmId: realmId,
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(employees.id, entityId));
     } else if (entityType === 'vendor') {
       await db.update(employees)
@@ -327,7 +327,7 @@ async function saveQBId(
           quickbooksSyncStatus: 'synced',
           quickbooksLastSync: new Date(),
           quickbooksRealmId: realmId,
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(employees.id, entityId));
     }
     return true;

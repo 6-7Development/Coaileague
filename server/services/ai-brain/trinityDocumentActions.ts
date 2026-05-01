@@ -151,7 +151,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
             signerName: signer.name,
             verificationToken: token,
             expiresAt,
-          } as any);
+          } as Record<string, unknown>);
           results.push({
             signerEmail: signer.email,
             signerName: signer.name,

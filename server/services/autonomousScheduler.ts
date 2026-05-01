@@ -3722,7 +3722,7 @@ export function startAutonomousScheduler() {
                 lastName: (nc.fromName || '').split(' ').slice(1).join(' ') || '',
                 status: 'lead',
                 source: 'inbound_email',
-              } as any);
+              } as Record<string, unknown>);
               totalSynced++;
             } catch { /* duplicate — skip */ }
           }

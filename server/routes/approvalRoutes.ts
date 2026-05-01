@@ -319,7 +319,7 @@ router.put('/:id/review', requireAuth, async (req: AuthenticatedRequest, res) =>
         reviewedBy: userId,
         reviewedAt: new Date(),
         reviewNotes: reviewNotes || null,
-      } as any)
+      } as Record<string, unknown>)
       .where(and(eq(timesheetEditRequests.id, id), eq(timesheetEditRequests.workspaceId, workspaceId)))
       .returning();
     if (!updated) return res.status(404).json({ error: 'Edit request not found' });

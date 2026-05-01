@@ -309,7 +309,7 @@ class AlertService {
     }
 
     // Create alert history entry
-    const alertSeverity = severity || (config as any).severity || 'medium';
+    const alertSeverity = severity || (config as Record<string,unknown>).severity || 'medium';
     const channels = config.channels || ['in_app'];
     
     const [alert] = await db

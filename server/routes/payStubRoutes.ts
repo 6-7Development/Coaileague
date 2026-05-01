@@ -1,4 +1,3 @@
-import type { AuthenticatedRequest } from '../rbac';
 /**
  * Paystub API Routes
  * ==================
@@ -15,6 +14,7 @@ import { employees, payStubs, workspaces } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { downloadFileFromObjectStorage } from '../objectStorage';
+import { writeHardenedPdfHeaders } from '../lib/pdfResponseHeaders';
 import { createLogger } from '../lib/logger';
 const log = createLogger('PayStubRoutes');
 
@@ -117,19 +117,23 @@ router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, async (req: Req
     const filename = `paystub-${stub.id}.pdf`.replace(/[^A-Za-z0-9._-]/g, '_');
 
     // Fast path: stream the previously stored PDF if we already have one.
-    const storageKey = (stub as Record<string, unknown>).pdfStorageKey as string | null | undefined;
+    // The storage key is validated to ensure it stays inside the tenant's
+    // namespace (path must contain workspaceId) before we hit GCS.
+    const storageKey = (stub as Record<string,unknown>).pdfStorageKey as string | null | undefined;
     if (storageKey && !/^https?:\/\//i.test(storageKey) && !storageKey.startsWith('internal://')) {
-      try {
-        const buffer = await downloadFileFromObjectStorage(storageKey);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Length', String(buffer.length));
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Cache-Control', 'private, no-store');
-        return res.send(buffer);
-      } catch (err: unknown) {
-        log.warn(`[PayStubs] storage fetch failed for stub=${stub.id}, falling back to regenerate: ${err?.message}`);
-        // fall through to regenerate
+      const segments = storageKey.split('/').filter(Boolean);
+      if (segments.includes(workspaceId)) {
+        try {
+          const buffer = await downloadFileFromObjectStorage(storageKey);
+          writeHardenedPdfHeaders(res, { filename, size: buffer.length });
+          return res.send(buffer);
+        } catch (err: unknown) {
+          log.warn(`[PayStubs] storage fetch failed for stub=${stub.id}, falling back to regenerate: ${err?.message}`);
+          // fall through to regenerate
+        }
+      } else {
+        log.error(`[PayStubs] CROSS-TENANT PATH BLOCKED — stub=${stub.id} ws=${workspaceId} key=${storageKey}`);
+        // Don't leak the path; just regenerate
       }
     }
 
@@ -146,13 +150,9 @@ router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, async (req: Req
     if (!data) return res.status(404).json({ error: 'Pay stub data unavailable' });
 
     const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
-    const buffer = await paystubService.generatePDF(data, ws?.name ?? '');
+    const buffer = await paystubService.generatePDF(data, (ws as any)?.name);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', String(buffer.length));
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, no-store');
+    writeHardenedPdfHeaders(res, { filename, size: buffer.length });
     return res.send(buffer);
   } catch (error) {
     log.error('[PayStubs] Error generating pay stub PDF:', error);
@@ -318,8 +318,10 @@ router.get('/api/paystubs/:employeeId/:startDate/:endDate/pdf', requireAuth, att
       return res.status(400).json({ message: result.error || 'Failed to generate paystub' });
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="paystub-${startDate}-${endDate}.pdf"`);
+    writeHardenedPdfHeaders(res, {
+      filename: `paystub-${startDate}-${endDate}.pdf`,
+      size: result.pdfBuffer.length,
+    });
     res.send(result.pdfBuffer);
   } catch (error) {
     console.error('[Paystubs] Error generating PDF:', error);

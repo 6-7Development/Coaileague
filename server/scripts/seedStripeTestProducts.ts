@@ -113,8 +113,8 @@ async function fireWebhook(event: object): Promise<void> {
     body: payload,
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Webhook ${(event as any).type} failed ${res.status}: ${text}`);
-  ok(`Webhook ${(event as any).type} → ${res.status} OK`);
+  if (!res.ok) throw new Error(`Webhook ${(event as Record<string,unknown>).type} failed ${res.status}: ${text}`);
+  ok(`Webhook ${(event as Record<string,unknown>).type} → ${res.status} OK`);
 }
 
 // ── Create/find a test payment method via tok_visa ─────────────────────────
@@ -140,7 +140,7 @@ async function ensureCustomer(ws: any, email: string): Promise<string> {
     metadata: { workspaceId: ws.id, environment: 'test_sandbox' },
   });
   log(`Created customer`, { id: c.id, email });
-  await db.update(workspaces).set({ stripeCustomerId: c.id } as any).where(eq(workspaces.id, ws.id));
+  await db.update(workspaces).set({ stripeCustomerId: c.id } as Record<string, unknown>).where(eq(workspaces.id, ws.id));
   return c.id;
 }
 
@@ -262,7 +262,7 @@ async function seedAcme(priceMap: Map<string, string>): Promise<void> {
   ok(`Created Starter subscription ${sub.id} ($299/month)`);
 
   await db.update(workspaces)
-    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as any)
+    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as Record<string, unknown>)
     .where(eq(workspaces.id, 'dev-acme-security-ws'));
 
   await fireMonthlyBillingCycle(customerId, sub.id, 'dev-acme-security-ws', 'starter', 29900, 5, priceMap);
@@ -302,7 +302,7 @@ async function seedAnvil(priceMap: Map<string, string>): Promise<void> {
   ok(`Created Professional subscription ${sub.id} ($999/month)`);
 
   await db.update(workspaces)
-    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as any)
+    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as Record<string, unknown>)
     .where(eq(workspaces.id, 'dev-anvil-security-ws'));
 
   await fireMonthlyBillingCycle(customerId, subId, 'dev-anvil-security-ws', 'professional', 99900, 10, priceMap);

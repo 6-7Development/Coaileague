@@ -255,7 +255,7 @@ router.post("/submit", requireAuth, async (req: AuthenticatedRequest, res) => {
         });
         if (pdfUrl) {
           await db.update(customFormSubmissions)
-            .set({ generatedDocumentUrl: pdfUrl } as any)
+            .set({ generatedDocumentUrl: pdfUrl } as Record<string, unknown>)
             .where(eqDrizzle(customFormSubmissions.id, result.id));
           log.info(`[OnboardingForms] PDF generated for submission ${result.id}: ${pdfUrl}`);
         }

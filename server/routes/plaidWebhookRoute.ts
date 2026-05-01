@@ -119,7 +119,7 @@ router.post('/', async (req, res) => {
         await db.update(plaidTransferAttempts).set({
           status: 'completed',
           completedAt: new Date(),
-        } as any).where(and(
+        } as Record<string, unknown>).where(and(
           eq(plaidTransferAttempts.transferId, transfer_id),
           ne(plaidTransferAttempts.status, 'completed'),
         ));

@@ -274,7 +274,7 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireAuth, asy
     const { db } = await import('../db');
     const { eq, and } = await import('drizzle-orm');
     const [updated] = await db.update(shiftSwapRequests)
-      .set({ status: 'approved', updatedAt: new Date() } as any)
+      .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as Record<string,unknown>).workspaceId as string, workspaceId) : undefined))
       .returning();
     if (!updated) return res.status(404).json({ error: 'Swap request not found' });

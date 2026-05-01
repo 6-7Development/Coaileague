@@ -98,7 +98,7 @@ export function registerTimesheetPayrollCycleActions() {
     if (cleanEntries.length === 0) return { approved: 0, message: 'No clean pending timesheets found' };
     const ids = cleanEntries.map(e => e.id);
     await db.update(timeEntries)
-      .set({ status: 'approved', updatedAt: new Date() } as any)
+      .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
       .where(sql`${timeEntries.id} = ANY(${ids})`);
     await platformEventBus.publish({
       eventType: 'automation_completed',

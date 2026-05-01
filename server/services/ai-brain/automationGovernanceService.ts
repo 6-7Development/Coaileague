@@ -1041,7 +1041,7 @@ class AutomationGovernanceService {
   // Refresh tool catalog with latest metrics
   async refreshToolCatalogMetrics(): Promise<void> {
     try {
-      await (trinityMemoryService as any).refreshToolCatalog();
+      await (trinityMemoryService as Record<string, unknown>).refreshToolCatalog();
       log.info('[AutomationGovernance] Tool catalog metrics refreshed');
     } catch (error) {
       log.error('[AutomationGovernance] Error refreshing tool catalog:', error);

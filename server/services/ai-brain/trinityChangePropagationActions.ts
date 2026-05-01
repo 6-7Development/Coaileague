@@ -221,7 +221,7 @@ export function registerChangePropagationActions() {
             totalGrossPay: runTotals[0].sumGross,
             totalNetPay: runTotals[0].sumNet,
             updatedAt: new Date(),
-          } as any).where(eq(payrollRuns.id, run.id)).catch(() => null);
+          } as Record<string, unknown>).where(eq(payrollRuns.id, run.id)).catch(() => null);
         }
       }
 
@@ -346,7 +346,7 @@ export function registerChangePropagationActions() {
         await db.update(invoices).set({
           amount: invoiceRunningTotal.toFixed(2),
           updatedAt: new Date(),
-        } as any).where(eq(invoices.id, inv.id)).catch(() => null);
+        } as Record<string, unknown>).where(eq(invoices.id, inv.id)).catch(() => null);
         recomputedInvoices++;
       }
 

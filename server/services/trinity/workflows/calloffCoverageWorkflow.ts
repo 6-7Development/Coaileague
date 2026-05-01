@@ -178,7 +178,7 @@ export async function executeCalloffCoverageWorkflow(
         denialReason: params.reason ?? 'Officer reported calloff',
         deniedAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(
         and(
           eq(shifts.id, shiftRow.id),
@@ -364,9 +364,9 @@ export async function scanStaleCalloffWorkflows(): Promise<{
       if (meta.escalated_at) continue; // already escalated
 
       const workflowTrail = Array.isArray(meta.trail) ? meta.trail : [];
-      const processStep = workflowTrail.find((t: any) => t.step === 'process');
+      const processStep = workflowTrail.find((t: unknown) => t.step === 'process');
       const shiftId = processStep?.data?.shiftId
-        ?? workflowTrail.find((t: any) => t.step === 'fetch')?.data?.shiftId;
+        ?? workflowTrail.find((t: unknown) => t.step === 'fetch')?.data?.shiftId;
 
       if (!shiftId || !row.workspaceId) continue;
 
