@@ -2720,10 +2720,10 @@ function NotificationsPopoverInner({ user }: { user: any }) {
   if (isMobile) {
     return (
       <>
-        {/* Notification Bell Trigger */}
+        {/* Bell button — triggers bottom sheet */}
         <button
-          className="relative inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-accent/60 transition-colors"
-          onClick={() => { chatDock?.closeBubble(); setOpen(true); }}
+          className="relative inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-accent/60 transition-colors active:scale-95"
+          onClick={() => { chatDock?.closeBubble(); setOpen(prev => !prev); }}
           aria-label={totalUnread > 0 ? `Notifications — ${totalUnread} unread` : 'Notifications'}
           data-testid="button-mobile-notifications"
         >
@@ -2735,19 +2735,21 @@ function NotificationsPopoverInner({ user }: { user: any }) {
           )}
         </button>
 
-        {/* Mobile Notifications Bottom Sheet */}
+        {/* Notifications bottom sheet — controlled open state */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="bottom"
-            hideBuiltInClose={false}
-            className="p-0 flex flex-col"
+            className="flex flex-col p-0"
+            style={{ height: "82dvh", maxHeight: "82dvh" }}
             data-testid="sheet-mobile-notifications"
           >
-            {MobileNotificationsContent}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {renderNotificationsContent({ simplified: false, compact: true, enableSwipeDelete: true })}
+            </div>
           </SheetContent>
         </Sheet>
 
-        {/* Notification Detail Modal - Shows structured breakdown */}
+        {/* Detail modal for individual notifications */}
         <NotificationDetailModal
           notification={selectedNotification}
           isOpen={!!selectedNotification}

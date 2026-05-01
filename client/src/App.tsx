@@ -97,7 +97,6 @@ import { SWUpdateBanner } from "@/components/ui/sw-update-notice";
 import { ServiceWorkerMessageListener } from "@/components/sw-notification-listener";
 import { listenForTabEvents } from "@/lib/tabSync";
 import { SessionTimeoutWarning } from "@/components/session-timeout-warning";
-import { SplashScreen } from "@/components/SplashScreen";
 
 // Lazy-loaded seasonal effects (heavy component)
 // Retry wrapper for lazy imports — handles transient chunk load failures (503/network errors)
@@ -1914,44 +1913,7 @@ function AppContent() {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    // Never show if HTML splash already ran this session
-    try { if (sessionStorage.getItem('coai_html_splash_done')) return false; } catch(e) {}
-    // Never show the splash screen on public/marketing routes —
-    // it covers everything (fixed inset-0 z-99999) and would blank the page.
-    const publicPaths = [
-      '/', '/login', '/register', '/pricing', '/contact', '/support',
-      '/terms', '/privacy', '/forgot-password', '/reset-password',
-      '/trinity-features', '/compare', '/roi-calculator', '/templates',
-      '/auditor/login', '/shift-accept', '/org-unavailable',
-    ];
-    const currentPath = window.location.pathname;
-    const isPublicPath = publicPaths.includes(currentPath) ||
-      currentPath.startsWith('/regulatory') ||
-      currentPath.startsWith('/onboarding/') ||
-      currentPath.startsWith('/pay-invoice/');
-    if (isPublicPath) return false;
-
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                  (window.navigator as any).standalone === true ||
-                  document.referrer.includes('android-app://');
-    try {
-      if (isPWA) return !localStorage.getItem('coaileague_pwa_splash_seen');
-      return !localStorage.getItem('coaileague_splash_seen');
-    } catch { return false; }
-  });
-
-  const handleSplashComplete = useCallback(() => {
-    setShowSplash(false);
-    try {
-      localStorage.setItem('coaileague_splash_seen', 'true');
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          (window.navigator as any).standalone === true ||
-          document.referrer.includes('android-app://')) {
-        localStorage.setItem('coaileague_pwa_splash_seen', 'true');
-      }
-    } catch { /* ignore storage errors */ }
-  }, []);
+  // Splash handled by HTML pre-React loader (index.html)
 
   useEffect(() => {
     window.dispatchEvent(new Event("coaileague:mounted"));
@@ -1980,7 +1942,7 @@ export default function App() {
                         <TrinitySessionProvider>
                         <ChatDockProvider>
                         <ResponsiveAppFrame>
-                          {showSplash && <SplashScreen onComplete={handleSplashComplete} minDisplayTime={3000} />}
+                          {/* Single splash: HTML pre-React loader handles it */}
                           <ConnectionStatusBanner />
                           <OfflineIndicator />
                           <SWUpdateBanner />

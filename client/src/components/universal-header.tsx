@@ -456,8 +456,11 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                       <Search className="h-4 w-4" />
                     </button>
                     <TrinityTaskLauncher compact data-testid="button-trinity-tasks-mobile" />
-                    <NotificationsPopover />
                   </>
+                )}
+                {/* Bell + Avatar always far-right, Bell immediately left of Avatar */}
+                {user && showNotificationFeatures && (
+                  <NotificationsPopover />
                 )}
                 {user ? (
                   <Button
