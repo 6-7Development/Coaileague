@@ -102,19 +102,6 @@ export function ForceRefreshProvider({ children }: { children: React.ReactNode }
     }
   }, [queryClient, toast]);
 
-  const handleMascotDirective = useCallback((payload: any) => {
-    queryClient.setQueryData(['/api/mascot/holiday/directives'], {
-      success: true,
-      seasonId: payload?.seasonId || 'christmas',
-      holidayDecor: payload?.holidayDecor,
-      motionProfile: payload?.motionProfile,
-      latestDirective: null,
-      timestamp: payload?.timestamp || new Date().toISOString(),
-    });
-    
-    queryClient.invalidateQueries({ queryKey: ['/api/mascot/holiday/directives'] });
-  }, [queryClient]);
-
   useEffect(() => {
     const sendJoin = () => {
       bus.send({ type: 'join_platform_updates' });
@@ -172,9 +159,6 @@ export function ForceRefreshProvider({ children }: { children: React.ReactNode }
             });
           }
         }
-      }),
-      bus.subscribe('mascot.directive.updated', (data) => {
-        handleMascotDirective(data.payload);
       }),
       bus.subscribe('schedule_updated', () => {
         queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
@@ -322,7 +306,7 @@ export function ForceRefreshProvider({ children }: { children: React.ReactNode }
     return () => {
       unsubs.forEach(u => u());
     };
-  }, [bus, handleForceRefresh, handleMascotDirective, queryClient, toast]);
+  }, [bus, handleForceRefresh, queryClient, toast]);
 
   return <>{children}</>;
 }

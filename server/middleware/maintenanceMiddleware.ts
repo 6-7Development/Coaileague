@@ -68,8 +68,6 @@ const ALWAYS_ALLOWED_API = [
   '/api/status',
   '/api/maintenance/status',
   '/api/maintenance/orchestrator',
-  '/api/mascot/holiday',
-  '/api/mascot/seasonal/state'
 ];
 
 function isPublicRoute(path: string): boolean {

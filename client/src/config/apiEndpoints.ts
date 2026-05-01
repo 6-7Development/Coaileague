@@ -154,16 +154,6 @@ export const API_ENDPOINTS = {
     scheduling: "/api/trinity/scheduling"
   },
 
-  mascot: {
-    ask: "/api/mascot/ask",
-    insights: "/api/mascot/insights",
-    faqs: "/api/mascot/faqs",
-    tasks: "/api/mascot/tasks",
-    completeTask: "/api/mascot/complete-task",
-    holiday: "/api/mascot/holiday",
-    seasonal: "/api/mascot/seasonal/state"
-  },
-
   admin: {
     stats: "/api/analytics/stats",
     getStats: "/api/analytics/stats",

@@ -215,7 +215,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/engagementRoutes.ts',
       'server/routes/feedbackRoutes.ts',
       'server/routes/flexStaffingRoutes.ts',
-      'server/routes/gamificationRoutes.ts',
       'server/routes/hrInlineRoutes.ts',
       'server/routes/hrisRoutes.ts',
       'server/routes/leaderRoutes.ts',
@@ -223,7 +222,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/owner-employee.ts',
       'server/routes/reviewRoutes.ts',
       'server/routes/terminationRoutes.ts',
-      'server/routes/trainingRoutes.ts',
     ],
     services: [
       'server/services/assistedOnboardingService.ts',
@@ -313,7 +311,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/orchestratedScheduleRoutes.ts',
       'server/routes/postOrderRoutes.ts',
       'server/routes/scheduleosRoutes.ts',
-      'server/routes/schedulerRoutes.ts',
       'server/routes/shiftChatroomRoutes.ts',
       'server/routes/shiftRoutes.ts',
       'server/routes/trinitySchedulingRoutes.ts',
@@ -365,7 +362,6 @@ export const DOMAIN_CONTRACT = {
     ],
     routes: [
       'server/routes/breakRoutes.ts',
-      'server/routes/gpsRoutes.ts',
       'server/routes/timeEntryRoutes.ts',
       'server/routes/timeOffRoutes.ts',
       'server/routes/timesheetReportRoutes.ts',
@@ -702,8 +698,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/trinityTrainingRoutes.ts',
       'server/routes/vqaRoutes.ts',
       'server/routes/workboardRoutes.ts',
-      'server/routes/workflowConfigRoutes.ts',
-      'server/routes/workflowRoutes.ts',
     ],
     services: [
       'server/services/ai-brain/actionRegistry.ts',
@@ -1042,7 +1036,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/emails.ts',
       'server/routes/externalEmailRoutes.ts',
       'server/routes/internalEmails.ts',
-      'server/routes/mascot-routes.ts',
       'server/routes/messageBridgeRoutes.ts',
       'server/routes/notifications.ts',
       'server/routes/privateMessageRoutes.ts',
@@ -1608,7 +1601,6 @@ export const DOMAIN_CONTRACT = {
     ],
     routes: [
       'server/routes/cadRoutes.ts',
-      'server/routes/dispatch.ts',
       'server/routes/equipmentRoutes.ts',
       'server/routes/guardTourRoutes.ts',
       'server/routes/incidentPipelineRoutes.ts',

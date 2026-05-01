@@ -10,10 +10,12 @@
 LANE — CLAUDE — ✅ CLOSED, READY FOR REVIEW/MERGE
   Branch: claude/unify-duplicate-services-7ZzYF
   Base:   438cca2  feat(simulation): hard-persist ACME simulation
-  HEAD:   (see latest commit) — Phase 4: 4 more dead services deleted
-  Commits: 5 (Phases 1, 2, 3, handoff close, 4)
+  HEAD:   (see latest commit) — Phase 5: dead routes + schema-drift fix
+  Commits: 6 (Phases 1, 2, 3, handoff close, 4, 5)
 
-  Net diff vs base: ~25 files changed, ~4,750 LOC dead code removed
+  Net diff vs base: ~40 files changed, ~8,130 LOC dead code removed
+  Bugs fixed: 1 runtime crash (GeoCompliance import)
+  Schema-drift risks eliminated: 1 (notification type set)
 
 ARCHITECT: CLAUDE
   → Pulls all agent branches when submitted
@@ -76,8 +78,39 @@ Base of branch: 438cca2  feat(simulation): hard-persist ACME simulation + brande
   `createScheduleSnapshot` / `rollbackSchedule` never called.
 - Cleaned: DOMAIN_CONTRACT (4 entries removed).
 
-**Cumulative across 4 phases:** 16 service files deleted, ~4,750 LOC of
-dead/stub code removed, 1 latent runtime bug fixed.
+**Phase 5 landed (route sweep + schema dedup):**
+
+PHASE 5A — 9 dead route files deleted (~3,285 LOC):
+- `dispatch.ts` (97 LOC) — `/api/dispatch/*` never mounted, never fetched.
+- `gamificationRoutes.ts` (56 LOC) — never imported.
+- `gpsRoutes.ts` (76 LOC) — never imported, no client fetch.
+- `mascot-routes.ts` (2,710 LOC) — never mounted; client constants
+  defined but no fetch ever issued; WS event `mascot.directive.updated`
+  never emitted server-side. Cleaned up dead client constants in
+  `apiEndpoints.ts` + dead WS handler in `ForceRefreshProvider.tsx`
+  + dead allowlist entries in `maintenanceMiddleware.ts`.
+- `schedulerRoutes.ts` (77 LOC) — never imported.
+- `tokenRoutes.ts` (52 LOC) — never imported.
+- `trainingRoutes.ts` (78 LOC) — defined `/modules`, `/attempts`,
+  `/certificates`, `/compliance-summary`. Client calls
+  `/api/training/certification` etc. — those are served by
+  `trainingCertificationRouter` (mounted), not by this orphan.
+- `workflowConfigRoutes.ts` (65 LOC) — never imported.
+- `workflowRoutes.ts` (74 LOC) — never imported.
+
+PHASE 5B — `VALID_NOTIFICATION_TYPES` collapsed to 1 line:
+- Was: 95-line hardcoded `Set` of notification type strings.
+- Now: `new Set(notificationTypeEnum.enumValues)` — derived from the
+  Drizzle pgEnum. Runtime guard can never drift from DB schema.
+- Pattern already used elsewhere (`schemaParityService.ts`).
+
+PHASE 5C — `automation-schemas.ts` audit:
+- Verified single consumer (`automation-engine.ts`). Not duplicated.
+  Audit speculation about route-level dupes was wrong. No-op.
+
+**Cumulative across 5 phases:** 25 files deleted (16 services + 9 routes),
+~8,130 LOC of dead/stub code removed, 1 latent runtime bug fixed,
+1 schema-drift risk eliminated.
 
 ---
 
@@ -97,13 +130,12 @@ for whoever picks up Phase 4+. None of these are blockers.
 - Automation routes: 4 files → 2.
 - Trinity routes: 25+ files → 4 (core / chat / ops / staffing).
 
-**Schema deduplication** (need DB enum cross-check):
-- `notificationService.VALID_NOTIFICATION_TYPES` — 90+ string set.
-  Move to `shared/schema` as the canonical source; import into runtime guard.
-- `automation-schemas.ts` (services) vs inline Zod schemas in
-  `routes/automation*.ts` — verify which is canonical.
+**Schema deduplication:**
+- ✅ `VALID_NOTIFICATION_TYPES` — DONE (now derives from `notificationTypeEnum.enumValues`).
+- ✅ `automation-schemas.ts` — verified single consumer; not actually duplicated.
 - `aiBrainGuardrails` config in `shared/config` vs runtime checks
   scattered across `aiGuardRails.ts`, `aiBrainAuthorizationService.ts`.
+  **DEFERRED** — needs runtime profiling to know what's actually authoritative.
 
 **Notification stack tightening** (decided keep, but boundaries fuzzy):
 - `notificationService` (per-user) and `universalNotificationEngine`

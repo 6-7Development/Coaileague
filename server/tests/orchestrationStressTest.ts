@@ -815,8 +815,6 @@ async function phase12_settings_config() {
   // Feature flags
   record({ name: 'Feature Flags API', phase: 'SETTINGS', passed: fileExists('server/routes/featureFlagsRoutes.ts'), details: 'Feature flags routes present', severity: 'medium' });
 
-  // Workflow config
-  record({ name: 'Workflow Config Routes', phase: 'SETTINGS', passed: fileExists('server/routes/workflowConfigRoutes.ts'), details: 'Workflow configuration API present', severity: 'medium' });
 }
 
 // ============================================================================

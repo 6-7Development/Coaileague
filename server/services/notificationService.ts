@@ -11,6 +11,7 @@
 import { NotificationDeliveryService } from './notificationDeliveryService';
 import { db } from '../db';
 import { notifications, users, platformUpdates, workspaces } from '@shared/schema';
+import { notificationTypeEnum } from '@shared/schema/enums';
 import { eq, and, desc, isNull, inArray, sql, gte } from 'drizzle-orm';
 import { broadcastNotificationToUser } from '../websocket';
 import { PLATFORM } from '../config/platformConfig';
@@ -37,106 +38,11 @@ interface CreateNotificationParams {
   targetRole?: string;
 }
 
-// All notification_type enum values that exist in the DB.
-// Any type NOT in this set is normalized to 'system' to prevent DB constraint violations.
-// To add new types: ALTER TYPE notification_type ADD VALUE + add here + add to schema enum.
-const VALID_NOTIFICATION_TYPES = new Set([
-  'shift_assigned', 'shift_changed', 'shift_cancelled', 'shift_unassigned', 'shift_reminder',
-  'shift_offer', 'pto_approved', 'pto_denied', 'timesheet_approved', 'timesheet_rejected',
-  'pay_stub_available', 'document_uploaded', 'document_expiring', 'document_signature_request',
-  'document_signed', 'document_fully_executed', 'document_signature_reminder', 'profile_updated',
-  'form_assigned', 'officer_deactivated', 'clock_in_reminder', 'mention',
-  'schedule_change', 'schedule_notification', 'coverage_offer', 'coverage_requested',
-  'coverage_filled', 'coverage_expired', 'ai_schedule_ready',
-  'payroll_processed', 'payroll_pending', 'payroll_payment_method',
-  'invoice_generated', 'invoice_paid', 'invoice_overdue', 'invoice_auto_sent',
-  'payment_received', 'payment_overdue', 'timesheet_submission_reminder',
-  'credit_warning', 'compliance_alert', 'deadline_approaching', 'dispute_filed',
-  'staffing_escalation', 'staffing_critical_escalation', 'critical_alert',
-  'issue_detected', 'action_required', 'approval_required',
-  'ai_approval_needed', 'ai_action_completed', 'trinity_autonomous_alert', 'trinity_welcome',
-  'scheduler_job_failed', 'platform_maintenance', 'known_issue', 'service_down',
-  'service_restored', 'platform_update', 'feature_release',
-  'system', 'welcome_org', 'welcome_employee', 'support_escalation', 'bundled_notification',
-  // Extended types added to DB via ALTER TYPE
-  'error', 'compliance',
-  'invoice_draft_ready', 'invoice_draft_reminder', 'invoice_refunded',
-  'subscription_upgraded', 'subscription_downgraded', 'subscription_cancelled',
-  'subscription_payment_failed', 'subscription_activated',
-  'payroll_draft_ready', 'payroll_readiness_alert', 'payroll_tracking_error', 'payroll_auto_close',
-  'form_1099_filing_required', 'compliance_action_required', 'license_expiring', 'certification_expiring',
-  'timesheet_approval_reminder', 'timesheet_resubmission_required',
-  'trinity_financial_briefing', 'milestone_alert',
-  // Payroll (extended)
-  'payroll_disbursed',
-  // Internal comms & confirmation types
-  'internal_email_received', 'shift_confirmation_required', 'shift_confirmed', 'dar_required',
-  // Shift escalation alerts (unassigned shifts approaching start time)
-  'shift_escalation_warning_72h', 'shift_escalation_urgent_24h', 'shift_escalation_critical_4h',
-  // Shift confirmation flow
-  'shift_confirmation', 'shift_declined_alert', 'unconfirmed_shifts_alert',
-  // System / platform
-  'system_update', 'system_alert',
-  // Schedule lifecycle
-  'schedule_published', 'calloff_alert',
-  // Payroll transfer tracking
-  'payroll_approved', 'payroll_initiated', 'payroll_transfer_settled', 'payroll_transfer_failed',
-  'payroll_alert', 'plaid_transfer_updated',
-  // Timesheet alias
-  'timesheets_approved',
-  // Billing / subscription extended
-  'billing_alert', 'subscription_updated', 'stripe_payment_received', 'invoices_updated', 'payment_refunded',
-  // Trial / reactivation lifecycle
-  'trial_converted', 'trial_expiry_warning', 'trial_grace_period',
-  'workspace_downgraded', 'workspace_suspended', 'workspace_reactivated', 'reactivation_failed',
-  // Compliance / policy
-  'compliance_violation', 'compliance_hold', 'employee_terminated',
-  // Safety
-  'panic_alert',
-  // Task / delegation
-  'task_delegation', 'task_escalation',
-  // Operational
-  'sla_breach', 'drug_test', 'settings_change_impact',
-  // Attendance / clocking
-  'missed_clock_in', 'missed_clock_in_alert',
-  // Reporting / summaries
-  'monthly_summary', 'alert',
-  // Communications
-  'scheduled_email',
-  // Contracts / compliance
-  'contract_executed', 'regulatory_violation',
-  // Trinity AI brain / proactive actions
-  'trinity_recognition', 'trinity_recognition_pending', 'trinity_fto_suggestion',
-  'trinity_ootm_nomination', 'trinity_raise_suggestion', 'trinity_action_blocked',
-  'helpai_proactive', 'cognitive_overload', 'social_graph_insight', 'disciplinary_pattern',
-  'external_risk', 'bot_reply', 'mascot_orchestration',
-  // Agent / orchestration
-  'agent_escalation', 'schedule_escalation', 'orchestration_update', 'migration_complete',
-  'ai_cost_alert', 'circuit_breaker_opened',
-  // Compliance extended
-  'compliance_approved', 'compliance_rejected', 'compliance_warning',
-  'audit_report_uploaded', 'audit_access_request',
-  // Client / onboarding
-  'client_created', 'client_invited', 'client_data_incomplete',
-  'onboarding', 'employee_hired',
-  // Billing / payments extended
-  'chargeback_received', 'stripe_payment_confirmed', 'subscription_payment_blocked',
-  'invoice_created', 'invoice_overdue_alert', 'invoice_paid_confirmation',
-  'payroll_disbursement_confirmed', 'payroll_run_voided', 'paystub_generated',
-  'reconciliation_alert',
-  // QuickBooks sync
-  'qb_sync_failed', 'qb_payroll_sync_failed',
-  // Operational extended
-  'security_alert', 'maintenance_alert_created', 'emergency', 'incident',
-  'coverage_gap_detected', 'geofence_override_required', 'document_bridged',
-  'content_moderation_alert', 'shift_cancelled_alert',
-  // Approvals / requests
-  'approval_needed', 'request_approved', 'request_denied',
-  // General purpose
-  'announcement', 'info', 'internal', 'document',
-  'new_staffing_inquiry', 'support_resolved',
-  'pay_rate_change', 'pto_updated',
-]);
+// Single source of truth: derive runtime guard from the DB pgEnum so the
+// runtime check can never drift from the schema. To add a new type, add it
+// once to notificationTypeEnum in shared/schema/enums.ts and ALTER TYPE
+// notification_type ADD VALUE in a migration — both consumers update.
+const VALID_NOTIFICATION_TYPES = new Set<string>(notificationTypeEnum.enumValues);
 
 /**
  * Create and send a notification to a user
