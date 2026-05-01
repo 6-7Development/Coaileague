@@ -3,7 +3,8 @@
  * GET /api/chat/search?q=&workspaceId=&conversationId=&before=&after=&limit=
  */
 import { Router } from 'express';
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest } from '../rbac';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';

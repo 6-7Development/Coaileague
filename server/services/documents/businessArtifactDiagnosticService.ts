@@ -1,3 +1,9 @@
+import {
+  listBusinessArtifactCatalog,
+  listBusinessArtifactGaps,
+  type BusinessArtifactCatalogEntry,
+  type BusinessArtifactCategory,
+} from './businessArtifactCatalog';
 
 export interface BusinessArtifactCoverageSummary {
   totalArtifacts: number;

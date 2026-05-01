@@ -944,6 +944,8 @@ export class UniversalNotificationEngine {
     priority?: number;
     learnMoreUrl?: string;
     metadata?: Record<string, any>;
+    /** Idempotency key for cross-replica dedup; stored in metadata. */
+    idempotencyKey?: string;
   }): Promise<{ success: boolean; id?: string; isDuplicate?: boolean }> {
     try {
       // Validate title - reject empty or undefined titles

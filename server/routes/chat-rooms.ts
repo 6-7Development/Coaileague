@@ -26,7 +26,7 @@ import rateLimit from "express-rate-limit";
 import { requireAuth } from '../auth';
 import { softDelete } from '../lib/softDelete';
 import { createLogger } from '../lib/logger';
-import { isSupportStaffRole, isProtectedDirectMessageRole, isReservedRoomName, isReservedRoomNameExempt, MANAGER_ROLES, SUPPORT_STAFF_ROLES, getRoomLifecycleAccessPolicy } from '../services/chat/chatPolicyService';
+import { isSupportStaffRole, isProtectedDirectMessageRole, isReservedRoomName, isReservedRoomNameExempt, MANAGER_ROLES, SUPPORT_STAFF_ROLES, getRoomLifecycleAccessPolicy, RESERVED_ROOM_NAMES } from '../services/chat/chatPolicyService';
 import { z } from 'zod';
 const log = createLogger('ChatRooms');
 
@@ -51,9 +51,9 @@ async function handleRoomLifecycleAction(
 
     // Resolve the room
     const [room] = await db
-      .select({ id: chatRooms.id, createdBy: chatRooms.createdBy, workspaceId: chatRooms.workspaceId })
-      .from(chatRooms)
-      .where(eq(chatRooms.id, roomId))
+      .select({ id: organizationChatRooms.id, createdBy: organizationChatRooms.createdBy, workspaceId: organizationChatRooms.workspaceId })
+      .from(organizationChatRooms)
+      .where(eq(organizationChatRooms.id, roomId))
       .limit(1);
 
     if (!room) {
@@ -70,9 +70,9 @@ async function handleRoomLifecycleAction(
 
     const newStatus = action === 'close' ? 'archived' : 'active';
     await db
-      .update(chatRooms)
+      .update(organizationChatRooms)
       .set({ status: newStatus as any, updatedAt: new Date() })
-      .where(eq(chatRooms.id, roomId));
+      .where(eq(organizationChatRooms.id, roomId));
 
     res.json({ success: true, roomId, status: newStatus, action });
   } catch (err: unknown) {
@@ -339,8 +339,8 @@ router.post(
       // [chatPolicyService] Use centralized policy — not route-local lists
       // isReservedRoomName() and isReservedRoomNameExempt() imported from chatPolicyService
       const requestedName = (subject || '').trim().toLowerCase();
-      const isReservedName = RESERVED_ROOM_NAMES.some(
-        r => requestedName === r || requestedName.startsWith(r)
+      const isReservedName = Array.from(RESERVED_ROOM_NAMES).some(
+        (r: string) => requestedName === r || requestedName.startsWith(r)
       );
       const _userPlatformRole = (authReq.user)?.platformRole || (authReq.user)?.role || '';
       const isSupportExempt = isSupportStaffRole(authReq.workspaceRole || '') ||
@@ -1250,15 +1250,12 @@ router.post(
       // Add participants — batched: 2 queries total regardless of participant count
       const addedParticipants: string[] = [];
       if (participantIds.length > 0) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const [existingRows, userRows] = await Promise.all([
           db.select({ participantId: chatParticipants.participantId })
             .from(chatParticipants)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .where(and(eq(chatParticipants.conversationId, roomId), inArray(chatParticipants.participantId, participantIds))),
           db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
             .from(users)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .where(inArray(users.id, participantIds)),
         ]);
         const alreadyIn = new Set(existingRows.map((r: any) => r.participantId));

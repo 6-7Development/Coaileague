@@ -34,6 +34,46 @@ import { typedQuery } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
 const log = createLogger('CalendarRoutes');
 
+// ─── Google Calendar OAuth helpers ──────────────────────────────────────────
+// The full Google OAuth integration isn't wired yet; until it is we surface a
+// honest "not configured" status everywhere so the UI can prompt for setup
+// instead of crashing or silently 500'ing. When the real client lands, replace
+// these helpers with calls into `googleapis` + a credential store.
+
+function isGoogleCalendarConfigured(): boolean {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+function getGoogleOAuthUrl(state: string): string {
+  const clientId = process.env.GOOGLE_CLIENT_ID || '';
+  const redirect = process.env.GOOGLE_REDIRECT_URI || '/api/calendar/google/callback';
+  const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly email profile');
+  return (
+    `https://accounts.google.com/o/oauth2/v2/auth` +
+    `?client_id=${encodeURIComponent(clientId)}` +
+    `&redirect_uri=${encodeURIComponent(redirect)}` +
+    `&response_type=code` +
+    `&access_type=offline` +
+    `&prompt=consent` +
+    `&state=${encodeURIComponent(state)}` +
+    `&scope=${scope}`
+  );
+}
+
+async function exchangeCodeForTokens(_code: string): Promise<{ accessToken: string; refreshToken?: string }> {
+  if (!isGoogleCalendarConfigured()) {
+    throw new Error('Google Calendar OAuth not configured');
+  }
+  // TODO: real token exchange via Google's /token endpoint.
+  throw new Error('Google Calendar token exchange not yet implemented');
+}
+
+async function getUserCalendarInfo(_accessToken: string): Promise<{ email: string }> {
+  // TODO: real userinfo lookup. Until then, surface the gap honestly so the
+  // caller can log/redirect with a clear "not implemented" trail.
+  throw new Error('Google Calendar profile lookup not yet implemented');
+}
+
 export const calendarRouter = Router();
 
 const upload = multer({

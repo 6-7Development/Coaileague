@@ -127,7 +127,7 @@ export class IncidentRoutingService {
     return db.query.employees.findMany({
       where: and(
         eq(employees.workspaceId, workspaceId),
-        inArray(employees.workspaceRole, [...MANAGER_ROLES])
+        inArray(employees.workspaceRole, [...MANAGER_ROLES] as any[])
       ),
     });
   }

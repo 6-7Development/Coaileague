@@ -56,7 +56,7 @@ router.get('/active-operations', requireAuth, async (req: AuthenticatedRequest, 
       progress: ctx.steps.length > 0 
         ? Math.round((ctx.steps.filter(s => s.status === 'completed').length / ctx.steps.length) * 100)
         : 0,
-      modelUsed: ctx.metadata?.modelUsed || 'claude',
+      modelUsed: (ctx as any).metadata?.modelUsed || 'claude',
       createdAt: ctx.createdAt,
     }));
 

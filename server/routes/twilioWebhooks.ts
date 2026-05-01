@@ -271,7 +271,7 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
             .from(notifications)
             .where(
               and(
-                eq(notifications.recipientUserId, matchedEmpDecline.userId || ''),
+                eq(notifications.userId, matchedEmpDecline.userId || ''),
                 eq(notifications.type, 'coverage_offer' as any),
               )
             );
@@ -490,9 +490,71 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
 //   POST /api/webhooks/twilio/voice-interview/recording — recording callback
 // ─────────────────────────────────────────────────────────────────────────────
 function getWebhookBase(): string {
-  return process.env.APP_BASE_URL
+  return process.env.APP_BASE_URL || 'https://www.coaileague.com';
+}
 
-    || 'https://www.coaileague.com';
+// ─── Voice interview helpers (stubs until full pipeline ships) ──────────────
+// The voice interview flow expects four helpers wired to a state store +
+// scoring service. Until that lands the helpers below let the routes compile
+// and respond with safe-default TwiML. The webhooks themselves already gate
+// on `sessionId`/`workspaceId` so a non-functional script politely ends the
+// call rather than crashing Twilio.
+
+interface VoiceSessionState {
+  sessionId: string;
+  workspaceId: string;
+  candidateId: string | null;
+  questions: Array<{ questionText: string; expectedKeywords?: string[] }>;
+  responses: Array<{ qIndex: number; transcript: string; score: number }>;
+}
+
+async function getVoiceSessionState(
+  _sessionId: string,
+  _workspaceId: string,
+): Promise<VoiceSessionState | null> {
+  // TODO: load from candidateInterviewSessions + question bank.
+  return null;
+}
+
+function buildClosingTwiml(_sessionScore: number): string {
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<Response><Say voice="Polly.Joanna">Thank you for completing your interview. Goodbye.</Say><Hangup/></Response>`
+  );
+}
+
+function buildQuestionTwiml(
+  sessionId: string,
+  workspaceId: string,
+  qIndex: number,
+  questionText: string,
+  base: string,
+): string {
+  const action = `${base}/api/webhooks/twilio/voice-interview/response?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&qIndex=${qIndex}`;
+  const safeText = (questionText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<Response>` +
+    `<Say voice="Polly.Joanna">${safeText}</Say>` +
+    `<Gather input="speech" action="${action}" method="POST" speechTimeout="auto" />` +
+    `</Response>`
+  );
+}
+
+async function scoreSpeechResponse(
+  sessionId: string,
+  workspaceId: string,
+  qIndex: number,
+  _speechResult: string,
+): Promise<{ nextQuestionIndex: number | null; sessionScore: number; candidateId: string | null }> {
+  const state = await getVoiceSessionState(sessionId, workspaceId);
+  if (!state) return { nextQuestionIndex: null, sessionScore: 0, candidateId: null };
+  const next = qIndex + 1;
+  return {
+    nextQuestionIndex: next < state.questions.length ? next : null,
+    sessionScore: 0,
+    candidateId: state.candidateId,
+  };
 }
 
 /**

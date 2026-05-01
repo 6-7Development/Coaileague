@@ -15,15 +15,18 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
 
   salesRouter.get("/invitations", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const userId = req.user?.id;
       const workspaceId = req.workspaceId;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
       if (!workspaceId) {
         return res.status(403).json({ error: "Workspace context required" });
       }
 
       const list = await db.select().from(orgInvitations)
-        .where(and(eq(orgInvitations.sentBy, user?.id!), eq(orgInvitations.workspaceId, workspaceId)))
-        .orderBy(desc(orgInvitations.createdAt));
+        .where(and(eq(orgInvitations.sentBy, userId), eq(orgInvitations.workspaceId, workspaceId)))
+        .orderBy(desc(orgInvitations.sentAt));
       res.json({ success: true, data: list });
     } catch (error: unknown) {
       res.status(500).json({ error: sanitizeError(error) });
@@ -53,9 +56,10 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
 
   salesRouter.get("/proposals", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const list = await db.select().from(proposals)
-        .where(and(eq(proposals.proposalType, 'sales'), eq(proposals.createdBy, user?.id)))
+        .where(and(eq(proposals.proposalType, 'sales'), eq(proposals.createdBy, userId)))
         .orderBy(desc(proposals.createdAt));
       res.json({ success: true, data: list });
     } catch (error: unknown) {
@@ -129,14 +133,15 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
         return res.status(400).json({ error: "candidates array is required" });
       }
 
-      const user = req.user;
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const result = await trinityOutreachService.sendOutreachInvitations(
         candidates,
-        user?.id,
+        userId,
         { customMessage, trialDays }
       );
 
-      res.json({ success: true, ...result });
+      res.json({ ...result, success: true });
     } catch (error: unknown) {
       res.status(500).json({ error: sanitizeError(error) });
     }
@@ -144,9 +149,10 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
 
   salesRouter.get("/outreach/pipeline", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
-      const summary = await trinityOutreachService.getPipelineSummary(user?.id);
-      const prospects = await trinityOutreachService.getProspectsByStage(user?.id);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      const summary = await trinityOutreachService.getPipelineSummary(userId);
+      const prospects = await trinityOutreachService.getProspectsByStage(userId);
 
       res.json({ success: true, summary, prospects });
     } catch (error: unknown) {
@@ -156,10 +162,11 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
 
   salesRouter.get("/outreach/pipeline/:stage", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user;
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const stage = req.params.stage;
       const prospects = await trinityOutreachService.getProspectsByStage(
-        user?.id,
+        userId,
         stage === 'all' ? undefined : stage as any
       );
 

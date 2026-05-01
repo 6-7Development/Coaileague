@@ -10,8 +10,8 @@
  */
 
 import express, { Router, Request, Response } from 'express';
-// @ts-expect-error — TS migration: fix in refactoring sprint
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest } from '../rbac';
 import {
   serviceController,
   featureToggleManager,
@@ -159,7 +159,7 @@ aiBrainCapabilitiesRouter.post('/features/toggle', requireAuth, async (req: Requ
       enabled,
       reason: reason || 'No reason provided',
       userId: userId!,
-      workspaceId,
+      workspaceId: workspaceId ?? undefined,
     });
     
     // @ts-expect-error — TS migration: fix in refactoring sprint

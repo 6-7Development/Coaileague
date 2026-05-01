@@ -5,7 +5,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
-import { complianceReports } from "@shared/schema";
+import { complianceReports, workspaces } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../auth";
 import { requireManager, type AuthenticatedRequest } from "../rbac";
@@ -157,6 +157,10 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
       .limit(1);
     if (!report) return res.status(404).json({ error: "Report not found" });
 
+    // Vault helpers — imported up front so the cache check below can call
+    // getVaultRecord without hoisting issues.
+    const { saveToVault, getVaultRecord } = await import('../services/documents/businessFormsVaultService');
+
     // Check if a vaulted PDF already exists for this report
     if ((report as any).vaultDocumentNumber) {
       const vaultRecord = await getVaultRecord(workspaceId, (report as any).vaultDocumentNumber);
@@ -221,7 +225,6 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
     });
 
     // Vault it
-    const { saveToVault, getVaultRecord } = await import('../services/documents/businessFormsVaultService');
     const workspace = await db.select({ name: workspaces.name }).from(workspaces)
       .where(eq(workspaces.id, workspaceId)).limit(1);
     const workspaceName = workspace[0]?.name ?? 'Workspace';

@@ -4743,12 +4743,13 @@ export const manualTriggers = {
   wsConnectionCleanup: runWebSocketConnectionCleanup,
   compliance: checkExpiringCertifications,
   gamificationWeeklyReset: async () => {
-    await gamificationService.resetWeeklyPoints();
-    return { success: true, resetType: 'weekly', resetAt: new Date().toISOString() };
+    // Gamification was removed per product decision — see
+    // server/services/ai-brain/subagents/gamificationActivationAgent.ts.
+    // The cron registration stays so re-enabling is a one-line change.
+    return { success: true, resetType: 'weekly', resetAt: new Date().toISOString(), skipped: true };
   },
   gamificationMonthlyReset: async () => {
-    await gamificationService.resetMonthlyPoints();
-    return { success: true, resetType: 'monthly', resetAt: new Date().toISOString() };
+    return { success: true, resetType: 'monthly', resetAt: new Date().toISOString(), skipped: true };
   },
   paymentReminders: runPaymentReminderCheck,
   shiftCompletionBridge: () => runShiftCompletionBridge(),

@@ -116,7 +116,7 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
     });
 
     const rows = await q(`SELECT * FROM incident_reports WHERE id = $1`, [id]);
-    const incident = rows[0];
+    const incident: any = rows[0];
 
     // DV-18 FIX: Auto-vault PDF on incident submit
     // Law: every incident report must be a real branded PDF in the document vault
@@ -167,12 +167,13 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
 
         const vaultResult = await saveToVault({
           workspaceId,
+          workspaceName: 'Workspace',
           documentTitle: `Incident Report — ${incident.title}`,
-          category: 'incident_report',
+          category: 'operations',
           relatedEntityType: 'incident_report',
           relatedEntityId: id,
           generatedBy: userId,
-          pdfBuffer,
+          rawBuffer: pdfBuffer,
         });
 
         if (vaultResult.success && vaultResult.vault) {

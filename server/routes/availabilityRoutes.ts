@@ -203,7 +203,7 @@ router.post('/exception', requireAuth, async (req: AuthenticatedRequest, res) =>
       {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        requestType,
+        requestType: requestType as 'vacation' | 'sick' | 'personal' | 'unpaid',
         reason,
         notes,
       }

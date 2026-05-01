@@ -152,7 +152,7 @@ function drawEntryTable(doc: PDFKit.PDFDocument, rows: JoinedTimesheetRow[]): vo
 
   if (rows.length > 80) {
     doc.moveDown(0.5).fontSize(8).fillColor('#6b7280')
-      .text(`Showing first 80 of ${rows.length} time entries. Use CSV export for the complete detail set.`, { italic: true });
+      .text(`Showing first 80 of ${rows.length} time entries. Use CSV export for the complete detail set.`, { italic: true } as any);
   }
 }
 

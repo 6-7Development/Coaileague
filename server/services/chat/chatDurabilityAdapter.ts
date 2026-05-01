@@ -42,8 +42,10 @@ async function initRedis(): Promise<boolean> {
   }
 
   try {
-    // Dynamic import so the server boots without Redis installed
-    const { createClient } = await import('redis').catch(() => ({ createClient: null }));
+    // Dynamic import so the server boots without Redis installed. Cast through
+    // `any` because the redis package isn't a hard dependency — its types
+    // aren't available in workspaces that don't ship Redis.
+    const { createClient } = await (import('redis' as any) as any).catch(() => ({ createClient: null }));
     if (!createClient) {
       log.warn('[ChatDurability] redis package not installed — falling back to in-memory');
       return false;

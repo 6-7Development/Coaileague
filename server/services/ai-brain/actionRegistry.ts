@@ -31,7 +31,6 @@ import {
   clients,
   notifications,
   workspaces,
-  employees,
 } from '@shared/schema';
 import { universalNotificationEngine } from '../universalNotificationEngine';
 import { broadcastShiftUpdate, broadcastToWorkspace } from '../../websocket';
@@ -742,8 +741,10 @@ class AIBrainActionRegistry {
         if (!shiftId) return createResult(request.actionId, false, 'shiftId required', null, start);
         if (!workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
 
-        // STATE LOCK: Load current shift before making any changes
-        const [current] = await db.select({ status: shifts.status, startTime: shifts.startTime, endTime: shifts.endTime })
+        // STATE LOCK: Load current shift before making any changes — pull
+        // updatedAt too so the optimistic-lock check below can compare against
+        // the caller-supplied expectedUpdatedAt.
+        const [current] = await db.select({ status: shifts.status, startTime: shifts.startTime, endTime: shifts.endTime, updatedAt: shifts.updatedAt })
           .from(shifts).where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))).limit(1);
         if (!current) return createResult(request.actionId, false, 'Shift not found', null, start);
 
@@ -787,7 +788,7 @@ class AIBrainActionRegistry {
         const { expectedUpdatedAt } = request.payload || {};
         if (expectedUpdatedAt) {
           const expectedMs = new Date(expectedUpdatedAt).getTime();
-          const actualMs = current.updatedAt ? new Date(current.updatedAt as string).getTime() : 0;
+          const actualMs = current.updatedAt ? new Date(current.updatedAt as unknown as string).getTime() : 0;
           // Allow 1s tolerance for clock skew
           if (Math.abs(actualMs - expectedMs) > 1000) {
             return createResult(request.actionId, false,
@@ -2093,9 +2094,9 @@ class AIBrainActionRegistry {
         if (targetShift) {
           try {
             const shiftHours = targetShift.endTime && targetShift.startTime
-              ? (new Date(targetShift.endTime as string).getTime() - new Date(targetShift.startTime as string).getTime()) / 3600000
+              ? (new Date(targetShift.endTime as unknown as string).getTime() - new Date(targetShift.startTime as unknown as string).getTime()) / 3600000
               : 0;
-            const weekStart = new Date(targetShift.startTime as string);
+            const weekStart = new Date(targetShift.startTime as unknown as string);
             weekStart.setDate(weekStart.getDate() - weekStart.getDay());
             weekStart.setHours(0,0,0,0);
             const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
@@ -3733,7 +3734,11 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const searchTerm = request.payload?.query || '';
-        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as any).filter(c => 
+        const contractsResult = await contractPipelineService.getContracts(request.workspaceId!, {});
+        const contractsList: any[] = Array.isArray(contractsResult)
+          ? contractsResult
+          : ((contractsResult as any)?.contracts ?? []);
+        const filtered = contractsList.filter((c: any) =>
           c.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.title?.toLowerCase().includes(searchTerm.toLowerCase())
         );

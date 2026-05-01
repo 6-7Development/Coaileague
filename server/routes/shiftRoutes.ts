@@ -1192,7 +1192,6 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
           const [updated] = await tx
             .update(shifts)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .set({ ...validated, updatedAt: new Date() })
             .where(eq(shifts.id, req.params.id))
             .returning();
@@ -3317,7 +3316,6 @@ router.post('/:id/proof-of-service', requireEmployee, async (req: AuthenticatedR
     if (!shift) return res.status(404).json({ message: 'Shift not found' });
     // Store proof reference on shift record
     const updated = await storage.updateShift(req.params.id, workspaceId, {
-      // @ts-expect-error — TS migration: proofOfService field
       proofOfServiceUrl: fileUrl || null,
       proofOfServiceType: proofType || 'document',
       proofOfServiceNotes: notes || null,

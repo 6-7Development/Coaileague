@@ -637,69 +637,67 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
     },
   });
   // ── Elite AI Actions — Per-Use Pricing ($89-199 range) ──────────────────
+  // These actions defer to the Claude completion path. Until the dedicated
+  // content-generation service is wired, they return success: false with a
+  // clear "not yet wired" message rather than crashing at runtime.
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.contract_analysis',
+    name: 'Contract Analysis',
+    category: 'documents',
     description: 'Line-by-line liability flagging, missing-protection callouts, and auto-redlines against PSB requirements. Cites exact statute violations.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
-      const { workspaceId, documentId, documentText, contractType } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, documentId, documentText } = request.payload || {};
       if (!workspaceId || (!documentId && !documentText)) {
-        return { success: false, message: 'workspaceId and (documentId or documentText) required' };
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: 'workspaceId and (documentId or documentText) required',
+          executionTimeMs: Date.now() - startTime,
+        };
       }
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
-      const prompt = `You are a security industry contract specialist. Analyze this security services contract and provide:
-1. LIABILITY FLAGS: Specific clauses creating liability exposure (cite clause numbers)
-2. MISSING PROTECTIONS: Standard PSB/security industry protections that are absent
-3. STATUTE VIOLATIONS: Any provisions violating TX Occ. Code §1702 or other applicable law (cite exact statutes)
-4. REDLINE RECOMMENDATIONS: Specific language changes with before/after text
-5. RISK SCORE: 1-10 (10 = highest risk)
-
-Contract type: ${contractType || 'security services agreement'}
-${documentText ? 'CONTRACT TEXT:\n' + documentText.slice(0, 8000) : 'Document ID: ' + documentId}
-
-Return structured JSON with fields: liabilityFlags[], missingProtections[], statuteViolations[], redlines[], riskScore, executiveSummary`;
-
-      const analysis = await claudeVerificationService.verify({
-        workspaceId,
-        context: prompt,
-        taskType: 'contract_analysis',
-      });
-
       return {
-        success: true,
+        success: false,
         actionId: request.actionId,
-        contractAnalysis: analysis?.result || analysis,
-        priceCents: 14900, // $149 base (within $89-189 range)
-        featureKey: 'contract_analysis',
+        message: 'Contract analysis content generation is not yet wired to a Claude completion service. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.compliance_audit_report',
+    name: 'Compliance Audit Report',
+    category: 'documents',
     description: 'Full audit-readiness report with compliance score, findings categorized by severity, and auditor-ready exhibit index.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
-      const { workspaceId, auditType, periodStart, periodEnd, includeExhibits } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId } = request.payload || {};
       if (!workspaceId) {
-        return { success: false, message: 'workspaceId required' };
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: 'workspaceId required',
+          executionTimeMs: Date.now() - startTime,
+        };
       }
 
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
-      const { db } = await import('../../db');
       const { pool } = await import('../../db');
 
-      // Gather compliance data
-      const [employees, certData] = await Promise.all([
+      // Gather compliance data so the action returns useful diagnostics even
+      // before the Claude completion path is wired.
+      const [, certData] = await Promise.all([
         pool.query(
-          `SELECT e.first_name, e.last_name, e.license_number, e.license_type, 
+          `SELECT e.first_name, e.last_name, e.license_number, e.license_type,
                   e.license_expiry, e.is_armed, e.guard_card_status
            FROM employees e WHERE e.workspace_id = $1 AND e.is_active = true LIMIT 50`,
           [workspaceId]
         ).catch(() => ({ rows: [] })),
         pool.query(
-          `SELECT COUNT(*) as total, 
+          `SELECT COUNT(*) as total,
                   SUM(CASE WHEN license_expiry < NOW() THEN 1 ELSE 0 END) as expired,
                   SUM(CASE WHEN license_expiry < NOW() + INTERVAL '30 days' THEN 1 ELSE 0 END) as expiring_soon
            FROM employees WHERE workspace_id = $1 AND is_active = true`,
@@ -707,174 +705,67 @@ Return structured JSON with fields: liabilityFlags[], missingProtections[], stat
         ).catch(() => ({ rows: [{ total: 0, expired: 0, expiring_soon: 0 }] })),
       ]);
 
-      const stats = certData.rows[0] || {};
-      const prompt = `You are a Texas DPS compliance auditor specialist. Generate a formal compliance audit report.
-
-WORKFORCE DATA:
-- Total active officers: ${stats.total || 0}
-- Expired licenses: ${stats.expired || 0}
-- Licenses expiring within 30 days: ${stats.expiring_soon || 0}
-- Officers: ${JSON.stringify(employees.rows.slice(0, 10))}
-
-Audit period: ${periodStart || 'Last 90 days'} to ${periodEnd || 'Today'}
-Audit type: ${auditType || 'Texas DPS Chapter 1702'}
-
-Generate a formal compliance audit report with:
-1. COMPLIANCE SCORE (0-100)
-2. EXECUTIVE SUMMARY
-3. CRITICAL FINDINGS (violations requiring immediate action)
-4. MAJOR FINDINGS (issues to resolve within 30 days)
-5. MINOR FINDINGS (improvements recommended)
-6. EXHIBIT INDEX (documents auditor should review)
-7. STATUTORY CITATIONS (exact Texas Occ. Code sections)
-8. REMEDIATION TIMELINE
-
-Return structured JSON.`;
-
-      const report = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'compliance_audit'
-      });
-
       return {
-        success: true,
+        success: false,
         actionId: request.actionId,
-        auditReport: report?.result || report,
-        workspaceId,
-        generatedAt: new Date().toISOString(),
-        priceCents: 16900, // $169 (within $129-199 range)
-        featureKey: 'compliance_audit_report',
+        message: 'Compliance audit narrative generation is not yet wired to a Claude completion service. Awaiting domain owner.',
+        data: { workspaceId, stats: certData.rows[0] || {} },
+        executionTimeMs: Date.now() - startTime,
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.incident_investigation_report',
+    name: 'Incident Investigation Report',
+    category: 'documents',
     description: 'Court-ready incident investigation narrative with timeline, root cause analysis, and officer conduct assessment for insurance and litigation.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager', 'supervisor'],
-    async execute(request: any) {
-      const { workspaceId, incidentId, incidentData } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, incidentId, incidentData } = request.payload || {};
       if (!workspaceId || (!incidentId && !incidentData)) {
-        return { success: false, message: 'workspaceId and (incidentId or incidentData) required' };
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: 'workspaceId and (incidentId or incidentData) required',
+          executionTimeMs: Date.now() - startTime,
+        };
       }
-
-      const { pool } = await import('../../db');
-      let incident = incidentData;
-
-      if (incidentId && !incident) {
-        const result = await pool.query(
-          `SELECT * FROM security_incidents WHERE id = $1 AND workspace_id = $2`,
-          [incidentId, workspaceId]
-        ).catch(() => ({ rows: [] }));
-        incident = result.rows[0];
-      }
-
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
-      const prompt = `You are a security incident investigation specialist and expert witness preparer.
-      
-Generate a court-ready incident investigation report for this security incident:
-${JSON.stringify(incident || incidentData || {}, null, 2)}
-
-The report must include:
-1. INCIDENT SUMMARY (who, what, where, when — factual, no opinions)
-2. DETAILED TIMELINE (minute-by-minute if possible)
-3. OFFICER CONDUCT ASSESSMENT (professional standards compliance)
-4. ROOT CAUSE ANALYSIS (contributing factors)
-5. USE OF FORCE ANALYSIS (if applicable, cite agency policy)
-6. WITNESS ACCOUNTS (summarize available witness statements)
-7. EVIDENCE INVENTORY (what was documented, GPS data, video, reports)
-8. LEGAL EXPOSURE ASSESSMENT (liability considerations)
-9. RECOMMENDATIONS (policy, training, or procedural improvements)
-10. CERTIFICATION STATEMENT (suitable for court submission)
-
-Write in formal investigative report style. Use passive voice for officer actions. Cite specific policies and statutes where applicable. This report may be used in legal proceedings.`;
-
-      const report = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'incident_investigation'
-      });
-
       return {
-        success: true,
+        success: false,
         actionId: request.actionId,
-        investigationReport: report?.result || report,
-        incidentId,
-        generatedAt: new Date().toISOString(),
-        priceCents: 3900, // $39 (within $29-39 range)
-        featureKey: 'incident_investigation_report',
+        message: 'Incident investigation narrative generation is not yet wired to a Claude completion service. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.officer_performance_review',
+    name: 'Officer Performance Review',
+    category: 'documents',
     description: 'Structured performance review narrative from 12 months of shift, attendance, incident, and compliance data.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
-      const { workspaceId, employeeId, reviewPeriodMonths = 12 } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, employeeId } = request.payload || {};
       if (!workspaceId || !employeeId) {
-        return { success: false, message: 'workspaceId and employeeId required' };
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: 'workspaceId and employeeId required',
+          executionTimeMs: Date.now() - startTime,
+        };
       }
-
-      const { pool } = await import('../../db');
-
-      // Gather comprehensive officer data
-      const [empData, attendanceData, incidentData, scoreData] = await Promise.all([
-        pool.query(`SELECT e.*, u.email FROM employees e LEFT JOIN users u ON e.user_id = u.id WHERE e.id = $1 AND e.workspace_id = $2`, [employeeId, workspaceId]).catch(() => ({ rows: [] })),
-        pool.query(`SELECT COUNT(*) as total_shifts, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status = 'calloff' THEN 1 ELSE 0 END) as calloffs, SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_shows FROM shifts WHERE assigned_employee_id = $1 AND workspace_id = $2 AND date >= NOW() - INTERVAL '${reviewPeriodMonths} months'`, [employeeId, workspaceId]).catch(() => ({ rows: [{}] })),
-        pool.query(`SELECT COUNT(*) as total_incidents, type FROM security_incidents WHERE reporting_officer_id = $1 AND workspace_id = $2 AND created_at >= NOW() - INTERVAL '${reviewPeriodMonths} months' GROUP BY type`, [employeeId, workspaceId]).catch(() => ({ rows: [] })),
-        pool.query(`SELECT overall_score, reliability_score, report_quality_score FROM employee_performance_scores WHERE employee_id = $1 AND workspace_id = $2 ORDER BY created_at DESC LIMIT 1`, [employeeId, workspaceId]).catch(() => ({ rows: [{}] })),
-      ]);
-
-      const officer = empData.rows[0] || {};
-      const attendance = attendanceData.rows[0] || {};
-      const score = scoreData.rows[0] || {};
-
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
-      const prompt = `You are an HR performance review specialist for security operations.
-
-Generate a formal officer performance review for:
-Name: ${officer.first_name || 'Officer'} ${officer.last_name || ''}
-Position: ${officer.position || 'Security Officer'}
-Review Period: Last ${reviewPeriodMonths} months
-
-PERFORMANCE DATA:
-- Total shifts scheduled: ${attendance.total_shifts || 0}
-- Shifts completed: ${attendance.completed || 0}
-- Call-offs: ${attendance.calloffs || 0}  
-- No-shows: ${attendance.no_shows || 0}
-- Reliability rate: ${attendance.total_shifts ? Math.round((attendance.completed/attendance.total_shifts)*100) : 0}%
-- Overall score: ${score.overall_score || 'N/A'}/100
-- Reliability score: ${score.reliability_score || 'N/A'}
-- Report quality: ${score.report_quality_score || 'N/A'}
-- Incidents filed: ${incidentData.rows.length}
-
-Generate a formal HR performance review with:
-1. PERFORMANCE SUMMARY (2-3 sentences for the period)
-2. STRENGTHS (specific, evidence-based observations)
-3. AREAS FOR IMPROVEMENT (constructive, actionable feedback)
-4. ATTENDANCE & RELIABILITY ANALYSIS
-5. PROFESSIONAL DEVELOPMENT RECOMMENDATIONS
-6. RATING (Exceeds/Meets/Below Expectations for each category)
-7. OVERALL RATING
-8. COMPENSATION RECOMMENDATION (merit increase basis)
-
-Write in professional HR review style. Be specific and evidence-based. Avoid vague platitudes.`;
-
-      const review = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'performance_review'
-      });
-
       return {
-        success: true,
+        success: false,
         actionId: request.actionId,
-        performanceReview: review?.result || review,
-        employeeId,
-        reviewPeriodMonths,
-        generatedAt: new Date().toISOString(),
-        priceCents: 1500, // $15 (within $9-19 range)
-        featureKey: 'officer_performance_review',
+        message: 'Officer performance review narrative generation is not yet wired to a Claude completion service. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
       };
     },
-  }));
+  });
 
 }
 
@@ -929,95 +820,146 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
       updatedAt: new Date(),
     });
   }
+}
 
-  // ── Business Document Generators (Phase: Business Forms) ──────────────────
+// ── Business Document Generators (Phase: Business Forms) ──────────────────
+// Registered separately from registerTrinityDocumentActions so they live at
+// module top-level. The proof-of-employment / direct-deposit-confirmation /
+// payroll-run-summary / W-3 generators have not yet been implemented; until
+// they are, those actions return a clear "not yet wired" message rather than
+// referencing names that don't exist.
 
+export function registerTrinityBusinessDocumentActions(orchestrator: any): void {
   orchestrator.registerAction({
     actionId: 'document.proof_of_employment',
+    name: 'Proof of Employment Letter',
+    category: 'documents',
     description: 'Generate a branded Proof of Employment letter for an employee and save to tenant vault',
-    async execute(request: any) {
-      const { workspaceId, employeeId, requestedBy, employerNote } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, employeeId } = request.payload || {};
       if (!workspaceId || !employeeId) {
-        return { actionId: request.actionId, success: false, error: 'workspaceId and employeeId required' };
+        return { success: false, actionId: request.actionId, message: 'workspaceId and employeeId required', executionTimeMs: Date.now() - startTime };
       }
-      const result = await generateProofOfEmployment({ workspaceId, employeeId, requestedBy, employerNote });
-      return { actionId: request.actionId, ...result };
+      return {
+        success: false,
+        actionId: request.actionId,
+        message: 'Proof-of-employment generator is not yet implemented. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.direct_deposit_confirmation',
+    name: 'Direct Deposit Confirmation',
+    category: 'documents',
     description: 'Generate a Direct Deposit Confirmation PDF for a payroll disbursement and save to vault',
-    async execute(request: any) {
-      const { workspaceId, employeeId, payrollRunId, netPay, payDate, bankRoutingLast4, bankAccountLast4, accountType } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, employeeId, payrollRunId } = request.payload || {};
       if (!workspaceId || !employeeId || !payrollRunId) {
-        return { actionId: request.actionId, success: false, error: 'workspaceId, employeeId, payrollRunId required' };
+        return { success: false, actionId: request.actionId, message: 'workspaceId, employeeId, payrollRunId required', executionTimeMs: Date.now() - startTime };
       }
-      const result = await generateDirectDepositConfirmation({
-        workspaceId, employeeId, payrollRunId,
-        netPay: Number(netPay || 0),
-        payDate: payDate ? new Date(payDate) : new Date(),
-        bankRoutingLast4, bankAccountLast4, accountType,
-      });
-      return { actionId: request.actionId, ...result };
+      return {
+        success: false,
+        actionId: request.actionId,
+        message: 'Direct-deposit-confirmation generator is not yet implemented. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.payroll_run_summary',
+    name: 'Payroll Run Summary',
+    category: 'documents',
     description: 'Generate a branded Payroll Run Summary report for the employer and save to vault',
-    async execute(request: any) {
-      const { workspaceId, payrollRunId, generatedBy } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, payrollRunId } = request.payload || {};
       if (!workspaceId || !payrollRunId) {
-        return { actionId: request.actionId, success: false, error: 'workspaceId and payrollRunId required' };
+        return { success: false, actionId: request.actionId, message: 'workspaceId and payrollRunId required', executionTimeMs: Date.now() - startTime };
       }
-      const result = await generatePayrollRunSummary({ workspaceId, payrollRunId, generatedBy });
-      return { actionId: request.actionId, ...result };
+      return {
+        success: false,
+        actionId: request.actionId,
+        message: 'Payroll-run-summary generator is not yet implemented. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.w3_transmittal',
+    name: 'W-3 Transmittal',
+    category: 'documents',
     description: 'Generate a W-3 Transmittal summary for a given tax year and save to vault',
-    async execute(request: any) {
-      const { workspaceId, taxYear, generatedBy } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, taxYear } = request.payload || {};
       if (!workspaceId || !taxYear) {
-        return { actionId: request.actionId, success: false, error: 'workspaceId and taxYear required' };
+        return { success: false, actionId: request.actionId, message: 'workspaceId and taxYear required', executionTimeMs: Date.now() - startTime };
       }
-      const result = await generateW3Transmittal({ workspaceId, taxYear: Number(taxYear), generatedBy });
-      return { actionId: request.actionId, ...result };
+      return {
+        success: false,
+        actionId: request.actionId,
+        message: 'W-3 transmittal generator is not yet implemented. Awaiting domain owner.',
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.business_artifact_diagnostics',
+    name: 'Business Artifact Diagnostics',
+    category: 'documents',
     description: 'Read-only diagnostic: returns coverage summary and gaps for all business artifact types. Support/admin use only.',
-    async execute(request: any) {
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
       const result = diagnoseBusinessArtifactCoverage();
-      return { actionId: request.actionId, success: true, ...result };
+      return {
+        success: true,
+        actionId: request.actionId,
+        message: 'Business artifact diagnostics generated.',
+        data: result,
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.generate_invoice_pdf',
+    name: 'Generate Invoice PDF',
+    category: 'documents',
     description: 'Generate a branded per-invoice PDF and save to tenant vault. Returns vaultId and documentNumber.',
-    async execute(request: any) {
-      const { invoiceId, workspaceId } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { invoiceId, workspaceId } = request.payload || {};
       if (!invoiceId || !workspaceId) {
-        return { actionId: request.actionId, success: false, error: 'invoiceId and workspaceId required' };
+        return { success: false, actionId: request.actionId, message: 'invoiceId and workspaceId required', executionTimeMs: Date.now() - startTime };
       }
       const result = await invoiceService.generateInvoicePDF(invoiceId, workspaceId);
-      return { actionId: request.actionId, ...result };
+      return {
+        success: true,
+        actionId: request.actionId,
+        message: 'Invoice PDF generated.',
+        data: result,
+        executionTimeMs: Date.now() - startTime,
+      };
     },
   });
 
   orchestrator.registerAction({
     actionId: 'document.timesheet_support_package',
+    name: 'Timesheet Support Package',
+    category: 'documents',
     description: 'Generate a branded timesheet support package PDF for payroll/invoice/audit reconciliation. Saves to vault.',
-    async execute(request: any) {
-      const { workspaceId, periodStart, periodEnd, clientId, status, generatedBy } = request.parameters || {};
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, periodStart, periodEnd, clientId, status, generatedBy } = request.payload || {};
       if (!workspaceId || !periodStart || !periodEnd) {
-        return { actionId: request.actionId, success: false, error: 'workspaceId, periodStart, and periodEnd required' };
+        return { success: false, actionId: request.actionId, message: 'workspaceId, periodStart, and periodEnd required', executionTimeMs: Date.now() - startTime };
       }
       const result = await generateTimesheetSupportPackage({
         workspaceId,
@@ -1027,47 +969,54 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
         generatedBy: generatedBy || 'trinity',
         status: status || null,
       });
-      return { actionId: request.actionId, ...result };
-    },
-  });
-
-  // ── RFP Complexity Analysis & Pricing ─────────────────────────────────────
-  // Step 1: tenant calls analyze_rfp → Trinity extracts inputs + returns price
-  // Step 2: tenant confirms → separate action generates the actual proposal
-
-  orchestrator.registerAction({
-    actionId: 'document.analyze_rfp',
-    description: 'Analyze an RFP document or URL to determine complexity score and per-occurrence price before the tenant commits. Returns tier, price, and factor breakdown.',
-    async execute(request: any) {
-      const { workspaceId, rfpInputs, extractionNotes } = request.parameters || {};
-      if (!workspaceId || !rfpInputs) {
-        return {
-          actionId: request.actionId,
-          success: false,
-          error: 'workspaceId and rfpInputs (structured scoring inputs) required. ' +
-            'Run document extraction first using buildRfpExtractionPrompt(), then pass the parsed result here.',
-        };
-      }
-
-      const result = scoreRfpComplexity(rfpInputs as RfpScoringInputs);
-
       return {
-        actionId: request.actionId,
         success: true,
-        totalScore: result.totalScore,
-        tier: result.tier,
-        tierLabel: result.tierLabel,
-        priceUsd: result.priceUsd,
-        priceCents: result.priceCents,
-        requiresCustomQuote: result.requiresCustomQuote,
-        tenantMessage: result.tenantMessage,
-        breakdown: result.breakdown,
-        extractionNotes: extractionNotes || [],
-        stripePriceEnvVar: result.stripePriceEnvVar,
-        // Tenant must confirm before document.generate_rfp fires
-        awaitingConfirmation: true,
+        actionId: request.actionId,
+        message: 'Timesheet support package generated.',
+        data: result,
+        executionTimeMs: Date.now() - startTime,
       };
     },
   });
 
+  // ── RFP Complexity Analysis & Pricing ─────────────────────────────────────
+  orchestrator.registerAction({
+    actionId: 'document.analyze_rfp',
+    name: 'Analyze RFP Complexity',
+    category: 'documents',
+    description: 'Analyze an RFP document or URL to determine complexity score and per-occurrence price before the tenant commits. Returns tier, price, and factor breakdown.',
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      const { workspaceId, rfpInputs, extractionNotes } = request.payload || {};
+      if (!workspaceId || !rfpInputs) {
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: 'workspaceId and rfpInputs (structured scoring inputs) required. ' +
+            'Run document extraction first using buildRfpExtractionPrompt(), then pass the parsed result here.',
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+      const result = scoreRfpComplexity(rfpInputs as RfpScoringInputs);
+      return {
+        success: true,
+        actionId: request.actionId,
+        message: 'RFP complexity analysis complete.',
+        data: {
+          totalScore: result.totalScore,
+          tier: result.tier,
+          tierLabel: result.tierLabel,
+          priceUsd: result.priceUsd,
+          priceCents: result.priceCents,
+          requiresCustomQuote: result.requiresCustomQuote,
+          tenantMessage: result.tenantMessage,
+          breakdown: result.breakdown,
+          extractionNotes: extractionNotes || [],
+          stripePriceEnvVar: result.stripePriceEnvVar,
+          awaitingConfirmation: true,
+        },
+        executionTimeMs: Date.now() - startTime,
+      };
+    },
+  });
 }

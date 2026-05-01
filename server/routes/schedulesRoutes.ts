@@ -98,6 +98,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+    const workspaceId = userWorkspace.workspaceId;
     const workspace = await storage.getWorkspace(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
     
@@ -298,6 +299,7 @@ router.post('/unpublish', requireManager, async (req: any, res) => {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+    const workspaceId = userWorkspace.workspaceId;
     const workspace = await storage.getWorkspace(workspaceId);
     if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 

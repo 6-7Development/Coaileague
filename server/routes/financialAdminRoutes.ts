@@ -8,8 +8,16 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
-// @ts-expect-error — TS migration: fix in refactoring sprint
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest as RbacAuthenticatedRequest } from '../rbac';
+
+// Local extension carries the per-request admin role/level set by the
+// requireFinancialAdmin middleware so downstream handlers can read them
+// without `as any` casts.
+interface AuthenticatedRequest extends RbacAuthenticatedRequest {
+  adminRole?: string;
+  adminLevel?: number;
+}
 import { getUserPlatformRole, getPlatformRoleLevel } from '../rbac';
 import { platformAIBudgetService } from '../services/billing/platformAIBudgetService';
 import { pool } from '../db';
@@ -27,7 +35,7 @@ async function requireFinancialAdmin(
   res: Response,
   next: Function
 ) {
-  const userId = req.userId || req.user?.id;
+  const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
 
   const role = await getUserPlatformRole(userId);
@@ -178,8 +186,9 @@ router.post(
         return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
       }
 
-      const userId = req.userId || req.user?.id;
+      const userId = req.user?.id;
       const adminRole = req.adminRole;
+      if (!userId || !adminRole) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
       const result = await platformAIBudgetService.recordProviderTopoff({
         provider: parsed.data.provider,
