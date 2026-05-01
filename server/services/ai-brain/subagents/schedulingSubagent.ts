@@ -284,9 +284,9 @@ class SchedulingSubagentService {
             ruleId: maxDaily.id,
             ruleName: 'Maximum Daily Hours',
             severity: 'critical',
-            description: `Shift exceeds ${(maxDaily as any).ruleValue}h maximum daily limit`,
+            description: `Shift exceeds ${(maxDaily as Record<string,unknown>).ruleValue}h maximum daily limit`,
             affectedEmployees: [employeeId],
-            suggestedFix: `Split shift or reduce to ${(maxDaily as any).ruleValue}h maximum`,
+            suggestedFix: `Split shift or reduce to ${(maxDaily as Record<string,unknown>).ruleValue}h maximum`,
           });
           appliedRules.push('max_daily_hours');
         }
@@ -294,7 +294,7 @@ class SchedulingSubagentService {
         // Check required breaks
         const breakRule = laborLaws.find(l => (l as any).ruleType === 'required_break');
         if (breakRule && hours >= parseFloat(breakRule.threshold || '6')) {
-          warnings.push(`Employee ${employeeId}: ${hours}h shift requires ${(breakRule as any).ruleValue}min break`);
+          warnings.push(`Employee ${employeeId}: ${hours}h shift requires ${(breakRule as Record<string,unknown>).ruleValue}min break`);
           appliedRules.push('required_break');
         }
       }
@@ -710,7 +710,7 @@ Generate a JSON schedule with format:
       .where(eq(employees.workspaceId, workspaceId))
       .limit(1);
     
-    const jurisdiction = (workspace as any)?.[0]?.laborLawJurisdiction || 'US-FEDERAL';
+    const jurisdiction = (workspace as Record<string,unknown>[])?.[0]?.laborLawJurisdiction || 'US-FEDERAL';
     
     return await db.select()
       .from(laborLawRules)

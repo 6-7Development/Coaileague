@@ -429,7 +429,7 @@ aiBrainRouter.post('/faqs/:id/update', requireAuth, async (req: Request, res: Re
       changedByAi: false,
       changeType: 'updated',
       changeReason: changeReason || 'Manual update',
-      sourceType: currentFaq.sourceType as any,
+      sourceType: currentFaq.sourceType as string,
       sourceId: currentFaq.sourceId
     });
     

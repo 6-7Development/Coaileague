@@ -765,7 +765,7 @@ export class QuickBooksSyncService {
       }
       
       const workspaceName = workspace.name || 'Your Organization';
-      const inviterName = (inviter as any)?.fullName || inviter?.email || 'Your Admin';
+      const inviterName = (inviter as Record<string,unknown>)?.fullName || inviter?.email || 'Your Admin';
       
       for (const emp of employeesToInvite) {
         try {
@@ -1173,7 +1173,7 @@ export class QuickBooksSyncService {
       }
     }
 
-    const getClientDisplayName = (c: any) => c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unknown';
+    const getClientDisplayName = (c: Record<string,unknown>) => c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unknown';
 
     const nameMatches = coaileagueClients.filter(c => 
       getClientDisplayName(c).toLowerCase() === qboName ||
@@ -1522,7 +1522,7 @@ export class QuickBooksSyncService {
     
     for (const user of workspaceUsers) {
       const userRole = user.role?.toLowerCase();
-      if (!userRole || !ROLE_HOLDER_ROLES.includes(userRole as any)) {
+      if (!userRole || !ROLE_HOLDER_ROLES.includes(userRole as string)) {
         continue;
       }
       
@@ -1822,10 +1822,10 @@ export class QuickBooksSyncService {
       const totalAmount = lineItems.reduce((sum, l) => sum + l.amount, 0);
 
       const { generateTrinityInvoiceNumber } = await import('../trinityInvoiceNumbering');
-      const trinityDocNumber = (idempotencyRecord as any).partnerInvoiceNumber 
+      const trinityDocNumber = (idempotencyRecord as Record<string,unknown>).partnerInvoiceNumber 
         || await generateTrinityInvoiceNumber(workspaceId, 'client', { date: weekEnding });
 
-      if (!(idempotencyRecord as any).partnerInvoiceNumber) {
+      if (!(idempotencyRecord as Record<string,unknown>).partnerInvoiceNumber) {
         await db.update(partnerInvoiceIdempotency)
           .set({ partnerInvoiceNumber: trinityDocNumber } as any)
           .where(eq(partnerInvoiceIdempotency.id, idempotencyRecord.id));

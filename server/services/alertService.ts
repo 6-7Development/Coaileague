@@ -152,7 +152,7 @@ class AlertService {
       .from(alertConfigurations)
       .where(and(
         eq(alertConfigurations.workspaceId, workspaceId),
-        eq(alertConfigurations.alertType, alertType as any)
+        eq(alertConfigurations.alertType, alertType as string)
       ));
     return config;
   }
@@ -184,7 +184,7 @@ class AlertService {
           id: randomUUID(),
           workspaceId,
           ...config,
-          alertType: config.alertType as any,
+          alertType: config.alertType as string,
           createdBy: userId,
         } as InsertAlertConfiguration)
         .returning();
@@ -230,7 +230,7 @@ class AlertService {
       .from(alertRateLimits)
       .where(and(
         eq(alertRateLimits.workspaceId, workspaceId),
-        eq(alertRateLimits.alertType, alertType as any),
+        eq(alertRateLimits.alertType, alertType as string),
         eq(alertRateLimits.deduplicationKey, deduplicationKey)
       ));
 
@@ -268,7 +268,7 @@ class AlertService {
         .insert(alertRateLimits)
         .values({
           workspaceId,
-          alertType: alertType as any,
+          alertType: alertType as string,
           deduplicationKey,
           lastTriggeredAt: now,
           triggerCount: 1,
@@ -317,7 +317,7 @@ class AlertService {
       .values({
         workspaceId,
         configurationId: config.id,
-        alertType: alertType as any,
+        alertType: alertType as string,
         severity: alertSeverity,
         title: config.customTitle || title,
         message: config.customMessage || message,
@@ -527,7 +527,7 @@ class AlertService {
       .orderBy(desc(alertHistory.createdAt));
 
     if (options?.alertType) {
-      query = (query as any).where(eq(alertHistory.alertType, options.alertType as any));
+      query = (query as any).where(eq(alertHistory.alertType, options.alertType as string));
     }
     if (options?.severity) {
       query = (query as any).where(eq(alertHistory.severity, options.severity as any));

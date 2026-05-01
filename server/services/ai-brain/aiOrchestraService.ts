@@ -360,7 +360,7 @@ class AIOrchestrationService {
         case 'anthropic':
           const claudeResult = await claudeService.processRequest({
             task: prompt,
-            taskType: request.taskType as any,
+            taskType: request.taskType as string,
             context: { sessionId: taskId, workspaceId: request.workspaceId, userId: request.userId, task: prompt },
           });
           response = {

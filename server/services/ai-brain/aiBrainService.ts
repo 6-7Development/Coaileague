@@ -1082,7 +1082,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
         changedByAi: !changedBy,
         changeType,
         changeReason,
-        sourceType: faq.sourceType as any,
+        sourceType: faq.sourceType as string,
         sourceId: faq.sourceId
       });
     } catch (error) {

@@ -539,7 +539,7 @@ async function phase7_alert_config_crud() {
   });
 
   for (const alertType of alertTypes) {
-    const existing = existingConfigs.find((c: any) => c.alertType === alertType);
+    const existing = existingConfigs.find((c: Record<string,unknown>) => c.alertType === alertType);
     if (existing) {
       const originalEnabled = existing.isEnabled;
       const toggled = !originalEnabled;
@@ -574,7 +574,7 @@ async function phase7_alert_config_crud() {
   record({
     name: 'Alert Configs Workspace-Scoped',
     phase: 'ALERTS',
-    passed: existingConfigs.every((c: any) => c.workspaceId === ws.id),
+    passed: existingConfigs.every((c: Record<string,unknown>) => c.workspaceId === ws.id),
     details: `All ${existingConfigs.length} configs belong to workspace ${ws.id}`,
     severity: 'critical',
   });

@@ -2035,7 +2035,7 @@ export default function TimeTracking() {
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground uppercase font-medium">Clock In</p>
                               <p className="font-bold">{format(clockInTime, 'h:mm a')}</p>
-                              {(entry as any).clockInGpsLatitude && (
+                              {(entry as Record<string,unknown>).clockInGpsLatitude && (
                                 <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                   <MapPin className="w-3 h-3" />
                                   <span>GPS Verified</span>
@@ -2053,7 +2053,7 @@ export default function TimeTracking() {
                               {clockOutTime ? (
                                 <>
                                   <p className="font-bold">{format(clockOutTime, 'h:mm a')}</p>
-                                  {(entry as any).clockOutGpsLatitude && (
+                                  {(entry as Record<string,unknown>).clockOutGpsLatitude && (
                                     <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                       <MapPin className="w-3 h-3" />
                                       <span>GPS Verified</span>

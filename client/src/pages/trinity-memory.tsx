@@ -227,7 +227,7 @@ export default function TrinityMemoryPage() {
                       ].map(item => (
                         <div key={item.label} className="text-center p-3 rounded-md border">
                           // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
-                          <p className="text-xl font-bold" data-testid={`text-knowledge-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as any).value}</p>
+                          <p className="text-xl font-bold" data-testid={`text-knowledge-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as Record<string,unknown>).value}</p>
                           <p className="text-xs text-muted-foreground">{item.label}</p>
                         </div>
                       ))}
@@ -346,7 +346,7 @@ export default function TrinityMemoryPage() {
                     ].map(item => (
                       <div key={item.label} className="text-center">
                         // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
-                        <p className="text-xl font-bold" data-testid={`text-chat-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as any).value}</p>
+                        <p className="text-xl font-bold" data-testid={`text-chat-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as Record<string,unknown>).value}</p>
                         <p className="text-xs text-muted-foreground">{item.label}</p>
                       </div>
                     ))}

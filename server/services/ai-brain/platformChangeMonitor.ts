@@ -309,7 +309,7 @@ class PlatformChangeMonitorService {
             requiresAction: aiSummary.requiresAction,
             actionRequired: aiSummary.actionRequired,
             detailedCategory: aiSummary.detailedCategory as any,
-            sourceType: aiSummary.sourceType as any,
+            sourceType: aiSummary.sourceType as string,
             sourceName: aiSummary.sourceName,
             endUserSummary: aiSummary.endUserSummary,
             brokenDescription: aiSummary.brokenDescription,

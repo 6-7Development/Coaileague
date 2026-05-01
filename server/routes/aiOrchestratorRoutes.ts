@@ -82,7 +82,7 @@ router.post("/process", requireAuth, async (req: Request, res: Response) => {
     const result = await unifiedAIOrchestrator.processRequest({
       sessionId: randomUUID(),
       task,
-      taskType: taskType as any,
+      taskType: taskType as string,
       dataNeeds,
       userId: user?.id,
       workspaceId,

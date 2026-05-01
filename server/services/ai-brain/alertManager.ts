@@ -36,7 +36,7 @@ export class AlertManager {
       .where(
         and(
           eq(aiProactiveAlerts.workspaceId, payload.workspaceId),
-          eq(aiProactiveAlerts.alertType, payload.alertType as any),
+          eq(aiProactiveAlerts.alertType, payload.alertType as string),
           eq(aiProactiveAlerts.dedupeHash, dedupeHash)
         )
       )
@@ -53,7 +53,7 @@ export class AlertManager {
       .values({
         workspaceId: payload.workspaceId,
         taskId: payload.taskId || null,
-        alertType: payload.alertType as any,
+        alertType: payload.alertType as string,
         severity: payload.severity,
         status: 'queued',
         dedupeHash,

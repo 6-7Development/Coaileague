@@ -273,7 +273,7 @@ router.get('/health', requireAuth, (req, res) => {
 
   const queueStatuses = rateLimitQueue.getAllStatuses();
   
-  const hasOpenCircuits = Object.values(circuitStatuses).some((c: any) => c.state === 'open');
+  const hasOpenCircuits = Object.values(circuitStatuses).some((c: Record<string,unknown>) => c.state === 'open');
   const hasFullQueues = Object.values(queueStatuses).some(q => q.state === 'near-limit');
 
   res.json({

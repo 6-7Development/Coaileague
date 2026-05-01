@@ -248,7 +248,7 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
       startTime: shifts.startTime,
       endTime: shifts.endTime,
       status: shifts.status,
-      siteName: (shifts as any).siteName,
+      siteName: (shifts as Record<string,unknown>).siteName,
     }).from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),

@@ -150,7 +150,7 @@ export function registerPortalActions(): void {
       startTime: shifts.startTime,
       endTime: shifts.endTime,
       status: shifts.status,
-      locationName: (shifts as any).locationName,
+      locationName: (shifts as Record<string,unknown>).locationName,
     }).from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),

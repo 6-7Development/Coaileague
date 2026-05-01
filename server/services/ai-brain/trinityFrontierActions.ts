@@ -184,7 +184,7 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
         ethicsRulesLoaded: true
       });
 
-      const allOperational = diagnostics.checks.every((c: any) => c.status === 'operational');
+      const allOperational = diagnostics.checks.every((c: Record<string,unknown>) => c.status === 'operational');
 
       return {
         success: true,
