@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { RATE_LIMITS } from '../config/platformConfig';
 import { createLogger } from '../lib/logger';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
+import { getPersistentRateLimitStore } from './persistentRateLimitStore';
 const log = createLogger('rateLimiter');
 
 /**
@@ -409,6 +410,10 @@ export const exportLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  // Postgres-backed counter so the limit is enforced cluster-wide instead of
+  // per-replica. Falls back to in-memory if the backing table can't be
+  // initialised (e.g. read-only DB role) — see persistentRateLimitStore.ts.
+  store: getPersistentRateLimitStore('export-pdf', 10 * 60 * 1000),
   keyGenerator: (req: Request) => {
     const workspaceId = req.workspaceId || req.user?.workspaceId || 'unknown';
     return `${workspaceId}:${getClientIp(req)}`;
@@ -437,6 +442,8 @@ export const portalLimiter = rateLimit({
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  // Postgres-backed counter so the auditor portal limit holds across replicas.
+  store: getPersistentRateLimitStore('portal-token', 60 * 1000),
   keyGenerator: (req: Request) => {
     const token = req.headers.authorization?.replace('Bearer ', '') || req.query?.token || getClientIp(req);
     return String(token).slice(0, 32); // Use first 32 chars of token as key

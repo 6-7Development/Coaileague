@@ -99,10 +99,13 @@ interface Form940Data {
   perEmployeeWageCap: number;
 }
 
+// Use the field-encryption helper so masking transparently handles both
+// legacy plaintext SSNs and encrypted envelope values. Returns the canonical
+// IRS-style masked form regardless of input shape.
+import { maskField } from '../security/fieldEncryption';
+
 function maskSSN(ssn: string): string {
-  if (!ssn || ssn.length < 4) return '***-**-****';
-  const last4 = ssn.replace(/\D/g, '').slice(-4);
-  return `***-**-${last4}`;
+  return maskField(ssn, 'ssn') || '***-**-****';
 }
 
 function formatCurrency(amount: number): string {

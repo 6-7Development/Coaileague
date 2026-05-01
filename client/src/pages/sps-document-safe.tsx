@@ -484,7 +484,7 @@ function StaffTab() {
                       const present = entry?.present ?? false;
                       const doc = entry?.doc;
                       const downloadUrl = doc?.fileUrl
-                        ? doc.fileUrl.replace("/view/", "/download/")
+                        ? doc.fileUrl.replace("/view/", "/pdf/")
                         : null;
                       return (
                         <div
@@ -570,7 +570,7 @@ function StaffTab() {
                         .filter(d => !selectedDocIds.has(d.id))
                         .map((doc: any) => {
                           const dlUrl = doc.fileUrl
-                            ? doc.fileUrl.replace("/view/", "/download/")
+                            ? doc.fileUrl.replace("/view/", "/pdf/")
                             : null;
                           return (
                             <div
@@ -881,7 +881,7 @@ function AuditorTab() {
                   const present = entry?.present ?? false;
                   const doc = entry?.doc;
                   const downloadUrl = doc?.fileUrl
-                    ? doc.fileUrl.replace("/view/", "/download/")
+                    ? doc.fileUrl.replace("/view/", "/pdf/")
                     : null;
                   return (
                     <div

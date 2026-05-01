@@ -288,6 +288,89 @@ export function drawStatusWatermark(
   }
 }
 
+// ─── PDF/A-style metadata harness ─────────────────────────────────────────────
+//
+// Full PDF/A-1b conformance requires (1) embedded TTF font subsets — Helvetica
+// is a base-14 font that does NOT satisfy PDF/A's "all fonts must be embedded"
+// rule and (2) an ICC color profile attached to the document. Neither of those
+// assets ships in this repo today, so true conformance is gated on a follow-up
+// to bundle Inter (or Noto) TTF + sRGB.icc.
+//
+// This helper does the parts we CAN do safely now without asset bundling:
+//   - Sets producer / creator / lang metadata on the PDFDocument info block.
+//   - Sets a PdfA-style title for the regulator who opens the file.
+//   - Provides a setProducer() escape hatch so individual generators can
+//     override the producer string (e.g. for white-glove tenants).
+//
+// Once Inter.ttf and sRGB.icc are added to /server/assets/pdf/, swap the
+// `pdfA1bReady` flag below to true and start rejecting Helvetica usage in
+// the renderers.
+
+export const PDF_A_STATUS = {
+  /** True once embedded fonts + ICC profile are bundled. */
+  pdfA1bReady: false,
+  expectedFontFile: 'server/assets/pdf/Inter-Regular.ttf',
+  expectedIccProfile: 'server/assets/pdf/sRGB.icc',
+} as const;
+
+export interface PdfStandardMetadata {
+  title: string;
+  subject?: string;
+  /** Author/owner displayed in PDF metadata (defaults to "CoAIleague Platform"). */
+  author?: string;
+  /** Free-form keywords joined with comma in metadata for indexer tooling. */
+  keywords?: string[];
+  /** ISO-639 language code (defaults to "en-US"). */
+  lang?: string;
+  /** Producer string override (defaults to "CoAIleague Platform"). */
+  producer?: string;
+}
+
+/**
+ * Stamps standard PDF metadata fields on a PDFDocument's info dictionary.
+ * Call this immediately after `new PDFDocument(...)` and before any content
+ * is added — info fields are written to the trailer at end() time, so order
+ * doesn't actually matter, but keeping the call near construction makes
+ * the intent obvious.
+ *
+ * Until PDF/A assets are bundled (see PDF_A_STATUS), the producer string
+ * carries a "PDF-1.7" hint. Once we ship the fonts + ICC, this becomes
+ * "PDF/A-1b conforming".
+ */
+export function setStandardPdfMetadata(
+  doc: PDFDocumentType,
+  meta: PdfStandardMetadata,
+): void {
+  const producer = meta.producer
+    || (PDF_A_STATUS.pdfA1bReady ? 'CoAIleague Platform — PDF/A-1b' : 'CoAIleague Platform — PDF-1.7');
+  const author = meta.author || 'CoAIleague Platform';
+  const lang = meta.lang || 'en-US';
+
+  // pdfkit's `info` object is the PDF document Info dictionary; fields here
+  // become /Title, /Author, /Subject, /Keywords, /Producer, /Creator entries.
+  const info = (doc as any).info as Record<string, unknown>;
+  info.Title = meta.title;
+  if (meta.subject) info.Subject = meta.subject;
+  info.Author = author;
+  info.Producer = producer;
+  info.Creator = author;
+  if (meta.keywords && meta.keywords.length) {
+    info.Keywords = meta.keywords.join(', ');
+  }
+
+  // /Lang is a top-level catalog entry, not Info, so we tuck it on
+  // _root.data via pdfkit's internal API. This is a soft write — we
+  // catch any mismatch with future pdfkit versions and silently no-op.
+  try {
+    const root = (doc as any)._root?.data;
+    if (root && typeof root === 'object') {
+      root.Lang = `(${lang})`;
+    }
+  } catch {
+    /* no-op — lang hint is best-effort */
+  }
+}
+
 // ─── Tenant branding helper ───────────────────────────────────────────────────
 
 /**

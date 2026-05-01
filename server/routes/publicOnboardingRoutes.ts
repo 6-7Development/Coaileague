@@ -137,10 +137,12 @@ router.get('/application/:id', async (req, res) => {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    // Mask SSN in GET response — full SSN is write-only; only last 4 digits returned
+    // Mask SSN in GET response — full SSN is write-only; only last 4 digits returned.
+    // maskField transparently handles both legacy plaintext and pf1: encrypted envelopes.
+    const { maskField } = await import('../security/fieldEncryption');
     const safeApplication = {
       ...application,
-      ssn: application.ssn ? `***-**-${String(application.ssn).slice(-4)}` : undefined,
+      ssn: application.ssn ? maskField(application.ssn, 'ssn') : undefined,
     };
 
     res.json(safeApplication);
@@ -182,6 +184,15 @@ router.patch('/application/:id', async (req, res) => {
     }
 
     const { workspaceId, ...updateData } = parsed.data;
+
+    // Encrypt SSN at rest before persisting. encryptField is idempotent —
+    // re-encrypting an already-encrypted value is a no-op — so retries and
+    // double-saves stay correct. Plaintext stays in transit only and is
+    // never logged.
+    if (updateData.ssn) {
+      const { encryptField } = await import('../security/fieldEncryption');
+      updateData.ssn = encryptField(updateData.ssn) ?? updateData.ssn;
+    }
 
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const updated = await storage.updateOnboardingApplication(id, workspaceId, updateData);

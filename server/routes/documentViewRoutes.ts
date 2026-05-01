@@ -798,3 +798,166 @@ documentViewRouter.get('/download/:docId', async (req: any, res) => {
     res.status(500).send('Error generating document');
   }
 });
+
+// ─── Real PDF endpoint (parallel to the HTML /download/) ─────────────────────
+// /pdf/:docId renders the same employee document data through PDFKit so the
+// regulator (or end-user) gets a real application/pdf — the legacy
+// /download/:docId path returns HTML pretending to be a PDF and remains for
+// backward compatibility. Frontend should prefer /pdf/:docId.
+documentViewRouter.get('/pdf/:docId', async (req: any, res) => {
+  try {
+    const { docId } = req.params;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;
+
+    const [doc] = await db.select().from(employeeDocuments)
+      .where(eq(employeeDocuments.id, docId));
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    if (workspaceId && doc.workspaceId !== workspaceId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const [emp] = await db.select({
+      id: employees.id, firstName: employees.firstName, lastName: employees.lastName,
+      email: employees.email, phone: employees.phone, position: employees.position,
+      hireDate: employees.hireDate, hourlyRate: employees.hourlyRate,
+      workerType: employees.workerType, payType: employees.payType,
+      payFrequency: employees.payFrequency,
+      address: employees.address, city: employees.city, state: employees.state,
+      zipCode: employees.zipCode, dateOfBirth: employees.dateOfBirth,
+      fullLegalName: employees.fullLegalName, guardCardNumber: employees.guardCardNumber,
+      guardCardIssueDate: employees.guardCardIssueDate, guardCardExpiryDate: employees.guardCardExpiryDate,
+      ssnLast4: employees.ssnLast4, emergencyContactName: employees.emergencyContactName,
+      emergencyContactPhone: employees.emergencyContactPhone,
+      guardCardVerified: employees.guardCardVerified, isArmed: employees.isArmed,
+    }).from(employees).where(eq(employees.id, doc.employeeId));
+
+    const [ws] = await db.select({
+      id: workspaces.id, name: workspaces.name, stateLicenseNumber: workspaces.stateLicenseNumber,
+    }).from(workspaces).where(eq(workspaces.id, doc.workspaceId));
+
+    const { default: PDFDocument } = await import('pdfkit');
+    const {
+      PDF, PAGE,
+      renderPdfHeader, renderPdfFooter, sectionBar,
+      setStandardPdfMetadata,
+    } = await import('../services/pdfTemplateBase');
+    const { writeHardenedPdfHeaders } = await import('../lib/pdfResponseHeaders');
+
+    // Friendly title: the HTML generator names the doc — we approximate from doc type
+    const titleMap: Record<string, string> = {
+      employment_application: 'Employment Application',
+      photo_id_copy: 'Driver License / Government ID',
+      government_id: 'Driver License / Government ID',
+      social_security_card: 'Social Security Acknowledgment',
+      ssn_card: 'Social Security Acknowledgment',
+      i9_form: 'I-9 Employment Eligibility Verification',
+      w4_form: 'W-4 Federal Tax Withholding',
+      w9_form: 'W-9 Request for Taxpayer Identification',
+      tax_form: 'Tax Withholding Form',
+      zero_policy_drug_form: 'Drug-Free Workplace Acknowledgment',
+      drug_test: 'Drug-Free Workplace Acknowledgment',
+      background_check: 'Background Check Authorization & Results',
+      guard_card: 'Security Guard Registration',
+      guard_card_copy: 'Security Guard Registration',
+      license: 'Security Guard Registration',
+    };
+    const title = titleMap[doc.documentType] || 'Employee Document';
+    const empName = emp
+      ? (emp.fullLegalName || `${emp.firstName} ${emp.lastName}`)
+      : 'Employee';
+    const wsName = ws?.name || 'Workspace';
+
+    const buffer: Buffer = await new Promise((resolve, reject) => {
+      const pdf = new PDFDocument({
+        size: 'LETTER',
+        margins: { top: PAGE.MT, bottom: PAGE.MB, left: PAGE.ML, right: PAGE.MR },
+        bufferPages: true,
+      });
+      const chunks: Buffer[] = [];
+      pdf.on('data', (c: Buffer) => chunks.push(c));
+      pdf.on('end', () => resolve(Buffer.concat(chunks)));
+      pdf.on('error', reject);
+
+      setStandardPdfMetadata(pdf, {
+        title: `${title} — ${empName}`,
+        subject: `${doc.documentType} for ${empName}`,
+        keywords: ['employee-document', doc.documentType, ws?.id ?? ''],
+      });
+
+      renderPdfHeader(pdf, {
+        title,
+        subtitle: `${empName} · ${wsName}`,
+        workspaceName: wsName,
+        refLabel: `Doc: ${docId.slice(0, 8)}`,
+        generatedLabel: `Generated: ${new Date().toLocaleDateString()}`,
+      });
+
+      sectionBar(pdf, 'Document Record');
+      pdf.fontSize(10).font('Helvetica').fillColor(PDF.dark);
+
+      const lineRow = (label: string, value: string | null | undefined) => {
+        const v = value || '—';
+        pdf.font('Helvetica').fontSize(8).fillColor(PDF.gray)
+          .text(label.toUpperCase(), PAGE.ML, pdf.y, { width: PAGE.CW, characterSpacing: 0.4 });
+        pdf.font('Helvetica-Bold').fontSize(11).fillColor(PDF.dark)
+          .text(v, PAGE.ML, pdf.y + 1, { width: PAGE.CW });
+        pdf.moveDown(0.4);
+      };
+
+      lineRow('Document Type', titleMap[doc.documentType] || doc.documentType);
+      lineRow('Employee', empName);
+      lineRow('Position', emp?.position || null);
+      lineRow('Hire Date', emp?.hireDate ? new Date(emp.hireDate).toLocaleDateString() : null);
+      lineRow('Worker Type', emp?.workerType || null);
+
+      sectionBar(pdf, 'Identity');
+      lineRow('Email', emp?.email || null);
+      lineRow('Phone', emp?.phone || null);
+      lineRow('SSN (last 4)', emp?.ssnLast4 ? `XXX-XX-${emp.ssnLast4}` : null);
+      lineRow('Date of Birth', emp?.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString() : null);
+
+      sectionBar(pdf, 'Address');
+      lineRow('Street', emp?.address || null);
+      lineRow('City / State / ZIP', emp ? `${emp.city || '—'}, ${emp.state || 'TX'} ${emp.zipCode || '—'}` : null);
+
+      if (doc.documentType === 'guard_card' || doc.documentType === 'guard_card_copy' || doc.documentType === 'license') {
+        sectionBar(pdf, 'Guard Registration');
+        lineRow('Guard Card Number', emp?.guardCardNumber || null);
+        lineRow('Issue Date', emp?.guardCardIssueDate ? new Date(emp.guardCardIssueDate).toLocaleDateString() : null);
+        lineRow('Expiration Date', emp?.guardCardExpiryDate ? new Date(emp.guardCardExpiryDate).toLocaleDateString() : null);
+        lineRow('Armed', emp?.isArmed ? 'Yes — Armed Security' : 'No — Unarmed Security');
+        lineRow('Verified', emp?.guardCardVerified ? 'Yes' : 'No');
+      }
+
+      sectionBar(pdf, 'Emergency Contact');
+      lineRow('Name', emp?.emergencyContactName || null);
+      lineRow('Phone', emp?.emergencyContactPhone || null);
+
+      pdf.moveDown(1);
+      pdf.fontSize(8).fillColor(PDF.gray).font('Helvetica-Oblique')
+        .text(
+          'This document is rendered from the employee record on file at the time of generation. ' +
+          'For the legally-binding signed copy, see the Document Vault entry referenced by this record.',
+          PAGE.ML, pdf.y, { width: PAGE.CW, lineGap: 1 },
+        );
+
+      renderPdfFooter(pdf, {
+        docId: docId.slice(0, 8),
+        docType: title,
+        workspaceName: wsName,
+      });
+      pdf.end();
+    });
+
+    const safeName = `${(emp?.firstName || 'employee')}_${(emp?.lastName || 'record')}_${doc.documentType}`;
+    writeHardenedPdfHeaders(res, {
+      filename: `${safeName}.pdf`,
+      size: buffer.length,
+      mode: (req.query.disposition === 'inline' ? 'inline' : 'attachment'),
+    });
+    res.send(buffer);
+  } catch (err: any) {
+    log.error('[documentPdf] error:', err?.message);
+    res.status(500).json({ error: 'Failed to render document PDF' });
+  }
+});
