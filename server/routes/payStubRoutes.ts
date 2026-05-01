@@ -115,20 +115,43 @@ router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, async (req: Req
 
     const filename = `paystub-${stub.id}.pdf`.replace(/[^A-Za-z0-9._-]/g, '_');
 
+    // Hardened PDF response headers — no caching by shared proxies, no
+    // cross-origin embedding, no script execution from PDF JS, no Referer
+    // leakage of the URL to outbound links rendered inside the PDF.
+    const writeHardenedPdfHeaders = (size: number) => {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', String(size));
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'none'; script-src 'none'; object-src 'none'; frame-ancestors 'self'",
+      );
+      res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    };
+
     // Fast path: stream the previously stored PDF if we already have one.
+    // The storage key is validated to ensure it stays inside the tenant's
+    // namespace (path must contain workspaceId) before we hit GCS.
     const storageKey = (stub as any).pdfStorageKey as string | null | undefined;
     if (storageKey && !/^https?:\/\//i.test(storageKey) && !storageKey.startsWith('internal://')) {
-      try {
-        const buffer = await downloadFileFromObjectStorage(storageKey);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Length', String(buffer.length));
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Cache-Control', 'private, no-store');
-        return res.send(buffer);
-      } catch (err: any) {
-        log.warn(`[PayStubs] storage fetch failed for stub=${stub.id}, falling back to regenerate: ${err?.message}`);
-        // fall through to regenerate
+      const segments = storageKey.split('/').filter(Boolean);
+      if (segments.includes(workspaceId)) {
+        try {
+          const buffer = await downloadFileFromObjectStorage(storageKey);
+          writeHardenedPdfHeaders(buffer.length);
+          return res.send(buffer);
+        } catch (err: any) {
+          log.warn(`[PayStubs] storage fetch failed for stub=${stub.id}, falling back to regenerate: ${err?.message}`);
+          // fall through to regenerate
+        }
+      } else {
+        log.error(`[PayStubs] CROSS-TENANT PATH BLOCKED — stub=${stub.id} ws=${workspaceId} key=${storageKey}`);
+        // Don't leak the path; just regenerate
       }
     }
 
@@ -147,11 +170,7 @@ router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, async (req: Req
     const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
     const buffer = await paystubService.generatePDF(data, (ws as any)?.name);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', String(buffer.length));
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, no-store');
+    writeHardenedPdfHeaders(buffer.length);
     return res.send(buffer);
   } catch (error) {
     log.error('[PayStubs] Error generating pay stub PDF:', error);

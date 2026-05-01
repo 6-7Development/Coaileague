@@ -13,9 +13,10 @@
  */
 
 import { Router } from "express";
+import { createHash } from "crypto";
 import { db } from "../db";
 import { customFormSubmissions, workspaces, employees, users } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth, type AuthenticatedRequest } from "../rbac";
 import { getTemplate, getAllTemplates, TEMPLATE_REGISTRY } from "../services/documents/templateRegistry";
@@ -282,6 +283,60 @@ router.post("/submit", async (req: AuthenticatedRequest, res) => {
 
     const formId = `udts-${templateId.toLowerCase()}`;
 
+    // ── Idempotency guard ────────────────────────────────────────────────────
+    // Protects against double-submit (flaky network, double-tap on mobile,
+    // browser auto-retry). The dedup key combines a stable canonical hash of
+    // the payload with an optional client-provided Idempotency-Key header.
+    // If we find a completed submission with the same key in the last
+    // 10 minutes, we return that submission instead of creating a duplicate.
+    const idempotencyHeader =
+      (req.headers['idempotency-key'] as string | undefined) ??
+      (req.headers['x-idempotency-key'] as string | undefined) ??
+      '';
+    const canonicalPayload = JSON.stringify({
+      t: templateId.toLowerCase(),
+      // Strip mutating UI-only metadata
+      d: Object.keys(formData)
+        .filter(k => !k.startsWith('__'))
+        .sort()
+        .reduce<Record<string, any>>((acc, k) => { acc[k] = formData[k]; return acc; }, {}),
+    });
+    const dedupKey = createHash('sha256')
+      .update(`${workspaceId}|${userId}|${formId}|${idempotencyHeader}|${canonicalPayload}`)
+      .digest('hex');
+    const sinceTen = new Date(Date.now() - 10 * 60 * 1000);
+    const [duplicate] = await db
+      .select({
+        id: customFormSubmissions.id,
+        submittedAt: customFormSubmissions.submittedAt,
+        formData: customFormSubmissions.formData,
+        pdfUrl: customFormSubmissions.pdfUrl,
+      })
+      .from(customFormSubmissions)
+      .where(and(
+        eq(customFormSubmissions.workspaceId, workspaceId),
+        eq(customFormSubmissions.formId, formId),
+        eq(customFormSubmissions.submittedBy, userId),
+        eq(customFormSubmissions.status, 'completed'),
+        gte(customFormSubmissions.submittedAt, sinceTen),
+        sql`(form_data->>'__dedupKey') = ${dedupKey}`,
+      ))
+      .limit(1);
+    if (duplicate) {
+      const fd = (duplicate.formData ?? {}) as Record<string, any>;
+      log.info(`[DocumentForms] Idempotent replay — returning existing submission ${duplicate.id}`);
+      return res.json({
+        success: true,
+        idempotent: true,
+        submissionId: duplicate.id,
+        submittedAt: duplicate.submittedAt,
+        vaultId: fd.__vaultDocumentId ?? null,
+        documentNumber: fd.__vaultDocumentNumber ?? null,
+        pdfUrl: duplicate.pdfUrl ?? null,
+        message: 'Document already submitted (idempotent replay)',
+      });
+    }
+
     // Build geo location string
     const geoLocation = gpsData && !gpsData.denied
       ? `${gpsData.latitude.toFixed(6)},${gpsData.longitude.toFixed(6)}`
@@ -320,6 +375,7 @@ router.post("/submit", async (req: AuthenticatedRequest, res) => {
         __templateId: templateId,
         __submittedAt: new Date().toISOString(),
         __geoLocation: geoLocation,
+        __dedupKey: dedupKey,
       },
       signatureData: primarySignatureData ? {
         signatureData: primarySignatureData,

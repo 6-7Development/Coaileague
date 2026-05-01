@@ -47,6 +47,7 @@ interface DocumentVaultItem {
   id: string;
   workspaceId: string;
   documentInstanceId: string | null;
+  documentNumber: string | null;
   title: string;
   category: string | null;
   fileUrl: string;
@@ -216,9 +217,14 @@ export default function DocumentVault() {
     },
   });
 
+  // Delete mutation supports both regular soft-delete and force-delete of
+  // signed documents (server requires ?force=true + reason ≥ 8 chars).
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("DELETE", `/api/document-vault/${id}`);
+    mutationFn: async (params: { id: string; force?: boolean; reason?: string }) => {
+      const path = params.force
+        ? `/api/document-vault/${params.id}?force=true`
+        : `/api/document-vault/${params.id}`;
+      const res = await apiRequest("DELETE", path, params.reason ? { reason: params.reason } : undefined);
       return res.json();
     },
     onSuccess: () => {
@@ -227,9 +233,47 @@ export default function DocumentVault() {
       toast({ title: "Document Deleted", description: "Document has been removed from the vault." });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message || "Failed to delete document", variant: "destructive" });
+      toast({
+        title: "Could not delete",
+        description: err?.message || "Failed to delete document",
+        variant: "destructive",
+      });
     },
   });
+
+  const handleDeleteClick = (doc: DocumentVaultItem) => {
+    if (doc.isSigned) {
+      const reason = window.prompt(
+        `"${doc.title}" is signed and legally binding.\n\nDeleting it requires a written reason (8+ chars). The deletion will be soft (record retained for audit).\n\nReason:`
+      );
+      if (!reason) return;
+      if (reason.trim().length < 8) {
+        toast({
+          title: "Reason too short",
+          description: "Provide at least 8 characters explaining the deletion.",
+          variant: "destructive",
+        });
+        return;
+      }
+      deleteMutation.mutate({ id: doc.id, force: true, reason: reason.trim() });
+      return;
+    }
+    if (!window.confirm(`Delete "${doc.title}"?\n\nThe record is retained for audit purposes.`)) return;
+    deleteMutation.mutate({ id: doc.id });
+  };
+
+  const openInSafe = (doc: DocumentVaultItem, mode: 'preview' | 'download') => {
+    const url = `/api/document-vault/${doc.id}/${mode}`;
+    if (mode === 'preview') {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      // Use a hidden anchor so the browser uses the response Content-Disposition
+      const a = document.createElement('a');
+      a.href = url;
+      a.rel = 'noopener noreferrer';
+      a.click();
+    }
+  };
 
   const resetForm = () => {
     setFormTitle("");
@@ -627,13 +671,37 @@ export default function DocumentVault() {
                 </Badge>
               </div>
 
+              {/* Real View / Download actions (the previous bare anchor
+                  pointed at the raw GCS object path which 404s in the browser). */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => openInSafe(detailDoc, 'preview')}
+                  data-testid="button-detail-view"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  View PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openInSafe(detailDoc, 'download')}
+                  data-testid="button-detail-download"
+                >
+                  Download
+                </Button>
+              </div>
+
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">File URL</span>
-                  <a href={detailDoc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary truncate max-w-[200px]" data-testid="link-detail-file-url">
-                    {detailDoc.fileUrl}
-                  </a>
-                </div>
+                {detailDoc.documentNumber && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Document #</span>
+                    <span className="font-mono font-semibold" data-testid="text-detail-document-number">
+                      {detailDoc.documentNumber}
+                    </span>
+                  </div>
+                )}
                 {detailDoc.mimeType && (
                   <div className="flex justify-between gap-2">
                     <span className="text-muted-foreground">Type</span>
@@ -697,12 +765,13 @@ export default function DocumentVault() {
             <Button
               variant="outline"
               className="text-destructive"
-              onClick={() => { if (detailDoc) deleteMutation.mutate(detailDoc.id); }}
+              onClick={() => { if (detailDoc) handleDeleteClick(detailDoc); }}
               disabled={deleteMutation.isPending}
               data-testid="button-delete-document"
+              title={detailDoc?.isSigned ? "Signed — requires a written reason" : "Move to recycle bin"}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Delete
+              {detailDoc?.isSigned ? "Delete (requires reason)" : "Delete"}
             </Button>
             <Button variant="outline" onClick={() => setDetailDoc(null)} data-testid="button-close-detail">
               Close
