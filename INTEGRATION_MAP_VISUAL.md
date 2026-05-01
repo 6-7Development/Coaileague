@@ -484,6 +484,80 @@ LOW IMPACT, HIGH EFFORT (Defer)
 
 ---
 
-**Generated**: 2025-11-29  
-**Audit Level**: COMPREHENSIVE ✅  
+**Generated**: 2025-11-29
+**Audit Level**: COMPREHENSIVE ✅
 **Verification**: 100% Complete
+
+---
+
+## 🔌 Settings Sync & Onboarding Pipeline (May 2026 update)
+
+```
+                       ┌──────────────────────────────────┐
+                       │  POST /api/workspace/onboarding/  │
+                       │           complete                │
+                       └────────────────┬─────────────────┘
+                                        │
+                                        ▼
+                  platformEventBus.publish('onboarding_completed')
+                                        │
+                                        ▼
+            ┌───────────────────────────────────────────────┐
+            │ TrinityOnboardingCompletionHandler             │
+            │  (server/services/trinityEventSubscriptions.ts)│
+            │  • UPDATE workspaces                           │
+            │      SET onboardingFullyComplete = TRUE,       │
+            │          onboardingFullyCompleteAt = NOW(),    │
+            │          onboardingCompletedAt = NOW(),        │
+            │          onboardingCompletionPercent = 100     │
+            │  • writeThalamicSignal(...)                    │
+            └───────────────────────────────────────────────┘
+                                        │
+                                        ▼
+                   Trinity feature gate `requireOnboardingComplete`
+                   (middleware/workspaceScope.ts)
+                   unlocks: /api/trinity/{intake,self-edit,swarm}
+```
+
+### Settings sync fan-out
+
+```
+PATCH /api/billing-settings/workspace
+PATCH /api/billing-settings/seat-hard-cap
+PATCH /api/auditor/settings
+              │
+              ▼
+   broadcastSettingsUpdated(workspaceId, scope, fields)
+   (server/services/settingsSyncBroadcaster.ts)
+              │
+   ┌──────────┼──────────┐
+   ▼          ▼          ▼
+WebSocket   Sub-tenant  platformEventBus
+to ws       fan-out     'settings_updated'
+            (every ws
+            with parent =
+            workspaceId)
+              │
+              ▼
+   useSettingsSync hook → queryClient.invalidateQueries(...)
+   mounted via <SettingsSyncListener /> in App.tsx
+```
+
+### New tables
+
+| Table | Migration | Purpose |
+|---|---|---|
+| `auditor_settings` | `migrations/0006_auditor_settings.sql` | Per-auditor preferences (notifications, dashboard layout, export defaults). Compound unique on `(auditor_id, workspace_id)`; `workspace_id NULL` = global default for the auditor. |
+
+### New events
+
+| Event | Publisher | Consumer |
+|---|---|---|
+| `onboarding_completed` | `POST /api/workspace/onboarding/complete` (only — eager fire on workspace creation has been removed) | `TrinityOnboardingCompletionHandler` |
+| `settings_updated` | `settingsSyncBroadcaster.broadcastSettingsUpdated()` | WS clients via `useSettingsSync`; server services via `platformEventBus.subscribe('settings_updated', …)` |
+
+### New role landing pages
+
+`server/routes/publicOnboardingRoutes.ts` `ROLE_LANDING_PAGES` now covers:
+
+`org_owner` → `/dashboard` · `co_owner` → `/dashboard` · `org_admin` → `/dashboard` · `manager` → `/leaders-hub` · `department_manager` → `/leaders-hub` · `supervisor` → `/leaders-hub` · `employee`/`staff` → `/schedule` · `contractor` → `/schedule` · `vendor`/`client` → `/client-portal` · `auditor` → `/auditor/portal` · `co_auditor` → `/co-auditor/dashboard`

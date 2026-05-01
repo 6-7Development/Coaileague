@@ -461,18 +461,40 @@ auditorRouter.patch('/settings', requireAuditor, async (req: any, res: Response)
     }
 
     // Sync: notify the auditor's own session-bound clients so a second
-    // browser tab refreshes immediately. We piggy-back on broadcastToWorkspace
-    // when scoped, otherwise rely on the response triggering local refetch.
+    // browser tab refreshes immediately, plus fan out via the canonical
+    // settingsSyncBroadcaster when workspace-scoped so co-admins see it too.
     if (workspaceId) {
       try {
-        const { broadcastToWorkspace } = await import('../websocket');
-        broadcastToWorkspace(workspaceId, {
-          type: 'auditor_settings_updated',
-          auditorId,
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (_) { /* websocket is best-effort */ }
+        const { broadcastSettingsUpdated } = await import('../services/settingsSyncBroadcaster');
+        await broadcastSettingsUpdated(
+          workspaceId,
+          'auditor_settings',
+          Object.keys(req.body || {}).filter((k) => k !== 'workspaceId'),
+        );
+      } catch (_) { /* broadcast is best-effort */ }
     }
+
+    // Audit-log the mutation so changes to auditor preferences are
+    // reconstructable for regulatory defensibility (mirrors the universal
+    // audit pattern used in billingSettingsRoutes).
+    try {
+      const { universalAudit } = await import('../services/universalAuditService');
+      const changedFields = Object.keys(req.body || {}).filter((k) => k !== 'workspaceId');
+      await universalAudit.log({
+        workspaceId: workspaceId || 'global',
+        actorId: auditorId,
+        actorType: 'auditor',
+        action: 'settings.updated',
+        entityType: 'auditor_settings',
+        entityId: row?.id || auditorId,
+        changeType: existing ? 'update' : 'create',
+        changes: Object.fromEntries(
+          changedFields.map((k) => [k, { old: (existing as any)?.[k] ?? null, new: req.body[k] }]),
+        ),
+        metadata: { workspaceScoped: Boolean(workspaceId) },
+        sourceRoute: 'PATCH /api/auditor/settings',
+      });
+    } catch (_) { /* audit is best-effort */ }
 
     res.json({ ok: true, settings: row });
   } catch (err: any) {

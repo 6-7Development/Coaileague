@@ -27,7 +27,7 @@
  * the "request new audit" form.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,8 +47,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertTriangle, Bell, Calendar, FileText, Flag, Loader2, Plus, ShieldCheck, TrendingUp, X,
+  AlertTriangle, Bell, Calendar, FileText, Flag, Loader2, Plus, Settings as SettingsIcon, ShieldCheck, TrendingUp, X,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -449,6 +450,210 @@ function WorkspaceRow({
   );
 }
 
+// ─── Settings panel ─────────────────────────────────────────────────────────
+// GET/PATCH /api/auditor/settings — workspace_id omitted means "global default
+// for this auditor". The new auditor_settings table (migration 0006) persists:
+//   notification routing (email/sms + per-event toggles + alert threshold),
+//   dashboard layout, default export format, default report date range.
+
+interface AuditorSettings {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  notifyOnDocumentUploaded: boolean;
+  notifyOnComplianceScoreChange: boolean;
+  complianceAlertThreshold: number;
+  dashboardLayout: string;
+  defaultExportFormat: string;
+  defaultDateRangeDays: number;
+}
+
+const DEFAULT_AUDITOR_SETTINGS: AuditorSettings = {
+  emailNotifications: true,
+  smsNotifications: false,
+  notifyOnDocumentUploaded: true,
+  notifyOnComplianceScoreChange: true,
+  complianceAlertThreshold: 70,
+  dashboardLayout: 'default',
+  defaultExportFormat: 'pdf',
+  defaultDateRangeDays: 30,
+};
+
+function AuditorSettingsPanel(): JSX.Element {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<{ ok: boolean; settings: AuditorSettings | null; isDefault: boolean }>({
+    queryKey: ["/api/auditor/settings"],
+  });
+
+  const [form, setForm] = useState<AuditorSettings>(DEFAULT_AUDITOR_SETTINGS);
+
+  useEffect(() => {
+    if (data?.settings) {
+      setForm({
+        emailNotifications: data.settings.emailNotifications ?? true,
+        smsNotifications: data.settings.smsNotifications ?? false,
+        notifyOnDocumentUploaded: data.settings.notifyOnDocumentUploaded ?? true,
+        notifyOnComplianceScoreChange: data.settings.notifyOnComplianceScoreChange ?? true,
+        complianceAlertThreshold: data.settings.complianceAlertThreshold ?? 70,
+        dashboardLayout: data.settings.dashboardLayout ?? 'default',
+        defaultExportFormat: data.settings.defaultExportFormat ?? 'pdf',
+        defaultDateRangeDays: data.settings.defaultDateRangeDays ?? 30,
+      });
+    }
+  }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: () => apiRequest("PATCH", "/api/auditor/settings", form),
+    onSuccess: () => {
+      toast({ title: "Settings saved", description: "Your auditor preferences are stored." });
+      queryClient.invalidateQueries({ queryKey: ["/api/auditor/settings"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not save settings", description: err?.message || "Try again.", variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="bg-slate-900 border-slate-800">
+        <CardContent className="py-8 flex items-center gap-2 text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading settings…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-slate-900 border-slate-800">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-slate-100">
+          <SettingsIcon className="h-5 w-5" /> Auditor preferences
+        </CardTitle>
+        <CardDescription className="text-slate-400">
+          Notification routing, dashboard defaults, and export format. These apply across every workspace you audit.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-slate-100">Email notifications</Label>
+              <p className="text-xs text-slate-400">Send email alerts for compliance events.</p>
+            </div>
+            <Switch
+              checked={form.emailNotifications}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, emailNotifications: v }))}
+              data-testid="switch-email-notifications"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-slate-100">SMS notifications</Label>
+              <p className="text-xs text-slate-400">Text message alerts for high-severity events only.</p>
+            </div>
+            <Switch
+              checked={form.smsNotifications}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, smsNotifications: v }))}
+              data-testid="switch-sms-notifications"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-slate-100">Notify on document uploaded</Label>
+              <p className="text-xs text-slate-400">When a tenant adds compliance documents during your audit.</p>
+            </div>
+            <Switch
+              checked={form.notifyOnDocumentUploaded}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, notifyOnDocumentUploaded: v }))}
+              data-testid="switch-notify-document-uploaded"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-slate-100">Notify on compliance score change</Label>
+              <p className="text-xs text-slate-400">When a workspace crosses the threshold below.</p>
+            </div>
+            <Switch
+              checked={form.notifyOnComplianceScoreChange}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, notifyOnComplianceScoreChange: v }))}
+              data-testid="switch-notify-compliance-change"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <Label htmlFor="threshold" className="text-slate-100">Compliance alert threshold</Label>
+            <Input
+              id="threshold"
+              type="number"
+              min={0}
+              max={100}
+              value={form.complianceAlertThreshold}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, complianceAlertThreshold: Math.max(0, Math.min(100, Number(e.target.value) || 0)) }))
+              }
+              className="bg-slate-800 border-slate-700"
+              data-testid="input-compliance-threshold"
+            />
+            <p className="text-xs text-slate-500 mt-1">Alert when score drops below this value (0–100).</p>
+          </div>
+
+          <div>
+            <Label htmlFor="export-format" className="text-slate-100">Default export format</Label>
+            <Select
+              value={form.defaultExportFormat}
+              onValueChange={(v) => setForm((f) => ({ ...f, defaultExportFormat: v }))}
+            >
+              <SelectTrigger id="export-format" className="bg-slate-800 border-slate-700" data-testid="select-export-format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="date-range" className="text-slate-100">Default report date range (days)</Label>
+            <Input
+              id="date-range"
+              type="number"
+              min={1}
+              max={365}
+              value={form.defaultDateRangeDays}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, defaultDateRangeDays: Math.max(1, Math.min(365, Number(e.target.value) || 30)) }))
+              }
+              className="bg-slate-800 border-slate-700"
+              data-testid="input-date-range-days"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={() => saveMut.mutate()}
+            disabled={saveMut.isPending}
+            className="bg-emerald-600 hover:bg-emerald-500"
+            data-testid="button-save-auditor-settings"
+          >
+            {saveMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Save preferences
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main dashboard ─────────────────────────────────────────────────────────
 
 export default function CoAuditorDashboard() {
@@ -571,6 +776,9 @@ export default function CoAuditorDashboard() {
           <TabsList className="bg-slate-900 border border-slate-800">
             <TabsTrigger value="workspaces" data-testid="tab-workspaces">Workspaces ({workspaces.length})</TabsTrigger>
             <TabsTrigger value="audits" data-testid="tab-audits">Audits ({audits.length})</TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-auditor-settings">
+              <SettingsIcon className="h-4 w-4 mr-1" /> Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="workspaces">
@@ -635,6 +843,10 @@ export default function CoAuditorDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <AuditorSettingsPanel />
           </TabsContent>
         </Tabs>
 

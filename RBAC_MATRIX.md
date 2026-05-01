@@ -221,5 +221,42 @@
 
 ---
 
-**Last Updated:** October 15, 2025  
+## 🔧 **Settings Persistence by Role**
+
+| Setting Scope | Table | Read Endpoint | Write Endpoint | Roles Allowed |
+|---|---|---|---|---|
+| Workspace billing/payroll | `workspaces.billingSettingsBlob` | `GET /api/billing-settings/workspace` | `PATCH /api/billing-settings/workspace` | `requireManager` |
+| Per-client billing terms | `clientBillingSettings` | `GET /api/billing-settings/clients/:id` | `PATCH /api/billing-settings/clients/:id` | `requireManager` |
+| Seat hard cap | `subscriptions.seat_hard_cap_enabled` | `GET /api/billing-settings/seat-hard-cap` | `PATCH /api/billing-settings/seat-hard-cap` | `org_owner`, `co_owner`, platform staff |
+| Auditor preferences | `auditor_settings` (migration 0006) | `GET /api/auditor/settings` | `PATCH /api/auditor/settings` | `requireAuditor` (workspace-scoped writes also require an active audit window) |
+| Workspace onboarding progress | `workspaces.onboardingStepsCompleted` / `onboardingCompletionPercent` / `onboardingFullyComplete` | `GET /api/workspace/onboarding/progress` | `POST /api/workspace/onboarding/step`, `POST /api/workspace/onboarding/complete` | `requireAuth` |
+
+### **Sub-Tenant Settings Inheritance**
+
+Workspaces with `parent_workspace_id` set inherit `billingSettingsBlob` from their parent. `GET /api/billing-settings/workspace` merges parent under child (sub-tenant overrides win). The response includes `inheritedFromParent: boolean` and `parentWorkspaceId` so the UI can render an "Inherited" badge.
+
+### **Real-Time Sync Events**
+
+All settings-mutating endpoints fan out a `settings_updated` event via `server/services/settingsSyncBroadcaster.ts` over both:
+
+1. **WebSocket broadcast** to every connected client in the workspace + every sub-tenant whose parent matches.
+2. **Platform event bus** (`platformEventBus.publish('settings_updated', ...)`) so server-side services can react.
+
+Client-side, `useSettingsSync` (`client/src/hooks/use-settings-sync.ts`) is mounted globally via `<SettingsSyncListener />` in `App.tsx` and invalidates the matching react-query keys on receipt.
+
+### **Trinity Onboarding Gate**
+
+The middleware `requireOnboardingComplete` (in `server/middleware/workspaceScope.ts`) checks `workspaces.onboardingFullyComplete` and returns `412 ONBOARDING_INCOMPLETE` if the tenant has not finished setup. Applied to:
+
+- `/api/trinity/intake`
+- `/api/trinity/self-edit`
+- `/api/trinity/swarm`
+
+Chat / session / crisis routes are intentionally NOT gated so trial tenants can still get help while onboarding.
+
+The flag flips when `POST /api/workspace/onboarding/complete` publishes the `onboarding_completed` event, which is consumed by `TrinityOnboardingCompletionHandler` in `server/services/trinityEventSubscriptions.ts`.
+
+---
+
+**Last Updated:** May 1, 2026
 **Status:** Production Ready - Security Architect Approved ✅

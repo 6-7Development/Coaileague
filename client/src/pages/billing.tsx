@@ -319,11 +319,16 @@ export default function Billing() {
   });
 
   // ── Payroll cycle settings ─────────────────────────────────────────────────
-  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{ settings: Record<string, any> | null }>({
+  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{
+    settings: Record<string, any> | null;
+    inheritedFromParent?: boolean;
+    parentWorkspaceId?: string | null;
+  }>({
     queryKey: ["/api/billing-settings/workspace"],
     enabled: !!user,
   });
   const payrollSettings = workspaceBillingSettings?.settings || {};
+  const billingInheritedFromParent = workspaceBillingSettings?.inheritedFromParent === true;
 
   const [payrollCycle, setPayrollCycleLocal] = useState<string>("");
   const [payrollDayOfWeek, setPayrollDayOfWeek] = useState<string>("");
@@ -1459,6 +1464,17 @@ export default function Billing() {
                 </div>
               ) : (
                 <>
+              {billingInheritedFromParent && (
+                <div className="flex items-start gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30" data-testid="banner-billing-inherited">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium text-amber-100">Inherited from parent organization</p>
+                    <p className="text-amber-200/80 text-xs mt-0.5">
+                      This sub-organization is using the parent's billing settings. Save any value below to start an override that applies only to this sub-org.
+                    </p>
+                  </div>
+                </div>
+              )}
               {payrollSettings.payrollCycle && (
                 <div className="flex items-center gap-3 p-3 rounded-md bg-primary/10 border border-primary/20">
                   <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />

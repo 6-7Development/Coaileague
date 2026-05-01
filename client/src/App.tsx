@@ -462,6 +462,7 @@ import { HeaderChatButton } from "@/components/header-chat-button";
 // ReenableChatButton removed - replaced by UnifiedChatBubble
 // REMOVED: FloatingSupportChat - Trinity button handles all support
 import { ChatroomNotificationListener } from "@/components/chatroom-notification-listener";
+import { SettingsSyncListener } from "@/components/settings-sync-listener";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
@@ -1970,6 +1971,7 @@ export default function App() {
                           <SWUpdateBanner />
                           <ServiceWorkerMessageListener />
                           <ChatroomNotificationListener />
+                          <SettingsSyncListener />
                           <LanguageSync />
                           <Suspense fallback={<PageLoader />}>
                             <PaymentEnforcementProvider><AppContent /></PaymentEnforcementProvider>

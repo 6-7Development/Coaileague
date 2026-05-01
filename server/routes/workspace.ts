@@ -289,22 +289,11 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as any)?.message);
       });
 
-      // D2-GAP-FIX: Publish onboarding_completed so Trinity can start the post-onboarding
-      // pipeline (memory profile initialization, automation triggers, welcome sequences).
-      platformEventBus.publish({
-        type: 'onboarding_completed',
-        category: 'automation',
-        title: 'Onboarding Completed',
-        description: `Organization onboarding completed for ${workspace.name}`,
-        workspaceId: workspace.id,
-        metadata: {
-          workspaceId: workspace.id,
-          ownerId: userId,
-          completedAt: new Date().toISOString(),
-        },
-      }).catch((eventError: unknown) => {
-        log.error(`[Workspace Create] onboarding_completed event failed (non-blocking):`, (eventError as any)?.message);
-      });
+      // NOTE: onboarding_completed is intentionally NOT published here. It now
+      // fires from POST /api/workspace/onboarding/complete (workspace.ts) once
+      // the org owner has actually finished the setup wizard — keying off
+      // workspace.created conflated "tenant exists" with "tenant ready for
+      // business" and caused Trinity feature gates to unlock prematurely.
     } catch (eventError: unknown) {
       log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as any)?.message);
     }
@@ -819,5 +808,132 @@ function generateEmailSlug(name: string): string {
 
   return words[0].toLowerCase().slice(0, 12);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ONBOARDING PROGRESS — STEP TRACKING & COMPLETION
+// ─────────────────────────────────────────────────────────────────────────────
+// Closes the wiring gap where workspaces.onboardingStepsCompleted (jsonb) and
+// workspaces.onboardingCompletionPercent (int) were write-never columns.
+// Setup wizards POST /step to mark progress and finally POST /complete to
+// publish onboarding_completed (which TrinityOnboardingCompletionHandler
+// consumes to flip onboardingFullyComplete). Required keys are defined
+// inline so any front-end wizard can opt into them without server changes.
+
+const REQUIRED_ONBOARDING_KEYS = [
+  'profile',
+  'payment',
+  'org_setup',
+  'first_employee',
+  'first_schedule',
+  'first_client',
+  'role_invites',
+  'api_integrations',
+] as const;
+
+router.get('/onboarding/progress', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace required' });
+
+    const [ws] = await db.select({
+      stepsCompleted: workspaces.onboardingStepsCompleted,
+      percent: workspaces.onboardingCompletionPercent,
+      fullyComplete: workspaces.onboardingFullyComplete,
+      fullyCompleteAt: workspaces.onboardingFullyCompleteAt,
+    }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+
+    if (!ws) return res.status(404).json({ message: 'Workspace not found' });
+
+    res.json({
+      requiredKeys: REQUIRED_ONBOARDING_KEYS,
+      stepsCompleted: ws.stepsCompleted || {},
+      percent: ws.percent ?? 0,
+      fullyComplete: ws.fullyComplete === true,
+      fullyCompleteAt: ws.fullyCompleteAt,
+    });
+  } catch (err: unknown) {
+    log.error('[Onboarding Progress GET]', sanitizeError(err));
+    res.status(500).json({ message: 'Failed to load onboarding progress' });
+  }
+});
+
+router.post('/onboarding/step', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace required' });
+
+    const parsed = z.object({
+      key: z.string().min(1).max(64),
+      completed: z.boolean().default(true),
+    }).parse(req.body);
+
+    const [ws] = await db.select({ steps: workspaces.onboardingStepsCompleted })
+      .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+    if (!ws) return res.status(404).json({ message: 'Workspace not found' });
+
+    const current = (ws.steps as Record<string, boolean> | null) || {};
+    const next = { ...current, [parsed.key]: parsed.completed };
+
+    const requiredDone = REQUIRED_ONBOARDING_KEYS.filter((k) => next[k] === true).length;
+    const percent = Math.min(100, Math.round((requiredDone / REQUIRED_ONBOARDING_KEYS.length) * 100));
+
+    await db.update(workspaces).set({
+      onboardingStepsCompleted: next,
+      onboardingCompletionPercent: percent,
+    }).where(eq(workspaces.id, workspaceId));
+
+    res.json({
+      stepsCompleted: next,
+      percent,
+      fullyComplete: requiredDone === REQUIRED_ONBOARDING_KEYS.length,
+    });
+  } catch (err: unknown) {
+    log.error('[Onboarding Step POST]', sanitizeError(err));
+    res.status(400).json({ message: sanitizeError(err) || 'Failed to update onboarding step' });
+  }
+});
+
+router.post('/onboarding/complete', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace required' });
+
+    const [ws] = await db.select({
+      name: workspaces.name,
+      steps: workspaces.onboardingStepsCompleted,
+      already: workspaces.onboardingFullyComplete,
+    }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+    if (!ws) return res.status(404).json({ message: 'Workspace not found' });
+
+    if (ws.already === true) {
+      return res.json({ alreadyComplete: true });
+    }
+
+    // Publish onboarding_completed — the TrinityOnboardingCompletionHandler
+    // subscriber (server/services/trinityEventSubscriptions.ts) flips the
+    // workspace ready flags and seeds the thalamic log.
+    await platformEventBus.publish({
+      type: 'onboarding_completed',
+      category: 'automation',
+      title: 'Onboarding Completed',
+      description: `Organization onboarding completed for ${ws.name}`,
+      workspaceId,
+      metadata: {
+        workspaceId,
+        ownerId: userId,
+        completedAt: new Date().toISOString(),
+        stepsCompleted: ws.steps || {},
+      },
+    }).catch((err: unknown) => {
+      log.error('[Onboarding Complete] event publish failed:', (err as any)?.message);
+    });
+
+    res.json({ ok: true });
+  } catch (err: unknown) {
+    log.error('[Onboarding Complete POST]', sanitizeError(err));
+    res.status(500).json({ message: 'Failed to complete onboarding' });
+  }
+});
 
 export default router;
