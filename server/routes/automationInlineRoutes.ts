@@ -6,7 +6,6 @@ import { eq } from "drizzle-orm";
 import { requireAuth } from "../auth";
 import { readLimiter } from "../middleware/rateLimiter";
 import { requireManager, requirePlatformStaff, attachWorkspaceId, type AuthenticatedRequest } from "../rbac";
-import { aiSchedulingTriggerService } from "../services/aiSchedulingTriggerService";
 import { createLogger } from '../lib/logger';
 const log = createLogger('AutomationInlineRoutes');
 

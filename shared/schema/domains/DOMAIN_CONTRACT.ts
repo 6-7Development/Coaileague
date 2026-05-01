@@ -1327,7 +1327,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/advancedAnalyticsService.ts',
       'server/services/advancedUsageAnalyticsService.ts',
       'server/services/aiActivityService.ts',
-      'server/services/aiSchedulingTriggerService.ts',
       'server/services/aiSearchService.ts',
       'server/services/alertService.ts',
       'server/services/analytics/index.ts',

@@ -1,25 +1,17 @@
 # COAILEAGUE — MASTER HANDOFF
 # ONE FILE. Update in place.
-# Last updated: 2026-04-28 — Claude (architect plan, parallel lanes launched)
+# Last updated: 2026-05-01 — Claude (unify duplicate services sweep)
 
 ---
 
 ## TURN TRACKER
 
 ```
-PARALLEL LANES — ALL ACTIVE NOW:
-
-  LANE A — CLAUDE
-    Branch: enhancement/lane-a-claude
-    Working on: A1 (Scheduling), A2 (Email), A3 (Zod Tier 1)
-
-  LANE B — CODEX
-    Branch: enhancement/lane-b-codex
-    Working on: B1 (ChatDock durable), B2 (RBAC/IRC), B3 (large files), B4 (middleware)
-
-  LANE C — COPILOT
-    Branch: enhancement/lane-c-copilot
-    Working on: C1 (ChatDock features), C2 (Zod sweep), C3 (document PDFs)
+ACTIVE LANE — CLAUDE
+  Branch: claude/unify-duplicate-services-7ZzYF
+  Base:   438cca2  feat(simulation): hard-persist ACME simulation
+  Status: PHASE 1 LANDED — ai schedule trigger unified to one source of truth.
+          Comprehensive duplicate audit + roadmap published.
 
 ARCHITECT: CLAUDE
   → Pulls all agent branches when submitted
@@ -33,15 +25,46 @@ ARCHITECT: CLAUDE
 ## CURRENT BASE
 
 ```
-origin/development → 8e02aaf97  (Railway STABLE GREEN ✅)
+HEAD on this branch → see latest commit on claude/unify-duplicate-services-7ZzYF
+Last green: 438cca2  feat(simulation): hard-persist ACME simulation + branded PDFs
 ```
+
+---
+
+## ACTIVE WORK — DUPLICATE SERVICE UNIFICATION
+
+**Audit doc:** `DUPLICATE_AUDIT_2026_05_01.md` (full duplicate map, route clusters, payload schemas, consolidation roadmap)
+
+**Phase 1 landed (this branch):**
+- Removed broken stub `server/services/aiSchedulingTriggerService.ts` (98 LOC of fake `confidence: 95` returns).
+- Routed `aiBrainMasterOrchestrator` action `scheduling.generate_ai_schedule` directly to `autonomousSchedulingDaemon.triggerManualRun()` — the canonical engine (delegates to `trinityAutonomousScheduler`).
+- Removed dead import in `server/routes/automationInlineRoutes.ts`.
+- Updated `shared/schema/domains/DOMAIN_CONTRACT.ts`.
+
+**Phase 2 next (small mechanical, low risk):**
+- Delete `server/services/scheduling/trinityOrchestrationBridge.ts` (45 LOC shim).
+- Merge `notificationThrottleService` → `notificationRuleEngine`.
+- Inline `entityCreationNotifier` → `notificationService`.
+- Move `VALID_NOTIFICATION_TYPES` to `shared/schema` (single source).
+
+**Phase 3 (route consolidation — see audit for file lists):**
+- Chat routes 8 → 2.
+- AI Brain routes 8 → 3.
+- Schedule routes 4 → 1.
+- Automation routes 4 → 2.
+- Trinity routes 25+ → 4.
+
+**Phase 4 (legacy audit & deletion):**
+- `advancedSchedulingService.ts` — confirm zero callers, delete.
+- `scheduleMigration.ts` — confirm migration done, delete.
+- `emailAutomation.ts` — audit overlap with `emailService`.
 
 ---
 
 ## FULL PLAN
 
-See: ENHANCEMENT_SPRINT_PLAN.md (same directory)
-Contains: domain map, success criteria, merge protocol, agent assignments
+See: `DUPLICATE_AUDIT_2026_05_01.md` (this sprint)
+See: `ENHANCEMENT_SPRINT_PLAN.md` (prior sprint)
 
 ---
 
@@ -67,11 +90,12 @@ READY TO MERGE: yes
 
 **CLAUDE owns:** universal-schedule.tsx, EmailHubCanvas.tsx, inbox.tsx,
   schedulesRoutes, availabilityRoutes, engagementRoutes, uacpRoutes,
-  reviewRoutes, mileageRoutes, hrInlineRoutes, permissionMatrixRoutes
+  reviewRoutes, mileageRoutes, hrInlineRoutes, permissionMatrixRoutes,
+  **server/services/scheduling/**, **server/services/ai-brain/aiBrainMasterOrchestrator.ts**
 
 **CODEX owns:** websocket.ts, storage.ts, ircEventRegistry.ts,
   chat-management.ts, chatParityService.ts, chatServer.ts,
-  chat/broadcaster.ts (new), chat/shiftRoomManager.ts (new)
+  chat/broadcaster.ts, chat/shiftRoomManager.ts
 
 **COPILOT owns:** ChatDock.tsx and chatdock/ directory,
   chatInlineRoutes, commInlineRoutes, salesInlineRoutes, formBuilderRoutes,
@@ -102,4 +126,5 @@ No state transitions without expected-status guard. No stubs/placeholders.
 Every button wired. Every endpoint real DB data.
 Trinity = one individual. HelpAI = only bot field workers see.
 One domain, one complete sweep, one coherent commit.
+ONE SOURCE OF TRUTH per concept — see DUPLICATE_AUDIT_2026_05_01.md.
 ```

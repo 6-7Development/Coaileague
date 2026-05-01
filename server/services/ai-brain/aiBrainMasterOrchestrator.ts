@@ -461,21 +461,41 @@ class AIBrainMasterOrchestrator {
       requiredRoles: ['org_owner', 'co_owner', 'manager', 'supervisor'],
       handler: async (request: ActionRequest) => {
         const startTime = Date.now();
-        const { workspaceId, weekStart, weekEnd } = request.payload || {};
-        
-        try {
-          const { aiSchedulingTriggerService } = await import('../aiSchedulingTriggerService');
-          const result = await aiSchedulingTriggerService.triggerAIScheduleGeneration(
-            workspaceId || request.workspaceId!
-          );
-          
+        const { workspaceId, mode } = request.payload || {};
+        const effectiveWorkspaceId = workspaceId || request.workspaceId;
+
+        if (!effectiveWorkspaceId) {
           return {
-            success: true,
+            success: false,
             actionId: request.actionId,
-            message: 'AI schedule generation triggered',
+            message: 'Workspace ID required for AI schedule generation',
+            executionTimeMs: Date.now() - startTime,
+          };
+        }
+
+        try {
+          // Single source of truth for AI schedule triggering: the autonomous
+          // scheduling daemon → trinityAutonomousScheduler. No more stub wrappers.
+          const { autonomousSchedulingDaemon } = await import('../scheduling/autonomousSchedulingDaemon');
+          const triggerMode: 'current_day' | 'current_week' | 'next_week' =
+            mode === 'current_day' || mode === 'current_week' || mode === 'next_week'
+              ? mode
+              : 'next_week';
+
+          const { success, result } = await autonomousSchedulingDaemon.triggerManualRun(
+            effectiveWorkspaceId,
+            triggerMode,
+          );
+
+          return {
+            success,
+            actionId: request.actionId,
+            message: success
+              ? 'AI schedule generation triggered'
+              : `AI schedule generation failed: ${result?.error ?? 'unknown error'}`,
             data: result,
             executionTimeMs: Date.now() - startTime,
-            notificationSent: true
+            notificationSent: success,
           };
         } catch (error: any) {
           return {
