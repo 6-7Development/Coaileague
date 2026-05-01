@@ -112,7 +112,6 @@ router.get('/personal-data', async (req: AuthenticatedRequest, res) => {
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const userName = (req.user)?.fullName || (req.user)?.email || 'Admin';
 
     // Count open escalation tickets assigned to this staff member
@@ -1169,7 +1168,6 @@ router.post('/staff/grant-role', async (req: AuthenticatedRequest, res) => {
     const PLATFORM_ROLE_LEVELS: Record<string, number> = {
       root_admin: 5, deputy_admin: 4, sysop: 3, support_manager: 3, compliance_officer: 3, support_agent: 2,
     };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const grantorRole = (req.user)?.platformRole as string | undefined;
     const grantorLevel = grantorRole ? (PLATFORM_ROLE_LEVELS[grantorRole] ?? 0) : 0;
     const targetLevel = PLATFORM_ROLE_LEVELS[role] ?? 0;
@@ -1671,7 +1669,6 @@ router.post('/team/agents', async (req: AuthenticatedRequest, res) => {
 // Returns platform pool balance and deposit history from forfeited tenant credits
 router.get('/credits/recycled', async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     // Legacy credit pipeline removed — use tokenManager for usage stats
     const getRecycledCreditsStats = async () => ({ recycled: 0, pending: 0 });
     const stats = await getRecycledCreditsStats();
@@ -1688,7 +1685,7 @@ router.post('/credits/recycled/trigger', requirePlatformAdmin, async (req: Authe
     // Legacy credit reset removed — token periods reset automatically via workspace_ai_periods
     const resetMonthlyCredits = async () => {};
     // Only sweep, don't reset balances — run a targeted sweep of current cycle
-    const sweepRecycledCredits = async () => ({});
+    const sweepRecycledCredits = async (_workspaceIds: string[] = []) => ({});
     // workspace_credits table dropped (Phase 16) — sweep is a no-op
     const result = await sweepRecycledCredits([]);
     res.json({ success: true, result });
@@ -1861,7 +1858,7 @@ publicPlatformRouter.get('/announcements', async (req: AuthenticatedRequest, res
 export { publicPlatformRouter };
 
 // ── Email Health Check — verifies Resend webhook is configured ─────────────
-router.get('/email-health', requirePlatformStaff, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/email-health', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
   const apiKey = process.env.RESEND_API_KEY;
   const sendingDomain = process.env.RESEND_SENDING_DOMAIN || process.env.RESEND_FROM_DOMAIN;
@@ -1875,7 +1872,7 @@ router.get('/email-health', requirePlatformStaff, async (req: AuthenticatedReque
   const failing = Object.entries(checks).filter(([, v]) => v.required && !v.set).map(([k]) => k);
   const status = failing.length === 0 ? 'healthy' : 'degraded';
 
-  return res.json({
+  res.json({
     status,
     checks,
     failing,

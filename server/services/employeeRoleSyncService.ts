@@ -193,8 +193,8 @@ class EmployeeRoleSyncService {
     if (shouldUpdate) {
       await db
         .update(employees)
-        .set({ 
-          workspaceRole: suggestedRole,
+        .set({
+          workspaceRole: suggestedRole as any,
           updatedAt: new Date(),
         })
         .where(eq(employees.id, employeeId));
@@ -277,8 +277,8 @@ class EmployeeRoleSyncService {
 
     await db
       .update(employees)
-      .set({ 
-        workspaceRole: newRole,
+      .set({
+        workspaceRole: newRole as any,
         updatedAt: new Date(),
       })
       .where(eq(employees.id, employeeId));

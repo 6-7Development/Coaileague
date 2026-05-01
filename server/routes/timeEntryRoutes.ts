@@ -942,6 +942,7 @@ router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, r
       if (ws?.timezone) timeZone = ws.timezone;
     }
 
+    const { calculatePayrollHours } = await import('../services/timeEntryService');
     const hours = await calculatePayrollHours(employeeId, new Date(startDate), new Date(endDate), timeZone);
     res.json({ success: true, data: hours });
   } catch (error: unknown) {

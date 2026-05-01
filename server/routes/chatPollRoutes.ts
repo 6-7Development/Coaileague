@@ -7,7 +7,8 @@
  * GET  /api/chat/polls/:pollId                  — poll result
  */
 import { Router } from 'express';
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest } from '../rbac';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';

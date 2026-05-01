@@ -252,7 +252,7 @@ class FaultTolerantStore extends session.Store {
     // Persist to DB store — call cb only after the write completes
     // so Railway multi-replica restarts don't lose the session.
     this.withTimeout(
-      (done) => this.inner.set(sid, sess, (err) => {
+      (done) => this.inner.set(sid, sess, (err: any) => {
         done(err);
         cb?.(err); // cb fires after DB write, not before
       }),

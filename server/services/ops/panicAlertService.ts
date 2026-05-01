@@ -286,7 +286,7 @@ class PanicAlertService {
       .where(
         and(
           eq(employees.workspaceId, workspaceId),
-          inArray(employees.workspaceRole, chainRoles),
+          inArray(employees.workspaceRole, chainRoles as any[]),
           eq(employees.isActive, true),
         ),
       );

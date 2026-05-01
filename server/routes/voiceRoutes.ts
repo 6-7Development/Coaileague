@@ -1326,7 +1326,9 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
         // Try OpenAI Whisper first (better accuracy, uses confirmed OPENAI_API_KEY)
         if (process.env.OPENAI_API_KEY && RecordingUrl) {
           try {
-            const fetch = (await import('node-fetch')).default as any;
+            // node-fetch ships without bundled type declarations; load via dynamic
+            // import as `any` to avoid forcing every install path to add @types.
+            const fetch: any = ((await import('node-fetch' as any)) as any).default;
             const FormData = (await import('form-data')).default;
             // Download the recording from Twilio
             const audioResp = await fetch(RecordingUrl + '.mp3', {
@@ -1353,7 +1355,10 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
                 if (transcript) {
                   log.info(`[VoiceRoutes] Whisper transcription complete for ${RecordingSid}: "${transcript.slice(0, 80)}"`);
                   // Store directly — no need for callback round-trip
-                  const { classifyAndPersist } = await import('../services/trinityVoice/voiceEventClassifier');
+                  // The voiceEventClassifier module hasn't shipped yet — guard
+                  // with a typed-as-any dynamic import so the route compiles
+                  // and falls through if the module is missing at runtime.
+                  const { classifyAndPersist } = (await import('../services/trinityVoice/voiceEventClassifier' as any)) as any;
                   await updateCallSession(CallSid, { transcript });
                   await classifyAndPersist({ callSid: CallSid, transcript });
                   transcribed = true;

@@ -452,22 +452,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WEBSOCKET SETUP
   // ============================================================================
   log.info('[ROUTE-INIT] step: websocket-setup');
-  const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = await import("./websocket");
-  notificationStateManager.setBroadcastFunction((ws, uid, type, data, count) =>
-    broadcastNotification(ws, uid, type as any, data, count)
+  // websocket.ts exposes broadcastNotificationToUser (workspace-scoped) and a
+  // global broadcastPlatformUpdateGlobal helper. Aliasing them to the legacy
+  // names keeps the registration block below readable.
+  const { broadcastShiftUpdate, broadcastNotificationToUser: broadcastNotification, broadcastPlatformUpdateGlobal: broadcastPlatformUpdate } = await import("./websocket");
+  notificationStateManager.setBroadcastFunction((ws, uid, _type, data, _count) =>
+    broadcastNotification(ws, uid, data)
   );
 
   log.info('[ROUTE-INIT] step: platform-event-bus');
   const { platformEventBus } = await import("./services/platformEventBus");
   platformEventBus.setWebSocketHandler((event) => {
     broadcastPlatformUpdate({
-      type: "platform_update",
+      id: (event as any).id ?? `evt-${Date.now()}`,
       category: event.category as any,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      title: event.title,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      description: event.description,
-      version: event.version,
+      title: event.title ?? '',
+      description: event.description ?? '',
       priority: event.priority,
       learnMoreUrl: event.learnMoreUrl,
       metadata: event.metadata,

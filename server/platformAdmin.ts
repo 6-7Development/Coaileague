@@ -154,7 +154,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       .orderBy(desc(supportTickets.createdAt))
       .limit(5), "recentTickets") ?? [];
 
-    recentTickets.forEach(({ ticket, workspace }: any) => {
+    (recentTickets as any[]).forEach(({ ticket, workspace }: any) => {
       recentActivity.push({
         type: "support",
         description: `Support: ${ticket.subject || 'New ticket'} - ${ticket.status}`,
@@ -247,7 +247,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       })
       .from(satisfactionSurveys)
       .where(gte(satisfactionSurveys.createdAt, firstDayOfMonth)), "csatData");
-    const [csatData] = _csatRaw ?? [undefined];
+    const [csatData] = (_csatRaw as any[]) ?? [undefined];
     
     const avgResponseTime = parseFloat(avgResponseData?.avgHours || "0");
     const slaCompliance = slaData?.total > 0 

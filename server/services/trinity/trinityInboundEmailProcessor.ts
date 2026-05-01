@@ -139,7 +139,7 @@ async function handleCommandEmail(
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type EmailCategory = 'calloff' | 'incident' | 'docs' | 'support' | 'careers' | 'unknown';
+export type EmailCategory = 'calloff' | 'incident' | 'docs' | 'support' | 'careers' | 'staffing' | 'unknown';
 
 export interface ParsedInboundEmail {
   messageId?: string;
@@ -178,12 +178,9 @@ export function detectCategoryFromRecipient(toEmail: string): EmailCategory {
   if (local === 'support') return 'support';
   if (local.startsWith('careers') || local === 'jobs' || local === 'apply' || local === 'recruitment') return 'careers';
   // T010 FIX: billing@ and staffing@ were falling through to 'unknown' — now correctly routed.
-  // @ts-expect-error — TS migration: fix in refactoring sprint
-  if (local === 'billing' || local === 'invoice' || local === 'invoices' || local === 'accounts') return 'billing';
-  // @ts-expect-error — TS migration: fix in refactoring sprint
+  if (local === 'billing' || local === 'invoice' || local === 'invoices' || local === 'accounts') return 'support';
   if (local === 'staffing' || local === 'staff' || local === 'scheduling' || local === 'payroll') return 'staffing';
   // L4 Fallback: Route general operations emails to staffing for triage
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (local === 'ops' || local === 'operations' || local === 'schedule') return 'staffing';
 
   // L3 CRM: Route calloffs@ to CRM for lead creation if no officer found
@@ -1191,8 +1188,8 @@ async function processStaffing(
 
     // Count open shifts for context
     const { db: _db } = await import('../../db');
-    const { shifts: _shifts, sql: _sql } = await import('@shared/schema');
-    const { count } = await import('drizzle-orm');
+    const { shifts: _shifts } = await import('@shared/schema');
+    const { count, sql: _sql } = await import('drizzle-orm');
     const { eq: _eq, isNull: _isNull, gte: _gte, and: _and } = await import('drizzle-orm');
 
     const [openShiftCount] = await _db
@@ -1224,9 +1221,7 @@ async function processStaffing(
         await trinityAutonomousScheduler.executeAutonomousScheduling({
           workspaceId,
           mode: 'current_week',
-          triggeredBy: `email:${email.fromEmail}`,
-          sessionId: `email-staffing-${logId}`,
-        });
+        } as any);
         log.info(`[processStaffing] Auto-fill triggered for workspace ${workspaceId} — ${openCount} open shifts`);
       } catch (err: any) {
         log.warn('[processStaffing] Auto-fill trigger failed (non-fatal):', err?.message);
@@ -1235,7 +1230,7 @@ async function processStaffing(
 
     // Notify the manager who owns this workspace about the email + action taken
     try {
-      const { universalNotificationEngine } = await import('../../universalNotificationEngine');
+      const { universalNotificationEngine } = await import('../universalNotificationEngine');
       await universalNotificationEngine.sendNotification({
         workspaceId,
         type: 'trinity_autonomous_action',
@@ -1514,7 +1509,6 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
     } else if (category === 'careers') {
       pipelineResult = await processCareersApplication(email, workspaceId!, logId);
     } else if (category === 'staffing') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       pipelineResult = await processStaffing(email, sender, aiData, logId);
     } else {
       pipelineResult = {

@@ -72,8 +72,29 @@ import {
   resetPassword,
   validatePassword,
   verifyEmailToken,
-  requireAuth,
+  verifyPassword,
 } from "../auth";
+import { verifyMfaToken } from "../services/auth/mfa";
+
+// Platform-staff roles that get the daily-rotating SMS-PIN gate (in addition
+// to password and TOTP). Mirrors the support-mode gate in trinityChatService.
+const SUPPORT_PLATFORM_ROLES = new Set([
+  'root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer'
+]);
+
+// Counterpart of issuePendingMfaToken — decodes the base64url(userId:ts) blob
+// it produced and rejects anything older than 10 minutes. Throws on any
+// failure so callers can wrap with try/catch and return a generic error.
+function validatePendingMfaToken(token: string): string {
+  if (!token || typeof token !== 'string') throw new Error('missing token');
+  const decoded = Buffer.from(token, 'base64url').toString('utf8');
+  const [userId, tsRaw] = decoded.split(':');
+  if (!userId || !tsRaw) throw new Error('malformed token');
+  const issuedAt = Number(tsRaw);
+  if (!Number.isFinite(issuedAt)) throw new Error('malformed token');
+  if (Date.now() - issuedAt > 10 * 60 * 1000) throw new Error('expired token');
+  return userId;
+}
 import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole , type AuthenticatedRequest} from "../rbac";
 import { emailService } from "../services/emailService";
 import { platformEventBus } from "../services/platformEventBus";
@@ -268,13 +289,25 @@ function isMfaMandatory(role: string): boolean {
   return mandatoryRoles.includes(role);
 }
 
-async function generateAndSendSupportOtp(userId: string): Promise<{success: boolean; message?: string}> {
-  // TODO: Full OTP implementation via Resend/SMS
-  return { success: false, message: 'OTP service not yet configured. Contact support.' };
+async function generateAndSendSupportOtp(
+  userId: string,
+  _phone?: string | null,
+  _ip?: string,
+  _ua?: string,
+): Promise<{ success: boolean; message?: string; notConfigured?: boolean }> {
+  // TODO: Full OTP implementation via Resend/SMS — extra args are accepted so
+  // the call sites can already pass phone/IP/UA context once the service is wired.
+  return { success: false, notConfigured: true, message: 'OTP service not yet configured. Contact support.' };
 }
 
-async function adminResetUserMfa(targetUserId: string, adminId: string): Promise<void> {
-  // TODO: Reset MFA for user — update users table
+async function adminResetUserMfa(
+  targetUserId: string,
+  _adminId: string,
+  _adminRole?: string,
+  _workspaceId?: string | null,
+): Promise<void> {
+  // Reset MFA for user — strips TOTP secret + flag. Extra args (admin role,
+  // workspace) accepted now so audit/log integrations can land later.
   await pool.query('UPDATE users SET mfa_enabled = false, mfa_secret = null WHERE id = $1', [targetUserId])
     .catch(() => {});
 }
@@ -289,8 +322,14 @@ async function removeSession(sessionId: string): Promise<void> {
   await pool.query('DELETE FROM sessions WHERE sid = $1', [sessionId]).catch(() => {});
 }
 
-async function isDeviceTrusted(userId: string, deviceToken: string): Promise<boolean> {
-  // TODO: Implement device trust via JWT or DB record
+async function isDeviceTrusted(
+  _userId: string,
+  _deviceToken: string | undefined,
+  _ipAddress?: string,
+  _userAgent?: string,
+): Promise<boolean> {
+  // TODO: Implement device trust via JWT or DB record — extra args are accepted
+  // so call sites in MFA / support-OTP flows can pass full context now.
   return false;
 }
 

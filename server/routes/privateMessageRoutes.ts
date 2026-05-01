@@ -187,14 +187,14 @@ router.post('/send', requireAuth, async (req: AuthenticatedRequest, res) => {
       attachmentName,
     });
 
-    
+
       // Broadcast to both participants via WebSocket for socket-first live updates
       try {
         const { broadcastToUser } = await import('../websocket');
         const wsPayload = {
           type: 'private_message_received',
-          conversationId: newMessage?.conversationId,
-          message: newMessage,
+          conversationId: (sentMessage as any)?.conversationId ?? conversation.id,
+          message: sentMessage,
         };
         if (recipientId) broadcastToUser(recipientId, wsPayload);
         if (userId) broadcastToUser(userId, wsPayload);

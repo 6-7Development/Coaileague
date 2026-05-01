@@ -170,11 +170,13 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
         [req.user?.id] // Note: this targets the manager's session; employee sessions cleared by token expiry
       ).catch(() => null);
 
-      // Invalidate employee's auth tokens via authService
+      // Invalidate employee's auth tokens — the dedicated authService module
+      // hasn't shipped yet, so any session-revocation needs to fall back to
+      // the auth utilities exposed by ../auth.
       try {
-        const { authService } = await import('./authService');
-        if ((authService as any).revokeAllSessionsForUser) {
-          await (authService as any).revokeAllSessionsForUser(employeeId);
+        const authModule: any = await import('../auth');
+        if (authModule.revokeAllSessionsForUser) {
+          await authModule.revokeAllSessionsForUser(employeeId);
         }
       } catch (revokeErr) {
         log.warn('[Termination] Session revocation failed (non-fatal):', revokeErr);

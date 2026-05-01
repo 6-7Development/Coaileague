@@ -644,7 +644,7 @@ Format as plain text, no headers.`,
       domain?: string;
       preferredLanguage?: string;
     }
-  ): Promise<{ response: string; confidence: number }> {
+  ): Promise<{ response: string; confidence: number; intent?: string }> {
     try {
       const { geminiClient } = await import('../ai-brain/providers/geminiClient');
       // Load user history, emotional context, and Trinity knowledge in parallel

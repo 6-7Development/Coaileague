@@ -230,17 +230,16 @@ export class PaystubService {
         renderPdfHeader(doc, {
           title: 'EARNINGS STATEMENT',
           subtitle: `Pay Period: ${periodLabel}`,
-          docId,
+          refLabel: `Ref: ${docId}`,
           workspaceName: workspaceName || 'CoAIleague',
-          pageNum,
-          totalPages: 1,
         });
 
         let y = PAGE.MT;
         const L = PAGE.ML, R = PAGE.ML + PAGE.CW;
 
         // Section: Earnings
-        y = sectionBar(doc, 'EARNINGS', y) + 8;
+        sectionBar(doc, 'EARNINGS');
+        y = doc.y + 8;
         doc.fontSize(9).fillColor(PDF.gray);
         doc.text('Description', L, y);
         doc.text('Hours', L + 240, y);
@@ -277,7 +276,8 @@ export class PaystubService {
         y += 24;
 
         // Section: Deductions
-        y = sectionBar(doc, 'DEDUCTIONS', y) + 8;
+        sectionBar(doc, 'DEDUCTIONS');
+        y = doc.y + 8;
         doc.fillColor(PDF.dark).fontSize(10);
 
         const totalDed = data.deductions.reduce((s, d) => s + d.amount, 0);
@@ -322,7 +322,7 @@ export class PaystubService {
         }
 
         // Branded footer
-        renderPdfFooter(doc, { docId, pageNum, totalPages: 1 });
+        renderPdfFooter(doc, { docId, docType: 'Pay Stub', workspaceName: workspaceName || 'CoAIleague' });
         doc.end();
       }).catch(reject);
     });
@@ -349,6 +349,8 @@ export class PaystubService {
         return { success: false, error: 'No hours worked in this period' };
       }
 
+      // Resolve workspace name first so the branded header can pick it up.
+      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
       const pdfBuffer = await this.generatePDF(data, (ws as any)?.name);
 
       if (sendNotification) {
@@ -369,9 +371,6 @@ export class PaystubService {
           });
         }
       }
-
-      // Resolve workspace name for branded header
-      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId) });
 
       // Stamp branded header/footer and save to tenant vault
       const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;

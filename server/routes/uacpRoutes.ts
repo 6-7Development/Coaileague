@@ -132,7 +132,7 @@ router.post('/authorize', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: subject, resource' });
     }
 
-    const decision = await policyDecisionPoint.authorize(subject, resource, context || {});
+    const decision = await policyDecisionPoint.authorize(subject as any, resource as any, context || {});
     res.json(decision);
 
   } catch (error) {
@@ -239,19 +239,17 @@ router.post('/agents', requireAdminAccess, async (req, res) => {
       agentId,
       name,
       description,
-      entityType,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      workspaceId: isGlobal ? undefined : user.currentWorkspaceId,
+      entityType: entityType as any,
+      workspaceId: isGlobal ? undefined : (user as any)?.currentWorkspaceId,
       isGlobal: isGlobal || false,
       role,
       permissions,
       allowedTools,
       allowedDomains,
       missionObjective,
-      riskProfile,
+      riskProfile: riskProfile as any,
       maxAutonomyLevel,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      createdBy: user.id,
+      createdBy: (user as any)?.id,
     });
 
     if (!result.success) {
@@ -430,15 +428,13 @@ router.post('/attributes', requireAdminAccess, async (req, res) => {
     const [attribute] = await db.insert(entityAttributes).values({
       entityType,
       entityId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      workspaceId: user.currentWorkspaceId,
+      workspaceId: (user as any)?.currentWorkspaceId,
       attributeName,
       attributeValue: String(attributeValue),
       attributeType: attributeType || 'string',
       expiresAt: expiresAt ? new Date(expiresAt) : null,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      createdBy: user.id,
-    }).returning();
+      createdBy: (user as any)?.id,
+    } as any).returning();
 
     // Invalidate PDP cache
     // @ts-expect-error — TS migration: fix in refactoring sprint

@@ -394,16 +394,19 @@ class TrinityContextManager {
 
       const tokenBalance = creditsAccount.currentBalance;
       const tokenAllocation = creditsAccount.monthlyAllocation;
-      const tokenPercentUsed = tokenAllocation > 0 
+      const tokenPercentUsed = tokenAllocation > 0
         ? Math.round(((tokenAllocation - tokenBalance) / tokenAllocation) * 100)
         : 0;
 
       log.info(`[TrinityContext] Token awareness loaded for ${workspaceId}: ${tokenBalance}/${tokenAllocation} (${tokenPercentUsed}% used)`);
 
+      // WorkspaceContext exposes these as creditBalance / creditAllocation /
+      // creditPercentUsed — keep the source-of-truth field names from the
+      // interface so the prompt builder below can read them without drift.
       return {
-        tokenBalance,
-        tokenAllocation,
-        tokenPercentUsed,
+        creditBalance: tokenBalance,
+        creditAllocation: tokenAllocation,
+        creditPercentUsed: tokenPercentUsed,
       };
     } catch (error) {
       log.warn('[TrinityContext] Failed to load credit balance:', error);
@@ -563,24 +566,24 @@ class TrinityContextManager {
     let promptContext = '';
 
     // Add workspace context with Trinity token/action awareness (legacy field names retained)
-    if (context.memory.workspaceContext.workspaceName || context.memory.workspaceContext.tokenBalance !== undefined) {
+    if (context.memory.workspaceContext.workspaceName || context.memory.workspaceContext.creditBalance !== undefined) {
       promptContext += `## Current Context\n`;
       if (context.memory.workspaceContext.workspaceName) {
         promptContext += `- Workspace: ${context.memory.workspaceContext.workspaceName}\n`;
       }
       promptContext += `- User Role: ${context.memory.workspaceContext.userRole || 'unknown'}\n`;
       promptContext += `- Subscription: ${context.memory.workspaceContext.subscriptionTier || 'free'}\n`;
-      
+
       // TRINITY TOKEN/ACTION AWARENESS: Include monthly usage status for self-aware decision making
-      if (context.memory.workspaceContext.tokenBalance !== undefined) {
-        const creditBalance = context.memory.workspaceContext.creditBalance;
+      if (context.memory.workspaceContext.creditBalance !== undefined) {
+        const creditBalance = context.memory.workspaceContext.creditBalance ?? 0;
         const creditAllocation = context.memory.workspaceContext.creditAllocation || 0;
         const creditPercentUsed = context.memory.workspaceContext.creditPercentUsed || 0;
-        
+
         promptContext += `\n## Token Status (Tenant Awareness)\n`;
         promptContext += `- Tokens Remaining: ${creditBalance}/${creditAllocation}\n`;
         promptContext += `- Usage: ${creditPercentUsed}% of monthly token allotment consumed\n`;
-        
+
         // Add contextual hints based on tenant token status
         if (creditBalance < 10) {
           promptContext += `- ⚠️ LOW TOKEN HEADROOM: Tenant is near monthly soft-cap/overage zone; prioritize high-value actions\n`;

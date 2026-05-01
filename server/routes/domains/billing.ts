@@ -24,6 +24,7 @@ import financialIntelligenceRouter from "../financialIntelligence";
 import financeNewRouter, { icalPublicRouter } from "../financeRoutes";
 import stripeInlineRouter from "../stripeInlineRoutes";
 import usageRouter from "../usageRoutes";
+import tokenRouter from "../tokenRoutes";
 import revenueRecognitionRouter from "../financialReporting/revenueRecognitionRoutes";
 import { billingReconciliation } from "../../services/billing/billingReconciliation";
 import { orgBillingService } from "../../services/billing/orgBillingService";
@@ -159,6 +160,11 @@ export function mountBillingRoutes(app: Express): void {
   // for legacy frontend bundles and returns 410 on /purchase and /packs.
   app.use("/api/usage", usageRouter);
   app.use("/api/credits", usageRouter);
+  // /api/tokens — token-balance, usage-by-feature, tier-allocations, full state.
+  // Was previously a ghost router (defined but never mounted); the frontend
+  // billing dashboard calls these endpoints, so wire it through the standard
+  // billing-domain auth + workspace guards.
+  app.use("/api/tokens", requireAuth, ensureWorkspaceAccess, tokenRouter);
 
   app.use("/api", requireAuth, ensureWorkspaceAccess, financeInlineRouter);
   app.use("/api/timesheet-invoices", requireAuth, ensureWorkspaceAccess, timesheetInvoiceRouter);

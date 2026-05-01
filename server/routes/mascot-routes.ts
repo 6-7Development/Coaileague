@@ -135,14 +135,14 @@ const _activeManagers = new Set<string>();
 
 function getCurrentSeasonId(): string {
   const subagent = getSeasonalSubagent();
-  return subagent.getActiveTheme()?.holiday?.id ?? 'default';
+  return subagent.getActiveTheme()?.holidayId ?? 'default';
 }
 
 function shouldForceDarkMode(): boolean {
   const subagent = getSeasonalSubagent();
   const theme = subagent.getActiveTheme();
   // Winter/Christmas themes force dark mode so snow is visible
-  return ['winter', 'christmas', 'newYear'].includes(theme?.holiday?.id ?? '');
+  return ['winter', 'christmas', 'newYear'].includes(theme?.holidayId ?? '');
 }
 
 async function runSeasonalHealthCheck(): Promise<Record<string, unknown>> {
@@ -151,7 +151,7 @@ async function runSeasonalHealthCheck(): Promise<Record<string, unknown>> {
   return {
     status: 'ok',
     disabled: subagent.isSeasonalDisabled(),
-    activeTheme: theme?.holiday?.id ?? null,
+    activeTheme: theme?.holidayId ?? null,
     activeManagers: _activeManagers.size,
     checkedAt: new Date().toISOString(),
   };
@@ -163,7 +163,7 @@ async function generateAIHealthReport(): Promise<Record<string, unknown>> {
   return {
     summary: subagent.isSeasonalDisabled()
       ? 'Seasonal theming is currently disabled via AI Brain orchestration.'
-      : `Active theme: ${theme?.holiday?.name ?? 'none'}. ${_activeManagers.size} manager(s) registered.`,
+      : `Active theme: ${theme?.holidayName ?? 'none'}. ${_activeManagers.size} manager(s) registered.`,
     activeTheme: theme ?? null,
     activeManagers: Array.from(_activeManagers),
     generatedAt: new Date().toISOString(),
@@ -204,7 +204,7 @@ function getSupportOverrides(): Record<string, unknown> {
   const subagent = getSeasonalSubagent();
   return {
     disabled: subagent.isSeasonalDisabled(),
-    activeTheme: subagent.getActiveTheme()?.holiday?.id ?? null,
+    activeTheme: subagent.getActiveTheme()?.holidayId ?? null,
   };
 }
 
@@ -1742,8 +1742,17 @@ router.get('/seasonal/ornaments', requireTrinityAccess, (req, res) => {
     }
     
     const seasonId = getCurrentSeasonId();
-    const directive = getModifiedOrnamentDirective(seasonId);
-    
+    // Ornament directive generator hasn't been implemented yet — return an
+    // empty directive shape so the client can render its safe-default state.
+    const directive = {
+      profiles: [],
+      placements: [],
+      spawnRate: 0,
+      decayRate: 0,
+      syncWithSantaFlyover: false,
+      globalIntensity: 0,
+    };
+
     res.json({
       success: true,
       seasonId,

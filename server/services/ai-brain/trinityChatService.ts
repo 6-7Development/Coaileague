@@ -500,7 +500,11 @@ class TrinityChatService {
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const { userId, workspaceId, message, sessionId, images } = request;
-    // Trinity has no mode toggle — her biological brain decides how to respond
+    // Trinity has no mode toggle — her biological brain decides how to respond.
+    // ConversationMode is retained as a single-value type ('business') so legacy
+    // session columns and downstream consumers keep their shape; we default it
+    // here and pass it through every code path that still threads it.
+    const mode: ConversationMode = request.mode ?? 'business';
 
     // THALAMUS — Universal Sensory Gateway (first organ every signal passes through)
     // Non-blocking for LOW priority; async-logged for background processing
@@ -615,6 +619,10 @@ class TrinityChatService {
     const SUPPORT_PLATFORM_ROLES = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer'];
     const isSupportMode = request.isSupportMode || (userPlatformRole !== null && SUPPORT_PLATFORM_ROLES.includes(userPlatformRole));
 
+    // Hoisted up so the support-mode audit (below) and the guardrail short-circuit
+    // can both reference it before the main session lookup runs.
+    let session: TrinityConversationSession | null = null;
+
     // SUPPORT MODE HARD AUDIT — every support agent Trinity session gets
     // a universal_audit_trail entry so there are zero ghost actions.
     // supportTicketId links the action to the originating ticket.
@@ -637,7 +645,7 @@ class TrinityChatService {
             supportMode: true,
             supportAgentId: userId,
             supportTicketId: request.supportTicketId || null,
-            sessionId: session?.id || null,
+            sessionId: (session as TrinityConversationSession | null)?.id ?? null,
             messagePreview: request.message.substring(0, 120),
             trustTier: request.trustTier || 'owner',
           }),
@@ -678,10 +686,10 @@ class TrinityChatService {
     const guardrailResult = await this.checkContentGuardrails(workspaceId, userId, message);
     if (guardrailResult.blocked) {
       // Return guardrail response without processing the message
-      const session = sessionId 
+      session = sessionId
         ? await this.getSession(sessionId, userId)
         : await this.getOrCreateSession(userId, workspaceId, mode);
-      
+
       return {
         sessionId: session?.id || 'blocked',
         response: guardrailResult.response || 'This request cannot be processed.',
@@ -696,7 +704,6 @@ class TrinityChatService {
 
     // Get or create session
     log.info('[TrinityChatService] Getting session, sessionId:', sessionId || 'none');
-    let session;
     try {
       if (sessionId) {
         log.info('[TrinityChatService] Fetching existing session:', sessionId);

@@ -59,6 +59,13 @@ export const PLATFORM_ROLE_LEVEL: Record<PlatformRole, number> = {
   support_manager: 3,
   support_agent: 4,
   compliance_officer: 5,
+  // System / automation actors share `Bot`-tier authority. Trinity-brain and
+  // helpai sit just below platform staff so audit + governance flows can pin
+  // them to a real number without falling back to `none`.
+  system: 6,
+  automation: 6,
+  helpai: 7,
+  'trinity-brain': 7,
   Bot: 6,
   none: 99,
 };
@@ -75,6 +82,9 @@ export const WORKSPACE_ROLE_LEVEL: Record<WorkspaceRole, number> = {
   employee: 5,
   auditor: 6,
   contractor: 6,
+  // Client-portal users share auditor-tier read authority by default; the
+  // canonical role table requires every WorkspaceRole carry a level.
+  client: 6,
 };
 
 const LEGACY_PLATFORM_ROLE_ALIASES: Record<string, PlatformRole> = {

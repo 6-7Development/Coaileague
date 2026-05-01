@@ -12,18 +12,12 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { requireAuth } from '../auth';
-import { requirePlatformRole , requirePlatformStaff } from '../rbac';
+import { requirePlatformStaff } from '../rbac';
 import { trinityPrefrontalCortex } from '../services/ai-brain/trinityPrefrontalCortex';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('TrinityOrgStateRoutes');
 const router = Router();
-
-const requirePlatformStaff = requirePlatformRole([
-  'root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent',
-  // @ts-expect-error — TS migration: fix in refactoring sprint
-  'platform_staff', 'compliance_officer',
-]);
 
 // ─── Full org survival state (platform staff only) ───────────────────────
 

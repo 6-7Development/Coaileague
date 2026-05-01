@@ -90,7 +90,6 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       
       const [template] = await db
         .insert(pulseSurveyTemplates)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values(validatedData)
         .returning();
       
@@ -184,8 +183,8 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
         .update(pulseSurveyTemplates)
         .set({
           ...templateUpdateParsed.data,
-          updatedAt: new Date()
-        })
+          updatedAt: new Date(),
+        } as any)
         .where(eq(pulseSurveyTemplates.id, id))
         .returning();
       
@@ -288,14 +287,11 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       
       const [response] = await db
         .insert(pulseSurveyResponses)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values(validatedData)
         .returning();
       
       // Validate responseText from request body
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const pulseResponseBodySchema = z.object({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         responseText: z.string().optional(),
       });
       const pulseResponseParsed = pulseResponseBodySchema.safeParse(req.body);
@@ -435,11 +431,8 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       }
       
       // Validate isAnonymous from request body
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const employerRatingBodySchema = z.object({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         isAnonymous: z.boolean().optional(),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         comment: z.string().optional(),
       });
       const employerRatingParsed = employerRatingBodySchema.safeParse(req.body);
@@ -456,7 +449,6 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       
       const [rating] = await db
         .insert(employerRatings)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values(validatedData)
         .returning();
       
@@ -905,7 +897,6 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       const engEmployeeIds = workspaceEmployees.map(e => e.id);
 
       // Batch pre-fetch: 3 queries total instead of 3×N (N+1 fix)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [existingScores, allTeTimeEntries, allTeShifts] = await Promise.all([
         db.select({ employeeId: employeeHealthScores.employeeId })
           .from(employeeHealthScores)
@@ -934,8 +925,12 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       const alreadyScoredSet = new Set(existingScores.map((s: any) => s.employeeId));
       const engTimeCountMap = new Map<string, number>();
       const engShiftCountMap = new Map<string, number>();
-      for (const te of allTeTimeEntries) engTimeCountMap.set(te.employeeId, (engTimeCountMap.get(te.employeeId) || 0) + 1);
-      for (const sh of allTeShifts) engShiftCountMap.set(sh.employeeId, (engShiftCountMap.get(sh.employeeId) || 0) + 1);
+      for (const te of allTeTimeEntries) {
+        if (te.employeeId) engTimeCountMap.set(te.employeeId, (engTimeCountMap.get(te.employeeId) || 0) + 1);
+      }
+      for (const sh of allTeShifts) {
+        if (sh.employeeId) engShiftCountMap.set(sh.employeeId, (engShiftCountMap.get(sh.employeeId) || 0) + 1);
+      }
 
       for (const emp of workspaceEmployees) {
         if (alreadyScoredSet.has(emp.id)) continue;
@@ -1102,7 +1097,7 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       
       const benchmark = await calculateEmployerBenchmark({
         workspaceId,
-        benchmarkType,
+        benchmarkType: benchmarkType as 'manager' | 'location' | 'department' | 'organization',
         targetId,
         targetName,
         periodStart: new Date(periodStart),

@@ -53,11 +53,21 @@ export interface Anomaly {
   workspaceId: string;
   code: AnomalyCode;
   severity: AnomalySeverity;
-  summary: string;
-  entityType: string;
-  entityId: string;
+  /** Short summary line — one of {summary, title} must be set. */
+  summary?: string;
+  /** Display title — preferred by the future-shift / guard-card checks. */
+  title?: string;
+  /** Long-form description; falls back to summary when absent. */
+  description?: string;
+  /** Either the entity-level fields (entityType/entityId) or the
+   * affectedEntity* fields are set; the notifier resolves either pair. */
+  entityType?: string;
+  entityId?: string;
+  affectedEntityType?: string;
+  affectedEntityId?: string;
   dedupKey: string;
   details?: Record<string, any>;
+  metadata?: Record<string, any>;
 }
 
 export interface AnomalyWatchResult {
@@ -384,12 +394,12 @@ async function notify(a: Anomaly): Promise<boolean> {
         channel: 'in_app',
         subject: `Anomaly: ${a.code.replace(/_/g, ' ')}`,
         body: {
-          summary: a.summary,
+          summary: a.summary ?? a.title ?? a.description ?? '',
           code: a.code,
           severity: a.severity,
-          entityType: a.entityType,
-          entityId: a.entityId,
-          details: a.details ?? null,
+          entityType: a.entityType ?? a.affectedEntityType ?? null,
+          entityId: a.entityId ?? a.affectedEntityId ?? null,
+          details: a.details ?? a.metadata ?? null,
         },
         idempotencyKey: `anomaly-${a.dedupKey}-${recipientUserId}`,
       }),
@@ -415,7 +425,7 @@ async function notify(a: Anomaly): Promise<boolean> {
       smsTargets.map((c) =>
         sendSMSToEmployee(
           c.employeeId,
-          `Trinity anomaly: ${a.summary}`,
+          `Trinity anomaly: ${a.summary ?? a.title ?? a.description ?? a.code}`,
           `anomaly_${a.code}`,
           a.workspaceId,
         ),
@@ -439,7 +449,7 @@ async function notify(a: Anomaly): Promise<boolean> {
       type: 'trinity_anomaly_detected',
       workspaceId: a.workspaceId,
       title: `Anomaly detected: ${a.code}`,
-      description: a.summary,
+      description: a.summary ?? a.title ?? a.description ?? '',
       severity: a.severity,
       metadata: { workflow: WORKFLOW_NAME, ...a },
     } as any);
@@ -450,10 +460,10 @@ async function notify(a: Anomaly): Promise<boolean> {
   await logActionAudit({
     actionId: 'trinity.run_anomaly_watch',
     workspaceId: a.workspaceId,
-    entityType: a.entityType,
-    entityId: a.entityId,
+    entityType: a.entityType ?? a.affectedEntityType ?? '',
+    entityId: a.entityId ?? a.affectedEntityId ?? '',
     success: delivered,
-    message: a.summary,
+    message: a.summary ?? a.title ?? a.description ?? a.code,
     payload: {
       code: a.code,
       severity: a.severity,
@@ -504,8 +514,8 @@ async function recordAnomaly(a: Anomaly): Promise<void> {
         a.workspaceId,
         `trinity.${WORKFLOW_NAME}`,
         WORKFLOW_NAME,
-        a.entityType,
-        a.entityId,
+        a.entityType ?? a.affectedEntityType ?? '',
+        a.entityId ?? a.affectedEntityId ?? '',
         a.code,
         a.severity,
         a.dedupKey,

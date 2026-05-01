@@ -344,9 +344,10 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
         ? `${(req.user).firstName} ${(req.user).lastName || ''}`.trim()
         : (req.user)?.email || 'Organization';
 
+      if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
       const result = await documentSigningService.sendDocumentForSignature({
         documentId: id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         senderUserId: userId,
         senderName,
@@ -392,9 +393,10 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
         ? `${(req.user).firstName} ${(req.user).lastName || ''}`.trim()
         : 'Organization';
 
+      if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
       const result = await documentSigningService.sendDocumentForSignature({
         documentId: id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         senderUserId: userId,
         senderName,

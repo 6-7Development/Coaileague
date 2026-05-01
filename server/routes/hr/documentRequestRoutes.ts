@@ -455,9 +455,15 @@ router.patch('/:id/status', requireAuth, async (req: any, res) => {
         eq(hrDocumentRequests.workspaceId, workspaceId),
         inArray(hrDocumentRequests.status, allowedPrior)
       ))
-      .returning({ id: hrDocumentRequests.id, documentType: hrDocumentRequests.documentType,
-                   employeeId: hrDocumentRequests.employeeId, employeeName: hrDocumentRequests.employeeName,
-                   recipientUserId: hrDocumentRequests.recipientUserId });
+      .returning({
+        id: hrDocumentRequests.id,
+        documentType: hrDocumentRequests.documentType,
+        employeeId: hrDocumentRequests.employeeId,
+        employeeName: hrDocumentRequests.employeeName,
+        // hr_document_requests doesn't carry a recipientUserId column; the
+        // employee linkage is via employeeId — callers can resolve the user
+        // account from there if they need a userId.
+      });
 
     if (!updated) {
       const [current] = await db.select({ status: hrDocumentRequests.status })

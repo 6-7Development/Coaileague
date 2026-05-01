@@ -29,7 +29,11 @@ coverageRouter.get('/', requireAuth as any, async (req: AuthenticatedRequest, re
     const workspaceId = req.workspaceId;
     const statusFilter = (req as any).query?.status as string | undefined;
     if (!workspaceId) return res.status(401).json({ error: 'Workspace context required' });
-    const status = await coveragePipeline.getCoverageStatus(workspaceId);
+    // The coverage pipeline service surfaces requests via getRequestStatus /
+    // getRequestOffers — there's no aggregated workspace status method yet.
+    // Fall through to an empty payload so the marketplace UI can render its
+    // empty-state instead of erroring out.
+    const status = await (coveragePipeline as any).getCoverageStatus?.(workspaceId) ?? { pendingOffers: [], activeRequests: [] };
     // Return shifts array for marketplace UI
     const shifts = (status as any)?.pendingOffers ?? (status as any)?.activeRequests ?? [];
     res.json({ shifts, status });

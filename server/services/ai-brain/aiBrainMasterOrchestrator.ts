@@ -43,7 +43,7 @@ import { registerIntegrationBrainActions } from "./integrationBrainActions";
 import { registerDomainSupervisorActions } from "./domainSupervisorActions";
 import { registerUIShellBrainActions } from "./uiShellBrainActions";
 import { registerBusinessIntelligenceActions } from "./trinityBusinessIntelligence";
-import { registerTrinityDocumentActions } from "./trinityDocumentActions";
+import { registerTrinityDocumentActions, registerTrinityBusinessDocumentActions } from "./trinityDocumentActions";
 import { db } from '../../db';
 import { eq, desc, and, gte, sql, isNotNull } from 'drizzle-orm';
 import {
@@ -436,6 +436,7 @@ class AIBrainMasterOrchestrator {
     registerUIShellBrainActions(); // UI Shell: Universal 7-step containment, validation, auditing
     registerBusinessIntelligenceActions(); // Business Intelligence: Invoice/Payroll/Schedule pattern learning, QB formatting, deep analysis
     registerTrinityDocumentActions(helpaiOrchestrator); // Document Orchestration: generate, send, check status, escalate overdue, compliance scan, license expiry, post orders
+    registerTrinityBusinessDocumentActions(helpaiOrchestrator); // Business artifacts: invoice PDF, timesheet support package, RFP scoring (+ stubs for proof_of_employment / direct_deposit / payroll_summary / W-3)
 
     // Phase 1 Consolidation — backward-compatible shims for renamed/merged/deleted actions
     // MUST be registered LAST so all canonical actions exist first

@@ -43,6 +43,45 @@ import { createLogger } from '../lib/logger';
 const log = createLogger('RecruitmentRoutes');
 const router = Router();
 
+// ─── Chat / Voice interview helpers (stubs until full pipeline ships) ──────
+// The interview endpoints below depend on a chat-room + co-pilot pipeline that
+// hasn't been wired yet. Stubbing these helpers lets the routes compile and
+// returns honest "not yet implemented" payloads at runtime instead of crashing.
+async function createChatInterviewRoom(
+  _candidate: any,
+  _workspaceId: string,
+  _recruiterUserIds: string[],
+): Promise<{ chatRoomId: string | null; status: string; message: string }> {
+  return { chatRoomId: null, status: 'pending', message: 'Chat interview room creation not yet implemented' };
+}
+async function getCopilotEvents(
+  _chatRoomId: string,
+  _workspaceId: string,
+): Promise<Array<Record<string, any>>> {
+  return [];
+}
+async function analyzeChatResponse(
+  _sessionId: string,
+  _workspaceId: string,
+  _candidateId: string,
+  _chatRoomId: string,
+  _messageContent: string,
+): Promise<void> {
+  // TODO: forward to scoring pipeline.
+}
+async function closeChatInterviewSession(
+  sessionId: string,
+  _workspaceId: string,
+): Promise<{ sessionId: string; closed: boolean; message: string }> {
+  return { sessionId, closed: false, message: 'Chat interview session close not yet implemented' };
+}
+async function createVoiceInterviewSession(
+  _candidate: any,
+  _workspaceId: string,
+): Promise<{ sessionId: string; status: string }> {
+  return { sessionId: `pending-${Date.now()}`, status: 'pending' };
+}
+
 // ─── Pipeline Summary ─────────────────────────────────────────────────────────
 
 router.get('/pipeline', async (req: Request, res: Response) => {

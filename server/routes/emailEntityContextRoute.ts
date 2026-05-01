@@ -6,7 +6,8 @@
  * Powers the AIContextRail entity panel in EmailHubCanvas.tsx.
  */
 import { Router } from 'express';
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest } from '../rbac';
 import { db } from '../db';
 import { clients, employees, shifts, invoices, employeeCertifications } from '@shared/schema';
 import { eq, and, gte, count, sql } from 'drizzle-orm';
@@ -25,17 +26,22 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
   }
 
   try {
-    // 1. Try to match as a client contact email
+    // 1. Try to match as a client contact email — clients table doesn't have a
+    // single contactEmail column, so check the four real email fields the
+    // schema actually exposes (primary, AP, POC, billing).
     const [client] = await db.select({
       id: clients.id,
       name: clients.companyName,
-      contactEmail: clients.contactEmail,
+      contactEmail: clients.email,
       billingRate: (clients as any).billingRate,
     })
       .from(clients)
       .where(and(
         eq(clients.workspaceId, workspaceId),
-        sql`LOWER(${clients.contactEmail}) = ${senderEmail}`
+        sql`LOWER(${clients.email}) = ${senderEmail}
+            OR LOWER(${clients.apContactEmail}) = ${senderEmail}
+            OR LOWER(${clients.pocEmail}) = ${senderEmail}
+            OR LOWER(${clients.billingEmail}) = ${senderEmail}`
       ))
       .limit(1);
 
@@ -61,7 +67,7 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
         ));
 
       const [mtdInvoices] = await db.select({
-        total: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS NUMERIC)), 0)`
+        total: sql<number>`COALESCE(SUM(CAST(${invoices.total} AS NUMERIC)), 0)`
       })
         .from(invoices)
         .where(and(

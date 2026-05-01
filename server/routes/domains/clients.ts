@@ -56,7 +56,7 @@ export function mountClientRoutes(app: Express): void {
   // Requires all: POC Email, Address, Bill Rate, Service Hours.
   app.post("/api/clients/portal/handshake/confirm", requireAuth, async (req: any, res: any) => {
     try {
-      const { flipInvitedToActive, validateHandshakePayload } = await import("../services/onboarding/onboardingHandshakeService");
+      const { flipInvitedToActive, validateHandshakePayload } = await import("../../services/onboarding/onboardingHandshakeService");
       const payload = { ...req.body, userId: req.session?.userId || req.user?.id };
 
       // Pre-flight check — Confirm button should already be disabled on frontend,

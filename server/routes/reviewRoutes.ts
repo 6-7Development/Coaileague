@@ -234,7 +234,6 @@ router.post("/api/report-submissions", requireAuth, async (req: any, res) => {
 router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const subUpdateSchema = z.object({
       content: z.string().max(50000).optional(),
       status: z.string().max(50).optional(),
@@ -243,7 +242,8 @@ router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) =
     }).strip();
     const subUpdateParsed = subUpdateSchema.safeParse(req.body);
     if (!subUpdateParsed.success) return res.status(400).json({ error: 'Validation failed', details: subUpdateParsed.error.flatten() });
-    const submission = await storage.updateReportSubmission(id, subUpdateParsed.data);
+    const reqWorkspaceId = (req as any).workspaceId as string;
+    const submission = await storage.updateReportSubmission(id, reqWorkspaceId, subUpdateParsed.data);
     res.json(submission);
   } catch (error) {
     log.error("Error updating report submission:", error);
@@ -264,10 +264,12 @@ router.post("/api/report-submissions/:id/review", requireManager, async (req: an
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
 
+    const reviewerId = user?.id;
+    if (!reviewerId) return res.status(401).json({ message: 'Unauthorized' });
     const submission = await storage.reviewReportSubmission(id, {
       approved,
-      reviewNotes,
-      reviewedBy: user!.id,
+      reviewNotes: reviewNotes ?? '',
+      reviewedBy: reviewerId,
     });
 
     res.json(submission);
@@ -362,11 +364,8 @@ router.post("/api/report-submissions/:id/generate-access", requireAuth, async (r
   try {
     const { id } = req.params;
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const generateAccessBodySchema = z.object({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       clientId: z.string().min(1, 'Client ID is required'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       expirationDays: z.number().int().positive().optional(),
     });
     const generateAccessParsed = generateAccessBodySchema.safeParse(req.body);
