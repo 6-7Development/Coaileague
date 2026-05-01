@@ -1,0 +1,11 @@
+[1] POST /api/chat/dock/rooms
+    status=201 body={"id":"1738f9ef-0753-4daf-a4d9-da96d290559d","workspace_id":"ws-dockchat-smoke","room_name":"Smoke Room 1777622136832","room_slug":"smoke-room-1777622136832-1777622136867","description":"schema-correc
+[2] POST /api/chat/dock/rooms/:id/messages
+    status=201 body={"id":"77bf7e0f-7cdc-4ead-bb16-07126f6b4ddf","workspace_id":"ws-dockchat-smoke","conversation_id":"a0df7498-1682-4138-84e1-7aeed66f04ba","sender_id":"usr-dockchat-smoke","sender_name":"Smoke Tester","
+[3] GET /api/chat/dock/rooms/:id/messages
+    status=200 count=1
+[4] POST /api/chat/dock/rooms/:id/messages with /help bot command
+    status=201 bot=**Available Commands:**
+• /schedule — Check your upcoming sc
+
+✓ DockChat schema-corrected SQL works end-to-end (4/4 PASS)

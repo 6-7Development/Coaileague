@@ -597,6 +597,202 @@ button, a, .interactive, .btn, [role="button"] {
 }
 .chatdock-typing-enter { animation: chatdockTypingFadeIn 180ms ease-out; }
 
+/* ==========================================================================
+   B-series microinteractions — Messenger / WhatsApp parity
+   ========================================================================== */
+
+/* B1 — Read-receipt ladder. Single check, double-check, blue double-check.
+   Driven by data-state="sent|delivered|read" attribute on the receipt span. */
+.chatdock-receipt[data-state="sent"]      { color: hsl(var(--muted-foreground) / 0.55); }
+.chatdock-receipt[data-state="delivered"] { color: hsl(var(--muted-foreground) / 0.85); }
+.chatdock-receipt[data-state="read"]      { color: #1877f2; }
+
+/* B2 — Message bubble tails. Applied to the FIRST or LAST in a sender run
+   so consecutive messages from the same person collapse visually. */
+.chatdock-bubble-mine {
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+  border-top-left-radius: 18px;
+  border-bottom-left-radius: 18px;
+}
+.chatdock-bubble-mine.chatdock-bubble-tail-end   { border-bottom-right-radius: 4px; }
+.chatdock-bubble-mine.chatdock-bubble-tail-start { border-top-right-radius: 4px; }
+.chatdock-bubble-theirs {
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+  border-top-left-radius: 18px;
+  border-bottom-left-radius: 18px;
+}
+.chatdock-bubble-theirs.chatdock-bubble-tail-end   { border-bottom-left-radius: 4px; }
+.chatdock-bubble-theirs.chatdock-bubble-tail-start { border-top-left-radius: 4px; }
+
+/* B3 — Swipe-to-reply visual track. The wrapper translates as the user
+   swipes; the reply icon fades in past a 32px threshold. */
+.chatdock-swipe-row { transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+.chatdock-swipe-row[data-swiping="true"] { transition: none; }
+.chatdock-swipe-reply-hint {
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%) scale(0.6);
+  opacity: 0;
+  transition: opacity 140ms ease-out, transform 140ms ease-out;
+  pointer-events: none;
+}
+.chatdock-swipe-row[data-swipe-reached="true"] .chatdock-swipe-reply-hint {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+/* B4 — Pull-to-load-history: a slim spinner pinned to the top while
+   .chatdock-loading-history is set on the scroll container. */
+.chatdock-loading-history-spinner {
+  position: sticky;
+  top: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  z-index: 5;
+  background: linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background) / 0));
+}
+
+/* B5 — Room-list typing indicator pulse */
+@keyframes chatdockListTypingPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.chatdock-list-typing { animation: chatdockListTypingPulse 1200ms ease-in-out infinite; }
+
+/* B6 — Voice waveform progress bar. We render a thin bar that fills on
+   playback. Cheap, no extra deps. */
+.chatdock-voice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  padding: 6px 10px;
+  background: hsl(var(--muted) / 0.6);
+  border-radius: 14px;
+}
+.chatdock-voice-bar {
+  flex: 1;
+  height: 4px;
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.chatdock-voice-bar-fill {
+  height: 100%;
+  width: var(--chatdock-voice-progress, 0%);
+  background: hsl(var(--primary));
+  border-radius: 2px;
+  transition: width 80ms linear;
+}
+.chatdock-voice-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  min-width: 2.5em;
+  text-align: right;
+}
+
+/* B7 — Sticky date dividers, iMessage-style */
+.chatdock-date-divider {
+  position: sticky;
+  top: 4px;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  margin: 8px 0;
+}
+.chatdock-date-divider span {
+  background: hsl(var(--muted) / 0.85);
+  color: hsl(var(--foreground));
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+}
+
+/* B8 — Composer auto-grow. Set max-height on the textarea; content
+   overflows scroll. Monospace switch for ```code``` blocks. */
+.chatdock-composer-textarea {
+  resize: none;
+  max-height: 9rem;
+  overflow-y: auto;
+  font-family: inherit;
+  transition: font-family 120ms ease-out;
+}
+.chatdock-composer-textarea[data-mode="code"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* B9 — Reaction-bar staggered fade. Each child animates in 40ms after the
+   previous; chained via :nth-child. */
+.chatdock-reaction-reveal > * {
+  opacity: 0;
+  animation: chatdockReactionItemReveal 240ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.chatdock-reaction-reveal > *:nth-child(1) { animation-delay: 0ms; }
+.chatdock-reaction-reveal > *:nth-child(2) { animation-delay: 40ms; }
+.chatdock-reaction-reveal > *:nth-child(3) { animation-delay: 80ms; }
+.chatdock-reaction-reveal > *:nth-child(4) { animation-delay: 120ms; }
+.chatdock-reaction-reveal > *:nth-child(5) { animation-delay: 160ms; }
+.chatdock-reaction-reveal > *:nth-child(6) { animation-delay: 200ms; }
+@keyframes chatdockReactionItemReveal {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.5); }
+  60%  { opacity: 1; transform: translateY(-1px) scale(1.06); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* B10 — HelpAI / Trinity author chips. Visually distinct so users
+   instinctively know it's the AI. */
+.chatdock-ai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.chatdock-ai-chip[data-bot="trinity"] {
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: white;
+}
+.chatdock-ai-chip[data-bot="helpai"] {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: white;
+}
+.chatdock-ai-bubble[data-bot="trinity"] {
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.05), rgba(168, 85, 247, 0));
+}
+.chatdock-ai-bubble[data-bot="helpai"] {
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.05), rgba(245, 158, 11, 0));
+}
+
+/* D2 — safe-area-inset for iOS PWA composers */
+.chatdock-safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* D3 — overscroll containment so iOS bounce doesn't drag the parent */
+.chatdock-scroll-pane {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .chat-bubble-has-unread {
@@ -621,10 +817,14 @@ button, a, .interactive, .btn, [role="button"] {
   .chatdock-send-pop,
   .chatdock-slide-right,
   .chatdock-reaction-reveal,
-  .chatdock-typing-enter {
+  .chatdock-reaction-reveal > *,
+  .chatdock-typing-enter,
+  .chatdock-list-typing,
+  .chatdock-swipe-row {
     animation: none !important;
     transition: none !important;
   }
+  .chatdock-reaction-reveal > * { opacity: 1 !important; transform: none !important; }
 
   .chatdock-tap:active,
   .chatdock-row-press:active {

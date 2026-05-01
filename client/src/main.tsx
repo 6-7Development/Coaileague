@@ -163,10 +163,26 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/', updateViaCache: 'none' })
-      .then((registration) => {
+      .then(async (registration) => {
         if (import.meta.env.DEV) {
           console.log('[SW] Registered, scope:', registration.scope);
         }
+        // D4 — opt-in to background unread sync. Browsers gate periodicSync
+        // behind a permissions prompt + installed-PWA heuristic; we ask
+        // gracefully and ignore the rejection on browsers that don't support
+        // it (Safari, FF). When granted the SW refreshes /api/chat/unread-count
+        // ~every 12h to keep the badge fresh on backgrounded tabs.
+        try {
+          // @ts-expect-error periodicSync is on ServiceWorkerRegistration but
+          // not yet in stock TS lib.
+          if (registration.periodicSync) {
+            const status = await navigator.permissions.query({ name: 'periodic-background-sync' as any }).catch(() => null);
+            if (status?.state === 'granted') {
+              // @ts-expect-error see above
+              await registration.periodicSync.register('refresh-chat-unread', { minInterval: 12 * 60 * 60 * 1000 });
+            }
+          }
+        } catch { /* graceful no-op on unsupported browsers */ }
       })
       .catch((err) => {
         if (import.meta.env.DEV) {

@@ -29,6 +29,16 @@ import { costOptimizedRouter } from '../ai-brain/costOptimizedRouter';
 import { NotificationDeliveryService } from '../notificationDeliveryService';
 import crypto from 'crypto';
 import { createLogger } from '../../lib/logger';
+// Trinity biblical brain + client audience module — same convictions Trinity
+// uses, plus the client-liaison posture (business outcomes, scoped data
+// disclosure, no PII leak about officers/staff).  Without this prepend the
+// client portal HelpAI was running on its own ad-hoc prompt that didn't share
+// Trinity's values anchor.
+import {
+  TRINITY_VALUES_ANCHOR,
+  PERSONA_CHARACTER_FOUNDATION,
+  CLIENT_AUDIENCE_MODULE,
+} from '../ai-brain/trinityPersona';
 const log = createLogger('clientPortalHelpAIService');
 
 
@@ -237,7 +247,13 @@ function buildAISystemPrompt(reportType: ReportType, clientName?: string): strin
     other: 'miscellaneous concerns requiring management attention',
   };
 
-  return `You are HelpAI, the intelligent support assistant for a professional security services management platform. You are speaking with ${clientName || 'a valued client'} who has reported an issue regarding ${typeContext[reportType]}.
+  return `${TRINITY_VALUES_ANCHOR}
+
+${PERSONA_CHARACTER_FOUNDATION}
+
+${CLIENT_AUDIENCE_MODULE}
+
+You are HelpAI, the intelligent support assistant for a professional security services management platform. You are speaking with ${clientName || 'a valued client'} who has reported an issue regarding ${typeContext[reportType]}. The brain above governs how you think; the section below is your specific job in this conversation.
 
 Your primary mission is AUTONOMOUS RESOLUTION — attempt to resolve or provide clear answers without requiring human intervention wherever possible.
 

@@ -45,6 +45,15 @@ export interface OfficerPersonaContext {
   callOffSummary: string;     // e.g. "2 call-offs in last 30d"
   incidentSummary: string;    // e.g. "1 incident report in last 60d (resolved)"
   goodOfficerNotes: string;   // e.g. "always on time, detailed reports — A-tier"
+  // Site scorecard + shift fingerprint: HelpAI uses these to make smarter
+  // suggestions ("you've worked Hudson 14 times with 100% on-time — take it
+  // again Thursday?") and to avoid suggesting graveyard shifts to officers
+  // whose history shows they always decline them.
+  bestSites: string;          // e.g. "Hudson Tower (14 shifts, 100% on-time)"
+  preferredHours: string;     // e.g. "typical clock-in window 06:00–08:00"
+  // Distress flag — true when call-off threshold is crossed; HelpAI surfaces
+  // a supervisor check-in suggestion in its reply.
+  distressActive: boolean;
 }
 
 // ── Profile retrieval ─────────────────────────────────────────────────────────
@@ -69,6 +78,9 @@ export async function getOfficerPersona(
     const callOffSummary = await getCallOffSummary(officerId, workspaceId);
     const incidentSummary = await getIncidentSummary(officerId, workspaceId);
     const goodOfficerNotes = buildGoodOfficerNotes(profile);
+    const bestSites = await getBestSites(officerId, workspaceId);
+    const preferredHours = await getPreferredHours(officerId, workspaceId);
+    const distressActive = await isDistressThresholdCrossed(officerId, workspaceId);
 
     // Get officer name
     const nameRow = await pool.query(
@@ -95,6 +107,9 @@ export async function getOfficerPersona(
       callOffSummary,
       incidentSummary,
       goodOfficerNotes,
+      bestSites,
+      preferredHours,
+      distressActive,
     };
   } catch (err: any) {
     log.warn('[OfficerPersona] Failed to load persona (non-fatal):', err?.message);
@@ -142,6 +157,19 @@ export function buildPersonaPrompt(persona: OfficerPersonaContext): string {
   }
   if (persona.goodOfficerNotes) {
     lines.push(`Strengths on file: ${persona.goodOfficerNotes}`);
+  }
+  if (persona.bestSites) {
+    lines.push(`Best at: ${persona.bestSites}`);
+  }
+  if (persona.preferredHours) {
+    lines.push(`Shift fingerprint: ${persona.preferredHours}`);
+  }
+  if (persona.distressActive) {
+    lines.push(
+      `⚠️ DISTRESS THRESHOLD CROSSED — this officer has had multiple call-offs in the last 14 days. ` +
+      `Lead with concern: "Hey, I noticed a couple of call-offs lately — everything OK?" ` +
+      `If they signal anything heavy, suggest a supervisor check-in or use /helpai escalate.`,
+    );
   }
 
   // Emotional baseline
@@ -359,4 +387,77 @@ function buildGoodOfficerNotes(profile: any): string {
   } catch {
     return '';
   }
+}
+
+// Per-site officer scorecard — best site by completion rate over last 90d.
+// HelpAI uses this to make smart suggestions like "You've worked Hudson 14
+// times with 100% on-time — comfortable taking it again Thursday?"
+async function getBestSites(officerId: string, workspaceId: string): Promise<string> {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COALESCE(s.site_name, 'Site') as site_name,
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE s.status IN ('completed','clocked_out')) as completed,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE s.status IN ('completed','clocked_out'))
+          / NULLIF(COUNT(*), 0)
+        ) as on_time_pct
+      FROM shifts s
+      WHERE s.employee_id = $1
+        AND s.workspace_id = $2
+        AND s.date >= CURRENT_DATE - 90
+      GROUP BY s.site_name
+      HAVING COUNT(*) >= 3
+      ORDER BY on_time_pct DESC NULLS LAST, total DESC
+      LIMIT 1
+    `, [officerId, workspaceId]);
+    const row = result.rows[0];
+    if (!row) return '';
+    const total = Number(row.total ?? 0);
+    const pct = Number(row.on_time_pct ?? 0);
+    return `${row.site_name} (${total} shifts, ${pct}% on-time)`;
+  } catch { return ''; }
+}
+
+// Shift-pattern fingerprint — typical clock-in window over last 60 days,
+// rounded to the nearest 2-hour bucket. HelpAI stops suggesting 04:00 shifts
+// to officers who have always declined them.
+async function getPreferredHours(officerId: string, workspaceId: string): Promise<string> {
+  try {
+    const result = await pool.query(`
+      SELECT
+        ROUND(AVG(EXTRACT(HOUR FROM clock_in_time))) as avg_clock_in,
+        STDDEV(EXTRACT(HOUR FROM clock_in_time)) as spread,
+        COUNT(*) as samples
+      FROM time_entries
+      WHERE employee_id = $1
+        AND workspace_id = $2
+        AND clock_in_time IS NOT NULL
+        AND clock_in_time >= NOW() - INTERVAL '60 days'
+    `, [officerId, workspaceId]);
+    const row = result.rows[0];
+    const samples = Number(row?.samples ?? 0);
+    if (samples < 4) return '';
+    const avg = Number(row?.avg_clock_in ?? 0);
+    const spread = Math.round(Number(row?.spread ?? 0));
+    const lo = String(Math.max(0, avg - Math.max(1, spread))).padStart(2, '0');
+    const hi = String(Math.min(23, avg + Math.max(1, spread))).padStart(2, '0');
+    return `typical clock-in window ${lo}:00–${hi}:00 (n=${samples})`;
+  } catch { return ''; }
+}
+
+// Distress threshold — 3+ call-offs in last 14 days. When crossed, HelpAI
+// receives a flag in the persona prompt asking it to lead with concern and
+// suggest a supervisor check-in.
+async function isDistressThresholdCrossed(officerId: string, workspaceId: string): Promise<boolean> {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*) as c FROM shifts
+      WHERE employee_id = $1 AND workspace_id = $2
+        AND status IN ('no_show','called_off','cancelled_by_employee')
+        AND date >= CURRENT_DATE - 14
+    `, [officerId, workspaceId]);
+    return Number(result.rows[0]?.c ?? 0) >= 3;
+  } catch { return false; }
 }

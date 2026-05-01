@@ -157,6 +157,52 @@ export async function updateMessageSentiment(
       .where(eq(chatMessages.id, messageId));
 
     log.info(`[ChatSentiment] Updated message ${messageId} with sentiment analysis`);
+
+    // Trinity shadow-presence: when a message clears the negative-sentiment
+    // bar, publish a memory insight so Trinity can speak to the org owner
+    // about morale with real evidence in the next conversation.  Awaited
+    // but non-fatal — sentiment storage must never block on memory writes.
+    const isAlertWorthy =
+      analysis.shouldEscalate ||
+      analysis.urgencyLevel >= 4 ||
+      analysis.sentiment === 'urgent' ||
+      (analysis.sentiment === 'negative' && analysis.sentimentScore <= -40);
+
+    if (isAlertWorthy) {
+      try {
+        const [msg] = await db
+          .select({
+            workspaceId: chatMessages.workspaceId,
+            conversationId: chatMessages.conversationId,
+            senderId: chatMessages.senderId,
+            senderName: chatMessages.senderName,
+          })
+          .from(chatMessages)
+          .where(eq(chatMessages.id, messageId))
+          .limit(1);
+        if (msg?.workspaceId) {
+          const { trinityMemoryService } = await import('./ai-brain/trinityMemoryService');
+          await trinityMemoryService.shareInsight({
+            sourceAgent: 'automation',
+            insightType: 'warning',
+            workspaceScope: msg.workspaceId,
+            title: `Sentiment alert: ${analysis.sentiment} (urgency ${analysis.urgencyLevel}) from ${msg.senderName || 'a user'}`,
+            content: [
+              `Conversation: ${msg.conversationId}`,
+              `Sender: ${msg.senderName || msg.senderId || 'unknown'}`,
+              `Sentiment: ${analysis.sentiment} (score ${analysis.sentimentScore})`,
+              `Urgency level: ${analysis.urgencyLevel}/5`,
+              `Should escalate: ${analysis.shouldEscalate}`,
+              `Detected at: ${new Date().toISOString()}`,
+            ].join('\n'),
+            confidence: Math.max(0, Math.min(1, analysis.confidence / 100)),
+            applicableScenarios: ['team_morale', 'distress_detection', analysis.sentiment],
+          });
+        }
+      } catch (insightErr: any) {
+        log.warn('[ChatSentiment] Trinity shadow-presence insight failed (non-fatal):', insightErr?.message);
+      }
+    }
   } catch (error) {
     log.error('[ChatSentiment] Error updating message sentiment:', error);
     // Don't throw - sentiment update failure shouldn't break chat

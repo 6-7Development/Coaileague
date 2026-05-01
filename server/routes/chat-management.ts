@@ -1660,6 +1660,47 @@ router.post(
 );
 
 // ============================================================================
+// PAGINATED HISTORY - GET /api/chat/manage/conversations/:id/messages?before=<iso>&limit=<n>
+// Returns the next page of messages older than `before`, ordered ascending so
+// the client can prepend them to its in-memory list. Used by ChatDock's
+// pull-to-load-history affordance.
+// ============================================================================
+router.get(
+  "/conversations/:id/messages",
+  async (req, res) => {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const conversationId = await resolveConversationId(req.params.id);
+      const userId = authReq.user?.id;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+      if (!(await verifyParticipant(conversationId, userId))) {
+        return res.status(403).json({ error: "Not a participant" });
+      }
+      const beforeIso = typeof req.query.before === "string" ? req.query.before : null;
+      const limitRaw = Number.parseInt(typeof req.query.limit === "string" ? req.query.limit : "50", 10);
+      const limit = Math.min(Math.max(limitRaw || 50, 1), 100);
+
+      const where = beforeIso
+        ? and(
+            eq(chatMessages.conversationId, conversationId),
+            sql`${chatMessages.createdAt} < ${new Date(beforeIso)}`,
+          )!
+        : eq(chatMessages.conversationId, conversationId);
+
+      const rows = await db.select().from(chatMessages).where(where)
+        .orderBy(desc(chatMessages.createdAt)).limit(limit);
+
+      // Reverse so the client receives ascending chronological order
+      // (matches how the dock expects to prepend earlier messages).
+      res.json({ messages: rows.reverse(), hasMore: rows.length === limit });
+    } catch (error: unknown) {
+      log.error("[ChatManagement] Error loading message page:", error);
+      res.status(500).json({ error: "Failed to load messages" });
+    }
+  },
+);
+
+// ============================================================================
 // IN-CONVERSATION SEARCH - GET /api/chat/manage/conversations/:id/search
 // ============================================================================
 router.get(

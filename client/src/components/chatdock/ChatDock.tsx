@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect, typ
 import { StatusBadge } from '@/components/ui/status-badge';
 import { createPortal } from "react-dom";
 import { useChatDock } from "@/contexts/ChatDockContext";
-import { useChatRoomSummaries, useChatUnreadTotal } from "@/hooks/useChatManager";
+import { useChatRoomSummaries, useChatUnreadTotal, useRoomTypingUser } from "@/hooks/useChatManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
 import { X, ArrowLeft, Send, Search, Users, MessageCircle, MessageSquare, ChevronRight, Loader2, WifiOff, Plus, MoreVertical, Paperclip, Image, Video, Mic, UserPlus, LogOut, Eye, EyeOff, VolumeX, Volume2, Trash2, Ban, Shield, Crown, Info, Settings, Check, CheckCheck, FileText, Reply, Pencil, Forward, Pin, SmilePlus, ExternalLink, XCircle, ArrowDown, ThumbsUp, Heart, Laugh, Frown, Flame, Headphones, Calendar, Phone, Mail, AlertCircle, MapPin, Download,  } from "lucide-react";
@@ -1134,9 +1134,11 @@ function DateDivider({ date }: { date: Date }) {
 
   const label = isToday ? "Today" : isYesterday ? "Yesterday" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
 
+  // chatdock-date-divider applies sticky positioning so the date pill rides
+  // along the top of the scroll viewport like iMessage / Messenger.
   return (
-    <div className="flex items-center justify-center py-2.5" data-testid="date-divider">
-      <span className="text-[10px] text-muted-foreground font-medium px-3 py-0.5 rounded-full bg-muted/60 border border-border/30">{label}</span>
+    <div className="chatdock-date-divider" data-testid="date-divider">
+      <span>{label}</span>
     </div>
   );
 }
@@ -1378,6 +1380,52 @@ function DeliveryStatusIndicator({ status }: { status: string }) {
   }
 }
 
+/**
+ * Room-list preview line (B5).  Sub-component because hooks can't run inside
+ * a callback inside renderRoomItem.  Subscribes to live typing pings so the
+ * preview swaps to "Maya is typing…" with a subtle pulse — same trick
+ * Messenger uses to make the room list feel alive.
+ */
+function RoomPreviewLine({
+  room,
+  hasUnread,
+  isSupport,
+}: {
+  room: { roomId: string; lastMessage?: string; lastMessageSender?: string };
+  hasUnread: boolean;
+  isSupport: boolean;
+}) {
+  const typingUser = useRoomTypingUser(room.roomId);
+  return (
+    <span className={cn(
+      "text-[12px] truncate flex-1 min-w-0 leading-snug flex items-center gap-1",
+      hasUnread ? "text-foreground/75 font-medium" : "text-muted-foreground",
+    )}>
+      {typingUser ? (
+        <span className="chatdock-list-typing italic text-[#1877f2]" data-testid={`room-typing-${room.roomId}`}>
+          {typingUser} is typing…
+        </span>
+      ) : (() => {
+        const preview = getLastMsgPreview(room.lastMessage);
+        const prefix = room.lastMessageSender ? `${room.lastMessageSender}: ` : "";
+        if (preview.isMedia) {
+          return <>
+            {prefix && <span className="truncate">{prefix}</span>}
+            {preview.mediaType === "image" && <Image className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
+            {preview.mediaType === "video" && <Video className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
+            {preview.mediaType === "audio" && <Mic className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
+            {preview.mediaType === "file" && <FileText className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
+            <span className="truncate">{preview.text}</span>
+          </>;
+        }
+        return prefix
+          ? <><span className="truncate">{prefix}{preview.text}</span></>
+          : <span className="truncate">{preview.text || (isSupport ? "Tap to get help from HelpAI" : "No messages yet")}</span>;
+      })()}
+    </span>
+  );
+}
+
 function ConversationList({ onSelectRoom, isFullPage }: { onSelectRoom: (roomId: string, roomName: string) => void; isFullPage?: boolean }) {
   const rawRooms = useChatRoomSummaries();
   const rooms = rawRooms ?? [];
@@ -1535,28 +1583,7 @@ function ConversationList({ onSelectRoom, isFullPage }: { onSelectRoom: (roomId:
               </div>
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={cn(
-                "text-[12px] truncate flex-1 min-w-0 leading-snug flex items-center gap-1",
-                hasUnread ? "text-foreground/75 font-medium" : "text-muted-foreground"
-              )}>
-                {(() => {
-                  const preview = getLastMsgPreview(room.lastMessage);
-                  const prefix = room.lastMessageSender ? `${room.lastMessageSender}: ` : "";
-                  if (preview.isMedia) {
-                    return <>
-                      {prefix && <span className="truncate">{prefix}</span>}
-                      {preview.mediaType === "image" && <Image className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
-                      {preview.mediaType === "video" && <Video className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
-                      {preview.mediaType === "audio" && <Mic className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
-                      {preview.mediaType === "file" && <FileText className="h-3 w-3 flex-shrink-0 text-[#1877f2]/60" />}
-                      <span className="truncate">{preview.text}</span>
-                    </>;
-                  }
-                  return prefix
-                    ? <><span className="truncate">{prefix}{preview.text}</span></>
-                    : <span className="truncate">{preview.text || (isSupport ? "Tap to get help from HelpAI" : "No messages yet")}</span>;
-                })()}
-              </span>
+              <RoomPreviewLine room={room} hasUnread={hasUnread} isSupport={isSupport} />
               {hasUnread && (
                 <span className="chatdock-unread-badge" data-testid={`badge-unread-${room.roomId}`}>
                   {room.unreadCount > 99 ? "99+" : room.unreadCount}
@@ -1690,9 +1717,13 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
   const [lightboxData, setLightboxData] = useState<LightboxData | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [showChatSearch, setShowChatSearch] = useState(false);
+  // B4 — pull-to-load-history loading state
+  const [historyLoading, setHistoryLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Composer is a textarea (auto-grow + monospace switch) — was an Input.
+  // Keeping the union type so existing inputRef.current?.focus() callsites work.
+  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -1713,6 +1744,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
     messages: wsMessages,
     sendMessage,
     sendRawMessage,
+    loadOlderMessages,
     isConnected,
     error: wsError,
     isInTriage,
@@ -2203,7 +2235,39 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
           and polls the thought-stream endpoint for THIS room's phases. One bar,
           always visible, always context-aware. */}
 
-      <div className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-px relative chatdock-chat-bg" data-scroll="styled" ref={scrollContainerRef} role="log" aria-live="polite" aria-label="Chat messages">
+      <div
+        className="chatdock-scroll-pane flex-1 overflow-y-auto px-2.5 py-1.5 space-y-px relative chatdock-chat-bg"
+        data-scroll="styled"
+        ref={scrollContainerRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+        onScroll={(e) => {
+          // B4: pull-to-load-history. Fires once when the user reaches the
+          // top of the message list and the WS hook still has a `loadOlder`
+          // capability advertised. We pre-anchor the scroll position so the
+          // viewport doesn't jump when older messages prepend.
+          const el = e.currentTarget;
+          if (el.scrollTop <= 8 && wsMessages.length >= 50 && !historyLoading && loadOlderMessages) {
+            setHistoryLoading(true);
+            const prevHeight = el.scrollHeight;
+            loadOlderMessages().finally(() => {
+              setHistoryLoading(false);
+              requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                  const newHeight = scrollContainerRef.current.scrollHeight;
+                  scrollContainerRef.current.scrollTop = newHeight - prevHeight;
+                }
+              });
+            });
+          }
+        }}
+      >
+        {historyLoading && (
+          <div className="chatdock-loading-history-spinner" data-testid="chatdock-history-loading">
+            <Loader2 className="h-3 w-3 animate-spin mr-1" /> Loading earlier messages…
+          </div>
+        )}
         {wsMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             {isConnected ? (
@@ -2300,8 +2364,14 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                     <span className="text-[10px] font-medium text-muted-foreground mb-0.5 px-2 inline-flex items-center gap-1">
                       {isBot
                         ? (msg.senderId === 'helpai-bot' || msg.senderName === 'HelpAI'
-                            ? <span className="text-amber-500 font-semibold">HelpAI</span>
-                            : <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>)
+                            ? <>
+                                <span className="text-amber-500 font-semibold">HelpAI</span>
+                                <span className="chatdock-ai-chip" data-bot="helpai" aria-label="HelpAI is the AI field manager">Field Manager</span>
+                              </>
+                            : <>
+                                <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>
+                                <span className="chatdock-ai-chip" data-bot="trinity" aria-label="Trinity is the AI senior assistant">Senior</span>
+                              </>)
                         : (msg.senderName || "Unknown")}
                       {(msg as any).bridgeChannelType && (
                         <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
@@ -2323,11 +2393,22 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                         "px-3.5 py-2 text-[13px] break-words leading-relaxed",
                         isDeletedForAll ? "italic opacity-50" : "",
                         isOwn
-                          ? cn(isGrouped ? "chat-bubble-grouped-own" : "chat-bubble-own")
+                          ? cn(isGrouped ? "chat-bubble-grouped-own" : "chat-bubble-own", "chatdock-bubble-mine")
                           : isBot
-                            ? cn(isGrouped ? "chat-bubble-grouped-other chat-bubble-helpai" : "chat-bubble-other chat-bubble-helpai")
-                            : cn(isGrouped ? "chat-bubble-grouped-other" : "chat-bubble-other")
+                            ? cn(
+                                isGrouped ? "chat-bubble-grouped-other chat-bubble-helpai" : "chat-bubble-other chat-bubble-helpai",
+                                "chatdock-bubble-theirs",
+                                "chatdock-ai-bubble",
+                              )
+                            : cn(isGrouped ? "chat-bubble-grouped-other" : "chat-bubble-other", "chatdock-bubble-theirs"),
+                        // iMessage-style tail on the FIRST and LAST message in a sender run.
+                        // The check below uses the same `isGrouped` signal: a group-end is the
+                        // last item of a continuous sender run (next msg is different sender).
+                        !isGrouped && "chatdock-bubble-tail-start",
+                        // Compute end-of-run: this is the last message OR the next has a different sender.
+                        ((idx === wsMessages.length - 1) || (wsMessages[idx + 1] && wsMessages[idx + 1].senderId !== msg.senderId)) && "chatdock-bubble-tail-end",
                       )}
+                      data-bot={isBot ? (msg.senderId === 'helpai-bot' || msg.senderName === 'HelpAI' ? 'helpai' : 'trinity') : undefined}
                     >
                       {parentMsg && <QuotedMessage parentMessage={parentMsg} compact />}
                       {isDeletedForAll ? (
@@ -2447,13 +2528,26 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                       )}
                       {isOwn && (msg as any).bridgeDeliveryStatus ? (
                         <DeliveryStatusIndicator status={(msg as any).bridgeDeliveryStatus} />
-                      ) : isOwn && (
-                        readReceipt ? (
-                          <CheckCheck className="h-3 w-3 text-primary" data-testid={`read-receipt-${msg.id}`} />
-                        ) : (
-                          <Check className="h-3 w-3 text-muted-foreground" data-testid={`sent-receipt-${msg.id}`} />
-                        )
-                      )}
+                      ) : isOwn && (() => {
+                        // Read-receipt ladder (B1):
+                        //   read       — recipient acknowledged the message
+                        //   delivered  — server persisted, recipient online but hasn't read yet
+                        //   sent       — server persisted, recipient offline / no socket
+                        const recipientOnline = onlineUsers.some(u => u.id !== user?.id);
+                        const state: 'sent' | 'delivered' | 'read' =
+                          readReceipt ? 'read' : recipientOnline ? 'delivered' : 'sent';
+                        const Icon = state === 'sent' ? Check : CheckCheck;
+                        return (
+                          <span
+                            className="chatdock-receipt inline-flex"
+                            data-state={state}
+                            data-testid={`receipt-${state}-${msg.id}`}
+                            aria-label={`Message ${state}`}
+                          >
+                            <Icon className="h-3 w-3" />
+                          </span>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -2505,7 +2599,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
         data-testid="input-file-upload"
       />
 
-      <div className="chatdock-input-bar">
+      <div className="chatdock-input-bar chatdock-safe-area-bottom">
         <div className="flex items-center gap-2">
           <div className="relative">
             <Button
@@ -2613,14 +2707,21 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
               </div>
             );
           })()}
-          <Input
-            ref={inputRef}
+          <textarea
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             value={input}
+            rows={1}
             onChange={(e) => {
               const val = e.target.value;
               setInput(val);
+              // Auto-grow: reset and re-measure so the textarea expands up
+              // to the CSS max-height (then scrolls), giving a Messenger-style
+              // composer that grows with the text.
+              const t = e.target as HTMLTextAreaElement;
+              t.style.height = 'auto';
+              t.style.height = `${Math.min(t.scrollHeight, 144)}px`;
               // Detect @mention trigger
-              const cursor = e.target.selectionStart ?? val.length;
+              const cursor = (e.target as any).selectionStart ?? val.length;
               const before = val.slice(0, cursor);
               const mentionMatch = before.match(/@([\w]*)$/);
               if (mentionMatch) {
@@ -2631,10 +2732,18 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                 setMentionAnchor(-1);
               }
             }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } if (e.key === "Escape") { setReplyingTo(null); setEditingMessage(null); setInput(""); } }}
-            placeholder={editingMessage ? "Edit message..." : replyingTo ? `↩ Reply to ${replyingTo.senderName}...` : isConnected ? "Message (@ to mention)..." : "Connecting..."}
+            onKeyDown={(e) => {
+              // Enter sends, Shift+Enter inserts newline (Slack/Messenger convention).
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+              if (e.key === "Escape") { setReplyingTo(null); setEditingMessage(null); setInput(""); }
+            }}
+            placeholder={editingMessage ? "Edit message..." : replyingTo ? `↩ Reply to ${replyingTo.senderName}...` : isConnected ? "Message (@ to mention, Shift+Enter for newline)..." : "Connecting..."}
             disabled={!isConnected}
-            className="text-sm flex-1 h-10 rounded-full bg-muted/60 border-0 focus-visible:ring-1 focus-visible:ring-[#1877f2]/40 px-4"
+            // chatdock-composer-textarea: caps height + monospace switch on code blocks.
+            // The data-mode attribute flips font-family when the content contains a
+            // ```code``` block so users get instant visual feedback on formatting.
+            className="chatdock-composer-textarea text-sm flex-1 min-h-10 rounded-2xl bg-muted/60 border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#1877f2]/40 px-4 py-2 leading-relaxed"
+            data-mode={input.includes('```') ? 'code' : 'text'}
             data-testid={`input-chat-msg-${roomId}`}
           />
           {!input.trim() && !editingMessage && (

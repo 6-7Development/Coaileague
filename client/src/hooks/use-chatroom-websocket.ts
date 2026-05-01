@@ -955,6 +955,40 @@ export function useChatroomWebSocket(
     });
   }, [sendJoin]);
 
+  /**
+   * B4: pull-to-load-history.  Fetches messages older than the oldest message
+   * currently in state and prepends them.  Returns the count loaded so the
+   * caller can decide whether to keep enabling the load-more affordance.
+   */
+  const loadOlderMessages = useCallback(async (): Promise<number> => {
+    const targetConvId = resolvedConversationIdRef.current || conversationIdRef.current;
+    if (!targetConvId) return 0;
+    const oldest = messages[0];
+    if (!oldest?.createdAt) return 0;
+    const beforeIso = (oldest.createdAt instanceof Date ? oldest.createdAt : new Date(oldest.createdAt as any)).toISOString();
+    try {
+      const res = await fetch(
+        `/api/chat/manage/conversations/${encodeURIComponent(targetConvId)}/messages?before=${encodeURIComponent(beforeIso)}&limit=50`,
+        { credentials: 'include' },
+      );
+      if (!res.ok) return 0;
+      const body = await res.json();
+      const older: ChatMessage[] = (body?.messages || []).map((m: any) => ({
+        ...m,
+        createdAt: m.createdAt instanceof Date ? m.createdAt : (m.createdAt ? new Date(m.createdAt) : new Date()),
+      }));
+      if (older.length === 0) return 0;
+      setMessages(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        const dedup = older.filter(o => !seen.has(o.id));
+        return [...dedup, ...prev];
+      });
+      return older.length;
+    } catch {
+      return 0;
+    }
+  }, [messages]);
+
   return {
     messages,
     sendMessage,
@@ -964,6 +998,7 @@ export function useChatroomWebSocket(
     silenceUser,
     giveVoice,
     sendRawMessage,
+    loadOlderMessages,
     typingUsers,
     typingUserInfo,
     onlineUsers,

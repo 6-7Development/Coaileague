@@ -72,6 +72,24 @@ export function useChatRoomSummaries(): ChatRoomSummary[] {
   return summaries;
 }
 
+/**
+ * Live typing indicator for the room list.  Returns the display name of the
+ * person currently typing in the given room, or null if no one is. The
+ * underlying chatManager subscription auto-expires after 4s of silence.
+ */
+export function useRoomTypingUser(roomId: string): string | null {
+  const [name, setName] = useState<string | null>(() => chatManager.getTypingUser(roomId));
+
+  useEffect(() => {
+    setName(chatManager.getTypingUser(roomId));
+    return chatManager.onTyping((changedRoomId, userName) => {
+      if (changedRoomId === roomId) setName(userName);
+    });
+  }, [roomId]);
+
+  return name;
+}
+
 export function useActiveRoom(roomId: string | null, onMessage?: (msg: IncomingChatMessage) => void) {
   const handlerRef = useRef(onMessage);
   handlerRef.current = onMessage;

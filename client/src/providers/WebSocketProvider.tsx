@@ -49,6 +49,18 @@ class WebSocketBusImpl implements WebSocketBus {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
 
+    // D5 — TTI instrumentation. Records connect → ws_authenticated → first
+    // conversation_history latency on window.__chatdockTTI for any external
+    // observer (Playwright, Sentry RUM, custom CI gate).  No deps; the
+    // marks live on the window so a CI scrape can promote a slow build into
+    // a hard failure.
+    const tti = (typeof window !== 'undefined' && window.performance?.now)
+      ? { connectStart: performance.now(), authedAt: 0 as number, firstHistoryAt: 0 as number }
+      : null;
+    if (tti && typeof window !== 'undefined') {
+      (window as any).__chatdockTTI = tti;
+    }
+
     try {
       const ws = new WebSocket(wsUrl);
       this.socket = ws;
@@ -57,6 +69,10 @@ class WebSocketBusImpl implements WebSocketBus {
         this.isConnectingFlag = false;
         this.reconnectAttempts = 0;
         console.warn('[WS-Bus] Connected (single socket)');
+        if (tti) {
+          (tti as any).openedAt = performance.now();
+          (tti as any).openMs = Math.round((tti as any).openedAt - tti.connectStart);
+        }
 
         // Flush queued messages and signal all subscribers that WS is ready.
         // Called after server confirms auth (or after fallback timeout).
@@ -97,6 +113,10 @@ class WebSocketBusImpl implements WebSocketBus {
                 if (d.type === 'ws_authenticated' || d.type === 'ws_auth_failed') {
                   ws.removeEventListener('message', onAuthMsg);
                   if (authFallback) { clearTimeout(authFallback); authFallback = null; }
+                  if (tti) {
+                    tti.authedAt = performance.now();
+                    (tti as any).authMs = Math.round(tti.authedAt - tti.connectStart);
+                  }
                   flushAndSignal();
                 }
               } catch {}
@@ -111,6 +131,20 @@ class WebSocketBusImpl implements WebSocketBus {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // D5 — first conversation_history is the "messages visible" mark.
+          // Capture it once; subsequent histories don't overwrite.
+          if (tti && tti.firstHistoryAt === 0 && data.type === 'conversation_history') {
+            tti.firstHistoryAt = performance.now();
+            (tti as any).firstHistoryMs = Math.round(tti.firstHistoryAt - tti.connectStart);
+            // Surface a single console.info so a CI grep can pick this up.
+            try {
+              console.info('[chatdock-tti]', JSON.stringify({
+                openMs: (tti as any).openMs,
+                authMs: (tti as any).authMs,
+                firstHistoryMs: (tti as any).firstHistoryMs,
+              }));
+            } catch { /* ignore */ }
+          }
           if (data.type === 'notification_delivery' && data.notificationId) {
             fetch(`/api/notifications/ack/${data.notificationId}`, {
               method: 'POST',

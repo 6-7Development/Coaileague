@@ -1125,7 +1125,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
   async closeSession(sessionId: string, rating?: number): Promise<void> {
     const state = rating ? HelpAIState.RATING : HelpAIState.DISCONNECTED;
     await this.updateSessionState(sessionId, state);
-    
+
     if (rating) {
       await db.update(helpaiSessions).set({
         satisfactionScore: rating,
@@ -1133,9 +1133,9 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
         wasResolved: true,
         resolvedAt: new Date()
       }).where(eq(helpaiSessions.id, sessionId));
-      
+
       await this.logAction(sessionId, 'rating', `User rated session: ${rating}`, { rating });
-      
+
       // Final transition to disconnected
       await this.updateSessionState(sessionId, HelpAIState.DISCONNECTED);
     } else {
@@ -1145,6 +1145,42 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     }
 
     await this.logAction(sessionId, 'close', 'Session closed');
+
+    // Cross-bot bridge: publish what HelpAI just learned to Trinity's shared
+    // memory so the next time the same user talks to Trinity (or Trinity
+    // observes them in any room), Trinity already knows what HelpAI did.
+    // Awaited but non-fatal: if memory publishing fails, the session still
+    // closes cleanly.
+    try {
+      const [session] = await db
+        .select()
+        .from(helpaiSessions)
+        .where(eq(helpaiSessions.id, sessionId))
+        .limit(1);
+      if (session) {
+        const { trinityMemoryService } = await import('../ai-brain/trinityMemoryService');
+        const wasResolved = !!session.wasResolved || (rating !== undefined && rating >= 4);
+        await trinityMemoryService.shareInsight({
+          sourceAgent: 'helpai',
+          insightType: wasResolved ? 'resolution' : 'pattern',
+          workspaceScope: session.workspaceId || null,
+          title: wasResolved
+            ? `HelpAI resolved a session for user ${session.userId}`
+            : `HelpAI session closed without resolution for user ${session.userId}`,
+          content: [
+            `Issue category: ${session.detectedIssueCategory || 'unspecified'}`,
+            `Sentiment: ${session.detectedSentiment || 'unknown'}`,
+            session.escalationReason ? `Escalation reason: ${session.escalationReason}` : '',
+            session.aiSummary ? `Summary: ${session.aiSummary}` : '',
+            rating !== undefined ? `User satisfaction rating: ${rating}/5` : '',
+          ].filter(Boolean).join('\n'),
+          confidence: rating !== undefined ? Math.min(1, rating / 5) : 0.55,
+          applicableScenarios: [session.detectedIssueCategory || 'support'].filter(Boolean) as string[],
+        });
+      }
+    } catch (insightErr: any) {
+      log.warn('[HelpAI] shareInsight to Trinity failed (non-fatal):', insightErr?.message);
+    }
   }
 
   /**

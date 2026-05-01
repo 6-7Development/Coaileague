@@ -43,6 +43,12 @@ class ChatConnectionManager {
   private lastReconcileAt = 0;
   private recentMessageIds: Set<string> = new Set();
   private recentIdCleanupTimer: ReturnType<typeof setInterval> | null = null;
+  // Per-room "someone is typing" tracking, used by the room list to render
+  // "Maya is typing…" inline. We only retain entries for the last 4 seconds —
+  // typing pings are sent on each keystroke so liveness comes for free.
+  private typingByRoom: Map<string, { userName: string; expiresAt: number }> = new Map();
+  private typingHandlers: Set<(roomId: string, userName: string | null) => void> = new Set();
+  private typingExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
   get totalUnread(): number {
     let total = 0;
@@ -230,6 +236,27 @@ class ChatConnectionManager {
   }
 
   private handleIncomingMessage(data: any) {
+    // Room-list typing indicator (B5): user_typing fires from the WS server
+    // every keystroke. Track per-room with a 4s expiry so the indicator
+    // disappears naturally when typing pauses.
+    if (data.type === 'user_typing') {
+      const roomId = data.conversationId || data.roomId;
+      if (!roomId || data.userId === this.userId) return;
+      if (data.isTyping && data.typingUserName) {
+        this.typingByRoom.set(roomId, {
+          userName: data.typingUserName,
+          expiresAt: Date.now() + 4000,
+        });
+        this.startTypingExpirySweep();
+        this.notifyTyping(roomId, data.typingUserName);
+      } else {
+        if (this.typingByRoom.delete(roomId)) {
+          this.notifyTyping(roomId, null);
+        }
+      }
+      return;
+    }
+
     if (data.type === "chat_message" || data.type === "new_message") {
       const conversationId = data.conversationId || data.roomId;
       if (!conversationId) return;
@@ -460,6 +487,49 @@ class ChatConnectionManager {
   sendMessage(roomId: string, content: string) {
   }
 
+  // ── Room-list typing indicator (B5) ────────────────────────────────────
+  onTyping(handler: (roomId: string, userName: string | null) => void): () => void {
+    this.typingHandlers.add(handler);
+    return () => this.typingHandlers.delete(handler);
+  }
+
+  getTypingUser(roomId: string): string | null {
+    const entry = this.typingByRoom.get(roomId);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+      this.typingByRoom.delete(roomId);
+      return null;
+    }
+    return entry.userName;
+  }
+
+  private notifyTyping(roomId: string, userName: string | null) {
+    this.typingHandlers.forEach(h => {
+      try { h(roomId, userName); } catch { /* swallow */ }
+    });
+  }
+
+  private startTypingExpirySweep() {
+    if (this.typingExpiryTimer) return;
+    this.typingExpiryTimer = setInterval(() => {
+      const now = Date.now();
+      let changed = false;
+      for (const [roomId, entry] of this.typingByRoom) {
+        if (entry.expiresAt < now) {
+          this.typingByRoom.delete(roomId);
+          this.notifyTyping(roomId, null);
+          changed = true;
+        }
+      }
+      if (this.typingByRoom.size === 0 && this.typingExpiryTimer) {
+        clearInterval(this.typingExpiryTimer);
+        this.typingExpiryTimer = null;
+      }
+      // changed used only to suppress lint about unused var
+      void changed;
+    }, 1000);
+  }
+
   disconnect() {
     this.initialized = false;
     this.stopReconciliation();
@@ -471,6 +541,11 @@ class ChatConnectionManager {
     this.roomUpdateHandlers.clear();
     this.unreadHandlers.clear();
     this.recentMessageIds.clear();
+    this.typingByRoom.clear();
+    if (this.typingExpiryTimer) {
+      clearInterval(this.typingExpiryTimer);
+      this.typingExpiryTimer = null;
+    }
   }
 }
 
