@@ -1,3 +1,4 @@
+import React from "react";
 /**
  * CoAIleague Animated Splash / Loading Screen
  *
@@ -45,6 +46,14 @@ const LETTER_DELAYS: number[] = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 
 
 export function LoadingScreen() {
   const [msgIdx, setMsgIdx] = useState(0);
+  // loadingEscape
+  // Safety escape: if LoadingScreen is somehow stuck for > 8s, force app ready
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      window.dispatchEvent(new Event("coaileague:force-ready"));
+    }, 8000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const iv = setInterval(() => setMsgIdx((p) => (p + 1) % LOADING_MESSAGES.length), 900);
