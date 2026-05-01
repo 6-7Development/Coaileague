@@ -374,7 +374,6 @@ export const DOMAIN_CONTRACT = {
     services: [
       'server/services/breaksService.ts',
       'server/services/gpsGeofenceService.ts',
-      'server/services/timeEntryDisputeService.ts',
       'server/services/timeEntryService.ts',
     ],
   },
@@ -901,7 +900,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/automation/shiftMonitoringService.ts',
       'server/services/automation/trinityAutomationToggle.ts',
       'server/services/automationEventsService.ts',
-      'server/services/automationMetrics.ts',
       'server/services/automationRollbackService.ts',
       'server/services/autonomy/helpers.ts',
       'server/services/autonomy/migrateExistingRates.ts',
@@ -1434,7 +1432,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/timesheetReportService.ts',
       'server/services/tokenCleanupService.ts',
       'server/services/training/scenarioSeeder.ts',
-      'server/services/trainingRateService.ts',
       'server/services/uacp/agentIdentityService.ts',
       'server/services/uacp/policyDecisionPoint.ts',
       'server/services/uacp/uacpOrchestrationActions.ts',

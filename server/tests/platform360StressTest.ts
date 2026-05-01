@@ -859,7 +859,6 @@ async function phase15_comprehensive_service_coverage() {
     { name: 'Timesheet Invoice', path: '../services/timesheetInvoiceService.ts' },
     { name: 'Shift Approval', path: '../services/shiftApprovalService.ts' },
     { name: 'Document Signing', path: '../services/documentSigningService.ts' },
-    { name: 'Time Entry Dispute', path: '../services/timeEntryDisputeService.ts' },
     { name: 'Trinity Outreach', path: '../services/trinityOutreachService.ts' },
     { name: 'Abuse Detection', path: '../services/abuseDetection.ts' },
     { name: 'Employee Behavior Scoring', path: '../services/employeeBehaviorScoring.ts' },

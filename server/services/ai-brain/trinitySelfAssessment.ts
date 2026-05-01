@@ -299,18 +299,6 @@ const KNOWN_GAPS: GapAnalysis[] = [
     resolutionNote: 'shiftRemindersService.ts wired: emits shift_reminders_sent event on platformEventBus with workspace, shift count, and reminder batch metadata.',
   },
   {
-    category: 'execution',
-    gapName: 'Training Rate Disconnected',
-    severity: 'low',
-    description: 'trainingRateService.ts calculates training rates without AI optimization',
-    impactOnAutonomy: 'Cannot suggest optimal training rates based on market data and performance',
-    recommendedFix: 'Integrate with Trinity for data-driven training rate recommendations',
-    estimatedEffort: 'small',
-    status: 'RESOLVED',
-    resolvedAt: '2026-03-30',
-    resolutionNote: 'trainingRateService.ts wired: emits training_rate_updated event on platformEventBus when training rate calculations are applied.',
-  },
-  {
     category: 'safety',
     gapName: 'WebSocket Cleanup Disconnected',
     severity: 'low',

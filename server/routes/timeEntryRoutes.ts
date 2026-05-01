@@ -19,6 +19,7 @@ import { eq, and, desc, gte, lte, inArray, sql, isNull, or, lt } from "drizzle-o
 import { z } from "zod";
 import { notifyTimesheetRejected } from "../services/automation/notificationEventCoverage";
 import { platformEventBus } from "../services/platformEventBus";
+import { GeoComplianceService } from "../services/geoCompliance";
 import { typedPoolExec } from '../lib/typedSql';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
@@ -787,7 +788,6 @@ const router = Router();
 
       // GEO-COMPLIANCE: Detect IP anomaly (different IP between clock-in and clock-out)
       if (timeEntry.clockInIpAddress && ipAddress) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await GeoComplianceService.detectIPAnomaly(
           req.params.id,
           workspace.id,

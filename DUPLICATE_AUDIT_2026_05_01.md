@@ -225,6 +225,35 @@ email/ (dir)
 - 🔁 **Decision:** keep `notificationRuleEngine` separate from any throttle logic; throttle service was dead anyway.
 - ⏳ Move `VALID_NOTIFICATION_TYPES` to `shared/schema` (deferred — needs DB enum cross-check).
 
+**Phase 3 — dead-service sweep (LANDED in third commit)**
+
+Symbol-level verification: each candidate had to have ZERO references to its
+exported symbols (functions, classes, instances, types) outside its own file
+AND in registries (DOMAIN_CONTRACT, sourceOfTruthRegistry, stress tests).
+
+- ✅ Delete `server/services/expansionSeed.ts` — 401 LOC, zero callers.
+- ✅ Delete `server/services/redisPubSubAdapter.ts` — 117 LOC, zero callers.
+- ✅ Delete `server/services/sentimentAnalysis.ts` — 344 LOC. Local var name collision in websocket.ts — different concept.
+- ✅ Delete `server/services/timeEntryDisputeService.ts` — 101 LOC, zero callers.
+- ✅ Delete `server/services/trainingRateService.ts` — 121 LOC, only stale resolution-note in trinitySelfAssessment.
+- ✅ Delete `server/services/trinityServiceConnector.ts` — 376 LOC, zero callers.
+- ✅ Delete `server/services/fileStorageIsolationService.ts` — 248 LOC, zero callers.
+- ✅ Delete `server/services/communicationFallbackService.ts` — 334 LOC, zero callers.
+- ✅ Delete `server/services/automationMetrics.ts` — 451 LOC. Local var name collision in monitoringService.ts — different concept.
+
+**Bug fix:**
+- 🐛 `server/routes/timeEntryRoutes.ts` was calling `GeoComplianceService.detectIPAnomaly(...)` without an import (masked by `@ts-expect-error`). Would have crashed at runtime. Added the import; removed the now-unnecessary suppression directive. `geoCompliance.ts` (332 LOC) preserved — it's a real service, just had a missing call site import.
+
+**Cleanup:**
+- DOMAIN_CONTRACT: removed 3 deleted-service entries.
+- platform360StressTest: removed 1 deleted-service entry.
+- trinitySelfAssessment: removed stale `trainingRateService` resolution note.
+
+**Decisions documented (verified active, NOT deleted):**
+- `advancedSchedulingService.ts` (1,011 LOC) — canonical per `sourceOfTruthRegistry`. 4+ callers via `aiBrainMasterOrchestrator` and `advancedSchedulingRoutes`.
+- `scheduleMigration.ts` (225 LOC) — exports `extractedShiftSchema` for Zod validation in `scheduleosRoutes.ts`. Active.
+- `emailAutomation.ts` (299 LOC) — billing-aware bulk/marketing email (different concern from transactional `emailService`). Active callers via cron + trial manager + collections.
+
 **Phase 3 — route consolidation**
 - Chat routes 8 → 2.
 - AI Brain routes 8 → 3.
@@ -246,10 +275,11 @@ email/ (dir)
 
 ## METRICS
 
-- Services in `server/services/` — **311** → **308** after both passes (3 deleted)
+- Services in `server/services/` — **311** → **299** after three passes (12 deleted)
 - Routes in `server/routes/` — **329** (no route file deletions yet)
-- Files removed across phases — **3** (`aiSchedulingTriggerService.ts`, `trinityOrchestrationBridge.ts`, `notificationThrottleService.ts`)
-- Total LOC of pure dead code removed — **~470 LOC**
+- Files removed across phases — **12** dead/stub services
+- Total LOC of pure dead code removed — **~3,000 LOC**
+- Bugs fixed — **1** (missing GeoComplianceService import that would crash at runtime)
 
 ### Per-phase totals
 
@@ -257,3 +287,4 @@ email/ (dir)
 |---|---|---|
 | 1 | -1 file, +3 mod | -118 stub, +38 wiring |
 | 2 | -2 files, +2 mod | -328 dead, -47 dead helpers |
+| 3 | -9 files, +4 mod | -2,493 dead, -1 LOC bug fix |

@@ -45,7 +45,27 @@ Last green: 438cca2  feat(simulation): hard-persist ACME simulation + branded PD
 - ✅ Deleted `server/services/scheduling/trinityOrchestrationBridge.ts` (45-LOC shim, zero callers).
 - ✅ Deleted `server/services/notificationThrottleService.ts` (283-LOC service, zero callers — full dead code).
 - ✅ Dropped 47 LOC of dead helper methods from `entityCreationNotifier.ts`.
-- ⏳ Move `VALID_NOTIFICATION_TYPES` to `shared/schema` — deferred (needs DB enum cross-check).
+
+**Phase 3 landed (dead-service sweep — symbol-level verified):**
+- ✅ Deleted **9 zero-caller services** (~2,493 LOC):
+  - expansionSeed.ts, redisPubSubAdapter.ts, sentimentAnalysis.ts,
+    timeEntryDisputeService.ts, trainingRateService.ts,
+    trinityServiceConnector.ts, fileStorageIsolationService.ts,
+    communicationFallbackService.ts, automationMetrics.ts.
+- 🐛 Fixed runtime crash bug: `timeEntryRoutes.ts` was calling
+  `GeoComplianceService.detectIPAnomaly(...)` without importing it (the
+  `@ts-expect-error` directive was masking the missing import). Added the
+  import; geoCompliance.ts preserved as a real service.
+- Cleaned: DOMAIN_CONTRACT (3 entries), platform360StressTest (1 entry),
+  trinitySelfAssessment (1 stale resolution-note).
+
+**Cumulative across 3 phases:** 12 service files deleted, ~3,000 LOC of
+dead/stub code removed, 1 latent runtime bug fixed.
+
+**Phase 4 next (deferred — needs more verification):**
+- Move `VALID_NOTIFICATION_TYPES` to `shared/schema` (needs DB enum cross-check).
+- Sweep route files for zero-mount candidates.
+- Audit duplicate Zod schemas in `automation-schemas.ts` vs inline route schemas.
 
 **Phase 3 (route consolidation — see audit for file lists):**
 - Chat routes 8 → 2.
