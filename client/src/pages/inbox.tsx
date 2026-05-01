@@ -449,7 +449,7 @@ export default function InboxPage() {
           <div className="flex-1" />
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Ai Summary"
             className="h-10 w-10"
             onClick={handleGenerateSummary}
             disabled={generatingSummary}
@@ -593,7 +593,7 @@ export default function InboxPage() {
           <div className="flex items-center gap-2 p-3">
             <Sheet open={folderSheetOpen} onOpenChange={setFolderSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" data-testid="button-folders">
+                <Button variant="ghost" size="icon" aria-label="Folders" className="h-10 w-10 shrink-0" data-testid="button-folders">
                   <FolderOpen className="h-5 w-5" />
                 </Button>
               </SheetTrigger>

@@ -484,7 +484,7 @@ export default function Help() {
                         className="flex-1"
                       />
                       <Button
-                        size="icon"
+                        size="icon" aria-label="Send Message"
                         onClick={sendMessage}
                         disabled={isSending || !inputMessage.trim() || chatState === "queued"}
                         data-testid="button-send-message"

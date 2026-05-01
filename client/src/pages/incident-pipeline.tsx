@@ -318,7 +318,7 @@ function DetailView({
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+        <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack} data-testid="button-back">
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">

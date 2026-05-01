@@ -316,7 +316,7 @@ export default function InterviewChatroomPage() {
                 />
                 <Button
                   type="submit"
-                  size="icon"
+                  size="icon" aria-label="Send Message"
                   data-testid="button-send-message"
                   disabled={sending || !messageText.trim()}
                 >

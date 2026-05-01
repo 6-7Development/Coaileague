@@ -1048,7 +1048,7 @@ function ImageLightbox({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
-            size="icon"
+            size="icon" aria-label="Lightbox Download"
             variant="ghost"
             className="text-white"
             onClick={handleDownload}
@@ -1058,7 +1058,7 @@ function ImageLightbox({
             <Download className="h-5 w-5" />
           </Button>
           <Button
-            size="icon"
+            size="icon" aria-label="Lightbox Close"
             variant="ghost"
             className="text-white"
             onClick={onClose}

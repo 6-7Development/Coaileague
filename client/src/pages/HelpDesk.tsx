@@ -2568,7 +2568,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <p className="text-xs font-medium truncate">{pendingAttachment.file.name}</p>
  <p className="text-[10px] text-muted-foreground">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
  </div>
- <Button size="icon" variant="ghost" onClick={clearPendingAttachment} data-testid="button-clear-attachment">
+ <Button size="icon" aria-label="Clear Attachment" variant="ghost" onClick={clearPendingAttachment} data-testid="button-clear-attachment">
  <XCircle className="h-4 w-4" />
  </Button>
  </div>

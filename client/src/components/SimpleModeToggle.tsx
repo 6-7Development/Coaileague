@@ -20,7 +20,7 @@ export function SimpleModeToggle({ variant = 'default', className }: SimpleModeT
     return (
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Simple Mode Toggle"
         onClick={toggleSimpleMode}
         disabled={isLoading}
         className={cn(

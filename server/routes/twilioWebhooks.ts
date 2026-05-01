@@ -257,7 +257,7 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
                 "No encontramos tu cuenta. No se rechazó ninguna oferta de turno."
               ),
               type: 'shift_offer_reply',
-            }).catch(() => null);
+            }).catch((e: unknown) => log.warn('[twilioWebhooks] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
             return;
           }
 
@@ -290,7 +290,7 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
               ),
               workspaceId: wsId,
               type: 'shift_offer_reply',
-            }).catch(() => null);
+            }).catch((e: unknown) => log.warn('[twilioWebhooks] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
             return;
           }
 
@@ -316,7 +316,7 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
             ),
             workspaceId: wsId,
             type: 'shift_offer_reply',
-          }).catch(() => null);
+          }).catch((e: unknown) => log.warn('[twilioWebhooks] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
           log.info(`[TwilioSMS] Employee ${matchedEmpDecline.id} DECLINED offer ${offerNotif.relatedEntityId} via SMS`);
         } catch (err: unknown) {

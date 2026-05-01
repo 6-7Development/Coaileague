@@ -525,7 +525,7 @@ export default function ContractSigningPortal({ token }: { token: string }) {
             onClick={() => setShowContent(!showContent)}
           >
             <CardTitle className="text-base">Document Content</CardTitle>
-            <Button variant="ghost" size="icon" data-testid="button-toggle-content">
+            <Button variant="ghost" size="icon" aria-label="Toggle Content" data-testid="button-toggle-content">
               {showContent ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
           </CardHeader>

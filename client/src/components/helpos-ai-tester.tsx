@@ -115,7 +115,7 @@ export function CoAIleagueAiTester() {
       <UniversalModal open={open} onOpenChange={setOpen}>
         <UniversalModalTrigger asChild>
           <Button
-            size="icon"
+            size="icon" aria-label="Test Helpos Ai"
             className="fixed bottom-20 right-6 z-50 h-14 w-14 rounded-full shadow-sm"
             style={{
               background: "linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)",

@@ -337,7 +337,7 @@ export default function RootAdminDashboard() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Notifications Desktop"
           className="relative"
           data-testid="button-notifications-desktop"
         >

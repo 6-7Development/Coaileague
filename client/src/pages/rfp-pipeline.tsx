@@ -297,7 +297,7 @@ function DealDetailPanel({
       <div className="fixed inset-y-0 right-0 w-full max-w-md bg-background border-l shadow-lg z-[2001] flex flex-col" data-testid="panel-deal-detail-loading">
         <div className="flex items-center justify-between gap-2 p-4 border-b">
           <div className="h-6 w-40 bg-muted animate-pulse rounded-md" />
-          <Button size="icon" variant="ghost" onClick={onClose} data-testid="button-close-detail-loading"><X /></Button>
+          <Button size="icon" aria-label="Close Detail Loading" variant="ghost" onClick={onClose} data-testid="button-close-detail-loading"><X /></Button>
         </div>
         <div className="p-4 space-y-3">
           <div className="h-4 w-32 bg-muted animate-pulse rounded-md" />
@@ -321,7 +321,7 @@ function DealDetailPanel({
             {detail.prospectCompany}
           </h2>
         </div>
-        <Button size="icon" variant="ghost" onClick={onClose} data-testid="button-close-detail">
+        <Button size="icon" aria-label="Close Detail" variant="ghost" onClick={onClose} data-testid="button-close-detail">
           <X />
         </Button>
       </div>

@@ -677,7 +677,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
       <div className="bg-gradient-to-r from-primary to-primary/85 px-3 py-2.5 shadow-md flex-shrink-0">
         {selectionMode ? (
           <div className="flex items-center gap-1 text-primary-foreground">
-            <Button size="icon" variant="ghost" className="text-primary-foreground shrink-0" onClick={handleClearSelection} data-testid="button-cancel-selection">
+            <Button size="icon" aria-label="Cancel Selection" variant="ghost" className="text-primary-foreground shrink-0" onClick={handleClearSelection} data-testid="button-cancel-selection">
               <X className="w-5 h-5" />
             </Button>
             <span className="font-bold text-sm whitespace-nowrap shrink-0 px-1">{selectedIds.size} Selected</span>
@@ -719,7 +719,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
                 </Button>
               )}
               <Button
-                size="icon"
+                size="icon" aria-label="Sync Notifications"
                 variant="ghost"
                 className="text-primary-foreground"
                 onClick={handleRefresh}
@@ -731,7 +731,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
               </Button>
               {filteredNotifications.length > 0 && (
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Edit Mode"
                   variant="ghost"
                   className="text-primary-foreground"
                   onClick={handleEnterSelectionMode}
@@ -743,7 +743,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
               )}
               {allNotifications.length > 0 && (
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Clear All"
                   variant="ghost"
                   className="text-primary-foreground"
                   onClick={handleClearAll}

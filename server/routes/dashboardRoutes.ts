@@ -88,7 +88,7 @@ router.get("/summary", requireAuth, async (req: Request, res: Response) => {
              COUNT(*) AS total
       FROM employee_certifications
       WHERE workspace_id = ${workspaceId}
-    `).catch(() => null);
+    `).catch((e: unknown) => log.warn('[dashboardRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     const expired = Number(complianceResp?.rows?.[0]?.expired || 0);
     const expiringSoon = Number(complianceResp?.rows?.[0]?.expiring_soon || 0);

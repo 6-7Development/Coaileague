@@ -229,7 +229,7 @@ export default function DnsSetupGuide() {
                 https://app.coaileague.com{INBOUND_ENDPOINT}
               </code>
               <Button
-                size="icon"
+                size="icon" aria-label="Copy Webhook Url"
                 variant="ghost"
                 data-testid="button-copy-webhook-url"
                 onClick={() => copyValue(`https://app.coaileague.com${INBOUND_ENDPOINT}`)}

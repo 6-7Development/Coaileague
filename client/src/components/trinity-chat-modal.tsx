@@ -1429,7 +1429,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                   {mobileMode === 'peek' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Close Trinity Modal"
                   variant="ghost"
                   onClick={onClose}
                   data-testid="button-close-trinity-modal"
@@ -1636,7 +1636,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                   <Button
                     onClick={handleSend}
                     disabled={(!inputValue.trim() && pendingImages.length === 0 && !pendingDocument) || chatMutation.isPending}
-                    size="icon"
+                    size="icon" aria-label="Send Trinity Message"
                     className="bg-primary hover:bg-primary/90 rounded-md shrink-0"
                     data-testid="button-send-trinity-message"
                   >
@@ -1727,7 +1727,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                 <Minimize2 className="h-4 w-4" />
               </Button>
               <Button
-                size="icon"
+                size="icon" aria-label="Close Trinity Modal"
                 variant="ghost"
                 onClick={onClose}
                 title="Close"
@@ -1943,7 +1943,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                   <Button
                     onClick={handleSend}
                     disabled={(!inputValue.trim() && pendingImages.length === 0) || chatMutation.isPending}
-                    size="icon"
+                    size="icon" aria-label="Send Trinity Message"
                     className="bg-primary hover:bg-primary/90 rounded-md"
                     data-testid="button-send-trinity-message"
                   >

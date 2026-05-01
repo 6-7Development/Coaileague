@@ -274,7 +274,7 @@ export function HeaderChatButton() {
     <>
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Header Chat"
         onClick={handleOpenChat}
         className="h-7 w-7 relative hover-elevate active-elevate-2"
         data-testid="button-header-chat"
@@ -309,7 +309,7 @@ export function HeaderChatButton() {
                 </div>
               </div>
               <Button
-                size="icon"
+                size="icon" aria-label="Close Header Chat"
                 variant="ghost"
                 className="h-6 w-6 flex-shrink-0"
                 onClick={handleCloseChat}
@@ -396,7 +396,7 @@ export function HeaderChatButton() {
                 <Button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isLoading || session.status === 'resolved'}
-                  size="icon"
+                  size="icon" aria-label="Send Header Chat"
                   className="h-9 w-9"
                   data-testid="button-send-header-chat"
                 >

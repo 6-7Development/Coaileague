@@ -872,7 +872,7 @@ router.post('/workspace-invite/register', async (req, res) => {
             inviteId: invite.id,
             method: 'workspace_invite_new_user',
           },
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       } catch (_) { /* non-blocking */ }
       try {
         const { auditLogs } = await import('@shared/schema');
@@ -902,10 +902,10 @@ router.post('/workspace-invite/register', async (req, res) => {
               title: 'New Team Member Joined',
               message: `${resolvedFirstName} ${resolvedLastName} accepted their invitation and joined as ${role}. Complete their onboarding in the Employee Portal.`,
             },
-          }).catch(() => null);
+          }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         }
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     res.json({
       success: true,
@@ -1039,10 +1039,10 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
               title: 'Team Member Joined',
               message: `${joinedFirst} ${joinedLast} accepted their invitation and joined as ${role}.`,
             },
-          }).catch(() => null);
+          }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         }
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     res.json({
       success: true,

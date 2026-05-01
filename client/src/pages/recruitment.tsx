@@ -1779,7 +1779,7 @@ export default function RecruitmentPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            size="icon"
+            size="icon" aria-label="Refresh"
             variant="outline"
             onClick={refreshAll}
             data-testid="button-refresh"

@@ -33,7 +33,7 @@ export default function DocumentFormPage() {
       <header className="sticky top-0 z-[1020] flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-border bg-background">
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Back To Templates"
           onClick={handleCancel}
           data-testid="button-back-to-templates"
         >

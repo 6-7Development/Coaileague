@@ -730,7 +730,7 @@ export default function DocumentLibrary() {
         </Button>
       </UniversalModalTrigger>
       <UniversalModalTrigger asChild>
-        <Button size="icon" data-testid="button-upload-mobile" className="sm:hidden">
+        <Button size="icon" aria-label="Upload Mobile" data-testid="button-upload-mobile" className="sm:hidden">
           <Upload className="w-4 h-4" />
         </Button>
       </UniversalModalTrigger>

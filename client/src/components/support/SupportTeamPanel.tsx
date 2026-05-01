@@ -308,7 +308,7 @@ function BotQueryDialog({ bot, open, onClose }: { bot: SystemBot | null; open: b
             disabled={queryMut.isPending}
             data-testid="input-bot-question"
           />
-          <Button size="icon" onClick={handleSend} disabled={!question.trim() || queryMut.isPending} data-testid="button-send-question">
+          <Button size="icon" aria-label="Send Question" onClick={handleSend} disabled={!question.trim() || queryMut.isPending} data-testid="button-send-question">
             {queryMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

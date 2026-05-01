@@ -267,7 +267,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
                   {cameraSupported && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Switch Camera"
                       onClick={switchCamera}
                       data-testid="button-switch-camera"
                       title="Switch camera"
@@ -298,7 +298,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
                   
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Cancel Camera"
                     onClick={handleClose}
                     data-testid="button-cancel-camera"
                   >

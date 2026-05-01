@@ -284,7 +284,7 @@ function ApplicantDetail({
   return (
     <div className="space-y-5" data-testid={`detail-applicant-${applicant.id}`}>
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-applicant">
+        <Button variant="ghost" size="icon" aria-label="Back Applicant" onClick={onBack} data-testid="button-back-applicant">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>

@@ -812,7 +812,7 @@ rmsRouter.post("/upload", requireAuth as any, ensureWorkspaceAccess as any, asyn
       return res.status(507).json({ error: `Media storage quota exceeded. Used: ${Math.round(quotaCheck.usedBytes / 1048576)}MB of ${Math.round(quotaCheck.limitBytes / 1048576)}MB.`, code: 'STORAGE_QUOTA_EXCEEDED' });
     }
     await uploadFileToObjectStorage({ objectPath, buffer, metadata: { contentType } });
-    recordStorageUsage(workspaceId, 'media', buffer.length).catch(() => null);
+    recordStorageUsage(workspaceId, 'media', buffer.length).catch((e: unknown) => log.warn('[rmsRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     res.json({ url: objectPath, id, fileName: safeName });
   } catch (e: unknown) {
     log.error("[RMS] /upload error:", (e instanceof Error ? e.message : String(e)));
@@ -950,7 +950,7 @@ rmsRouter.post("/upload-photo", requireAuth as any, ensureWorkspaceAccess as any
         buffer,
         metadata: { contentType },
       });
-      recordStorageUsage(workspaceId, 'media', buffer.length).catch(() => null);
+      recordStorageUsage(workspaceId, 'media', buffer.length).catch((e: unknown) => log.warn('[rmsRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       res.json({ url: objectPath, fileName: safeName });
     } catch (uploadErr: unknown) {
       log.error('[RMS] Photo upload failed:', (uploadErr instanceof Error ? uploadErr.message : String(uploadErr)));

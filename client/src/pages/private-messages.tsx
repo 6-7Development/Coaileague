@@ -592,7 +592,7 @@ export default function PrivateMessages() {
                   </div>
                 </div>
               </div>
-              <Button size="icon" variant="ghost" data-testid="button-conversation-options">
+              <Button size="icon" aria-label="Conversation Options" variant="ghost" data-testid="button-conversation-options">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </div>
@@ -690,7 +690,7 @@ export default function PrivateMessages() {
                     {(attachedFile.size / 1024).toFixed(1)} KB
                   </span>
                   <Button
-                    size="icon"
+                    size="icon" aria-label="Remove Attachment"
                     variant="ghost"
                     onClick={handleRemoveAttachment}
                     className="h-6 w-6"

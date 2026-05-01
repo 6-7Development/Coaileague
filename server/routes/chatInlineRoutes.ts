@@ -157,8 +157,8 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
         if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
           return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
         }
-        const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-        const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+        const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+        const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         return {
           ...msg,
           role: senderRole || 'guest',
@@ -190,8 +190,8 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
       if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
         return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
       }
-      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       return {
         ...msg,
         role: senderRole || 'guest',
@@ -338,8 +338,8 @@ router.get('/main-room/messages', async (req: AuthenticatedRequest, res) => {
       if (!msg.senderId || msg.senderId === 'system') {
         return { ...msg, role: 'system', userType: 'system' };
       }
-      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       return {
         ...msg,
         role: senderRole || 'guest',

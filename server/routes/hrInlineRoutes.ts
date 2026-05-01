@@ -697,7 +697,7 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
             licenseTypes,
             inviterUserId: userId,
           },
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[hrInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       } catch (_) { /* non-blocking */ }
       try {
         const { auditLogs } = await import('@shared/schema');
@@ -717,7 +717,7 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
           createdAt: new Date(),
         });
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[hrInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     // Build invite link from request so it works in every environment
     const appBase = process.env.APP_URL ||

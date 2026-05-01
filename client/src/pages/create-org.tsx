@@ -740,7 +740,7 @@ export default function CreateOrg() {
                           <Button
                             type="button"
                             variant="outline"
-                            size="icon"
+                            size="icon" aria-label="Validate License"
                             onClick={handleValidateLicense}
                             disabled={!stateLicenseNumber || !stateLicenseState || validateLicenseMutation.isPending}
                             data-testid="button-validate-license"

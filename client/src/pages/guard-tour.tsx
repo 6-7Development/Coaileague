@@ -663,7 +663,7 @@ function TourDetail({ tour, onBack }: { tour: any; onBack: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-to-tours">
+        <Button variant="ghost" size="icon" aria-label="Back To Tours" onClick={onBack} data-testid="button-back-to-tours">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1 min-w-0">

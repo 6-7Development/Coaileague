@@ -80,7 +80,7 @@ export default function SupportConsoleTicketsPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Back Console"
             data-testid="button-back-console"
             onClick={() => setLocation("/admin/support-console")}
           >

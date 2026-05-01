@@ -562,7 +562,7 @@ export function UniversalChatLayout({
           />
           <Button
             type="submit"
-            size="icon"
+            size="icon" aria-label="Send"
             disabled={!inputMessage.trim()}
             data-testid="button-send"
             className="flex-shrink-0 rounded-full bg-primary text-primary-foreground"

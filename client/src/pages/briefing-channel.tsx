@@ -284,7 +284,7 @@ export default function BriefingChannelPage() {
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Briefing Refresh"
             className="h-8 w-8"
             onClick={handleRefresh}
             disabled={isFetching}

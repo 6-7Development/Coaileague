@@ -181,7 +181,7 @@ export default function EmployeePortal() {
   const initials = `${currentEmployee.firstName?.[0] || ''}${currentEmployee.lastName?.[0] || ''}`.toUpperCase();
 
   const headerAction = (
-    <Button variant="outline" size="icon" data-testid="button-notifications">
+    <Button variant="outline" size="icon" aria-label="Notifications" data-testid="button-notifications">
       <Bell className="h-4 w-4" />
     </Button>
   );

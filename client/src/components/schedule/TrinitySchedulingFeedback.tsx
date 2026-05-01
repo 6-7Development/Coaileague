@@ -59,7 +59,7 @@ export function TrinityStatusBar({ session, onAbort, onReview, onDismiss }: Trin
             )}
             {onDismiss && (
               <Button
-                size="icon"
+                size="icon" aria-label="Btn Dismiss Trinity"
                 variant="ghost"
                 className="text-white h-6 w-6 hover:bg-white/20"
                 onClick={onDismiss}
@@ -120,7 +120,7 @@ export function TrinityStatusBar({ session, onAbort, onReview, onDismiss }: Trin
         {onAbort && (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Btn Abort Trinity"
             className="text-primary-foreground h-7 w-7"
             onClick={onAbort}
             data-testid="btn-abort-trinity"

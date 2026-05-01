@@ -371,7 +371,7 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="User Menu Workspace"
                       className={HEADER_HEIGHTS.iconButton}
                       data-testid="button-user-menu-workspace"
                     >

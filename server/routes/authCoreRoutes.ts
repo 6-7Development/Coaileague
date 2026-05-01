@@ -627,7 +627,7 @@ router.post("/api/auth/login", async (req, res) => {
                     WHERE client_id = ${clientRecord.id}
                       AND is_used = true
                       AND invite_status != 'active'`
-              ).catch(() => null); // non-fatal
+              ).catch((e: unknown) => log.warn('[authCoreRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e))); // non-fatal
               log.info(`[Auth] Handshake complete — client ${clientRecord.id} flipped INVITED→ACTIVE, activated_at set`);
             }
           }

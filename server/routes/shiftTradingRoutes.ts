@@ -196,7 +196,7 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           type: "shift_trade",
           actionUrl: `/shift-trading?tab=received`,
           idempotencyKey: `shift_trade-${Date.now()}-${targetUser.rows[0].user_id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         // NDS: deliver through the canonical sender (TRINITY.md §B) so
         // delivery is logged and push/in-app channels are respected.
         try {
@@ -235,7 +235,7 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           message: `An officer posted a shift for trading on the marketplace.`,
           type: "shift_trade", actionUrl: `/shift-trading`,
           idempotencyKey: `shift_trade-${Date.now()}-${m.id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         try {
           await NotificationDeliveryService.send({
             idempotencyKey: `notif-${Date.now()}`,
@@ -286,7 +286,7 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
         message: "Your shift trade request has been accepted. Awaiting manager approval.",
         type: "shift_trade", actionUrl: `/shift-trading`,
         idempotencyKey: `shift_trade-${Date.now()}-${requester.rows[0].user_id}`
-      }).catch(() => null);
+      }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       try {
         const acceptorName = (await pool.query(
           `SELECT first_name FROM employees WHERE id=$1 AND workspace_id=$2`,
@@ -486,7 +486,7 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
           message: "Your shift trade has been approved. Check your updated schedule.",
           type: "shift_trade", actionUrl: `/schedule`,
           idempotencyKey: `shift_trade-${Date.now()}-${userRes.rows[0].user_id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
         await NotificationDeliveryService.send({
           idempotencyKey: `notif-${Date.now()}`,

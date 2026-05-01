@@ -166,7 +166,7 @@ export function SetupGuidePanel({
         <span className="text-sm font-semibold">Setup complete</span>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Dismiss Complete"
           className="h-7 w-7"
           onClick={handleDismissComplete}
           data-testid="button-dismiss-complete"
@@ -209,7 +209,7 @@ export function SetupGuidePanel({
           {onClose && (
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Close Guide"
               className="h-7 w-7"
               onClick={onClose}
               data-testid="button-close-guide"

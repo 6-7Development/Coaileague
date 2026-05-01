@@ -333,7 +333,7 @@ router.post("/employees", async (req: Request, res: Response) => {
     const importErrors: string[] = [];
     const missingEmailRows: number[] = [];
 
-    const workspace = await storage.getWorkspace(workspaceId).catch(() => null);
+    const workspace = await storage.getWorkspace(workspaceId).catch((e: unknown) => log.warn('[importRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     const workspaceName = workspace?.name || 'Your Organization';
     const inviterUserId = userId || 'system';
 

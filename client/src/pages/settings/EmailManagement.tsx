@@ -118,7 +118,7 @@ function RichSignatureEditor({
           <Underline className="w-3.5 h-3.5" />
         </Button>
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <Button variant="ghost" size="icon" className="h-7 w-7" type="button"
+        <Button variant="ghost" size="icon" aria-label="Sig Link" className="h-7 w-7" type="button"
           onClick={handleLink} title="Insert Link" data-testid="button-sig-link">
           <Link className="w-3.5 h-3.5" />
         </Button>

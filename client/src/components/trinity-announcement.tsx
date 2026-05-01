@@ -124,7 +124,7 @@ function AnnouncementBubble({
         
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Dismiss Announcement"
           className="h-6 w-6 flex-shrink-0 -mt-1 -mr-1"
           onClick={onDismiss}
           data-testid="button-dismiss-announcement"

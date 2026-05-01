@@ -687,7 +687,7 @@ function SupportInboxPanel({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center gap-2 p-3 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-support-back">
+        <Button variant="ghost" size="icon" aria-label="Support Back" onClick={onBack} data-testid="button-support-back">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex items-center gap-2 flex-1">
@@ -699,7 +699,7 @@ function SupportInboxPanel({ onBack }: { onBack: () => void }) {
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="icon" data-testid="button-support-refresh">
+        <Button variant="ghost" size="icon" aria-label="Support Refresh" data-testid="button-support-refresh">
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
@@ -842,7 +842,7 @@ function TrinityInboxPanel({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center gap-2 p-3 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-trinity-back">
+        <Button variant="ghost" size="icon" aria-label="Trinity Back" onClick={onBack} data-testid="button-trinity-back">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex items-center gap-2 flex-1">
@@ -1027,7 +1027,7 @@ function EmailHub({
                   <Badge variant="default" className="text-[10px] shrink-0" data-testid="badge-unread-count">{unreadCount}</Badge>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={onRefresh} data-testid="button-refresh">
+              <Button variant="ghost" size="icon" aria-label="Refresh" onClick={onRefresh} data-testid="button-refresh">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
@@ -1079,7 +1079,7 @@ function EmailHub({
                   <Badge variant="secondary" className="text-[11px]" data-testid="badge-unread-count">{unreadCount}</Badge>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={onRefresh} data-testid="button-refresh">
+              <Button variant="ghost" size="icon" aria-label="Refresh" onClick={onRefresh} data-testid="button-refresh">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
@@ -1192,7 +1192,7 @@ function EmailHub({
       {isMobile && (
         <Button
           onClick={onCompose}
-          size="icon"
+          size="icon" aria-label="Compose Fab"
           className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full shadow-lg shadow-primary/30"
           data-testid="button-compose-fab"
         >
@@ -1478,7 +1478,7 @@ function EmailCanvas({
         isMobile ? "px-2 py-1.5" : "p-3"
       )}>
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+          <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack} data-testid="button-back">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         )}
@@ -1510,17 +1510,17 @@ function EmailCanvas({
           )}
           {!isMobile && (
             <>
-              <Button variant="ghost" size="icon" onClick={onReply} data-testid="button-reply">
+              <Button variant="ghost" size="icon" aria-label="Reply" onClick={onReply} data-testid="button-reply">
                 <Reply className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onForward} data-testid="button-forward">
+              <Button variant="ghost" size="icon" aria-label="Forward" onClick={onForward} data-testid="button-forward">
                 <Forward className="w-4 h-4" />
               </Button>
             </>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-email-actions">
+              <Button variant="ghost" size="icon" aria-label="Email Actions" data-testid="button-email-actions">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -2625,7 +2625,7 @@ function ComposeCanvas({
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden">
       <div className={cn("flex items-center gap-2 border-b", isMobile ? "px-2 py-2" : "p-3")}>
-        <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-compose">
+        <Button variant="ghost" size="icon" aria-label="Close Compose" onClick={onClose} data-testid="button-close-compose">
           <X className={cn(isMobile ? "w-4 h-4" : "w-5 h-5")} />
         </Button>
         <h2 className={cn("font-semibold", isMobile && "text-sm")}>
@@ -2744,7 +2744,7 @@ function ComposeCanvas({
               <div className="w-px h-5 bg-border mx-1" />
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Format List"
                 type="button"
                 title="Bullet List"
                 className="h-8 w-8 text-muted-foreground"
@@ -2755,7 +2755,7 @@ function ComposeCanvas({
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Format Link"
                 type="button"
                 title="Insert Link"
                 className="h-8 w-8 text-muted-foreground"
@@ -2767,7 +2767,7 @@ function ComposeCanvas({
               <div className="w-px h-5 bg-border mx-1" />
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Attach File"
                 type="button"
                 title="Attach File"
                 disabled={isUploading}
@@ -2781,7 +2781,7 @@ function ComposeCanvas({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Templates"
                     type="button"
                     title="Templates"
                     className="h-8 w-8 text-muted-foreground"
@@ -3081,7 +3081,7 @@ function EmailAnalyticsDashboard({
   return (
     <div className="flex-1 flex flex-col bg-background">
       <div className="flex items-center gap-2 p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-analytics-back">
+        <Button variant="ghost" size="icon" aria-label="Analytics Back" onClick={onBack} data-testid="button-analytics-back">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>

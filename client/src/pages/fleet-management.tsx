@@ -203,7 +203,7 @@ export default function FleetManagement() {
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
-                    size="icon"
+                    size="icon" aria-label="Delete Vehicle"
                     disabled={deleteMutation.isPending}
                     data-testid="button-delete-vehicle"
                   >

@@ -103,7 +103,7 @@ function ScheduleToolbarComponent({
       {/* Left: Sidebar toggle + Action buttons */}
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Toggle Sidebar"
         onClick={onToggleSidebar}
         data-testid="button-toggle-sidebar"
       >
@@ -282,7 +282,7 @@ function ScheduleToolbarComponent({
       {/* Trinity Chat — always visible for quick access */}
       {onOpenTrinityChat && (
         <Button
-          size="icon"
+          size="icon" aria-label="Schedule Trinity Chat"
           variant="ghost"
           onClick={onOpenTrinityChat}
           data-testid="button-schedule-trinity-chat"
