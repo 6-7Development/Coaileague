@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect, typ
 import { StatusBadge } from '@/components/ui/status-badge';
 import { createPortal } from "react-dom";
 import { useChatDock } from "@/contexts/ChatDockContext";
+import { useChatViewState } from "./useChatViewState";
+import { useMessageActions, useRoomActions, useUserActions } from "./useChatActions";
 import { useChatRoomSummaries, useChatUnreadTotal, useRoomTypingUser } from "@/hooks/useChatManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
@@ -165,40 +167,43 @@ function ConversationActions({
     if (!open) setConfirmLeave(false);
   }, [open]);
 
-  const hideConvo = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/chat/manage/conversations/${roomId}/hide`),
-    onSuccess: () => {
-      chatManager.removeRoom(roomId);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      toast({ title: "Conversation archived", description: "You can rejoin anytime" });
-      onClose();
-      onLeaveSuccess?.();
-    },
-  });
-
-  const leaveConvo = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/chat/manage/conversations/${roomId}/leave`),
-    onSuccess: () => {
-      chatManager.removeRoom(roomId);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      toast({ title: "Left conversation", description: `You have left "${roomName}"` });
-      onClose();
-      onLeaveSuccess?.();
-    },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to leave conversation", variant: "destructive" });
-    },
-  });
-
-  const muteConvo = useMutation({
-    mutationFn: (muted: boolean) => apiRequest("POST", `/api/chat/manage/conversations/${roomId}/mute`, { muted }),
-    onSuccess: () => {
-      chatManager.loadRoomList();
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      toast({ title: "Notifications muted" });
-      onClose();
-    },
-  });
+  // C1: useRoomActions provides the canonical mutation + cache-invalidation
+  // pattern. Component-specific side effects (toast copy, chatManager.removeRoom,
+  // onLeaveSuccess) are layered on via the per-mutate onSuccess hook so the
+  // shared hook stays UI-agnostic.
+  const roomActions = useRoomActions(roomId, { onAfter: onClose });
+  const hideConvo = {
+    ...roomActions.hideConvo,
+    mutate: () => roomActions.hideConvo.mutate(undefined, {
+      onSuccess: () => {
+        chatManager.removeRoom(roomId);
+        toast({ title: "Conversation archived", description: "You can rejoin anytime" });
+        onLeaveSuccess?.();
+      },
+    }),
+  };
+  const leaveConvo = {
+    ...roomActions.leaveConvo,
+    mutate: () => roomActions.leaveConvo.mutate(undefined, {
+      onSuccess: () => {
+        chatManager.removeRoom(roomId);
+        toast({ title: "Left conversation", description: `You have left "${roomName}"` });
+        onLeaveSuccess?.();
+      },
+      onError: (error: any) => {
+        toast({ title: "Error", description: error.message || "Failed to leave conversation", variant: "destructive" });
+      },
+    }),
+  };
+  const muteConvo = {
+    ...roomActions.muteConvo,
+    mutate: (muted: boolean) => roomActions.muteConvo.mutate(muted, {
+      onSuccess: () => {
+        chatManager.loadRoomList();
+        toast({ title: muted ? "Notifications muted" : "Notifications unmuted" });
+      },
+    }),
+  };
 
   const isDM = roomType === 'dm_user' || roomType === 'dm_bot' || roomType === 'dm_support' || roomType === 'direct' || roomType === 'dm';
 
@@ -497,27 +502,29 @@ function RoomInfoPanel({
     },
   });
 
-  const blockUser = useMutation({
-    mutationFn: (blockedUserId: string) =>
-      apiRequest("POST", "/api/chat/manage/block", { blockedUserId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/manage/rooms", roomId, "participants"] });
-      chatManager.loadRoomList();
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      toast({ title: "User blocked" });
-    },
-  });
-
-  const unblockUser = useMutation({
-    mutationFn: (blockedUserId: string) =>
-      apiRequest("POST", "/api/chat/manage/unblock", { blockedUserId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/manage/rooms", roomId, "participants"] });
-      chatManager.loadRoomList();
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      toast({ title: "User unblocked" });
-    },
-  });
+  // C1: block / unblock now flow through useUserActions; participants
+  // cache + toast are layered here.
+  const userActions = useUserActions();
+  const blockUser = {
+    ...userActions.blockUser,
+    mutate: (blockedUserId: string) => userActions.blockUser.mutate(blockedUserId, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/manage/rooms", roomId, "participants"] });
+        chatManager.loadRoomList();
+        toast({ title: "User blocked" });
+      },
+    }),
+  };
+  const unblockUser = {
+    ...userActions.unblockUser,
+    mutate: (blockedUserId: string) => userActions.unblockUser.mutate(blockedUserId, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/manage/rooms", roomId, "participants"] });
+        chatManager.loadRoomList();
+        toast({ title: "User unblocked" });
+      },
+    }),
+  };
 
   const dbParticipants = participantsQuery.data?.participants || [];
   // Use live WebSocket users as the authoritative source when available;
@@ -690,13 +697,7 @@ function EmojiReactionBar({
   conversationId: string;
   onClose: () => void;
 }) {
-  const toggleReaction = useMutation({
-    mutationFn: (emoji: string) => apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'reactions'] });
-      onClose();
-    },
-  });
+  const { toggleReaction } = useMessageActions(messageId, conversationId, { onAfter: onClose });
 
   return (
     <div
@@ -727,12 +728,7 @@ function ReactionBadges({
   reactions: { emoji: string; count: number; users: { id: string; name: string }[]; hasReacted: boolean }[];
   conversationId: string;
 }) {
-  const toggleReaction = useMutation({
-    mutationFn: (emoji: string) => apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'reactions'] });
-    },
-  });
+  const { toggleReaction } = useMessageActions(messageId, conversationId);
 
   if (!reactions || reactions.length === 0) return null;
 
@@ -789,35 +785,37 @@ function MessageActions({
   const { toast } = useToast();
   const [showMore, setShowMore] = useState(false);
 
-  const deleteForMe = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/chat/manage/messages/${messageId}/delete-for-me`),
-    onSuccess: () => { toast({ title: "Message hidden for you" }); onClose(); },
-  });
-
-  const deleteForEveryone = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/chat/manage/messages/${messageId}/delete-for-everyone`),
-    onSuccess: () => { toast({ title: "Message deleted for everyone" }); onClose(); },
-  });
-
-  const pinMessage = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/chat/manage/messages/${messageId}/pin`);
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      toast({ title: data.pinned ? "Message pinned" : "Message unpinned" });
-      queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'pinned'] });
-      onClose();
-    },
-  });
-
-  const toggleReaction = useMutation({
-    mutationFn: (emoji: string) => apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'reactions'] });
-      onClose();
-    },
-  });
+  // C1: useMessageActions consolidates these four mutations behind one
+  // typed surface. Toast + onClose still belong here because they are
+  // UI-side effects specific to this menu (the hook is intentionally
+  // UI-agnostic so other consumers can decide their own toast behaviour).
+  const actions = useMessageActions(messageId, conversationId, { onAfter: onClose });
+  const deleteForMe = {
+    ...actions.deleteForMe,
+    mutate: () => actions.deleteForMe.mutate(undefined, {
+      onSuccess: () => toast({ title: "Message hidden for you" }),
+    }),
+  };
+  const deleteForEveryone = {
+    ...actions.deleteForEveryone,
+    mutate: () => actions.deleteForEveryone.mutate(undefined, {
+      onSuccess: () => toast({ title: "Message deleted for everyone" }),
+    }),
+  };
+  const pinMessage = {
+    ...actions.pinMessage,
+    mutate: () => actions.pinMessage.mutate(undefined, {
+      onSuccess: async (res: any) => {
+        try {
+          const data = typeof res?.json === 'function' ? await res.json() : res;
+          toast({ title: data?.pinned ? "Message pinned" : "Message unpinned" });
+        } catch {
+          toast({ title: "Pin updated" });
+        }
+      },
+    }),
+  };
+  const { toggleReaction } = actions;
 
   if (showMore) {
     return (
@@ -933,17 +931,18 @@ function ForwardDialog({
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const forwardMutation = useMutation({
-    mutationFn: (targetConversationId: string) =>
-      apiRequest("POST", `/api/chat/manage/messages/${messageId}/forward`, { targetConversationId }),
-    onSuccess: () => {
-      toast({ title: "Message forwarded" });
-      onClose();
-    },
-    onError: () => {
-      toast({ title: "Failed to forward", variant: "destructive" });
-    },
-  });
+  // C1: forward via the canonical hook; the dialog still owns the toast.
+  // conversationId is unused for forward (the URL only needs messageId), but
+  // the hook signature requires it so we pass an empty string. See
+  // useMessageActions JSDoc.
+  const baseForward = useMessageActions(messageId, '').forwardMessage;
+  const forwardMutation = {
+    ...baseForward,
+    mutate: (targetConversationId: string) => baseForward.mutate(targetConversationId, {
+      onSuccess: () => { toast({ title: "Message forwarded" }); onClose(); },
+      onError: () => { toast({ title: "Failed to forward", variant: "destructive" }); },
+    }),
+  };
 
   const filtered = search
     ? rooms.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
@@ -991,13 +990,11 @@ function ForwardDialog({
   );
 }
 
-interface LightboxData {
-  src: string;
-  senderName?: string;
-  timestamp?: string;
-  filename?: string;
-  gpsAddress?: string;
-}
+// LightboxData is owned by useChatViewState (C3) so the reducer can manage
+// it as part of the exclusive-overlay set. Re-exporting here as a type
+// alias keeps existing call sites that reference `LightboxData` valid.
+import type { LightboxData } from "./useChatViewState";
+export type { LightboxData };
 
 function ImageLightbox({
   data,
@@ -1228,12 +1225,7 @@ function QuickReactionHoverBar({
   onReply: () => void;
   onMoreActions: () => void;
 }) {
-  const toggleReaction = useMutation({
-    mutationFn: (emoji: string) => apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'reactions'] });
-    },
-  });
+  const { toggleReaction } = useMessageActions(messageId, conversationId);
 
   return (
     <div
@@ -1789,15 +1781,24 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
   // @mention state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionAnchor, setMentionAnchor] = useState<number>(-1);
-  const [showInfo, setShowInfo] = useState(false);
-  const [showAttach, setShowAttach] = useState(false);
-  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
-  const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; message: string } | null>(null);
-  const [editingMessage, setEditingMessage] = useState<{ id: string; message: string } | null>(null);
-  const [forwardingMessageId, setForwardingMessageId] = useState<string | null>(null);
-  const [lightboxData, setLightboxData] = useState<LightboxData | null>(null);
+  // Overlay/dialog state — single source of truth via useChatViewState (C3).
+  // The hook returns the same setter API the dock has always used, but its
+  // reducer enforces "at most one exclusive overlay open at a time", which
+  // prevents the "two overlays open at once" class of bug we previously had
+  // when the user could pop the attachment sheet over an active reply
+  // composer. Composition between the search bar + reply/edit composer is
+  // still allowed because they're different UI lanes.
+  const {
+    showInfo, setShowInfo,
+    showAttach, setShowAttach,
+    activeMessageMenu, setActiveMessageMenu,
+    replyingTo, setReplyingTo,
+    editingMessage, setEditingMessage,
+    forwardingMessageId, setForwardingMessageId,
+    lightboxData, setLightboxData,
+    showChatSearch, setShowChatSearch,
+  } = useChatViewState();
   const [chatSearch, setChatSearch] = useState("");
-  const [showChatSearch, setShowChatSearch] = useState(false);
   // B4 — pull-to-load-history loading state
   const [historyLoading, setHistoryLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
