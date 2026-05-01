@@ -235,6 +235,7 @@ emailRouter.post('/send', async (req: any, res) => {
     const sentFrom = addr.display_name ? `${addr.display_name} <${from}>` : from;
 
     let resendResult: any;
+    let sendError: string | null = null;
     try {
       resendResult = await client.emails.send({
         from: sentFrom,
@@ -245,21 +246,32 @@ emailRouter.post('/send', async (req: any, res) => {
         text: finalBodyText || undefined,
         ...(inReplyTo && { replyTo: inReplyTo }),
       });
+      // Resend SDK returns { data, error } even when it does not throw — treat
+      // a populated `error` field as a hard failure so the row never gets
+      // marked `sent` with a missing message id.
+      if (resendResult?.error) {
+        sendError = typeof resendResult.error === 'string'
+          ? resendResult.error
+          : (resendResult.error.message || JSON.stringify(resendResult.error));
+      }
     } catch (sendErr: any) {
+      sendError = sendErr?.message || String(sendErr);
       log.error('[EmailRoutes] Resend send error:', sendErr);
-      // Store as draft/failed even if Resend fails — don't lose user's email
     }
 
     const messageId = `<${Date.now()}.${userId}@coaileague.com>`;
+    const folder = sendError ? 'outbox' : 'sent';
 
-    // Store in platform_emails
+    // Persist the user's content even when delivery fails, but mark it failed
+    // and surface the error to the caller — never return success on a silent
+    // delivery failure.
     const emailResult = await pool.query(`
       INSERT INTO platform_emails (
         workspace_id, resend_email_id, message_id, in_reply_to,
         direction, from_address, to_addresses, cc_addresses,
         subject, body_html, body_text, snippet,
         owner_user_id, folder, sent_at
-      ) VALUES ($1,$2,$3,$4,'outbound',$5,$6,$7,$8,$9,$10,$11,$12,'sent',NOW())
+      ) VALUES ($1,$2,$3,$4,'outbound',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING id
     `, [
       workspaceId,
@@ -274,9 +286,20 @@ emailRouter.post('/send', async (req: any, res) => {
       finalBodyText,
       (finalBodyText || '').slice(0, 200),
       userId,
+      folder,
+      sendError ? null : new Date(),
     ]);
 
-    // Increment sent counter
+    if (sendError) {
+      return res.status(502).json({
+        success: false,
+        emailId: emailResult.rows[0].id,
+        error: 'Email failed to send',
+        detail: sendError,
+      });
+    }
+
+    // Only increment the fair-use counter on confirmed delivery
     await pool.query(`
       UPDATE platform_email_addresses
       SET emails_sent_this_period = emails_sent_this_period + 1
