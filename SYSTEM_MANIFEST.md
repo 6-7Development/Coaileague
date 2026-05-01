@@ -655,7 +655,7 @@ PLATFORM STACK
 
 **esbuild: 0 server + 0 client errors ✅**
 
-### Phase 3 — Doc Consolidation + Service Logging (In Progress)
+### Phase 3 — Doc Consolidation + Service Logging (Complete)
 - ✅ 1,074 stale/duplicate docs deleted
 - ✅ SYSTEM_MANIFEST.md is now single source of truth
 - ✅ `console.log` → `log.info` in server/services (19 more files fixed)
@@ -687,6 +687,7 @@ PLATFORM STACK
 | KI-005 | D9 Admin | `/api/platform/activities` ghost — no UI widget | LOW | 🔲 Open | `server/routes/adminRoutes.ts` |
 | KI-006 | D9 Admin | `/api/platform/invitations` ghost — no UI widget | LOW | 🔲 Open | `server/routes/adminRoutes.ts` |
 | KI-007 | D6 Messaging | FCM push notifications not implemented | HIGH | 🔲 Open | Resend/Twilio fallback active |
+| KI-009 | Platform | Hollowed files from logger migration — 15 files stripped of exports | CRITICAL | ✅ Fixed f9bb50f8 | `server/routes/integrations-status.ts` + 18 others |
 | KI-008 | D3 Finance | ChatDock durable message store missing (Redis Streams) | HIGH | 🔲 Open | ChatDock reliability foundation |
 
 
