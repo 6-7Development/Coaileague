@@ -499,7 +499,9 @@
       @keyframes hl-letterSwing      { 0%,100%{transform:rotate(0)}25%{transform:rotate(15deg)}50%{transform:rotate(-12deg)}75%{transform:rotate(7deg)} }
       @keyframes hl-letterWobble     { 0%,100%{transform:skewX(0)}20%{transform:skewX(-10deg)translateX(-3px)}50%{transform:skewX(8deg)translateX(3px)}80%{transform:skewX(-4deg)} }
       @keyframes hl-letterSlideRight { 0%,100%{transform:translateX(0)}30%{transform:translateX(6px)rotate(8deg)}60%{transform:translateX(-2px)rotate(-3deg)} }
-    </style>
+    
+      @keyframes hl-spin-trifecta { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
 
     <div id="html-loader" aria-label="Loading CoAIleague">
 
@@ -558,10 +560,8 @@
                 stroke-width="0.7" stroke-dasharray="4 16" opacity="0.18"/>
             </g>
 
-            <!-- Trifecta: all 3 arms rotate TOGETHER as one unit -->
-            <g>
-              <animateTransform attributeName="transform" type="rotate"
-                from="0 60 60" to="360 60 60" dur="6s" repeatCount="indefinite"/>
+            <!-- Trifecta: all 3 arms rotate TOGETHER as one unit (CSS animation) -->
+            <g style="transform-origin: 60px 60px; animation: hl-spin-trifecta 6s linear infinite;">
               <!-- Arm 1 — Blue (12 o'clock) -->
               <g filter="url(#hlfa)">
                 <path d="M60 43 C55 34,53 19,60 6 C67 19,65 34,60 43 Z" fill="url(#hlg1)">

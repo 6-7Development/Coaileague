@@ -2751,21 +2751,59 @@ function NotificationsPopoverInner({ user }: { user: any }) {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
-            side="right"
-            className="w-full sm:max-w-md p-0 flex flex-col"
+            side="bottom"
+            className="p-0 flex flex-col"
+            style={{ height: '82dvh', maxHeight: '82dvh' }}
             data-testid="sheet-notifications-mobile"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Notifications</SheetTitle>
             </SheetHeader>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <UNSCommandCenter
-                isOpen={open}
-                onClose={() => setOpen(false)}
-                onAskTrinity={handleAskTrinityFromUNS}
-                platformRole={accessPlatformRole || userPlatformRole || undefined}
-                workspaceRole={workspaceRole || undefined}
-              />
+            {/* Notification list header with working buttons */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm">Notifications</span>
+                {totalUnread > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {totalUnread > 0 && (
+                  <button
+                    type="button"
+                    className="h-7 text-[11px] text-muted-foreground hover:text-foreground px-2 rounded"
+                    onClick={() => {
+                      fetch('/api/notifications/mark-all-read', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                      }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+                      }).catch(() => null);
+                    }}
+                    data-testid="button-mark-all-read-mobile"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="h-7 w-7 flex items-center justify-center rounded hover:bg-accent"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close notifications"
+                  data-testid="button-close-notifications-mobile"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            {/* Actual notification content with all working actions */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {renderNotificationsContent({ simplified: false, compact: true, enableSwipeDelete: true, skipHeader: true })}
             </div>
           </SheetContent>
         </Sheet>

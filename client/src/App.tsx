@@ -875,7 +875,10 @@ function AppContent() {
   // Check if user is Root Admin (platform-level access)
   const isRootAdmin = (user as any)?.platformRole === 'root_admin' || (user as any)?.platformRole === 'sysop';
 
-  if (authLoading && !loadingTimedOut && !isPublicRoute) {
+  // If the HTML pre-React splash already ran this session, suppress the
+  // React LoadingScreen — the splash covered the loading state visually.
+  const htmlSplashRan = (() => { try { return !!sessionStorage.getItem('coai_html_splash_done'); } catch { return false; } })();
+  if (authLoading && !loadingTimedOut && !isPublicRoute && !htmlSplashRan) {
     return <LoadingScreen />;
   }
 

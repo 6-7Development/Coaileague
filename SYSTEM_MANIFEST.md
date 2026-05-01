@@ -969,3 +969,58 @@ KNOWN ISSUES FIXED IN PHASE 4
 ✅ QueryClient invalidation → employee list refreshes  
 ✅ Schedule system uses workspaceId-scoped employee queries  
 ✅ Onboarding completion → employee.onboardingStatus = 'completed'  
+
+---
+
+## Phase 5 — Bug Fixes: Notifications, Splash Loop, Swipe Sensitivity (2026-05-01)
+
+### ISSUE 1: Notification Bell — Buttons Dead on Mobile (KI-014)
+**Root cause:** Mobile notification SheetContent was rendering `<UNSCommandCenter>` 
+(a search/command palette component) instead of the actual notification list.
+The "Mark All Read", "Clear All", individual dismiss buttons — none of them rendered.
+Users saw a blank command center panel when opening notifications on mobile.
+
+**Fix:** `client/src/components/notifications-popover.tsx`
+- SheetContent now renders `renderNotificationsContent({ skipHeader: true })` 
+- Added inline header with: Bell icon, unread count badge, Mark All Read button, Close button
+- Mark All Read calls `POST /api/notifications/mark-all-read` with full QueryClient invalidation
+- Sheet changed: side="right" → side="bottom", explicit height: 82dvh
+- All notification actions (dismiss, clear, mark read) now work on mobile
+
+### ISSUE 2: Splash Screen Loop / Double Splash (KI-015)
+**Root cause:** HTML pre-React splash (index.html) runs for 1200ms minimum,
+then React mounts. If auth is still loading (`authLoading=true`), App.tsx renders 
+`<LoadingScreen>` — creating a second visible loading state. Users saw two different
+loading screens back-to-back.
+
+**Fix 1:** `client/src/App.tsx`
+- LoadingScreen now skipped if `sessionStorage.coai_html_splash_done` is set
+- HTML splash sets this flag when it hides → seamless handoff, no double-screen
+- Flow: HTML splash (1200ms) → hides → React auth already resolved → app renders
+
+**Fix 2:** `client/index.html` — Trifecta arm animation
+- SMIL `animateTransform` on the trifecta `<g>` replaced with CSS `animation`
+- CSS animations are more reliable in Chrome Android than SMIL on grouped elements
+- Added `@keyframes hl-spin-trifecta` with `transform-origin: 60px 60px`
+- Arms now definitively spin at 6s/cycle on all browsers
+
+### ISSUE 3: Employee List Swipe Too Sensitive (KI-016)
+**Root cause:** `SwipeToDelete` component had `lockThreshold = 8px` 
+(direction lock fires after just 8px of movement). Normal vertical scroll
+easily exceeds 8px horizontally → swipe triggers during scroll.
+
+**Fixes:** `client/src/components/swipe-to-delete.tsx`
+- `lockThreshold`: 8px → 20px (must move 20px horizontally to lock)
+- `verticalCancelThreshold`: new — 12px vertical before horizontal lock = immediately go vertical
+- `minVisualDistance`: 5px → 15px (visual feedback doesn't show on tiny movements)  
+- Direction ratio: `deltaY > absDeltaX * 0.8` → `deltaY > absDeltaX * 0.6` (stricter horizontal requirement)
+- Added early-exit: if `deltaY > 12 && absDeltaX < 20` → lock vertical immediately, return
+
+**Result:** Swipe only activates on clear, deliberate left swipes. Normal up/down 
+scrolling through the employee list is completely unaffected.
+
+| KI | Issue | Fixed |
+|----|-------|-------|
+| KI-014 | Mobile notification buttons dead — UNSCommandCenter rendered instead of list | ✅ |
+| KI-015 | Double splash screen / loading loop on reload | ✅ |
+| KI-016 | Employee list swipe fires during vertical scroll | ✅ |
