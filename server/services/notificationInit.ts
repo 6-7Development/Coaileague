@@ -92,9 +92,13 @@ export async function initializeNotifications(): Promise<void> {
 // Cleanup old platform updates, keeping only the most recent 3
 export async function cleanupOldPlatformUpdates(): Promise<number> {
   try {
+    // AUDIT-EXEMPT TRINITY.md §G: `platform_updates` is the global
+    // platform-wide announcements table (no workspace_id column).
+    // Tenant boundaries do not apply — these rows are visible to every
+    // workspace by design.
     // CATEGORY C — Raw SQL retained: IN subquery | Tables: platform_updates | Verified: 2026-03-23
     const result = await typedExec(sql`
-      DELETE FROM platform_updates 
+      DELETE FROM platform_updates
       WHERE id NOT IN (
         SELECT id FROM platform_updates ORDER BY created_at DESC LIMIT 3
       )

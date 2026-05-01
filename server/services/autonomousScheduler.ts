@@ -2763,16 +2763,20 @@ export function startAutonomousScheduler() {
           try {
             // Delete any lingering sessions
             if (row.user_id) {
+              // AUDIT-EXEMPT TRINITY.md §G: `sessions` is the express-session
+              // table, user-scoped (no workspace_id column). user_id is the
+              // canonical isolation predicate.
               await dbInst.execute(drizzleSql`
                 DELETE FROM sessions WHERE user_id = ${row.user_id}
               `).catch(() => null);
 
               // Mark as fully deactivated — clear document access expiry flag
-              // to prevent re-processing on next run
+              // to prevent re-processing on next run.
+              // TRINITY.md §G: scope by workspace_id atomically.
               await dbInst.execute(drizzleSql`
                 UPDATE employees
                 SET document_access_expires_at = NULL
-                WHERE id = ${row.id}
+                WHERE id = ${row.id} AND workspace_id = ${row.workspace_id}
               `).catch(() => null);
             }
 

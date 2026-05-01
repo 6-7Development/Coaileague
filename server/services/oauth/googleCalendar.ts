@@ -40,6 +40,11 @@ export const googleCalendar = {
   },
 
   async saveTokens(userId: string, workspaceId: string, tokens: { access_token: string; refresh_token: string; expires_in: number }) {
+    // AUDIT-EXEMPT TRINITY.md §G: oauth_states is keyed by
+    // (user_id, provider) — OAuth identity is per-user, not per-workspace.
+    // The conflict target enforces one google_calendar row per user; the
+    // INSERT path stores workspace_id for traceability of where the user
+    // originally authorized, and the DO UPDATE only refreshes tokens.
     await pool.query(`
       INSERT INTO oauth_states (id, user_id, workspace_id, provider, access_token, refresh_token, expires_at, created_at)
       VALUES (gen_random_uuid(), $1, $2, 'google_calendar', $3, $4, NOW() + ($5 || ' seconds')::interval, NOW())

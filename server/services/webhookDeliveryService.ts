@@ -274,22 +274,24 @@ async function deliverToWebhook(
 
   if (result.success) {
     // Update webhook: last_triggered_at, last_status_code, reset failure_count
+    // TRINITY.md §G: scope by workspace_id atomically.
     await pool.query(
       `UPDATE workspace_webhooks
        SET last_triggered_at = now(), last_status_code = $1, failure_count = 0, status = 'active'
-       WHERE id = $2`,
-      [result.statusCode, webhookId]
+       WHERE id = $2 AND workspace_id = $3`,
+      [result.statusCode, webhookId, workspaceId]
     ).catch((err) => log.warn('[webhookDeliveryService] Fire-and-forget failed:', err));
     return;
   }
 
   // Failure: increment failure count
+  // TRINITY.md §G: scope by workspace_id atomically.
   const { rows } = await pool.query(
     `UPDATE workspace_webhooks
      SET last_status_code = $1, failure_count = failure_count + 1, status = CASE WHEN failure_count + 1 >= $2 THEN 'failed' ELSE status END
-     WHERE id = $3
+     WHERE id = $3 AND workspace_id = $4
      RETURNING failure_count, workspace_id`,
-    [result.statusCode, MAX_ATTEMPTS, webhookId]
+    [result.statusCode, MAX_ATTEMPTS, webhookId, workspaceId]
   );
 
   const newFailureCount = rows[0]?.failure_count ?? attemptNumber;

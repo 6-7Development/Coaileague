@@ -176,11 +176,12 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
         });
 
         if (vaultResult.success && vaultResult.vault) {
+          // TRINITY.md §G: scope by workspace_id atomically.
           await pool.query(
             `UPDATE incident_reports
              SET final_pdf_url = $1, document_vault_id = $2, updated_at = NOW()
-             WHERE id = $3`,
-            [vaultResult.vault.fileUrl, vaultResult.vault.id, id]
+             WHERE id = $3 AND workspace_id = $4`,
+            [vaultResult.vault.fileUrl, vaultResult.vault.id, id, workspaceId]
           );
           log.info(`[IncidentPipeline] PDF vaulted for incident ${incident.incident_number} — vault id ${vaultResult.vault.id}`);
         }

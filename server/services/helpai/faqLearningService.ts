@@ -91,7 +91,8 @@ export async function promoteQualifiedFaqCandidates(workspaceId?: string): Promi
           ON CONFLICT DO NOTHING
         `, [c.workspace_id, c.question.slice(0, 500), answer, c.category]);
 
-        await pool.query(`DELETE FROM faq_candidates WHERE id = $1`, [c.id]);
+        // TRINITY.md §G: scope by workspace_id atomically.
+        await pool.query(`DELETE FROM faq_candidates WHERE id = $1 AND workspace_id = $2`, [c.id, c.workspace_id]);
         promoted++;
         log.info(`[FAQLearning] Promoted FAQ candidate: "${c.question.slice(0, 60)}" (asked ${c.occurrence_count}×)`);
       } catch (rowErr) {

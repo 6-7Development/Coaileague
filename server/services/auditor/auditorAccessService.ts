@@ -552,6 +552,9 @@ export async function authenticateAuditor(email: string): Promise<{
 
     // 90-day re-auth rule.
     if (row.last_auth_at && (Date.now() - new Date(row.last_auth_at).getTime() > 90 * 24 * 60 * 60 * 1000)) {
+      // AUDIT-EXEMPT TRINITY.md §G: auditor_accounts is a global state-agency
+      // login table (no workspace_id column). The (id) PK uniquely identifies
+      // the auditor; the row was just verified above by the SELECT.
       await pool.query(`UPDATE auditor_accounts SET status = 'suspended' WHERE id = $1`, [row.id]);
       return { ok: false, reason: 'reauth_required' };
     }
@@ -567,6 +570,11 @@ export async function recordSuccessfulAuth(auditorId: string, ip?: string, ua?: 
   await ensureTables();
   try {
     const { pool } = await import('../../db');
+    // AUDIT-EXEMPT TRINITY.md §G: auditor_accounts is a global state-agency
+    // login table (no workspace_id column). Auditors can audit multiple
+    // workspaces via auditor_audits.workspace_id. The (auditor_id) PK plus
+    // bcrypt password is the canonical identity check; there is no tenant
+    // boundary to enforce on the auditor row itself.
     await pool.query(`UPDATE auditor_accounts SET last_auth_at = NOW(), updated_at = NOW() WHERE id = $1`, [auditorId]);
     await pool.query(
       `INSERT INTO auditor_session_log (auditor_id, action, ip_address, user_agent) VALUES ($1, 'login', $2, $3)`,

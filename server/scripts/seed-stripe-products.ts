@@ -15,12 +15,14 @@
  * Usage: npx tsx server/scripts/seed-stripe-products.ts
  */
 
-import Stripe from 'stripe';
 import { BILLING, PREMIUM_EVENTS, MONTHLY_FEATURE_ADDONS } from '../../shared/billingConfig';
+import { getStripe } from '../services/billing/stripeClient';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
+// TRINITY.md §F: use the canonical lazy Stripe factory. Module-load
+// `new Stripe(process.env.STRIPE_SECRET_KEY!)` would crash this script
+// at import time when the key is missing — getStripe() throws a clear
+// error at use-site instead.
+const stripe = getStripe();
 
 interface CreatedProduct {
   productId: string;

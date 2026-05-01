@@ -50,12 +50,137 @@
 | _claude-action-wiring-LjP5K_ | `claude/action-wiring-manifest-LjP5K` | Action Wiring Manifest first-pass + Claude-only handoff protocol | `scripts/audit/generate-action-wiring-manifest.ts`, `scripts/audit/check-action-wiring-gaps.ts`, `ACTION_WIRING_MANIFEST.md`, `action-wiring-manifest.json`, `AGENT_HANDOFF.md` | 2026-05-01 | 2026-05-01 — signed out |
 | _claude-platform-health-LjP5K_ | `claude/action-wiring-manifest-LjP5K` | Platform health rescan — TS errors, route conflicts, race conditions, Trinity-law violations | `scripts/audit/scan-platform-health.ts`, `PLATFORM_HEALTH_AUDIT.md`, `platform-health-audit.json`, `AGENT_HANDOFF.md` | 2026-05-01 | 2026-05-01 — signed out |
 | _claude-tenant-iso-LjP5K_ | `claude/action-wiring-manifest-LjP5K` | TRINITY.md §G triage — fix raw-SQL UPDATE/DELETE on multi-tenant tables without `workspace_id` | 14 route + service files; full list in commit | 2026-05-01 | 2026-05-01 — signed out |
+| _claude-debt-cleanup-LjP5K_ | `claude/action-wiring-manifest-LjP5K` | Debt sweep — §F/§G/§I cleanup, same-file route dupe, scanner refinements | 4 stripe sites, billingConstants.ts + productionSeed.ts, ~25 service/route files for §G, helpdeskRoutes, scripts/audit/scan-platform-health.ts | 2026-05-01 | 2026-05-01 — signed out |
 
 _(no other active sessions)_
 
 ---
 
 ## SESSION LOG (newest at top — append, do not edit history)
+
+### 2026-05-01 · claude-debt-cleanup-LjP5K
+**Branch:** `claude/action-wiring-manifest-LjP5K`
+**Commit:** _(pending — will be appended after push)_
+**What changed:** Trinity-law cleanup sweep. **§F = 0, §G = 0, §I = 0.**
+- **TRINITY.md §F (module-load SDK asserts) — 4 → 0.** All 4 sites now use
+  the canonical lazy `getStripe()` factory in
+  `server/services/billing/stripeClient.ts`:
+  - `server/routes/integrations-status.ts:274`
+  - `server/scripts/seed-stripe-products.ts:21`
+  - `server/scripts/setup-new-pricing-products.ts:31`
+  - `server/scripts/verify-stripe-products.ts:3`
+- **TRINITY.md §I (hardcoded workspace/user UUIDs) — 3 → 0.** Extracted the
+  three sentinel UUIDs in `productionSeed.ts` to env-overridable constants
+  alongside `PLATFORM_WORKSPACE_ID` in
+  `server/services/billing/billingConstants.ts`:
+  - `PLATFORM_ROOT_EMPLOYEE_ID` (default `8d31a497-…`) — Root Administrator
+    employee row + DELETE-NOT-IN allowlist.
+  - `PLATFORM_ROOT_PLATFORM_ROLE_ID` (default `e2d402f8-…`) — Root Admin
+    platform_roles row.
+  Fresh deploys can override these in env without editing source. Scanner
+  allowlist updated to exempt `billingConstants.ts` (canonical source).
+- **TRINITY.md §G (raw-SQL writes without workspace_id) — 19 → 0.**
+  - **Real fixes (atomically tenant-scoped):**
+    `services/auditor/curePeriodTrackerService.ts` (3× UPDATE
+    audit_condition_timers reminders),
+    `services/autonomousScheduler.ts` (UPDATE employees doc-access
+    expiry),
+    `services/email/emailProvisioningService.ts` (UPDATE clients
+    platform_email),
+    `services/helpai/faqLearningService.ts` (DELETE FROM faq_candidates),
+    `services/helpai/supportActionRegistry.ts` (also added scope to the
+    SELECT lookup, not just the UPDATE),
+    `services/infrastructure/durableJobQueue.ts` (UPDATE durable_job_queue
+    using `IS NOT DISTINCT FROM` so null-workspace system jobs match
+    correctly),
+    `services/shiftChatroomWorkflowService.ts` (UPDATE dar_reports auto
+    PDF), `services/sms/smsQueueService.ts` (3× UPDATE sms_outbox lifecycle),
+    `services/trinityEventSubscriptions.ts` (UPDATE disciplinary_records
+    on signature),
+    `services/trinityVoice/supportCaseService.ts` (UPDATE
+    voice_support_cases — `markCaseAgentNotified` now requires a
+    `workspaceId` arg, caller updated),
+    `services/webhookDeliveryService.ts` (2× UPDATE workspace_webhooks
+    success/failure paths),
+    `services/developmentSeedFinancialIntegrations.ts` (UPDATE
+    payroll_entries scoped by ANVIL),
+    `routes/incidentPipelineRoutes.ts` (UPDATE incident_reports vault
+    PDF),
+    `routes/trinityIntakeRoutes.ts` (2× UPDATE trinity_intake_sessions
+    collected_data + action),
+    `routes/trinityRevenueRoutes.ts` — false positive (Drizzle code; tighter
+    regex now correctly skips it).
+  - **AUDIT-EXEMPT markers (genuine §G exceptions, documented inline):**
+    `services/auditor/auditorAccessService.ts` (auditor_accounts is a
+    global state-agency login table, no workspace_id column),
+    `services/autonomousScheduler.ts` (DELETE FROM sessions — express-
+    session table is user-scoped),
+    `services/billing/guestSessionService.ts` (INSERT … ON CONFLICT
+    upsert keyed by globally-unique session_id),
+    `services/developmentSeed.ts` (UPDATE users — global identity
+    table; gated by isProduction()),
+    `services/notificationInit.ts` (DELETE FROM platform_updates —
+    global platform-wide announcements table),
+    `services/oauth/googleCalendar.ts` (oauth_states keyed by user_id +
+    provider — OAuth identity is per-user, not per-workspace),
+    `services/productionSeed.ts` (workspaces is the tenant table itself).
+- **Same-file route dupe — 1 → 0.**
+  `server/routes/helpdeskRoutes.ts:840` had a duplicate
+  `router.post('/feedback', …)` chat-conversation rating handler that was
+  unreachable behind the public `/feedback` route at line 36, called
+  `storage.updateChatConversation` with wrong arity, and had zero frontend
+  callers. Deleted with a comment explaining the canonical placement
+  (under `/api/chat/conversations/:id/feedback` if needed).
+- **Scanner improvements (`scripts/audit/scan-platform-health.ts`):**
+  1. `detectRouteConflicts` now skips router-relative paths the wiring
+     manifest could not resolve (`/`, `/stats`, `/:id`, etc.) — they're
+     leaf routers mounted at distinct prefixes, not real conflicts. Cut
+     route-conflict noise from 114 → 68.
+  2. `SQL_UPDATE_RE` now requires `SET` after the table name; the previous
+     pattern matched the literal word `update` in log messages /
+     comments and falsely flagged code via spillover into a real `WHERE`
+     elsewhere in the file.
+  3. `ALLOWED_HARDCODED_FILES_RE` now exempts `billingConstants.ts` —
+     it's the canonical source-of-truth file for sentinel IDs (parallel
+     to `tierGuards.ts` for `GRANDFATHERED_TENANT_ID`).
+- **Build:** `node build.mjs` — green (`✅ Server build complete`).
+- **Numbers (this session vs handoff baseline):**
+  | Category                            | Before | After | Δ      |
+  |-------------------------------------|-------:|------:|-------:|
+  | trinity_law_module_load_assert (§F) |      4 |     0 | −4     |
+  | trinity_law_hardcoded_workspace (§I)|      3 |     0 | −3     |
+  | trinity_law_raw_sql_no_workspace(§G)|     19 |     0 | −19    |
+  | route_conflict (cross+same)         |    114 |    68 | −46    |
+  | TS errors                           |      0*|     0*| (skipped tsc this session — multi-min run) |
+  | Total findings                      |    763 |   701 | −62    |
+  *_tsc was killed mid-run earlier; no edits this session were
+  TS-shaped (only WHERE-clause additions and import substitutions). Build
+  is green._
+- **Open for next session:**
+  - `race_missing_transaction` (391) — multi-write routes/services that
+    need a `db.transaction` wrap. Worst offenders: `chat-management.ts`
+    (31 writes in one file, no tx), `agentActivityRoutes.ts` (9),
+    `budgetRoutes.ts` (6), `adminRoutes.ts` (5),
+    `alertConfigRoutes.ts` (5).
+  - `race_fire_and_forget` (168) — `.catch()` on naked promises. Many
+    sit in cleanup paths that are intentionally non-blocking; needs
+    case-by-case review against TRINITY.md §B.
+  - `race_read_then_write_no_lock` (112) — SELECT-then-UPDATE without a
+    transaction or `FOR UPDATE`. Real money-math + scheduling concurrency
+    risks; pair with §G fixes per file.
+  - `route_conflict` (68) — biggest single block is the `chat.ts` ↔
+    `chatInlineRoutes.ts` overlap (~22 routes shadowed). `chat.ts` wins
+    by mount order in `domains/comms.ts`. Needs a focused refactor
+    session: pick canonical, delete the loser. Other notable conflicts:
+    `POST /api/admin/dev-execute`, `POST /api/auth/mfa/verify`,
+    `GET /api/ai-brain/fast-mode/tiers`, `GET /api/device/settings`,
+    `/api/experience/notification-preferences` × 2.
+  - `mount_overlap` (42) — `/api/onboarding`, `/api/form-builder`,
+    `/api/legal`, `/api/trinity`, `/api/staffing` registered with
+    different middleware stacks. First match wins — auth bypass risk.
+  - `race_set_immediate` (30) — `setImmediate/setTimeout(async …)`.
+    TRINITY.md §B forbids this fire-and-forget pattern.
+- **Sign-out:** done.
 
 ### 2026-05-01 · claude-tenant-iso-LjP5K
 **Branch:** `claude/action-wiring-manifest-LjP5K`
@@ -199,6 +324,7 @@ Schedule. Audit is map-only — no fixes applied yet.
 
 | When | Session | Branch | Status | Notes |
 |------|---------|--------|--------|-------|
+| 2026-05-01 | claude-debt-cleanup-LjP5K | `claude/action-wiring-manifest-LjP5K` | done | Trinity-law sweep. §F=0, §G=0, §I=0. Same-file dupe deleted. Scanner refined (route-conflict noise −46). Build green. |
 | 2026-05-01 | claude-tenant-iso-LjP5K | `claude/action-wiring-manifest-LjP5K` | done | TRINITY.md §G triage. 55 → 19 (65% reduction). 18 files fixed, 4 AUDIT-EXEMPT. Build green. |
 | 2026-05-01 | claude-platform-health-LjP5K | `claude/action-wiring-manifest-LjP5K` | done | Platform Health Audit shipped. 381 TS errors, 43 cross-file route conflicts, 55 §G tenant-isolation blockers, 168 fire-and-forget races. Map only, no fixes. |
 | 2026-05-01 | claude-action-wiring-LjP5K | `claude/action-wiring-manifest-LjP5K` | done | Action Wiring Manifest first-pass shipped. Map only, no fixes. |

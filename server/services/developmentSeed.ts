@@ -115,7 +115,12 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         `);
       }
 
-      // Update users with their workspace assignments
+      // Update users with their workspace assignments.
+      // AUDIT-EXEMPT TRINITY.md §G: `users` is a global identity table (no
+      // workspace_id column); current_workspace_id is the user's currently-
+      // selected workspace. The user_id IN (...) filter targets dev-seed
+      // sentinel accounts only. This file is gated by isProduction() per
+      // TRINITY.md §A, so it never runs in real production.
       await tx.execute(sql`UPDATE users SET current_workspace_id = ${DEV_SENTINEL_WORKSPACE} WHERE id IN ('dev-owner-001', 'dev-manager-001', 'dev-manager-002', 'dev-emp-001', 'dev-emp-002', 'dev-emp-003', 'dev-emp-004', 'dev-emp-005', 'dev-emp-006', 'dev-emp-007', 'dev-emp-008', 'dev-emp-009', 'dev-emp-010', 'dev-emp-015', 'dev-emp-016', 'dev-emp-017', 'dev-emp-018', 'dev-emp-019', 'dev-emp-020', 'dev-emp-021', 'dev-emp-022', 'dev-emp-023', 'dev-emp-024', 'dev-emp-025', 'dev-emp-026', 'dev-emp-027', 'dev-emp-028', 'dev-emp-029', 'dev-emp-030') AND current_workspace_id IS NULL`);
       await tx.execute(sql`UPDATE users SET current_workspace_id = 'dev-lonestar-security-ws' WHERE id IN ('dev-owner-002', 'dev-emp-011', 'dev-emp-012', 'dev-emp-013', 'dev-emp-014') AND current_workspace_id IS NULL`);
       await tx.execute(sql`UPDATE users SET current_workspace_id = 'dev-demo-workspace' WHERE id = 'dev-demo-user' AND current_workspace_id IS NULL`);

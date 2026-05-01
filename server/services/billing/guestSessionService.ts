@@ -88,6 +88,12 @@ export async function recordGuestSessionUsage(params: {
   const costMicrocents = Math.round((tokensUsed / 1000) * TOKEN_COST_MICROCENTS_PER_1K);
 
   try {
+    // AUDIT-EXEMPT TRINITY.md §G: INSERT … ON CONFLICT (session_id) DO
+    // UPDATE upsert. session_id is globally unique (Twilio CallSid +
+    // workspace prefix). The INSERT path sets workspace_id = $1 explicitly,
+    // so any row created here is workspace-scoped from creation. The DO
+    // UPDATE path can only mutate the matching row's accumulators and
+    // cannot re-bind workspace_id.
     const { rows } = await pool.query(
       `
       INSERT INTO guest_session_log

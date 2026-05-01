@@ -209,6 +209,11 @@ function detectRouteConflicts(
     if (!idMatch) continue;
     const method = idMatch[1].toUpperCase();
     const endpoint = idMatch[2];
+    // Skip router-relative paths that the wiring manifest could not resolve
+    // to a full mount path (e.g. `/`, `/stats`, `/:id`). These are leaf
+    // routers mounted at distinct prefixes — same router-relative path is
+    // expected, not a conflict.
+    if (!endpoint.startsWith('/api/')) continue;
     const key = `${method} ${endpoint}`;
     // Dedupe locations: the wiring manifest's duplicate-list counts a UI
     // cross-link as a separate record, so the same (file, line) shows up
@@ -353,13 +358,16 @@ const REPLIT_DIRECT_RE = /process\.env\.REPLIT_DEPLOYMENT\b/g;
 // Trinity §F — `new <SDK>(process.env.X!`
 const MODULE_LOAD_ASSERT_RE = /new\s+([A-Z][A-Za-z0-9_]+)\s*\(\s*process\.env\.[A-Z_][A-Z0-9_]+!/g;
 
-// Trinity §G — UPDATE without workspace_id in WHERE clause (raw SQL)
-const SQL_UPDATE_RE = /\b(?:UPDATE|update)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b[\s\S]{0,800}?\bWHERE\b([\s\S]{0,400})/g;
+// Trinity §G — UPDATE/DELETE without workspace_id in WHERE clause (raw SQL).
+// Require `SET` after the table name so the regex doesn't match the literal
+// word "update" / "delete" in log messages or comments. SET is mandatory in
+// any real UPDATE statement.
+const SQL_UPDATE_RE = /\b(?:UPDATE|update)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+SET\b[\s\S]{0,800}?\bWHERE\b([\s\S]{0,400})/g;
 const SQL_DELETE_RE = /\b(?:DELETE|delete)\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)\b[\s\S]{0,800}?\bWHERE\b([\s\S]{0,400})/g;
 
 // Trinity §I — hardcoded workspace UUIDs; allowlist GRANDFATHERED + dev seeds
 const HARDCODED_WS_RE = /['"`]([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})['"`]/g;
-const ALLOWED_HARDCODED_FILES_RE = /\b(server\/lib\/isProduction\.ts|server\/tierGuards\.ts|server\/services\/development[^/]*|server\/seed-acme-full\.ts|scripts\/(prod|dev|seed)|tests\/|test\/|fixtures\/|GRANDFATHERED)/i;
+const ALLOWED_HARDCODED_FILES_RE = /\b(server\/lib\/isProduction\.ts|server\/tierGuards\.ts|server\/services\/billing\/billingConstants\.ts|server\/services\/development[^/]*|server\/seed-acme-full\.ts|scripts\/(prod|dev|seed)|tests\/|test\/|fixtures\/|GRANDFATHERED)/i;
 
 // Direct provider calls (NDS bypass)
 const DIRECT_PROVIDER_RE = /\b(twilio\s*\.\s*messages\.create|new\s+Twilio\b|resend\s*\.\s*emails\.send|new\s+Resend\b|webpush\s*\.\s*sendNotification|fcm\s*\.\s*send|messaging\s*\.\s*send)/g;

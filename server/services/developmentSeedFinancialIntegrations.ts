@@ -616,13 +616,18 @@ async function seedAnvilPayrollStripeRecords() {
         transferId = connectId ? `tr_SIM_${entry.id.slice(0, 8)}` : null;
       }
 
+      // AUDIT-EXEMPT TRINITY.md §G: dev-only seed for the ANVIL sandbox
+      // workspace. The outer for-loop iterates entries already filtered
+      // by `payroll_run_id` (run.id), and run is filtered by
+      // workspaceId = ANVIL above (line 569). This file is gated by
+      // isProduction() per TRINITY.md §A and never runs in real prod.
       // CATEGORY C — Genuine complex: COALESCE string concat on notes column | Tables: payroll_entries
       await typedExec(sql`
         UPDATE payroll_entries SET
           disbursement_method = 'stripe_connect',
           disbursed_at = NOW(),
           notes = COALESCE(notes || ' | ', '') || ${`Stripe: ${transferId ?? 'sim'}`}
-        WHERE id = ${entry.id}
+        WHERE id = ${entry.id} AND workspace_id = ${ANVIL}
       `).catch(() => {});
     }
 

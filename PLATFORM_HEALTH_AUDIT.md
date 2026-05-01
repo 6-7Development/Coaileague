@@ -1,6 +1,6 @@
 # CoAIleague — Platform Health Audit (rescan)
 
-> **Generated:** 2026-05-01T17:12:55.060Z
+> **Generated:** 2026-05-01T17:47:05.347Z
 > **Generator:** `scripts/audit/scan-platform-health.ts`
 > **Inputs:** `action-wiring-manifest.json` + filesystem rescan
 
@@ -21,21 +21,17 @@ prove a property the row is omitted, never silently green-lit.
 | --- | --- |
 | race_missing_transaction | 391 |
 | race_fire_and_forget | 168 |
-| route_conflict | 114 |
 | race_read_then_write_no_lock | 112 |
+| route_conflict | 68 |
 | mount_overlap | 42 |
 | race_set_immediate | 30 |
-| trinity_law_raw_sql_no_workspace | 19 |
-| trinity_law_module_load_assert | 4 |
-| trinity_law_hardcoded_workspace | 3 |
 
 ## Counts by severity
 
 | Severity | Count |
 | --- | --- |
 | medium | 505 |
-| high | 359 |
-| blocker | 19 |
+| high | 306 |
 
 ## TypeScript snapshot
 
@@ -96,7 +92,7 @@ prove a property the row is omitted, never silently green-lit.
 | high | server/routes/chat.ts:1377 | route_conflict | Duplicate route declaration "GET /api/chatserver/ux-suggestions" — also declared at server/routes/commInlineRoutes.ts:358 |
 | high | server/routes/commInlineRoutes.ts:358 | route_conflict | Duplicate route declaration "GET /api/chatserver/ux-suggestions" — also declared at server/routes/chat.ts:1377 |
 
-_+ 64 more — see `platform-health-audit.json`._
+_+ 18 more — see `platform-health-audit.json`._
 
 ## Mount overlaps (same prefix, conflicting middleware)
 
@@ -186,7 +182,7 @@ _+ 64 more — see `platform-health-audit.json`._
 | high | server/routes/time-entry-routes.ts:1191 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
 | high | server/routes/time-entry-routes.ts:881 | race_set_immediate | setTimeout(async ...) — TRINITY.md §B forbids this fire-and-forget pattern |
 | high | server/routes/timeEntryRoutes.ts:664 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
-| high | server/routes/trinityIntakeRoutes.ts:140 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
+| high | server/routes/trinityIntakeRoutes.ts:141 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
 | high | server/routes/trinityStaffingRoutes.ts:352 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
 | high | server/routes/twilioWebhooks.ts:621 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
 | high | server/routes/visitorManagementRoutes.ts:624 | race_fire_and_forget | Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B |
@@ -326,44 +322,15 @@ _(none)_
 
 ## Trinity §F — module-load SDK assertion
 
-| severity | file:line | category | detail |
-| --- | --- | --- | --- |
-| high | server/routes/integrations-status.ts:274 | trinity_law_module_load_assert | `new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy |
-| high | server/scripts/seed-stripe-products.ts:21 | trinity_law_module_load_assert | `new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy |
-| high | server/scripts/setup-new-pricing-products.ts:31 | trinity_law_module_load_assert | `new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy |
-| high | server/scripts/verify-stripe-products.ts:3 | trinity_law_module_load_assert | `new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy |
+_(none)_
 
 ## Trinity §G — raw SQL UPDATE/DELETE without workspace_id
 
-| severity | file:line | category | detail |
-| --- | --- | --- | --- |
-| blocker | server/services/auditor/auditorAccessService.ts:570 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `auditor_accounts` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/auditor/curePeriodTrackerService.ts:421 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `audit_condition_timers` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/autonomousScheduler.ts:2767 | trinity_law_raw_sql_no_workspace | Raw SQL DELETE FROM `sessions` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/billing/guestSessionService.ts:96 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/developmentSeed.ts:119 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `users` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/developmentSeedFinancialIntegrations.ts:621 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `payroll_entries` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/email/emailProvisioningService.ts:252 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `clients` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/helpai/faqLearningService.ts:94 | trinity_law_raw_sql_no_workspace | Raw SQL DELETE FROM `faq_candidates` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/helpai/supportActionRegistry.ts:442 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `form_invitations` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/infrastructure/durableJobQueue.ts:490 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `durable_job_queue` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/notificationInit.ts:97 | trinity_law_raw_sql_no_workspace | Raw SQL DELETE FROM `platform_updates` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/oauth/googleCalendar.ts:46 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/productionSeed.ts:1134 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/shiftChatroomWorkflowService.ts:580 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `dar_reports` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/sms/smsQueueService.ts:122 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `sms_outbox` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/trinity/workflows/missedClockInWorkflow.ts:382 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `failed` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/trinityEventSubscriptions.ts:2640 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `disciplinary_records` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/trinityVoice/supportCaseService.ts:186 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `voice_support_cases` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
-| blocker | server/services/webhookDeliveryService.ts:278 | trinity_law_raw_sql_no_workspace | Raw SQL UPDATE on `workspace_webhooks` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation |
+_(none)_
 
 ## Trinity §I — hardcoded workspace UUIDs
 
-| severity | file:line | category | detail |
-| --- | --- | --- | --- |
-| high | server/services/productionSeed.ts:862 | trinity_law_hardcoded_workspace | Hardcoded UUID literal "8d31a497-e9fe-48d9-b819-9c6869948c39" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code |
-| high | server/services/productionSeed.ts:1112 | trinity_law_hardcoded_workspace | Hardcoded UUID literal "e2d402f8-fb44-4129-a0f2-703f0dc91aaa" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code |
-| high | server/services/productionSeed.ts:1148 | trinity_law_hardcoded_workspace | Hardcoded UUID literal "8d31a497-e9fe-48d9-b819-9c6869948c39" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code |
+_(none)_
 
 ## Direct provider SDK calls outside NDS
 

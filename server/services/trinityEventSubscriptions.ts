@@ -2636,13 +2636,14 @@ export function initializeTrinityEventSubscriptions(): void {
         if (!rows.length) return;
 
         const record = rows[0];
+        // TRINITY.md §G: scope by workspace_id atomically.
         await (await import('../db')).pool.query(
           `UPDATE disciplinary_records
               SET status = 'active',
                   acknowledged_at = NOW(),
                   updated_at = NOW()
-            WHERE id = $1`,
-          [record.id],
+            WHERE id = $1 AND workspace_id = $2`,
+          [record.id, workspaceId],
         );
         log.info(
           `[TrinityEvents] disciplinary ${record.record_type} fully signed and activated for ${record.employee_id}`,

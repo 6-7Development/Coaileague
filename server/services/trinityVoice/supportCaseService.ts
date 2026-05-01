@@ -181,19 +181,21 @@ export async function resolveSupportCase(params: {
   return res.rows[0] || null;
 }
 
-export async function updateCaseTranscript(caseNumber: string, transcript: string): Promise<void> {
+export async function updateCaseTranscript(caseNumber: string, transcript: string, workspaceId: string): Promise<void> {
+  // TRINITY.md §G: scope by workspace_id atomically.
   await pool.query(
-    `UPDATE voice_support_cases SET transcript = $1, updated_at = NOW() WHERE case_number = $2`,
-    [transcript, caseNumber.toUpperCase()]
+    `UPDATE voice_support_cases SET transcript = $1, updated_at = NOW() WHERE case_number = $2 AND workspace_id = $3`,
+    [transcript, caseNumber.toUpperCase(), workspaceId]
   ).catch((err) => log.warn('[supportCaseService] Fire-and-forget failed:', err));
 }
 
-export async function markCaseAgentNotified(caseNumber: string): Promise<void> {
+export async function markCaseAgentNotified(caseNumber: string, workspaceId: string): Promise<void> {
+  // TRINITY.md §G: scope by workspace_id atomically.
   await pool.query(
     `UPDATE voice_support_cases
      SET agent_notified = true, notification_sent_at = NOW(), updated_at = NOW()
-     WHERE case_number = $1`,
-    [caseNumber.toUpperCase()]
+     WHERE case_number = $1 AND workspace_id = $2`,
+    [caseNumber.toUpperCase(), workspaceId]
   ).catch((err) => log.warn('[supportCaseService] Fire-and-forget failed:', err));
 }
 
@@ -337,7 +339,7 @@ export async function notifyHumanAgents(params: {
   }
 
   if (emailsSent + smsSent > 0) {
-    await markCaseAgentNotified(supportCase.case_number);
+    await markCaseAgentNotified(supportCase.case_number, workspaceId);
   }
 
   return { emailsSent, smsSent, errors };

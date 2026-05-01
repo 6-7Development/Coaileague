@@ -1,15 +1,12 @@
 {
-  "generatedAt": "2026-05-01T17:12:55.060Z",
+  "generatedAt": "2026-05-01T17:47:05.347Z",
   "counts": {
-    "route_conflict": 114,
+    "route_conflict": 68,
     "mount_overlap": 42,
     "race_missing_transaction": 391,
     "race_fire_and_forget": 168,
     "race_read_then_write_no_lock": 112,
-    "race_set_immediate": 30,
-    "trinity_law_module_load_assert": 4,
-    "trinity_law_raw_sql_no_workspace": 19,
-    "trinity_law_hardcoded_workspace": 3
+    "race_set_immediate": 30
   },
   "findings": [
     {
@@ -495,262 +492,6 @@
     {
       "category": "route_conflict",
       "severity": "high",
-      "file": "server/routes/compliance/auditTrail.ts",
-      "line": 24,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80, server/routes/compliance/requirements.ts:14 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/documentTypes.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80, server/routes/compliance/requirements.ts:14 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/packets.ts",
-      "line": 31,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80, server/routes/compliance/requirements.ts:14 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/records.ts",
-      "line": 28,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/regulator.ts:80, server/routes/compliance/requirements.ts:14 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/regulator.ts",
-      "line": 80,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/requirements.ts:14 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/requirements.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/states.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/contractPipelineRoutes.ts",
-      "line": 121,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/documentLibraryRoutes.ts",
-      "line": 22,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/externalEmailRoutes.ts",
-      "line": 19,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/leadCrmRoutes.ts",
-      "line": 30,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/sra/sraFindingsRoutes.ts",
-      "line": 93,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workOrderRoutes.ts",
-      "line": 22,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workflowConfigRoutes.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /\" — also declared at server/routes/compliance/auditTrail.ts:24, server/routes/compliance/documentTypes.ts:14, server/routes/compliance/packets.ts:31, server/routes/compliance/records.ts:28, server/routes/compliance/regulator.ts:80 (+8 more)",
-      "evidence": "GET /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/documents.ts",
-      "line": 180,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110, server/routes/externalEmailRoutes.ts:83 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/records.ts",
-      "line": 75,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110, server/routes/externalEmailRoutes.ts:83 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/regulator.ts",
-      "line": 110,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110, server/routes/externalEmailRoutes.ts:83 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/contractPipelineRoutes.ts",
-      "line": 145,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/documentLibraryRoutes.ts:110, server/routes/externalEmailRoutes.ts:83 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/documentLibraryRoutes.ts",
-      "line": 110,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/externalEmailRoutes.ts:83 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/externalEmailRoutes.ts",
-      "line": 83,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/leadCrmRoutes.ts",
-      "line": 144,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/sra/sraFindingsRoutes.ts",
-      "line": 118,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workOrderRoutes.ts",
-      "line": 72,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workflowConfigRoutes.ts",
-      "line": 53,
-      "detail": "Duplicate route declaration \"POST /\" — also declared at server/routes/compliance/documents.ts:180, server/routes/compliance/records.ts:75, server/routes/compliance/regulator.ts:110, server/routes/contractPipelineRoutes.ts:145, server/routes/documentLibraryRoutes.ts:110 (+4 more)",
-      "evidence": "POST /"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/compliance/records.ts",
-      "line": 159,
-      "detail": "Duplicate route declaration \"GET /stats\" — also declared at server/routes/contractPipelineRoutes.ts:201, server/routes/workflowRoutes.ts:59",
-      "evidence": "GET /stats"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/contractPipelineRoutes.ts",
-      "line": 201,
-      "detail": "Duplicate route declaration \"GET /stats\" — also declared at server/routes/compliance/records.ts:159, server/routes/workflowRoutes.ts:59",
-      "evidence": "GET /stats"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workflowRoutes.ts",
-      "line": 59,
-      "detail": "Duplicate route declaration \"GET /stats\" — also declared at server/routes/compliance/records.ts:159, server/routes/contractPipelineRoutes.ts:201",
-      "evidence": "GET /stats"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/complianceRoutes.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /incidents\" — also declared at server/routes/dispatch.ts:14, server/routes/sra/sraDataRoutes.ts:180",
-      "evidence": "GET /incidents"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/dispatch.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /incidents\" — also declared at server/routes/complianceRoutes.ts:14, server/routes/sra/sraDataRoutes.ts:180",
-      "evidence": "GET /incidents"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/sra/sraDataRoutes.ts",
-      "line": 180,
-      "detail": "Duplicate route declaration \"GET /incidents\" — also declared at server/routes/complianceRoutes.ts:14, server/routes/dispatch.ts:14",
-      "evidence": "GET /incidents"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/contractPipelineRoutes.ts",
-      "line": 254,
-      "detail": "Duplicate route declaration \"POST /:id/sign\" — also declared at server/routes/documentLibraryRoutes.ts:264",
-      "evidence": "POST /:id/sign"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/documentLibraryRoutes.ts",
-      "line": 264,
-      "detail": "Duplicate route declaration \"POST /:id/sign\" — also declared at server/routes/contractPipelineRoutes.ts:254",
-      "evidence": "POST /:id/sign"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
       "file": "server/routes/deviceLoaderRoutes.ts",
       "line": 35,
       "detail": "Duplicate route declaration \"GET /api/device/settings\" — also declared at server/routes/miscRoutes.ts:1771",
@@ -763,70 +504,6 @@
       "line": 1771,
       "detail": "Duplicate route declaration \"GET /api/device/settings\" — also declared at server/routes/deviceLoaderRoutes.ts:35",
       "evidence": "GET /api/device/settings"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/documentLibraryRoutes.ts",
-      "line": 163,
-      "detail": "Duplicate route declaration \"PATCH /:id\" — also declared at server/routes/externalEmailRoutes.ts:192, server/routes/leadCrmRoutes.ts:205, server/routes/sra/sraFindingsRoutes.ts:228, server/routes/workOrderRoutes.ts:100",
-      "evidence": "PATCH /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/externalEmailRoutes.ts",
-      "line": 192,
-      "detail": "Duplicate route declaration \"PATCH /:id\" — also declared at server/routes/documentLibraryRoutes.ts:163, server/routes/leadCrmRoutes.ts:205, server/routes/sra/sraFindingsRoutes.ts:228, server/routes/workOrderRoutes.ts:100",
-      "evidence": "PATCH /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/leadCrmRoutes.ts",
-      "line": 205,
-      "detail": "Duplicate route declaration \"PATCH /:id\" — also declared at server/routes/documentLibraryRoutes.ts:163, server/routes/externalEmailRoutes.ts:192, server/routes/sra/sraFindingsRoutes.ts:228, server/routes/workOrderRoutes.ts:100",
-      "evidence": "PATCH /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/sra/sraFindingsRoutes.ts",
-      "line": 228,
-      "detail": "Duplicate route declaration \"PATCH /:id\" — also declared at server/routes/documentLibraryRoutes.ts:163, server/routes/externalEmailRoutes.ts:192, server/routes/leadCrmRoutes.ts:205, server/routes/workOrderRoutes.ts:100",
-      "evidence": "PATCH /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/workOrderRoutes.ts",
-      "line": 100,
-      "detail": "Duplicate route declaration \"PATCH /:id\" — also declared at server/routes/documentLibraryRoutes.ts:163, server/routes/externalEmailRoutes.ts:192, server/routes/leadCrmRoutes.ts:205, server/routes/sra/sraFindingsRoutes.ts:228",
-      "evidence": "PATCH /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/documentLibraryRoutes.ts",
-      "line": 212,
-      "detail": "Duplicate route declaration \"DELETE /:id\" — also declared at server/routes/externalEmailRoutes.ts:218, server/routes/leadCrmRoutes.ts:275",
-      "evidence": "DELETE /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/externalEmailRoutes.ts",
-      "line": 218,
-      "detail": "Duplicate route declaration \"DELETE /:id\" — also declared at server/routes/documentLibraryRoutes.ts:212, server/routes/leadCrmRoutes.ts:275",
-      "evidence": "DELETE /:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/leadCrmRoutes.ts",
-      "line": 275,
-      "detail": "Duplicate route declaration \"DELETE /:id\" — also declared at server/routes/documentLibraryRoutes.ts:212, server/routes/externalEmailRoutes.ts:218",
-      "evidence": "DELETE /:id"
     },
     {
       "category": "route_conflict",
@@ -862,38 +539,6 @@
     },
     {
       "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/flexStaffingRoutes.ts",
-      "line": 152,
-      "detail": "Duplicate route declaration \"POST /availability\" — also declared at server/routes/shiftTradingRoutes.ts:52",
-      "evidence": "POST /availability"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/shiftTradingRoutes.ts",
-      "line": 52,
-      "detail": "Duplicate route declaration \"POST /availability\" — also declared at server/routes/flexStaffingRoutes.ts:152",
-      "evidence": "POST /availability"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/flexStaffingRoutes.ts",
-      "line": 181,
-      "detail": "Duplicate route declaration \"DELETE /availability/:id\" — also declared at server/routes/shiftTradingRoutes.ts:112",
-      "evidence": "DELETE /availability/:id"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/shiftTradingRoutes.ts",
-      "line": 112,
-      "detail": "Duplicate route declaration \"DELETE /availability/:id\" — also declared at server/routes/flexStaffingRoutes.ts:181",
-      "evidence": "DELETE /availability/:id"
-    },
-    {
-      "category": "route_conflict",
       "severity": "medium",
       "file": "server/routes/helpdeskRoutes.ts",
       "line": 36,
@@ -907,22 +552,6 @@
       "line": 840,
       "detail": "Same route \"POST /api/helpdesk/feedback\" declared 2× in this file — first match wins; later declarations unreachable",
       "evidence": "POST /api/helpdesk/feedback"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/schedulerRoutes.ts",
-      "line": 14,
-      "detail": "Duplicate route declaration \"GET /status\" — also declared at server/routes/trinityStaffingRoutes.ts:76",
-      "evidence": "GET /status"
-    },
-    {
-      "category": "route_conflict",
-      "severity": "high",
-      "file": "server/routes/trinityStaffingRoutes.ts",
-      "line": 76,
-      "detail": "Duplicate route declaration \"GET /status\" — also declared at server/routes/schedulerRoutes.ts:14",
-      "evidence": "GET /status"
     },
     {
       "category": "mount_overlap",
@@ -1898,15 +1527,6 @@
       "evidence": "select(exceptionTriageQueue)  →  write(exceptionTriageQueue)  in same scope"
     },
     {
-      "category": "trinity_law_module_load_assert",
-      "severity": "high",
-      "file": "server/routes/integrations-status.ts",
-      "line": 274,
-      "detail": "`new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy",
-      "evidence": "new Stripe(process.env.STRIPE_SECRET_KEY!);",
-      "ruleRef": "TRINITY.md §F"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/routes/integrationsInlineRoutes.ts",
@@ -2414,7 +2034,7 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/routes/trinityIntakeRoutes.ts",
-      "line": 140,
+      "line": 141,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "",
       "ruleRef": "TRINITY.md §B"
@@ -4091,24 +3711,6 @@
       "evidence": "db.insert, db.update, db.update"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/auditor/auditorAccessService.ts",
-      "line": 570,
-      "detail": "Raw SQL UPDATE on `auditor_accounts` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE auditor_accounts SET last_auth_at = NOW(), updated_at = NOW() WHERE id = $1`, [auditorId]);",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/auditor/curePeriodTrackerService.ts",
-      "line": 421,
-      "detail": "Raw SQL UPDATE on `audit_condition_timers` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE audit_condition_timers SET reminder_7d_sent = true, updated_at = NOW() WHERE id = $1`,",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/auth/mfa.ts",
@@ -4231,19 +3833,10 @@
       "category": "race_set_immediate",
       "severity": "high",
       "file": "server/services/autonomousScheduler.ts",
-      "line": 4349,
+      "line": 4353,
       "detail": "setTimeout(async ...) — TRINITY.md §B forbids this fire-and-forget pattern",
       "evidence": "setTimeout(async () => {",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/autonomousScheduler.ts",
-      "line": 2767,
-      "detail": "Raw SQL DELETE FROM `sessions` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "DELETE FROM sessions WHERE user_id = ${row.user_id}",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -4342,15 +3935,6 @@
       "line": 120,
       "detail": "3 db.{insert|update|delete} calls in this file with no db.transaction wrap",
       "evidence": "db.update, db.insert, db.insert"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/billing/guestSessionService.ts",
-      "line": 96,
-      "detail": "Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -4749,15 +4333,6 @@
       "evidence": "db.update, db.update, db.update"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/developmentSeed.ts",
-      "line": 119,
-      "detail": "Raw SQL UPDATE on `users` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE users SET current_workspace_id = ${DEV_SENTINEL_WORKSPACE} WHERE id IN ('dev-owner-001', 'dev-manager-001', 'dev-manager-002', 'dev-emp-001', 'dev-emp-002', 'dev-emp-003', 'dev-emp-004', 'dev-e",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/developmentSeedAnvil.ts",
@@ -4822,15 +4397,6 @@
       "evidence": "select(clients)  →  write(clients)  in same scope"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/developmentSeedFinancialIntegrations.ts",
-      "line": 621,
-      "detail": "Raw SQL UPDATE on `payroll_entries` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE payroll_entries SET",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/developmentSeedOperational.ts",
@@ -4866,7 +4432,7 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/services/email/emailProvisioningService.ts",
-      "line": 307,
+      "line": 308,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "this.syncStripeMeteredSeats(addr.workspace_id).catch(err =>",
       "ruleRef": "TRINITY.md §B"
@@ -4875,19 +4441,10 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/services/email/emailProvisioningService.ts",
-      "line": 336,
+      "line": 337,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/email/emailProvisioningService.ts",
-      "line": 252,
-      "detail": "Raw SQL UPDATE on `clients` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE clients SET platform_email = $1 WHERE id = $2`,",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -5111,15 +4668,6 @@
       "ruleRef": "TRINITY.md §B"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/helpai/faqLearningService.ts",
-      "line": 94,
-      "detail": "Raw SQL DELETE FROM `faq_candidates` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "DELETE FROM faq_candidates WHERE id = $1`, [c.id]);",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/helpai/helpAIBotService.ts",
@@ -5240,15 +4788,6 @@
       "line": 333,
       "detail": "8 db.{insert|update|delete} calls in this file with no db.transaction wrap",
       "evidence": "db.insert, db.insert, db.update"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/helpai/supportActionRegistry.ts",
-      "line": 442,
-      "detail": "Raw SQL UPDATE on `form_invitations` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE form_invitations SET status = 'sent', token = $1, submitted_at = NULL WHERE id = $2`, [newToken, targetEntityId]);",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_fire_and_forget",
@@ -5418,15 +4957,6 @@
       "evidence": "db.update, db.insert, db.insert"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/infrastructure/durableJobQueue.ts",
-      "line": 490,
-      "detail": "Raw SQL UPDATE on `durable_job_queue` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE durable_job_queue",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/infrastructure/errorTrackingService.ts",
@@ -5565,15 +5095,6 @@
       "evidence": "db.insert, db.update, db.update"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/notificationInit.ts",
-      "line": 97,
-      "detail": "Raw SQL DELETE FROM `platform_updates` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "DELETE FROM platform_updates",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/notificationRuleEngine.ts",
@@ -5612,15 +5133,6 @@
       "line": 171,
       "detail": "5 db.{insert|update|delete} calls in this file with no db.transaction wrap",
       "evidence": "db.insert, db.update, db.insert"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/oauth/googleCalendar.ts",
-      "line": 46,
-      "detail": "Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -5969,46 +5481,10 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/services/productionSeed.ts",
-      "line": 572,
+      "line": 576,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "emailProvisioningService.provisionWorkspaceAddresses(WS_ID, 'sps')",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/productionSeed.ts",
-      "line": 1134,
-      "detail": "Raw SQL UPDATE on `SET` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
-      "category": "trinity_law_hardcoded_workspace",
-      "severity": "high",
-      "file": "server/services/productionSeed.ts",
-      "line": 862,
-      "detail": "Hardcoded UUID literal \"8d31a497-e9fe-48d9-b819-9c6869948c39\" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code",
-      "evidence": "RM_WS}\n        AND id NOT IN ('8d31a497-e9fe-48d9-b819-9c6869948c39', 'helpai-employee', '",
-      "ruleRef": "TRINITY.md §I"
-    },
-    {
-      "category": "trinity_law_hardcoded_workspace",
-      "severity": "high",
-      "file": "server/services/productionSeed.ts",
-      "line": 1112,
-      "detail": "Hardcoded UUID literal \"e2d402f8-fb44-4129-a0f2-703f0dc91aaa\" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code",
-      "evidence": "t rolesData = [\n        { id: 'e2d402f8-fb44-4129-a0f2-703f0dc91aaa', userId: 'root-user-0",
-      "ruleRef": "TRINITY.md §I"
-    },
-    {
-      "category": "trinity_law_hardcoded_workspace",
-      "severity": "high",
-      "file": "server/services/productionSeed.ts",
-      "line": 1148,
-      "detail": "Hardcoded UUID literal \"8d31a497-e9fe-48d9-b819-9c6869948c39\" — TRINITY.md §I forbids hardcoded workspace/user IDs in production code",
-      "evidence": "ployeesData = [\n        { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-0",
-      "ruleRef": "TRINITY.md §I"
     },
     {
       "category": "race_missing_transaction",
@@ -6279,31 +5755,13 @@
       "evidence": "db.update, db.update"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/shiftChatroomWorkflowService.ts",
-      "line": 580,
-      "detail": "Raw SQL UPDATE on `dar_reports` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE dar_reports SET pdf_url=$1, pdf_generated_at=NOW(), status='pending_review', updated_at=NOW() WHERE id=$2`,",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/services/sms/smsQueueService.ts",
-      "line": 161,
+      "line": 164,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/sms/smsQueueService.ts",
-      "line": 122,
-      "detail": "Raw SQL UPDATE on `sms_outbox` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE sms_outbox",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -6503,15 +5961,6 @@
       "evidence": "db.update, db.update, db.update"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/trinity/workflows/missedClockInWorkflow.ts",
-      "line": 382,
-      "detail": "Raw SQL UPDATE on `failed` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "update failed:', err?.message);",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/trinity/workflows/topsVerificationWorkflow.ts",
@@ -6595,15 +6044,6 @@
       "evidence": "db.insert, db.insert, db.insert"
     },
     {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/trinityEventSubscriptions.ts",
-      "line": 2640,
-      "detail": "Raw SQL UPDATE on `disciplinary_records` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE disciplinary_records",
-      "ruleRef": "TRINITY.md §G"
-    },
-    {
       "category": "race_missing_transaction",
       "severity": "medium",
       "file": "server/services/trinityOutreachService.ts",
@@ -6635,15 +6075,6 @@
       "line": 255,
       "detail": "2 db.{insert|update|delete} calls in this file with no db.transaction wrap",
       "evidence": "db.insert, db.insert"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/trinityVoice/supportCaseService.ts",
-      "line": 186,
-      "detail": "Raw SQL UPDATE on `voice_support_cases` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE voice_support_cases SET transcript = $1, updated_at = NOW() WHERE case_number = $2`,",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_missing_transaction",
@@ -6729,7 +6160,7 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/services/webhookDeliveryService.ts",
-      "line": 384,
+      "line": 386,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "deliverToWebhook(",
       "ruleRef": "TRINITY.md §B"
@@ -6738,19 +6169,10 @@
       "category": "race_set_immediate",
       "severity": "high",
       "file": "server/services/webhookDeliveryService.ts",
-      "line": 306,
+      "line": 308,
       "detail": "setTimeout(async ...) — TRINITY.md §B forbids this fire-and-forget pattern",
       "evidence": "setTimeout(async () => {",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_raw_sql_no_workspace",
-      "severity": "blocker",
-      "file": "server/services/webhookDeliveryService.ts",
-      "line": 278,
-      "detail": "Raw SQL UPDATE on `workspace_webhooks` without workspace_id in WHERE — TRINITY.md §G tenant-isolation violation",
-      "evidence": "UPDATE workspace_webhooks",
-      "ruleRef": "TRINITY.md §G"
     },
     {
       "category": "race_read_then_write_no_lock",
@@ -7013,15 +6435,6 @@
       "ruleRef": "TRINITY.md §B"
     },
     {
-      "category": "trinity_law_module_load_assert",
-      "severity": "high",
-      "file": "server/scripts/seed-stripe-products.ts",
-      "line": 21,
-      "detail": "`new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy",
-      "evidence": "new Stripe(process.env.STRIPE_SECRET_KEY!, {",
-      "ruleRef": "TRINITY.md §F"
-    },
-    {
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/scripts/seedEmployeeDocuments.ts",
@@ -7067,19 +6480,10 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/scripts/setup-new-pricing-products.ts",
-      "line": 292,
+      "line": 291,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_module_load_assert",
-      "severity": "high",
-      "file": "server/scripts/setup-new-pricing-products.ts",
-      "line": 31,
-      "detail": "`new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy",
-      "evidence": "new Stripe(process.env.STRIPE_SECRET_KEY!, {",
-      "ruleRef": "TRINITY.md §F"
     },
     {
       "category": "race_fire_and_forget",
@@ -7128,19 +6532,10 @@
       "category": "race_fire_and_forget",
       "severity": "high",
       "file": "server/scripts/verify-stripe-products.ts",
-      "line": 83,
+      "line": 84,
       "detail": "Promise.catch attached without await/return — fire-and-forget violates TRINITY.md §B",
       "evidence": "",
       "ruleRef": "TRINITY.md §B"
-    },
-    {
-      "category": "trinity_law_module_load_assert",
-      "severity": "high",
-      "file": "server/scripts/verify-stripe-products.ts",
-      "line": 3,
-      "detail": "`new Stripe(process.env.X!)` at module load — TRINITY.md §F requires lazy factory + Proxy",
-      "evidence": "new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-09-30.clover' });",
-      "ruleRef": "TRINITY.md §F"
     },
     {
       "category": "race_missing_transaction",
@@ -7753,191 +7148,6 @@
       ]
     },
     {
-      "key": "GET /",
-      "locations": [
-        {
-          "file": "server/routes/compliance/auditTrail.ts",
-          "line": 24,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/documentTypes.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/packets.ts",
-          "line": 31,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/records.ts",
-          "line": 28,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/regulator.ts",
-          "line": 80,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/requirements.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/states.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/contractPipelineRoutes.ts",
-          "line": 121,
-          "mount": null
-        },
-        {
-          "file": "server/routes/documentLibraryRoutes.ts",
-          "line": 22,
-          "mount": null
-        },
-        {
-          "file": "server/routes/externalEmailRoutes.ts",
-          "line": 19,
-          "mount": null
-        },
-        {
-          "file": "server/routes/leadCrmRoutes.ts",
-          "line": 30,
-          "mount": null
-        },
-        {
-          "file": "server/routes/sra/sraFindingsRoutes.ts",
-          "line": 93,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workOrderRoutes.ts",
-          "line": 22,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workflowConfigRoutes.ts",
-          "line": 14,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "POST /",
-      "locations": [
-        {
-          "file": "server/routes/compliance/documents.ts",
-          "line": 180,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/records.ts",
-          "line": 75,
-          "mount": null
-        },
-        {
-          "file": "server/routes/compliance/regulator.ts",
-          "line": 110,
-          "mount": null
-        },
-        {
-          "file": "server/routes/contractPipelineRoutes.ts",
-          "line": 145,
-          "mount": null
-        },
-        {
-          "file": "server/routes/documentLibraryRoutes.ts",
-          "line": 110,
-          "mount": null
-        },
-        {
-          "file": "server/routes/externalEmailRoutes.ts",
-          "line": 83,
-          "mount": null
-        },
-        {
-          "file": "server/routes/leadCrmRoutes.ts",
-          "line": 144,
-          "mount": null
-        },
-        {
-          "file": "server/routes/sra/sraFindingsRoutes.ts",
-          "line": 118,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workOrderRoutes.ts",
-          "line": 72,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workflowConfigRoutes.ts",
-          "line": 53,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "GET /stats",
-      "locations": [
-        {
-          "file": "server/routes/compliance/records.ts",
-          "line": 159,
-          "mount": null
-        },
-        {
-          "file": "server/routes/contractPipelineRoutes.ts",
-          "line": 201,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workflowRoutes.ts",
-          "line": 59,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "GET /incidents",
-      "locations": [
-        {
-          "file": "server/routes/complianceRoutes.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/dispatch.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/sra/sraDataRoutes.ts",
-          "line": 180,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "POST /:id/sign",
-      "locations": [
-        {
-          "file": "server/routes/contractPipelineRoutes.ts",
-          "line": 254,
-          "mount": null
-        },
-        {
-          "file": "server/routes/documentLibraryRoutes.ts",
-          "line": 264,
-          "mount": null
-        }
-      ]
-    },
-    {
       "key": "GET /api/device/settings",
       "locations": [
         {
@@ -7948,56 +7158,6 @@
         {
           "file": "server/routes/miscRoutes.ts",
           "line": 1771,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "PATCH /:id",
-      "locations": [
-        {
-          "file": "server/routes/documentLibraryRoutes.ts",
-          "line": 163,
-          "mount": null
-        },
-        {
-          "file": "server/routes/externalEmailRoutes.ts",
-          "line": 192,
-          "mount": null
-        },
-        {
-          "file": "server/routes/leadCrmRoutes.ts",
-          "line": 205,
-          "mount": null
-        },
-        {
-          "file": "server/routes/sra/sraFindingsRoutes.ts",
-          "line": 228,
-          "mount": null
-        },
-        {
-          "file": "server/routes/workOrderRoutes.ts",
-          "line": 100,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "DELETE /:id",
-      "locations": [
-        {
-          "file": "server/routes/documentLibraryRoutes.ts",
-          "line": 212,
-          "mount": null
-        },
-        {
-          "file": "server/routes/externalEmailRoutes.ts",
-          "line": 218,
-          "mount": null
-        },
-        {
-          "file": "server/routes/leadCrmRoutes.ts",
-          "line": 275,
           "mount": null
         }
       ]
@@ -8028,51 +7188,6 @@
         {
           "file": "server/routes/hrInlineRoutes.ts",
           "line": 158,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "POST /availability",
-      "locations": [
-        {
-          "file": "server/routes/flexStaffingRoutes.ts",
-          "line": 152,
-          "mount": null
-        },
-        {
-          "file": "server/routes/shiftTradingRoutes.ts",
-          "line": 52,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "DELETE /availability/:id",
-      "locations": [
-        {
-          "file": "server/routes/flexStaffingRoutes.ts",
-          "line": 181,
-          "mount": null
-        },
-        {
-          "file": "server/routes/shiftTradingRoutes.ts",
-          "line": 112,
-          "mount": null
-        }
-      ]
-    },
-    {
-      "key": "GET /status",
-      "locations": [
-        {
-          "file": "server/routes/schedulerRoutes.ts",
-          "line": 14,
-          "mount": null
-        },
-        {
-          "file": "server/routes/trinityStaffingRoutes.ts",
-          "line": 76,
           "mount": null
         }
       ]
@@ -9369,7 +8484,7 @@
     {
       "file": "server/routes/integrations-status.ts",
       "routes": 0,
-      "flagged": 1
+      "flagged": 0
     },
     {
       "file": "server/routes/integrationsInlineRoutes.ts",

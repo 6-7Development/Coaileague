@@ -434,12 +434,16 @@ export const supportActionHandlers: Record<SupportActionType, (payload: SupportA
     const { targetEntityId, workspaceId, reason, actorId, correctionData } = payload;
     const result: SupportActionResult = { success: false, actionType: payload.actionType, actionDescription: '' };
 
-    const inv = await pool.query(`SELECT id, status, sent_to_email, form_id, context_id FROM form_invitations WHERE id = $1`, [targetEntityId]);
+    // TRINITY.md §G: scope by workspace_id on the SELECT so an action
+    // request from one tenant can never resolve a form_invitations row
+    // belonging to another tenant.
+    const inv = await pool.query(`SELECT id, status, sent_to_email, form_id, context_id FROM form_invitations WHERE id = $1 AND workspace_id = $2`, [targetEntityId, workspaceId]);
     if (inv.rows.length === 0) return { ...result, error: 'Form invitation not found' };
 
     result.beforeState = { status: inv.rows[0].status };
     const newToken = crypto.randomBytes(32).toString('hex');
-    await pool.query(`UPDATE form_invitations SET status = 'sent', token = $1, submitted_at = NULL WHERE id = $2`, [newToken, targetEntityId]);
+    // TRINITY.md §G: scope the UPDATE by workspace_id atomically.
+    await pool.query(`UPDATE form_invitations SET status = 'sent', token = $1, submitted_at = NULL WHERE id = $2 AND workspace_id = $3`, [newToken, targetEntityId, workspaceId]);
     result.afterState = { status: 'sent', token_regenerated: true };
     result.success = true;
     result.actionDescription = `Resent form invitation ${targetEntityId} to ${inv.rows[0].sent_to_email}`;

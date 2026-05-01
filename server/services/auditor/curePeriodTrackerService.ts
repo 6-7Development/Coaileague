@@ -387,9 +387,10 @@ export async function runCureHeartbeat(): Promise<{
     if (hoursRemaining <= 24 && !timer.reminder_24h_sent) {
       try {
         await sendReminderStrike(timer, ownerUserId, '24h');
+        // TRINITY.md §G: scope by workspace_id atomically.
         await pool.query(
-          `UPDATE audit_condition_timers SET reminder_24h_sent = true, updated_at = NOW() WHERE id = $1`,
-          [timer.id],
+          `UPDATE audit_condition_timers SET reminder_24h_sent = true, updated_at = NOW() WHERE id = $1 AND workspace_id = $2`,
+          [timer.id, timer.workspace_id],
         );
         reminders24h++;
       } catch (err: any) {
@@ -402,9 +403,10 @@ export async function runCureHeartbeat(): Promise<{
     if (hoursRemaining <= 72 && !timer.reminder_72h_sent) {
       try {
         await sendReminderStrike(timer, ownerUserId, '72h');
+        // TRINITY.md §G: scope by workspace_id atomically.
         await pool.query(
-          `UPDATE audit_condition_timers SET reminder_72h_sent = true, updated_at = NOW() WHERE id = $1`,
-          [timer.id],
+          `UPDATE audit_condition_timers SET reminder_72h_sent = true, updated_at = NOW() WHERE id = $1 AND workspace_id = $2`,
+          [timer.id, timer.workspace_id],
         );
         reminders72h++;
       } catch (err: any) {
@@ -417,9 +419,10 @@ export async function runCureHeartbeat(): Promise<{
     if (hoursRemaining <= 168 && !timer.reminder_7d_sent) {
       try {
         await sendReminderStrike(timer, ownerUserId, '7d');
+        // TRINITY.md §G: scope by workspace_id atomically.
         await pool.query(
-          `UPDATE audit_condition_timers SET reminder_7d_sent = true, updated_at = NOW() WHERE id = $1`,
-          [timer.id],
+          `UPDATE audit_condition_timers SET reminder_7d_sent = true, updated_at = NOW() WHERE id = $1 AND workspace_id = $2`,
+          [timer.id, timer.workspace_id],
         );
         reminders7d++;
       } catch (err: any) {

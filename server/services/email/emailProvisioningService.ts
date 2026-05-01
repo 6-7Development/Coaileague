@@ -248,9 +248,10 @@ export class EmailProvisioningService {
       ON CONFLICT (address) DO NOTHING
     `, [workspaceId, clientId, address, localPart, emailSlug, clientName]);
 
+    // TRINITY.md §G: scope by workspace_id atomically.
     await pool.query(
-      `UPDATE clients SET platform_email = $1 WHERE id = $2`,
-      [address, clientId]
+      `UPDATE clients SET platform_email = $1 WHERE id = $2 AND workspace_id = $3`,
+      [address, clientId, workspaceId]
     );
 
     return address;

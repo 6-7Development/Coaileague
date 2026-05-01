@@ -837,27 +837,11 @@ router.post('/revoke-access', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post('/feedback', async (req, res) => {
-  try {
-    const schema = z.object({
-      conversationId: z.string(),
-      rating: z.number().min(1).max(5),
-      feedback: z.string().optional(),
-    });
-
-    const { conversationId, rating, feedback } = schema.parse(req.body);
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await storage.updateChatConversation(conversationId, {
-      rating,
-      feedback: feedback || null,
-    });
-
-    res.json({ success: true });
-  } catch (error: unknown) {
-    res.status(400).json({ error: sanitizeError(error) });
-  }
-});
+// (removed: duplicate `router.post('/feedback', ...)` chat-conversation
+//  rating handler — was unreachable behind the public /feedback route at
+//  line 36, called storage.updateChatConversation with wrong arity, and
+//  had zero frontend callers. If chat-conversation rating is needed, add
+//  it under a distinct path like /api/chat/conversations/:id/feedback.)
 
 router.get('/reviews', async (req: AuthenticatedRequest, res) => {
   try {

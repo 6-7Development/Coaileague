@@ -270,9 +270,12 @@ integrationsStatusRouter.post('/:id/test', requireAuth, async (req: Request, res
       case 'stripe':
         if (process.env.STRIPE_SECRET_KEY) {
           try {
-            const { default: Stripe } = await import('stripe');
-            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-            await stripe.balance.retrieve();
+            // TRINITY.md §F: use the canonical lazy Stripe factory rather
+            // than `new Stripe(process.env.STRIPE_SECRET_KEY!)` so a
+            // missing key never crashes the import graph and the singleton
+            // is shared across the platform.
+            const { getStripe } = await import('../services/billing/stripeClient');
+            await getStripe().balance.retrieve();
             testResult = { success: true, message: 'Stripe connection successful' };
           } catch (err: any) {
             testResult = { success: false, message: `Stripe test failed: ${err.message}` };

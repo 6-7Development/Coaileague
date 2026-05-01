@@ -101,9 +101,10 @@ router.post('/intake/:sessionId/respond', requireAuth, async (req, res, next) =>
       [fieldId]: value
     };
 
+    // TRINITY.md §G: scope by workspace_id atomically.
     await pool.query(
-      'UPDATE trinity_intake_sessions SET collected_data = $1, current_step_index = $2 WHERE id = $3',
-      [JSON.stringify(updatedData), stepIndex, sessionId]
+      'UPDATE trinity_intake_sessions SET collected_data = $1, current_step_index = $2 WHERE id = $3 AND workspace_id = $4',
+      [JSON.stringify(updatedData), stepIndex, sessionId, workspaceId]
     );
 
     let nextStepIndex = stepIndex + 1;
@@ -223,9 +224,10 @@ async function processTrinityIntakeAction(
       data: { collectedData, actionType }
     });
 
+    // TRINITY.md §G: scope by workspace_id atomically.
     await pool.query(
-      'UPDATE trinity_intake_sessions SET trinity_action_taken = $1 WHERE id = $2',
-      [actionType, sessionId]
+      'UPDATE trinity_intake_sessions SET trinity_action_taken = $1 WHERE id = $2 AND workspace_id = $3',
+      [actionType, sessionId, workspaceId]
     );
 
     log.info(`[TrinityIntake] Action processed: ${actionType} for session ${sessionId}`);

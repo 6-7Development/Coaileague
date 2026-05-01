@@ -14,7 +14,11 @@ import { db } from "../db";
 import { users, platformRoles, workspaces, employees, invoices, payrollEntries, orgLedger } from "@shared/schema";
 import { eq, sql, and, notInArray, ne, inArray } from "drizzle-orm";
 import { typedCount, typedExec, typedQuery } from '../lib/typedSql';
-import { PLATFORM_WORKSPACE_ID } from './billing/billingConstants';
+import {
+  PLATFORM_WORKSPACE_ID,
+  PLATFORM_ROOT_EMPLOYEE_ID,
+  PLATFORM_ROOT_PLATFORM_ROLE_ID,
+} from './billing/billingConstants';
 
 const SENTINEL_USER_ID = 'root-user-00000000';
 const SENTINEL_EMAIL = process.env.ROOT_ADMIN_EMAIL || 'root@coaileague.local';
@@ -859,7 +863,7 @@ export async function runProductionDataCleanup(): Promise<void> {
       const deleted = await sp.execute(sql`
         DELETE FROM employees
         WHERE workspace_id = ${PLATFORM_WS}
-        AND id NOT IN ('8d31a497-e9fe-48d9-b819-9c6869948c39', 'helpai-employee', 'trinity-employee')
+        AND id NOT IN (${PLATFORM_ROOT_EMPLOYEE_ID}, 'helpai-employee', 'trinity-employee')
       `);
       console.log(`🧹   Removed ${deleted.rowCount || 0} non-system employees from platform workspace`);
     });
@@ -1109,7 +1113,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       console.log('🌱 Seeding platform roles...');
       
       const rolesData = [
-        { id: 'e2d402f8-fb44-4129-a0f2-703f0dc91aaa', userId: 'root-user-00000000', role: 'root_admin' },
+        { id: PLATFORM_ROOT_PLATFORM_ROLE_ID, userId: 'root-user-00000000', role: 'root_admin' },
       ];
       
       for (const pr of rolesData) {
@@ -1128,6 +1132,11 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       for (const ws of [
         { id: PLATFORM_WORKSPACE_ID, name: 'CoAIleague Support', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
       ]) {
+        // AUDIT-EXEMPT TRINITY.md §G: workspaces is the tenant table itself
+        // — `id` IS the workspace primary key. There is no separate
+        // workspace_id to scope on. The conflict target is the PK, which
+        // restricts the upsert to exactly the platform-support workspace
+        // sentinel.
         await tx.execute(sql`
           INSERT INTO workspaces (id, name, owner_id, subscription_tier, subscription_status, inbound_email_forward_to, created_at, updated_at)
           VALUES (${ws.id}, ${ws.name}, ${ws.ownerId}, ${ws.subscriptionTier}, ${ws.subscriptionStatus}, 'txpsinvestigations@gmail.com', NOW(), NOW())
@@ -1145,7 +1154,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       console.log('🌱 Seeding employees...');
       
       const employeesData = [
-        { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-00000000', workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Root', lastName: 'Administrator', email: SENTINEL_EMAIL, hourlyRate: '0.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-COAI-00001' },
+        { id: PLATFORM_ROOT_EMPLOYEE_ID, userId: 'root-user-00000000', workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Root', lastName: 'Administrator', email: SENTINEL_EMAIL, hourlyRate: '0.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-COAI-00001' },
         { id: 'helpai-employee', userId: null, workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'HelpAI', lastName: 'Bot', email: 'helpai@coaileague.support', hourlyRate: null, role: 'AI Support Assistant', workspaceRole: null, employeeNumber: 'EMP-HELP-00001' },
         { id: 'trinity-employee', userId: null, workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Trinity', lastName: 'AI', email: 'trinity@coaileague.support', hourlyRate: null, role: 'AI Platform Guide', workspaceRole: null, employeeNumber: 'EMP-TRIN-00001' },
       ];

@@ -118,13 +118,15 @@ export async function processSMSOutbox(): Promise<void> {
             });
 
             if (result.success) {
+              // TRINITY.md §G: scope by workspace_id atomically.
               await pool.query(
                 `UPDATE sms_outbox
                     SET status = 'sent', twilio_sid = $1, sent_at = NOW()
-                  WHERE id = $2`,
-                [result.messageId || null, row.id],
+                  WHERE id = $2 AND workspace_id = $3`,
+                [result.messageId || null, row.id, row.workspace_id],
               );
             } else {
+              // TRINITY.md §G: scope by workspace_id atomically.
               await pool.query(
                 `UPDATE sms_outbox
                     SET status = CASE WHEN retry_count + 1 >= max_retries THEN 'failed' ELSE 'queued' END,
@@ -132,19 +134,20 @@ export async function processSMSOutbox(): Promise<void> {
                         failure_reason = $1,
                         failed_at = CASE WHEN retry_count + 1 >= max_retries THEN NOW() ELSE failed_at END,
                         send_after = NOW() + INTERVAL '5 minutes'
-                  WHERE id = $2`,
-                [(result.error || 'unknown').slice(0, 200), row.id],
+                  WHERE id = $2 AND workspace_id = $3`,
+                [(result.error || 'unknown').slice(0, 200), row.id, row.workspace_id],
               );
             }
           } catch (err: any) {
+            // TRINITY.md §G: scope by workspace_id atomically.
             await pool.query(
               `UPDATE sms_outbox
                   SET status = CASE WHEN retry_count + 1 >= max_retries THEN 'failed' ELSE 'queued' END,
                       retry_count = retry_count + 1,
                       failure_reason = $1,
                       send_after = NOW() + INTERVAL '5 minutes'
-                WHERE id = $2`,
-              [String(err?.message || 'unknown').slice(0, 200), row.id],
+                WHERE id = $2 AND workspace_id = $3`,
+              [String(err?.message || 'unknown').slice(0, 200), row.id, row.workspace_id],
             ).catch(() => {});
           }
         }),

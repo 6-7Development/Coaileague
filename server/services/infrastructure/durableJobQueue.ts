@@ -486,14 +486,17 @@ class DurableJobQueueService {
     const nextAttemptAt = new Date(now.getTime() + nextAttemptDelay);
     
     // CATEGORY C — Raw SQL retained: Infrastructure job queue retry scheduling UPDATE | Tables: durable_job_queue | Verified: 2026-03-23
+    // TRINITY.md §G: scope by workspace_id atomically. jobRow.workspace_id
+    // may be null for system-level jobs — use IS NOT DISTINCT FROM so the
+    // null path matches null exactly without leaking across tenants.
     await typedExec(sql`
-      UPDATE durable_job_queue 
-      SET 
-        status = 'pending', 
-        error = ${error}, 
+      UPDATE durable_job_queue
+      SET
+        status = 'pending',
+        error = ${error},
         next_attempt_at = ${nextAttemptAt},
         updated_at = ${now}
-      WHERE id = ${jobId}
+      WHERE id = ${jobId} AND workspace_id IS NOT DISTINCT FROM ${jobRow.workspace_id ?? null}
     `);
     
     log.info(`[DurableJobQueue] Job ${jobId} scheduled for retry at ${nextAttemptAt.toISOString()}`);

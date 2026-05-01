@@ -576,9 +576,10 @@ class ShiftChatroomWorkflowService {
           const pdfUrl = await generateShiftTransparencyPdf(darResult.darId, context.workspaceId);
           if (pdfUrl) {
             const { pool: dbPool } = await import('../db');
+            // TRINITY.md §G: scope by workspace_id atomically.
             await dbPool.query(
-              `UPDATE dar_reports SET pdf_url=$1, pdf_generated_at=NOW(), status='pending_review', updated_at=NOW() WHERE id=$2`,
-              [pdfUrl, darResult.darId]
+              `UPDATE dar_reports SET pdf_url=$1, pdf_generated_at=NOW(), status='pending_review', updated_at=NOW() WHERE id=$2 AND workspace_id=$3`,
+              [pdfUrl, darResult.darId, context.workspaceId]
             );
             log.info(`[ShiftChatroom] Auto-generated Shift Transparency PDF for DAR ${darResult.darId}`);
           }

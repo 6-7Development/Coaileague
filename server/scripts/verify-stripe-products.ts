@@ -1,6 +1,7 @@
-import Stripe from 'stripe';
+import { getStripe } from '../services/billing/stripeClient';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-09-30.clover' });
+// TRINITY.md §F: use the canonical lazy Stripe factory.
+const stripe = getStripe();
 
 async function main() {
   const products = await stripe.products.list({ limit: 50, active: true });

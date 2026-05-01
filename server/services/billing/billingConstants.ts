@@ -30,6 +30,23 @@ export const SYSTEM_WORKSPACE_ID = 'system';
 export const PLATFORM_SUPPORT_POOL_ID = 'PLATFORM_SUPPORT_POOL';
 
 /**
+ * Sentinel IDs used by `productionSeed.ts` to provision the canonical
+ * platform-support workspace's Root Administrator employee + platform_role
+ * row idempotently. Per TRINITY.md §I, hardcoded UUIDs in production code
+ * are forbidden — the literals live here once and are env-overridable so a
+ * fresh deploy can set its own stable IDs without editing source.
+ *
+ * Do NOT change these defaults once a deploy is live: the seed is keyed on
+ * (id) with `ON CONFLICT DO NOTHING` / `ON CONFLICT DO UPDATE`, so altering
+ * the literal would create a duplicate row instead of updating the one in
+ * the database.
+ */
+export const PLATFORM_ROOT_EMPLOYEE_ID =
+  process.env.PLATFORM_ROOT_EMPLOYEE_ID || '8d31a497-e9fe-48d9-b819-9c6869948c39';
+export const PLATFORM_ROOT_PLATFORM_ROLE_ID =
+  process.env.PLATFORM_ROOT_PLATFORM_ROLE_ID || 'e2d402f8-fb44-4129-a0f2-703f0dc91aaa';
+
+/**
  * Set of all workspace IDs that must be excluded from billing operations.
  * Use isBillingExcluded() rather than checking this set directly.
  */
