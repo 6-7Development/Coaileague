@@ -17,7 +17,9 @@
     "db:push": "drizzle-kit push",
     "db:bootstrap-statewide": "npx tsx scripts/prod/bootstrap-statewide-workspace.ts",
     "sim:acme30": "npx tsx server/tests/acme30DaySimulation.ts",
-    "sim:billing": "npx tsx scripts/billing-stress-test.ts"
+    "sim:billing": "npx tsx scripts/billing-stress-test.ts",
+    "sim:acme-persist": "python3 scripts/acme_hard_persist.py",
+    "sim:acme-purge": "python3 scripts/acme_purge_sim.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
