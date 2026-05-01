@@ -282,12 +282,20 @@ function validatePendingMfaToken(token: string | undefined): string {
   return userId;
 }
 
-async function verifyMfaToken(userId: string, totpCode: string): Promise<{ success: boolean; reason?: string }> {
-  // Wraps the canonical TOTP verifier in services/auth/mfa.
+async function verifyMfaToken(
+  userId: string,
+  totpCode: string,
+): Promise<{ success: boolean; reason?: string; isBackupCode?: boolean }> {
+  // Wraps the canonical TOTP verifier in services/auth/mfa. Carries
+  // isBackupCode through so the login response can flag backup-code use.
   try {
     const { verifyMfaToken: verify } = await import('../services/auth/mfa');
     const result = await verify(userId, totpCode);
-    return { success: !!result?.valid, reason: (result as any)?.reason };
+    return {
+      success: !!result?.valid,
+      isBackupCode: !!result?.isBackupCode,
+      reason: (result as any)?.reason,
+    };
   } catch (err: any) {
     return { success: false, reason: err?.message || 'MFA service unavailable' };
   }
@@ -981,9 +989,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
 
     return res.json({
       message: "Login successful",
-      // The lightweight wrapper here doesn't carry isBackupCode — the canonical
-      // services/auth/mfa verifier records it in audit, not in the response.
-      usedBackupCode: false,
+      usedBackupCode: !!mfaResult.isBackupCode,
       user: {
         id: user.id,
         email: user.email,
