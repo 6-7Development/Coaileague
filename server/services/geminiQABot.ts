@@ -5,6 +5,8 @@
 
 import { meteredGemini } from './billing/meteredGeminiClient';
 import { aiActivityService } from './aiActivityService';
+import { createLogger } from '../lib/logger';
+const log = createLogger('geminiQABot');
 
 interface Message {
   role: 'user' | 'assistant';
@@ -102,7 +104,7 @@ Remember: You're a helpful AI assistant, not a human. Be honest about your limit
     });
 
     if (!result.success) {
-      console.error('[Gemini Q&A Bot] Metered call failed:', result.error);
+      log.error('[Gemini Q&A Bot] Metered call failed:', result.error);
       aiActivityService.error('HelpAI', { workspaceId, userId, message: 'Processing error' });
       return {
         message: "I'm having trouble processing that right now. Please try rephrasing your question or contact support.",
@@ -123,7 +125,7 @@ Remember: You're a helpful AI assistant, not a human. Be honest about your limit
       },
     };
   } catch (error) {
-    console.error('[Gemini Q&A Bot] Error:', error);
+    log.error('[Gemini Q&A Bot] Error:', error);
     aiActivityService.error('HelpAI', { workspaceId, userId, message: 'Processing error' });
     return {
       message: "I'm having trouble processing that right now. Please try rephrasing your question or contact support.",

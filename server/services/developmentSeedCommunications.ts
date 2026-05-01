@@ -21,6 +21,8 @@
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { typedCount, typedExec, typedQuery } from '../lib/typedSql';
+import { createLogger } from '../lib/logger';
+const log = createLogger('developmentSeedCommunications');
 import {
   internalEmails,
   chatMessages,
@@ -49,12 +51,12 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
     return { success: true, message: 'Communications already seeded' };
   }
 
-  console.log('[CommsSeed] Seeding Acme communications and activity data...');
+  log.info('[CommsSeed] Seeding Acme communications and activity data...');
 
   // =========================================================================
   // 1. INTERNAL EMAILS — realistic threads between Marcus, Sarah, James
   // =========================================================================
-  console.log('[CommsSeed] Inserting internal emails...');
+  log.info('[CommsSeed] Inserting internal emails...');
   const now = new Date();
   const d = (daysAgo: number, hoursOffset = 0, minutesOffset = 0) =>
     new Date(now.getTime() - daysAgo * 86400000 - hoursOffset * 3600000 - minutesOffset * 60000).toISOString();
@@ -173,7 +175,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 2. CHAT MESSAGES — bulk up existing room conversations
   // =========================================================================
-  console.log('[CommsSeed] Inserting chat messages...');
+  log.info('[CommsSeed] Inserting chat messages...');
 
   const chatMsgs = [
     // --- General channel ---
@@ -255,7 +257,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 3. SHIFT CHATROOM MESSAGES — active shift conversations
   // =========================================================================
-  console.log('[CommsSeed] Inserting shift chatroom messages...');
+  log.info('[CommsSeed] Inserting shift chatroom messages...');
 
   // Get existing chatroom IDs
   // CATEGORY C — Raw SQL retained: LIMIT | Tables: shift_chatrooms | Verified: 2026-03-23
@@ -301,7 +303,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 4. SUPPORT TICKETS — realistic helpdesk activity
   // =========================================================================
-  console.log('[CommsSeed] Inserting support tickets...');
+  log.info('[CommsSeed] Inserting support tickets...');
 
   const tickets = [
     { id: 'comm-tkt-001', num: 'TKT-2026-0201', type: 'scheduling', priority: 'high', subject: 'Unable to view schedule for March 16–22', desc: 'I can see the schedule up to March 15 but the March 16+ dates show blank. My colleagues can see the new schedule but I cannot. Restarted the app twice. No change.', status: 'resolved', requested_by: 'dev-emp-009', resolution: 'Cache issue on David\'s account. Reset session and cleared app cache. Schedule now visible. Root cause: browser cache was holding a stale auth token.', resolved_by: 'dev-manager-001', ts: d(5), resolved_at: d(4) },
@@ -337,7 +339,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 5. DISPATCH INCIDENTS — CAD-style field calls
   // =========================================================================
-  console.log('[CommsSeed] Inserting dispatch incidents...');
+  log.info('[CommsSeed] Inserting dispatch incidents...');
 
   const incidents = [
     { id: 'comm-inc-001', num: 'INC-2026-0301', priority: 'high', type: 'trespass', status: 'cleared', client: 'dev-client-001', addr: '400 N Akard St, Dallas TX 75201', desc: 'Unknown individual refused to leave the lobby at Pinnacle Tower after business hours. Verbally aggressive toward cleaning staff.', notes: 'Officer Carlos Garcia responded. Subject identified as former tenant. Escorted from premises. No police required. Client notified.', caller: 'Carlos Garcia', caller_phone: '817-555-0201', call_at: d(3, 2), cleared_at: d(3, 1) },
@@ -373,7 +375,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 6. INCIDENT REPORTS — written officer reports
   // =========================================================================
-  console.log('[CommsSeed] Inserting incident reports...');
+  log.info('[CommsSeed] Inserting incident reports...');
 
   const incidentReportData = [
     {
@@ -425,7 +427,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   // =========================================================================
   // 7. ORCHESTRATION RUNS — Trinity's action history
   // =========================================================================
-  console.log('[CommsSeed] Inserting Trinity orchestration history...');
+  log.info('[CommsSeed] Inserting Trinity orchestration history...');
 
   const runs = [
     { id: 'comm-orch-001', action_id: 'proactive.generate_morning_brief', category: 'proactive', status: 'completed', input: { workspaceId: WS, date: d(0).split('T')[0] }, output: { shiftsToday: 12, unconfirmed: 2, overdueInvoices: 1, alerts: 3, briefGenerated: true }, started_at: d(0, 8), completed_at: d(0, 7, 58), dur: 142000 },
@@ -488,6 +490,6 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
     WHERE workspace_id = ${WS}
   `);
 
-  console.log('[CommsSeed] Communications seed complete.');
+  log.info('[CommsSeed] Communications seed complete.');
   return { success: true, message: 'Communications seed inserted successfully' };
 }

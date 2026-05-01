@@ -141,7 +141,7 @@ export function SignatureField({
   const stopDraw = () => {
     if (!drawing) return;
     setDrawing(false);
-    onChange(canvasRef.current!.toDataURL());
+    onChange(canvasRef.current?.toDataURL());
   };
 
   const clear = () => {

@@ -6,6 +6,8 @@
  */
 
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('e2eCrawlRunner');
 
 interface CrawlResult {
   url: string;
@@ -66,7 +68,7 @@ class E2ECrawlRunner {
     // Use HTTPS Replit domain for session cookies to work (secure: true)
     const replitDomain = process.env.APP_BASE_URL;
     this.baseUrl = baseUrl || (replitDomain ? `https://${replitDomain}` : 'http://localhost:5000');
-    console.log(`[E2E Crawl] Base URL: ${this.baseUrl}`);
+    log.info(`[E2E Crawl] Base URL: ${this.baseUrl}`);
     this.report = {
       startedAt: new Date(),
       totalPages: 0,
@@ -79,7 +81,7 @@ class E2ECrawlRunner {
   }
 
   async initialize(): Promise<void> {
-    console.log('[E2E Crawl] Launching browser...');
+    log.info('[E2E Crawl] Launching browser...');
     
     // Use system chromium on Replit
     const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/*/bin/chromium';
@@ -128,7 +130,7 @@ class E2ECrawlRunner {
   async login(email: string, password: string): Promise<boolean> {
     if (!this.page) throw new Error('Browser not initialized');
 
-    console.log(`[E2E Crawl] Authenticating via API as ${email}...`);
+    log.info(`[E2E Crawl] Authenticating via API as ${email}...`);
 
     try {
       // First navigate to base URL to establish context
@@ -153,10 +155,10 @@ class E2ECrawlRunner {
         }
       }, { email, password });
 
-      console.log(`[E2E Crawl] Login response: ${response.status} - ${response.message}`);
+      log.info(`[E2E Crawl] Login response: ${response.status} - ${response.message}`);
 
       if (response.ok) {
-        console.log('[E2E Crawl] API login successful, session cookie set');
+        log.info('[E2E Crawl] API login successful, session cookie set');
         
         // Navigate to dashboard to verify
         await this.page.goto(`${this.baseUrl}/dashboard`, {
@@ -168,20 +170,20 @@ class E2ECrawlRunner {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         const currentUrl = this.page.url();
-        console.log(`[E2E Crawl] Navigated to: ${currentUrl}`);
+        log.info(`[E2E Crawl] Navigated to: ${currentUrl}`);
         
         if (!currentUrl.includes('/login')) {
-          console.log('[E2E Crawl] Successfully authenticated!');
+          log.info('[E2E Crawl] Successfully authenticated!');
           return true;
         } else {
-          console.log('[E2E Crawl] Still on login page after auth - session may not be persisting');
+          log.info('[E2E Crawl] Still on login page after auth - session may not be persisting');
         }
       }
 
-      console.log(`[E2E Crawl] API login failed with status: ${response.status}`);
+      log.info(`[E2E Crawl] API login failed with status: ${response.status}`);
       return false;
     } catch (error) {
-      console.error('[E2E Crawl] Login error:', error);
+      log.error('[E2E Crawl] Login error:', error);
       return false;
     }
   }
@@ -222,7 +224,7 @@ class E2ECrawlRunner {
     let finalUrl = url;
 
     try {
-      console.log(`[E2E Crawl] Testing: ${pageName} (${path})`);
+      log.info(`[E2E Crawl] Testing: ${pageName} (${path})`);
 
       // Navigate and wait for network to settle
       const response = await this.page.goto(url, {
@@ -238,7 +240,7 @@ class E2ECrawlRunner {
       
       // Check if we were redirected to login (auth issue)
       if (finalUrl.includes('/login') && !path.includes('/login')) {
-        console.log(`[E2E Crawl] ${pageName} redirected to login - auth may have expired`);
+        log.info(`[E2E Crawl] ${pageName} redirected to login - auth may have expired`);
         status = 'warning';
         errorMessage = 'Redirected to login';
       } else {
@@ -283,13 +285,13 @@ class E2ECrawlRunner {
       if (errMsg.includes('Execution context was destroyed') || 
           errMsg.includes('Cannot find context')) {
         // Page redirected - this is expected behavior for protected routes
-        console.log(`[E2E Crawl] ${pageName}: Page redirected during load`);
+        log.info(`[E2E Crawl] ${pageName}: Page redirected during load`);
         status = 'warning';
         errorMessage = 'Page redirected during load (expected for auth-protected routes)';
       } else {
         status = 'error';
         errorMessage = errMsg;
-        console.error(`[E2E Crawl] Error on ${pageName}:`, errorMessage);
+        log.error(`[E2E Crawl] Error on ${pageName}:`, errorMessage);
       }
     }
 
@@ -323,7 +325,7 @@ class E2ECrawlRunner {
       
       if (!loginSuccess) {
         // Still crawl public pages even if login fails
-        console.log('[E2E Crawl] Continuing with unauthenticated crawl...');
+        log.info('[E2E Crawl] Continuing with unauthenticated crawl...');
       }
 
       // Crawl all routes
@@ -341,7 +343,7 @@ class E2ECrawlRunner {
             this.report.warningCount++;
           }
         } catch (error) {
-          console.error(`[E2E Crawl] Failed to crawl ${route.name}:`, error);
+          log.error(`[E2E Crawl] Failed to crawl ${route.name}:`, error);
           this.report.results.push({
             url: `${this.baseUrl}${route.path}`,
             pageName: route.name,

@@ -8,6 +8,8 @@ import { db } from '../../db';
 import { aiMonitoringTasks, type AiMonitoringTask } from '@shared/schema';
 import { eq, and, lte, isNull, or } from 'drizzle-orm';
 import type { MonitorDefinition, ScheduledMonitor } from './types';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('monitorRegistry');
 
 export class MonitorRegistry {
   private monitors = new Map<string, MonitorDefinition>();
@@ -17,7 +19,7 @@ export class MonitorRegistry {
    */
   registerMonitor(definition: MonitorDefinition): void {
     this.monitors.set(definition.monitoringType, definition);
-    console.log(`📋 [MonitorRegistry] Registered monitor: ${definition.name} (${definition.monitoringType})`);
+    log.info(`📋 [MonitorRegistry] Registered monitor: ${definition.name} (${definition.monitoringType})`);
   }
 
   /**
@@ -76,7 +78,7 @@ export class MonitorRegistry {
       )
       .limit(50); // Process up to 50 monitors per batch
 
-    console.log(`⏰ [MonitorRegistry] Found ${tasks.length} monitors due to run`);
+    log.info(`⏰ [MonitorRegistry] Found ${tasks.length} monitors due to run`);
     return tasks.map(task => this.mapToScheduledMonitor(task));
   }
 
@@ -112,7 +114,7 @@ export class MonitorRegistry {
       })
       .returning();
 
-    console.log(`🆕 [MonitorRegistry] Created monitoring task ${task.id} for ${params.monitoringType}`);
+    log.info(`🆕 [MonitorRegistry] Created monitoring task ${task.id} for ${params.monitoringType}`);
     return this.mapToScheduledMonitor(task);
   }
 
@@ -127,7 +129,7 @@ export class MonitorRegistry {
       .limit(1);
 
     if (!task) {
-      console.warn(`⚠️ [MonitorRegistry] Task ${taskId} not found for scheduling`);
+      log.warn(`⚠️ [MonitorRegistry] Task ${taskId} not found for scheduling`);
       return;
     }
 
@@ -143,7 +145,7 @@ export class MonitorRegistry {
       })
       .where(eq(aiMonitoringTasks.id, taskId));
 
-    console.log(`📅 [MonitorRegistry] Scheduled ${taskId} for ${nextRunAt.toISOString()}`);
+    log.info(`📅 [MonitorRegistry] Scheduled ${taskId} for ${nextRunAt.toISOString()}`);
   }
 
   /**
@@ -157,7 +159,7 @@ export class MonitorRegistry {
       .limit(1);
 
     if (!task) {
-      console.warn(`⚠️ [MonitorRegistry] Task ${taskId} not found for failure recording`);
+      log.warn(`⚠️ [MonitorRegistry] Task ${taskId} not found for failure recording`);
       return;
     }
 
@@ -176,9 +178,9 @@ export class MonitorRegistry {
       .where(eq(aiMonitoringTasks.id, taskId));
 
     if (newStatus === 'failed') {
-      console.error(`❌ [MonitorRegistry] Task ${taskId} marked as failed after ${consecutiveFailures} failures`);
+      log.error(`❌ [MonitorRegistry] Task ${taskId} marked as failed after ${consecutiveFailures} failures`);
     } else {
-      console.warn(`⚠️ [MonitorRegistry] Task ${taskId} failed (${consecutiveFailures}/3): ${reason}`);
+      log.warn(`⚠️ [MonitorRegistry] Task ${taskId} failed (${consecutiveFailures}/3): ${reason}`);
     }
   }
 
@@ -194,7 +196,7 @@ export class MonitorRegistry {
       })
       .where(eq(aiMonitoringTasks.id, taskId));
 
-    console.log(`⏸️ [MonitorRegistry] Paused monitor ${taskId}`);
+    log.info(`⏸️ [MonitorRegistry] Paused monitor ${taskId}`);
   }
 
   /**
@@ -211,7 +213,7 @@ export class MonitorRegistry {
       })
       .where(eq(aiMonitoringTasks.id, taskId));
 
-    console.log(`▶️ [MonitorRegistry] Resumed monitor ${taskId}`);
+    log.info(`▶️ [MonitorRegistry] Resumed monitor ${taskId}`);
   }
 
   /**

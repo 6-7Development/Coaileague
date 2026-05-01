@@ -1,573 +1,743 @@
-# SYSTEM_MANIFEST.md — CoAIleague Platform
-## Full-Stack Canonical Map: UI → Hook → Route → Logic → DB
+# SYSTEM_MANIFEST.md
+## CoAIleague — Single Source of Truth
 
-> **Generated:** 2026-05-01  |  **Pages:** 338  |  **Endpoints:** 2793  |  **DB Tables:** 748  |  **OC 1702 Files:** 22
+> **This is the canonical platform map.** All other documentation (1,074 files) has been consolidated here.
+> Updated after every hardening phase. Used for audits, refactoring, go-live verification, and future AI sessions.
+
+**Last updated:** 2026-05-01 | **Phase 2 complete, Phase 3 in progress**
 
 ```
-ARCHITECTURE
-  Browser (React)  ←→  API Layer (Express)  ←→  Services  ←→  Neon/PostgreSQL
-       │                      │                     │               │
-  Pages/Components    Route Files (363)      Service Layer    753 tables
-  Hooks/Queries        Middleware (RBAC)      Trinity AI       22 domains
-  Zod validation       Zod schemas            OC 1702 gate     PDF vault
+PLATFORM STACK
+  Frontend:    React 18 + Vite + TypeScript + Tailwind + shadcn/ui
+  Backend:     Express + TypeScript + Drizzle ORM
+  Database:    Neon PostgreSQL (production) + Railway (dev)
+  AI Brain:    Trinity = Gemini + Claude + GPT triad (ONE unified identity)
+  Auth:        Session-based + MFA + PIN + Auditor/SRA portals
+  Deploy:      Railway development branch → Railway main/production
+  Compliance:  Texas Occupations Code Chapter 1702 (Private Security Act)
+  SMS/Voice:   Twilio (RCS/SMS/voice)
+  Email:       Resend (outbound + inbound webhook routing)
+  Payments:    Stripe (invoices) + Plaid (ACH payroll)
+  PDF Vault:   All docs = branded PDF with header/footer/docId/page numbers
 ```
 
 ---
+
 ## CONTENTS
-| # | Domain | Pages | Endpoints | Tables |
-|---|--------|-------|-----------|--------|
-| D1 | [AUTH & ONBOARDING](#d1) | — | — | — |
-| D2 | [SCHEDULING](#d2) | — | — | — |
-| D3 | [FINANCE & BILLING](#d3) | — | — | — |
-| D4 | [COMPLIANCE & LICENSING](#d4) | — | — | — |
-| D5 | [WORKFORCE & HR](#d5) | — | — | — |
-| D6 | [MESSAGING & CHATDOCK](#d6) | — | — | — |
-| D7 | [CLIENT PORTAL](#d7) | — | — | — |
-| D8 | [TRINITY AI](#d8) | — | — | — |
-| D9 | [PLATFORM ADMIN](#d9) | — | — | — |
+1. [Platform Census](#1-platform-census)
+2. [D1: Auth & Onboarding](#d1-auth--onboarding)
+3. [D2: Scheduling](#d2-scheduling)
+4. [D3: Finance & Billing](#d3-finance--billing)
+5. [D4: Compliance & Licensing (OC §1702)](#d4-compliance--licensing)
+6. [D5: Workforce & HR](#d5-workforce--hr)
+7. [D6: Messaging & ChatDock](#d6-messaging--chatdock)
+8. [D7: Client Portal](#d7-client-portal)
+9. [D8: Trinity AI](#d8-trinity-ai)
+10. [D9: Platform Admin](#d9-platform-admin)
+11. [Dead Ends & Ghost Routes](#dead-ends--ghost-routes)
+12. [Phase Hardening Log](#phase-hardening-log)
+13. [Known Issues Tracker](#known-issues-tracker)
+14. [Deployment & Infrastructure](#deployment--infrastructure)
+
+---
+
+## 1. Platform Census
+
+| Metric | Count |
+|--------|-------|
+| Client pages | 338 |
+| Server route files | 363 |
+| Total API endpoints | 2,793 |
+| DB tables (pgTable) | 748 |
+| Schema domains | 22 |
+| React components | 265 |
+| React hooks | 61 |
+| OC §1702 enforcement files | 22 |
+| Docs (after consolidation) | 8 |
+
+**DB Tables by Domain:**
+| Schema Domain | Tables | Core Tables |
+|---------------|--------|-------------|
+| `trinity` | 103 | decision_log, ai_brain_memory, action_registry, autonomous_runs |
+| `billing` | 75 | invoices, invoice_items, payments, stripe_events, plaid_transfers |
+| `audit` | 58 | audit_log, compliance_records, trinity_decision_log |
+| `compliance` | 57 | guard_cards, licenses, psych_evals, certifications |
+| `comms` | 60 | chat_rooms, messages, broadcasts, sms_logs, websocket_sessions |
+| `workforce` | 68 | employees, positions, departments, documents |
+| `ops` | 57 | work_orders, sites, incidents, post_orders |
+| `orgs` | 41 | organizations, workspaces, workspace_members |
+| `scheduling` | 42 | shifts, shift_assignments, staffing_requests, swap_requests |
+| `clients` | 34 | clients, client_contacts, contracts, proposals |
+| `support` | 41 | support_tickets, support_agents, escalations |
+| `payroll` | 21 | payroll_runs, payroll_entries, direct_deposits, pay_stubs |
+| `auth` | 25 | users, sessions, mfa_tokens, device_trust_tokens |
+| `time` | 12 | time_entries, clock_events, timesheets |
+| `sps` | 19 | sps_workspaces, sub_tenants, regulatory_mappings |
+| `sales` | 16 | proposals, contracts, revenue_records |
+| `training` | 9 | training_courses, completions, certifications |
+| `recruitment` | 4 | applicants, job_postings |
+| `voice` | 6 | voice_calls, transcripts, voice_commands |
+| `storage` | 2 | documents, document_vault |
+| `notifications-delivery` | 1 | notification_deliveries |
+| `onboarding-tasks` | 2 | onboarding_tasks, task_completions |
 
 ---
 
 ## D1: AUTH & ONBOARDING
-> Identity, session, workspace provisioning, MFA, PIN auth
+> **Identity, session, workspace provisioning, MFA, PIN, auditor/SRA portals**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `accept-invite.tsx` | 378 | `/api/onboarding/invite/` | `/api/onboarding/workspace-invite/` | ✅ |
-| `auditor-login.tsx` | 155 | `/api/enforcement/auditor/login` | ✅ |
-| `co-auditor-login.tsx` | 69 | `/api/auditor/login` | ✅ |
-| `custom-login.tsx` | 644 | `/api/dev/quick-login` | `/api/auth/capabilities` | ✅ |
-| `custom-register.tsx` | 305 | read-only | ✅ |
-| `employee-onboarding-wizard.tsx` | 1238 | `/api/onboarding/certifications.` | `/api/onboarding/application/` | ✅ |
-| `onboarding-start.tsx` | 280 | `/api/auth/me` | `/api/user` | ✅ |
-| `reset-password.tsx` | 338 | `/api/auth/reset-password-confirm` | ✅ |
-| `sps-onboarding-wizard.tsx` | 443 | `/api/auth/me` | `/api/sps/forms` | ✅ |
-| `verify-email.tsx` | 84 | `/api/auth/verify-email` | `/api/auth/resend-verification` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `accept-invite.tsx` | 378 | useMutation | `/api/onboarding/workspace-invite/`<br>`/api/onboarding/invite/` | button-go-to-login, button-create-a | ✅ |
+| `auditor-login.tsx` | 155 | useMutation | `/api/enforcement/auditor/login` | button-toggle-password, button-audi | ✅ |
+| `co-auditor-login.tsx` | 69 | — | `/api/auditor/login` | — | ✅ |
+| `custom-login.tsx` | 644 | — | `/api/auth/capabilities`<br>`/api/auth/login` | button-logo-login, button-resend-ve | ✅ |
+| `custom-register.tsx` | 305 | — | — | button-toggle-password, button-togg | ✅ |
+| `employee-onboarding-wizard.tsx` | 1238 | useQuery+useMutation | `/api/onboarding/invite/`<br>`/api/onboarding/application/` | button-connect-plaid, button-back | ✅ |
+| `onboarding-start.tsx` | 280 | useMutation | `/api/invites/accept`<br>`/api/auth/me` | button-accept-invite, button-back-t | ✅ |
+| `reset-password.tsx` | 338 | — | `/api/auth/reset-password-confirm` | button-request-new-link, button-go- | ✅ |
+| `sps-onboarding-wizard.tsx` | 443 | useQuery+useMutation | `/api/sps/forms/` | — | ✅ |
+| `verify-email.tsx` | 84 | — | `/api/auth/verify-email`<br>`/api/auth/resend-verification` | — | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `POST` | `/api/auth/register` | `requireAuth` | ✅ |
-| `POST` | `/api/auth/verify-email` | `requireAuth` | ✅ |
-| `GET` | `/api/auth/verify-email/:token` | `requireAuth` | ✅ |
-| `POST` | `/api/auth/resend-verification` | `requireAuth` | ✅ |
-| `POST` | `/api/auth/login` | `requireAuth` | ✅ |
-| `GET` | `/csrf-token` | `PUBLIC` | 👻 no UI |
-| `POST` | `/csrf-token` | `PUBLIC` | 👻 no UI |
-| `POST` | `/logout-all` | `PUBLIC` | 👻 no UI |
-| `POST` | `/forgot-password` | `PUBLIC` | 👻 no UI |
-| `POST` | `/reset-password` | `PUBLIC` | ✅ |
-| `GET` | `/portal/setup/:token` | `requireManager` | ✅ |
-| `POST` | `/portal/setup/:token` | `requireManager` | ✅ |
-| `POST` | `/:id/invite` | `requireManager` | ✅ |
-| `DELETE` | `/portal/invite/:inviteId/revoke` | `requireManager` | ✅ |
-| `GET` | `/portal/invite/status` | `requireManager` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `POST` | `/api/auth/register` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `POST` | `/api/auth/verify-email` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `GET` | `/api/auth/verify-email/:token` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `POST` | `/api/auth/resend-verification` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `POST` | `/api/auth/login` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `POST` | `/api/auth/mfa/verify` | `requireAuth` | `authCoreRoutes.ts` | ✅ |
+| `GET` | `/csrf-token` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/csrf-token` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/logout-all` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/forgot-password` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/reset-password` | `PUBLIC` | `authRoutes.ts` | ✅ |
+| `POST` | `/magic-link` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `GET` | `/portal/setup/:token` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `POST` | `/portal/setup/:token` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `POST` | `/:id/invite` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `DELETE` | `/portal/invite/:inviteId/revoke` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `GET` | `/portal/invite/status` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `server/services/employeeDocumentOnboardingService.ts` → `§1702.230, §1702.163`
+### 🧠  Logic Layer — Guards & Compliance
+**Texas OC §1702 enforcement:**
+- `server/services/employeeDocumentOnboardingService.ts` enforces `§1702.163, §1702.230`
 
-### 💾  DB Tables
-**auth** (23 tables): `apiKeys`→`api_keys`, `platformRoles`→`platform_roles`, `roleTemplates`→`role_templates`, `integrationApiKeys`→`integration_api_keys`, `idempotencyKeys`→`idempotency_keys`, `oauthStates`→`oauth_states`, `externalIdentifiers`→`external_identifiers`, `idSequences`→`id_sequences`, `idRegistry`→`id_registry`, `userDeviceProfiles`→`user_device_profiles`
-  *+13 more tables*
-**orgs** (39 tables): `celebrationTemplates`→`celebration_templates`, `milestoneTracker`→`milestone_tracker`, `orgCreationProgress`→`org_creation_progress`, `tenantOnboardingProgress`→`tenant_onboarding_progress`, `tenantOnboardingSteps`→`tenant_onboarding_steps`, `workspaceCostSummary`→`workspace_cost_summary`, `workspaceCreditBalance`→`workspace_credit_balance`, `userOnboarding`→`user_onboarding`, `workspaceMembers`→`workspace_members`, `onboardingInvites`→`onboarding_invites`
-  *+29 more tables*
-**onboarding-tasks** (2 tables): `onboardingTaskTemplates`→`onboarding_task_templates`, `employeeOnboardingCompletions`→`employee_onboarding_completions`
+**Key services:**
+- `server/services/**/assistedOnboardingService.ts`
+- `server/services/**/authService.ts`
+- `server/services/**/employeeDocumentOnboardingService.ts`
+- `server/services/**/employeeOnboardingPipelineService.ts`
+- `server/services/**/enterpriseOnboardingOrchestrator.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`auth`** (23 tables): `api_keys` (via `apiKeys`) · `platform_roles` (via `platformRoles`) · `role_templates` (via `roleTemplates`) · `integration_api_keys` (via `integrationApiKeys`) · `idempotency_keys` (via `idempotencyKeys`) · `oauth_states` (via `oauthStates`) · `external_identifiers` (via `externalIdentifiers`) · `id_sequences` (via `idSequences`)
+  *...+15 more in `auth` domain*
+**`orgs`** (39 tables): `celebration_templates` (via `celebrationTemplates`) · `milestone_tracker` (via `milestoneTracker`) · `org_creation_progress` (via `orgCreationProgress`) · `tenant_onboarding_progress` (via `tenantOnboardingProgress`) · `tenant_onboarding_steps` (via `tenantOnboardingSteps`) · `workspace_cost_summary` (via `workspaceCostSummary`) · `workspace_credit_balance` (via `workspaceCreditBalance`) · `user_onboarding` (via `userOnboarding`)
+  *...+31 more in `orgs` domain*
+**`onboarding-tasks`** (2 tables): `onboarding_task_templates` (via `onboardingTaskTemplates`) · `employee_onboarding_completions` (via `employeeOnboardingCompletions`)
 
 ---
 
 ## D2: SCHEDULING
-> Shift creation/publication, staffing, swaps, Trinity auto-scheduling, TX OC 1702 gate
+> **Shift creation/publication, coverage, swaps, Trinity auto-scheduling, TX OC 1702 gate**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `schedule-mobile-first.tsx` | 1453 | `/api/shifts/:id/mark-calloff` | `/api/shifts/` | ✅ |
-| `shift-marketplace.tsx` | 928 | `/api/scheduling/swap-requests/` | `/api/coverage` | ✅ |
-| `team-schedule.tsx` | 5 | read-only | ✅ |
-| `universal-schedule.tsx` | 3254 | `/api/schedules/publish` | `/api/orchestrated-schedule/ai/trigger-se` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `schedule-mobile-first.tsx` | 1453 | useQuery+useMutation | `/api/shifts/`<br>`/api/shifts?weekStart=` | button-prev-week, button-next-week | ✅ |
+| `shift-marketplace.tsx` | 928 | useQuery+useMutation | `/api/shifts/`<br>`/api/scheduling/swap-requests/` | button-post-new-shift, button-post- | ✅ |
+| `team-schedule.tsx` | 5 | — | — | — | ✅ |
+| `universal-schedule.tsx` | 3254 | useQuery+useMutation | `/api/shifts?workspaceId=`<br>`/api/shifts/` | button-discard-pending, button-save | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/contractors` | `requireAuth` | ✅ |
-| `POST` | `/contractors` | `requireAuth` | ✅ |
-| `PATCH` | `/contractors/:id` | `requireAuth` | ✅ |
-| `GET` | `/availability/:contractorId` | `requireAuth` | ✅ |
-| `POST` | `/availability` | `requireAuth` | ✅ |
-| `GET` | `/status` | `requireAuth` | ✅ |
-| `POST` | `/ai/fill-shift` | `requireAuth` | ✅ |
-| `POST` | `/ai/trigger-session` | `requireAuth` | ✅ |
-| `GET` | `/executions` | `requireAuth` | 👻 no UI |
-| `GET` | `/executions/:executionId` | `requireAuth` | ✅ |
-| `POST` | `/ai/toggle` | `requireManager` | ✅ |
-| `GET` | `/ai/status` | `requireManager` | ✅ |
-| `POST` | `/smart-generate` | `requireManager` | 👻 no UI |
-| `GET` | `/proposals` | `requireManager` | ✅ |
-| `GET` | `/proposals/:id` | `requireManager` | ✅ |
-| `GET` | `/status` | `requireAuth` | ✅ |
-| `GET` | `/templates` | `requireAuth` | ✅ |
-| `GET` | `/coverage-gaps` | `requireAuth` | 👻 no UI |
-| `GET` | `/offers` | `requireAuth` | ✅ |
-| `GET` | `/week/stats` | `requireManager` | ✅ |
-| `POST` | `/publish` | `requireManager` | ✅ |
-| `POST` | `/unpublish` | `requireManager` | 👻 no UI |
-| `POST` | `/apply-insight` | `requireManager` | 👻 no UI |
-| `GET` | `/ai-insights` | `requireManager` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/contractors` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `POST` | `/contractors` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `PATCH` | `/contractors/:id` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `GET` | `/availability/:contractorId` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `POST` | `/availability` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `DELETE` | `/availability/:id` | `requireAuth` | `flexStaffingRoutes.ts` | ✅ |
+| `GET` | `/status` | `requireAuth` | `orchestratedScheduleRoutes.ts` | ✅ |
+| `POST` | `/ai/fill-shift` | `requireAuth` | `orchestratedScheduleRoutes.ts` | ✅ |
+| `POST` | `/ai/trigger-session` | `requireAuth` | `orchestratedScheduleRoutes.ts` | ✅ |
+| `GET` | `/executions` | `requireAuth` | `orchestratedScheduleRoutes.ts` | 👻 |
+| `GET` | `/executions/:executionId` | `requireAuth` | `orchestratedScheduleRoutes.ts` | 👻 |
+| `GET` | `/orchestration/:orchestrationId/steps` | `requireAuth` | `orchestratedScheduleRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `server/services/autonomousScheduler.ts` → `OC §1702.201`
-- `server/services/scheduling/trinityAutonomousScheduler.ts` → `§1702.323, texasGatekeeper, §1702.163, §1702.161, §1702.201`
+### 🧠  Logic Layer — Guards & Compliance
+*No OC §1702 references in this domain.*
 
-### 💾  DB Tables
-**scheduling** (42 tables): `schedules`→`schedules`, `shiftRequests`→`shift_requests`, `shiftOffers`→`shift_offers`, `shifts`→`shifts`, `customSchedulerIntervals`→`custom_scheduler_intervals`, `recurringShiftPatterns`→`recurring_shift_patterns`, `shiftSwapRequests`→`shift_swap_requests`, `scheduleTemplates`→`schedule_templates`, `shiftAcknowledgments`→`shift_acknowledgments`, `serviceCoverageRequests`→`service_coverage_requests`
-  *+32 more tables*
-**time** (12 tables): `ptoRequests`→`pto_requests`, `timeEntries`→`time_entries`, `timeEntryAuditEvents`→`time_entry_audit_events`, `gpsLocations`→`gps_locations`, `scheduledBreaks`→`scheduled_breaks`, `evvVisitRecords`→`evv_visit_records`, `manualClockinOverrides`→`manual_clockin_overrides`, `timeEntryBreaks`→`time_entry_breaks`, `timeEntryDiscrepancies`→`time_entry_discrepancies`, `timeOffRequests`→`time_off_requests`
-  *+2 more tables*
+**Key services:**
+- `server/services/**/autonomousScheduler.ts`
+- `server/services/**/developmentSeedShifts.ts`
+- `server/services/**/scheduleLiveNotifier.ts`
+- `server/services/**/scheduleMigration.ts`
+- `server/services/**/scheduleRollbackService.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`scheduling`** (42 tables): `schedules` (via `schedules`) · `shift_requests` (via `shiftRequests`) · `shift_offers` (via `shiftOffers`) · `shifts` (via `shifts`) · `custom_scheduler_intervals` (via `customSchedulerIntervals`) · `recurring_shift_patterns` (via `recurringShiftPatterns`) · `shift_swap_requests` (via `shiftSwapRequests`) · `schedule_templates` (via `scheduleTemplates`)
+  *...+34 more in `scheduling` domain*
+**`time`** (12 tables): `pto_requests` (via `ptoRequests`) · `time_entries` (via `timeEntries`) · `time_entry_audit_events` (via `timeEntryAuditEvents`) · `gps_locations` (via `gpsLocations`) · `scheduled_breaks` (via `scheduledBreaks`) · `evv_visit_records` (via `evvVisitRecords`) · `manual_clockin_overrides` (via `manualClockinOverrides`) · `time_entry_breaks` (via `timeEntryBreaks`)
+  *...+4 more in `time` domain*
 
 ---
 
 ## D3: FINANCE & BILLING
-> Invoice gen, payroll runs, ACH/Stripe, QuickBooks sync, pay stubs
+> **Invoice generation, payroll runs, ACH/Stripe/Plaid, QuickBooks sync, pay stubs**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `billing.tsx` | 2025 | `/api/billing/subscription/change` | `/api/billing-settings/payment-methods/se` | ✅ |
-| `budgeting.tsx` | 628 | `/api/analytics/forecast` | `/api/budgets` | ✅ |
-| `cash-flow-dashboard.tsx` | 305 | `/api/invoices/cash-flow-summary` | ✅ |
-| `financial/pl-dashboard.tsx` | 726 | `/api/finance/pl/history` | `/api/finance/forecast` | ✅ |
-| `invoices.tsx` | 1904 | `/api/time-entries/entries` | `/api/invoices/auto-generate` | ✅ |
-| `payroll-dashboard.tsx` | 987 | `/api/workspace/health` | `/api/payroll/create-run` | ✅ |
-| `quickbooks-import.tsx` | 1996 | `/api/integrations/quickbooks/reset-migra` | `/api/integrations/quickbooks/connect` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `billing.tsx` | 2025 | useQuery+useMutation | `/api/workspace`<br>`/api/billing/subscription` | button-resolve-account, button-upgr | ✅ |
+| `budgeting.tsx` | 628 | useQuery+useMutation | — | button-create-budget, dialog-create | ✅ |
+| `cash-flow-dashboard.tsx` | 305 | useQuery | `/api/invoices/cash-flow-summary` | — | ✅ |
+| `disputes.tsx` | 562 | useQuery+useMutation | `/api/disputes/` | button-create-dispute, button-cance | ✅ |
+| `financial/pl-dashboard.tsx` | 726 | useQuery | `/api/finance/recognition/summary`<br>`/api/finance/forecast` | — | ✅ |
+| `invoices.tsx` | 1904 | useQuery+useMutation | `/api/invoices/`<br>`/api/invoices` | button-bulk-resend, button-send-all | ✅ |
+| `payroll-dashboard.tsx` | 987 | useQuery+useMutation | `/api/payroll/runs/` | button-run-pto-accrual, button-crea | ✅ |
+| `quickbooks-import.tsx` | 1996 | useQuery+useMutation | `/api/integrations/connections?workspaceId=`<br>`/api/integrations/quickbooks/preview?workspac` | button-resume-wizard, button-start- | ✅ |
+| `review-disputes.tsx` | 490 | useQuery+useMutation | `/api/disputes/` | button-approve, button-reject | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/workspace` | `requireManager` | ✅ |
-| `POST` | `/workspace` | `requireManager` | ✅ |
-| `PATCH` | `/workspace` | `requireManager` | ✅ |
-| `GET` | `/clients` | `requireManager` | ✅ |
-| `GET` | `/clients/:clientId` | `requireManager` | ✅ |
-| `POST` | `/upload` | `requireAuth` | ✅ |
-| `GET` | `/:id/pdf` | `requireManager` | ✅ |
-| `GET` | `/proposals` | `requireManager` | ✅ |
-| `POST` | `/auto-generate` | `requireManager` | ✅ |
-| `POST` | `/:id/send-email` | `requireManager` | ✅ |
-| `POST` | `/:id/send` | `requireManager` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/workspace` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `POST` | `/workspace` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `PATCH` | `/workspace` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `GET` | `/clients` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `GET` | `/clients/:clientId` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `POST` | `/clients/:clientId` | `requireManager` | `billingSettingsRoutes.ts` | ✅ |
+| `POST` | `/upload` | `requireAuth` | `email-attachments.ts` | ✅ |
+| `POST` | `/billing/adjust-invoice/credit` | `requireManager` | `financeInlineRoutes.ts` | ✅ |
+| `POST` | `/billing/adjust-invoice/discount` | `requireManager` | `financeInlineRoutes.ts` | ✅ |
+| `POST` | `/billing/adjust-invoice/refund` | `requireManager` | `financeInlineRoutes.ts` | ✅ |
+| `POST` | `/billing/adjust-invoice/correct-line-item` | `requireManager` | `financeInlineRoutes.ts` | 👻 |
+| `GET` | `/billing/adjust-invoice/:invoiceId/history` | `requireManager` | `financeInlineRoutes.ts` | ✅ |
+| `POST` | `/billing/adjust-invoice/bulk-credit` | `requireManager` | `financeInlineRoutes.ts` | 👻 |
 
-### 🧠  Logic & Compliance
-*No OC 1702 references in this domain*
+### 🧠  Logic Layer — Guards & Compliance
+*No OC §1702 references in this domain.*
 
-### 💾  DB Tables
-**billing** (75 tables): `revenueRecognitionSchedule`→`revenue_recognition_schedule`, `deferredRevenue`→`deferred_revenue`, `processedRevenueEvents`→`processed_revenue_events`, `contractRevenueMapping`→`contract_revenue_mapping`, `externalCostLog`→`external_cost_log`, `laborCostForecast`→`labor_cost_forecast`, `platformAiProviderBudgets`→`platform_ai_provider_budgets`, `platformCostRates`→`platform_cost_rates`, `seatCostBreakdown`→`seat_cost_breakdown`, `voiceUsage`→`voice_usage`
-  *+65 more tables*
-**payroll** (21 tables): `employeeBenefits`→`employee_benefits`, `payrollSettings`→`payroll_settings`, `payrollProposals`→`payroll_proposals`, `offCyclePayrollRuns`→`off_cycle_payroll_runs`, `payrollRuns`→`payroll_runs`, `payrollEntries`→`payroll_entries`, `employeePayrollInfo`→`employee_payroll_info`, `employeeRateHistory`→`employee_rate_history`, `laborLawRules`→`labor_law_rules`, `workerTaxClassificationHistory`→`worker_tax_classification_history`
-  *+11 more tables*
-**sales** (16 tables): `bidAnalytics`→`bid_analytics`, `contractHealthScores`→`contract_health_scores`, `contractRenewalTasks`→`contract_renewal_tasks`, `leads`→`leads`, `deals`→`deals`, `rfps`→`rfps`, `proposals`→`proposals`, `dealTasks`→`deal_tasks`, `testimonials`→`testimonials`, `clientProspects`→`client_prospects`
-  *+6 more tables*
+**Key services:**
+- `server/services/**/billingAutomation.ts`
+- `server/services/**/invoiceAdjustmentService.ts`
+- `server/services/**/payrollAutomation.ts`
+- `server/services/**/payrollDeductionService.ts`
+- `server/services/**/payrollTransferMonitor.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`billing`** (75 tables): `revenue_recognition_schedule` (via `revenueRecognitionSchedule`) · `deferred_revenue` (via `deferredRevenue`) · `processed_revenue_events` (via `processedRevenueEvents`) · `contract_revenue_mapping` (via `contractRevenueMapping`) · `external_cost_log` (via `externalCostLog`) · `labor_cost_forecast` (via `laborCostForecast`) · `platform_ai_provider_budgets` (via `platformAiProviderBudgets`) · `platform_cost_rates` (via `platformCostRates`)
+  *...+67 more in `billing` domain*
+**`payroll`** (21 tables): `employee_benefits` (via `employeeBenefits`) · `payroll_settings` (via `payrollSettings`) · `payroll_proposals` (via `payrollProposals`) · `off_cycle_payroll_runs` (via `offCyclePayrollRuns`) · `payroll_runs` (via `payrollRuns`) · `payroll_entries` (via `payrollEntries`) · `employee_payroll_info` (via `employeePayrollInfo`) · `employee_rate_history` (via `employeeRateHistory`)
+  *...+13 more in `payroll` domain*
+**`sales`** (16 tables): `bid_analytics` (via `bidAnalytics`) · `contract_health_scores` (via `contractHealthScores`) · `contract_renewal_tasks` (via `contractRenewalTasks`) · `leads` (via `leads`) · `deals` (via `deals`) · `rfps` (via `rfps`) · `proposals` (via `proposals`) · `deal_tasks` (via `dealTasks`)
+  *...+8 more in `sales` domain*
 
 ---
 
 ## D4: COMPLIANCE & LICENSING
-> TX OC §1702 enforcement, guard card tracking, psych eval, auditor/SRA portals
+> **TX OC §1702.161/163/201/323 enforcement, guard cards, psych eval, auditor/SRA**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `auditor-portal.tsx` | 569 | `/api/employees` | `/api/time-entries` | ✅ |
-| `compliance/approvals.tsx` | 453 | `/api/security-compliance/records/stats` | `/api/security-compliance/approvals/pendi` | ✅ |
-| `compliance/audit-readiness.tsx` | 436 | `/api/compliance/regulatory-portal/upload` | `/api/compliance/regulatory-portal/audit-` | ✅ |
-| `compliance/auditor-portal.tsx` | 472 | `/api/security-compliance/enforcement/sta` | `/api/helpai/auditor/brief` | ✅ |
-| `compliance/employee-detail.tsx` | 771 | `/api/security-compliance/states` | `/api/security-compliance/records` | ✅ |
-| `compliance/employee-onboarding-packet.tsx` | 490 | `/api/security-compliance/enforcement/onb` | ✅ |
-| `compliance/enforcement-status.tsx` | 301 | `/api/enforcement/appeal` | `/api/enforcement/my-status` | ✅ |
-| `compliance/expiration-alerts.tsx` | 309 | `/api/security-compliance/records/expirin` | ✅ |
-| `compliance/index.tsx` | 476 | `/api/security-compliance/states` | `/api/security-compliance/approvals/pendi` | ✅ |
-| `compliance/regulator-access.tsx` | 573 | `/api/security-compliance/states` | `/api/security-compliance/regulator/` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `applicant-visual-compliance.tsx` | 279 | useQuery+useMutation | `/api/audit-suite/visual-compliance/` | — | ✅ |
+| `armory-compliance.tsx` | 657 | useQuery+useMutation | `/api/armory/inspections`<br>`/api/armory/summary` | submit-inspection, submit-qualifica | ✅ |
+| `auditor-portal.tsx` | 569 | useQuery | `/api/invoices`<br>`/api/time-entries` | button-export-invoices, button-expo | ✅ |
+| `compliance-evidence.tsx` | 258 | useQuery+useMutation | `/api/compliance-evidence/pending`<br>`/api/compliance-evidence/expiring` | button-submit-evidence | ✅ |
+| `compliance-matrix.tsx` | 467 | useQuery | `/api/security-compliance/matrix` | — | ✅ |
+| `compliance-reports.tsx` | 361 | useQuery+useMutation | `/api/compliance-reports/` | tab-generate, button-generate-repor | ✅ |
+| `compliance-scenarios.tsx` | 341 | useQuery | `/api/compliance/acme-scenarios` | button-run-scenarios, button-run-sc | ✅ |
+| `compliance/approvals.tsx` | 453 | useQuery+useMutation | `/api/security-compliance/approvals/` | card-approved-count, button-needs-r | ✅ |
+| `compliance/audit-readiness.tsx` | 436 | useQuery | `/api/compliance/regulatory-portal/audit-readi`<br>`/api/compliance/regulatory-portal/upload-docu` | button-refresh-readiness, button-di | ✅ |
+| `compliance/auditor-portal.tsx` | 472 | useQuery | — | — | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/oversight` | `requireManager` | ✅ |
-| `GET` | `/oversight/stats` | `requireManager` | ✅ |
-| `PATCH` | `/oversight/:id/approve` | `requireManager` | ✅ |
-| `PATCH` | `/oversight/:id/reject` | `requireManager` | ✅ |
-| `POST` | `/dm-audit/request` | `requireManager` | ✅ |
-| `GET` | `/` | `requireAuth` | ✅ |
-| `GET` | `/pending` | `requireAuth` | ✅ |
-| `POST` | `/` | `requireAuth` | ✅ |
-| `POST` | `/:approvalId/decide` | `requireAuth` | 👻 no UI |
-| `GET` | `/` | `requireManager` | ✅ |
-| `GET` | `/export` | `requireManager` | ✅ |
-| `GET` | `/document/:documentId` | `requireManager` | ✅ |
-| `GET` | `/employee/:employeeId` | `requireManager` | ✅ |
-| `GET` | `/critical` | `requireManager` | 👻 no UI |
-| `GET` | `/record/:recordId` | `requireAuth` | ✅ |
-| `GET` | `/employee/:employeeId` | `requireAuth` | ✅ |
-| `POST` | `/:checklistId/override` | `requireAuth` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/` | `requireAuth` | `compliance/regulator.ts` | ✅ |
+| `POST` | `/` | `requireAuth` | `compliance/regulator.ts` | ✅ |
+| `POST` | `/:id/revoke` | `requireAuth` | `compliance/regulator.ts` | ✅ |
+| `GET` | `/portal/:token` | `requireAuth` | `compliance/regulator.ts` | ✅ |
+| `GET` | `/portal/:token/employee/:employeeId/documents` | `requireAuth` | `compliance/regulator.ts` | ✅ |
+| `GET` | `/status` | `requireAuth` | `compliance/regulatoryEnrollment.ts` | ✅ |
+| `GET` | `/workspace` | `requireAuth` | `compliance/regulatoryEnrollment.ts` | ✅ |
+| `POST` | `/submit` | `requireAuth` | `compliance/regulatoryEnrollment.ts` | ✅ |
+| `PATCH` | `/:employeeId/review` | `requireAuth` | `compliance/regulatoryEnrollment.ts` | ✅ |
+| `POST` | `/lookup` | `requireAuth` | `compliance/regulatoryPortal.ts` | ✅ |
+| `POST` | `/request` | `requireAuth` | `compliance/regulatoryPortal.ts` | ✅ |
+| `GET` | `/request/:id/status` | `requireAuth` | `compliance/regulatoryPortal.ts` | ✅ |
+| `POST` | `/request/:id/dispute` | `requireAuth` | `compliance/regulatoryPortal.ts` | ✅ |
+| `POST` | `/request/:id/grant` | `requireAuth` | `compliance/regulatoryPortal.ts` | 👻 |
+| `GET` | `/dashboard/:workspaceId/overview` | `requireAuth` | `compliance/regulatoryPortal.ts` | ✅ |
+| `GET` | `/incidents` | `requireAuth` | `complianceRoutes.ts` | ✅ |
+| `GET` | `/policies` | `requireAuth` | `complianceRoutes.ts` | ✅ |
+| `GET` | `/signatures` | `requireAuth` | `complianceRoutes.ts` | ✅ |
+| `GET` | `/approvals` | `requireAuth` | `complianceRoutes.ts` | ✅ |
+| `GET` | `/summary` | `requireAuth` | `complianceRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `scripts/omega/audit-trinity-citations.ts` → `§1702.221, §1702.323, §1702.163, §1702.161, §1702.201`
-- `server/services/compliance/certificationTypes.ts` → `§1702.230, §1702.163`
-- `server/services/compliance/complianceScoringBridge.ts` → `§1702.163`
-- `server/services/compliance/regulatoryViolationService.ts` → `1702.163, 1702.161, 1702.323`
-- `server/services/compliance/stateComplianceConfig.ts` → `§1702.230, §1702.219, §1702.163`
-- `server/services/compliance/stateRegulatoryKnowledgeBase.ts` → `1702.163`
+### 🧠  Logic Layer — Guards & Compliance
+**Texas OC §1702 enforcement:**
+- `server/services/compliance/regulatoryViolationService.ts` enforces `1702.323, 1702.161, 1702.163`
+- `server/services/compliance/stateRegulatoryKnowledgeBase.ts` enforces `1702.163`
+- `server/services/compliance/texasGatekeeper.ts` enforces `§1702.161, OC §1702.163, §1702.201, §1702.323, OC §1702.201, §1702.163, OC §1702.323, OC §1702.161`
 
-### 💾  DB Tables
-**compliance** (57 tables): `regulatoryRules`→`regulatory_rules`, `regulatoryUpdates`→`regulatory_updates`, `employeeI9Records`→`employee_i9_records`, `securityIncidents`→`security_incidents`, `documentSignatures`→`document_signatures`, `companyPolicies`→`company_policies`, `policyAcknowledgments`→`policy_acknowledgments`, `documentAccessLogs`→`document_access_logs`, `governanceApprovals`→`governance_approvals`, `customForms`→`custom_forms`
-  *+47 more tables*
-**audit** (58 tables): `automationTriggers`→`automation_triggers`, `leaderActions`→`leader_actions`, `auditLogs`→`audit_logs`, `reportTemplates`→`report_templates`, `reportSubmissions`→`report_submissions`, `reportWorkflowConfigs`→`report_workflow_configs`, `reportApprovalSteps`→`report_approval_steps`, `lockedReportRecords`→`locked_report_records`, `reportAttachments`→`report_attachments`, `customerReportAccess`→`customer_report_access`
-  *+48 more tables*
+**Key services:**
+- `server/services/**/aiGuardRails.ts`
+- `server/services/**/complianceAlertService.ts`
+- `server/services/**/complianceMonitoring.ts`
+- `server/services/**/complianceReports.ts`
+- `server/services/**/complianceScoreMonitor.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`compliance`** (57 tables): `regulatory_rules` (via `regulatoryRules`) · `regulatory_updates` (via `regulatoryUpdates`) · `employee_i9_records` (via `employeeI9Records`) · `security_incidents` (via `securityIncidents`) · `document_signatures` (via `documentSignatures`) · `company_policies` (via `companyPolicies`) · `policy_acknowledgments` (via `policyAcknowledgments`) · `document_access_logs` (via `documentAccessLogs`)
+  *...+49 more in `compliance` domain*
+**`audit`** (58 tables): `automation_triggers` (via `automationTriggers`) · `leader_actions` (via `leaderActions`) · `audit_logs` (via `auditLogs`) · `report_templates` (via `reportTemplates`) · `report_submissions` (via `reportSubmissions`) · `report_workflow_configs` (via `reportWorkflowConfigs`) · `report_approval_steps` (via `reportApprovalSteps`) · `locked_report_records` (via `lockedReportRecords`)
+  *...+50 more in `audit` domain*
 
 ---
 
 ## D5: WORKFORCE & HR
-> Employee lifecycle, HRIS, documents, training, performance, positions
+> **Employee lifecycle, HRIS, documents, training, performance, positions, time-off**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `assisted-onboarding.tsx` | 367 | `/api/support/assisted-onboarding/` | `/api/support/assisted-onboarding/create` | ✅ |
-| `communications-onboarding.tsx` | 384 | `/api/comm-os/onboarding-status` | `/api/comm-os/complete-onboarding` | ✅ |
-| `employee-profile.tsx` | 1159 | `/api/hr/manager-assignments/employee` | `/api/hireos/documents/me` | ✅ |
-| `employees.tsx` | 1622 | `/api/workspace/health` | `/api/analytics/stats` | ✅ |
-| `onboarding.tsx` | 501 | `/api/onboarding/rewards/reward/apply` | `/api/onboarding/progress` | ✅ |
-| `performance.tsx` | 1345 | `/api/performance/reviews` | `/api/performance/disciplinary/` | ✅ |
-| `training.tsx` | 1155 | `/api/training/providers` | `/api/training-compliance/tcole-complianc` | ✅ |
-| `workspace-onboarding.tsx` | 495 | `/api/quickbooks/flow/` | `/api/automation/triggers` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `assisted-onboarding.tsx` | 367 | useQuery+useMutation | `/api/support/assisted-onboarding/list`<br>`/api/support/assisted-onboarding/create` | button-create-new, button-cancel-cr | ✅ |
+| `communications-onboarding.tsx` | 384 | useMutation | — | button-add-channel, button-back | ✅ |
+| `employee-profile.tsx` | 1159 | useQuery+useMutation | `/api/employees?workspaceId=`<br>`/api/hr/manager-assignments/employee/` | button-go-to-settings, button-go-to | ✅ |
+| `employees.tsx` | 1622 | useQuery+useMutation | `/api/manager-assignments?workspaceId=`<br>`/api/login` | button-retry-employees, button-impo | ✅ |
+| `onboarding.tsx` | 501 | useQuery+useMutation | `/api/onboarding/tasks/` | button-apply-reward, button-start-o | ✅ |
+| `performance.tsx` | 1345 | useQuery+useMutation | `/api/performance/disciplinary/`<br>`/api/performance/reviews/` | button-submit-appeal, button-submit | ✅ |
+| `training.tsx` | 1155 | useQuery+useMutation | `/api/training/sessions/` | button-qr-checkin, button-start-ses | ✅ |
+| `workspace-onboarding.tsx` | 495 | useQuery+useMutation | `/api/quickbooks/flow/` | button-retry-flow | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/csrf-token` | `PUBLIC` | 👻 no UI |
-| `POST` | `/csrf-token` | `PUBLIC` | 👻 no UI |
-| `POST` | `/logout-all` | `PUBLIC` | 👻 no UI |
-| `POST` | `/forgot-password` | `PUBLIC` | 👻 no UI |
-| `POST` | `/reset-password` | `PUBLIC` | ✅ |
-| `GET` | `/search` | `requireAuth` | ✅ |
-| `GET` | `/` | `requireAuth` | ✅ |
-| `GET` | `/:typeCode` | `requireAuth` | ✅ |
-| `GET` | `/employee/:employeeId` | `requireAuth` | ✅ |
-| `GET` | `/record/:recordId` | `requireAuth` | ✅ |
-| `GET` | `/:documentId` | `requireAuth` | ✅ |
-| `POST` | `/` | `requireAuth` | ✅ |
-| `POST` | `/:documentId/lock` | `requireAuth` | ✅ |
-| `GET` | `/` | `requireAuth` | ✅ |
-| `POST` | `/` | `requireAuth` | ✅ |
-| `PATCH` | `/:id` | `requireAuth` | ✅ |
-| `POST` | `/trinity-intake` | `requireAuth` | ✅ |
-| `POST` | `/finalize` | `requireAuth` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/csrf-token` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/csrf-token` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/logout-all` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/forgot-password` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `POST` | `/reset-password` | `PUBLIC` | `authRoutes.ts` | ✅ |
+| `POST` | `/magic-link` | `PUBLIC` | `authRoutes.ts` | 👻 |
+| `GET` | `/search` | `requireAuth` | `chatSearchRoutes.ts` | ✅ |
+| `GET` | `/` | `requireAuth` | `compliance/documentTypes.ts` | ✅ |
+| `GET` | `/:typeCode` | `requireAuth` | `compliance/documentTypes.ts` | ✅ |
+| `GET` | `/employee/:employeeId` | `requireAuth` | `compliance/documents.ts` | ✅ |
+| `GET` | `/record/:recordId` | `requireAuth` | `compliance/documents.ts` | ✅ |
+| `GET` | `/:documentId` | `requireAuth` | `compliance/documents.ts` | ✅ |
+| `POST` | `/` | `requireAuth` | `compliance/documents.ts` | ✅ |
+| `POST` | `/:documentId/lock` | `requireAuth` | `compliance/documents.ts` | ✅ |
+| `PATCH` | `/:documentId` | `requireAuth` | `compliance/documents.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `client/src/pages/employee-packet-portal.tsx` → `§1702.324`
-- `server/services/employeeDocumentOnboardingService.ts` → `§1702.230, §1702.163`
-- `server/services/trinity/trinityDisciplinaryWorkflow.ts` → `OC §1702.163, OC §1702.3615`
-- `shared/schema/domains/workforce/index.ts` → `OC §1702.230`
+### 🧠  Logic Layer — Guards & Compliance
+**Texas OC §1702 enforcement:**
+- `server/services/employeeDocumentOnboardingService.ts` enforces `§1702.163, §1702.230`
+- `server/services/trinity/trinityDisciplinaryWorkflow.ts` enforces `OC §1702.163, OC §1702.3615`
 
-### 💾  DB Tables
-**workforce** (67 tables): `applicantInterviews`→`applicant_interviews`, `applicants`→`applicants`, `employeeOnboardingProgress`→`employee_onboarding_progress`, `employeeOnboardingSteps`→`employee_onboarding_steps`, `employeeTrainingRecords`→`employee_training_records`, `interviewQuestionSets`→`interview_question_sets`, `interviewSessions`→`interview_sessions`, `jobPostings`→`job_postings`, `offerLetters`→`offer_letters`, `officerPerformanceScores`→`officer_performance_scores`
-  *+57 more tables*
-**training** (9 tables): `trainingModules`→`training_modules`, `trainingSections`→`training_sections`, `trainingQuestions`→`training_questions`, `officerTrainingAttempts`→`training_attempts`, `officerTrainingCertificates`→`training_certificates`, `trainingInterventions`→`training_interventions`, `trainingProviders`→`training_providers`, `trainingSessions`→`training_sessions`, `trainingAttendance`→`training_attendance`
-**recruitment** (4 tables): `interviewCandidates`→`interview_candidates`, `candidateInterviewSessions`→`candidate_interview_sessions`, `interviewQuestionsBank`→`interview_questions_bank`, `interviewScorecards`→`interview_scorecards`
+**Key services:**
+- `server/services/**/breachResponseSOP.ts`
+- `server/services/**/employeeBehaviorScoring.ts`
+- `server/services/**/employeeDocumentOnboardingService.ts`
+- `server/services/**/employeeOnboardingPipelineService.ts`
+- `server/services/**/employeePatternService.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`workforce`** (67 tables): `applicant_interviews` (via `applicantInterviews`) · `applicants` (via `applicants`) · `employee_onboarding_progress` (via `employeeOnboardingProgress`) · `employee_onboarding_steps` (via `employeeOnboardingSteps`) · `employee_training_records` (via `employeeTrainingRecords`) · `interview_question_sets` (via `interviewQuestionSets`) · `interview_sessions` (via `interviewSessions`) · `job_postings` (via `jobPostings`)
+  *...+59 more in `workforce` domain*
+**`training`** (9 tables): `training_modules` (via `trainingModules`) · `training_sections` (via `trainingSections`) · `training_questions` (via `trainingQuestions`) · `training_attempts` (via `officerTrainingAttempts`) · `training_certificates` (via `officerTrainingCertificates`) · `training_interventions` (via `trainingInterventions`) · `training_providers` (via `trainingProviders`) · `training_sessions` (via `trainingSessions`)
+  *...+1 more in `training` domain*
+**`recruitment`** (4 tables): `interview_candidates` (via `interviewCandidates`) · `candidate_interview_sessions` (via `candidateInterviewSessions`) · `interview_questions_bank` (via `interviewQuestionsBank`) · `interview_scorecards` (via `interviewScorecards`)
 
 ---
 
 ## D6: MESSAGING & CHATDOCK
-> ChatDock rooms, broadcasts, HelpAI, Trinity voice, SMS, WebSocket
+> **ChatDock rooms, broadcasts, HelpAI, Trinity voice, SMS/Twilio, WebSocket pub/sub**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `briefing-channel.tsx` | 385 | `/api/broadcasts/briefing` | `/api/voice/tts` | ✅ |
-| `broadcasts.tsx` | 195 | read-only | ✅ |
-| `incident-pipeline.tsx` | 587 | `/api/incident-reports/` | `/api/incident-reports` | ✅ |
-| `worker-incidents.tsx` | 419 | `/api/incidents` | `/api/incidents/my-reports` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `audit-chatdock.tsx` | 262 | useQuery+useMutation | `/api/audit-suite/audits/` | — | ✅ |
+| `briefing-channel.tsx` | 385 | useQuery | `/api/voice/tts`<br>`/api/broadcasts/briefing` | button-briefing-ask-trinity, button | ✅ |
+| `broadcasts.tsx` | 195 | — | — | button-send-broadcast | ✅ |
+| `incident-pipeline.tsx` | 587 | useQuery+useMutation | `/api/incident-reports`<br>`/api/incident-reports/` | button-back-loading, button-retry-i | ✅ |
+| `worker-incidents.tsx` | 419 | useQuery+useMutation | — | button-new-incident, button-voice-i | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `POST` | `/` | `requireAuth` | ✅ |
-| `GET` | `/` | `requireAuth` | ✅ |
-| `GET` | `/my` | `requireAuth` | ✅ |
-| `GET` | `/briefing` | `requireAuth` | ✅ |
-| `GET` | `/platform` | `requireAuth` | ✅ |
-| `GET` | `/api/chat/conversations` | `requireManager` | ✅ |
-| `POST` | `/api/chat/conversations` | `requireManager` | ✅ |
-| `GET` | `/api/chat/conversations/:id/messages` | `requireManager` | ✅ |
-| `PATCH` | `/api/chat/conversations/:id` | `requireManager` | ✅ |
-| `POST` | `/api/chat/conversations/:id/close` | `requireManager` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/rooms` | `requireManager` | `dockChatRoutes.ts` | ✅ |
+| `POST` | `/rooms` | `requireManager` | `dockChatRoutes.ts` | ✅ |
+| `GET` | `/rooms/:roomId/messages` | `requireManager` | `dockChatRoutes.ts` | ✅ |
+| `POST` | `/rooms/:roomId/messages` | `requireManager` | `dockChatRoutes.ts` | ✅ |
+| `POST` | `/rooms/:roomId/broadcast` | `requireManager` | `dockChatRoutes.ts` | ✅ |
+| `GET` | `/direct/:targetUserId` | `requireManager` | `dockChatRoutes.ts` | 👻 |
+| `POST` | `/feedback` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `GET` | `/faq/entries` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `POST` | `/session/start` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `POST` | `/session/:sessionId/message` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `POST` | `/session/:sessionId/escalate` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `POST` | `/session/:sessionId/close` | `requirePlatformStaff` | `helpdeskRoutes.ts` | ✅ |
+| `POST` | `/chatrooms` | `requireAuth` | `interviewChatroomRoutes.ts` | 👻 |
+| `POST` | `/chatrooms/:id/start` | `requireAuth` | `interviewChatroomRoutes.ts` | ✅ |
+| `GET` | `/chatrooms` | `requireAuth` | `interviewChatroomRoutes.ts` | 👻 |
+| `GET` | `/chatrooms/:id` | `requireAuth` | `interviewChatroomRoutes.ts` | 👻 |
+| `PATCH` | `/chatrooms/:id/decision` | `requireAuth` | `interviewChatroomRoutes.ts` | ✅ |
+| `GET` | `/room/:token` | `requireAuth` | `interviewChatroomRoutes.ts` | ✅ |
+| `GET` | `/active` | `PUBLIC` | `shiftChatroomRoutes.ts` | ✅ |
+| `GET` | `/by-shift/:shiftId` | `PUBLIC` | `shiftChatroomRoutes.ts` | 👻 |
+| `GET` | `/:chatroomId/premium-status` | `PUBLIC` | `shiftChatroomRoutes.ts` | 👻 |
+| `GET` | `/dar/:darId` | `PUBLIC` | `shiftChatroomRoutes.ts` | ✅ |
+| `GET` | `/:shiftId/:timeEntryId` | `PUBLIC` | `shiftChatroomRoutes.ts` | ✅ |
+| `POST` | `/:conversationId/messages` | `PUBLIC` | `shiftChatroomRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-*No OC 1702 references in this domain*
+### 🧠  Logic Layer — Guards & Compliance
+*No OC §1702 references in this domain.*
 
-### 💾  DB Tables
-**comms** (60 tables): `userMascotPreferences`→`user_mascot_preferences`, `chatConversations`→`chat_conversations`, `chatMessages`→`chat_messages`, `messageReactions`→`message_reactions`, `messageReadReceipts`→`message_read_receipts`, `chatMacros`→`chat_macros`, `typingIndicators`→`typing_indicators`, `chatUploads`→`chat_uploads`, `roomEvents`→`room_events`, `dmAuditRequests`→`dm_audit_requests`
-  *+50 more tables*
-**notifications-delivery** (1 tables): `notificationDeliveries`→`notification_deliveries`
+**Key services:**
+- `server/services/**/ChatServerHub.ts`
+- `server/services/**/MessageBridgeService.ts`
+- `server/services/**/broadcastService.ts`
+- `server/services/**/chatParityService.ts`
+- `server/services/**/chatSentimentService.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`comms`** (60 tables): `user_mascot_preferences` (via `userMascotPreferences`) · `chat_conversations` (via `chatConversations`) · `chat_messages` (via `chatMessages`) · `message_reactions` (via `messageReactions`) · `message_read_receipts` (via `messageReadReceipts`) · `chat_macros` (via `chatMacros`) · `typing_indicators` (via `typingIndicators`) · `chat_uploads` (via `chatUploads`)
+  *...+52 more in `comms` domain*
+**`notifications-delivery`** (1 tables): `notification_deliveries` (via `notificationDeliveries`)
 
 ---
 
 ## D7: CLIENT PORTAL
-> Client-facing portal, work orders, site mgmt, contracts, proposals
+> **Client-facing portal, work orders, site management, contracts, proposals**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `client-portal.tsx` | 2289 | `/api/portal/` | `/api/auth/profile` | ✅ |
-| `work-orders.tsx` | 336 | `/api/work-orders/` | `/api/work-orders` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `client-communications.tsx` | 639 | useQuery+useMutation | `/api/clients/lookup`<br>`/api/client-comms/threads` | button-cancel-thread, button-create | ✅ |
+| `client-portal.tsx` | 2289 | useQuery+useMutation | `/api/clients/coi-request`<br>`/api/clients/contract-renewal-request` | button-submit-coi-request, button-s | ✅ |
+| `client-portal/setup.tsx` | 285 | useMutation | `/api/clients/portal/setup/` | button-cp-create-account | ✅ |
+| `client-profitability.tsx` | 610 | useQuery | `/api/analytics/client-profitability` | button-toggle-inactive, button-sort | ✅ |
+| `client-satisfaction.tsx` | 292 | useQuery+useMutation | `/api/client-satisfaction/dashboard`<br>`/api/clients/lookup` | button-back-clients, button-add-che | ✅ |
+| `client-signup.tsx` | 398 | useQuery+useMutation | `/api/client-status/` | button-lookup-status, button-lookup | ✅ |
+| `client-status-lookup.tsx` | 316 | useQuery | `/api/client-status/` | button-search-status, button-create | ✅ |
+| `clients.tsx` | 1120 | useQuery+useMutation | `/api/clients/deactivated?workspaceId=`<br>`/api/clients/` | button-add-client, switch-client-au | ✅ |
+| `pay-invoice.tsx` | 572 | useQuery+useMutation | `/api/invoices/` | button-complete-payment, button-ini | ✅ |
+| `sps-client-pipeline.tsx` | 998 | useQuery+useMutation | `/api/sps/documents`<br>`/api/sps/negotiations` | button-new-proposal, button-send-pr | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/threads` | `requireManager` | ✅ |
-| `POST` | `/threads` | `requireManager` | ✅ |
-| `GET` | `/threads/:id/messages` | `requireManager` | ✅ |
-| `POST` | `/threads/:id/messages` | `requireManager` | ✅ |
-| `POST` | `/threads/:id/resolve` | `requireManager` | ✅ |
-| `GET` | `/portal/setup/:token` | `requireManager` | ✅ |
-| `POST` | `/portal/setup/:token` | `requireManager` | ✅ |
-| `POST` | `/:id/invite` | `requireManager` | ✅ |
-| `DELETE` | `/portal/invite/:inviteId/revoke` | `requireManager` | ✅ |
-| `GET` | `/portal/invite/status` | `requireManager` | ✅ |
-| `GET` | `/` | `requireManager` | ✅ |
-| `GET` | `/lookup` | `requireManager` | ✅ |
-| `POST` | `/` | `requireManager` | ✅ |
-| `PATCH` | `/:id` | `requireManager` | ✅ |
-| `GET` | `/deactivated` | `requireManager` | ✅ |
-| `GET` | `/records` | `requireAuth` | ✅ |
-| `GET` | `/clients/:clientId/trend` | `requireAuth` | ✅ |
-| `POST` | `/records` | `requireAuth` | ✅ |
-| `POST` | `/concerns` | `requireAuth` | 👻 no UI |
-| `GET` | `/concerns` | `requireAuth` | 👻 no UI |
-| `GET` | `/` | `requireAuth` | ✅ |
-| `POST` | `/` | `requireAuth` | ✅ |
-| `PATCH` | `/:id` | `requireAuth` | ✅ |
-| `POST` | `/lookup` | `requireAuth` | ✅ |
-| `POST` | `/request` | `requireAuth` | ✅ |
-| `GET` | `/request/:id/status` | `requireAuth` | ✅ |
-| `POST` | `/request/:id/dispute` | `requireAuth` | ✅ |
-| `POST` | `/request/:id/grant` | `requireAuth` | 👻 no UI |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/portal/setup/:token` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `POST` | `/portal/setup/:token` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `POST` | `/:id/invite` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `DELETE` | `/portal/invite/:inviteId/revoke` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `GET` | `/portal/invite/status` | `requireManager` | `clientPortalInviteRoutes.ts` | ✅ |
+| `GET` | `/` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `GET` | `/lookup` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `POST` | `/` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `PATCH` | `/:id` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `GET` | `/deactivated` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `POST` | `/:id/deactivate` | `requireManager` | `clientRoutes.ts` | ✅ |
+| `POST` | `/templates` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `PATCH` | `/templates/:id` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `GET` | `/` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `POST` | `/` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `GET` | `/access` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `GET` | `/stats` | `requireAuth` | `contractPipelineRoutes.ts` | ✅ |
+| `GET` | `/contracts` | `requireAuth` | `contractRenewalRoutes.ts` | ✅ |
+| `GET` | `/contracts/:id` | `requireAuth` | `contractRenewalRoutes.ts` | ✅ |
+| `PATCH` | `/contracts/:id/renewal` | `requireAuth` | `contractRenewalRoutes.ts` | ✅ |
+| `POST` | `/contracts/:id/tasks` | `requireAuth` | `contractRenewalRoutes.ts` | ✅ |
+| `PATCH` | `/tasks/:taskId/complete` | `requireAuth` | `contractRenewalRoutes.ts` | ✅ |
+| `POST` | `/run-check` | `requireAuth` | `contractRenewalRoutes.ts` | 👻 |
+| `GET` | `/keys` | `requireAuth` | `developerPortalRoutes.ts` | ✅ |
+| `POST` | `/keys` | `requireAuth` | `developerPortalRoutes.ts` | ✅ |
+| `DELETE` | `/keys/:id` | `requireAuth` | `developerPortalRoutes.ts` | ✅ |
+| `GET` | `/keys/:id/usage` | `requireAuth` | `developerPortalRoutes.ts` | ✅ |
+| `GET` | `/status` | `requireAuth` | `developerPortalRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `client/src/pages/employee-packet-portal.tsx` → `§1702.324`
-- `client/src/pages/trinity-features.tsx` → `§1702.323`
+### 🧠  Logic Layer — Guards & Compliance
+*No OC §1702 references in this domain.*
 
-### 💾  DB Tables
-**clients** (34 tables): `clientConcerns`→`client_concerns`, `clientSatisfactionRecords`→`client_satisfaction_records`, `postOrderVersionAcknowledgments`→`post_order_version_acknowledgments`, `postOrderVersions`→`post_order_versions`, `siteMarginScores`→`site_margin_scores`, `subcontractorCompanies`→`subcontractor_companies`, `clientMessageThreads`→`client_message_threads`, `clientMessages`→`client_messages`, `contractDocuments`→`contract_documents`, `clientPortalInviteTokens`→`client_portal_invite_tokens`
-  *+24 more tables*
-**sales** (16 tables): `bidAnalytics`→`bid_analytics`, `contractHealthScores`→`contract_health_scores`, `contractRenewalTasks`→`contract_renewal_tasks`, `leads`→`leads`, `deals`→`deals`, `rfps`→`rfps`, `proposals`→`proposals`, `dealTasks`→`deal_tasks`, `testimonials`→`testimonials`, `clientProspects`→`client_prospects`
-  *+6 more tables*
+**Key services:**
+- `server/services/**/clientCollectionsService.ts`
+- `server/services/**/clientCommsMigration.ts`
+- `server/services/**/clientProspectService.ts`
+- `server/services/**/compositeScoresService.ts`
+- `server/services/**/quickbooksClientBillingSync.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`clients`** (34 tables): `client_concerns` (via `clientConcerns`) · `client_satisfaction_records` (via `clientSatisfactionRecords`) · `post_order_version_acknowledgments` (via `postOrderVersionAcknowledgments`) · `post_order_versions` (via `postOrderVersions`) · `site_margin_scores` (via `siteMarginScores`) · `subcontractor_companies` (via `subcontractorCompanies`) · `client_message_threads` (via `clientMessageThreads`) · `client_messages` (via `clientMessages`)
+  *...+26 more in `clients` domain*
+**`sales`** (16 tables): `bid_analytics` (via `bidAnalytics`) · `contract_health_scores` (via `contractHealthScores`) · `contract_renewal_tasks` (via `contractRenewalTasks`) · `leads` (via `leads`) · `deals` (via `deals`) · `rfps` (via `rfps`) · `proposals` (via `proposals`) · `deal_tasks` (via `dealTasks`)
+  *...+8 more in `sales` domain*
 
 ---
 
 ## D8: TRINITY AI
-> Trinity AI brain, autonomous scheduler, OC 1702 gatekeeper, decision log
+> **Trinity biological brain (Gemini+Claude+GPT), autonomous scheduler, OC 1702 gatekeeper**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `trinity-agent-dashboard.tsx` | 860 | `/api/trinity/agent-dashboard/activity-fe` | `/api/trinity/agent-dashboard/reasoning` | ✅ |
-| `trinity-chat.tsx` | 369 | `/api/trinity/chat/session/` | `/api/trinity/chat/settings` | ✅ |
-| `trinity-features.tsx` | 988 | read-only | ✅ |
-| `trinity-insights.tsx` | 343 | `/api/trinity/insights` | `/api/trinity/status` | ✅ |
-| `trinity-transparency-dashboard.tsx` | 915 | `/api/trinity/transparency/decisions` | `/api/trinity/transparency/cost-breakdown` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `trinity-agent-dashboard.tsx` | 860 | useQuery+useMutation | `/api/trinity/agent-dashboard/reasoning/` | — | ✅ |
+| `trinity-chat.tsx` | 369 | useQuery+useMutation | `/api/trinity/chat/session/` | button-history, button-settings | ✅ |
+| `trinity-features.tsx` | 988 | — | — | button-teaser-see-pricing, button-t | ✅ |
+| `trinity-insights.tsx` | 343 | useQuery+useMutation | `/api/trinity/insights/` | button-scan | ✅ |
+| `trinity-transparency-dashboard.tsx` | 915 | useQuery | `/api/trinity/transparency/cost-breakdown?mont`<br>`/api/trinity/transparency/actions?limit=20&of` | — | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/health` | `requireAuth` | ✅ |
-| `GET` | `/by-operation` | `requireAuth` | 👻 no UI |
-| `GET` | `/unprofitable-companies` | `requireAuth` | 👻 no UI |
-| `GET` | `/recommendations` | `requireAuth` | 👻 no UI |
-| `GET` | `/alerts` | `requireAuth` | ✅ |
-| `GET` | `/workspaces/:id/details` | `requirePlatformStaff` | 👻 no UI |
-| `GET` | `/search` | `requirePlatformStaff` | ✅ |
-| `GET` | `/active` | `requireAuth` | ✅ |
-| `GET` | `/completions` | `requireAuth` | ✅ |
-| `GET` | `/tasks/:taskId` | `requireAuth` | ✅ |
-| `GET` | `/escalations` | `requireAuth` | ✅ |
-| `GET` | `/escalations/count` | `requireAuth` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `GET` | `/health` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | ✅ |
+| `GET` | `/services` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | 👻 |
+| `GET` | `/services/:serviceName` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | 👻 |
+| `POST` | `/services/:serviceName/pause` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | ✅ |
+| `POST` | `/services/:serviceName/resume` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | ✅ |
+| `GET` | `/workflows` | `requirePlatformStaff` | `aiBrainControlRoutes.ts` | ✅ |
+| `POST` | `/detect-issues` | `requireManager` | `aiBrainInlineRoutes.ts` | 👻 |
+| `GET` | `/guardrails/config` | `requireManager` | `aiBrainInlineRoutes.ts` | ✅ |
+| `GET` | `/knowledge/diagnostics` | `requireManager` | `aiBrainInlineRoutes.ts` | ✅ |
+| `GET` | `/fast-mode/tiers` | `requireManager` | `aiBrainInlineRoutes.ts` | ✅ |
+| `POST` | `/work-orders/execute` | `requireManager` | `aiBrainInlineRoutes.ts` | ✅ |
+| `GET` | `/work-orders/batch/:batchId` | `requireManager` | `aiBrainInlineRoutes.ts` | ✅ |
+| `POST` | `/chat` | `PUBLIC` | `sra/sraTrinityRoutes.ts` | ✅ |
+| `GET` | `/sections` | `PUBLIC` | `sra/sraTrinityRoutes.ts` | ✅ |
+| `PATCH` | `/sections/:index/verify` | `PUBLIC` | `sra/sraTrinityRoutes.ts` | ✅ |
+| `POST` | `/generate-pdf` | `PUBLIC` | `sra/sraTrinityRoutes.ts` | ✅ |
+| `GET` | `/download/:docId` | `PUBLIC` | `sra/sraTrinityRoutes.ts` | ✅ |
+| `GET` | `/insights` | `requireManager` | `trinitySchedulingRoutes.ts` | ✅ |
+| `POST` | `/auto-fill` | `requireManager` | `trinitySchedulingRoutes.ts` | 👻 |
+| `POST` | `/ask` | `requireManager` | `trinitySchedulingRoutes.ts` | ✅ |
+| `POST` | `/schedule-shift` | `requireManager` | `trinitySchedulingRoutes.ts` | 👻 |
+| `GET` | `/pending-approvals` | `requireManager` | `trinitySchedulingRoutes.ts` | ✅ |
+| `POST` | `/pending-approvals/:id/approve` | `requireManager` | `trinitySchedulingRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-**OC 1702 enforcement:**
-- `client/src/pages/trinity-features.tsx` → `§1702.323`
-- `scripts/omega/audit-trinity-citations.ts` → `§1702.221, §1702.323, §1702.163, §1702.161, §1702.201`
-- `server/services/autonomousScheduler.ts` → `OC §1702.201`
-- `server/services/ai-brain/trinityLegalResearch.ts` → `§1702.301`
-- `server/services/ai-brain/trinityPersona.ts` → `OC §1702.102, §1702.323, 1702.201, §1702.163, OC §1702.201, §1702.161, OC §1702.163, OC §1702.323, §1702.201, OC §1702.161`
-- `server/services/compliance/texasGatekeeper.ts` → `§1702.323, §1702.163, OC §1702.201, §1702.161, OC §1702.163, OC §1702.323, §1702.201, OC §1702.161`
+### 🧠  Logic Layer — Guards & Compliance
+**Texas OC §1702 enforcement:**
+- `server/services/autonomousScheduler.ts` enforces `OC §1702.201`
+- `server/services/ai-brain/trinityPersona.ts` enforces `§1702.161, 1702.201, OC §1702.163, OC §1702.102, §1702.201, §1702.323, OC §1702.201, §1702.163, OC §1702.323, OC §1702.161`
+- `server/services/compliance/texasGatekeeper.ts` enforces `§1702.161, OC §1702.163, §1702.201, §1702.323, OC §1702.201, §1702.163, OC §1702.323, OC §1702.161`
+- `server/services/scheduling/trinityAutonomousScheduler.ts` enforces `§1702.161, texasGatekeeper, §1702.201, §1702.323, §1702.163`
 
-### 💾  DB Tables
-**trinity** (103 tables): `agentRegistry`→`agent_registry`, `agentTaskLogs`→`agent_task_logs`, `agentTasks`→`agent_tasks`, `aiCostConfig`→`ai_cost_config`, `aiUsageLog`→`ai_usage_log`, `counterfactualSimulations`→`counterfactual_simulations`, `curiosityQueue`→`curiosity_queue`, `incubationQueue`→`incubation_queue`, `socialEntities`→`social_entities`, `socialRelationships`→`social_relationships`
-  *+93 more tables*
-**ops** (57 tables): `incidentPatterns`→`incident_patterns`, `assets`→`assets`, `assetSchedules`→`asset_schedules`, `assetUsageLogs`→`asset_usage_logs`, `maintenanceAlerts`→`maintenance_alerts`, `maintenanceAcknowledgments`→`maintenance_acknowledgments`, `dispatchIncidents`→`dispatch_incidents`, `dispatchAssignments`→`dispatch_assignments`, `unitStatuses`→`unit_statuses`, `dispatchLogs`→`dispatch_logs`
-  *+47 more tables*
+**Key services:**
+- `server/services/**/aiActivityService.ts`
+- `server/services/**/aiBot.ts`
+- `server/services/**/aiGuardRails.ts`
+- `server/services/**/aiNotificationService.ts`
+- `server/services/**/aiSchedulingTriggerService.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`trinity`** (103 tables): `agent_registry` (via `agentRegistry`) · `agent_task_logs` (via `agentTaskLogs`) · `agent_tasks` (via `agentTasks`) · `ai_cost_config` (via `aiCostConfig`) · `ai_usage_log` (via `aiUsageLog`) · `counterfactual_simulations` (via `counterfactualSimulations`) · `curiosity_queue` (via `curiosityQueue`) · `incubation_queue` (via `incubationQueue`)
+  *...+95 more in `trinity` domain*
+**`ops`** (57 tables): `incident_patterns` (via `incidentPatterns`) · `assets` (via `assets`) · `asset_schedules` (via `assetSchedules`) · `asset_usage_logs` (via `assetUsageLogs`) · `maintenance_alerts` (via `maintenanceAlerts`) · `maintenance_acknowledgments` (via `maintenanceAcknowledgments`) · `dispatch_incidents` (via `dispatchIncidents`) · `dispatch_assignments` (via `dispatchAssignments`)
+  *...+49 more in `ops` domain*
 
 ---
 
 ## D9: PLATFORM ADMIN
-> Root admin, tenant mgmt, support agents, platform health, subscriptions
+> **Root admin, tenant management, support agents, platform health, subscriptions**
 
-### 🖥️  UI Layer
-| Page | Lines | Key API Calls | Status |
-|------|-------|---------------|--------|
-| `admin-usage.tsx` | 439 | `/api/usage/tokens` | `/api/usage/token-log` | ✅ |
-| `admin/support-console-tickets.tsx` | 314 | `/api/support/escalated` | `/api/support/priority-queue` | ✅ |
-| `admin/support-console-workspace.tsx` | 533 | `/api/support/actions/registry` | `/api/trinity/org-state` | ✅ |
-| `admin/support-console.tsx` | 635 | `/api/support/actions/registry` | `/api/support/escalated` | ✅ |
-| `updates.tsx` | 163 | `/api/whats-new` | ✅ |
+### 🖥️  UI Layer — Pages
+| Page | Lines | Hooks | Key API Calls | Actions (testids) | Status |
+|------|-------|-------|---------------|-------------------|--------|
+| `admin-banners.tsx` | 294 | useQuery+useMutation | `/api/promotional-banners/` | button-new-banner, button-save-bann | ✅ |
+| `admin-custom-forms.tsx` | 1311 | useQuery+useMutation | `/api/form-builder/forms/`<br>`/api/form-builder/submissions/` | button-save-form, select-approver-r | ✅ |
+| `admin-helpai.tsx` | 1099 | useQuery+useMutation | `/api/clients/dockchat/reports`<br>`/api/helpai/admin/stats` | button-close-session, button-refres | ✅ |
+| `admin-permission-matrix.tsx` | 546 | useQuery+useMutation | `/api/admin/permissions/workspaces`<br>`/api/admin/permissions/meta` | button-refresh-admin-matrix | ✅ |
+| `admin-security.tsx` | 258 | — | `/api/security-admin/overrides`<br>`/api/security-admin/auditor-allowlist` | — | ✅ |
+| `admin-ticket-reviews.tsx` | 186 | useQuery | — | — | ✅ |
+| `admin-usage.tsx` | 439 | useQuery | — | button-prev-page, button-next-page | ✅ |
+| `admin/support-console-tickets.tsx` | 314 | useQuery | `/api/support/escalated`<br>`/api/support/priority-queue` | button-back-console, button-refresh | ✅ |
+| `admin/support-console-workspace.tsx` | 533 | useQuery+useMutation | `/api/admin/workspaces`<br>`/api/admin/workspaces/` | button-back-no-ws, button-back-work | ✅ |
+| `admin/support-console.tsx` | 635 | useQuery+useMutation | `/api/support/escalated`<br>`/api/support/priority-queue` | button-execute-action, button-refre | ✅ |
 
-### 🔌  API Routes
-| Method | Endpoint | Guard | Status |
-|--------|----------|-------|--------|
-| `GET` | `/health` | `requireAuth` | ✅ |
-| `GET` | `/by-operation` | `requireAuth` | 👻 no UI |
-| `GET` | `/unprofitable-companies` | `requireAuth` | 👻 no UI |
-| `GET` | `/recommendations` | `requireAuth` | 👻 no UI |
-| `GET` | `/alerts` | `requireAuth` | ✅ |
-| `POST` | `/dev-execute` | `PUBLIC` | 👻 no UI |
-| `GET` | `/meta` | `requirePlatformStaff` | ✅ |
-| `GET` | `/workspaces` | `requirePlatformStaff` | ✅ |
-| `GET` | `/workspaces/:wsId/matrix` | `requirePlatformStaff` | ✅ |
-| `PATCH` | `/workspaces/:wsId/matrix` | `requirePlatformStaff` | ✅ |
-| `DELETE` | `/workspaces/:wsId/matrix` | `requirePlatformStaff` | ✅ |
-| `POST` | `/dev-execute` | `requirePlatformStaff` | 👻 no UI |
-| `PATCH` | `/workspace/:workspaceId` | `requirePlatformStaff` | ✅ |
-| `GET` | `/support/search` | `requirePlatformStaff` | ✅ |
-| `GET` | `/support/workspace/:id` | `requirePlatformStaff` | ✅ |
-| `GET` | `/support/stats` | `requirePlatformStaff` | ✅ |
-| `GET` | `/workspaces/:id/details` | `requirePlatformStaff` | 👻 no UI |
-| `GET` | `/search` | `requirePlatformStaff` | ✅ |
+### 🔌  API Layer — Routes
+| Method | Path | Middleware Guard | Route File | UI Caller |
+|--------|------|-----------------|------------|-----------|
+| `POST` | `/dev-execute` | `requirePlatformStaff` | `adminRoutes.ts` | 👻 |
+| `PATCH` | `/workspace/:workspaceId` | `requirePlatformStaff` | `adminRoutes.ts` | ✅ |
+| `GET` | `/support/search` | `requirePlatformStaff` | `adminRoutes.ts` | ✅ |
+| `GET` | `/support/workspace/:id` | `requirePlatformStaff` | `adminRoutes.ts` | ✅ |
+| `GET` | `/support/stats` | `requirePlatformStaff` | `adminRoutes.ts` | ✅ |
+| `GET` | `/identity/resolve` | `requirePlatformStaff` | `adminRoutes.ts` | ✅ |
+| `GET` | `/stats` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `GET` | `/personal-data` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `GET` | `/workspaces/search` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `GET` | `/workspaces/:workspaceId` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `GET` | `/master-keys/organizations` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `GET` | `/master-keys/organizations/:id` | `requirePlatformStaff` | `platformRoutes.ts` | ✅ |
+| `POST` | `/escalate` | `requirePlatformStaff` | `supportRoutes.ts` | ✅ |
+| `POST` | `/create-ticket` | `requirePlatformStaff` | `supportRoutes.ts` | ✅ |
+| `POST` | `/helpos-chat` | `requirePlatformStaff` | `supportRoutes.ts` | ✅ |
+| `POST` | `/helpos-copilot` | `requirePlatformStaff` | `supportRoutes.ts` | 👻 |
+| `POST` | `/tickets` | `requirePlatformStaff` | `supportRoutes.ts` | ✅ |
+| `GET` | `/tickets` | `requirePlatformStaff` | `supportRoutes.ts` | ✅ |
 
-### 🧠  Logic & Compliance
-*No OC 1702 references in this domain*
+### 🧠  Logic Layer — Guards & Compliance
+*No OC §1702 references in this domain.*
 
-### 💾  DB Tables
-**support** (41 tables): `faqEntries`→`faq_entries`, `faqNotifications`→`faq_notifications`, `faqVersionHistory`→`faq_version_history`, `escalationTickets`→`escalation_tickets`, `supportSessions`→`support_sessions`, `supportTickets`→`support_tickets`, `helposFaqs`→`helpos_faqs`, `faqVersions`→`faq_versions`, `faqGapEvents`→`faq_gap_events`, `faqSearchHistory`→`faq_search_history`
-  *+31 more tables*
-**sps** (19 tables): `spsDocuments`→`sps_documents`, `spsNegotiationThreads`→`sps_negotiation_threads`, `spsNegotiationMessages`→`sps_negotiation_messages`, `spsDocumentSafe`→`sps_document_safe`, `spsStateRequirements`→`sps_state_requirements`, `spsOnboarding`→`sps_onboarding`, `spsForm1Checklist`→`sps_form_1_checklist`, `spsForm2OfferLetter`→`sps_form_2_offer_letter`, `spsForm3W4`→`sps_form_3_w4`, `spsForm4I9`→`sps_form_4_i9`
-  *+9 more tables*
+**Key services:**
+- `server/services/**/platformEventBus.ts`
+- `server/services/**/platformMaintenanceService.ts`
+- `server/services/**/supportActionEmails.ts`
+- `server/services/**/supportActionsService.ts`
+- `server/services/**/supportSessionService.ts`
+
+### 💾  Persistence Layer — DB Tables
+**`support`** (41 tables): `faq_entries` (via `faqEntries`) · `faq_notifications` (via `faqNotifications`) · `faq_version_history` (via `faqVersionHistory`) · `escalation_tickets` (via `escalationTickets`) · `support_sessions` (via `supportSessions`) · `support_tickets` (via `supportTickets`) · `helpos_faqs` (via `helposFaqs`) · `faq_versions` (via `faqVersions`)
+  *...+33 more in `support` domain*
+**`sps`** (19 tables): `sps_documents` (via `spsDocuments`) · `sps_negotiation_threads` (via `spsNegotiationThreads`) · `sps_negotiation_messages` (via `spsNegotiationMessages`) · `sps_document_safe` (via `spsDocumentSafe`) · `sps_state_requirements` (via `spsStateRequirements`) · `sps_onboarding` (via `spsOnboarding`) · `sps_form_1_checklist` (via `spsForm1Checklist`) · `sps_form_2_offer_letter` (via `spsForm2OfferLetter`)
+  *...+11 more in `sps` domain*
+
+---
+
 
 ---
 
-## ⚡ DEAD ENDS — UI Calls With No Backend Route
-*0 dead ends detected*
+## Dead Ends & Ghost Routes
 
-✅ *No dead ends found — all UI calls have backend routes*
+### ⚡ Dead Ends — UI calls with no backend route
+*0 dead ends found*
 
-## 👻 GHOST ROUTES — Backend With No UI Caller (sample)
-*28 ghost routes detected — many are internal/webhook/admin expected*
+✅ **Zero dead ends** — all UI API calls have corresponding backend routes.
 
-| Domain | Endpoint | Route File |
-|--------|----------|------------|
-| AUTH & ONBOARDING | `GET /csrf-token` | `authRoutes.ts` |
-| AUTH & ONBOARDING | `POST /csrf-token` | `authRoutes.ts` |
-| AUTH & ONBOARDING | `POST /logout-all` | `authRoutes.ts` |
-| AUTH & ONBOARDING | `POST /forgot-password` | `authRoutes.ts` |
-| SCHEDULING | `GET /executions` | `orchestratedScheduleRoutes.ts` |
-| SCHEDULING | `POST /smart-generate` | `scheduleosRoutes.ts` |
-| SCHEDULING | `GET /coverage-gaps` | `schedulerRoutes.ts` |
-| SCHEDULING | `POST /unpublish` | `schedulesRoutes.ts` |
-| SCHEDULING | `POST /apply-insight` | `schedulesRoutes.ts` |
-| COMPLIANCE & LICENSING | `POST /:approvalId/decide` | `compliance/approvals.ts` |
-| COMPLIANCE & LICENSING | `GET /critical` | `compliance/auditTrail.ts` |
-| WORKFORCE & HR | `GET /csrf-token` | `authRoutes.ts` |
-| WORKFORCE & HR | `POST /csrf-token` | `authRoutes.ts` |
-| WORKFORCE & HR | `POST /logout-all` | `authRoutes.ts` |
-| WORKFORCE & HR | `POST /forgot-password` | `authRoutes.ts` |
-| CLIENT PORTAL | `POST /concerns` | `clientSatisfactionRoutes.ts` |
-| CLIENT PORTAL | `GET /concerns` | `clientSatisfactionRoutes.ts` |
-| CLIENT PORTAL | `POST /request/:id/grant` | `compliance/regulatoryPortal.ts` |
-| TRINITY AI | `GET /by-operation` | `admin/aiCosts.ts` |
-| TRINITY AI | `GET /unprofitable-companies` | `admin/aiCosts.ts` |
+### 👻 Ghost Routes — backend endpoints with no UI caller
+*28 real ghost routes (not counting webhooks/internal)*
 
-
-## 🔧 TYPESCRIPT HARDENING — PHASE 2 FINDINGS
-
-### Domain 1: AUTH & ONBOARDING
-| File | Issue | Severity | Fix |
-|------|-------|----------|-----|
-| `server/auth.ts` | 13 `any` type usages in session/request handling | Medium | Type each session field explicitly |
-| `server/routes/authCoreRoutes.ts` | 18 `any` usages, mostly `req.user as any` | Medium | Use `AuthenticatedRequest` type |
-| `server/routes/auditorRoutes.ts` | 31 `any` usages | High | Migrate to typed request |
-| `client/src/hooks/useAuth.ts` | 1 `any` usage in data shape | Low | Type the API response |
-
-**Auth wiring verified:**
-- ✅ `/api/auth/login` → `authCoreRoutes.ts` → `req.session.userId`
-- ✅ `/api/auth/me` → returns user + workspace context
-- ✅ `/api/auditor/login` → `auditorRoutes.ts` → separate session
-- ✅ `/api/sra/auth/login` → `sraAuthRoutes.ts` → SRA session
-- ✅ `useAuth()` hook subscribes to `/api/auth/me` queryKey
-
-**Dead ends: 0** (all auth UI calls have backend routes)
-
-**Ghost routes (admin-expected, not bugs):**
-- `GET /workspaces/:wsId/matrix` — permission matrix (admin panel)
-- `GET /platform/activities` — activity log (admin dashboard)
-- `GET /admin/metrics` — platform metrics (sysop dashboard)
-
-## 🔧 TYPESCRIPT HARDENING STATUS
-| Domain | Status | Notes |
-|--------|--------|-------|
-| AUTH & ONBOARDING | 🔲 Pending | Phase 2 |
-| SCHEDULING | 🔲 Pending | Phase 2 |
-| FINANCE & BILLING | 🔲 Pending | Phase 2 |
-| COMPLIANCE & LICENSING | 🔲 Pending | Phase 2 |
-| WORKFORCE & HR | 🔲 Pending | Phase 2 |
-| MESSAGING & CHATDOCK | 🔲 Pending | Phase 2 |
-| CLIENT PORTAL | 🔲 Pending | Phase 2 |
-| TRINITY AI | 🔲 Pending | Phase 2 |
-| PLATFORM ADMIN | 🔲 Pending | Phase 2 |
+| Domain | Endpoint | Route File | Action |
+|--------|----------|------------|--------|
+| `D1` | `GET /csrf-token` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D1` | `POST /csrf-token` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D1` | `POST /logout-all` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D1` | `POST /forgot-password` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D1` | `POST /magic-link` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D2` | `GET /executions` | `orchestratedScheduleRoutes.ts` | 🔲 Needs UI widget |
+| `D2` | `GET /executions/:executionId` | `orchestratedScheduleRoutes.ts` | 🔲 Needs UI widget |
+| `D3` | `POST /billing/adjust-invoice/correct-line-item` | `financeInlineRoutes.ts` | 🔲 Needs UI widget |
+| `D3` | `POST /billing/adjust-invoice/bulk-credit` | `financeInlineRoutes.ts` | 🔲 Needs UI widget |
+| `D4` | `POST /request/:id/grant` | `compliance/regulatoryPortal.ts` | 🔲 Needs UI widget |
+| `D5` | `GET /csrf-token` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D5` | `POST /csrf-token` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D5` | `POST /logout-all` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D5` | `POST /forgot-password` | `authRoutes.ts` | 🔲 Needs UI widget |
+| `D5` | `POST /magic-link` | `authRoutes.ts` | 🔲 Needs UI widget |
 
 ---
-*SYSTEM_MANIFEST.md — Living document. Updated each hardening phase.*
+
+## Phase Hardening Log
+
+### Phase 1 — System Map (2026-05-01)
+- ✅ 338 pages × 9 domains mapped (UI→Hook→Route→Logic→DB)
+- ✅ 2,793 endpoints catalogued across 363 route files
+- ✅ 748 DB tables across 22 schema domains indexed
+- ✅ 22 OC §1702 enforcement files identified
+- ✅ 0 dead ends found
+- ✅ 26 ghost routes catalogued
+
+### Phase 2 — TypeScript Hardening (2026-05-01)
+| Wave | Fix | Files | Before | After |
+|------|-----|-------|--------|-------|
+| 1 | `req: any` → `AuthenticatedRequest` | 103 | 750 | 1 |
+| 2 | `catch(e: any)` → `catch(e: unknown)` | 227 | 227 | 0 |
+| 3 | `console.log` → `log.info` (server) | 21 | 955 | 340* |
+| 4 | `@ts-ignore` → `@ts-expect-error` + docs | 8 | 282 | 0 |
+| 5 | Event handler `any` types removed | multiple | 321 | cleaned |
+| 7 | TODO/FIXME → PLANNED with paths | 5 | 7 | 0 |
+
+*340 remaining in services/scripts/logger.ts (intentional or script-level)
+
+**esbuild: 0 server + 0 client errors ✅**
+
+### Phase 3 — Doc Consolidation + Service Logging (In Progress)
+- ✅ 1,074 stale/duplicate docs deleted
+- ✅ SYSTEM_MANIFEST.md is now single source of truth
+- ✅ `console.log` → `log.info` in server/services (19 more files fixed)
+- 🔲 `useState<any>` → proper generic types (~50 instances)
+- ✅ Non-null `!.` → `?.` safe ref patterns fixed; 217 remain (assignment-side intentional)
+- 🔲 `as any` casts in client pages → domain interfaces (~200 instances)
+- 🔲 4 ghost routes → UI widgets (platform activities, invitations, metrics)
+
+### Remaining Known Debt
+| Category | Count | Location | Phase |
+|----------|-------|----------|-------|
+| `console.log` in services | 340 | `server/services/**` | 3 |
+| `useState<any>` | ~50 | `client/src/components/**` | 3 |
+| Non-null `!.` assertions | 212 | Mixed | 3 |
+| `as any` casts | ~200 | `client/src/pages/**` | 3 |
+| Ghost routes needing UI | 4 | Admin pages | 3 |
+
+
 ---
 
-## ✅ PHASE 2: CODEBASE HARDENING — COMPLETE
+## Known Issues Tracker
 
-### Summary of Fixes Applied
+| ID | Domain | Issue | Severity | Status | File |
+|----|--------|-------|----------|--------|------|
+| KI-001 | D6 Messaging | WebSocket multi-replica pub/sub not using Redis | HIGH | 🔲 Open | `server/services/redisPubSubAdapter.ts` |
+| KI-002 | D2 Scheduling | `requireAnyAuth` still uses `req: any` (intentional) | LOW | ✅ Documented | `server/auth.ts:887` |
+| KI-003 | D1 Auth | OTP implementation is a stub (no email/SMS send) | MEDIUM | 🔲 Open | `server/routes/authCoreRoutes.ts:271` |
+| KI-004 | D1 Auth | Device trust cookie not yet implemented | MEDIUM | 🔲 Open | `server/routes/authCoreRoutes.ts:302` |
+| KI-005 | D9 Admin | `/api/platform/activities` ghost — no UI widget | LOW | 🔲 Open | `server/routes/adminRoutes.ts` |
+| KI-006 | D9 Admin | `/api/platform/invitations` ghost — no UI widget | LOW | 🔲 Open | `server/routes/adminRoutes.ts` |
+| KI-007 | D6 Messaging | FCM push notifications not implemented | HIGH | 🔲 Open | Resend/Twilio fallback active |
+| KI-008 | D3 Finance | ChatDock durable message store missing (Redis Streams) | HIGH | 🔲 Open | ChatDock reliability foundation |
 
-| Wave | Category | Before | After | % Fixed |
-|------|----------|--------|-------|---------|
-| 1 | `req: any` → `AuthenticatedRequest` (server routes) | 750 | 1 | **99%** |
-| 2 | `catch(e: any)` → `catch(e: unknown)` | 227 | 0 | **100%** |
-| 3 | `console.log` → `log.info/error` (server with logger) | 955 | 340* | **64%** |
-| 4 | `@ts-ignore` → `@ts-expect-error` with explanation | 282 | 0 | **100%** |
-| 5 | Client event handler `any` types removed | 321 | — | cleaned |
-| 7 | TODO/FIXME → documented PLANNED items | 7 | 0 | **100%** |
 
-*340 remaining in services/scripts/logger itself — intentional or script-level
+---
 
-### What Was Fixed
-- **103 route files**: Every `req: any` parameter → `AuthenticatedRequest` type
-- **227 files**: Every `catch(e: any)` → `catch(e: unknown)` (TS 4.0+ best practice)
-- **21 server files**: `console.log` → structured `log.info/error` where logger was present
-- **8 component files**: `@ts-ignore` converted to `@ts-expect-error` with documentation
-- **5 TODO items**: Replaced with `PLANNED` comments documenting implementation path
+## Deployment & Infrastructure
 
-### esbuild verification: 0 server errors + 0 client errors ✅
+### Railway Configuration
+| Environment | Branch | URL | Purpose |
+|-------------|--------|-----|---------|
+| Development | `development` | `coaileague-development.up.railway.app` | Testing |
+| Production | `main` | Production URL | Live (Bryan authorizes merges) |
 
-### Remaining Known Debt (intentional/tracked)
-| Item | Count | Location | Action |
-|------|-------|----------|--------|
-| `req: any` (1 remaining) | 1 | `server/auth.ts` L887 | `requireAnyAuth` middleware — correct here |
-| `console.log` in services | 340 | Various service files | Phase 3 — structured logging sweep |
-| `useState<any>` patterns | ~50 | Client components | Phase 3 — add proper generic types |
-| Non-null assertions `!.` | 212 | Mixed | Phase 3 — add null guards |
-| `as any` casts | ~200 | Client pages | Phase 3 — domain-typed interfaces |
+### Build Pipeline
+```
+npm run build
+  → vite build (client → dist/public)
+  → node build.mjs (server bundle → dist/server.js)
 
-### Ghost Routes Resolved
-| Endpoint | Status |
-|----------|--------|
-| `GET /workspaces/:wsId/matrix` | ✅ Handled by admin-permission-matrix.tsx |
-| `GET /admin/metrics` | ✅ In root-admin-dashboard.tsx (via /api/platform/stats) |
-| `GET /platform/activities` | 🔲 Needs widget in root-admin-dashboard |
-| `GET /platform/invitations` | 🔲 Needs admin invitations panel |
+Railway start: node dist/server.js
+Health check: GET /health → 200
+Port mapping: Railway 80 → app 5000
+```
 
+### Key Environment Variables
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `DATABASE_URL` | Neon PostgreSQL connection | ✅ |
+| `RESEND_API_KEY` | Email delivery | ✅ |
+| `RESEND_WEBHOOK_SECRET` | Inbound email verification | ✅ |
+| `TWILIO_ACCOUNT_SID` | SMS/voice | ✅ |
+| `TWILIO_AUTH_TOKEN` | Twilio auth | ✅ |
+| `STRIPE_SECRET_KEY` | Payment processing | ✅ |
+| `PLAID_CLIENT_ID` | ACH/bank transfers | ✅ |
+| `SESSION_SECRET` | Express session signing | ✅ |
+| `GEMINI_API_KEY` | Trinity brain - Gemini | ✅ |
+| `OPENAI_API_KEY` | Trinity brain - GPT | ✅ |
+| `ANTHROPIC_API_KEY` | Trinity brain - Claude | ✅ |
+
+### Workflow Rule (PERMANENT)
+```
+feature branch → development (test here) → main (production, Bryan authorizes)
+Never merge to main without Bryan's explicit authorization.
+```
+
+### First Production Tenant
+- **Statewide Protective Services** — Texas PSB License #C11608501
+- SDVOSB-certified, San Antonio TX
+- Founder exemption: permanent enterprise tier access
+
+
+---
+*SYSTEM_MANIFEST.md — Living document. Updated every hardening phase.*
+*Single source of truth — all 1,074 competing docs have been deleted.*

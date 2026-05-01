@@ -8,6 +8,8 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { typedExec, typedQuery } from '../lib/typedSql';
 import { complianceDocuments, complianceAlerts, postOrderTemplates, employeeCertifications, employees } from '@shared/schema';
+import { createLogger } from '../lib/logger';
+const log = createLogger('developmentSeedCompliance');
 
 const ACME = "dev-acme-security-ws";
 const ANVIL = "dev-anvil-security-ws";
@@ -21,7 +23,7 @@ function daysFromNow(d: number): string {
 
 async function seedTable(name: string, fn: () => Promise<void>): Promise<void> {
   try { await fn(); }
-  catch (err) { console.error(`[ComplianceSeed] ERROR in ${name}:`, (err as Error).message); }
+  catch (err) { log.error(`[ComplianceSeed] ERROR in ${name}:`, (err as Error).message); }
 }
 
 export async function runComplianceSeed(): Promise<{ success: boolean; message: string }> {
@@ -36,7 +38,7 @@ export async function runComplianceSeed(): Promise<{ success: boolean; message: 
     return { success: true, message: "Compliance data already seeded — skipped" };
   }
 
-  console.log("[ComplianceSeed] Seeding compliance data for Acme + Anvil...");
+  log.info("[ComplianceSeed] Seeding compliance data for Acme + Anvil...");
 
   // Known valid document_type_ids (from compliance_document_types table)
   // and requirement_ids (from compliance_requirements table)
@@ -317,7 +319,7 @@ export async function runComplianceSeed(): Promise<{ success: boolean; message: 
       SELECT id FROM employee_certifications WHERE id = 'cert-scenario-sentinel-v1' LIMIT 1
     `);
     if (sentinelCheck.length > 0) {
-      console.log("[ComplianceSeed] Scenario certs already seeded — skipped");
+      log.info("[ComplianceSeed] Scenario certs already seeded — skipped");
       return;
     }
 
@@ -488,10 +490,10 @@ export async function runComplianceSeed(): Promise<{ success: boolean; message: 
       updatedAt: sql`now()`,
     }).onConflictDoNothing();
 
-    console.log("[ComplianceSeed] Scenario certifications seeded (6 scenarios ready)");
+    log.info("[ComplianceSeed] Scenario certifications seeded (6 scenarios ready)");
   });
 
-  console.log("[ComplianceSeed] Compliance data seeded successfully.");
+  log.info("[ComplianceSeed] Compliance data seeded successfully.");
   return { success: true, message: "Compliance data seeded for Acme + Anvil" };
 }
 
@@ -553,6 +555,6 @@ export async function runGuardCardEnrichment(): Promise<{ success: boolean; mess
     }
   }
 
-  console.log("[GuardCardEnrich] Acme guard card data populated for 12 employees.");
+  log.info("[GuardCardEnrich] Acme guard card data populated for 12 employees.");
   return { success: true, message: "Guard card data enriched for Acme Security" };
 }

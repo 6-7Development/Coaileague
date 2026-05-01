@@ -79,7 +79,7 @@ function SignatureCanvas({ onChange }: { onChange: (data: string | null) => void
     if (!drawing) return;
     setDrawing(false);
     setHasSig(true);
-    onChange(canvasRef.current!.toDataURL());
+    onChange(canvasRef.current?.toDataURL());
   };
 
   const clear = () => {

@@ -142,12 +142,12 @@ ${req.expectedExports?.map(exp => `
    * Purpose: Part of ${req.purpose}
    */
   async ${exp}(...args: any[]): Promise<unknown> {
-    console.warn('[STUB] ${getServiceName(req.filePath)}.${exp} is not yet implemented');
+    log.warn('[STUB] ${getServiceName(req.filePath)}.${exp} is not yet implemented');
     return null;
   }
 `).join('\n') || `
   async execute(...args: any[]): Promise<unknown> {
-    console.warn('[STUB] ${getServiceName(req.filePath)} is not yet implemented');
+    log.warn('[STUB] ${getServiceName(req.filePath)} is not yet implemented');
     return null;
   }
 `}
@@ -176,7 +176,7 @@ export function ${getHookName(req.filePath)}() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    console.warn('[STUB] ${getHookName(req.filePath)} is not yet implemented');
+    log.warn('[STUB] ${getHookName(req.filePath)} is not yet implemented');
   }, []);
 
   return { data, isLoading, error };
@@ -222,12 +222,12 @@ ${req.expectedExports?.map(exp => `
  * TODO: Implement ${exp}
  */
 export function ${exp}(...args: any[]): any {
-  console.warn('[STUB] ${exp} is not yet implemented');
+  log.warn('[STUB] ${exp} is not yet implemented');
   return null;
 }
 `).join('\n') || `
 export function stubFunction(...args: any[]): any {
-  console.warn('[STUB] Function not yet implemented');
+  log.warn('[STUB] Function not yet implemented');
   return null;
 }
 `}
@@ -245,6 +245,8 @@ export function stubFunction(...args: any[]): any {
 import { pgTable, varchar, timestamp, jsonb, boolean, integer, text } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('stubFileScaffolder');
 
 // TODO: Define proper schema for ${req.purpose}
 export const stubTable = pgTable('stub_${req.filePath.replace(/[^a-z0-9]/gi, '_').toLowerCase()}', {
@@ -397,7 +399,7 @@ class StubFileScaffolder {
 
     await this.logStubCreation(stubFile, request.workspaceId);
 
-    console.log(`[StubScaffolder] Created stub file: ${request.filePath}`);
+    log.info(`[StubScaffolder] Created stub file: ${request.filePath}`);
     
     return stubFile;
   }
@@ -409,7 +411,7 @@ class StubFileScaffolder {
     const stub = this.registry.stubs.get(filePath);
     
     if (!stub) {
-      console.warn(`[StubScaffolder] No stub found for: ${filePath}`);
+      log.warn(`[StubScaffolder] No stub found for: ${filePath}`);
       return false;
     }
 
@@ -423,7 +425,7 @@ class StubFileScaffolder {
 
     await this.logStubReplacement(stub, workspaceId);
 
-    console.log(`[StubScaffolder] Replaced stub with full implementation: ${filePath}`);
+    log.info(`[StubScaffolder] Replaced stub with full implementation: ${filePath}`);
     
     return true;
   }
@@ -435,7 +437,7 @@ class StubFileScaffolder {
     const stub = this.registry.stubs.get(filePath);
     
     if (!stub) {
-      console.warn(`[StubScaffolder] No stub found for: ${filePath}`);
+      log.warn(`[StubScaffolder] No stub found for: ${filePath}`);
       return false;
     }
 
@@ -449,7 +451,7 @@ class StubFileScaffolder {
     stub.stubContent = partialContent;
     stub.todoItems = todoItems;
 
-    console.log(`[StubScaffolder] Updated stub: ${filePath} (status: ${stub.status})`);
+    log.info(`[StubScaffolder] Updated stub: ${filePath} (status: ${stub.status})`);
     
     return true;
   }
@@ -461,7 +463,7 @@ class StubFileScaffolder {
     const stub = this.registry.stubs.get(filePath);
     
     if (!stub) {
-      console.warn(`[StubScaffolder] No stub found for: ${filePath}`);
+      log.warn(`[StubScaffolder] No stub found for: ${filePath}`);
       return false;
     }
 
@@ -479,7 +481,7 @@ class StubFileScaffolder {
 
     await this.logStubRollback(stub, workspaceId);
 
-    console.log(`[StubScaffolder] Rolled back stub: ${filePath}`);
+    log.info(`[StubScaffolder] Rolled back stub: ${filePath}`);
     
     return true;
   }
@@ -539,7 +541,7 @@ class StubFileScaffolder {
         userAgent: 'Trinity AI',
       });
     } catch (error) {
-      console.error('[StubScaffolder] Failed to log stub creation:', error);
+      log.error('[StubScaffolder] Failed to log stub creation:', error);
     }
   }
 
@@ -562,7 +564,7 @@ class StubFileScaffolder {
         userAgent: 'Trinity AI',
       });
     } catch (error) {
-      console.error('[StubScaffolder] Failed to log stub replacement:', error);
+      log.error('[StubScaffolder] Failed to log stub replacement:', error);
     }
   }
 
@@ -585,7 +587,7 @@ class StubFileScaffolder {
         userAgent: 'Trinity AI',
       });
     } catch (error) {
-      console.error('[StubScaffolder] Failed to log stub rollback:', error);
+      log.error('[StubScaffolder] Failed to log stub rollback:', error);
     }
   }
 }
