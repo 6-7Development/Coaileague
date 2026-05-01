@@ -934,7 +934,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/sandbox/sandboxSimulationService.ts',
       'server/services/sandbox/trinityAutomationTestRunner.ts',
       'server/services/scheduling/trinityAutonomousScheduler.ts',
-      'server/services/scheduling/trinityOrchestrationBridge.ts',
       'server/services/scheduling/trinityShiftGenerator.ts',
       'server/services/shared/trinityHumanPersonality.ts',
       'server/services/trinity/eventBus.ts',

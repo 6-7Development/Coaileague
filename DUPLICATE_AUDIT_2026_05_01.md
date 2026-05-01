@@ -214,14 +214,16 @@ email/ (dir)
 
 ## CONSOLIDATION ROADMAP (proposed phases)
 
-**Phase 1 — landed in this commit**
-- ✅ Remove `aiSchedulingTriggerService` stub; route to single source.
+**Phase 1 — landed**
+- ✅ Remove `aiSchedulingTriggerService` stub; route to single source (`autonomousSchedulingDaemon`).
 
-**Phase 2 — small mechanical**
-- Delete `trinityOrchestrationBridge.ts` (45 LOC shim).
-- Merge `notificationThrottleService` → `notificationRuleEngine`.
-- Inline `entityCreationNotifier` → `notificationService`.
-- Move `VALID_NOTIFICATION_TYPES` to `shared/schema`.
+**Phase 2 — small mechanical (LANDED in second commit)**
+- ✅ Delete `server/services/scheduling/trinityOrchestrationBridge.ts` — 45-LOC shim, zero callers.
+- ✅ Delete `server/services/notificationThrottleService.ts` — 283-LOC service, zero callers (full dead code).
+- ✅ Drop dead `getSchedulableClients` / `getSchedulableEmployees` helpers from `entityCreationNotifier.ts` — zero callers.
+- 🔁 **Decision:** keep `entityCreationNotifier` as-is (not a notification duplicate; it's a domain orchestrator that fires notifications + creates onboarding tasks + drafts contracts).
+- 🔁 **Decision:** keep `notificationRuleEngine` separate from any throttle logic; throttle service was dead anyway.
+- ⏳ Move `VALID_NOTIFICATION_TYPES` to `shared/schema` (deferred — needs DB enum cross-check).
 
 **Phase 3 — route consolidation**
 - Chat routes 8 → 2.
@@ -244,7 +246,14 @@ email/ (dir)
 
 ## METRICS
 
-- Services in `server/services/` — **311**
-- Routes in `server/routes/` — **329** → **328** after this pass (`aiSchedulingTriggerService` deleted)
-- Files removed this pass — **1** (98 LOC stub)
-- Files modified this pass — **3** (orchestrator wiring, dead import, contract)
+- Services in `server/services/` — **311** → **308** after both passes (3 deleted)
+- Routes in `server/routes/` — **329** (no route file deletions yet)
+- Files removed across phases — **3** (`aiSchedulingTriggerService.ts`, `trinityOrchestrationBridge.ts`, `notificationThrottleService.ts`)
+- Total LOC of pure dead code removed — **~470 LOC**
+
+### Per-phase totals
+
+| Phase | Files Δ | LOC Δ |
+|---|---|---|
+| 1 | -1 file, +3 mod | -118 stub, +38 wiring |
+| 2 | -2 files, +2 mod | -328 dead, -47 dead helpers |

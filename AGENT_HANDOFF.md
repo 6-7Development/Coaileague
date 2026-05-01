@@ -41,11 +41,11 @@ Last green: 438cca2  feat(simulation): hard-persist ACME simulation + branded PD
 - Removed dead import in `server/routes/automationInlineRoutes.ts`.
 - Updated `shared/schema/domains/DOMAIN_CONTRACT.ts`.
 
-**Phase 2 next (small mechanical, low risk):**
-- Delete `server/services/scheduling/trinityOrchestrationBridge.ts` (45 LOC shim).
-- Merge `notificationThrottleService` → `notificationRuleEngine`.
-- Inline `entityCreationNotifier` → `notificationService`.
-- Move `VALID_NOTIFICATION_TYPES` to `shared/schema` (single source).
+**Phase 2 landed (small mechanical, low risk):**
+- ✅ Deleted `server/services/scheduling/trinityOrchestrationBridge.ts` (45-LOC shim, zero callers).
+- ✅ Deleted `server/services/notificationThrottleService.ts` (283-LOC service, zero callers — full dead code).
+- ✅ Dropped 47 LOC of dead helper methods from `entityCreationNotifier.ts`.
+- ⏳ Move `VALID_NOTIFICATION_TYPES` to `shared/schema` — deferred (needs DB enum cross-check).
 
 **Phase 3 (route consolidation — see audit for file lists):**
 - Chat routes 8 → 2.

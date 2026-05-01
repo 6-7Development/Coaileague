@@ -12,8 +12,7 @@
 import { notifySupportStaff } from './ai-brain/trinityAutonomousNotifier';
 import { employeeDocumentOnboardingService } from './employeeDocumentOnboardingService';
 import { db } from '../db';
-import { employees, clients, clientContracts } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { clientContracts } from '@shared/schema';
 import { createLogger } from '../lib/logger';
 const log = createLogger('entityCreationNotifier');
 
@@ -148,50 +147,6 @@ class EntityCreationNotifierService {
     }
   }
 
-  async getSchedulableClients(workspaceId: string): Promise<Array<{ id: string; name: string; address?: string | null }>> {
-    const result = await db.query.clients.findMany({
-      where: eq(clients.workspaceId, workspaceId),
-      columns: {
-        id: true,
-        companyName: true,
-        firstName: true,
-        lastName: true,
-        address: true,
-      },
-    });
-
-    return result
-      .map(c => ({
-        id: c.id,
-        name: c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || '',
-        address: c.address,
-      }))
-      .filter(c => c.name);
-  }
-
-  async getSchedulableEmployees(workspaceId: string): Promise<Array<{ id: string; name: string; isWorkEligible: boolean }>> {
-    const workspaceEmployees = await db.query.employees.findMany({
-      where: eq(employees.workspaceId, workspaceId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-
-    const results = await Promise.all(
-      workspaceEmployees.map(async (emp) => {
-        const eligibility = await employeeDocumentOnboardingService.checkWorkEligibility(emp.id);
-        return {
-          id: emp.id,
-          name: `${emp.firstName} ${emp.lastName}`,
-          isWorkEligible: eligibility.eligible,
-        };
-      })
-    );
-
-    return results;
-  }
 }
 
 export const entityCreationNotifier = new EntityCreationNotifierService();
