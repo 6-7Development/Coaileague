@@ -35,12 +35,12 @@ interface SyncPayload {
   timestamp: Date;
   version: number;
   changes: {
-    employees?: any[];
-    shifts?: any[];
-    timeEntries?: any[];
-    clients?: any[];
-    notifications?: any[];
-    platformUpdates?: any[];
+    employees?: unknown[];
+    shifts?: unknown[];
+    timeEntries?: unknown[];
+    clients?: unknown[];
+    notifications?: unknown[];
+    platformUpdates?: unknown[];
   };
   deletions?: {
     entity: string;
@@ -311,7 +311,7 @@ class CrossDeviceSyncService {
   async syncOfflineChanges(
     userId: string,
     workspaceId: string,
-    offlineChanges: any[]
+    offlineChanges: unknown[]
   ): Promise<{
     applied: number;
     conflicts: ConflictResolution[];

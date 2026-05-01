@@ -13,7 +13,7 @@ import { CheckCircle, XCircle, Clock, Activity } from "lucide-react";
 interface PendingApproval {
   id: string;
   action_type: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   reason: string;
   created_at: string;
   expires_at: string;

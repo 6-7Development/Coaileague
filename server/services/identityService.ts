@@ -864,7 +864,7 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
   const results: FullIdentityRecord[] = [];
 
   try {
-    let userRecords: any[] = [];
+    let userRecords: (string | number | boolean | null)[] = [];
 
     // 1. Try external ID format
     if (isExternalIdFormat(trimmed)) {

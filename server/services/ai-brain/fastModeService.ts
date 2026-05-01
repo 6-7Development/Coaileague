@@ -742,9 +742,9 @@ class FastModeService {
     taskId: string,
     workspaceId: string
   ): () => void {
-    const listeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+    const listeners: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
 
-    const addListener = (event: string, handler: (...args: any[]) => void) => {
+    const addListener = (event: string, handler: (...args: unknown[]) => void) => {
       velocityEngine.on(event, handler);
       listeners.push({ event, handler });
     };

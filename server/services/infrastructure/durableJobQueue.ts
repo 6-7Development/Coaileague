@@ -508,9 +508,9 @@ class DurableJobQueueService {
     const row = result[0];
     return {
       id: row.id,
-      workspaceId: (row as any).workspaceId,
+      workspaceId: (row as Record<string, unknown>).workspaceId,
       type: row.type,
-      payload: row.payload as Record<string, any>,
+      payload: row.payload as Record<string, unknown>,
       priority: row.priority as JobPriority,
       status: row.status as JobStatus,
       attempts: row.attempts,
@@ -520,7 +520,7 @@ class DurableJobQueueService {
       nextAttemptAt: row.nextAttemptAt ? new Date(row.nextAttemptAt) : undefined,
       completedAt: row.completedAt ? new Date(row.completedAt) : undefined,
       error: row.error || undefined,
-      result: row.result as Record<string, any> | undefined,
+      result: row.result as Record<string, unknown> | undefined,
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt),
     };

@@ -36,7 +36,7 @@ export interface OnboardingSource {
   type: 'pdf' | 'excel' | 'csv' | 'manual' | 'bulk_text';
   fileContent?: string; // base64 for PDF
   fileName?: string;
-  data?: Record<string, any>[]; // For spreadsheet data
+  data?: Record<string, unknown>[]; // For spreadsheet data
   headers?: string[]; // For spreadsheet columns
   formData?: Record<string, unknown>; // For manual entry
   extractionType?: 'employees' | 'teams' | 'schedules' | 'auto';

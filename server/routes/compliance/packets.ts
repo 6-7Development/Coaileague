@@ -23,7 +23,7 @@ const log = createLogger('Packets');
 
 const router = Router();
 
-function generatePacketHash(documents: any[]): string {
+function generatePacketHash(documents: unknown[]): string {
   const docHashes = documents.map(d => d.fileHashSha256 || d.file_hash_sha256 || '').sort().join('|');
   return crypto.createHash('sha256').update(docHashes).digest('hex');
 }

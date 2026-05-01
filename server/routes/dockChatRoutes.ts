@@ -111,7 +111,7 @@ router.get("/rooms/:roomId/messages", requireAuth, async (req: AuthenticatedRequ
       [roomId, wid]
     );
 
-    let messages: any[] = [];
+    let messages: (string | number | boolean | null)[] = [];
     if (room.rows[0]?.conversation_id) {
       const { rows } = await pool.query(
         `SELECT m.*, u.first_name, u.last_name FROM chat_messages m

@@ -95,7 +95,7 @@ interface StreamSubscription {
 }
 
 // Utility to sanitize any value for XSS prevention (deep recursive)
-function sanitizeValue(value: any): any {
+function sanitizeValue(value: unknown): any {
   if (value === null || value === undefined) {
     return value;
   }
@@ -213,7 +213,7 @@ class TrinityControlConsoleService {
         runId: thought.runId || undefined,
         thoughtType: thought.thoughtType as ThoughtType,
         content: thought.content,
-        context: thought.context as Record<string, any> | undefined,
+        context: thought.context as Record<string, unknown> | undefined,
         confidence: thought.confidence || undefined,
         timestamp: new Date().toISOString(),
       };
@@ -274,8 +274,8 @@ class TrinityControlConsoleService {
         thoughtId: action.thoughtId || undefined,
         actionType: action.actionType as ActionType,
         actionName: action.actionName,
-        parameters: action.parameters as Record<string, any> | undefined,
-        result: action.result as Record<string, any> | undefined,
+        parameters: action.parameters as Record<string, unknown> | undefined,
+        result: action.result as Record<string, unknown> | undefined,
         status: action.status as ActionStatus,
         durationMs: action.durationMs || undefined,
         errorMessage: action.errorMessage || undefined,

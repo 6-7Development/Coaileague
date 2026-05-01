@@ -25,7 +25,7 @@ import { CourseCardSkeleton, MetricsCardsSkeleton, PageHeaderSkeleton } from "@/
 import { useModules } from "@/config/moduleConfig";
 
 function TrainingAnalyticsDashboard() {
-  const { data, isLoading } = useQuery<{ summary: any; courseStats: any[]; categoryBreakdown: any[] }>({
+  const { data, isLoading } = useQuery<{ summary: any; courseStats: unknown[]; categoryBreakdown: unknown[] }>({
     queryKey: ['/api/training/analytics'],
   });
 

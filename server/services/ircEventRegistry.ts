@@ -238,11 +238,11 @@ export type IRCPayload =
  * IRC Event Emitter - Fast event construction and emission
  */
 export class IRCEventEmitter {
-  private broadcaster: ((payload: any) => void) | null = null;
+  private broadcaster: ((payload: unknown) => void) | null = null;
   private typingTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private readonly TYPING_TIMEOUT_MS = 3000; // Auto-stop typing after 3s
 
-  setBroadcaster(fn: (payload: any) => void) {
+  setBroadcaster(fn: (payload: unknown) => void) {
     this.broadcaster = fn;
   }
 

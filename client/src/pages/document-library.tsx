@@ -298,7 +298,7 @@ interface OrgDocument {
   requiresSignature: boolean;
   totalSignaturesRequired: number;
   signaturesCompleted: number;
-  signatureFields?: any[];
+  signatureFields?: unknown[];
   createdAt: string;
   uploadedByUser?: { id: string; firstName: string; lastName: string };
 }

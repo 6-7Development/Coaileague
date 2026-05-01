@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   lost: "bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
 };
 
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, unknown> = {
   radio: Radio,
   vehicle: Car,
   weapon: Shield,

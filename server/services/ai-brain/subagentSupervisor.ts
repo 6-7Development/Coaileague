@@ -145,7 +145,7 @@ export interface EscalationRequest {
   description: string;
   diagnosticSummary: string;
   proposedFix: any;
-  alternativeFixes: any[];
+  alternativeFixes: unknown[];
   affectedUserId?: string;
   affectedFeature?: string;
 }
@@ -1805,8 +1805,8 @@ class SubagentCoordinationManager {
   /**
    * Get aggregated results from all subagents
    */
-  getAggregatedResults(batch: WorkOrderBatch): Map<string, any> {
-    const results = new Map<string, any>();
+  getAggregatedResults(batch: WorkOrderBatch): Map<string, unknown> {
+    const results = new Map<string, unknown>();
     
     for (const item of batch.items) {
       if (item.status === 'completed' && item.result) {
@@ -2103,7 +2103,7 @@ class SubagentSupervisor {
   private setupHealthMonitoring(): void {
     platformEventBus.subscribe('ai_brain_action', {
       name: 'SubagentSupervisor',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         // Runtime validation - guard against malformed events
         if (!event || typeof event !== 'object') return;
         if (typeof event.type !== 'string') return;
@@ -2137,7 +2137,7 @@ class SubagentSupervisor {
     userId: string,
     workspaceId: string,
     platformRole: string,
-    actionHandler: (params: Record<string, unknown>) => Promise<any>
+    actionHandler: (params: Record<string, unknown>) => Promise<unknown>
   ): Promise<SubagentExecutionResult> {
     const executionId = `exec-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`;
     const startTime = Date.now();
@@ -2363,7 +2363,7 @@ class SubagentSupervisor {
       domain: SubagentDomain;
       actionId: string;
       parameters: Record<string, unknown>;
-      actionHandler: (params: Record<string, unknown>) => Promise<any>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -2543,7 +2543,7 @@ class SubagentSupervisor {
       domain: SubagentDomain;
       actionId: string;
       parameters: Record<string, unknown>;
-      actionHandler: (params: Record<string, unknown>) => Promise<any>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -2676,7 +2676,7 @@ class SubagentSupervisor {
       domain: SubagentDomain;
       actionId: string;
       parameters: Record<string, unknown>;
-      actionHandler: (params: Record<string, unknown>) => Promise<any>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -3525,12 +3525,12 @@ class SubagentSupervisor {
     }
   }
 
-  private async handleHeartbeat(event: any): Promise<void> {
+  private async handleHeartbeat(event: unknown): Promise<void> {
     // Record heartbeat for health monitoring
     log.info(`[SubagentSupervisor] Heartbeat received from ${event.subagentId}`);
   }
 
-  private async handleHealthCheck(event: any): Promise<void> {
+  private async handleHealthCheck(event: unknown): Promise<void> {
     // Perform health check on requested subagent
     log.info(`[SubagentSupervisor] Health check for ${event.subagentId}`);
   }

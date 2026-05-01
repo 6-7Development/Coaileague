@@ -86,7 +86,7 @@ router.patch("/postings/:id", requireAuth, async (req: AuthenticatedRequest, res
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
     const allowed = ['title','description','position_type','employment_type','status','pay_rate_min','pay_rate_max'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }

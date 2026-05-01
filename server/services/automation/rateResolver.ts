@@ -66,7 +66,7 @@ export function toLocalDateString(date: Date, timezone?: string): string {
  * @param timezone Workspace timezone (IANA format, e.g., "America/New_York")
  * @returns Holiday entry if found, null otherwise
  */
-export function findHoliday(date: Date, holidays: any[], timezone?: string): HolidayEntry | null {
+export function findHoliday(date: Date, holidays: unknown[], timezone?: string): HolidayEntry | null {
   if (!holidays || holidays.length === 0) {
     return null;
   }

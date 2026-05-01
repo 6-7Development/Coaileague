@@ -369,7 +369,7 @@ router.post('/run-complete-workflow', sandboxDevBypass, async (req: Request, res
 
 router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: Response) => {
   const WORKSPACE_ID = 'sandbox-e2e-quickbooks-workspace-00000000';
-  const testLog: any[] = [];
+  const testLog: (string | number | boolean | null)[] = [];
   const addLog = (step: string, status: string, data: any) => {
     testLog.push({ step, status, timestamp: new Date().toISOString(), data });
     log.info(`[E2E-QB] ${step}: ${status}`);
@@ -514,7 +514,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
       `${apiBase}/v3/company/${connection.realmId}/query?query=${encodeURIComponent(query)}&minorversion=${minorVersion}`;
 
     addLog('7a. Query Existing QB Customers', 'starting', {});
-    let existingQbCustomers: any[] = [];
+    let existingQbCustomers: (string | number | boolean | null)[] = [];
     try {
       const custResp = await fetch(qbQuery('customer', "SELECT * FROM Customer MAXRESULTS 25"), { headers: qbHeaders });
       if (custResp.ok) {
@@ -567,7 +567,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     });
 
     addLog('7b. Query Existing QB Employees', 'starting', {});
-    let existingQbEmployees: any[] = [];
+    let existingQbEmployees: (string | number | boolean | null)[] = [];
     try {
       const empResp = await fetch(qbQuery('employee', "SELECT * FROM Employee MAXRESULTS 25"), { headers: qbHeaders });
       if (empResp.ok) {
@@ -667,7 +667,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     });
 
     addLog('8. Time Activities (Payroll Data)', 'starting', {});
-    const qbTimeResults: any[] = [];
+    const qbTimeResults: (string | number | boolean | null)[] = [];
     const approvedEntries = await db.select().from(timeEntries)
       .where(and(eq(timeEntries.workspaceId, WORKSPACE_ID), eq(timeEntries.status, 'approved')))
       .limit(3);
@@ -749,7 +749,7 @@ router.post('/test-lazy-sync', sandboxDevBypass, async (req: Request, res: Respo
     const { ensureQuickBooksRecord } = await import('../services/integrations/quickbooksLazySync');
 
     const WORKSPACE_ID = 'sandbox-lazy-sync-workspace-00000000';
-    const testLog: any[] = [];
+    const testLog: (string | number | boolean | null)[] = [];
     const addLog = (step: string, status: string, data: any) => {
       testLog.push({ step, status, data, timestamp: new Date().toISOString() });
       log.info(`[LazySync-Test] ${step}: ${status}`);

@@ -128,7 +128,7 @@ Status: Awaiting first response.`);
     }
   }
 
-  async completeInterview(chatroomId: string, responses: any[]): Promise<void> {
+  async completeInterview(chatroomId: string, responses: unknown[]): Promise<void> {
     const room = await this.getChatroom(chatroomId);
     if (!room) return;
 

@@ -608,7 +608,7 @@ router.get("/audit-report", requireAuditorOrManagerAuth, async (req: Request, re
       ? Math.round((auditResult.compliant / auditResult.totalEmployees) * 100)
       : 100;
 
-    let scoreboardArray: any[] = [];
+    let scoreboardArray: (string | number | boolean | null)[] = [];
     try {
       const scoreboardResult = await complianceScoringBridge.getWorkspaceComplianceScoreboard(workspaceId);
       scoreboardArray = scoreboardResult?.scoreboard || [];

@@ -943,7 +943,7 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
 
         const requiresAction = riskLevel === 'critical' || riskLevel === 'high';
 
-        const suggestedActions: any[] = [];
+        const suggestedActions: (string | number | boolean | null)[] = [];
         if (riskLevel === 'critical') {
           suggestedActions.push({
             action: 'Schedule one-on-one meeting',

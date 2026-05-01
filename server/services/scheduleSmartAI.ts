@@ -244,7 +244,7 @@ Assign employees to shifts. Return valid JSON only.`;
         try {
           // Try to extract complete assignment objects before truncation
           const rawArray = assignmentsMatch[1];
-          const completeObjects: any[] = [];
+          const completeObjects: (string | number | boolean | null)[] = [];
           const objRegex = /\{\s*"shiftId"\s*:\s*"([^"]+)"\s*,\s*"employeeId"\s*:\s*"([^"]+)"\s*,\s*"confidence"\s*:\s*([\d.]+)\s*,\s*"reasoning"\s*:\s*"([^"]+)"\s*\}/g;
           let match;
           while ((match = objRegex.exec(rawArray)) !== null) {

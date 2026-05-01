@@ -46,7 +46,7 @@ const log = createLogger('trinityIntelligenceLayers');
 // HELPERS
 // ============================================================================
 
-function mkLayer(layer: string, actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkLayer(layer: string, actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -1008,7 +1008,7 @@ export function registerPayrollMathEngineActions() {
         or(eq(employees.workerType, '1099'), eq(employees.payType, '1099'), eq(employees.is1099Eligible, true)),
       ));
 
-    const riskFlags: any[] = [];
+    const riskFlags: (string | number | boolean | null)[] = [];
 
     for (const contractor of contractors) {
       const risks: string[] = [];
@@ -1339,7 +1339,7 @@ export function registerComplianceBrainActions() {
       if (pr.stateOfResidence) stateMap.set(pr.employeeId, pr.stateOfResidence.toUpperCase());
     }
 
-    const caDoubleTimeRisk: any[] = [];
+    const caDoubleTimeRisk: (string | number | boolean | null)[] = [];
     for (const entry of dailyHours) {
       if (!entry.employeeId) continue;
       const empState = stateMap.get(entry.employeeId);
@@ -1446,8 +1446,8 @@ export function registerComplianceBrainActions() {
       }
     }
 
-    const violations: any[] = [];
-    const unknownStateShifts: any[] = [];
+    const violations: (string | number | boolean | null)[] = [];
+    const unknownStateShifts: (string | number | boolean | null)[] = [];
 
     for (const shift of dayShifts) {
       const empState = stateMap.get(shift.employeeId!) ?? null;
@@ -1521,7 +1521,7 @@ export function registerComplianceBrainActions() {
       .from(employees)
       .where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true)));
 
-    const flags: any[] = [];
+    const flags: (string | number | boolean | null)[] = [];
     for (const emp of allActive) {
       const avg = Number(emp.avgHours || 0);
       const is1099 = emp.workerType === '1099' || emp.payType === '1099' || emp.is1099Eligible;
@@ -1886,7 +1886,7 @@ export function registerPredictiveAnalyticsBrainActions() {
       .from(employees)
       .where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true)));
 
-    const risks: any[] = [];
+    const risks: (string | number | boolean | null)[] = [];
 
     for (const emp of activeEmployees) {
       const riskFactors: string[] = [];
@@ -1955,7 +1955,7 @@ export function registerPredictiveAnalyticsBrainActions() {
       .from(clients)
       .where(and(eq(clients.workspaceId, workspaceId), eq(clients.isActive, true)));
 
-    const churnRisks: any[] = [];
+    const churnRisks: (string | number | boolean | null)[] = [];
 
     for (const client of clientData) {
       const riskFactors: string[] = [];
@@ -2378,7 +2378,7 @@ export function registerAnomalyDetectionActions() {
       .where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, since)))
       .orderBy(timeEntries.employeeId, timeEntries.clockIn);
 
-    const anomalies: any[] = [];
+    const anomalies: (string | number | boolean | null)[] = [];
 
     // Detect simultaneous clock-ins from same employee (duplicate entries)
     const empEntries = new Map<string, typeof entries>();
@@ -2469,7 +2469,7 @@ export function registerAnomalyDetectionActions() {
           .where(and(eq(payrollEntries.workspaceId, workspaceId), eq(payrollEntries.payrollRunId, payrollRunId)))
       : [];
 
-    const anomalies: any[] = [];
+    const anomalies: (string | number | boolean | null)[] = [];
 
     for (const entry of currentEntries) {
       const hist = avgMap.get(entry.employeeId!);
@@ -2539,7 +2539,7 @@ export function registerAnomalyDetectionActions() {
       .where(and(eq(invoices.workspaceId, workspaceId), gte(invoices.createdAt, since)))
       .orderBy(desc(invoices.createdAt));
 
-    const anomalies: any[] = [];
+    const anomalies: (string | number | boolean | null)[] = [];
 
     // Outlier detection
     for (const inv of recentInvoices) {

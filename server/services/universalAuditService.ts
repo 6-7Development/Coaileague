@@ -20,7 +20,7 @@ export interface AuditEntry {
   data?: Record<string, unknown>;
   changeType: 'create' | 'update' | 'delete' | 'read' | 'action';
   changes?: Record<string, { old: any; new: any }> | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   sourceRoute?: string | null;
   sourcePage?: string | null;
 }

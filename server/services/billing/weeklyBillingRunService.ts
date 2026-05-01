@@ -1032,7 +1032,7 @@ function _scheduleMonthlyBillingRun(): void {
           errors: result.errors.length,
         });
       }).catch((err: unknown) => {
-        log.error('[WeeklyBilling] Monthly auto-run failed', { error: err?.message });
+        log.error('[WeeklyBilling] Monthly auto-run failed', { error: err instanceof Error ? err.message : String(err) });
       });
     }
   };

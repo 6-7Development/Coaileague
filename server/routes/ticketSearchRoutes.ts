@@ -138,7 +138,7 @@ router.get('/search', requireAuth, attachWorkspaceId, async (req: AuthenticatedR
     } = validatedParams.data;
 
     // Build WHERE conditions
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     // Workspace scoping - platform staff can see all, regular users see their workspace only
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -566,7 +566,7 @@ router.get('/search/full-text', requireAuth, attachWorkspaceId, async (req: Auth
       )
     );
 
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     if (textSearchConditions.length > 0) {
       // All search terms must match (AND logic)
@@ -923,7 +923,7 @@ router.get('/search/all', requirePlatformStaff, async (req: AuthenticatedRequest
     } = validatedParams.data;
 
     // Build WHERE conditions (no workspace filter for platform staff)
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     if (ticketNumber) {
       conditions.push(ilike(supportTickets.ticketNumber, `%${ticketNumber}%`));

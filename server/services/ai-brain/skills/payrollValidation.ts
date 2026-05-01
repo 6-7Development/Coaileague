@@ -263,8 +263,8 @@ export class PayrollValidationSkill extends BaseSkill {
   }
 
   private detectMissingTimesheets(
-    employeeData: any[], 
-    timesheetData: any[],
+    employeeData: unknown[], 
+    timesheetData: unknown[],
     params: PayrollValidationParams
   ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
@@ -289,7 +289,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectUnapprovedHours(timesheetData: any[]): ValidationIssue[] {
+  private detectUnapprovedHours(timesheetData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     const unapproved = timesheetData.filter(t => t.status !== 'approved');
@@ -316,7 +316,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectRateAnomalies(timesheetData: any[], employeeData: any[]): ValidationIssue[] {
+  private detectRateAnomalies(timesheetData: unknown[], employeeData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     const employeeRates = new Map(employeeData.map(e => [e.id, parseFloat(e.hourlyRate || '0')]));
 
@@ -341,7 +341,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectOvertimeViolations(timesheetData: any[], employeeData: any[]): ValidationIssue[] {
+  private detectOvertimeViolations(timesheetData: unknown[], employeeData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     // Group hours by employee
@@ -368,7 +368,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectHistoricalVariance(timesheetData: any[], historicalData: any[]): ValidationIssue[] {
+  private detectHistoricalVariance(timesheetData: unknown[], historicalData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     if (historicalData.length === 0) return issues;
@@ -432,8 +432,8 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
   }
 
   private calculateGapAnalysis(
-    employeeData: any[],
-    timesheetData: any[],
+    employeeData: unknown[],
+    timesheetData: unknown[],
     params: PayrollValidationParams
   ) {
     const employeesWithData = new Set(timesheetData.map(t => t.employeeId));
@@ -512,7 +512,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'ai-powered-validation',

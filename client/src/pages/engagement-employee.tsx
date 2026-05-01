@@ -255,7 +255,7 @@ export default function EmployeeEngagement() {
 
 // Pulse Survey Form Component
 function PulseSurveyForm({ survey, onSubmit, isSubmitting }: any) {
-  const [responses, setResponses] = useState<Record<string, any>>({});
+  const [responses, setResponses] = useState<Record<string, unknown>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

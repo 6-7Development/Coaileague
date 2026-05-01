@@ -30,7 +30,7 @@ import { universalNotificationEngine } from '../universalNotificationEngine';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityEmergencyStaffingActions');
 
-function mkAction(actionId: string, fn: (params: any, req: ActionRequest) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any, req: ActionRequest) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -119,7 +119,7 @@ export function registerEmergencyStaffingActions() {
     } as any).catch(() => null);
 
     // Scan for available officers near the incident if lat/lng provided
-    let nearbyOfficers: any[] = [];
+    let nearbyOfficers: (string | number | boolean | null)[] = [];
     if (lat && lng) {
       const allActive = await db.select().from(employees)
         .where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true)));

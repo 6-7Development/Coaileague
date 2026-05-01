@@ -84,7 +84,7 @@ interface PlatformForm {
   title: string;
   form_type: string;
   description?: string;
-  fields: any[];
+  fields: unknown[];
   requires_signature: boolean;
   is_active: boolean;
   created_at: string;

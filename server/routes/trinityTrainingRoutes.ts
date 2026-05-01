@@ -290,7 +290,7 @@ router.post('/clear-all-schedule', requireAuth, async (req: AuthenticatedRequest
         .from(trainingRuns)
         .where(eq(trainingRuns.workspaceId, workspaceId));
       
-      let deletedTrainingAttempts: any[] = [];
+      let deletedTrainingAttempts: (string | number | boolean | null)[] = [];
       if (workspaceRunIds.length > 0) {
         deletedTrainingAttempts = await tx.delete(trainingAttempts)
           .where(inArray(trainingAttempts.runId, workspaceRunIds.map(r => r.id)))

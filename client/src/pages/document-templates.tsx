@@ -213,7 +213,7 @@ export default function DocumentTemplatesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (body: Record<string, any>) => {
+    mutationFn: async (body: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-templates", body);
       return res.json();
     },
@@ -229,7 +229,7 @@ export default function DocumentTemplatesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: Record<string, any> }) => {
+    mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/document-templates/${id}`, body);
       return res.json();
     },

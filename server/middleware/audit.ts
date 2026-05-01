@@ -238,7 +238,7 @@ export const auditHelpers = {
     // raw SSN and bank account number to be stored in the audit_logs.metadata JSONB
     // column, creating a secondary exfiltration path beyond the masked API response.
     const PII_FIELDS = ['ssn', 'taxId', 'bankAccountNumber', 'bankRoutingNumber', 'bankAccountType'];
-    const scrub = (obj: any): any => {
+    const scrub = (obj: unknown): any => {
       if (!obj || typeof obj !== 'object') return obj;
       const clean = { ...obj };
       for (const field of PII_FIELDS) {

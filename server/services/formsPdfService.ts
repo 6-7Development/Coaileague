@@ -384,7 +384,7 @@ export async function generateCustomFormPdf(opts: CustomFormPdfOptions): Promise
   const { form, submission, signatures = [] } = opts;
   const template = form.template as any;
   const fields: Array<{ id?: string; label: string; type: string }> = template?.fields || [];
-  const formData = submission.formData as Record<string, any> || {};
+  const formData = submission.formData as Record<string, unknown> || {};
 
   // Look up workspace name for header
   let workspaceName = 'CoAIleague';

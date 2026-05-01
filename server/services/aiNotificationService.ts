@@ -175,11 +175,11 @@ export async function generatePlatformUpdate(data: AIInsightData): Promise<Platf
   
   // TRINITY FEATURE VALIDATION: Validate content before processing
   // This catches stale data, vague language, and missing feature references
-  const skipFeatureCheck = (data.metadata as Record<string, any>)?.skipFeatureCheck === true;
+  const skipFeatureCheck = (data.metadata as Record<string, unknown>)?.skipFeatureCheck === true;
   const preValidation = featureRegistryService.validateNotificationContent(
     data.title,
     data.description,
-    { ...data.metadata as Record<string, any>, skipFeatureCheck }
+    { ...data.metadata as Record<string, unknown>, skipFeatureCheck }
   );
   
   // Block notifications with critical validation failures (unless skipFeatureCheck is set)
@@ -739,7 +739,7 @@ export async function notifySystemIssue(
 /**
  * Event listener for platform changes - converts AI Brain events into What's New notifications
  */
-export async function handlePlatformChangeEvent(event: any): Promise<void> {
+export async function handlePlatformChangeEvent(event: unknown): Promise<void> {
   try {
     const eventType = event.type;
     const title = event.title;

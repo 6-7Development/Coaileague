@@ -96,7 +96,7 @@ function createResult(
   actionId: string, 
   success: boolean, 
   message: string, 
-  data?: any,
+  data?: Record<string, unknown>,
   startTime?: number
 ): ActionResult {
   return {
@@ -399,7 +399,7 @@ class AIBrainActionRegistry {
             entityId: request.payload?.featurePath ?? null,
             success: true,
             message: `Feature toggle updated: ${request.payload?.featurePath}=${request.payload?.enabled}`,
-            changesAfter: result as any,
+            changesAfter: result as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, true, `Feature toggle updated`, result, start);
@@ -468,7 +468,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole,
             platformRole: request.platformRole,
             entityType: 'shift',
-            entityId: (shift as any)?.id ?? null,
+            entityId: (shift as {id?: string})?.id ?? null,
             success: true,
             message: 'Shift created',
             changesAfter: shift as Record<string, unknown>,
@@ -673,7 +673,7 @@ class AIBrainActionRegistry {
             await logActionAudit({
               actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
               userRole: request.userRole, platformRole: request.platformRole,
-              entityType: 'shift', entityId: (filledShift as any)?.id ?? openShift.id,
+              entityType: 'shift', entityId: (filledShift as {id?: string})?.id ?? openShift.id,
               success: true, message: `Open shift filled: assigned to ${assignment.employeeName}`,
               changesAfter: filledShift as Record<string, unknown>, durationMs: Date.now() - start,
             });
@@ -931,7 +931,7 @@ class AIBrainActionRegistry {
             message: `A shift on \${updated.startTime ? new Date(updated.startTime).toLocaleDateString() : 'upcoming date'} is now open for pickup.`,
             channel: 'broadcast',
             metadata: { shiftId, shiftTitle: current.title, triggeredBy: 'trinity_publish' },
-          } as any);
+          } as Record<string, unknown>);
         } catch (notifErr: unknown) {
           log.warn('[ActionRegistry] Publish notification failed (non-fatal):', notifErr?.message);
         }
@@ -1028,7 +1028,7 @@ class AIBrainActionRegistry {
               message: `\${published.length} new shift\${published.length > 1 ? 's are' : ' is'} now available. Check your schedule.`,
               channel: 'broadcast',
               metadata: { count: published.length, triggeredBy: 'trinity_bulk_publish', shiftIds: published.map(s => s.id) },
-            } as any);
+            } as Record<string, unknown>);
           } catch (notifErr: unknown) {
             log.warn('[ActionRegistry] Bulk publish notification failed (non-fatal):', notifErr?.message);
           }
@@ -1188,7 +1188,7 @@ class AIBrainActionRegistry {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             userRole: request.userRole, platformRole: request.platformRole,
-            entityType: 'employee', entityId: (updated as any).id,
+            entityType: 'employee', entityId: (updated as {id?: string}).id,
             success: true, message: `Employee ${updated.firstName} ${updated.lastName} activated`,
             changesAfter: updated as Record<string, unknown>, durationMs: Date.now() - start,
           });
@@ -1229,7 +1229,7 @@ class AIBrainActionRegistry {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             userRole: request.userRole, platformRole: request.platformRole,
-            entityType: 'employee', entityId: (updated as any).id,
+            entityType: 'employee', entityId: (updated as {id?: string}).id,
             success: true, message: `Employee ${updated.firstName} ${updated.lastName} deactivated`,
             changesAfter: updated as Record<string, unknown>, durationMs: Date.now() - start,
           });
@@ -1327,7 +1327,7 @@ class AIBrainActionRegistry {
           payType: payType || 'hourly',
           department: department || null,
           isActive: true,
-        } as any).returning();
+        } as Record<string, unknown>).returning();
 
         if (!created) {
           await logActionAudit({
@@ -1353,8 +1353,8 @@ class AIBrainActionRegistry {
             workspaceId: request.workspaceId,
             title: 'Employee Created',
             description: `New employee ${firstName} ${lastName} added`,
-            metadata: { employeeId: (created as any).id, createdBy: request.userId },
-          } as any);
+            metadata: { employeeId: (created as {id?: string}).id, createdBy: request.userId },
+          } as Record<string, unknown>);
         } catch (err) {
           log.warn('[employees.create] event publish failed (non-fatal):', err);
         }
@@ -1366,10 +1366,10 @@ class AIBrainActionRegistry {
           userRole: request.userRole,
           platformRole: request.platformRole,
           entityType: 'employee',
-          entityId: (created as any).id,
+          entityId: (created as {id?: string}).id,
           success: true,
           message: 'Employee created',
-          changesAfter: created as any,
+          changesAfter: created as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1492,7 +1492,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'client', entityId: clientId,
           success: true, message: `Client ${p.companyName || `${p.firstName} ${p.lastName}`} created`,
-          changesAfter: newClient as any, durationMs: Date.now() - start,
+          changesAfter: newClient as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, `Client "${p.companyName || `${p.firstName} ${p.lastName}`}" created successfully`, { client: newClient, clientId }, start);
       },
@@ -2257,7 +2257,7 @@ class AIBrainActionRegistry {
           notes: notes || null,
           createdAt: new Date(),
           updatedAt: new Date(),
-        } as any).returning();
+        } as Record<string, unknown>).returning();
 
         if (!created) {
           await logActionAudit({
@@ -2283,8 +2283,8 @@ class AIBrainActionRegistry {
             workspaceId: request.workspaceId,
             title: 'Invoice Created',
             description: `New invoice created for client ${clientId}`,
-            metadata: { invoiceId: (created as any).id, clientId, createdBy: request.userId },
-          } as any);
+            metadata: { invoiceId: (created as {id?: string}).id, clientId, createdBy: request.userId },
+          } as Record<string, unknown>);
         } catch (err) {
           log.warn('[billing.invoice_create] event publish failed (non-fatal):', err);
         }
@@ -2296,10 +2296,10 @@ class AIBrainActionRegistry {
           userRole: request.userRole,
           platformRole: request.platformRole,
           entityType: 'invoice',
-          entityId: (created as any).id,
+          entityId: (created as {id?: string}).id,
           success: true,
           message: 'Invoice created',
-          changesAfter: created as any,
+          changesAfter: created as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -2442,10 +2442,10 @@ class AIBrainActionRegistry {
             userRole: request.userRole,
             platformRole: request.platformRole,
             entityType: 'compliance_alert',
-            entityId: (alert as any)?.id ?? null,
+            entityId: (alert as {id?: string})?.id ?? null,
             success: true,
             message: 'Compliance issue escalated',
-            changesAfter: alert as any,
+            changesAfter: alert as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
 
@@ -2557,7 +2557,7 @@ class AIBrainActionRegistry {
             const out = await tx.insert(invoiceLineItems).values(rows as any).returning();
             const newTotalCents = Math.round(parseFloat(String((invoice as any).total ?? '0')) * 100) + appendedTotalCents;
             await tx.update(invoices)
-              .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as any)
+              .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as Record<string, unknown>)
               .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, request.workspaceId!)));
             return out;
           });
@@ -3387,8 +3387,8 @@ class AIBrainActionRegistry {
           role?: string;
         }>;
 
-        const imported: any[] = [];
-        const errors: any[] = [];
+        const imported: (string | number | boolean | null)[] = [];
+        const errors: (string | number | boolean | null)[] = [];
 
         for (const row of rows) {
           try {
@@ -3998,7 +3998,7 @@ class AIBrainActionRegistry {
               userRole: request.userRole, platformRole: request.platformRole,
               entityType: 'client_billing_settings', entityId: clientId,
               success: true, message: `Client ${clientId} billing settings updated`,
-              changesAfter: settings as any, durationMs: Date.now() - start,
+              changesAfter: settings as Record<string, unknown>, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true, `Client ${clientId} billing settings updated`, settings, start);
           }
@@ -4039,7 +4039,7 @@ class AIBrainActionRegistry {
               userRole: request.userRole, platformRole: request.platformRole,
               entityType: 'workspace_billing_settings', entityId: request.workspaceId ?? null,
               success: true, message: 'Workspace billing settings updated',
-              changesAfter: payload as any, durationMs: Date.now() - start,
+              changesAfter: payload as Record<string, unknown>, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true, 'Workspace billing settings updated', payload, start);
           }
@@ -4740,7 +4740,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           entityType: 'schedule', entityId: null,
           success: result.success,
           message: result.summary,
-          changesAfter: result as any, durationMs: Date.now() - start,
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, result.success, result.summary, result, start);
       } catch (error: unknown) {
@@ -4856,7 +4856,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           entityType: 'schedule', entityId: null,
           success: result.success,
           message: (result as any).summary || 'Historical patterns import complete',
-          changesAfter: result as any, durationMs: Date.now() - start,
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, result.success, (result as any).summary, result, start);
       } catch (error: unknown) {
@@ -4888,9 +4888,9 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           userRole: request.userRole, platformRole: request.platformRole,
-          entityType: 'schedule_template', entityId: (result as any)?.id ?? null,
+          entityType: 'schedule_template', entityId: (result as {id?: string})?.id ?? null,
           success: true, message: 'Recurring schedule template created',
-          changesAfter: result as any, durationMs: Date.now() - start,
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Recurring template created', result, start);
       } catch (error: unknown) {

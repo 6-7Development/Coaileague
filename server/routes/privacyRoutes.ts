@@ -266,7 +266,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
       const role = userRole(authReq);
 
       let query: string;
-      let params: any[];
+      let params: unknown[];
 
       if (isAtLeast(authReq, 'platform_staff')) {
         // Platform staff sees all DSRs

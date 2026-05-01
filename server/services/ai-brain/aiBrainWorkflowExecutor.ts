@@ -45,10 +45,10 @@ export type StepAction =
   | { type: 'search'; path: string; pattern: string; filePattern?: string }
   | { type: 'shell'; command: string; cwd?: string }
   | { type: 'http_request'; url: string; method: string; body?: any; headers?: Record<string, string> }
-  | { type: 'db_query'; query: string; params?: any[] }
+  | { type: 'db_query'; query: string; params?: unknown[] }
   | { type: 'notify'; title: string; message: string; type: 'info' | 'success' | 'warning' | 'error' }
   | { type: 'wait'; duration: number }
-  | { type: 'custom'; handler: string; params?: Record<string, any> };
+  | { type: 'custom'; handler: string; params?: Record<string, unknown> };
 
 export interface StepCondition {
   type: 'file_exists' | 'file_not_exists' | 'env_set' | 'previous_result' | 'custom';
@@ -97,7 +97,7 @@ class AIBrainWorkflowExecutor {
   private static instance: AIBrainWorkflowExecutor;
   private workflows: Map<string, WorkflowDefinition> = new Map();
   private executions: Map<string, WorkflowExecution> = new Map();
-  private customHandlers: Map<string, (params: any, context: any) => Promise<any>> = new Map();
+  private customHandlers: Map<string, (params: any, context: any) => Promise<unknown>> = new Map();
 
   static getInstance(): AIBrainWorkflowExecutor {
     if (!this.instance) {
@@ -136,7 +136,7 @@ class AIBrainWorkflowExecutor {
 
   registerCustomHandler(
     name: string, 
-    handler: (params: any, context: any) => Promise<any>
+    handler: (params: any, context: any) => Promise<unknown>
   ): void {
     this.customHandlers.set(name, handler);
     log.info(`[WorkflowExecutor] Registered custom handler: ${name}`);

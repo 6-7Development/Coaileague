@@ -399,7 +399,7 @@ interface AuditRow {
   entity_id: string | null;
   user_id: string | null;
   success: boolean;
-  changes_after: Record<string, any> | null;
+  changes_after: Record<string, unknown> | null;
 }
 
 function ArmoryAuditTrail(): JSX.Element {

@@ -183,8 +183,8 @@ interface HelpAIInput {
 }
 
 interface ScheduleOSInput {
-  shifts: any[];
-  employees: any[];
+  shifts: unknown[];
+  employees: unknown[];
   constraints?: {
     weekStart?: string;
     weekEnd?: string;
@@ -983,7 +983,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
                 sourceType: sourceType,
                 sourceId: sourceId || existingFaq.sourceId,
                 sourceContext: {
-                  ...(existingFaq.sourceContext as Record<string, any> || {}),
+                  ...(existingFaq.sourceContext as Record<string, unknown> || {}),
                   lastUpdate: new Date().toISOString(),
                   ...(sourceContext || {})
                 },

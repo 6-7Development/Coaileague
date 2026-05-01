@@ -197,7 +197,7 @@ export class EmployeeOnboardingPipelineService {
     completedSteps: number;
     percentComplete: number;
     currentTier: number;
-    steps: any[];
+    steps: unknown[];
     status: string;
     blockers: string[];
   }> {

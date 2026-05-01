@@ -70,7 +70,7 @@ export interface ExecutionResult {
 }
 
 class UnifiedAIOrchestrator {
-  private sessionContexts: Map<string, { previousInteractions: any[]; trinityInsights: any[] }> = new Map();
+  private sessionContexts: Map<string, { previousInteractions: unknown[]; trinityInsights: unknown[] }> = new Map();
 
   async processRequest(request: OrchestratorRequest): Promise<OrchestratorResponse> {
     const startTime = Date.now();
@@ -150,7 +150,7 @@ class UnifiedAIOrchestrator {
     context: AIActionContext,
     startTime: number
   ): Promise<OrchestratorResponse> {
-    let trinityData: Record<string, any> | undefined;
+    let trinityData: Record<string, unknown> | undefined;
 
     if (routing.supportAi === 'trinity' && routing.dataNeeds && routing.dataNeeds.length > 0) {
       trinityData = await this.gatherTrinityData(routing.dataNeeds, request);
@@ -330,7 +330,7 @@ class UnifiedAIOrchestrator {
   private async gatherTrinityData(
     dataNeeds: string[],
     request: OrchestratorRequest
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, unknown>> {
     const data: Record<string, unknown> = {};
 
     for (const need of dataNeeds) {

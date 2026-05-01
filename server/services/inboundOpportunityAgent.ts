@@ -839,11 +839,11 @@ Return ONLY the JSON array, no markdown, no explanations.`;
     }
   }
 
-  private repairTruncatedJsonArray(text: string): any[] | null {
+  private repairTruncatedJsonArray(text: string): unknown[] | null {
     try {
       if (!text.startsWith('[')) return null;
       
-      const completedObjects: any[] = [];
+      const completedObjects: (string | number | boolean | null)[] = [];
       let depth = 0;
       let objectStart = -1;
       let inString = false;
@@ -953,7 +953,7 @@ Return ONLY the JSON array, no markdown, no explanations.`;
           }
           
           // Extract notification context from extractedData (stored during email ingestion)
-          const extractedData = shift.extractedData as Record<string, any> | null;
+          const extractedData = shift.extractedData as Record<string, unknown> | null;
           const notificationContext = extractedData?.notificationContext as {
             referenceNumber?: string;
             workspaceName?: string;
@@ -1232,7 +1232,7 @@ Return ONLY the JSON array, no markdown, no explanations.`;
   private async rankEmployeesForShift(
     workspaceId: string,
     shift: any,
-    employees: any[]
+    employees: unknown[]
   ): Promise<{ matches: EmployeeMatch[]; tokensUsed?: number }> {
     try {
       const employeeList = employees.map(e => ({
@@ -1445,7 +1445,7 @@ Consider: qualifications match, reliability history, preference match, availabil
             .where(eq(employeeBehaviorScores.employeeId, employeeId))
             .limit(1);
           
-          const extractedData = shift?.extractedData as Record<string, any> | null;
+          const extractedData = shift?.extractedData as Record<string, unknown> | null;
           const notificationContext = extractedData?.notificationContext as {
             referenceNumber?: string;
             workspaceName?: string;
@@ -1609,7 +1609,7 @@ Consider: qualifications match, reliability history, preference match, availabil
             if (processResult.claimWon !== false && notifyCtx?.senderEmail) {
               try {
                 const shift = (processResult as any).shift;
-                const shiftEd = shift?.extractedData as Record<string, any> | null;
+                const shiftEd = shift?.extractedData as Record<string, unknown> | null;
                 const confirmationNumber = `CONF-${Date.now().toString(36).toUpperCase()}`;
                 const portalUrl = `${getAppBaseUrl()}/portal`;
                 const signupUrl = `${getAppBaseUrl()}/signup`;
@@ -1835,7 +1835,7 @@ Return JSON:
             contractor = c;
           }
           
-          const extractedData = shift?.extractedData as Record<string, any> | null;
+          const extractedData = shift?.extractedData as Record<string, unknown> | null;
           const notificationContext = extractedData?.notificationContext as {
             referenceNumber?: string;
             workspaceName?: string;

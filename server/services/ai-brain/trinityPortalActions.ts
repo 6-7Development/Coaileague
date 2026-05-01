@@ -29,7 +29,7 @@ import crypto from 'crypto';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityPortalActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,

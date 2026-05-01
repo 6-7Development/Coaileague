@@ -675,7 +675,7 @@ function BulkActionBar({
 }
 
 function SupportInboxPanel({ onBack }: { onBack: () => void }) {
-  const { data: ticketData, isLoading } = useQuery<{ tickets?: any[] }>({
+  const { data: ticketData, isLoading } = useQuery<{ tickets?: unknown[] }>({
     queryKey: ['/api/admin/support/tickets'],
     retry: false,
     staleTime: 1000 * 60,
@@ -3599,13 +3599,13 @@ export function EmailHubCanvas() {
     staleTime: 1000 * 30,
   });
 
-  const { data: internalEmailsData, isLoading: internalLoading, refetch: refetchInternal } = useQuery<{ emails?: any[] }>({
+  const { data: internalEmailsData, isLoading: internalLoading, refetch: refetchInternal } = useQuery<{ emails?: unknown[] }>({
     queryKey: ['/api/internal-email/inbox', selectedFolder],
     queryFn: () => fetch(`/api/internal-email/inbox?folder=${selectedFolder}`, { credentials: 'include' }).then(r => r.json()),
     enabled: !!mailboxData?.mailbox && selectedFolder !== 'support' && selectedFolder !== 'trinity',
   });
 
-  const { data: externalEmailsData, isLoading: externalLoading, refetch: refetchExternal } = useQuery<{ data?: any[] }>({
+  const { data: externalEmailsData, isLoading: externalLoading, refetch: refetchExternal } = useQuery<{ data?: unknown[] }>({
     queryKey: ['/api/external-emails'],
     retry: false,
     staleTime: 1000 * 60 * 5,

@@ -1097,7 +1097,7 @@ class AIBrainMasterOrchestrator {
             .limit(500);
           
           // Simple anomaly detection
-          const anomalies: any[] = [];
+          const anomalies: (string | number | boolean | null)[] = [];
           for (const entry of recentEntries) {
             if (entry.clockOut && entry.clockIn) {
               const hours = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / (1000 * 60 * 60);
@@ -1624,8 +1624,8 @@ class AIBrainMasterOrchestrator {
           const employeeList = await db.select().from(employees)
             .where(eq(employees.workspaceId, wsId));
           
-          const expiringCerts: any[] = [];
-          const expiredCerts: any[] = [];
+          const expiringCerts: (string | number | boolean | null)[] = [];
+          const expiredCerts: (string | number | boolean | null)[] = [];
           
           // Get certifications separately from the employeeCertifications table
           const certList = await db.select({
@@ -1711,7 +1711,7 @@ class AIBrainMasterOrchestrator {
               gte(timeEntries.clockIn, startDate)
             ));
           
-          const violations: any[] = [];
+          const violations: (string | number | boolean | null)[] = [];
           const employeeHours = new Map<string, number>();
           
           // Check for overtime violations
@@ -1805,7 +1805,7 @@ class AIBrainMasterOrchestrator {
         
         try {
           const wsId = workspaceId || request.workspaceId!;
-          const remediationActions: any[] = [];
+          const remediationActions: (string | number | boolean | null)[] = [];
           
           // Generate remediation recommendations
           if (violationType === 'missing_break' && autoFix) {
@@ -2419,8 +2419,8 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const upcomingReviews: any[] = [];
-          const overdueReviews: any[] = [];
+          const upcomingReviews: (string | number | boolean | null)[] = [];
+          const overdueReviews: (string | number | boolean | null)[] = [];
           const now = new Date();
           
           for (const emp of employeeList) {
@@ -2514,7 +2514,7 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const remindersSent: any[] = [];
+          const remindersSent: (string | number | boolean | null)[] = [];
           const now = new Date();
           
           for (const cert of certList) {
@@ -2596,7 +2596,7 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const upcomingAnniversaries: any[] = [];
+          const upcomingAnniversaries: (string | number | boolean | null)[] = [];
           const today = new Date();
           
           for (const emp of employeeList) {
@@ -2666,7 +2666,7 @@ class AIBrainMasterOrchestrator {
         const startTime = Date.now();
         
         try {
-          const healthChecks: any[] = [];
+          const healthChecks: (string | number | boolean | null)[] = [];
           
           // Check database connectivity
           try {
@@ -2750,7 +2750,7 @@ class AIBrainMasterOrchestrator {
         const { issues } = request.payload || {};
         
         try {
-          const remediationResults: any[] = [];
+          const remediationResults: (string | number | boolean | null)[] = [];
           
           for (const issue of (issues || [])) {
             switch (issue.type) {
@@ -3751,7 +3751,7 @@ class AIBrainMasterOrchestrator {
         // which each created ADDITIONAL platform update records, causing double/triple notifications.
         // Now we only send a lightweight WebSocket broadcast for instant UI feedback.
         if (event.type === 'automation_completed' && event.metadata) {
-          const metadata = event.metadata as Record<string, any>;
+          const metadata = event.metadata as Record<string, unknown>;
           const workspaceId = event.workspaceId;
           const jobLabel = metadata.jobName || metadata.automationType;
 
@@ -3778,7 +3778,7 @@ class AIBrainMasterOrchestrator {
         // platform_updates + per-user notifications. We only send a targeted WebSocket
         // broadcast to the specific user for immediate UI feedback (no duplicate DB records).
         if (event.type === 'ai_brain_action' && event.userId && event.workspaceId) {
-          const metadata = event.metadata as Record<string, any> | undefined;
+          const metadata = event.metadata as Record<string, unknown> | undefined;
           if (metadata?.source !== 'ai_brain_orchestrator') {
             broadcastNotificationToUser(event.userId, {
               type: 'ai_action_update',

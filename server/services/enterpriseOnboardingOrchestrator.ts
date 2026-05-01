@@ -56,7 +56,7 @@ export interface SetupContext {
   includedPremiumFeatures: string[];
   baseMonthlyPrice: number;
   includedCredits: number;
-  availableAddons: any[];
+  availableAddons: unknown[];
 }
 
 export interface AddonSelection {

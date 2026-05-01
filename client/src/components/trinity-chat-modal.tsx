@@ -101,7 +101,7 @@ interface QuickAction {
   label: string;
   icon: string;
   action: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 interface PreviewData {
@@ -695,7 +695,7 @@ function PreviewPanel({ preview, onApply, onCancel }: {
   );
 }
 
-const quickActionIconMap: Record<string, any> = {
+const quickActionIconMap: Record<string, unknown> = {
   Calendar, FileText, Users, DollarSign, Clock, AlertCircle, HelpCircle, Activity
 };
 

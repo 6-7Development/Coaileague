@@ -78,7 +78,7 @@ interface StaffPacket {
   position: string;
   guardCardVerified: boolean;
   hireDate?: string;
-  documents: any[];
+  documents: unknown[];
   completeness: Record<string, DocCompleteness>;
   completedCount: number;
   totalRequired: number;
@@ -639,7 +639,7 @@ function ReportsTab() {
 
   const { data, isLoading } = useQuery<{
     success: boolean;
-    data: { reports: any[]; clients: string[] };
+    data: { reports: unknown[]; clients: string[] };
   }>({
     queryKey: ["/api/sps/reports", clientFilter],
     queryFn: () =>

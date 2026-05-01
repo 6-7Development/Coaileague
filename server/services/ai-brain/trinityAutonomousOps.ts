@@ -421,11 +421,11 @@ class TrinityAutonomousOps {
     // Trinity's Security Brain — listens to real-time intrusion detection events
     // emitted by trinityGuardMiddleware via the lightweight internal event bus.
     // These are NOT persisted DB events — they fire on every detected threat immediately.
-    platformEventBus.on('security_threat_detected', (payload: any) => {
+    platformEventBus.on('security_threat_detected', (payload: unknown) => {
       this.handleSecurityThreat(payload);
     });
 
-    platformEventBus.on('security_blocked_ip_access', (payload: any) => {
+    platformEventBus.on('security_blocked_ip_access', (payload: unknown) => {
       log.warn(`[TrinityAutonomousOps] BLOCKED IP attempted access: ${payload.ip} → ${payload.method} ${payload.path}`);
     });
 
@@ -475,7 +475,7 @@ class TrinityAutonomousOps {
     }
   }
 
-  private async handleCriticalEvent(event: any): Promise<void> {
+  private async handleCriticalEvent(event: unknown): Promise<void> {
     const anomaly: AnomalyReport = {
       id: crypto.randomUUID(),
       type: 'error_spike',

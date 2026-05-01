@@ -84,7 +84,7 @@ function buildQBInvoicePayload(inv: any, qbCustomerId: string): object {
   };
 }
 
-function buildQBTimeActivityPayload(entry: any): object {
+function buildQBTimeActivityPayload(entry: unknown): object {
   return {
     NameOf: 'Employee',
     EmployeeRef: { value: entry.qb_employee_ref ?? '1', name: `${entry.first_name} ${entry.last_name}` },

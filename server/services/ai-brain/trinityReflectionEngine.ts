@@ -35,7 +35,7 @@ export interface ReflectionContext {
   attemptNumber: number;
   maxAttempts: number;
   affectedFiles: string[];
-  previousPatches: any[];
+  previousPatches: unknown[];
   lspErrors: LspError[];
   tsErrors: string[];
   fileContents?: Map<string, string>;
@@ -54,7 +54,7 @@ export interface ReflectionResult {
   confidence: number;
   diagnosis: string;
   suggestedApproach: string;
-  revisedPatches?: any[];
+  revisedPatches?: unknown[];
   escalateToHuman: boolean;
   reasoningTrace: string[];
 }
@@ -324,7 +324,7 @@ Respond ONLY with this JSON (no markdown, no explanation):
       const parsed = JSON.parse(jsonMatch[0]);
       
       // Validate and normalize revisedPatches
-      let revisedPatches: any[] | undefined;
+      let revisedPatches: unknown[] | undefined;
       if (Array.isArray(parsed.revisedPatches) && parsed.revisedPatches.length > 0) {
         const normalized = parsed.revisedPatches.map((patch: any) => ({
           file: patch.file || '',
@@ -376,11 +376,11 @@ Respond ONLY with this JSON (no markdown, no explanation):
     findingId: string,
     originalError: string,
     affectedFiles: string[],
-    executeFix: (attempt: number, suggestedApproach?: string, revisedPatches?: any[]) => Promise<{ success: boolean; patches: any[] }>,
+    executeFix: (attempt: number, suggestedApproach?: string, revisedPatches?: unknown[]) => Promise<{ success: boolean; patches: unknown[] }>,
     readFileContents?: () => Promise<Map<string, string>>,
   ): Promise<{ success: boolean; attempts: IterationResult[]; finalResult?: ReflectionResult }> {
     const attempts: IterationResult[] = [];
-    let lastPatches: any[] = [];
+    let lastPatches: (string | number | boolean | null)[] = [];
     
     log.info(`[TrinityReflection] Starting iterative fix loop for finding ${findingId}`);
 

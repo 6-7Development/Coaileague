@@ -427,7 +427,7 @@ export async function updateWorkspaceHoliday(
   const today = new Date().toISOString().split('T')[0];
   
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
   let paramIdx = 1;
 
   if (updates.name !== undefined) { fields.push(`name = $${paramIdx++}`); values.push(updates.name); }

@@ -164,7 +164,7 @@ class ChatServerHealthManager {
   private subscribeToEvents(): void {
     platformEventBus.subscribe('ai_error', {
       name: 'ChatServerSubagent',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         this.errorCount++;
         if (event.data?.skill?.includes('chat') || event.data?.conversationId) {
           await this.handleAIError(event);
@@ -174,7 +174,7 @@ class ChatServerHealthManager {
 
     platformEventBus.subscribe('chat_message', {
       name: 'ChatServerSubagent',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         this.messageCount++;
         await this.handleChatEvent(event);
       }
@@ -600,7 +600,7 @@ class ChatServerHealthManager {
   // EVENT HANDLERS
   // ============================================================================
 
-  private async handleChatEvent(event: any): Promise<void> {
+  private async handleChatEvent(event: unknown): Promise<void> {
     if (event.type === 'ai_error' || event.type === 'ai_timeout') {
       const issue = this.createIssue(
         'bot',
@@ -611,7 +611,7 @@ class ChatServerHealthManager {
     }
   }
 
-  private async handleAIError(event: any): Promise<void> {
+  private async handleAIError(event: unknown): Promise<void> {
     log.info(`[ChatServerSubagent] Detected AI error in chat context:`, event.data?.errorMessage);
   }
 

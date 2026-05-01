@@ -25,7 +25,7 @@ interface CachedAIResult {
 }
 
 interface PendingRequest {
-  promise: Promise<any>;
+  promise: Promise<unknown>;
   timestamp: number;
 }
 

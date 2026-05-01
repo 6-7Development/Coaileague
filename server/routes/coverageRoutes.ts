@@ -24,7 +24,7 @@ interface AuthenticatedRequest {
 
 const coverageRouter = Router();
 
-coverageRouter.get('/', requireAuth as any, async (req: AuthenticatedRequest, res: Response) => {
+coverageRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
     const statusFilter = (req as any).query?.status as string | undefined;
@@ -129,7 +129,7 @@ coverageRouter.post('/decline/:offerId', async (req: AuthenticatedRequest, res: 
   }
 });
 
-coverageRouter.get('/request/:requestId', requireAuth as any, async (req: AuthenticatedRequest, res: Response) => {
+coverageRouter.get('/request/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { requestId } = req.params;
     

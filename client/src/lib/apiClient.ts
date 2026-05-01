@@ -14,7 +14,7 @@ interface RequestOptions {
   method?: RequestMethod;
   body?: any;
   headers?: Record<string, string>;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 /**
@@ -74,34 +74,34 @@ export async function apiClient(
 /**
  * GET request helper
  */
-export function apiGet(endpoint: string, params?: Record<string, any>) {
+export function apiGet(endpoint: string, params?: Record<string, unknown>) {
   return apiClient(endpoint, { method: "GET", params });
 }
 
 /**
  * POST request helper
  */
-export function apiPost(endpoint: string, body?: any, params?: Record<string, any>) {
+export function apiPost(endpoint: string, body?: any, params?: Record<string, unknown>) {
   return apiClient(endpoint, { method: "POST", body, params });
 }
 
 /**
  * PUT request helper
  */
-export function apiPut(endpoint: string, body?: any, params?: Record<string, any>) {
+export function apiPut(endpoint: string, body?: any, params?: Record<string, unknown>) {
   return apiClient(endpoint, { method: "PUT", body, params });
 }
 
 /**
  * PATCH request helper
  */
-export function apiPatch(endpoint: string, body?: any, params?: Record<string, any>) {
+export function apiPatch(endpoint: string, body?: any, params?: Record<string, unknown>) {
   return apiClient(endpoint, { method: "PATCH", body, params });
 }
 
 /**
  * DELETE request helper
  */
-export function apiDelete(endpoint: string, params?: Record<string, any>) {
+export function apiDelete(endpoint: string, params?: Record<string, unknown>) {
   return apiClient(endpoint, { method: "DELETE", params });
 }

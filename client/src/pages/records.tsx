@@ -13,11 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 
 interface SearchResult {
-  employees: any[];
-  clients: any[];
-  invoices: any[];
-  timeEntries: any[];
-  shifts: any[];
+  employees: unknown[];
+  clients: unknown[];
+  invoices: unknown[];
+  timeEntries: unknown[];
+  shifts: unknown[];
 }
 
 interface SearchMetadata {

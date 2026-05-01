@@ -81,7 +81,7 @@ export async function processSMSOutbox(): Promise<void> {
 
   try {
     while (true) {
-      let rows: any[] = [];
+      let rows: (string | number | boolean | null)[] = [];
       try {
         const res = await pool.query(
           `UPDATE sms_outbox

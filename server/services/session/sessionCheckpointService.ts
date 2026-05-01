@@ -34,7 +34,7 @@ export interface CreateCheckpointParams {
   payload: CheckpointPayload;
   pageRoute?: string;
   contextSummary?: string;
-  actionHistory?: any[];
+  actionHistory?: unknown[];
 }
 
 export interface UpdateCheckpointParams {
@@ -42,7 +42,7 @@ export interface UpdateCheckpointParams {
   payload?: CheckpointPayload;
   phaseKey?: string;
   contextSummary?: string;
-  actionHistory?: any[];
+  actionHistory?: unknown[];
 }
 
 class SessionCheckpointService {
@@ -62,7 +62,7 @@ class SessionCheckpointService {
   /**
    * Generate checksum for payload integrity verification
    */
-  private generateChecksum(payload: any): string {
+  private generateChecksum(payload: unknown): string {
     return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   }
   

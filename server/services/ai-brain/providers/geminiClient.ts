@@ -1868,7 +1868,7 @@ async function executeLookupCertifications(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(employeeCertifications.workspaceId, context.workspaceId));
     if (args.employeeId) conditions.push(eq(employeeCertifications.employeeId, args.employeeId));
     if (args.certificationType) conditions.push(eq(employeeCertifications.certificationType, args.certificationType));
@@ -1919,7 +1919,7 @@ async function executeLookupClients(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(clients.workspaceId, context.workspaceId));
     if (args.clientId) conditions.push(eq(clients.id, args.clientId));
     if (args.clientName) {
@@ -1957,7 +1957,7 @@ async function executeLookupComplianceScore(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(complianceScores.workspaceId, context.workspaceId));
     if (args.state) conditions.push(eq(complianceScores.stateId, args.state));
 
@@ -1994,7 +1994,7 @@ async function executeLookupGuardTours(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(guardTours.workspaceId, context.workspaceId));
     if (args.guardId) conditions.push(eq(guardTours.assignedEmployeeId, args.guardId));
     if (args.siteId) conditions.push(eq(guardTours.clientId, args.siteId));
@@ -2027,7 +2027,7 @@ async function executeLookupEquipment(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(equipmentItems.workspaceId, context.workspaceId));
     if (args.category) conditions.push(eq(equipmentItems.category, args.category as any));
     if (args.status) conditions.push(eq(equipmentItems.status, args.status as any));
@@ -2249,7 +2249,7 @@ async function executeAnalyzeCrossDomain(
     const runAll = requestedDomains.includes('all');
 
     const results: any = { domains: requestedDomains, focusArea: args.focusArea };
-    const allInsights: any[] = [];
+    const allInsights: (string | number | boolean | null)[] = [];
 
     if (runAll || requestedDomains.includes('profitability')) {
       const insights = await trinityCrossDomainIntelligence.analyzeClientProfitability(wsId);
@@ -2304,7 +2304,7 @@ async function executeDetectAnomaliesOnDemand(
     const threshold = args.severityThreshold || 'info';
     const runAll = types.includes('all');
 
-    const allInsights: any[] = [];
+    const allInsights: (string | number | boolean | null)[] = [];
 
     if (runAll || types.includes('overtime')) {
       allInsights.push(...await trinityCrossDomainIntelligence.detectOvertimeTrends(wsId));
@@ -2349,7 +2349,7 @@ async function executeExplainReasoning(
     if (!wsId) return { success: false, data: null, error: 'No workspace context for reasoning explanation' };
 
     const detailLevel = args.detailLevel || 'detailed';
-    let insights: any[] = [];
+    let insights: (string | number | boolean | null)[] = [];
 
     switch (args.analysisType) {
       case 'profitability':
@@ -3005,7 +3005,7 @@ export class UnifiedGeminiClient {
    * Accepts either { prompt, purpose } or raw Google SDK { contents, generationConfig } format.
    */
   async generateContent(
-    requestOrPrompt: string | { prompt?: string; purpose?: string; featureKey?: string; contents?: any[]; generationConfig?: any; workspaceId?: string; userId?: string },
+    requestOrPrompt: string | { prompt?: string; purpose?: string; featureKey?: string; contents?: unknown[]; generationConfig?: any; workspaceId?: string; userId?: string },
     options?: { temperature?: number; maxTokens?: number; workspaceId?: string; userId?: string; featureKey?: string }
   ): Promise<{ text?: string; response?: { text: () => string }; tokensUsed?: number }> {
     let prompt: string;

@@ -1186,7 +1186,7 @@ class PlatformActionHub {
         const workspaceId = request.workspaceId;
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
 
-        let callRows: any[] = [];
+        let callRows: (string | number | boolean | null)[] = [];
         if (callId) {
           callRows = await typedPool(
             `SELECT id, call_number, call_type, priority, location, site_name, latitude, longitude FROM cad_calls WHERE id=$1 AND workspace_id=$2`,

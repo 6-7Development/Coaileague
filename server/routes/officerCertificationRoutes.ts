@@ -287,11 +287,11 @@ router.patch('/attempts/:id/section', async (req: AuthenticatedRequest, res) => 
     const { score, passed, missedTopics } = scoreSection(answers, sectionQuestions);
 
     const updatedSectionScores = {
-      ...(attempt.sectionScores as Record<string, any> || {}),
+      ...(attempt.sectionScores as Record<string, unknown> || {}),
       [sectionId]: { score, passed, missedTopics },
     };
     const updatedAnswers = {
-      ...(attempt.answers as Record<string, any> || {}),
+      ...(attempt.answers as Record<string, unknown> || {}),
       ...answers,
     };
 

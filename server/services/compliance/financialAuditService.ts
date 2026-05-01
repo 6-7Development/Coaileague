@@ -44,7 +44,7 @@ export interface FinancialAuditEntry {
   actorId: string;
   actorType: 'USER' | 'SYSTEM' | 'AI' | 'INTEGRATION';
   actorName: string;
-  before: Record<string, any> | null;
+  before: Record<string, unknown> | null;
   after: Record<string, unknown>;
   monetaryImpact: {
     amount: number;
@@ -142,7 +142,7 @@ class FinancialAuditService {
       actorId: string;
       actorType: FinancialAuditEntry['actorType'];
       actorName: string;
-      before?: Record<string, any> | null;
+      before?: Record<string, unknown> | null;
       after: Record<string, unknown>;
       monetaryImpact: FinancialAuditEntry['monetaryImpact'];
       metadata?: Record<string, unknown>;

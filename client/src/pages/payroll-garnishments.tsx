@@ -50,7 +50,7 @@ export default function PayrollGarnishmentsPage() {
   });
 
   // Fetch employees
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
     enabled: !!user,

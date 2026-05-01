@@ -819,7 +819,7 @@ class TrinityCodeOpsService {
     ]);
 
     // Patches must be sequential to avoid conflicts
-    const patchResults: any[] = [];
+    const patchResults: (string | number | boolean | null)[] = [];
     for (const op of patchOps) {
       const result = await this.applyPatch(op.params);
       patchResults.push(result);

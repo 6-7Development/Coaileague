@@ -21,7 +21,7 @@ const log = createLogger('actionAuditLogger');
 
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'auth', 'credit_card', 'ssn'];
 
-function sanitize<T extends Record<string, any> | undefined | null>(value: T): T {
+function sanitize<T extends Record<string, unknown> | undefined | null>(value: T): T {
   if (!value || typeof value !== 'object') return value;
   const out: Record<string, unknown> = Array.isArray(value) ? [...value] : { ...value };
   for (const k of Object.keys(out)) {
@@ -44,9 +44,9 @@ export interface ActionAuditInput {
   entityId?: string | null;
   success: boolean;
   message?: string;
-  payload?: Record<string, any> | null;
-  changesBefore?: Record<string, any> | null;
-  changesAfter?: Record<string, any> | null;
+  payload?: Record<string, unknown> | null;
+  changesBefore?: Record<string, unknown> | null;
+  changesAfter?: Record<string, unknown> | null;
   errorMessage?: string | null;
   durationMs?: number;
 }

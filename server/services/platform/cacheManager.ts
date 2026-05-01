@@ -60,7 +60,7 @@ class PlatformCacheManager {
   private tierCache: TTLCache<string, string>;
   private employeeCountCache: TTLCache<string, number>;
   // Phase 39 — Feature state blob cache: avoid per-check DB hit on featureGate checks
-  private featureBlobCache: TTLCache<string, Record<string, any>>;
+  private featureBlobCache: TTLCache<string, Record<string, unknown>>;
   
   private metrics: CacheMetrics = {
     hits: 0,
@@ -82,7 +82,7 @@ class PlatformCacheManager {
     this.providerCache = new TTLCache<string, ProviderPrefs>(this.PROVIDER_TTL, 500);
     this.tierCache = new TTLCache<string, string>(this.TIER_TTL, 500);
     this.employeeCountCache = new TTLCache<string, number>(this.COUNT_TTL, 500);
-    this.featureBlobCache = new TTLCache<string, Record<string, any>>(this.FEATURE_BLOB_TTL, 500);
+    this.featureBlobCache = new TTLCache<string, Record<string, unknown>>(this.FEATURE_BLOB_TTL, 500);
     
     log.info('[CacheManager] Platform cache manager initialized');
   }
@@ -257,7 +257,7 @@ class PlatformCacheManager {
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
-      const settings = (ws?.blob || {}) as Record<string, any>;
+      const settings = (ws?.blob || {}) as Record<string, unknown>;
       
       const prefs: ProviderPrefs = {
         invoiceProvider: settings.invoiceProvider || 'stripe',
@@ -340,7 +340,7 @@ class PlatformCacheManager {
    * Eliminates per-check DB round-trip in featureGateService.
    * TTL: 2 minutes (same as role cache — short enough for security changes to propagate).
    */
-  async getWorkspaceFeatureBlob(workspaceId: string): Promise<Record<string, any>> {
+  async getWorkspaceFeatureBlob(workspaceId: string): Promise<Record<string, unknown>> {
     const cached = this.featureBlobCache.get(workspaceId);
     if (cached !== undefined) {
       this.metrics.hits++;
@@ -353,7 +353,7 @@ class PlatformCacheManager {
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
-      const blob = (ws?.blob || {}) as Record<string, any>;
+      const blob = (ws?.blob || {}) as Record<string, unknown>;
       this.featureBlobCache.set(workspaceId, blob);
       return blob;
     } catch {

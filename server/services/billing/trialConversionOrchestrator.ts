@@ -807,7 +807,7 @@ export async function initializeTrialConversionOrchestrator(): Promise<void> {
         () => trialConversionOrchestrator.processExpiringTrials()
       );
     } catch (err: unknown) {
-      log.error('Daily trial expiry check failed', { error: err?.message });
+      log.error('Daily trial expiry check failed', { error: err instanceof Error ? err.message : String(err) });
     }
   };
 

@@ -135,7 +135,7 @@ export function mountAuditRoutes(app: Express): void {
       }
 
       // universalAudit.getWorkspaceHistory caps to 500; page through up to 10k.
-      const logs: any[] = [];
+      const logs: (string | number | boolean | null)[] = [];
       const pageSize = 500;
       const maxRows = 10_000;
       for (let offset = 0; offset < maxRows; offset += pageSize) {

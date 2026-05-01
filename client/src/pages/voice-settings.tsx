@@ -73,7 +73,7 @@ export default function VoiceSettingsPage() {
     queryKey: ["/api/voice/analytics"],
   });
 
-  const { data: callsData, isLoading: callsLoading } = useQuery<{ calls: any[] }>({
+  const { data: callsData, isLoading: callsLoading } = useQuery<{ calls: unknown[] }>({
     queryKey: ["/api/voice/calls"],
   });
 

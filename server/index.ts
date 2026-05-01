@@ -233,7 +233,7 @@ app.get('/health', rateLimitMiddleware(
     dbLatencyMs = Date.now() - dbStart;
     dbConnected = true;
   } catch (dbHealthErr: unknown) {
-    log.warn('[HealthCheck] DB ping failed', { error: dbHealthErr?.message });
+    log.warn('[HealthCheck] DB ping failed', { error: dbHealthErr instanceof Error ? dbHealthErr.message : String(dbHealthErr) });
   }
 
   const checkConfigured = (key: string) => !!process.env[key];
@@ -1324,12 +1324,12 @@ async function initializeExtendedServices(): Promise<void> {
       const { runDecayCycle } = await import('./services/ai-brain/hebbianLearningService');
       // Run decay once at startup (catches any missed nightly runs after a restart)
       runDecayCycle().catch((err: unknown) =>
-        log.warn('Hebbian startup decay failed (non-fatal)', { error: err?.message })
+        log.warn('Hebbian startup decay failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) })
       );
       // Schedule nightly decay — every 24 hours
       setInterval(() => {
         runDecayCycle().catch((err: unknown) =>
-          log.warn('Hebbian nightly decay failed (non-fatal)', { error: err?.message })
+          log.warn('Hebbian nightly decay failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) })
         );
       }, 24 * 60 * 60 * 1000).unref();
       log.info('Hebbian Decay Scheduler initialized — forgetting curve active (24h cycle)');
@@ -1582,7 +1582,7 @@ async function initializeBackgroundServices(): Promise<void> {
           await runScheduledClientInvoiceAutoGeneration();
           log.info('Client Invoice Auto-Generation: weekly cycle complete');
         } catch (err: unknown) {
-          log.error('Client Invoice Auto-Generation: cycle failed', { error: err?.message });
+          log.error('Client Invoice Auto-Generation: cycle failed', { error: err instanceof Error ? err.message : String(err) });
         }
       };
       await runCycle();
@@ -2035,7 +2035,7 @@ self.addEventListener('activate', async () => {
         // Primary path — atomic idempotent UPDATE using the v2 columns.
         // Falls back gracefully when execution_locked / executed_by / executed_at
         // columns don't yet exist (schema migration not applied).
-        let rows: any[] = [];
+        let rows: (string | number | boolean | null)[] = [];
         try {
           const res1 = await pool.query(
             `UPDATE governance_approvals
@@ -2167,7 +2167,7 @@ self.addEventListener('activate', async () => {
       }
 
       try {
-        let rows: any[] = [];
+        let rows: (string | number | boolean | null)[] = [];
         try {
           const res1 = await pool.query(
             `UPDATE governance_approvals

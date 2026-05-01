@@ -84,7 +84,7 @@ function createCallIcon(priority: number) {
   return L.divIcon({ html: svg, className: "", iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34] });
 }
 
-function CADMap({ units, activeCalls, scheduledOfficers }: { units: any[]; activeCalls: any[]; scheduledOfficers: any[] }) {
+function CADMap({ units, activeCalls, scheduledOfficers }: { units: unknown[]; activeCalls: unknown[]; scheduledOfficers: unknown[] }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markers = useRef<L.Marker[]>([]);
@@ -182,7 +182,7 @@ function CADMap({ units, activeCalls, scheduledOfficers }: { units: any[]; activ
 }
 
 // Geofence departure alert strip
-function GeofenceAlertStrip({ departures, onAcknowledge }: { departures: any[]; onAcknowledge: (id: string, note: string) => void }) {
+function GeofenceAlertStrip({ departures, onAcknowledge }: { departures: unknown[]; onAcknowledge: (id: string, note: string) => void }) {
   const [expanded, setExpanded] = useState(true);
   const [ackId, setAckId] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState("");

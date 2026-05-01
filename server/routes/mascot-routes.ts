@@ -1836,7 +1836,7 @@ router.get('/holiday/directives', requireTrinityAccess, async (req, res) => {
     
     // Ensure starDecorations has required fields for frontend
     if (holidayDecor?.starDecorations) {
-      const starDecor = holidayDecor.starDecorations as Record<string, any>;
+      const starDecor = holidayDecor.starDecorations as Record<string, unknown>;
       for (const key of ['co', 'ai', 'nx']) {
         if (!starDecor[key]) {
           starDecor[key] = { attachments: ['led_wrap'], glowPalette: ['#ff0000', '#00ff00', '#ffffff'], ledCount: 6, ledSpeed: 0.5 };
@@ -2428,7 +2428,7 @@ ${context ? `Context: ${context}` : ''}`;
     });
     
     // Parse tasks from AI response
-    let tasks: any[] = [];
+    let tasks: (string | number | boolean | null)[] = [];
     try {
       const jsonMatch = response.text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {

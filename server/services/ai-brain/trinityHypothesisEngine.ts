@@ -126,7 +126,7 @@ class TrinityHypothesisEngine {
       atRiskEmployees?: number;
       overdueInvoices?: number;
       topConcerns?: string[];
-      siteMargins?: any[];
+      siteMargins?: unknown[];
       recentIncidents?: number;
     } = {},
   ): Promise<HypothesisResult> {

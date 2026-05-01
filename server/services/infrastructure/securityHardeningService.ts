@@ -109,7 +109,7 @@ class SecurityHardeningService {
   analyzeRequest(
     source: string,
     target: string,
-    payload: string | Record<string, any>
+    payload: string | Record<string, unknown>
   ): {
     safe: boolean;
     threats: ThreatEvent[];

@@ -224,7 +224,7 @@ class DocumentUnderstandingPipelineService {
         overallConfidence = documentCount > 0 ? overallConfidence / documentCount : 0;
 
         const EXTRACTION_CONFIDENCE_THRESHOLD = 0.7;
-        const flagLowConfidence = (items: any[] | undefined, entityType: string) => {
+        const flagLowConfidence = (items: unknown[] | undefined, entityType: string) => {
           if (!items) return;
           for (const item of items) {
             if (item.confidence !== undefined && item.confidence < EXTRACTION_CONFIDENCE_THRESHOLD) {

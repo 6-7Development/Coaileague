@@ -337,7 +337,7 @@ export function getEndpoint(
  */
 export function buildApiUrl(
   endpoint: string,
-  params?: Record<string, any>
+  params?: Record<string, unknown>
 ): string {
   if (!params || Object.keys(params).length === 0) {
     return endpoint;

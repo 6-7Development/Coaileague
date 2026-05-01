@@ -101,7 +101,7 @@ export default function PrivateMessages() {
     queryKey: ['/api/private-messages/conversations'],
     enabled: !!user,
     refetchInterval: 5000, // Poll for new messages
-    select: (data: any[]) => {
+    select: (data: unknown[]) => {
       if (!Array.isArray(data)) return [];
   // Socket-first DM updates (Codex: socket-first instead of polling-first)
   const wsBus = useWebSocketBus();
@@ -140,7 +140,7 @@ export default function PrivateMessages() {
     queryKey: ['/api/private-messages', selectedConversation],
     enabled: !!selectedConversation,
     refetchInterval: 30000, // Socket-first — polling is fallback only (WebSocket-first)
-    select: (data: any[]) => {
+    select: (data: unknown[]) => {
       if (!Array.isArray(data)) return [];
       return data.map((msg) => ({
         id: msg.id,
@@ -187,7 +187,7 @@ export default function PrivateMessages() {
       return res.json();
     },
     enabled: searchQuery.length > 2,
-    select: (data: any[]) => {
+    select: (data: unknown[]) => {
       if (!Array.isArray(data)) return [];
       return data.filter((u) => u.id !== user?.id); // Exclude self
     },

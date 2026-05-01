@@ -21,7 +21,7 @@ interface Approval {
   decision: string;
   createdAt?: string;
   expiresAt?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 const pageConfig: CanvasPageConfig = {

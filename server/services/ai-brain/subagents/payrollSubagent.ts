@@ -1037,7 +1037,7 @@ class PayrollSubagentService {
       .limit(count);
   }
 
-  private async generateAnomalyInsights(workspaceId: string, anomalies: any[], employeeCount: number): Promise<string> {
+  private async generateAnomalyInsights(workspaceId: string, anomalies: unknown[], employeeCount: number): Promise<string> {
     if (anomalies.length === 0) {
       return 'No significant anomalies detected. Payroll appears consistent with historical patterns.';
     }

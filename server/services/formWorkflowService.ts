@@ -33,7 +33,7 @@ export interface FormSubmission {
 }
 
 function rowToSubmission(row: typeof customFormSubmissions.$inferSelect): FormSubmission {
-  const raw = (row as any).formData || {};
+  const raw = (row as Record<string, unknown>).formData || {};
   const meta = raw._meta || {};
   const cleanFormData: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
@@ -231,7 +231,7 @@ class FormWorkflowService {
       return rowToSubmission(row);
     }
 
-    const raw = (row as any).formData || {};
+    const raw = (row as Record<string, unknown>).formData || {};
     const existingMeta = raw._meta || {};
     const now = new Date();
 
@@ -306,8 +306,8 @@ class FormWorkflowService {
     return rows.map(rowToSubmission);
   }
 
-  getAvailableTemplates(businessCategory?: string): any[] {
-    const templates: any[] = [];
+  getAvailableTemplates(businessCategory?: string): unknown[] {
+    const templates: (string | number | boolean | null)[] = [];
 
     const securityTemplates = systemFormTemplates.security || [];
     for (const t of securityTemplates) {

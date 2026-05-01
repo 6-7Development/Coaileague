@@ -132,7 +132,7 @@ export interface PostflightValidation {
   id: string;
   name: string;
   type: 'state' | 'output' | 'side_effect' | 'integration';
-  validate: (result: any) => Promise<ValidationResult>;
+  validate: (result: unknown) => Promise<ValidationResult>;
 }
 
 export interface ValidationResult {
@@ -242,7 +242,7 @@ export interface ReplayOptions {
   dryRun?: boolean;
   fromStep?: number;
   stopAtStep?: number;
-  modifiedParameters?: Record<string, Record<string, any>>;
+  modifiedParameters?: Record<string, Record<string, unknown>>;
   skipFailedSteps?: boolean;
   debugMode?: boolean;
 }
@@ -275,7 +275,7 @@ export interface ReplayDivergence {
 interface CapabilityAdapter {
   name: string;
   type: CapabilityType;
-  execute: (params: Record<string, unknown>, context: ExecutionContext) => Promise<any>;
+  execute: (params: Record<string, unknown>, context: ExecutionContext) => Promise<unknown>;
   validate: (params: Record<string, unknown>) => Promise<boolean>;
   estimateCost: (params: Record<string, unknown>) => number;
   createRollback?: (params: Record<string, unknown>, result: any) => RollbackStep | null;

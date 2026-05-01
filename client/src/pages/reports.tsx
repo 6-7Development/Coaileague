@@ -42,7 +42,7 @@ interface TemplateField {
 
 interface ReportSubmissionFormProps {
   template: ReportTemplate;
-  onSubmit: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, unknown>) => void;
   onCancel: () => void;
   isSubmitting: boolean;
 }
@@ -84,7 +84,7 @@ function ReportSubmissionForm({ template, onSubmit, onCancel, isSubmitting }: Re
       
       acc[field.name] = validator;
       return acc;
-    }, {} as Record<string, any>)
+    }, {} as Record<string, unknown>)
   );
 
   const form = useForm({
@@ -92,10 +92,10 @@ function ReportSubmissionForm({ template, onSubmit, onCancel, isSubmitting }: Re
     defaultValues: fields.reduce((acc, field) => {
       acc[field.name] = "";
       return acc;
-    }, {} as Record<string, any>),
+    }, {} as Record<string, unknown>),
   });
 
-  const handleSubmit = (data: Record<string, any>) => {
+  const handleSubmit = (data: Record<string, unknown>) => {
     onSubmit(data);
   };
 
@@ -258,7 +258,7 @@ export default function ReportsPage() {
   });
 
   const submitReport = useMutation({
-    mutationFn: async (data: { templateId: string; formData: Record<string, any> }) => {
+    mutationFn: async (data: { templateId: string; formData: Record<string, unknown> }) => {
       const res = await secureFetch("/api/report-submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -921,7 +921,7 @@ export default function ReportsPage() {
                 <div>
                   <h4 className="font-medium mb-2">Report Data:</h4>
                   <div className="p-4 bg-muted rounded-md space-y-2">
-                    {Object.entries(reviewSubmission.formData as Record<string, any> || {}).map(([key, value]) => (
+                    {Object.entries(reviewSubmission.formData as Record<string, unknown> || {}).map(([key, value]) => (
                       <div key={key} className="text-sm">
                         <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
                         <span className="text-muted-foreground">{String(value)}</span>

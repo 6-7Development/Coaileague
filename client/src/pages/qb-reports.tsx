@@ -605,7 +605,7 @@ function ReportSkeleton() {
   );
 }
 
-const REPORT_COMPONENTS: Record<string, any> = {
+const REPORT_COMPONENTS: Record<string, unknown> = {
   "client-profitability": ClientProfitabilityReport,
   "payroll-summary": PayrollSummaryReport,
   "ar-aging": ARAgingReport,

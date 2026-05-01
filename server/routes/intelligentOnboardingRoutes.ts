@@ -44,7 +44,7 @@ function getWorkspaceId(req: AuthenticatedRequest): string | null {
 }
 
 // Convenience wrapper — uses raw pg driver for $1, $2 … parameterized queries
-async function query(sql: string, params?: any[]): Promise<any[]> {
+async function query(sql: string, params?: unknown[]): Promise<any[]> {
   const result = await (db.$client as any).query(sql, params);
   return result.rows || [];
 }

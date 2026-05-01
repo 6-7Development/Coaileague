@@ -1,3 +1,3 @@
 /** Mascot system purged — safe stubs */
-export function useTrinityMode(..._args: any[]) { return { mode: "standard" }; }
-export function useBusinessBuddyTier(..._args: any[]) { return {}; }
+export function useTrinityMode(..._args: unknown[]) { return { mode: "standard" }; }
+export function useBusinessBuddyTier(..._args: unknown[]) { return {}; }

@@ -949,7 +949,7 @@ helpaiRouter.get('/admin/action-log', requireAuth, async (req: AuthenticatedRequ
     }
 
     const { workspaceId, sessionId } = req.query;
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(helpaiActionLog.workspaceId, workspaceId as string));
     if (sessionId) conditions.push(eq(helpaiActionLog.sessionId, sessionId as string));
 
@@ -981,7 +981,7 @@ helpaiRouter.get('/v2/activity', requireAuth, async (req: AuthenticatedRequest, 
     const { workspaceId, limit: limitParam = '20' } = req.query;
     const limitN = Math.min(parseInt(limitParam as string) || 20, 100);
 
-    const convConditions: any[] = [];
+    const convConditions: (string | number | boolean | null)[] = [];
     if (workspaceId) convConditions.push(eq(helpaiConversations.workspaceId, workspaceId as string));
 
     const [conversations, slaLogs, proactiveAlerts, faqGaps, commandBus] = await Promise.allSettled([
@@ -1106,7 +1106,7 @@ helpaiRouter.get('/v2/command-bus', requireAuth, async (req: AuthenticatedReques
       return res.status(403).json({ message: "Admin access required" });
     }
     const { workspaceId, direction, status } = req.query;
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(trinityHelpaiCommandBusTable.workspaceId, workspaceId as string));
     if (direction) conditions.push(eq(trinityHelpaiCommandBusTable.direction, direction as string));
     if (status) conditions.push(eq(trinityHelpaiCommandBusTable.status, status as string));

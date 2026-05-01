@@ -678,7 +678,7 @@ class TrinitySelfEditGovernanceService {
         return;
       }
       
-      const existingMeta = (existing[0].inputPayload || {}) as Record<string, any>;
+      const existingMeta = (existing[0].inputPayload || {}) as Record<string, unknown>;
       const mergedMeta = additionalMeta 
         ? { ...existingMeta, ...additionalMeta, lastUpdated: new Date().toISOString() }
         : { ...existingMeta, lastUpdated: new Date().toISOString() };

@@ -186,7 +186,7 @@ Respond with valid JSON array only.`
         }
         /* placeholder — loop replaced by batch above */
         for (const insight of []) {
-          const savedInsight: any[] = [];
+          const savedInsight: (string | number | boolean | null)[] = [];
           insights.push(savedInsight[0]);
         }
       } catch (parseError) {

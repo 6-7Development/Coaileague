@@ -331,7 +331,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal approval', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal approval', { error: err instanceof Error ? err.message : String(err) }));
 
       // Webhook Emission
       try {
@@ -433,7 +433,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'pending' }, after: { status: 'rejected', rejectedBy: userId, reason: reason || 'No reason provided' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err instanceof Error ? err.message : String(err) }));
 
       // broadcastToWorkspace imported statically
       broadcastToWorkspace(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_rejected', proposalId: id });
@@ -650,7 +650,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { after: { payrollRunId: payrollRun?.id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err instanceof Error ? err.message : String(err) }));
 
       const periodStartStr = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const periodEndStr = periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -698,7 +698,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         newState: { status: payrollRun?.status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err instanceof Error ? err.message : String(err) }));
       res.json({ ...payrollRun, complianceWarnings });
     } catch (error: unknown) {
       if (error instanceof Error && (error as any).code === 'DUPLICATE_PAYROLL_RUN') {
@@ -858,7 +858,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         newState: { status: 'approved', approvedBy: userId, approvedAt: new Date().toISOString() },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll approval', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll approval', { error: err instanceof Error ? err.message : String(err) }));
 
       let qbSyncResult = null;
       try {
@@ -1029,7 +1029,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'approved' }, after: { status: 'processed', processedBy: userId } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll processing', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll processing', { error: err instanceof Error ? err.message : String(err) }));
 
       // Non-blocking: notify each employee their pay stub is available
       (async () => {
@@ -1160,7 +1160,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         newState: { status: 'processed', payStubsGenerated: stubs.length, totalNet: run.totalNetPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll process', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll process', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json(updated);
     } catch (error: unknown) {
@@ -1200,7 +1200,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         entityId: id,
         changes: { before: { status: run.status, payPeriodStart: run.periodStart, payPeriodEnd: run.periodEnd }, after: { status: 'deleted' } },
         metadata: { isSensitiveData: true, complianceTag: 'soc2' },
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll delete', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll delete', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json({ message: "Payroll run deleted successfully" });
     } catch (error: unknown) {
@@ -1910,7 +1910,7 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated Form 941 for Q${quarterNum} ${yearNum}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 941 generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 941 generation', { error: err instanceof Error ? err.message : String(err) }));
 
     if (result.pdfBuffer) {
       res.setHeader('Content-Type', 'application/pdf');
@@ -2021,7 +2021,7 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated ${formType.toUpperCase()} for employee ${employeeId} for tax year ${taxYear}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for tax form generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for tax form generation', { error: err instanceof Error ? err.message : String(err) }));
 
     // ── GAP 16: W-2 / 1099 limitation notice ─────────────────────────────────
     // These are system-generated estimates for record-keeping and early review.
@@ -2101,7 +2101,7 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated Form 940 (FUTA) for tax year ${year}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 940 generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 940 generation', { error: err instanceof Error ? err.message : String(err) }));
 
     if (result.pdfBuffer) {
       res.setHeader('Content-Type', 'application/pdf');
@@ -2251,7 +2251,7 @@ router.post('/runs/:id/execute-internal', async (req: AuthenticatedRequest, res)
         },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for internal payroll execution', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for internal payroll execution', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json({
         ...result,
@@ -2296,7 +2296,7 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
       changes: { after: { status: 'voided', reason, voidedBy: userId } },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err instanceof Error ? err.message : String(err) }));
 
     // broadcastToWorkspace already imported at top
     broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
@@ -2403,7 +2403,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
       changes: { before: { status: 'processed' }, after: { status: 'paid', disbursementMethod, confirmedBy: userId } },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll mark-paid', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll mark-paid', { error: err instanceof Error ? err.message : String(err) }));
 
       // FIX-2: Financial audit log for payroll disbursement
       await db.insert(billingAuditLog).values({
@@ -2421,7 +2421,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
         metadata: { notes, totalNetPay: run.totalNetPay, totalGrossPay: run.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err instanceof Error ? err.message : String(err) }));
 
     try {
       // broadcastToWorkspace imported statically
@@ -2682,7 +2682,7 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
       changes: { before: result.originalEntry, after: result.amendedEntry },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll amendment', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll amendment', { error: err instanceof Error ? err.message : String(err) }));
 
     res.json({
       success: true,

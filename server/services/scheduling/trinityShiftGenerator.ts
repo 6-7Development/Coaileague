@@ -254,7 +254,7 @@ export async function generateWeeklyShifts(
 
       const existingCounts = await getExistingShiftCounts(workspaceId, client.id, weekStart, weekEnd);
 
-      const shiftsToInsert: any[] = [];
+      const shiftsToInsert: (string | number | boolean | null)[] = [];
 
       for (const dayOffset of [0, 1, 2, 3, 4, 5, 6]) {
         const shiftDate = new Date(weekStart);

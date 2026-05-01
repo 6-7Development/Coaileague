@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { FormSection, SignatureField, DocumentViewer, FieldError } from './shared';
 
 interface Props {
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   onChange: (field: string, value: any) => void;
   errors: Record<string, string>;
 }

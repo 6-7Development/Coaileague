@@ -70,7 +70,7 @@ export interface DiagnosticReport {
 // PLATFORM METRICS COLLECTORS
 // ============================================================================
 
-async function collectDatabaseMetrics(): Promise<Record<string, any>> {
+async function collectDatabaseMetrics(): Promise<Record<string, unknown>> {
   try {
     // Check table counts and recent activity
     // CATEGORY C — Raw SQL retained: Count( | Tables: audit_logs | Verified: 2026-03-23
@@ -103,7 +103,7 @@ async function collectDatabaseMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectSubagentMetrics(): Promise<Record<string, any>> {
+async function collectSubagentMetrics(): Promise<Record<string, unknown>> {
   try {
     const allSubagents = await subagentSupervisor.getAllSubagents();
     const activeCount = allSubagents.filter((s: any) => s.isActive).length;
@@ -121,7 +121,7 @@ async function collectSubagentMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectToolMetrics(): Promise<Record<string, any>> {
+async function collectToolMetrics(): Promise<Record<string, unknown>> {
   try {
     const allTools = toolCapabilityRegistry.getAllTools();
     // Count tools as healthy by default since we can't access private healthStatus
@@ -139,7 +139,7 @@ async function collectToolMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectNotificationMetrics(): Promise<Record<string, any>> {
+async function collectNotificationMetrics(): Promise<Record<string, unknown>> {
   try {
     // CATEGORY C — Raw SQL retained: Count( | Tables: notifications | Verified: 2026-03-23
     const result = await typedCount(sql`

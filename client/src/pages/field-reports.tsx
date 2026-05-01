@@ -73,7 +73,7 @@ interface ReportSubmission {
   title: string;
   reportType: ReportType;
   status: ReportStatus;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   location?: { lat: number; lng: number };
   clientId?: string;
   clientName?: string;
@@ -141,7 +141,7 @@ export default function FieldReports() {
   const [activeTab, setActiveTab] = useState<'create' | 'history' | 'review'>('create');
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const { locationData, setLocationData, captureLocation } = useLocationCapture();
   const [aiAnalysis, setAiAnalysis] = useState<{ recommendations: string[]; riskLevel: string; suggestedActions: string[]; summary: string } | null>(null);
   const [aiAnalyzed, setAiAnalyzed] = useState(false);
@@ -198,7 +198,7 @@ export default function FieldReports() {
 
 
   const submitReportMutation = useMutation({
-    mutationFn: async (data: { reportType: ReportType; title: string; data: Record<string, any> }) => {
+    mutationFn: async (data: { reportType: ReportType; title: string; data: Record<string, unknown> }) => {
       return apiRequest('POST', '/api/report-submissions', {
         ...data,
         location: locationData,

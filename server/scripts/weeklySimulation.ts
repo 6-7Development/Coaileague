@@ -373,7 +373,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
 
   console.log('\nSTEP 4: Running Invoice Generation...');
 
-  let generatedInvoices: any[] = [];
+  let generatedInvoices: (string | number | boolean | null)[] = [];
   try {
     const weeklyResult = await generateWeeklyInvoices(WORKSPACE_ID, periodEnd, 7);
     generatedInvoices = weeklyResult.invoices || [];

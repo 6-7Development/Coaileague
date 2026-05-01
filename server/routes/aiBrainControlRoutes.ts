@@ -206,7 +206,7 @@ router.post('/workflows/:runId/retry', requirePlatformAdmin, async (req: Request
         userId: user.id,
         parentRunId: runId,
       },
-      workflow.inputParams as Record<string, any> | undefined
+      workflow.inputParams as Record<string, unknown> | undefined
     );
     
     aiBrainEvents.emit('workflow_retried', {

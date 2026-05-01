@@ -14,7 +14,7 @@ export interface InboundEmailData {
   subject: string;
   body: string;
   htmlBody?: string;
-  attachments?: any[];
+  attachments?: unknown[];
   messageId: string;
   inReplyTo?: string;
   threadId?: string;

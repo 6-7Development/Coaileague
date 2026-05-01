@@ -148,7 +148,7 @@ class RecurringScheduleTemplateService {
     }
 
     const errors: string[] = [];
-    const shiftsToCreate: any[] = [];
+    const shiftsToCreate: (string | number | boolean | null)[] = [];
 
     // Calculate the week's dates
     const weekStart = new Date(targetWeekStart);

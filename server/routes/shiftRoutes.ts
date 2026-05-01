@@ -354,7 +354,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       }
 
       // Include related employee data for all assigned employees
-      let assignedEmployees: any[] = [];
+      let assignedEmployees: (string | number | boolean | null)[] = [];
       let client = null;
 
       const employeeIdsToFetch = Array.isArray(shift.assignedEmployeeIds) 
@@ -2257,7 +2257,7 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
                 for (const invoice of allInvoices) {
                   if (invoice.status === 'draft') {
                     const lineItems = await storage.getInvoiceLineItems(invoice.id);
-                    deniedShiftLineItem = lineItems.find((item: any) => {
+                    deniedShiftLineItem = lineItems.find((item: unknown) => {
                       // Primary search: metadata.shiftId (most reliable)
                       if (item.metadata && typeof item.metadata === 'object') {
                         return item.metadata.shiftId === shift.id;

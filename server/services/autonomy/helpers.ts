@@ -52,7 +52,7 @@ function generateFingerprint(params: Record<string, unknown>): string {
   const sorted = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key];
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, unknown>);
   
   const canonical = JSON.stringify(sorted);
   return crypto.createHash('sha256').update(canonical).digest('hex');

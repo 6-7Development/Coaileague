@@ -17,7 +17,7 @@ function sanitizeDecision(d: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-function sanitizeDecisions(result: { decisions: Record<string, any>[]; total: number }) {
+function sanitizeDecisions(result: { decisions: Record<string, unknown>[]; total: number }) {
   return { ...result, decisions: result.decisions.map(sanitizeDecision) };
 }
 

@@ -94,7 +94,7 @@ interface Analytics {
     textSamples?: string[];
   }[];
   byWorkspace: Record<string, number>;
-  recentResponses: any[];
+  recentResponses: unknown[];
 }
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: typeof Star }> = {

@@ -654,9 +654,9 @@ class CognitiveOnboardingService {
   private async aiFieldMapping(
     provider: IntegrationProvider,
     dataType: DataSyncType,
-    rawData: any[],
+    rawData: unknown[],
     workspaceId: string
-  ): Promise<{ data: any[]; confidence: number }> {
+  ): Promise<{ data: unknown[]; confidence: number }> {
     const sampleRecord = rawData[0];
     const fields = Object.keys(sampleRecord);
 

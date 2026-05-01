@@ -54,7 +54,7 @@ interface FormData {
 
 interface SavedProgress {
   currentStep: number;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   completedSteps: number[];
   skippedSteps: number[];
 }
@@ -151,7 +151,7 @@ export default function CreateOrg() {
     setProgressLoaded(true);
   }, [serverProgressQuery.data, progressLoaded, toast]);
 
-  const getFormData = useCallback((): Record<string, any> => ({
+  const getFormData = useCallback((): Record<string, unknown> => ({
     orgName,
     orgCode,
     size,

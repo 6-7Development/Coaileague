@@ -28,7 +28,7 @@ export interface DisciplinaryPattern {
   workspaceId: string;
   employeeName: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  instances: any[];
+  instances: unknown[];
   investigation: Record<string, string>;
   suggestion: string;
   suggestedAction: string;

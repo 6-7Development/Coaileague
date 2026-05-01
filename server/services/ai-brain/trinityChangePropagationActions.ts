@@ -21,7 +21,7 @@ import { broadcastToWorkspace } from '../../websocket';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityChangePropagationActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -135,7 +135,7 @@ export function registerChangePropagationActions() {
   helpaiOrchestrator.registerAction(mkAction('settings.propagate_pay_rate_change', async (params) => {
     const { workspaceId, employeeId, oldRate, newRate, changedBy } = params;
     if (!workspaceId || !employeeId) return { error: 'workspaceId and employeeId required' };
-    const flaggedItems: any[] = [];
+    const flaggedItems: (string | number | boolean | null)[] = [];
     const newRateNum = parseFloat(String(newRate));
     const oldRateNum = parseFloat(String(oldRate));
     const rateChange = newRateNum - oldRateNum;
@@ -287,7 +287,7 @@ export function registerChangePropagationActions() {
   helpaiOrchestrator.registerAction(mkAction('settings.propagate_bill_rate_change', async (params) => {
     const { workspaceId, clientId, oldRate, newRate, changedBy } = params;
     if (!workspaceId || !clientId) return { error: 'workspaceId and clientId required' };
-    const flaggedItems: any[] = [];
+    const flaggedItems: (string | number | boolean | null)[] = [];
     const newRateNum = parseFloat(String(newRate));
     const oldRateNum = parseFloat(String(oldRate));
     const rateChange = newRateNum - oldRateNum;

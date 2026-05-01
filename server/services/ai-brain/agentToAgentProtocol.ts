@@ -148,7 +148,7 @@ class AgentToAgentProtocol {
   private messageQueues: Map<string, A2AMessage[]> = new Map();
   private teams: Map<string, CollaborationTeam> = new Map();
   private trustRules: Map<string, TrustRule> = new Map();
-  private messageHandlers: Map<string, (message: A2AMessage) => Promise<any>> = new Map();
+  private messageHandlers: Map<string, (message: A2AMessage) => Promise<unknown>> = new Map();
 
   private dbInitialized = false;
 
@@ -235,7 +235,7 @@ class AgentToAgentProtocol {
     return agent;
   }
 
-  registerMessageHandler(agentId: string, handler: (message: A2AMessage) => Promise<any>): void {
+  registerMessageHandler(agentId: string, handler: (message: A2AMessage) => Promise<unknown>): void {
     this.messageHandlers.set(agentId, handler);
   }
 

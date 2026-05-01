@@ -122,7 +122,7 @@ export interface AutomationResult {
   pausedAt?: Date;
   pausedBy?: string;
   pauseReason?: string;
-  revisedPayload?: Record<string, any> | null;
+  revisedPayload?: Record<string, unknown> | null;
   revisionNotes?: string | null;
   revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string; payloadSnapshot: any }>;
   trinityReanalysis?: string | null;
@@ -974,7 +974,7 @@ class TrinityAutomationToggleService {
     resuming = false,
   ): Promise<{ receipt: AutomationReceipt }> {
     const { workspaceId, feature, requestedBy } = request;
-    const context = request.context as Record<string, any>;
+    const context = request.context as Record<string, unknown>;
     let recordsCreated = 0;
     let recordsUpdated = 0;
     const externalSyncs: AutomationReceipt['payload']['externalSyncs'] = [];
@@ -993,7 +993,7 @@ class TrinityAutomationToggleService {
     const runStep = async <T>(
       name: string,
       fn: () => Promise<T>,
-      toSave?: (result: T) => Record<string, any>,
+      toSave?: (result: T) => Record<string, unknown>,
     ): Promise<T | null> => {
       const cp = await checkpointer.getCheckpoint() ?? initCp;
 
@@ -1016,7 +1016,7 @@ class TrinityAutomationToggleService {
     };
 
     // Helper: get a step's saved result (for resume cases where runStep returns null)
-    const getSaved = async (name: string): Promise<Record<string, any> | undefined> => {
+    const getSaved = async (name: string): Promise<Record<string, unknown> | undefined> => {
       const cp = await checkpointer.getCheckpoint();
       return cp ? checkpointer.getStepResult(cp, name) : undefined;
     };

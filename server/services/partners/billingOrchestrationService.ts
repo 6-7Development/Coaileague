@@ -90,11 +90,11 @@ class IdentityReconcilerAgent {
   ): Promise<{
     ok: boolean;
     missing: { entityType: string; internalId: string }[];
-    ambiguous: { entityType: string; internalId: string; candidates: any[] }[];
+    ambiguous: { entityType: string; internalId: string; candidates: unknown[] }[];
     stale: { entityType: string; internalId: string; reason: string }[];
   }> {
     const missing: { entityType: string; internalId: string }[] = [];
-    const ambiguous: { entityType: string; internalId: string; candidates: any[] }[] = [];
+    const ambiguous: { entityType: string; internalId: string; candidates: unknown[] }[] = [];
     const stale: { entityType: string; internalId: string; reason: string }[] = [];
 
     const existingMappings = await db.select()
@@ -383,7 +383,7 @@ class RiskGateAgent {
     cycleKey: string,
     clientId: string,
     invoiceTotal: number,
-    mappingStatus: { ok: boolean; missing: any[]; ambiguous: any[] }
+    mappingStatus: { ok: boolean; missing: unknown[]; ambiguous: unknown[] }
   ): Promise<RiskGateResult> {
     const riskSignals: RiskSignal[] = [];
 
@@ -973,7 +973,7 @@ export function registerBillingOrchestrationActions() {
     description: 'Evaluate risk signals for an invoice to determine if auto-send or approval required',
     requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
     handler: async (params: { workspaceId: string; cycleKey: string; clientId: string; invoiceTotal: number; connectionId?: string }) => {
-      let mappingStatus: { ok: boolean; missing: any[]; ambiguous: any[]; stale?: any[] } = { ok: true, missing: [], ambiguous: [] };
+      let mappingStatus: { ok: boolean; missing: unknown[]; ambiguous: unknown[]; stale?: unknown[] } = { ok: true, missing: [], ambiguous: [] };
       
       if (params.connectionId) {
         const reconcileResult = await identityReconcilerAgent.reconcile(

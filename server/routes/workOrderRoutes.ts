@@ -117,7 +117,7 @@ router.patch("/:id", requireManager, async (req: AuthenticatedRequest, res) => {
     };
 
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let p = 1;
     for (const [jsKey, col] of Object.entries(colMap)) {
       if (req.body[jsKey] !== undefined) {

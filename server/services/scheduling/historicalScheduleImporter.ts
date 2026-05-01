@@ -121,7 +121,7 @@ class HistoricalScheduleImporterService {
       );
 
       // Process each record
-      const importedShifts: any[] = [];
+      const importedShifts: (string | number | boolean | null)[] = [];
 
       for (const record of mappedRecords) {
         if (!record) continue;
@@ -294,7 +294,7 @@ class HistoricalScheduleImporterService {
   /**
    * Analyze patterns from imported shifts
    */
-  private analyzePatterns(importedShifts: any[]): LearnedPattern[] {
+  private analyzePatterns(importedShifts: unknown[]): LearnedPattern[] {
     const patternMap = new Map<string, {
       count: number;
       totalDuration: number;

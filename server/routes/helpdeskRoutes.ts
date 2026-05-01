@@ -77,7 +77,7 @@ router.get("/faq/entries", async (req: AuthenticatedRequest, res) => {
   try {
     const { category, language } = req.query as Record<string, string>;
     let query = `SELECT * FROM faq_entries WHERE is_active = true`;
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let i = 1;
     if (category) { query += ` AND category = $${i++}`; params.push(category); }
     query += ` ORDER BY category, id`;
@@ -1159,8 +1159,8 @@ router.get('/user-context/:userId', async (req: AuthenticatedRequest, res) => {
       log.error("Error fetching workspace:", err);
     }
 
-    const activeTickets: any[] = [];
-    const ticketHistory: any[] = [];
+    const activeTickets: (string | number | boolean | null)[] = [];
+    const ticketHistory: (string | number | boolean | null)[] = [];
 
     const recentMessages = await db
       .select()

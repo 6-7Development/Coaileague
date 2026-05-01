@@ -64,19 +64,19 @@ class ComplianceScoringBridge {
     if (this.initialized) return;
     this.initialized = true;
 
-    platformEventBus.on('compliance_document_expired', async (payload: any) => {
+    platformEventBus.on('compliance_document_expired', async (payload: unknown) => {
       await this.handleDocumentExpired(payload);
     });
 
-    platformEventBus.on('compliance_document_missing', async (payload: any) => {
+    platformEventBus.on('compliance_document_missing', async (payload: unknown) => {
       await this.handleDocumentMissing(payload);
     });
 
-    platformEventBus.on('compliance_document_approved', async (payload: any) => {
+    platformEventBus.on('compliance_document_approved', async (payload: unknown) => {
       await this.handleDocumentApproved(payload);
     });
 
-    platformEventBus.on('compliance_document_rejected', async (payload: any) => {
+    platformEventBus.on('compliance_document_rejected', async (payload: unknown) => {
       await this.handleDocumentRejected(payload);
     });
 

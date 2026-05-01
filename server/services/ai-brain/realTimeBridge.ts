@@ -77,7 +77,7 @@ export type BridgePayload =
 
 class RealTimeBridgeService {
   private static instance: RealTimeBridgeService;
-  private subscribers: Map<BroadcastChannel, Set<(payload: any) => void>> = new Map();
+  private subscribers: Map<BroadcastChannel, Set<(payload: unknown) => void>> = new Map();
 
   private constructor() {
     this.initializeEventListeners();
@@ -157,7 +157,7 @@ class RealTimeBridgeService {
     });
   }
 
-  subscribe(channel: BroadcastChannel, callback: (payload: any) => void): () => void {
+  subscribe(channel: BroadcastChannel, callback: (payload: unknown) => void): () => void {
     if (!this.subscribers.has(channel)) {
       this.subscribers.set(channel, new Set());
     }

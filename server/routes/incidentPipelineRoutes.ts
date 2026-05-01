@@ -22,7 +22,7 @@ function uid(req: AuthenticatedRequest): string {
   return req.user?.id || req.session?.userId;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
@@ -70,7 +70,7 @@ const createSchema = z.object({
   occurredAt: z.string().optional().nullable(),
 });
 
-incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as any, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.post("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
   try {
     const workspaceId = wid(req);
     const userId = uid(req);
@@ -197,7 +197,7 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
   }
 });
 
-incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.get("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
   try {
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -227,7 +227,7 @@ incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any
   }
 });
 
-incidentPipelineRouter.get("/:id", requireAuth as any, ensureWorkspaceAccess as any, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.get("/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(
@@ -272,7 +272,7 @@ function hasManagerRole(req: AuthenticatedRequest): boolean {
   return false;
 }
 
-incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWorkspaceAccess as any, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.post("/:id/trinity-polish", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
   try {
     if (!hasManagerRole(req)) {
       return res.status(403).json({ error: "Insufficient permissions. Manager or above role required to use Trinity polish." });

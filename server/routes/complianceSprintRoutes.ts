@@ -27,8 +27,8 @@ function wid(req: AuthenticatedRequest): string {
 // Audit a handbook text (freeform — admin provides document text)
 complianceSprintRouter.post(
   "/handbook/audit",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const { documentText, documentTitle, documentId } = req.body;
@@ -54,8 +54,8 @@ complianceSprintRouter.post(
 // Audit all handbooks in workspace (scans compliance_documents table)
 complianceSprintRouter.get(
   "/handbook/audit/workspace",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const audits = await auditWorkspaceHandbooks(wid(req));
@@ -71,8 +71,8 @@ complianceSprintRouter.get(
 // Full integrity report for workspace
 complianceSprintRouter.get(
   "/contracts/integrity/report",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const report = await generateContractIntegrityReport(wid(req));
@@ -86,8 +86,8 @@ complianceSprintRouter.get(
 // Verify a single contract
 complianceSprintRouter.get(
   "/contracts/:id/integrity",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const result = await verifyContractIntegrity(req.params.id, wid(req));
@@ -101,8 +101,8 @@ complianceSprintRouter.get(
 // Snapshot contract (capture version + hash after any change)
 complianceSprintRouter.post(
   "/contracts/:id/snapshot",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const { changeType = "amended", changeSummary = "Manual snapshot" } = req.body;
@@ -124,8 +124,8 @@ complianceSprintRouter.post(
 // Contract expiration scan for workspace
 complianceSprintRouter.get(
   "/contracts/expirations",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const alerts = await scanContractExpirations(wid(req));
@@ -141,8 +141,8 @@ complianceSprintRouter.get(
 // Translate arbitrary text
 complianceSprintRouter.post(
   "/translate/text",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const { text, sourceLanguage = "en", targetLanguage, context } = req.body;
@@ -170,8 +170,8 @@ complianceSprintRouter.post(
 // Translate an incident report
 complianceSprintRouter.post(
   "/translate/incident/:id",
-  requireAuth as any,
-  ensureWorkspaceAccess as any,
+  requireAuth,
+  ensureWorkspaceAccess,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const { targetLanguage = "es" } = req.body;
@@ -195,7 +195,7 @@ complianceSprintRouter.post(
 // Get platform UI strings for a language
 complianceSprintRouter.get(
   "/translate/ui-strings/:language",
-  requireAuth as any,
+  requireAuth,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       const { language } = req.params;
@@ -217,7 +217,7 @@ complianceSprintRouter.get(
 
 complianceSprintRouter.get(
   "/verification/sprint-status",
-  requireAuth as any,
+  requireAuth,
   async (req: AuthenticatedRequest, res: any) => {
     try {
       res.json({

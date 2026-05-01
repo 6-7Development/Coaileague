@@ -693,8 +693,8 @@ async function phase10_compliance() {
       AND notes LIKE '%BLOCKED%'
   `);
 
-  const blocked      = Number((blockedShifts.rows[0] as any)?.n ?? 0);
-  const wrongAssign  = Number((assignedToExpired.rows[0] as any)?.n ?? 0);
+  const blocked      = Number((blockedShifts.rows[0] as Record<string, unknown>)?.n ?? 0);
+  const wrongAssign  = Number((assignedToExpired.rows[0] as Record<string, unknown>)?.n ?? 0);
 
   rec({ name: 'Expired-License Shifts Blocked', phase: 'COMPLIANCE',
     passed: blocked > 0,
@@ -713,7 +713,7 @@ async function phase10_compliance() {
     SELECT SUM(quantity) as hrs FROM invoice_line_items
     WHERE invoice_id IN (SELECT id FROM invoices WHERE workspace_id = ${WS_ID} AND id LIKE 'sim-inv-%')
   `);
-  const totalBilledHrs = Number((billedBlockedHours.rows[0] as any)?.hrs ?? 0);
+  const totalBilledHrs = Number((billedBlockedHours.rows[0] as Record<string, unknown>)?.hrs ?? 0);
   rec({ name: 'Invoices Exclude Blocked-Shift Hours', phase: 'COMPLIANCE',
     passed: totalBilledHrs < SIM_DAYS * 24,
     details: `Billed ${totalBilledHrs.toFixed(1)}h (should be < ${SIM_DAYS * 24}h due to blocked shifts)`,

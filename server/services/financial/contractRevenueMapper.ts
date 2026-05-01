@@ -179,7 +179,7 @@ export async function mapContractToRevenue(
         source: 'system',
       });
     } catch (err: unknown) {
-      log.warn('[ContractRevenueMapper] Audit log write failed (non-fatal)', { error: err?.message });
+      log.warn('[ContractRevenueMapper] Audit log write failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
     }
 
     return {

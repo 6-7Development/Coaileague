@@ -89,7 +89,7 @@ router.post('/inspections', async (req: Request, res: Response) => {
       entityType: 'weapon_inspection',
       entityId: row?.id ?? null,
       success: true,
-      changesAfter: row as any,
+      changesAfter: row as Record<string, unknown>,
       durationMs: Date.now() - start,
     });
 
@@ -165,7 +165,7 @@ router.post('/qualifications', async (req: Request, res: Response) => {
       entityType: 'weapon_qualification',
       entityId: row?.id ?? null,
       success: true,
-      changesAfter: row as any,
+      changesAfter: row as Record<string, unknown>,
       durationMs: Date.now() - start,
     });
 
@@ -278,7 +278,7 @@ router.post('/ammo', async (req: Request, res: Response) => {
       entityType: 'ammo_inventory',
       entityId: row?.id ?? null,
       success: true,
-      changesAfter: row as any,
+      changesAfter: row as Record<string, unknown>,
       durationMs: Date.now() - start,
     });
 
@@ -365,7 +365,7 @@ router.post('/ammo/:id/transaction', async (req: Request, res: Response) => {
       entityType: 'ammo_transaction',
       entityId: row?.id ?? null,
       success: true,
-      changesAfter: row as any,
+      changesAfter: row as Record<string, unknown>,
       durationMs: Date.now() - start,
     });
 

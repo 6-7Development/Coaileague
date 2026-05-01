@@ -1218,7 +1218,7 @@ class HelpAIOrchestrator {
   // --------------------------------------------------------------------------
 
   async getSessionHistory(workspaceId?: string, limit = 50) {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(helpaiSessions.workspaceId, workspaceId));
 
     return db

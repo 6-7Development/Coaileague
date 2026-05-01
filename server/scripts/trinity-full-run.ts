@@ -77,7 +77,7 @@ async function seedOnly() {
   const allClients = await db.select().from(clients).where(eq(clients.workspaceId, WORKSPACE_ID));
   console.log(`Employees: ${allEmployees.length}, Clients: ${allClients.length}`);
 
-  const shiftRecords: any[] = [];
+  const shiftRecords: (string | number | boolean | null)[] = [];
   const startDate = new Date(now);
   startDate.setHours(0, 0, 0, 0);
   startDate.setDate(startDate.getDate() + 1);

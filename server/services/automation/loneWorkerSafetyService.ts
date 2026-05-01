@@ -85,7 +85,7 @@ class LoneWorkerSafetyService {
       try {
         await withDistributedLock(LOCK_KEYS.LONE_WORKER_SAFETY, 'LoneWorkerSafety', () => this.runCycle());
       } catch (error: unknown) {
-        log.error('Monitoring cycle failed (will retry)', { error: error?.message });
+        log.error('Monitoring cycle failed (will retry)', { error: error instanceof Error ? error.message : String(error) });
       }
     }, SERVICE_POLL_INTERVAL_MS);
 
@@ -209,7 +209,7 @@ class LoneWorkerSafetyService {
 
       log.info('Loaded active welfare checks from DB', { count: rows.length });
     } catch (error: unknown) {
-      log.error('Failed to load active welfare checks from DB', { error: error?.message });
+      log.error('Failed to load active welfare checks from DB', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -321,7 +321,7 @@ class LoneWorkerSafetyService {
         }
       }
     } catch (error: unknown) {
-      log.error('Failed to detect lone workers', { error: error?.message });
+      log.error('Failed to detect lone workers', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -588,7 +588,7 @@ class LoneWorkerSafetyService {
         }
       }
     } catch (error: unknown) {
-      log.error('Failed to notify for escalation', { error: error?.message });
+      log.error('Failed to notify for escalation', { error: error instanceof Error ? error.message : String(error) });
     }
 
     log.warn('Welfare check escalated via UNE', {

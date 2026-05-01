@@ -481,7 +481,7 @@ class AutonomousSchedulingDaemonService {
   /**
    * Send urgent alerts for unfilled shifts
    */
-  private async sendUrgentAlerts(workspaceId: string, urgentShifts: any[]): Promise<void> {
+  private async sendUrgentAlerts(workspaceId: string, urgentShifts: unknown[]): Promise<void> {
     // Broadcast alert to workspace
     broadcastToWorkspace(workspaceId, {
       type: 'trinity_urgent_alert',

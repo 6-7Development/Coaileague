@@ -247,7 +247,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   static async analyzeCostVariance(
     workspaceId: string,
     scheduleDate: Date,
-    proposedShifts: any[],
+    proposedShifts: unknown[],
     userId?: string
   ): Promise<{
     budgetedCost: number;
@@ -261,7 +261,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   }> {
     // Calculate budgeted cost (based on regular rates)
     let budgetedCost = 0;
-    const shiftAnalysis: any[] = [];
+    const shiftAnalysis: (string | number | boolean | null)[] = [];
     
     for (const shift of proposedShifts) {
       const employee = await db
@@ -557,7 +557,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   
   private static fallbackCostVarianceAnalysis(
     budgetedCost: number,
-    proposedShifts: any[]
+    proposedShifts: unknown[]
   ): {
     budgetedCost: number;
     predictedCost: number;

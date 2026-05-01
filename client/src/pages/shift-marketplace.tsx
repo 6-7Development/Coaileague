@@ -51,7 +51,7 @@ type SwapRequest = {
   shift?: Shift;
   requestingEmployee?: Employee;
   targetEmployee?: Employee;
-  aiSuggestedEmployees?: any[];
+  aiSuggestedEmployees?: unknown[];
 };
 
 function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {

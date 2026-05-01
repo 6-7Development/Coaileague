@@ -53,7 +53,7 @@ export interface WorkflowTrailEntry {
   ts: string;
   ok: boolean;
   detail?: string;
-  data?: Record<string, any> | null;
+  data?: Record<string, unknown> | null;
 }
 
 export interface WorkflowStartParams {
@@ -145,7 +145,7 @@ export async function logWorkflowStep(
   step: WorkflowStep,
   ok: boolean,
   detail?: string,
-  data?: Record<string, any> | null,
+  data?: Record<string, unknown> | null,
 ): Promise<void> {
   if (!record?.id) return;
   try {
@@ -155,7 +155,7 @@ export async function logWorkflowStep(
       .where(eq(auditLogs.id, record.id))
       .limit(1);
 
-    const currentMeta = (existing?.metadata ?? {}) as Record<string, any>;
+    const currentMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
     const trail: WorkflowTrailEntry[] = Array.isArray(currentMeta.trail)
       ? currentMeta.trail
       : [];
@@ -186,7 +186,7 @@ export interface WorkflowCompleteParams {
   success: boolean;
   summary?: string;
   errorMessage?: string;
-  result?: Record<string, any> | null;
+  result?: Record<string, unknown> | null;
   escalated?: boolean;
 }
 
@@ -209,7 +209,7 @@ export async function logWorkflowComplete(
       .where(eq(auditLogs.id, record.id))
       .limit(1);
 
-    const currentMeta = (existing?.metadata ?? {}) as Record<string, any>;
+    const currentMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
     const trail: WorkflowTrailEntry[] = Array.isArray(currentMeta.trail)
       ? currentMeta.trail
       : [];
@@ -254,7 +254,7 @@ export async function logWorkflowComplete(
 /** Redaction mirror of actionAuditLogger.sanitize — keep in sync if extended. */
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'auth', 'credit_card', 'ssn'];
 
-function sanitizeForLog<T extends Record<string, any> | null | undefined>(
+function sanitizeForLog<T extends Record<string, unknown> | null | undefined>(
   value: T,
 ): T {
   if (!value || typeof value !== 'object') return value;

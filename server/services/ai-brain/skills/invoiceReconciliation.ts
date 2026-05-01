@@ -281,9 +281,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectUnbilledHours(
-    timesheetData: any[],
-    invoiceData: any[],
-    clientData: any[]
+    timesheetData: unknown[],
+    invoiceData: unknown[],
+    clientData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     
@@ -327,9 +327,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectRateMismatches(
-    timesheetData: any[],
-    contractData: any[],
-    clientData: any[]
+    timesheetData: unknown[],
+    contractData: unknown[],
+    clientData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const contractRates = new Map<string, number>();
@@ -373,7 +373,7 @@ export class InvoiceReconciliationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectOverdueInvoices(invoiceData: any[], clientData: any[]): ReconciliationIssue[] {
+  private detectOverdueInvoices(invoiceData: unknown[], clientData: unknown[]): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const now = new Date();
     const clientMap = new Map(clientData.map(c => [c.id, c.name]));
@@ -400,9 +400,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectMissingContracts(
-    clientData: any[],
-    contractData: any[],
-    timesheetData: any[]
+    clientData: unknown[],
+    contractData: unknown[],
+    timesheetData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const clientsWithContracts = new Set(contractData.filter(c => c.isActive).map(c => c.clientId));
@@ -425,7 +425,7 @@ export class InvoiceReconciliationSkill extends BaseSkill {
     return issues;
   }
 
-  private calculateInvoicedHours(invoiceData: any[]): number {
+  private calculateInvoicedHours(invoiceData: unknown[]): number {
     return invoiceData.reduce((sum, inv) => sum + (parseFloat(inv.totalHours) || 0), 0);
   }
 
@@ -468,9 +468,9 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
   }
 
   private calculateGapAnalysis(
-    clientData: any[],
-    timesheetData: any[],
-    invoiceData: any[]
+    clientData: unknown[],
+    timesheetData: unknown[],
+    invoiceData: unknown[]
   ) {
     const clientsWithWork = new Set(timesheetData.filter(t => t.isBillable !== false).map(t => t.clientId).filter(Boolean));
     const clientsInvoiced = new Set(invoiceData.map(i => i.clientId));
@@ -563,7 +563,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'ai-powered-reconciliation',

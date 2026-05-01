@@ -1386,3 +1386,70 @@ These are documented — the `as any` is intentional for JOIN result shapes.
 | (shift as any) casts | ~11 | ~11 | **9** |
 | (payrollRun as any) casts | ~7 | ~7 | **0** |
 | aria-label gaps | — | 144→0 | 0 |
+
+---
+
+## Phase 10 — Domain-by-Domain TypeScript Debt Purge (2026-05-01)
+
+### Approach
+Systematic domain-by-domain cleanup of TypeScript escape hatches.
+Goal: replace `any` with properly narrowed types, improving compiler safety and 
+reducing maintenance bloat without breaking runtime behavior.
+
+### Fixes Applied
+
+**PATTERN 1: Middleware `as any` casts removed (183 occurrences, 10 files)**
+`requireAuth as any`, `ensureWorkspaceAccess as any`, `requireManager as any` etc.
+These casts existed because of Express middleware typing quirks. Removed entirely —
+the types already match, the casts were unnecessary defensive coding.
+
+**PATTERN 2: Pool query params typed (175 occurrences)**
+`const params: any[] = []` → `const params: (string | number | boolean | null)[] = []`
+Pool.query only accepts primitive types; this is now enforced by the type system.
+
+**PATTERN 3: Raw pool.query row results typed (17 files)**
+`rows[0] as any` → `rows[0] as Record<string, unknown>`
+Provides compile-time access safety while preserving the dynamic field access pattern.
+
+**PATTERN 4: storage.ts interface strengthened (29 types)**
+Interface method signatures: `data: any → Record<string, unknown>`, `Promise<any> → Promise<Record<string,unknown>>`
+The storage layer now uses `unknown`-based types throughout, forcing callers to narrow.
+
+**PATTERN 5: websocket.ts — WsPayload type alias added (23 fixed)**
+Added `type WsPayload = Record<string, unknown>` and applied to all broadcast functions:
+`data: any → data: WsPayload`, `message: any → message: WsPayload`, etc.
+WebSocket client callbacks: `client: any → client: WebSocket`
+
+**PATTERN 6: Broad collection type fixes (365+ occurrences)**
+`Map<string, any>` → `Map<string, unknown>`
+`Record<string, any>` → `Record<string, unknown>`
+`Array<any>` → `Array<unknown>`
+`Promise<any>` → `Promise<unknown>` (service layer)
+`Set<any>` → `Set<unknown>`
+Common callback params: `(item: any)`, `(result: any)`, `(value: any)` → `unknown`
+
+**PATTERN 7: autonomousScheduler.ts & actionRegistry.ts (43+ fixed)**
+`inArray(..., [] as any)` → `inArray(..., [] as string[])`
+`workspace: any` → `Record<string, unknown>`
+`(s as any).field` → `(s as Record<string, unknown>).field`
+`const updateData: any = {}` → `Record<string, unknown>`
+
+### Cumulative TypeScript Metrics (All Phases)
+
+| Metric | Baseline | After Phase 10 | Reduction |
+|--------|----------|----------------|-----------|
+| `as any` casts | 5,227 | 4,924 | -303 (-5.8%) |
+| `: any` types | 3,339 | 2,719 | -620 (-18.6%) |
+| **Combined** | **8,566** | **7,643** | **-923 (-10.8%)** |
+| `catch(e: any)` | 246 | **0** | -246 (-100%) |
+| middleware `as any` | 183 | **0** | -183 (-100%) |
+| `(req as any).workspaceId` | 10 | **0** | -10 (-100%) |
+| pool `params: any[]` | 175 | 0* | -175 (-100%) |
+
+*typed as `(string | number | boolean | null)[]`
+
+### Remaining any (Phase 11 targets)
+`storage.ts` (153×) — interface requires complete schema type overhaul (future)
+`trinityIntelligenceLayers.ts` (84×) — deeply nested AI reasoning types
+`server/index.ts` (42×) — global Node.js extensions, seed queries
+`shiftRoutes.ts` (49×) — JOIN result fields not in Drizzle schema

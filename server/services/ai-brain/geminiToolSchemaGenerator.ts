@@ -46,7 +46,7 @@ const COMMON_PARAMETER_SCHEMAS: Record<string, unknown> = {
 };
 
 // Category-specific parameter mappings
-const CATEGORY_PARAMETER_SCHEMAS: Record<ActionCategory, Record<string, any>> = {
+const CATEGORY_PARAMETER_SCHEMAS: Record<ActionCategory, Record<string, unknown>> = {
   scheduling: {
     shiftId: COMMON_PARAMETER_SCHEMAS.shiftId,
     employeeId: COMMON_PARAMETER_SCHEMAS.employeeId,

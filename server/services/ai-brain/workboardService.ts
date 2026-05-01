@@ -259,7 +259,7 @@ class WorkboardService {
         .where(eq(aiWorkboardTasks.id, taskId));
 
       // Get credit reservation ID from task metadata
-      const metadata = (task as any).requestMetadata as Record<string, any> || {};
+      const metadata = (task as any).requestMetadata as Record<string, unknown> || {};
       const reservationId = metadata.creditReservationId;
       const estimatedCredits = metadata.estimatedCredits || Math.ceil((analysisResult.estimatedTokens || 10) * FAST_MODE_CONFIG.creditMultiplier);
 
@@ -365,7 +365,7 @@ class WorkboardService {
         .limit(1);
       
       if (task) {
-        const metadata = (task as any).requestMetadata as Record<string, any> || {};
+        const metadata = (task as any).requestMetadata as Record<string, unknown> || {};
         const reservationId = metadata.creditReservationId;
         if (reservationId) {
           await subagentBanker.consumeReservation({

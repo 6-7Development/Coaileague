@@ -409,7 +409,7 @@ class OrgDataPrivacyGuard {
   /**
    * FILTER DATA: Remove fields that user shouldn't see from response
    */
-  filterSensitiveFields<T extends Record<string, any>>(
+  filterSensitiveFields<T extends Record<string, unknown>>(
     data: T,
     allowedFields: string[],
     userRole: string

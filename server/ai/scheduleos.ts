@@ -300,7 +300,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
     }>;
     conflicts: string[];
   }> {
-    const assignments: any[] = [];
+    const assignments: (string | number | boolean | null)[] = [];
     const conflicts: string[] = [];
     const employeeHours: Map<string, number> = new Map();
 

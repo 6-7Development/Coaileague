@@ -339,7 +339,7 @@ router.get("/growth-log", requireManager, async (req: AuthenticatedRequest, res)
     const eventType = (req.query.type as string) || 'all'; // 'all' | 'learning' | 'decision'
     const { pool } = await import('../db');
 
-    const entries: any[] = [];
+    const entries: (string | number | boolean | null)[] = [];
 
     // 1. Pull ai_learning_events for this workspace
     if (eventType === 'all' || eventType === 'learning') {

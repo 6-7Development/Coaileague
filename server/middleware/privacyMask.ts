@@ -109,7 +109,7 @@ const CLIENT_BILL_RATE_FIELDS = [
  * Masks sensitive fields on an employee object.
  * Pass `ctx` derived from the authenticated request.
  */
-export function maskEmployee<T extends Record<string, any>>(employee: T, ctx: PrivacyContext): T {
+export function maskEmployee<T extends Record<string, unknown>>(employee: T, ctx: PrivacyContext): T {
   const result = { ...employee };
   const ctxWithSubject: PrivacyContext = { ...ctx, subjectEmployeeUserId: employee.userId || ctx.subjectEmployeeUserId };
 
@@ -133,7 +133,7 @@ export function maskEmployee<T extends Record<string, any>>(employee: T, ctx: Pr
 /**
  * Masks sensitive fields on a client object.
  */
-export function maskClient<T extends Record<string, any>>(client: T, ctx: PrivacyContext): T {
+export function maskClient<T extends Record<string, unknown>>(client: T, ctx: PrivacyContext): T {
   const result = { ...client };
 
   if (!canViewClientBillRates(ctx)) {
@@ -149,14 +149,14 @@ export function maskClient<T extends Record<string, any>>(client: T, ctx: Privac
 /**
  * Batch-mask an array of employee records.
  */
-export function maskEmployeeList<T extends Record<string, any>>(employees: T[], ctx: PrivacyContext): T[] {
+export function maskEmployeeList<T extends Record<string, unknown>>(employees: T[], ctx: PrivacyContext): T[] {
   return employees.map(emp => maskEmployee(emp, { ...ctx, subjectEmployeeUserId: emp.userId }));
 }
 
 /**
  * Batch-mask an array of client records.
  */
-export function maskClientList<T extends Record<string, any>>(clients: T[], ctx: PrivacyContext): T[] {
+export function maskClientList<T extends Record<string, unknown>>(clients: T[], ctx: PrivacyContext): T[] {
   return clients.map(c => maskClient(c, ctx));
 }
 

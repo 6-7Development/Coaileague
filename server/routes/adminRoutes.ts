@@ -1627,7 +1627,7 @@ router.get('/support/platform-search', async (req: AuthenticatedRequest, res) =>
     if (!query || query.length < 2) {
       return res.json({ results: [], message: 'Query must be at least 2 characters' });
     }
-    const results: any[] = [];
+    const results: (string | number | boolean | null)[] = [];
     if (!type || type === 'users') {
       const allUsers = await db.select().from(users);
       const matchedUsers = allUsers.filter((u: any) =>
@@ -1689,7 +1689,7 @@ router.get('/support/org/:orgId/documents', async (req: AuthenticatedRequest, re
     const { orgId } = req.params;
     const { employeeId } = req.query;
     const employeesList = await storage.getEmployeesByWorkspace(orgId);
-    let allDocs: any[] = [];
+    let allDocs: (string | number | boolean | null)[] = [];
     if (employeeId) {
       allDocs = await storage.getEmployeeDocuments(orgId, employeeId as string);
     } else {

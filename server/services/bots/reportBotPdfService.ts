@@ -266,8 +266,8 @@ class ReportBotPdfService {
     workspaceId: string;
     officerId?: string | null;
     completedAt: Date;
-    scans: Array<any>;
-    checkpoints: Array<any>;
+    scans: Array<unknown>;
+    checkpoints: Array<unknown>;
   }): Promise<string | null> {
     try {
       const [workspace, officer] = await Promise.all([

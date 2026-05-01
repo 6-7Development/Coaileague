@@ -382,7 +382,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Rank employees by qualification, proximity, and reliability
    */
-  private rankEmployees(employees: any[], request: WorkRequest): EmployeeMatch[] {
+  private rankEmployees(employees: unknown[], request: WorkRequest): EmployeeMatch[] {
     return employees.map(emp => {
       const qualificationScore = this.calculateQualificationScore(emp, request);
       const proximityScore = this.calculateProximityScore(emp, request);

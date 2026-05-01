@@ -54,7 +54,7 @@ router.get('/rooms/live', requireAuth, async (req: AuthenticatedRequest, res) =>
     const platformRole = (req.user)?.platformRole;
     const isSupportStaff = !!platformRole && platformRole !== 'none';
 
-    let orgRooms: any[] = [];
+    let orgRooms: (string | number | boolean | null)[] = [];
     if (isSupportStaff) {
       orgRooms = await storage.getAllOrganizationChatRooms();
     } else if (workspaceId) {

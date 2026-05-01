@@ -347,7 +347,7 @@ function SectionRenderer({
   disabled,
 }: {
   section: TemplateSection;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   onFieldChange: (id: string, value: any) => void;
   errors: Record<string, string>;
   disabled?: boolean;
@@ -415,7 +415,7 @@ export function UniversalFormRenderer({
 }: UniversalFormRendererProps) {
   const { toast } = useToast();
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasDraft, setHasDraft] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
@@ -453,7 +453,7 @@ export function UniversalFormRenderer({
 
   // ── Auto-save draft ─────────────────────────────────────────────────────────
   const saveDraftMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-forms/draft", {
         templateId,
         formData: data,
@@ -481,7 +481,7 @@ export function UniversalFormRenderer({
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const submitMutation = useMutation({
-    mutationFn: async (payload: { formData: Record<string, any>; gpsData: GpsData | null }) => {
+    mutationFn: async (payload: { formData: Record<string, unknown>; gpsData: GpsData | null }) => {
       const res = await apiRequest("POST", "/api/document-forms/submit", {
         templateId,
         formData: payload.formData,

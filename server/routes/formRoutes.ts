@@ -390,7 +390,7 @@ router.get("/form-templates/available", requireAuth, async (req: AuthenticatedRe
     const fws = await getFormWorkflowService();
     const systemTemplates = fws.getAvailableTemplates(workspace?.businessCategory || undefined);
 
-    let customForms: any[] = [];
+    let customForms: (string | number | boolean | null)[] = [];
     if (workspaceId) {
       try {
         customForms = (await storage.getCustomFormsByOrganization(workspaceId)).map((f: any) => ({

@@ -322,7 +322,7 @@ router.get('/contracts/:applicationId', async (req, res) => {
       const orgName = workspace?.name || 'The Organization';
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-      const contractsToCreate: any[] = [];
+      const contractsToCreate: (string | number | boolean | null)[] = [];
 
       contractsToCreate.push({
         id: crypto.randomUUID(),

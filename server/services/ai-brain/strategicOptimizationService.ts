@@ -654,7 +654,7 @@ class StrategicOptimizationService {
 
     return results.map(r => {
       const emp = r.employee;
-      const m: Record<string, any> | null = null; // employee_metrics merged into employees JSONB
+      const m: Record<string, unknown> | null = null; // employee_metrics merged into employees JSONB
 
       const noShows = (m as any)?.noShowCount || 0;
       const callIns = (m as any)?.lastMinuteCancellations || 0;

@@ -37,7 +37,7 @@ interface MotdDialogProps {
 }
 
 // Icon mapping
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, unknown> = {
   bell: Bell,
   alert: AlertCircle,
   info: Info,

@@ -9,7 +9,7 @@ const log = createLogger('AuditTrail');
 
 const router = Router();
 
-const q = (text: string, params?: any[]) => typedPool(text, params);
+const q = (text: string, params?: unknown[]) => typedPool(text, params);
 const MAX_EXPORT_ROWS = 10_000;
 
 // Actions that are system automation noise — not human compliance records.

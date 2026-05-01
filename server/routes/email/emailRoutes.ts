@@ -324,7 +324,7 @@ emailRouter.patch('/:emailId', async (req: AuthenticatedRequest, res) => {
     const { is_read, is_starred, is_archived, folder } = req.body;
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (is_read !== undefined)     { updates.push(`is_read = $${idx++}`);     values.push(is_read); }
@@ -565,7 +565,7 @@ emailRouter.put('/addresses/:id/settings', async (req: AuthenticatedRequest, res
     if (!check.rows[0]) return res.status(404).json({ error: 'Address not found' });
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (forwarding_address !== undefined) { updates.push(`forwarding_address = $${idx++}`); values.push(forwarding_address || null); }

@@ -138,7 +138,7 @@ class DataResearchSkill extends BaseSkill {
     source: string,
     params: ResearchParams,
     logs: string[]
-  ): Promise<{ data: any[]; summary: any; dataPoints: number }> {
+  ): Promise<{ data: unknown[]; summary: any; dataPoints: number }> {
     const wsId = params.workspaceId;
 
     try {
@@ -208,7 +208,7 @@ class DataResearchSkill extends BaseSkill {
 
   private async analyzeSource(
     source: string,
-    sourceData: { data: any[]; summary: any; dataPoints: number },
+    sourceData: { data: unknown[]; summary: any; dataPoints: number },
     params: ResearchParams,
     logs: string[]
   ): Promise<ResearchFinding[]> {
@@ -392,7 +392,7 @@ class DataResearchSkill extends BaseSkill {
     return [...new Set(recs)];
   }
 
-  private countBy(items: any[], key: string): Record<string, number> {
+  private countBy(items: unknown[], key: string): Record<string, number> {
     const counts: Record<string, number> = {};
     for (const item of items) {
       const val = (item[key] || 'unspecified').toString();

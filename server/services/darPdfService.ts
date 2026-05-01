@@ -145,7 +145,7 @@ interface HourBucket {
 
 // ─── DB helper ───────────────────────────────────────────────────────────────
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
@@ -847,7 +847,7 @@ async function resolveSupervisor(workspaceId: string, shiftId?: string | null): 
       [workspaceId]
     );
     if (rows.length) {
-      const r = rows[0] as any;
+      const r = rows[0] as Record<string, unknown>;
       return `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'On-Duty Supervisor';
     }
   } catch (err) { 
@@ -862,11 +862,11 @@ async function resolveClientName(workspaceId: string, clientId?: string | null, 
   try {
     if (clientId) {
       const rows = await q(`SELECT COALESCE(company_name, first_name || ' ' || last_name, 'Client') AS name FROM clients WHERE id=$1 AND workspace_id=$2`, [clientId, workspaceId]);
-      if (rows.length) return (rows[0] as any).name;
+      if (rows.length) return (rows[0] as Record<string, unknown>).name;
     }
     if (siteId) {
       const rows = await q(`SELECT client_id FROM sites WHERE id=$1 AND workspace_id=$2`, [siteId, workspaceId]);
-      const cid = (rows[0] as any)?.client_id;
+      const cid = (rows[0] as Record<string, unknown>)?.client_id;
       if (cid) {
         const crows = await q(`SELECT COALESCE(company_name, first_name || ' ' || last_name, 'Client') AS name FROM clients WHERE id=$1`, [cid]);
         if (crows.length) return (crows[0] as any).name;

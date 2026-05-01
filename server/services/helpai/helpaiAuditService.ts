@@ -254,7 +254,7 @@ export class HelpaiAuditService {
     const recalculatedHash = this.generateActionHash({
       action: log.action,
       apiName: log.apiName || undefined,
-      requestPayload: log.requestPayload as Record<string, any>,
+      requestPayload: log.requestPayload as Record<string, unknown>,
       integrationId: log.integrationId || undefined,
     });
 
@@ -340,7 +340,7 @@ export class HelpaiAuditService {
   /**
    * Sort object keys recursively for consistent hashing
    */
-  private sortObjectKeys(obj: any): any {
+  private sortObjectKeys(obj: unknown): any {
     if (obj === null || typeof obj !== 'object') {
       return obj;
     }

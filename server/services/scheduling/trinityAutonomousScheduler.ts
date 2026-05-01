@@ -238,7 +238,7 @@ function getMaxShiftsPerWeekCap(tier: string): number {
 class TrinityAutonomousSchedulerService {
   private static instance: TrinityAutonomousSchedulerService;
   private activeSessions: Map<string, SchedulingSession> = new Map();
-  private historicalPatterns: Map<string, any> = new Map();
+  private historicalPatterns: Map<string, unknown> = new Map();
   private lastBroadcastTime: Map<string, number> = new Map();
 
   static getInstance(): TrinityAutonomousSchedulerService {
@@ -784,7 +784,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Analyze historical patterns for learning
    */
-  private analyzePatterns(historicalShifts: any[]): any {
+  private analyzePatterns(historicalShifts: unknown[]): any {
     const patterns: any = {
       dayOfWeek: new Map<number, number>(),
       hourOfDay: new Map<number, number>(),
@@ -882,8 +882,8 @@ class TrinityAutonomousSchedulerService {
   }
 
   private prioritizeShifts(
-    openShifts: any[],
-    allClients: any[],
+    openShifts: unknown[],
+    allClients: unknown[],
     prioritizeBy: string
   ): ShiftPriority[] {
     const now = new Date();
@@ -967,8 +967,8 @@ class TrinityAutonomousSchedulerService {
    */
   private async assignShift(
     priorityShift: ShiftPriority,
-    allEmployees: any[],
-    allClients: any[],
+    allEmployees: unknown[],
+    allClients: unknown[],
     config: SchedulingConfig,
     session: SchedulingSession,
     runTracker: RunAssignmentTracker
@@ -1345,7 +1345,7 @@ class TrinityAutonomousSchedulerService {
    */
   private async scoreEmployeesForShift(
     shift: any,
-    allEmployees: any[],
+    allEmployees: unknown[],
     client: any,
     config: SchedulingConfig,
     runTracker: RunAssignmentTracker,
@@ -2112,8 +2112,8 @@ class TrinityAutonomousSchedulerService {
     config: SchedulingConfig,
     session: SchedulingSession,
     dateRanges: Array<{ label: string; start: Date; end: Date }>,
-    allEmployees: any[],
-    allClients: any[],
+    allEmployees: unknown[],
+    allClients: unknown[],
   ): Promise<void> {
     if (dateRanges.length === 0) return;
 
@@ -2438,8 +2438,8 @@ class TrinityAutonomousSchedulerService {
 
   async evaluateShiftForTraining(
     shift: any,
-    allEmployees: any[],
-    allClients: any[],
+    allEmployees: unknown[],
+    allClients: unknown[],
     workspaceId: string,
     runTracker: RunAssignmentTracker
   ): Promise<{

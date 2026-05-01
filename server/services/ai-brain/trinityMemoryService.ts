@@ -1474,7 +1474,7 @@ class TrinityMemoryService {
         if (action.executionStatus === 'success') categoryCounts[cat].success++;
         if (action.executionStatus === 'error') categoryCounts[cat].failure++;
 
-        const payload = action.inputPayload as Record<string, any> | null;
+        const payload = action.inputPayload as Record<string, unknown> | null;
         if (payload?.impactLevel && ['high', 'critical'].includes(payload.impactLevel)) {
           recentHighImpact.push({
             category: cat,

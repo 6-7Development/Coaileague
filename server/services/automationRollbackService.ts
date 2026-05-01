@@ -10,7 +10,7 @@ export interface RollbackableAction {
   entityType: string | null;
   entityId: string | null;
   actionDescription: string | null;
-  changes: { before?: Record<string, unknown>; after?: Record<string, any> } | null;
+  changes: { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
   userId: string;
   userEmail: string;
   createdAt: Date;
@@ -90,7 +90,7 @@ class AutomationRollbackService {
       .limit(limit);
 
     return logs.map((log) => {
-      const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, any> } | null;
+      const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
       const canRollback = this.canRollbackAction(log.entityType, log.action, changes);
 
       return {
@@ -112,7 +112,7 @@ class AutomationRollbackService {
   private canRollbackAction(
     entityType: string | null,
     action: string,
-    changes: { before?: Record<string, unknown>; after?: Record<string, any> } | null
+    changes: { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
   ): { canRollback: boolean; reason?: string } {
     if (!entityType) {
       return { canRollback: false, reason: 'No entity type recorded' };
@@ -157,7 +157,7 @@ class AutomationRollbackService {
       return { success: false, auditLogId, entityType: '', entityId: '', restoredFields: [], error: 'Audit log entry not found in this workspace' };
     }
 
-    const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, any> } | null;
+    const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
     const canRollback = this.canRollbackAction(log.entityType, log.action, changes);
 
     if (!canRollback.canRollback) {

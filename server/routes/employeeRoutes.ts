@@ -95,7 +95,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 200);
     const offset = (page - 1) * limit;
 
-    let allEmployees: any[] = [];
+    let allEmployees: (string | number | boolean | null)[] = [];
     // Platform staff may pass an explicit workspaceId via query to view any org.
     // Regular users always use their authenticated session workspaceId.
     // NEVER fall back to the "first workspace in the DB" — that is a cross-tenant leak.

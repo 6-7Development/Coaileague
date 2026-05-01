@@ -71,7 +71,7 @@ router.patch("/proposals/:id", requireAuth, async (req: AuthenticatedRequest, re
       'actual_close_date', 'converted_to_client_id', 'prospect_name',
       'contact_name', 'contact_email', 'contact_phone', 'notes'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) {

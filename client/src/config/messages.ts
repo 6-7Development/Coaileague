@@ -136,7 +136,7 @@ export const MESSAGES = {
  * Get message with interpolation
  * Usage: getMessage('create.success', { entity: 'Employee' })
  */
-export function getMessage(path: string, vars?: Record<string, any>): string {
+export function getMessage(path: string, vars?: Record<string, unknown>): string {
   const parts = path.split(".");
   let message: any = MESSAGES;
   

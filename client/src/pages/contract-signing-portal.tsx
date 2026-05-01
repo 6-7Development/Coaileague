@@ -41,7 +41,7 @@ interface ContractData {
   summary?: string;
   clientName?: string;
   clientEmail?: string;
-  services?: any[];
+  services?: unknown[];
   billingTerms?: any;
   totalValue?: string;
   status: string;

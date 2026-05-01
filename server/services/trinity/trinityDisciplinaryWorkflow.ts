@@ -109,7 +109,7 @@ function selectDocumentType(
 
 // ── Subject lookup ──────────────────────────────────────────────────────────
 
-async function getSubjectInfo(intake: DisciplinaryIntake): Promise<Record<string, any>> {
+async function getSubjectInfo(intake: DisciplinaryIntake): Promise<Record<string, unknown>> {
   if (intake.subjectType === 'employee') {
     const { rows } = await pool.query(
       `SELECT e.first_name, e.last_name, e.email, e.employee_number,
@@ -326,7 +326,7 @@ function parseDraftJSON(text: string): DraftCore | null {
   }
 }
 
-function normalizeSeverity(value: any): DisciplinarySeverity {
+function normalizeSeverity(value: unknown): DisciplinarySeverity {
   const s = String(value || '').toLowerCase();
   if (s === 'severe' || s === 'serious' || s === 'moderate' || s === 'minor') return s;
   return 'moderate';

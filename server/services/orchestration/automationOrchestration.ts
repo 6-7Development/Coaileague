@@ -167,7 +167,7 @@ class AutomationOrchestrationService {
     params: AutomationParams,
     executor: (ctx: AutomationStepContext, orchestrationCtx: OrchestrationContext) => Promise<T>,
     options?: {
-      fetch?: (ctx: AutomationStepContext) => Promise<Record<string, any>>;
+      fetch?: (ctx: AutomationStepContext) => Promise<Record<string, unknown>>;
       validate?: (ctx: AutomationStepContext) => Promise<{ valid: boolean; errors?: string[] }>;
       notify?: (result: T, ctx: AutomationStepContext) => Promise<void>;
     }

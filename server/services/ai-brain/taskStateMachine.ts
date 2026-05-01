@@ -486,7 +486,7 @@ class TaskStateMachine {
    */
   async updateTaskSteps(
     taskId: string,
-    steps: any[],
+    steps: unknown[],
     planId?: string,
     framework?: string
   ): Promise<boolean> {

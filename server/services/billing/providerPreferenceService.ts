@@ -42,7 +42,7 @@ class ProviderPreferenceService {
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
-      const settings = (ws?.blob || {}) as Record<string, any>;
+      const settings = (ws?.blob || {}) as Record<string, unknown>;
 
       const prefs: ProviderPreferences = {
         invoiceProvider: (settings.invoiceProvider as InvoiceProvider) || 'stripe',

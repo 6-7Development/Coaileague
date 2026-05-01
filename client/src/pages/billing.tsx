@@ -91,7 +91,7 @@ interface PricingTier {
 
 interface PricingData {
   tiers: PricingTier[];
-  creditPacks: any[];
+  creditPacks: unknown[];
   overages: any;
 }
 
@@ -319,7 +319,7 @@ export default function Billing() {
   });
 
   // ── Payroll cycle settings ─────────────────────────────────────────────────
-  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{ settings: Record<string, any> | null }>({
+  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{ settings: Record<string, unknown> | null }>({
     queryKey: ["/api/billing-settings/workspace"],
     enabled: !!user,
   });
@@ -347,7 +347,7 @@ export default function Billing() {
   }, [workspaceBillingSettings]);
 
   const savePayrollMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) =>
+    mutationFn: async (data: Record<string, unknown>) =>
       apiRequest("PATCH", "/api/billing-settings/workspace", data),
     onSuccess: () => {
       refetchWorkspaceBillingSettings();
@@ -364,7 +364,7 @@ export default function Billing() {
       toast({ title: "Select a cycle", description: "Choose weekly, bi-weekly, or another frequency first.", variant: "destructive" });
       return;
     }
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       payrollCycle,
       payrollCutoffDays: parseInt(payrollCutoffDays) || 3,
     };
@@ -451,11 +451,11 @@ export default function Billing() {
     enabled: !!user && selectedTab === "client-terms",
   });
   const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const { data: clientTermsData, isLoading: clientTermsLoading, refetch: refetchClientTerms } = useQuery<{ settings: Record<string, any> | null }>({
+  const { data: clientTermsData, isLoading: clientTermsLoading, refetch: refetchClientTerms } = useQuery<{ settings: Record<string, unknown> | null }>({
     queryKey: ["/api/billing-settings/clients", selectedClientId],
     enabled: !!selectedClientId,
   });
-  const clientTerms = clientTermsData?.settings || {} as Record<string, any>;
+  const clientTerms = clientTermsData?.settings || {} as Record<string, unknown>;
 
   const [ctBillingCycle, setCtBillingCycle] = useState<string>("monthly");
   const [ctPaymentTerms, setCtPaymentTerms] = useState<string>("net_30");
@@ -478,7 +478,7 @@ export default function Billing() {
   }, [clientTermsData, selectedClientId]);
 
   const saveClientTermsMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await secureFetch(`/api/billing-settings/clients/${selectedClientId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -501,7 +501,7 @@ export default function Billing() {
       toast({ title: "Select a client first", variant: "destructive" });
       return;
     }
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       billingCycle: ctBillingCycle,
       paymentTerms: ctPaymentTerms,
     };

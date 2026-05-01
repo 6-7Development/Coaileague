@@ -612,7 +612,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
     
     log.info('[QuickBooks Preview] Employee response status:', employeeResponse.status);
     
-    let employees: any[] = [];
+    let employees: (string | number | boolean | null)[] = [];
     if (employeeResponse.ok) {
       const empData = await employeeResponse.json();
       log.info('[QuickBooks Preview] Raw employee count:', empData.QueryResponse?.Employee?.length || 0);
@@ -666,7 +666,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
     
     log.info('[QuickBooks Preview] Customer response status:', customerResponse.status);
 
-    let customers: any[] = [];
+    let customers: (string | number | boolean | null)[] = [];
     if (customerResponse.ok) {
       const custData = await customerResponse.json();
       log.info('[QuickBooks Preview] Raw customer count:', custData.QueryResponse?.Customer?.length || 0);
@@ -730,7 +730,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
 
     // Fetch payroll items
     const payrollQuery = encodeURIComponent('select * from PayrollItemWage MAXRESULTS 50');
-    let payrollItems: any[] = [];
+    let payrollItems: (string | number | boolean | null)[] = [];
     try {
       const payrollResponse = await fetch(`${apiBase}/${realmId}/query?query=${payrollQuery}`, {
         headers: {
@@ -752,7 +752,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
 
     // Fetch chart of accounts
     const accountQuery = encodeURIComponent('select * from Account MAXRESULTS 100');
-    let chartOfAccounts: any[] = [];
+    let chartOfAccounts: (string | number | boolean | null)[] = [];
     try {
       const accountResponse = await fetch(`${apiBase}/${realmId}/query?query=${accountQuery}`, {
         headers: {
@@ -1544,8 +1544,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     const errors: string[] = [];
     let empCounter = existingEmployees.length;
 
-    const employeesToInsert: any[] = [];
-    const clientsToInsert: any[] = [];
+    const employeesToInsert: (string | number | boolean | null)[] = [];
+    const clientsToInsert: (string | number | boolean | null)[] = [];
 
     if (processedEmployees && processedEmployees.length > 0) {
       for (const emp of processedEmployees) {
@@ -2458,7 +2458,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
     const environment = (req.query.environment as 'production' | 'sandbox') || 'production';
     
     // Get rate limit stats for specific realm or all realms (with null safety)
-    let rateLimitStats: any[] = [];
+    let rateLimitStats: (string | number | boolean | null)[] = [];
     try {
       if (realmId) {
         const stats = quickbooksRateLimiter.getStats(realmId, environment);
@@ -2474,7 +2474,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
     const tokenDaemonStatus = quickbooksTokenRefresh.getStatus();
     
     // Get recent API usage from database
-    let recentUsage: any[] = [];
+    let recentUsage: (string | number | boolean | null)[] = [];
     try {
       // Converted to Drizzle ORM: getRecentUsage → INTERVAL
       const usageResult = await db.execute(
@@ -2495,7 +2495,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
     }
     
     // Get active credentials count and health
-    let credentialsHealth: any[] = [];
+    let credentialsHealth: (string | number | boolean | null)[] = [];
     try {
       // CATEGORY C — Raw SQL retained: ORDER BY | Tables: oauth_states | Verified: 2026-03-23
       const credsResult = await typedQuery(
@@ -2646,7 +2646,7 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
       }
     });
 
-    const orchestrationMap = new Map<string, any>();
+    const orchestrationMap = new Map<string, unknown>();
 
     for (const log of qbLogs) {
       try {

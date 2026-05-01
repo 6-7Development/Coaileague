@@ -45,7 +45,7 @@ function detectAgreementSignal(message: string): boolean {
 }
 
 // Extract proposed terms from client message via SPS AI
-async function extractProposedTerms(message: string): Promise<Record<string, any>> {
+async function extractProposedTerms(message: string): Promise<Record<string, unknown>> {
   try {
     const prompt = `You are a terms extraction assistant for a security services company proposal.
 Analyze this client message and extract any specific terms they are proposing or questioning.

@@ -110,7 +110,7 @@ class DocumentGeneratorSkill extends BaseSkill {
     }
   }
 
-  private async gatherData(params: DocumentGenerationParams, logs: string[]): Promise<Record<string, any>> {
+  private async gatherData(params: DocumentGenerationParams, logs: string[]): Promise<Record<string, unknown>> {
     const data: Record<string, unknown> = {};
     const wsId = params.workspaceId;
 
@@ -352,7 +352,7 @@ Requirements:
     return parts.join('\n');
   }
 
-  private groupBy(items: any[], key: string): Record<string, number> {
+  private groupBy(items: unknown[], key: string): Record<string, number> {
     const groups: Record<string, number> = {};
     for (const item of items) {
       const val = item[key] || 'unspecified';

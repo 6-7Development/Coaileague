@@ -31,12 +31,12 @@ export default function ContractorDashboard() {
     staleTime: 60000,
   });
 
-  const { data: docsRes, isLoading: docsLoading, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isLoading: docsLoading, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });

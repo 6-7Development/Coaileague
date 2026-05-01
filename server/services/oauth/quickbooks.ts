@@ -419,7 +419,7 @@ export class QuickBooksOAuthService {
       throw new Error('Failed to decrypt refresh token');
     }
     
-    const connectionMetadata = connection.metadata as Record<string, any> | null;
+    const connectionMetadata = connection.metadata as Record<string, unknown> | null;
     const { clientId, clientSecret } = this.getCredentialsForBackgroundOps(connectionMetadata || undefined);
 
     const response = await fetch(this.tokenEndpoint, {
@@ -482,7 +482,7 @@ export class QuickBooksOAuthService {
     try {
       const decryptedRefreshToken = decryptToken(connection.refreshToken);
       if (decryptedRefreshToken) {
-        const connectionMetadata = connection.metadata as Record<string, any> | null;
+        const connectionMetadata = connection.metadata as Record<string, unknown> | null;
         const { clientId, clientSecret } = this.getCredentialsForBackgroundOps(connectionMetadata || undefined);
         
         const response = await fetch(this.revokeEndpoint, {

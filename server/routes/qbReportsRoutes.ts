@@ -62,7 +62,7 @@ router.get("/client-profitability", async (req: AuthenticatedRequest, res) => {
       .from(clients)
       .where(eq(clients.workspaceId, workspaceId));
 
-    const rows: any[] = [];
+    const rows: (string | number | boolean | null)[] = [];
 
     for (const client of clientList) {
       const invoiceData = await db
@@ -576,7 +576,7 @@ router.get("/cash-flow", async (req: AuthenticatedRequest, res) => {
       .groupBy(sql`TO_CHAR(${payrollRuns.processedAt}, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(${payrollRuns.processedAt}, 'YYYY-MM')`);
 
-    let expenseOut: any[] = [];
+    let expenseOut: (string | number | boolean | null)[] = [];
     try {
       expenseOut = await db
         .select({

@@ -300,7 +300,7 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
       log.warn('[HRInline] Failed to update onboarding status', { error: err.message });
     }
 
-    let openIncidents: any[] = [];
+    let openIncidents: (string | number | boolean | null)[] = [];
     try {
       openIncidents = await db.select({
         id: incidents.id,
@@ -990,7 +990,7 @@ router.get("/organizations/managed", requireAuth, async (req: AuthenticatedReque
     }
 
     const ownedWorkspaces = await db.select().from(workspaces).where(eq(workspaces.ownerId, userId));
-    const orgs: any[] = [];
+    const orgs: (string | number | boolean | null)[] = [];
     const processedIds = new Set<string>();
 
     for (const workspace of ownedWorkspaces) {

@@ -51,7 +51,7 @@ export default function OrgManagerDashboard() {
     staleTime: 30000,
   });
 
-  const { data: employeesRes, isError: employeesIsError, error: employeesError, refetch: refetchEmployees } = useQuery<{ data: any[] }>({
+  const { data: employeesRes, isError: employeesIsError, error: employeesError, refetch: refetchEmployees } = useQuery<{ data: unknown[] }>({
     queryKey: ["/api/employees"],
     staleTime: 60000,
   });

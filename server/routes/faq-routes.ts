@@ -60,7 +60,7 @@ export function registerFaqRoutes(app: Express) {
     let query = db.select().from(helposFaqs);
 
     // Build where conditions using Drizzle's and() function
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     
     // Filter by published status (unless staff requesting unpublished)
     if (!showUnpublished) {

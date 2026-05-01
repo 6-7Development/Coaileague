@@ -156,7 +156,7 @@ router.get('/role-theme/:role', async (req: Request, res: Response) => {
 });
 
 // In-memory storage for notification preferences (fallback when DB unavailable)
-const notificationPrefsMemory = new Map<string, any>();
+const notificationPrefsMemory = new Map<string, unknown>();
 
 router.get('/notification-preferences', async (req: Request, res: Response) => {
   try {
@@ -307,7 +307,7 @@ router.get('/onboarding/progress', async (req: Request, res: Response) => {
     }
     
     // Try to load from database first
-    let dbStates: any[] = [];
+    let dbStates: (string | number | boolean | null)[] = [];
     try {
       dbStates = await db.select()
         .from(interactiveOnboardingState)
@@ -556,7 +556,7 @@ router.get('/ai-brain/events', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     
     // Try to get from database - return workspace-scoped events OR global events
-    let events: any[] = [];
+    let events: (string | number | boolean | null)[] = [];
     try {
       // Get global events
       const globalEvents = await db.select()
@@ -566,7 +566,7 @@ router.get('/ai-brain/events', async (req: Request, res: Response) => {
         .limit(limit);
       
       // Get workspace-specific events if workspace is set
-      let workspaceEvents: any[] = [];
+      let workspaceEvents: (string | number | boolean | null)[] = [];
       if (workspaceId) {
         workspaceEvents = await db.select()
           .from(aiBrainLiveEvents)

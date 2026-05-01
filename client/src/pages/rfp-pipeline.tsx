@@ -88,7 +88,7 @@ interface PipelineActivity {
   activityType: string;
   description: string | null;
   performedBy: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 

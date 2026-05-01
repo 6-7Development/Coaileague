@@ -294,7 +294,7 @@ class TrinityOrgContextBuilder {
 
     // ── Assemble workspace snap ─────────────────────────────────────────────
     const ws = workspaceRow[0];
-    const wsMeta = (ws?.metadata as Record<string, any>) || {};
+    const wsMeta = (ws?.metadata as Record<string, unknown>) || {};
     const lastLLCDate = wsMeta.lastLLCComplianceMeeting as string | undefined;
     let daysUntilLLCOverdue: number | null = null;
     if (lastLLCDate) {

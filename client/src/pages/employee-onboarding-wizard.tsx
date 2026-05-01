@@ -107,7 +107,7 @@ function DocSignaturePanel({
     if (atBottom) setHasScrolled(true);
   }, []);
 
-  const iconMap: Record<string, any> = {
+  const iconMap: Record<string, unknown> = {
     employee_contract: ScrollText,
     offer_letter: FileText,
     liability_waiver: Shield,

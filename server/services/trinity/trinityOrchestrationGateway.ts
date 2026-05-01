@@ -238,7 +238,7 @@ class TrinityOrchestrationGateway {
     }
   }
 
-  private sanitizePayload(payload?: Record<string, unknown>): Record<string, any> | null {
+  private sanitizePayload(payload?: Record<string, unknown>): Record<string, unknown> | null {
     if (!payload) return null;
 
     const sensitiveKeys = ['password', 'token', 'secret', 'key', 'auth', 'credit_card', 'ssn'];
@@ -959,7 +959,7 @@ export function trinityOrchestrationMiddleware() {
     };
 
     // Intercept res.end to log after response completes
-    res.end = function(...args: any[]) {
+    res.end = function(...args: unknown[]) {
       const responseTimeMs = Date.now() - startTime;
       const responseStatus = res.statusCode;
       const isSuccess = responseStatus >= 200 && responseStatus < 300;

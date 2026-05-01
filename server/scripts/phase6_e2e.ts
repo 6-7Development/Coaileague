@@ -93,7 +93,7 @@ async function run() {
     SELECT COUNT(*) as total, COUNT(calculation_inputs) as with_inputs
     FROM payroll_entries WHERE workspace_id = 'dev-acme-security-ws'
   `);
-  const a = auditRows.rows[0] as any;
+  const a = auditRows.rows[0] as Record<string, unknown>;
   console.log(`Payroll entries: total=${a.total} | with calculation_inputs=${a.with_inputs}`);
   console.log('Pre-Phase-6 seed data has NULL calculation_inputs (expected). New payroll runs will populate the audit trail.');
 

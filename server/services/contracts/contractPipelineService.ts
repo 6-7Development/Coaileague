@@ -128,7 +128,7 @@ async function persistSignerToDB(signer: ContractSigner): Promise<void> {
     });
 }
 
-async function updateSignerInDB(signerId: string, updates: Partial<Record<string, any>>): Promise<void> {
+async function updateSignerInDB(signerId: string, updates: Partial<Record<string, unknown>>): Promise<void> {
   await db
     .update(clientContractSignatures)
     .set(updates)
@@ -156,7 +156,7 @@ interface CreateProposalInput {
   title: string;
   content: string;
   templateId?: string;
-  services?: any[];
+  services?: unknown[];
   billingTerms?: any;
   totalValue?: number;
   effectiveDate?: string;
@@ -1342,7 +1342,7 @@ class ContractPipelineService {
   async generateEvidencePackage(contractId: string): Promise<{
     contract: ClientContract;
     signatures: ClientContractSignature[];
-    auditTrail: any[];
+    auditTrail: unknown[];
     integrityVerification: { valid: boolean; storedHash?: string; computedHash?: string };
     generatedAt: Date;
   }> {

@@ -80,11 +80,11 @@ export interface BusinessInsightRecommendation {
 interface OrgRawData {
   workspace: any;
   context: any;
-  employeeList: any[];
-  clientList: any[];
-  invoiceList: any[];
+  employeeList: unknown[];
+  clientList: unknown[];
+  invoiceList: unknown[];
   openShiftsCount: number;
-  recentPayroll: any[];
+  recentPayroll: unknown[];
   overtimeHours: number;
   unpaidTotal: number;
   totalRevenue: number;

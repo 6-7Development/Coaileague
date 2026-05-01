@@ -69,7 +69,7 @@ export interface NotificationIssue {
 // METRICS COLLECTORS
 // ============================================================================
 
-async function collectNotificationMetrics(): Promise<Record<string, any>> {
+async function collectNotificationMetrics(): Promise<Record<string, unknown>> {
   try {
     // Count unread notifications
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -99,7 +99,7 @@ async function collectNotificationMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectMaintenanceAlertMetrics(): Promise<Record<string, any>> {
+async function collectMaintenanceAlertMetrics(): Promise<Record<string, unknown>> {
   try {
     // Active maintenance alerts
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -126,7 +126,7 @@ async function collectMaintenanceAlertMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectWhatsNewMetrics(): Promise<Record<string, any>> {
+async function collectWhatsNewMetrics(): Promise<Record<string, unknown>> {
   try {
     // Unviewed entries
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -151,7 +151,7 @@ async function collectWhatsNewMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectClearOperationMetrics(): Promise<Record<string, any>> {
+async function collectClearOperationMetrics(): Promise<Record<string, unknown>> {
   try {
     // Recent acknowledgments (indicates clear operations working)
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`

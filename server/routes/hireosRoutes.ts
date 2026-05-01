@@ -315,9 +315,9 @@ router.post('/checklists', requireManager, async (req: AuthenticatedRequest, res
       return res.status(403).json({ message: "Template not found or access denied" });
     }
     
-    let checklistItems: any[] = [];
+    let checklistItems: (string | number | boolean | null)[] = [];
     if (template) {
-      checklistItems = template.steps.map((step: any) => ({
+      checklistItems = template.steps.map((step: unknown) => ({
         itemId: step.stepId,
         itemName: step.stepName,
         itemType: step.stepType,
@@ -364,12 +364,12 @@ router.patch('/checklists/:checklistId', requireAuth, async (req: AuthenticatedR
     }
 
     const totalItems = checklistItems.length;
-    const completedItems = checklistItems.filter((item: any) => item.isCompleted).length;
+    const completedItems = checklistItems.filter((item: unknown) => item.isCompleted).length;
     const overallProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
     const allRequiredCompleted = checklistItems
-      .filter((item: any) => item.isRequired)
-      .every((item: any) => item.isCompleted);
+      .filter((item: unknown) => item.isRequired)
+      .every((item: unknown) => item.isCompleted);
 
     const onboardingCompletedAt = allRequiredCompleted ? new Date() : null;
 
@@ -433,8 +433,8 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
       return new Promise((resolve, reject) => {
         const protocol = url.startsWith('https') ? https : http;
         protocol.get(url, (response: any) => {
-          const chunks: any[] = [];
-          response.on('data', (chunk: any) => chunks.push(chunk));
+          const chunks: (string | number | boolean | null)[] = [];
+          response.on('data', (chunk: unknown) => chunks.push(chunk));
           response.on('end', () => resolve(Buffer.concat(chunks)));
           response.on('error', reject);
         }).on('error', reject);

@@ -137,7 +137,7 @@ export default function ApplicantVisualCompliance() {
   const artifacts: any[] = artifactsData?.artifacts ?? [];
 
   // Get the latest artifact for each slot type
-  const latestByType: Record<string, any> = {};
+  const latestByType: Record<string, unknown> = {};
   for (const a of artifacts) {
     if (!latestByType[a.artifact_type]) latestByType[a.artifact_type] = a;
   }

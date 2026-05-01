@@ -217,7 +217,7 @@ export class FeatureToggleManager {
     return await getFeatureToggle(path);
   }
 
-  async getAllToggles(): Promise<Record<string, any>> {
+  async getAllToggles(): Promise<Record<string, unknown>> {
     return await getFeatureToggles();
   }
 

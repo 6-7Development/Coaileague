@@ -64,7 +64,7 @@ async function run() {
 
   let created = 0;
   const batchSize = 50;
-  const insertBatch: any[] = [];
+  const insertBatch: (string | number | boolean | null)[] = [];
 
   for (const emp of allEmployees) {
     const hireDate = emp.hireDate ? new Date(emp.hireDate) : new Date('2024-01-10');

@@ -166,8 +166,8 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
 
     // Generate real PDF using PDFKit + saveToVault
     const { default: PDFDocument } = await import('pdfkit');
-    const reportData = (report.reportData || {}) as Record<string, any>;
-    const summaryStats = (report.summaryStats || {}) as Record<string, any>;
+    const reportData = (report.reportData || {}) as Record<string, unknown>;
+    const summaryStats = (report.summaryStats || {}) as Record<string, unknown>;
     const periodStart = report.periodStart ? new Date(report.periodStart).toLocaleDateString() : 'N/A';
     const periodEnd = report.periodEnd ? new Date(report.periodEnd).toLocaleDateString() : 'N/A';
 

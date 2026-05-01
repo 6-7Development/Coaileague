@@ -93,7 +93,7 @@ type WebhookNotification = LegacyWebhookNotification | CloudEventNotification[];
  * Detect if the incoming payload is the new CloudEvents format.
  * CloudEvents payload is a TOP-LEVEL ARRAY (vs legacy which is an object with eventNotifications).
  */
-function isCloudEventsFormat(payload: any): payload is CloudEventNotification[] {
+function isCloudEventsFormat(payload: unknown): payload is CloudEventNotification[] {
   return Array.isArray(payload) && payload.length > 0 && 
     typeof payload[0]?.specversion === 'string' &&
     typeof payload[0]?.data?.realmId === 'string';

@@ -200,7 +200,7 @@ export async function executeGeminiToolCall(
  * Execute multiple Gemini function calls in parallel
  */
 export async function executeGeminiToolCalls(
-  calls: Array<{ name: string; args: Record<string, any> }>,
+  calls: Array<{ name: string; args: Record<string, unknown> }>,
   context: ToolExecutionContext
 ): Promise<ToolExecutionResult[]> {
   log.info(`[Tool Bridge] Executing ${calls.length} tool calls`, {

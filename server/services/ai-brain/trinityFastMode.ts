@@ -36,7 +36,7 @@ export interface FastModeConfig {
 export interface FastModeOperation {
   id: string;
   type: string;
-  handler: () => Promise<any>;
+  handler: () => Promise<unknown>;
   dependencies?: string[];
   estimatedDurationMs?: number;
   creditCost?: number;

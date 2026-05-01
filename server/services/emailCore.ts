@@ -424,7 +424,7 @@ type EmailCategory = 'transactional' | 'marketing' | 'inbound' | 'attachment' | 
 async function sendMeteredEmail(
   workspaceId: string | undefined,
   emailCategory: EmailCategory,
-  sendFn: () => Promise<any>,
+  sendFn: () => Promise<unknown>,
   metadata?: Record<string, unknown>
 ): Promise<{ success: boolean; data?: any; error?: any }> {
   try {

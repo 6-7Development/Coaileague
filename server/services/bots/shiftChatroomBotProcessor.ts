@@ -69,7 +69,7 @@ async function loadFlowFromDB(chatroomId: string): Promise<IncidentFlow | null> 
     const rows = await typedQuery(sql`
       SELECT incident_flow_state FROM shift_chatrooms WHERE id = ${chatroomId} LIMIT 1
     `);
-    const row = rows[0] as any;
+    const row = rows[0] as Record<string, unknown>;
     if (!row || !row.incident_flow_state) return null;
     const state = typeof row.incident_flow_state === 'string'
       ? JSON.parse(row.incident_flow_state)

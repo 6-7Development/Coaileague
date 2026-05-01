@@ -1052,7 +1052,7 @@ function dockChatRateLimit(req: AuthenticatedRequest, res: any, next: any) {
   return next();
 }
 
-router.post('/dockchat/start', dockChatRateLimit, async (req: AuthenticatedRequest, res: any) => {
+router.post('/dockchat/start', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatStartSchema = z.object({
       orgWorkspaceId: z.string().min(1, 'orgWorkspaceId required'),
@@ -1085,7 +1085,7 @@ router.post('/dockchat/start', dockChatRateLimit, async (req: AuthenticatedReque
 });
 
 // Send a message in a DockChat session
-router.post('/dockchat/message', dockChatRateLimit, async (req: AuthenticatedRequest, res: any) => {
+router.post('/dockchat/message', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatMsgSchema = z.object({
       sessionId: z.string().min(1, 'sessionId required'),
@@ -1105,7 +1105,7 @@ router.post('/dockchat/message', dockChatRateLimit, async (req: AuthenticatedReq
 });
 
 // Close session and generate structured report
-router.post('/dockchat/close', dockChatRateLimit, async (req: AuthenticatedRequest, res: any) => {
+router.post('/dockchat/close', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatCloseSchema = z.object({
       sessionId: z.string().min(1, 'sessionId required'),

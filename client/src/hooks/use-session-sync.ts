@@ -19,7 +19,7 @@ interface SyncEvent {
   resource: string;
   resourceId?: string;
   workspaceId?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   queryKeys?: string[];
   timestamp: string;
 }

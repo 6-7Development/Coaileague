@@ -75,7 +75,7 @@ class VisitorLogService {
     checkedInBy?: string | null;
     expectedDeparture?: Date | null;
     notes?: string | null;
-  }): Promise<{ visitor: VisitorLog; boloMatches: any[] }> {
+  }): Promise<{ visitor: VisitorLog; boloMatches: unknown[] }> {
     const id = randomUUID();
 
     // Converted to Drizzle ORM

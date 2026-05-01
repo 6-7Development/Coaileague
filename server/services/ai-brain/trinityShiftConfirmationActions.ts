@@ -25,7 +25,7 @@ import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityShiftConfirmationActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,

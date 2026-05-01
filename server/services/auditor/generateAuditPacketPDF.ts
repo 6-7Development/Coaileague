@@ -98,9 +98,9 @@ interface AuditPacketOptions {
 async function applyModifyInstructions(
   data: {
     workspace: any;
-    guards: any[];
-    schedule: any[];
-    artifacts: any[];
+    guards: unknown[];
+    schedule: unknown[];
+    artifacts: unknown[];
   },
   instructions: string,
 ): Promise<typeof data> {
@@ -156,7 +156,7 @@ Rules:
 }
 
 function buildPdf(
-  data: { workspace: any; guards: any[]; schedule: any[]; artifacts: any[] },
+  data: { workspace: any; guards: unknown[]; schedule: unknown[]; artifacts: unknown[] },
   auditId: string,
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {

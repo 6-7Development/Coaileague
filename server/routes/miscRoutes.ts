@@ -1231,7 +1231,7 @@ router.post("/api/search", requireAuth, async (req, res) => {
     }
 
     const pattern = `%${query}%`;
-    const results: any[] = [];
+    const results: (string | number | boolean | null)[] = [];
 
     const matchedEmployees = await db
       .select()

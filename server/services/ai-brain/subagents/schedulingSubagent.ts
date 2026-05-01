@@ -732,7 +732,7 @@ Generate a JSON schedule with format:
       .where(eq(employeeSkills.workspaceId, workspaceId));
   }
 
-  private calculateHistoricalAverage(historicalShifts: any[], targetDate: Date): number {
+  private calculateHistoricalAverage(historicalShifts: unknown[], targetDate: Date): number {
     if (historicalShifts.length === 0) return 8; // Default 8 employees per day
     
     const dayOfWeek = targetDate.getDay();
@@ -753,7 +753,7 @@ Generate a JSON schedule with format:
     return 1.0;
   }
 
-  private calculateTimeOffImpact(timeOff: any[], weekStart: Date, weekEnd: Date): number {
+  private calculateTimeOffImpact(timeOff: unknown[], weekStart: Date, weekEnd: Date): number {
     const overlapping = timeOff.filter(to => {
       const toStart = new Date(to.startDate);
       const toEnd = new Date(to.endDate);
@@ -763,7 +763,7 @@ Generate a JSON schedule with format:
     return Math.min(0.3, overlapping.length * 0.05); // Max 30% impact
   }
 
-  private calculateTrendModifier(historicalShifts: any[]): number {
+  private calculateTrendModifier(historicalShifts: unknown[]): number {
     if (historicalShifts.length < 14) return 1.0;
     
     const recentCount = historicalShifts.slice(0, 7).length;
@@ -810,7 +810,7 @@ Generate a JSON schedule with format:
     return recommendations;
   }
 
-  private detectShiftOverlaps(proposed: any, existingShifts: any[]): any[] {
+  private detectShiftOverlaps(proposed: any, existingShifts: unknown[]): unknown[] {
     return existingShifts.filter(existing => {
       if (existing.employeeId !== proposed.employeeId) return false;
       
@@ -824,8 +824,8 @@ Generate a JSON schedule with format:
   private async findAlternativeEmployee(
     workspaceId: string,
     proposed: any,
-    employeeData: any[],
-    existingShifts: any[]
+    employeeData: unknown[],
+    existingShifts: unknown[]
   ): Promise<{ employeeId: string; reason: string; confidence: number } | null> {
     // Find employees without shifts on that day
     const busyEmployees = new Set(
@@ -859,7 +859,7 @@ Generate a JSON schedule with format:
   private calculateWeeklyHours(
     employeeId: string,
     date: Date,
-    existingShifts: any[],
+    existingShifts: unknown[],
     proposed: any
   ): number {
     const weekStart = new Date(date);
@@ -929,7 +929,7 @@ Generate a JSON schedule with format:
 
   private async generateSwapRecommendation(
     shiftData: any,
-    topCandidates: any[]
+    topCandidates: unknown[]
   ): Promise<string> {
     if (topCandidates.length === 0) {
       return 'No suitable replacements found. Consider posting to contractor pool.';
@@ -1096,7 +1096,7 @@ Generate a JSON schedule with format:
   private buildStrategicSchedulingPrompt(
     employees: EmployeeBusinessMetrics[],
     clients: ClientBusinessMetrics[],
-    openShifts: any[],
+    openShifts: unknown[],
     summary: any
   ): string {
     return `You are Trinity, an AI business strategist optimizing workforce scheduling for maximum profitability and client retention.
@@ -1239,7 +1239,7 @@ ${openShifts.map(s => {
    * Generate fallback schedule if Gemini parsing fails
    */
   private generateFallbackStrategicSchedule(
-    openShifts: any[],
+    openShifts: unknown[],
     employees: EmployeeBusinessMetrics[],
     clients: ClientBusinessMetrics[]
   ): any {

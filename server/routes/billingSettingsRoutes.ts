@@ -48,7 +48,7 @@ router.post("/workspace", requireManager, async (req: AuthenticatedRequest, res)
 
     const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
       .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
 
     const allowedSettingsFields = [
       'payrollCycle', 'payrollDayOfWeek', 'payrollDayOfMonth', 'payrollSecondDayOfMonth',
@@ -95,7 +95,7 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
 
     const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
       .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
 
     const allowedFields = [
       // Payroll cycle

@@ -867,7 +867,7 @@ export default function ProposalBuilderPage() {
     enabled: !!workspaceId,
   });
 
-  const { data: pendingSignData } = useQuery<{ contracts: any[] }>({
+  const { data: pendingSignData } = useQuery<{ contracts: unknown[] }>({
     queryKey: ["/api/contracts", { status: "partially_signed" }],
     enabled: !!workspaceId,
   });

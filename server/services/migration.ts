@@ -45,8 +45,8 @@ export interface MigrationDocument {
   detectedType: MigrationType;
   confidence: string;
   extractedData: any;
-  validationErrors: any[];
-  warnings: any[];
+  validationErrors: unknown[];
+  warnings: unknown[];
   recordsExtracted: number;
   recordsImported: number;
   requiresReview: boolean;

@@ -482,7 +482,7 @@ export class StripeWebhookService {
         cancelledAt: new Date().toISOString(),
       },
       visibility: 'org_leadership',
-    }).catch((err: unknown) => log.warn('platformEventBus publish failed on subscription_cancelled', { error: err?.message }));
+    }).catch((err: unknown) => log.warn('platformEventBus publish failed on subscription_cancelled', { error: err instanceof Error ? err.message : String(err) }));
     
     return { success: true, handled: true, message: 'Subscription cancelled, reverted to free tier' };
   }
@@ -589,7 +589,7 @@ export class StripeWebhookService {
         source: 'stripe_webhook_invoice_payment_succeeded',
       },
       visibility: 'manager',
-    }).catch((err: unknown) => log.warn('platformEventBus publish failed on invoice.payment_succeeded', { error: err?.message }));
+    }).catch((err: unknown) => log.warn('platformEventBus publish failed on invoice.payment_succeeded', { error: err instanceof Error ? err.message : String(err) }));
 
     return { success: true, handled: true, message: `Subscription payment recorded — $${amountPaid.toFixed(2)} for workspace ${workspaceId}` };
   }
@@ -749,7 +749,7 @@ export class StripeWebhookService {
           amountDue: (invoice.amount_due || 0) / 100,
         },
         visibility: 'org_leadership',
-      }).catch((err: unknown) => log.warn('platformEventBus publish failed on payment_failed', { error: err?.message }));
+      }).catch((err: unknown) => log.warn('platformEventBus publish failed on payment_failed', { error: err instanceof Error ? err.message : String(err) }));
     }
 
     return {

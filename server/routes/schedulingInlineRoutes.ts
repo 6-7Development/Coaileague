@@ -40,7 +40,7 @@ router.post('/generate-alerts', requireManager, async (req: AuthenticatedRequest
       .from(employees as any)
       .where(eq((employees as any).workspaceId, workspaceId));
 
-    const alerts: any[] = [];
+    const alerts: (string | number | boolean | null)[] = [];
 
     for (const employee of allEmployees) {
       const nextWeekEnd = new Date(nextWeekStart);

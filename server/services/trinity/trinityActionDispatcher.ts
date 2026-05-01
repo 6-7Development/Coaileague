@@ -80,7 +80,7 @@ const ACTION_INTENT_PATTERNS: Array<{
   actionId: string;
   risk: RiskLevel;
   category: string;
-  extract: (match: RegExpMatchArray, text: string) => Record<string, any>;
+  extract: (match: RegExpMatchArray, text: string) => Record<string, unknown>;
   reason: string;
 }> = [
   // Payroll — highest risk, never auto-execute
@@ -301,7 +301,7 @@ async function enrichPayload(
   basePayload: Record<string, unknown>,
   userMessage: string,
   context: DispatchContext,
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   const base = {
     ...basePayload,
     rawCommand: userMessage,

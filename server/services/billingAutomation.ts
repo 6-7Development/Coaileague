@@ -98,7 +98,7 @@ export async function generateUsageBasedInvoices(workspaceId: string, generateDa
   
   for (const clientSummary of aggregationResult.clientSummaries) {
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
         clientSummary,
@@ -219,7 +219,7 @@ export async function generateInvoiceForClient(
   for (const clientSummary of aggregationResult.clientSummaries) {
     if (clientSummary.clientId !== clientId) continue;
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       // B1: atomic — invoice + line items + mark-entries in single transaction
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
@@ -1151,7 +1151,7 @@ export async function generateWeeklyInvoices(
     }
 
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       // B1: atomic — invoice + line items + mark-entries in single transaction
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
@@ -1514,7 +1514,7 @@ export async function generateAgingReport(workspaceId: string) {
     else buckets.ninetyPlus.push(entry);
   }
 
-  const sumBucket = (b: any[]) => b.reduce((s, i) => s + parseFloat(i.total || '0'), 0);
+  const sumBucket = (b: unknown[]) => b.reduce((s, i) => s + parseFloat(i.total || '0'), 0);
 
   return {
     workspaceId,

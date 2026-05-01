@@ -33,8 +33,8 @@ const log = createLogger('Migration');
 
 
 export const migrationRouter = Router();
-migrationRouter.use(requireAuth as any);
-migrationRouter.use(ensureWorkspaceAccess as any);
+migrationRouter.use(requireAuth);
+migrationRouter.use(ensureWorkspaceAccess);
 
 // ─── IN-MEMORY JOB STORE ─────────────────────────────────────────────────────
 

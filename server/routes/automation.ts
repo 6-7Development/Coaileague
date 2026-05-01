@@ -862,13 +862,13 @@ automationRouter.get('/status', requireAuth, async (req: AuthenticatedRequest, r
     const payrollEvents = recentEvents.filter(e => (e as any).eventType?.includes('payroll'));
     const complianceEvents = recentEvents.filter(e => (e as any).eventType?.includes('compliance'));
     
-    const calcSuccessRate = (events: any[]) => {
+    const calcSuccessRate = (events: unknown[]) => {
       if (events.length === 0) return 0;
       const successful = events.filter(e => e.success !== false).length;
       return successful / events.length;
     };
 
-    const getLastRun = (events: any[]) => {
+    const getLastRun = (events: unknown[]) => {
       if (events.length === 0) return null;
       // Create copy before sorting to avoid mutating cached data
       const eventsCopy = [...events];
@@ -881,7 +881,7 @@ automationRouter.get('/status', requireAuth, async (req: AuthenticatedRequest, r
     };
 
     // Get issue count from last compliance scan metadata
-    const getIssueCount = (events: any[]) => {
+    const getIssueCount = (events: unknown[]) => {
       if (events.length === 0) return 0;
       const eventsCopy = [...events];
       const sorted = eventsCopy.sort((a, b) => {

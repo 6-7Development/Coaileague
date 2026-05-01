@@ -54,14 +54,14 @@ interface AlertConfiguration {
   workspaceId: string;
   alertType: AlertType;
   isEnabled: boolean;
-  thresholds: Record<string, any>;
+  thresholds: Record<string, unknown>;
   severity: AlertSeverity;
   channels: string[];
   notifyRoles: string[];
   notifyUserIds: string[] | null;
   cooldownMinutes: number;
   maxAlertsPerHour: number;
-  alertSchedule: Record<string, any>;
+  alertSchedule: Record<string, unknown>;
   customTitle: string | null;
   customMessage: string | null;
   createdAt: string;
@@ -75,7 +75,7 @@ interface AlertHistory {
   severity: AlertSeverity;
   title: string;
   message: string;
-  triggerData: Record<string, any>;
+  triggerData: Record<string, unknown>;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
   channelsNotified: string[];

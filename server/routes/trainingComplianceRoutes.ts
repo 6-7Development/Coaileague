@@ -165,7 +165,7 @@ router.patch("/records/:id", requireAuth, async (req: AuthenticatedRequest, res)
     const allowed = ['training_name','completion_date','expiration_date','hours_completed',
       'provider_name','certificate_number','status','notes','verified'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }
@@ -207,7 +207,7 @@ router.get("/compliance-grid", requireAuth, async (req: AuthenticatedRequest, re
       [wid]
     )).rows;
 
-    const recordMap: Record<string, Record<string, any>> = {};
+    const recordMap: Record<string, Record<string, unknown>> = {};
     for (const rec of records) {
       if (!recordMap[rec.employee_id]) recordMap[rec.employee_id] = {};
       if (rec.requirement_id) {

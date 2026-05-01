@@ -583,7 +583,7 @@ Respond as JSON:
     let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     // Flatten subgoals into steps
-    const steps: any[] = [];
+    const steps: (string | number | boolean | null)[] = [];
     let order = 1;
     
     for (const subgoal of (parsed.subgoals || [])) {

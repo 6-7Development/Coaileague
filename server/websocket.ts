@@ -29,6 +29,9 @@ const log = createLogger('WebSocket');
 // Securely extracts user identity from HTTP session (not client-supplied IDs)
 // ============================================================================
 
+/** Generic WebSocket message payload — replaces bare `any` in broadcast functions. */
+type WsPayload = Record<string, unknown>;
+
 interface AuthenticatedSession {
   userId: string;
   workspaceId?: string;
@@ -117,7 +120,7 @@ async function getSessionFromRequest(request: IncomingMessage): Promise<Authenti
       return null;
     }
     
-    const sess = rows[0].sess as any;
+    const sess = rows[0].sess as Record<string, unknown>;
     
     // Extract user info from session data
     // Session structure: { userId: "...", passport: { user: { claims: {...} } } }
@@ -354,7 +357,7 @@ interface RequestSecurePayload {
 
 interface SecureResponsePayload {
   type: 'secure_response';
-  data: any;
+  data: WsPayload;
 }
 
 interface ReleaseSpectatorPayload {
@@ -397,7 +400,7 @@ interface JoinShiftUpdatesPayload {
 
 interface ShiftUpdatePayload {
   type: 'shift_created' | 'shift_updated' | 'shift_deleted';
-  shift?: any;
+  shift?: WsPayload;
   shiftId?: string;
 }
 
@@ -409,7 +412,7 @@ interface JoinNotificationsPayload {
 
 interface NotificationUpdatePayload {
   type: 'notification_new' | 'notification_read' | 'notification_count_updated';
-  notification?: any;
+  notification?: WsPayload;
   unreadCount?: number;
 }
 
@@ -470,7 +473,7 @@ interface DispatchGPSUpdatePayload {
 
 interface DispatchIncidentUpdatePayload {
   type: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned';
-  incident?: any;
+  incident?: WsPayload;
   incidentId?: number;
 }
 
@@ -613,16 +616,16 @@ function revokeVoice(conversationId: string, userId: string): void {
 let globalWSS: WebSocketServer | null = null;
 
 // Global broadcaster for notifications
-let globalBroadcaster: any = null;
+let globalBroadcaster: ((msg: WsPayload) => void) | null = null;
 
-export function setGlobalBroadcaster(broadcaster: any) {
+export function setGlobalBroadcaster(broadcaster: (msg: WsPayload) => void) {
   globalBroadcaster = broadcaster;
 }
 
 export function broadcastNotificationToUser(
   workspaceId: string,
   userId: string,
-  notification: any
+  notification?: WsPayload
 ) {
   if (!globalBroadcaster) {
     log.warn('Global broadcaster not initialized for notification');
@@ -647,7 +650,7 @@ export function broadcastNotificationToUser(
 export function broadcastShiftUpdate(
   workspaceId: string,
   updateType: 'shift_created' | 'shift_updated' | 'shift_deleted',
-  shift?: any,
+  shift?: WsPayload,
   shiftId?: string
 ) {
   if (!globalBroadcaster) {
@@ -671,7 +674,7 @@ export function broadcastShiftUpdate(
  */
 export function broadcastUserScopedNotification(
   userId: string,
-  notification: any
+  notification?: WsPayload
 ) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for user-scoped notification');
@@ -689,7 +692,7 @@ export function broadcastUserScopedNotification(
     });
     
     let sentCount = 0;
-    globalWSS.clients.forEach((client: any) => {
+    globalWSS.clients.forEach((client: WebSocket) => {
       if (client.readyState === WebSocket.OPEN) {
         const clientUserId = client.userId || client._userId;
         if (clientUserId === userId) {
@@ -711,7 +714,7 @@ export function broadcastUserScopedNotification(
   }
 }
 
-export function broadcastToAllClients(message: any) {
+export function broadcastToAllClients(message: WsPayload) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for broadcast');
     return 0;
@@ -737,7 +740,7 @@ export function broadcastToAllClients(message: any) {
         client.send(payload);
         count++;
       } catch (sendErr: unknown) {
-        log.warn('broadcastToAllClients: WS send failed — dead connection', { error: sendErr?.message });
+        log.warn('broadcastToAllClients: WS send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
       }
     }
   });
@@ -812,7 +815,7 @@ const TRINITY_ALERT_ROLES = ['root_admin', 'co_admin', 'sysops', 'platform_suppo
  * Broadcast Trinity alert to all connected support staff
  * Uses existing broadcastToAllClients but filters by role
  */
-export function broadcastTrinityAlertToSupport(message: any) {
+export function broadcastTrinityAlertToSupport(message: WsPayload) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for Trinity alert');
     return 0;
@@ -821,7 +824,7 @@ export function broadcastTrinityAlertToSupport(message: any) {
   const payload = JSON.stringify(message);
   
   let sentCount = 0;
-  globalWSS.clients.forEach((client: any) => {
+  globalWSS.clients.forEach((client: WebSocket) => {
     if (client.readyState === WebSocket.OPEN) {
       const role = client.serverAuth?.role || client.serverAuth?.platformRole;
       if (role && TRINITY_ALERT_ROLES.includes(role)) {
@@ -845,7 +848,7 @@ export function broadcastTrinityAlertToSupport(message: any) {
 setTimeout(async () => {
   try {
     const { trinityAutonomousNotifier } = await import('./services/ai-brain/trinityAutonomousNotifier');
-    trinityAutonomousNotifier.setBroadcastHandler((message: any) => {
+    trinityAutonomousNotifier.setBroadcastHandler((message: WsPayload) => {
       broadcastTrinityAlertToSupport(message);
     });
     log.info('Trinity autonomous notifier broadcast handler registered');
@@ -931,13 +934,13 @@ interface BufferedEvent {
   eventId: string;
   timestamp: number;
   workspaceId: string;
-  data: any;
+  data: WsPayload;
 }
 
 // Legacy in-memory map retained for getEventsSince() calls that haven't migrated
 const workspaceEventBuffer = new Map<string, BufferedEvent[]>();
 
-function pushEventToBuffer(workspaceId: string, data: any): string {
+function pushEventToBuffer(workspaceId: string, data: WsPayload): string {
   // Async fire-and-forget to durable adapter (non-blocking for WebSocket path)
   pushEventDurable(workspaceId, data).catch(() => null);
   
@@ -955,7 +958,7 @@ function pushEventToBuffer(workspaceId: string, data: any): string {
 // Initialize durability on startup (async, non-blocking)
 initChatDurability().catch(() => null);
 
-export function broadcastToWorkspace(workspaceId: string, data: any) {
+export function broadcastToWorkspace(workspaceId: string, data: WsPayload) {
   if (!globalBroadcaster) {
     log.warn('Global broadcaster not initialized for workspace broadcast');
     return 0;
@@ -974,7 +977,7 @@ export function broadcastToWorkspace(workspaceId: string, data: any) {
   }
 }
 
-export function broadcastToUser(userId: string, data: any): number {
+export function broadcastToUser(userId: string, data: WsPayload): number {
   if (!globalWSS || !userId) {
     return 0;
   }
@@ -1295,7 +1298,7 @@ export function setupWebSocket(server: Server) {
               try {
                 client.send(eventPayload);
               } catch (sendErr: unknown) {
-                log.warn('ChatServerHub conversation send failed — dead connection', { error: sendErr?.message });
+                log.warn('ChatServerHub conversation send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           }
@@ -1315,7 +1318,7 @@ export function setupWebSocket(server: Server) {
               try {
                 client.send(eventPayload);
               } catch (sendErr: unknown) {
-                log.warn('ChatServerHub workspace send failed — dead connection', { error: sendErr?.message });
+                log.warn('ChatServerHub workspace send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           }
@@ -1329,7 +1332,7 @@ export function setupWebSocket(server: Server) {
   // ROOM LIFECYCLE BROADCASTER - For close/reopen status changes
   // =========================================================================
   import('./services/roomLifecycleService').then(({ registerRoomBroadcaster }) => {
-    registerRoomBroadcaster((roomId: string, message: any) => {
+    registerRoomBroadcaster((roomId: string, message: WsPayload) => {
       const clients = conversationClients.get(roomId);
       if (clients) {
         const payload = JSON.stringify(message);
@@ -1382,7 +1385,7 @@ export function setupWebSocket(server: Server) {
             try {
               client.send(JSON.stringify(event));
             } catch (sendErr: unknown) {
-              log.warn('IRC emitter global send failed — dead connection', { error: sendErr?.message });
+              log.warn('IRC emitter global send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
             }
           }
         }
@@ -1470,7 +1473,7 @@ export function setupWebSocket(server: Server) {
                   status: 'duplicate',
                 }));
               } catch (sendErr: unknown) {
-                log.warn('Failed to send duplicate ack', { error: sendErr?.message });
+                log.warn('Failed to send duplicate ack', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
             return;
@@ -1574,7 +1577,7 @@ export function setupWebSocket(server: Server) {
                 checkId: ackCheckId,
               }));
             } catch (lwErr: unknown) {
-              log.error('Lone worker ack WS error', { error: lwErr?.message });
+              log.error('Lone worker ack WS error', { error: lwErr instanceof Error ? lwErr.message : String(lwErr) });
               ws.send(JSON.stringify({
                 type: 'lone_worker_ack_result',
                 success: false,
@@ -4616,7 +4619,7 @@ export function setupWebSocket(server: Server) {
                     
                     const platformRole = await storage.getUserPlatformRole(targetUser.id);
                     const isOnline = Array.from(conversationClients.values()).some(clientSet => 
-                      Array.from(clientSet).some((client: any) => client.userId === targetUser.id && client.readyState === WebSocket.OPEN)
+                      Array.from(clientSet).some((client: WebSocket) => client.userId === targetUser.id && client.readyState === WebSocket.OPEN)
                     );
                     
                     // Check suspension status from user record
@@ -5430,7 +5433,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                         });
                         if (capturedClients) { capturedClients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: doneMsg })); }); }
                       } catch (pdfErr: unknown) {
-                        log.warn('[MeetingBot] PDF generation failed (non-blocking):', { error: pdfErr?.message });
+                        log.warn('[MeetingBot] PDF generation failed (non-blocking):', { error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr) });
                       }
                     })();
                   } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `MeetingBot error: ${e.message}` })); }
@@ -5868,7 +5871,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                   }
                 } catch (orchErr: unknown) {
                   // Orchestrator is always non-blocking
-                  log.warn('ShiftBotOrchestrator error (non-blocking):', { error: orchErr?.message });
+                  log.warn('ShiftBotOrchestrator error (non-blocking):', { error: orchErr instanceof Error ? orchErr.message : String(orchErr) });
                 }
               })();
             }
@@ -8147,7 +8150,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
               try {
                 client.send(participantsPayload);
               } catch (sendErr: unknown) {
-                log.warn('Failed to send participants_update to client', { error: sendErr?.message });
+                log.warn('Failed to send participants_update to client', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           });
@@ -8177,7 +8180,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   // Export broadcast function for shift updates
   const broadcaster = {
     wss,
-    broadcastShiftUpdate: (workspaceId: string, updateType: 'shift_created' | 'shift_updated' | 'shift_deleted', shift?: any, shiftId?: string) => {
+    broadcastShiftUpdate: (workspaceId: string, updateType: 'shift_created' | 'shift_updated' | 'shift_deleted', shift?: WsPayload, shiftId?: string) => {
       const clients = shiftUpdateClients.get(workspaceId);
       if (!clients || clients.size === 0) {
         log.debug('No clients subscribed to shift updates', { workspaceId });
@@ -8214,7 +8217,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
           try {
             client.send(payload);
           } catch (sendErr: unknown) {
-            log.warn('Failed to send shift update to client', { error: sendErr?.message });
+            log.warn('Failed to send shift update to client', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
           }
         } else {
           // Clean up dead connections
@@ -8222,7 +8225,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastNotification: (workspaceId: string, userId: string, updateType: 'notification_new' | 'notification_read' | 'notification_count_updated', notification?: any, unreadCount?: number) => {
+    broadcastNotification: (workspaceId: string, userId: string, updateType: 'notification_new' | 'notification_read' | 'notification_count_updated', notification?: WsPayload, unreadCount?: number) => {
       const workspaceClients = notificationClients.get(workspaceId);
       if (!workspaceClients) {
         log.debug('No notification clients for workspace', { workspaceId });
@@ -8297,7 +8300,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastIncidentUpdate: (workspaceId: string, updateType: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned', incident: any) => {
+    broadcastIncidentUpdate: (workspaceId: string, updateType: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned', incident?: WsPayload) => {
       const clients = dispatchUpdateClients.get(workspaceId);
       if (!clients || clients.size === 0) {
         return;
@@ -8349,7 +8352,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastToWorkspace: (workspaceId: string, data: any) => {
+    broadcastToWorkspace: (workspaceId: string, data: WsPayload) => {
       if (!workspaceId) {
         log.warn('broadcastToWorkspace called without workspaceId');
         return;
@@ -8512,7 +8515,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     
     broadcastTrinityAgentEvent: (conversationId: string, event: {
       type: string;
-      data: any;
+      data: WsPayload;
       timestamp?: number;
     }) => {
       const payload = JSON.stringify({
@@ -8524,7 +8527,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
       });
       
       let clientCount = 0;
-      wss.clients.forEach((client: any) => {
+      wss.clients.forEach((client: WebSocket) => {
         if (client.readyState === WebSocket.OPEN) {
           if ((client as any).trinityConversationId === conversationId) {
             client.send(payload);
@@ -8669,7 +8672,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     const { userId, workspaceId, newRole } = payload;
 
     let updatedCount = 0;
-    wss.clients.forEach((client: any) => {
+    wss.clients.forEach((client: WebSocket) => {
       if (client.readyState !== WebSocket.OPEN) return;
       const clientUserId = client.serverAuth?.userId || client.userId;
       if (clientUserId !== userId) return;
@@ -8717,7 +8720,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     const { userId, workspaceId, newRole } = payload;
 
     let updatedCount = 0;
-    wss.clients.forEach((client: any) => {
+    wss.clients.forEach((client: WebSocket) => {
       if (client.readyState !== WebSocket.OPEN) return;
       const clientUserId = client.serverAuth?.userId || client.userId;
       if (clientUserId !== userId) return;

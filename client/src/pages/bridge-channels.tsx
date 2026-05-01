@@ -41,7 +41,7 @@ interface ChannelBridge {
   workspaceId: string;
   channelType: string;
   displayName: string;
-  providerConfig: Record<string, any>;
+  providerConfig: Record<string, unknown>;
   webhookUrl: string | null;
   phoneNumber: string | null;
   emailAddress: string | null;
@@ -66,7 +66,7 @@ interface BridgeConversation {
   status: string;
   lastMessageAt: string | null;
   messageCount: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,7 +84,7 @@ interface BridgeMessage {
   messageType: string;
   attachmentUrl: string | null;
   deliveryStatus: string;
-  providerResponse: Record<string, any> | null;
+  providerResponse: Record<string, unknown> | null;
   creditsCost: number;
   createdAt: string;
   updatedAt: string;
@@ -171,7 +171,7 @@ export default function BridgeChannels() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/bridges/channels", data);
       return res.json();
     },
@@ -187,7 +187,7 @@ export default function BridgeChannels() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/bridges/channels/${id}`, data);
       return res.json();
     },
@@ -217,7 +217,7 @@ export default function BridgeChannels() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/bridges/send", data);
       return res.json();
     },

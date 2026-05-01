@@ -87,10 +87,10 @@ interface SchedulingContext {
   workspaceId: string;
   weekStart: Date;
   weekEnd: Date;
-  employees: any[];
-  clients: any[];
-  existingShifts: any[];
-  openShifts: any[];
+  employees: unknown[];
+  clients: unknown[];
+  existingShifts: unknown[];
+  openShifts: unknown[];
 }
 
 class TrinitySchedulingOrchestratorService {

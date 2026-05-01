@@ -359,7 +359,7 @@ export async function scanStaleCalloffWorkflows(): Promise<{
 
     for (const row of rows) {
       scanned++;
-      const meta = (row.metadata ?? {}) as Record<string, any>;
+      const meta = (row.metadata ?? {}) as Record<string, unknown>;
       if (meta.status !== 'running' && meta.status !== 'completed') continue;
       if (meta.escalated_at) continue; // already escalated
 

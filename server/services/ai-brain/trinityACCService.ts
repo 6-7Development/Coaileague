@@ -326,7 +326,7 @@ class TrinityACCService {
         SELECT status FROM employees
         WHERE id = $1 AND workspace_id = $2 LIMIT 1
       `, [employeeId, workspaceId]);
-      return (row as any)?.status === 'terminated' || (row as any)?.status === 'inactive';
+      return (row as Record<string, unknown>)?.status === 'terminated' || (row as Record<string, unknown>)?.status === 'inactive';
     } catch {
       return false;
     }
@@ -762,7 +762,7 @@ class TrinityACCService {
       const bySeverity: Record<string, number> = {};
       let autoResolved = 0;
       let humanRequired = 0;
-      const openUnresolved: any[] = [];
+      const openUnresolved: (string | number | boolean | null)[] = [];
 
       for (const row of allRows) {
         byCategory[row.conflict_category] = (byCategory[row.conflict_category] || 0) + 1;

@@ -263,7 +263,7 @@ class AssistedOnboardingService {
       }
 
       // Merge with existing extracted data
-      const existingData = (workspace.assistedDataExtracted as Record<string, any>) || {};
+      const existingData = (workspace.assistedDataExtracted as Record<string, unknown>) || {};
       const mergedData = { ...existingData, ...extractedData };
 
       await db.update(workspaces)

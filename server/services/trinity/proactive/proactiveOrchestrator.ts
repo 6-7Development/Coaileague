@@ -95,7 +95,7 @@ const SCHEDULES: ProactiveCronHandle[] = [
  */
 export interface SchedulerAdapter {
   registerJobInfo: (jobName: string, schedule: string, description: string, enabled: boolean) => void;
-  trackJobExecution: (jobName: string, fn: () => Promise<any>) => Promise<void>;
+  trackJobExecution: (jobName: string, fn: () => Promise<unknown>) => Promise<void>;
 }
 
 export function registerProactiveMonitors(adapter: SchedulerAdapter): void {

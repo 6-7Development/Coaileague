@@ -59,7 +59,7 @@ function numberValue(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function getEntryHours(entry: any): number {
+function getEntryHours(entry: unknown): number {
   if (entry.totalHours != null) return numberValue(entry.totalHours);
   if (entry.totalMinutes != null) return numberValue(entry.totalMinutes) / 60;
   if (entry.clockIn && entry.clockOut) {
@@ -68,7 +68,7 @@ function getEntryHours(entry: any): number {
   return 0;
 }
 
-function getBillableAmountValue(entry: any): string {
+function getBillableAmountValue(entry: unknown): string {
   if (entry.billableAmount != null) {
     return toFinancialString(entry.billableAmount);
   }
@@ -78,7 +78,7 @@ function getBillableAmountValue(entry: any): string {
   return multiplyFinancialValues(hours, rate);
 }
 
-function getBillableAmountLabel(entry: any): string {
+function getBillableAmountLabel(entry: unknown): string {
   return formatCurrency(getBillableAmountValue(entry));
 }
 

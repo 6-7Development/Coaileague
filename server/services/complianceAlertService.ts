@@ -44,7 +44,7 @@ export async function checkExpiringCertifications() {
 
     // Note: Contractor certifications don't have built-in expiry tracking
     // They're tracked via employeeSkills for now
-    const expiringContractorCerts: any[] = [];
+    const expiringContractorCerts: (string | number | boolean | null)[] = [];
 
     log.info(`[ComplianceAlerts] Found ${expiringContractorCerts.length} expiring contractor certifications`);
 

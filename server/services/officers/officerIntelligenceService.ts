@@ -90,7 +90,7 @@ export class OfficerIntelligenceService {
    * Calculate availability over the next 7 days based on scheduled shifts
    */
   private calculateAvailability(
-    officerShifts: any[],
+    officerShifts: unknown[],
     now: Date,
     sevenDaysLater: Date,
   ) {
@@ -136,7 +136,7 @@ export class OfficerIntelligenceService {
   /**
    * Calculate performance metrics from shifts and performance reviews
    */
-  private calculatePerformance(officerShifts: any[], reviews: any[]) {
+  private calculatePerformance(officerShifts: unknown[], reviews: unknown[]) {
     const completedShifts = officerShifts.filter(s => s.status === 'completed');
     const noShows = officerShifts.filter(s => s.status === 'no_show').length;
     const totalRelevant = completedShifts.length + noShows;

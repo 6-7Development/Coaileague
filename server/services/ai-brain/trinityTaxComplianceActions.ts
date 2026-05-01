@@ -14,7 +14,7 @@ import { createLogger } from '../../lib/logger';
 import { PLATFORM } from '../../config/platformConfig';
 const log = createLogger('trinityTaxComplianceActions');
 
-function mkTaxAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkTaxAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,

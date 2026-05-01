@@ -179,7 +179,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
 // =============================================================================
 // CHECK-IN FORM
 // =============================================================================
-function CheckInForm({ preRegistrations, onSuccess }: { preRegistrations: any[]; onSuccess: () => void }) {
+function CheckInForm({ preRegistrations, onSuccess }: { preRegistrations: unknown[]; onSuccess: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const emptyForm = {

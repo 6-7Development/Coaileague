@@ -23,7 +23,7 @@ export interface RatingStats {
     negative: number;
   };
   topIssues: Array<{ issue: string; count: number }>;
-  latestRatings: any[];
+  latestRatings: unknown[];
   recommendationScore: number; // Would recommend (0-100)
 }
 

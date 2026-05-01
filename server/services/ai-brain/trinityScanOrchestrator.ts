@@ -171,7 +171,7 @@ class TrinityScanOrchestrator {
   /**
    * Scan platform awareness events for patterns
    */
-  private async scanPlatformEvents(): Promise<{ events: any[]; uniquePages: number }> {
+  private async scanPlatformEvents(): Promise<{ events: unknown[]; uniquePages: number }> {
     try {
       const recentEvents = await db
         .select()
@@ -193,7 +193,7 @@ class TrinityScanOrchestrator {
   /**
    * Analyze telemetry data for subagent performance
    */
-  private async analyzeTelemetryData(): Promise<{ records: any[] }> {
+  private async analyzeTelemetryData(): Promise<{ records: unknown[] }> {
     try {
       const telemetry = await db
         .select()
@@ -241,7 +241,7 @@ class TrinityScanOrchestrator {
   /**
    * Process automation action history
    */
-  private async processAutomationHistory(): Promise<{ actions: any[] }> {
+  private async processAutomationHistory(): Promise<{ actions: unknown[] }> {
     try {
       const actions = await db
         .select()
@@ -330,12 +330,12 @@ class TrinityScanOrchestrator {
    * Build knowledge nodes from collected data
    */
   private async buildKnowledgeNodes(
-    events: any[],
-    telemetry: any[],
-    actions: any[],
+    events: unknown[],
+    telemetry: unknown[],
+    actions: unknown[],
     errorPatterns: LearnedPattern[]
   ): Promise<any[]> {
-    const nodes: any[] = [];
+    const nodes: (string | number | boolean | null)[] = [];
 
     // Event-based nodes
     const eventsByType = new Map<string, number>();
@@ -381,7 +381,7 @@ class TrinityScanOrchestrator {
   /**
    * Generate insights using Gemini AI
    */
-  private async generateInsights(knowledgeNodes: any[]): Promise<string[]> {
+  private async generateInsights(knowledgeNodes: unknown[]): Promise<string[]> {
     try {
       const patterns = Array.from(this.knowledgeRegistry.values());
       
@@ -432,7 +432,7 @@ Format as a JSON array of strings. Example: ["insight 1", "insight 2"]`;
   /**
    * Persist learned knowledge to Trinity's memory
    */
-  private async persistToMemory(knowledgeNodes: any[], insights: string[]): Promise<void> {
+  private async persistToMemory(knowledgeNodes: unknown[], insights: string[]): Promise<void> {
     try {
       // Broadcast insights to memory service
       for (const insight of insights) {

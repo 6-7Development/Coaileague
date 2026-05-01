@@ -224,7 +224,7 @@ export default function TrinityTransparencyDashboard() {
         entity_type: string;
         entity_id: string | null;
         actor_type: string;
-        metadata: Record<string, any> | null;
+        metadata: Record<string, unknown> | null;
         created_at: string;
       }>;
     }>({

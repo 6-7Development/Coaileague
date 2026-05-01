@@ -38,7 +38,7 @@ export interface WorkspaceStatus {
 
 export interface OrgCustomization {
   workspaceId: string;
-  statusOverrides?: Record<string, any>;
+  statusOverrides?: Record<string, unknown>;
   customMessages?: Record<string, string>;
 }
 

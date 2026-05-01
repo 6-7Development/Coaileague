@@ -539,7 +539,7 @@ export function registerAnalyticsBIActions(): void {
       const filterTypes = types ? String(types).split(',').map((t: string) => t.trim()) : null;
       const filtered = filterTypes ? tables.filter(t => filterTypes.includes(t.label)) : tables;
 
-      const allRows: any[] = [];
+      const allRows: (string | number | boolean | null)[] = [];
       for (const t of filtered) {
         const { rows } = await pool.query(t.sql).catch(() => ({ rows: [] }));
         allRows.push(...rows);

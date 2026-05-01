@@ -331,7 +331,7 @@ router.post("/api/report-submissions/:id/send-to-client", requireManager, async 
         month: 'long', 
         day: 'numeric' 
       }),
-      reportData: submission.formData as Record<string, any>,
+      reportData: submission.formData as Record<string, unknown>,
       attachmentCount: attachmentCount > 0 ? attachmentCount : undefined,
     });
 

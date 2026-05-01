@@ -149,7 +149,7 @@ export default function OrgOwnerDashboard() {
     isError: clientsIsError,
     error: clientsError,
     refetch: refetchClients,
-  } = useQuery<{ data: any[] } | any[]>({
+  } = useQuery<{ data: unknown[] } | any[]>({
     queryKey: ["/api/clients"],
     staleTime: 60_000,
   });
@@ -160,7 +160,7 @@ export default function OrgOwnerDashboard() {
     isError: employeesIsError,
     error: employeesError,
     refetch: refetchEmployees,
-  } = useQuery<{ data: any[] }>({
+  } = useQuery<{ data: unknown[] }>({
     queryKey: ["/api/employees"],
     staleTime: 60_000,
   });

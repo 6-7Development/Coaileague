@@ -149,7 +149,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: Aut
       )
       .limit(10);
     
-    const tasks: any[] = [];
+    const tasks: (string | number | boolean | null)[] = [];
     
     pendingPTO.forEach((pto: any) => {
       tasks.push({

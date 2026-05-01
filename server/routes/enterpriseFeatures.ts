@@ -77,7 +77,7 @@ enterpriseRouter.post('/branding', async (req: AuthenticatedRequest, res: Respon
     if (!wsId) return;
     const { primaryColor, secondaryColor, accentColor, logoUrl, faviconUrl, companyName, tagline, fontFamily, customCss } = req.body;
     const [ws] = await db.select({ blob: workspaces.brandingBlob }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
     const updated = { ...current, workspaceId: wsId, updatedAt: new Date().toISOString() };
     if (primaryColor !== undefined) (updated as any).primaryColor = primaryColor;
     if (secondaryColor !== undefined) (updated as any).secondaryColor = secondaryColor;
@@ -405,7 +405,7 @@ enterpriseRouter.post('/sso', async (req: AuthenticatedRequest, res: Response) =
     const wsId = requireWorkspace(req, res);
     if (!wsId) return;
     const [ws] = await db.select({ blob: workspaces.ssoConfigBlob }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
     // Tier-2 Zod guard: passthrough strip avoids prototype pollution
     const ssoSchema = z.object({
       provider: z.string().max(50).optional(),
@@ -435,7 +435,7 @@ enterpriseRouter.get('/account-manager', async (req: AuthenticatedRequest, res: 
     if (!wsId) return;
     // Account managers stored as JSONB array in workspaces.featureStatesBlob.accountManagers
     const [ws] = await db.select({ blob: workspaces.featureStatesBlob }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
-    const featureStates = ((ws?.blob || {}) as Record<string, any>);
+    const featureStates = ((ws?.blob || {}) as Record<string, unknown>);
     const managers = (featureStates.accountManagers || []) as any[];
     // Enrich with user data if managerUserId present
     const enriched = await Promise.all(managers.filter(m => m.status === 'active').map(async (m: any) => {
@@ -457,7 +457,7 @@ enterpriseRouter.post('/account-manager', async (req: AuthenticatedRequest, res:
     const wsId = requireWorkspace(req, res);
     if (!wsId) return;
     const [ws] = await db.select({ blob: workspaces.featureStatesBlob }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
-    const featureStates = ((ws?.blob || {}) as Record<string, any>);
+    const featureStates = ((ws?.blob || {}) as Record<string, unknown>);
     const managers = (featureStates.accountManagers || []) as any[];
     const newManager = {
       id: `am-${randomUUID()}`,

@@ -259,7 +259,7 @@ export async function runParityScan(): Promise<ParityScanResult> {
     log.info('[ParityScanner] STEP 3: VALIDATE - Comparing with Drizzle schema');
     
     // Get expected tables from schema
-    const expectedTables = new Map<string, any>();
+    const expectedTables = new Map<string, unknown>();
     for (const [key, value] of Object.entries(schema)) {
       if (value && typeof value === 'object' && 'getSQL' in value) {
         // This is a Drizzle table - extract the actual table name

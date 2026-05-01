@@ -744,7 +744,7 @@ class FeatureGateService {
       const featureDef = FEATURE_DEFINITIONS[featureKey];
       const [ws] = await db.select({ blob: workspaces.featureStatesBlob })
         .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-      const states = ((ws?.blob || {}) as Record<string, any>);
+      const states = ((ws?.blob || {}) as Record<string, unknown>);
       states[featureKey] = {
         ...(states[featureKey] || {}),
         isUnlocked: true,
@@ -789,7 +789,7 @@ class FeatureGateService {
         // Re-read directly from DB to get fresh data for the write (bypass cache for write path)
         const [ws] = await db.select({ blob: workspaces.featureStatesBlob })
           .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-        const states = ((ws?.blob || {}) as Record<string, any>);
+        const states = ((ws?.blob || {}) as Record<string, unknown>);
         states[featureKey] = { ...(states[featureKey] || {}), isUnlocked: false, showLockIcon: true, lockMessage: reason };
         await db.update(workspaces).set({ featureStatesBlob: states }).where(eq(workspaces.id, workspaceId));
         // Phase 39 — invalidate feature blob cache after lock

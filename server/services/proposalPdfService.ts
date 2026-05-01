@@ -40,9 +40,9 @@ interface ProposalData {
   company_logo: string | null;
   total_value: string | null;
   valid_until: string | null;
-  sections: any[] | null;
+  sections: unknown[] | null;
   ai_generated_content: Array<{ title: string; content: string; order: number }> | null;
-  line_items: any[] | null;
+  line_items: unknown[] | null;
   terms_and_conditions: string | null;
   status: string;
   created_by: string | null;
@@ -61,7 +61,7 @@ interface ProposalSection {
   content: string;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }

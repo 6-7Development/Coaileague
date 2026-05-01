@@ -2366,7 +2366,7 @@ Do NOT skip steps — decompose fully before concluding.`;
    */
   private async buildProactiveInsights(
     workspaceId: string,
-    orgPatterns: any[],
+    orgPatterns: unknown[],
     workspaceContext: any
   ): Promise<string | null> {
     const alerts: string[] = [];
@@ -2604,7 +2604,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     workspaceContext: any,
     buddySettings: TrinityBuddySettings | null,
     userName: string,
-    recentInsights: any[],
+    recentInsights: unknown[],
     memoryProfile: any,
     supportHistory?: any,
     workspaceId?: string,
@@ -2866,7 +2866,7 @@ Do NOT skip steps — decompose fully before concluding.`;
   /**
    * Record a conversation turn
    */
-  private async recordTurn(sessionId: string, role: string, content: string, entityRefs?: { clientId?: string; employeeId?: string }, toolCalls?: any[]): Promise<void> {
+  private async recordTurn(sessionId: string, role: string, content: string, entityRefs?: { clientId?: string; employeeId?: string }, toolCalls?: unknown[]): Promise<void> {
     const [session] = await db
       .select()
       .from(trinityConversationSessions)
@@ -2976,7 +2976,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     images?: string[],
     userId?: string,
     sessionId?: string,
-  ): Promise<{ text: string; tokensUsed: number; model: string; toolCalls?: any[] }> {
+  ): Promise<{ text: string; tokensUsed: number; model: string; toolCalls?: unknown[] }> {
     try {
       // Vision path: Gemini is the only provider supporting multimodal today
       if (images && images.length > 0) {

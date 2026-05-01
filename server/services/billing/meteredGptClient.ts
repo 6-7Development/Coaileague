@@ -295,7 +295,7 @@ Respond with JSON: {"category": "chosen_category", "confidence": 0.0-1.0}`,
     fields: string[],
     workspaceId: string,
     userId?: string
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, unknown>> {
     const response = await this.execute({
       prompt: `Extract the following fields from this text: ${fields.join(', ')}
 
@@ -423,7 +423,7 @@ export async function gptExtract(
   fields: string[],
   workspaceId: string,
   userId?: string
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   return meteredGptClient.extract(text, fields, workspaceId, userId);
 }
 

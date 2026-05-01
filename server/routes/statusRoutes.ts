@@ -191,7 +191,7 @@ statusRouter.get('/', async (req, res) => {
     }));
 
     // Get recent incidents (last 30 days) from status_subscribers table (no incidents table yet — return empty)
-    const recentIncidents: any[] = [];
+    const recentIncidents: (string | number | boolean | null)[] = [];
 
     return res.json({
       status: overallStatus,

@@ -5,7 +5,7 @@ import { eq, and, gte, isNull, lt, lte, ne, sql, count, gt } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityWorkspaceTimeActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -124,7 +124,7 @@ export function registerWorkspaceTimeActions() {
       .where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, from)))
       .limit(500);
     const byEmployee: Record<string, number> = {};
-    const exceptions: any[] = [];
+    const exceptions: (string | number | boolean | null)[] = [];
     for (const e of entries) {
       if (!e.employeeId) continue;
       byEmployee[e.employeeId] = (byEmployee[e.employeeId] || 0) + (e.totalMinutes || 0);

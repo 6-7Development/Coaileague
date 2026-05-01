@@ -433,7 +433,7 @@ class SubagentPerformanceMeetingService {
    */
   private async generateAIAnalysis(
     subagent: AiSubagentDefinition,
-    telemetry: any[],
+    telemetry: unknown[],
     score: PerformanceScore,
     successRate: number
   ): Promise<{ summary: string; issues: string[]; recommendations: string[] }> {

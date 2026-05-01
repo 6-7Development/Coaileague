@@ -1485,7 +1485,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   // Edit shift mutation
   const editShiftMutation = useMutation({
     mutationFn: async ({ shiftId, data }: { shiftId: string; data: Partial<EditShiftFormData> }) => {
-      const payload: Record<string, any> = {};
+      const payload: Record<string, unknown> = {};
       if (data.employeeId !== undefined) payload.employeeId = data.employeeId;
       if (data.title) payload.title = data.title;
       if (data.clientId) payload.clientId = data.clientId;

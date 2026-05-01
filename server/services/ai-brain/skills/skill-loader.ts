@@ -42,7 +42,7 @@ const intelligentSchedulerSkill = new IntelligentSchedulerSkill();
  */
 export class SkillLoader {
   private skillsDirectory: string;
-  private loadedModules: Map<string, any> = new Map();
+  private loadedModules: Map<string, unknown> = new Map();
   private readonly log = createLogger('SkillLoader');
 
   constructor(skillsDirectory?: string) {

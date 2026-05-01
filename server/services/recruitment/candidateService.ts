@@ -134,7 +134,7 @@ export async function getCandidateById(
   workspaceId: string,
 ): Promise<{
   candidate: InterviewCandidate | null;
-  sessions: any[];
+  sessions: unknown[];
   scorecard: any | null;
 }> {
   const [candidate] = await db.select()

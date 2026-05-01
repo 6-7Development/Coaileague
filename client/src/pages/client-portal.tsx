@@ -664,7 +664,7 @@ export default function ClientPortal() {
   const { data: clients = [] } = useClientLookup();
   const currentClient = clients.find(c => c.email === user?.email);
 
-  interface ClientReport { id: number; title: string; reportType: string; status: string; employeeName?: string; createdAt: string; data: Record<string, any>; }
+  interface ClientReport { id: number; title: string; reportType: string; status: string; employeeName?: string; createdAt: string; data: Record<string, unknown>; }
   interface ClientGuardTour { id: string; tour_name?: string; status: string; completed_at?: string; completion_percentage?: string; officer_name?: string; }
   interface ClientDar { id: string; report_number?: string; site_name?: string; shift_date?: string; employee_name?: string; status?: string; pdf_url?: string; photo_count?: number; }
   interface ClientIncident { id: string; title: string; incident_type?: string; severity?: string; occurred_at?: string; location?: string; status?: string; site_id?: string; officer_name?: string; }

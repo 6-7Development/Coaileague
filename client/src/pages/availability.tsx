@@ -68,7 +68,7 @@ interface TeamMemberAvailability {
   employeeId: string;
   employeeName: string;
   availability: EmployeeAvailability[];
-  timeOffRequests: any[];
+  timeOffRequests: unknown[];
   totalAvailableHours: number;
 }
 

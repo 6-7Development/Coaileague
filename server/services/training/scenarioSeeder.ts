@@ -277,7 +277,7 @@ export class ScenarioSeederService {
     }).returning();
 
     // Generate shifts mirroring real Acme staffing patterns
-    const shiftsData: any[] = [];
+    const shiftsData: (string | number | boolean | null)[] = [];
     const employeeIds = activeEmployees.map(e => e.id);
     let shiftIndex = 0;
 
@@ -479,11 +479,11 @@ export class ScenarioSeederService {
     workspaceId: string,
     scenarioId: string,
     config: ScenarioConfig,
-    employees: any[],
-    clients: any[],
+    employees: unknown[],
+    clients: unknown[],
     clientRatesMap: Map<string, number> = new Map()
   ) {
-    const shiftsData: any[] = [];
+    const shiftsData: (string | number | boolean | null)[] = [];
     const startDate = new Date();
     startDate.setHours(6, 0, 0, 0);
     
@@ -554,7 +554,7 @@ export class ScenarioSeederService {
    */
   private generateConstraints(
     config: ScenarioConfig,
-    employees: any[],
+    employees: unknown[],
     shiftIndex: number
   ) {
     const cc = config.constraintConfig;

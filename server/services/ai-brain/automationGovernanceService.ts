@@ -209,7 +209,7 @@ class AutomationGovernanceService {
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
-      const blob = (ws?.blob || {}) as Record<string, any>;
+      const blob = (ws?.blob || {}) as Record<string, unknown>;
 
       if (blob.currentLevel) {
         const policy = { id: `${workspaceId}-policy`, workspaceId, ...blob } as WorkspaceAutomationPolicy;
@@ -307,7 +307,7 @@ class AutomationGovernanceService {
 
       const [ws] = await db.select({ blob: workspaces.automationPolicyBlob })
         .from(workspaces).where(eq(workspaces.id, request.workspaceId)).limit(1);
-      const current = ((ws?.blob || {}) as Record<string, any>);
+      const current = ((ws?.blob || {}) as Record<string, unknown>);
       const merged = { ...current, ...updates, updatedAt: new Date().toISOString() };
       await db.update(workspaces)
         .set({ automationPolicyBlob: merged })

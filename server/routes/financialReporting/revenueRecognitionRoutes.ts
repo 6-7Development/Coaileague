@@ -151,7 +151,7 @@ async function resolveWorkspace(req: AuthenticatedRequest): Promise<{ ok: boolea
 // ============================================================================
 // GET /api/finance/recognition/summary
 // ============================================================================
-router.get('/recognition/summary', async (req: AuthenticatedRequest, res: any) => {
+router.get('/recognition/summary', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -160,7 +160,7 @@ router.get('/recognition/summary', async (req: AuthenticatedRequest, res: any) =
     const summary = await revenueRecognitionService.getRevenueRecognitionSummary(workspaceId);
     return res.json({ success: true, data: summary });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] summary error', { error: err?.message });
+    log.error('[RevenueRoutes] summary error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -168,7 +168,7 @@ router.get('/recognition/summary', async (req: AuthenticatedRequest, res: any) =
 // ============================================================================
 // GET /api/finance/recognition/schedules
 // ============================================================================
-router.get('/recognition/schedules', async (req: AuthenticatedRequest, res: any) => {
+router.get('/recognition/schedules', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -189,7 +189,7 @@ router.get('/recognition/schedules', async (req: AuthenticatedRequest, res: any)
 
     return res.json({ success: true, data: schedules });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] schedules list error', { error: err?.message });
+    log.error('[RevenueRoutes] schedules list error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -206,7 +206,7 @@ const createScheduleBodySchema = z.object({
   startDate: z.string().optional(),
 });
 
-router.post('/recognition/schedules', async (req: AuthenticatedRequest, res: any) => {
+router.post('/recognition/schedules', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -247,7 +247,7 @@ router.post('/recognition/schedules', async (req: AuthenticatedRequest, res: any
     return res.status(201).json({ success: true, data: { scheduleId } });
   } catch (err: unknown) {
     if (err?.name === 'ZodError') return res.status(400).json({ error: err.errors });
-    log.error('[RevenueRoutes] create schedule error', { error: err?.message });
+    log.error('[RevenueRoutes] create schedule error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -255,7 +255,7 @@ router.post('/recognition/schedules', async (req: AuthenticatedRequest, res: any
 // ============================================================================
 // POST /api/finance/recognition/run — Manually trigger monthly recognition job
 // ============================================================================
-router.post('/recognition/run', async (req: AuthenticatedRequest, res: any) => {
+router.post('/recognition/run', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -293,7 +293,7 @@ router.post('/recognition/run', async (req: AuthenticatedRequest, res: any) => {
 
     return res.json({ success: true, data: result });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] run error', { error: err?.message });
+    log.error('[RevenueRoutes] run error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -301,7 +301,7 @@ router.post('/recognition/run', async (req: AuthenticatedRequest, res: any) => {
 // ============================================================================
 // GET /api/finance/asc-606/report
 // ============================================================================
-router.get('/asc-606/report', async (req: AuthenticatedRequest, res: any) => {
+router.get('/asc-606/report', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -310,7 +310,7 @@ router.get('/asc-606/report', async (req: AuthenticatedRequest, res: any) => {
     const report = await asc606Tracker.generateAsc606Report(workspaceId);
     return res.json({ success: true, data: report });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] asc-606 report error', { error: err?.message });
+    log.error('[RevenueRoutes] asc-606 report error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -318,7 +318,7 @@ router.get('/asc-606/report', async (req: AuthenticatedRequest, res: any) => {
 // ============================================================================
 // GET /api/finance/forecast
 // ============================================================================
-router.get('/forecast', async (req: AuthenticatedRequest, res: any) => {
+router.get('/forecast', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -328,7 +328,7 @@ router.get('/forecast', async (req: AuthenticatedRequest, res: any) => {
     const forecast = await revenueForecasting.generateRevenueForecast(workspaceId, months);
     return res.json({ success: true, data: forecast });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] forecast error', { error: err?.message });
+    log.error('[RevenueRoutes] forecast error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -336,7 +336,7 @@ router.get('/forecast', async (req: AuthenticatedRequest, res: any) => {
 // ============================================================================
 // GET /api/finance/pl/detail — Line-by-line P&L breakdown
 // ============================================================================
-router.get('/pl/detail', async (req: AuthenticatedRequest, res: any) => {
+router.get('/pl/detail', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -463,7 +463,7 @@ router.get('/pl/detail', async (req: AuthenticatedRequest, res: any) => {
       },
     });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] pl/detail error', { error: err?.message });
+    log.error('[RevenueRoutes] pl/detail error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -471,7 +471,7 @@ router.get('/pl/detail', async (req: AuthenticatedRequest, res: any) => {
 // ============================================================================
 // GET /api/finance/pl/history — 12-month P&L history
 // ============================================================================
-router.get('/pl/history', async (req: AuthenticatedRequest, res: any) => {
+router.get('/pl/history', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -552,7 +552,7 @@ router.get('/pl/history', async (req: AuthenticatedRequest, res: any) => {
 
     return res.json({ success: true, data: { periods: periodsParam, history } });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] pl/history error', { error: err?.message });
+    log.error('[RevenueRoutes] pl/history error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -560,7 +560,7 @@ router.get('/pl/history', async (req: AuthenticatedRequest, res: any) => {
 // ============================================================================
 // POST /api/finance/contracts/:contractId/map-revenue
 // ============================================================================
-router.post('/contracts/:contractId/map-revenue', async (req: AuthenticatedRequest, res: any) => {
+router.post('/contracts/:contractId/map-revenue', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
@@ -584,7 +584,7 @@ router.post('/contracts/:contractId/map-revenue', async (req: AuthenticatedReque
 
     return res.status(201).json({ success: true, data: result });
   } catch (err: unknown) {
-    log.error('[RevenueRoutes] map-revenue error', { error: err?.message });
+    log.error('[RevenueRoutes] map-revenue error', { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -24,10 +24,10 @@ import { format } from "date-fns";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 
 interface AuditData {
-  shifts?: any[];
-  reviews?: any[];
-  writeups?: any[];
-  lockedRecords?: any[];
+  shifts?: unknown[];
+  reviews?: unknown[];
+  writeups?: unknown[];
+  lockedRecords?: unknown[];
   compliance?: {
     totalHours?: number;
     overtimeHours?: number;

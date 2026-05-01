@@ -200,7 +200,7 @@ class PolicyDecisionPoint {
   /**
    * Gather all attributes for a subject (combines user data + explicit attributes)
    */
-  private async gatherSubjectAttributes(subject: AccessSubject): Promise<Record<string, any>> {
+  private async gatherSubjectAttributes(subject: AccessSubject): Promise<Record<string, unknown>> {
     const cacheKey = `${subject.entityType}:${subject.entityId}:${subject.workspaceId || 'global'}`;
     const cached = this.attributeCache.get(cacheKey);
     
@@ -422,7 +422,7 @@ class PolicyDecisionPoint {
    * Evaluate loaded policies against the access request
    */
   private evaluatePolicies(
-    policies: any[],
+    policies: unknown[],
     subject: AccessSubject,
     resource: AccessResource,
     context: AccessContext,

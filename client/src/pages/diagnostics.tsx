@@ -47,7 +47,7 @@ import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { format } from "date-fns";
 
 function UserSessionsViewer({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery<{ sessions: any[] }>({
+  const { data, isLoading } = useQuery<{ sessions: unknown[] }>({
     queryKey: [`/api/admin/users/${userId}/sessions`],
     enabled: !!userId,
   });
@@ -81,7 +81,7 @@ function UserSessionsViewer({ userId }: { userId: string }) {
 }
 
 function UserAuditLogsViewer({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery<{ logs: any[]; total: number }>({
+  const { data, isLoading } = useQuery<{ logs: unknown[]; total: number }>({
     queryKey: [`/api/admin/users/${userId}/audit-logs`, { limit: 30 }],
     enabled: !!userId,
   });

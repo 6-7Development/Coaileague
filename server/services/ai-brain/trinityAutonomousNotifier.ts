@@ -469,7 +469,7 @@ ${alert.autoFixAvailable ? `**Auto-fix Available:** Yes (Risk: ${alert.autoFixRi
       }
 
       // Listen for Trinity-specific events only (avoid duplicating existing notifications)
-      eventBus.on('trinity_issue_detected', async (event: any) => {
+      eventBus.on('trinity_issue_detected', async (event: unknown) => {
         await this.createAlert({
           severity: event.payload?.severity || 'warning',
           category: event.payload?.category || 'platform',

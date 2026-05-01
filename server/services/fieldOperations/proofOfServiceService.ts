@@ -272,7 +272,7 @@ class ProofOfServiceService {
     };
     pos.chainOfCustody.push(newEvent);
 
-    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, any>;
+    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, unknown>;
     await db.update(shiftProofPhotos)
       .set({
         deviceMeta: { ...deviceMeta, fullPayload: pos },
@@ -338,7 +338,7 @@ class ProofOfServiceService {
     );
     pos.chainOfCustody.push(reviewEvent);
 
-    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, any>;
+    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, unknown>;
     await db.update(shiftProofPhotos)
       .set({
         deviceMeta: { ...deviceMeta, fullPayload: pos },
@@ -400,7 +400,7 @@ class ProofOfServiceService {
     };
   }
 
-  private revivePosDates(payload: any): ProofOfServicePhoto {
+  private revivePosDates(payload: unknown): ProofOfServicePhoto {
     const toDate = (v: any) => (v ? new Date(v) : v);
     return {
       ...payload,

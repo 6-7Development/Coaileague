@@ -1932,7 +1932,7 @@ export default function Settings() {
   });
 
   // Fetch labor law rules for jurisdiction selector
-  const { data: laborLawRulesResponse } = useQuery<{ success: boolean; data: any[] }>({
+  const { data: laborLawRulesResponse } = useQuery<{ success: boolean; data: unknown[] }>({
     queryKey: ['/api/breaks/rules'],
     enabled: isAuthenticated,
   });
@@ -2436,7 +2436,7 @@ export default function Settings() {
     });
   };
 
-  const quickSaveNotificationPref = (overrides: Record<string, any>) => {
+  const quickSaveNotificationPref = (overrides: Record<string, unknown>) => {
     updateNotificationPrefsMutation.mutate({
       enableEmail: overrides.enableEmail ?? enableEmail,
       enableSms: overrides.enableSms ?? enableSms,

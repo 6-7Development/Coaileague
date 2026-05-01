@@ -5,7 +5,7 @@ import { eq, and, gte, lte, isNull, ne, sql, count, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinitySchedulingPlatformActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -166,7 +166,7 @@ export function registerSchedulingPlatformActions() {
         ne(shifts.status, 'cancelled'),
       ))
       .orderBy(shifts.employeeId, shifts.startTime);
-    const conflicts: any[] = [];
+    const conflicts: (string | number | boolean | null)[] = [];
     const byEmployee: Record<string, typeof upcoming> = {};
     for (const s of upcoming) {
       if (!s.employeeId) continue;

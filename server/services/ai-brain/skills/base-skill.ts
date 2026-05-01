@@ -149,7 +149,7 @@ export abstract class BaseSkill {
   /**
    * Get skill statistics
    */
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       skillId: this.getManifest().id,
       enabled: this.config.enabled,

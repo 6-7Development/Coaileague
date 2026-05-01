@@ -702,7 +702,7 @@ export class SandboxQuickBooksSimulator {
     let totalFederal = 0;
     let totalState = 0;
     let totalFica = 0;
-    const payrollEntryRecords: any[] = [];
+    const payrollEntryRecords: (string | number | boolean | null)[] = [];
 
     for (const [empId, entries] of Object.entries(entriesByEmployee)) {
       if (empId === 'unknown') continue;

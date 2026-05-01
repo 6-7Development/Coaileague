@@ -209,8 +209,8 @@ export class GeoComplianceService {
     entityType: string,
     entityId: string,
     entityDescription: string,
-    changesBefore: Record<string, any> | null,
-    changesAfter: Record<string, any> | null,
+    changesBefore: Record<string, unknown> | null,
+    changesAfter: Record<string, unknown> | null,
     ipAddress?: string
   ): Promise<void> {
     // Calculate field-level changes

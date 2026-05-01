@@ -40,7 +40,7 @@ interface OfferData {
     endTime: string | null;
     payRate: string | null;
     clientName: string | null;
-    requirements: Record<string, any> | null;
+    requirements: Record<string, unknown> | null;
     status: string | null;
   } | null;
   employee: {

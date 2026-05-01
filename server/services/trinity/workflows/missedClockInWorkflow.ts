@@ -101,7 +101,7 @@ export async function runMissedClockInSweep(): Promise<MissedClockInSweepResult>
         continue;
       }
 
-      const meta = (existing.metadata ?? {}) as Record<string, any>;
+      const meta = (existing.metadata ?? {}) as Record<string, unknown>;
       const stage: string = meta.stage ?? 'sms_sent';
       const lastTransition = meta.lastTransitionAt
         ? new Date(meta.lastTransitionAt)
@@ -430,7 +430,7 @@ async function findExistingWorkflow(
   shiftId: string,
 ): Promise<{
   id: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   createdAt: Date;
 } | null> {
   try {
@@ -453,7 +453,7 @@ async function findExistingWorkflow(
     if (!row) return null;
     return {
       id: row.id,
-      metadata: row.metadata as Record<string, any> | null,
+      metadata: row.metadata as Record<string, unknown> | null,
       createdAt: row.createdAt,
     };
   } catch (err: unknown) {

@@ -524,7 +524,7 @@ async function trinityVerifyCorrections(buffer: Buffer, mimeType: string): Promi
   const base64 = buffer.toString('base64');
   const isImage = mimeType.startsWith('image/');
 
-  const content: any[] = [];
+  const content: (string | number | boolean | null)[] = [];
   if (isImage) {
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeType === 'image/png' ? 'image/png' : 'image/jpeg', data: base64 } });
   }

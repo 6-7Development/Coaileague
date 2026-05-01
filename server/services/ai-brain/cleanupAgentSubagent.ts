@@ -314,7 +314,7 @@ class CleanupAgentSubagent {
 
   async findComponentByName(searchTerm: string): Promise<any[]> {
     const components = (specIndex as any).components || {};
-    const matches: any[] = [];
+    const matches: (string | number | boolean | null)[] = [];
 
     for (const [id, component] of Object.entries(components)) {
       const comp = component as any;

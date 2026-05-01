@@ -387,7 +387,7 @@ router.get('/export', requireManager, async (req: AuthenticatedRequest, res) => 
     const { reportType, startDate, endDate, format: exportFormat } = req.query;
     if (!reportType) return res.status(400).json({ message: 'reportType is required' });
 
-    let data: any[] = [];
+    let data: (string | number | boolean | null)[] = [];
     const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate as string) : new Date();
 

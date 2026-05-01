@@ -132,7 +132,7 @@ class SharedKnowledgeGraph {
   private relationships: Map<string, KnowledgeRelationship> = new Map();
   private learningHistory: LearningEntry[] = [];
   private entityIndex: Map<string, Set<string>> = new Map(); // domain -> entity IDs
-  private patternCache: Map<string, any> = new Map();
+  private patternCache: Map<string, unknown> = new Map();
 
   private dbInitialized = false;
 

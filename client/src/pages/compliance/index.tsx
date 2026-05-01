@@ -50,11 +50,11 @@ export default function ComplianceDashboard() {
     queryKey: ['/api/security-compliance/states'],
   });
 
-  const { data: approvalsData, isLoading: approvalsLoading } = useQuery<{ success: boolean; approvals: any[]; count: number }>({
+  const { data: approvalsData, isLoading: approvalsLoading } = useQuery<{ success: boolean; approvals: unknown[]; count: number }>({
     queryKey: ['/api/security-compliance/approvals/pending'],
   });
 
-  const { data: recordsData, isLoading: recordsLoading } = useQuery<{ success: boolean; records: any[] }>({
+  const { data: recordsData, isLoading: recordsLoading } = useQuery<{ success: boolean; records: unknown[] }>({
     queryKey: ['/api/security-compliance/records'],
   });
 

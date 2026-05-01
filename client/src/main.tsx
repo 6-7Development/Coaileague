@@ -73,7 +73,7 @@ if (import.meta.env.DEV) {
   });
   
   const origError = console.error;
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     const fullStr = args.map(a => String(a)).join(" ");
     if (fullStr.includes("Failed to construct 'WebSocket'") || 
         fullStr.includes("localhost:undefined")) {

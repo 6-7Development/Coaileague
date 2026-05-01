@@ -79,7 +79,7 @@ export class HelpaiRegistryService {
   /**
    * Validate API payload against schema
    */
-  validateAPIPayload(payload: any): RegistryValidationResult {
+  validateAPIPayload(payload: unknown): RegistryValidationResult {
     const errors: string[] = [];
 
     // Required fields

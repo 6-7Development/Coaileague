@@ -96,7 +96,7 @@ const registeredJobs: Map<string, ScheduledJobInfo> = new Map();
 
 const activeJobs = new Set<string>();
 
-async function trackJobExecution(jobName: string, fn: () => Promise<any>): Promise<void> {
+async function trackJobExecution(jobName: string, fn: () => Promise<unknown>): Promise<void> {
   if (activeJobs.has(jobName)) {
     log.debug('Skipping job - previous run still in progress', { jobName });
     return;
@@ -236,7 +236,7 @@ async function handleJobFailure(entry: JobExecutionEntry): Promise<void> {
       .from(platformRoles)
       .where(
         and(
-          inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager'] as any),
+          inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager'] as string[]),
           isNull(platformRoles.revokedAt),
           eq(platformRoles.isSuspended, false)
         )
@@ -408,7 +408,7 @@ async function emitAutomationEvent(data: AutomationEventData) {
  * Build idempotency fingerprint for invoice generation
  * Includes: workspace, period boundaries (start/end dates), schedule config hash
  */
-function buildInvoiceFingerprintData(workspace: any, date: Date) {
+function buildInvoiceFingerprintData(workspace: Record<string, unknown>, date: Date) {
   // Calculate billing period boundaries (yesterday's work)
   const periodEnd = new Date(date);
   periodEnd.setHours(0, 0, 0, 0);
@@ -436,7 +436,7 @@ function buildInvoiceFingerprintData(workspace: any, date: Date) {
   };
 }
 
-function buildPayrollFingerprintData(workspace: any, date: Date) {
+function buildPayrollFingerprintData(workspace: Record<string, unknown>, date: Date) {
   // Calculate payroll period boundaries  
   const periodEnd = new Date(date);
   periodEnd.setHours(0, 0, 0, 0);
@@ -470,7 +470,7 @@ function buildPayrollFingerprintData(workspace: any, date: Date) {
  * Build idempotency fingerprint for schedule generation
  * Includes: workspace, period boundaries (next week), schedule config hash
  */
-function buildScheduleFingerprintData(workspace: any, date: Date, nextWeekStart: Date, nextWeekEnd: Date) {
+function buildScheduleFingerprintData(workspace: Record<string, unknown>, date: Date, nextWeekStart: Date, nextWeekEnd: Date) {
   return {
     workspaceId: workspace.id,
     runDate: date.toISOString().split('T')[0], // YYYY-MM-DD
@@ -881,7 +881,7 @@ async function runNightlyInvoiceGeneration() {
               
               try {
                 // Route to correct invoice generator based on billing schedule
-                let invoices: any[] = [];
+                let invoices: (string | number | boolean | null)[] = [];
                 if (schedule === 'weekly') {
                   const result = await generateWeeklyInvoices(workspace.id, new Date(), 7);
                   invoices = result.invoices || [];
@@ -982,7 +982,7 @@ async function runNightlyInvoiceGeneration() {
                 
                 // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                 await db.transaction(async (tx) => {
-                  const updateData: any = { lastInvoiceRunAt: today };
+                  const updateData: Record<string, unknown> = { lastInvoiceRunAt: today };
                   
                   // Advance biweekly anchor if applicable (maintains 14-day cadence)
                   if (schedule === 'biweekly' && workspace.invoiceBiweeklyAnchor) {
@@ -1363,8 +1363,8 @@ async function runWeeklyScheduleGeneration() {
                               siteId: s.siteId,
                               startTime: s.startTime,
                               endTime: s.endTime,
-                              assignedEmployeeIds: (s as any).assignedEmployeeIds || [],
-                              position: (s as any).position,
+                              assignedEmployeeIds: (s as Record<string, unknown>).assignedEmployeeIds || [],
+                              position: (s as Record<string, unknown>).position,
                             })),
                             employees: workspaceEmployees.map(e => ({
                               id: e.id,
@@ -1373,9 +1373,9 @@ async function runWeeklyScheduleGeneration() {
                               availability: availMap.get(e.id) || [],
                               skills: skillMap.get(e.id) || [],
                               // Armed officer attributes for scheduling eligibility
-                              isArmed: (e as any).isArmed ?? false,
-                              armedLicenseVerified: (e as any).armedLicenseVerified ?? false,
-                              guardCardExpiryDate: (e as any).guardCardExpiryDate ?? null,
+                              isArmed: (e as Record<string, unknown>).isArmed ?? false,
+                              armedLicenseVerified: (e as Record<string, unknown>).armedLicenseVerified ?? false,
+                              guardCardExpiryDate: (e as Record<string, unknown>).guardCardExpiryDate ?? null,
                             })),
                             constraints: {
                               weekStart: nextWeekStart.toISOString(),
@@ -1404,11 +1404,11 @@ async function runWeeklyScheduleGeneration() {
                         const now = new Date();
                         const empMap = new Map(workspaceEmployees.map(e => [e.id, e]));
                         if (result.output?.assignments) {
-                          result.output.assignments = result.output.assignments.filter((a: any) => {
+                          result.output.assignments = result.output.assignments.filter((a: Record<string, unknown>) => {
                             const shift = existingShifts.find(s => s.id === a.shiftId);
                             const isArmedShift = shift && (
-                              String((shift as any).position || '').toLowerCase().includes('armed') ||
-                              String((shift as any).position || '') === 'armed_guard'
+                              String((shift as Record<string, unknown>).position || '').toLowerCase().includes('armed') ||
+                              String((shift as Record<string, unknown>).position || '') === 'armed_guard'
                             );
                             if (!isArmedShift) return true; // unarmed shifts — always valid
                             const officer = empMap.get(a.employeeId);
@@ -1437,7 +1437,7 @@ async function runWeeklyScheduleGeneration() {
                 
                 // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                 await db.transaction(async (tx) => {
-                  const updateData: any = { lastScheduleRunAt: today };
+                  const updateData: Record<string, unknown> = { lastScheduleRunAt: today };
                   
                   // Advance biweekly anchor if applicable
                   if (interval === 'biweekly' && workspace.scheduleBiweeklyAnchor) {
@@ -1793,7 +1793,7 @@ async function runAutomaticPayrollProcessing() {
                   
                   // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                   await db.transaction(async (tx) => {
-                    const updateData: any = { lastPayrollRunAt: today };
+                    const updateData: Record<string, unknown> = { lastPayrollRunAt: today };
                     
                     // Advance biweekly anchor if applicable
                     if (paySchedule === 'biweekly' && workspace.payrollBiweeklyAnchor) {

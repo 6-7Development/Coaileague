@@ -436,7 +436,7 @@ router.post(
       }
 
       // Pre-resolve additional participant users OUTSIDE the transaction (read-only).
-      let additionalParticipantRecords: any[] = [];
+      let additionalParticipantRecords: (string | number | boolean | null)[] = [];
       if (participants && Array.isArray(participants) && participants.length > 0) {
         const participantRecords = await Promise.all(
           participants.map(async (participantId: string) => {
@@ -655,7 +655,7 @@ router.get(
 
       const leftConversationIds = requireAuth ? await getLeftConversationIds(userId!) : new Set<string>();
 
-      const rooms: any[] = [];
+      const rooms: (string | number | boolean | null)[] = [];
 
       // ========================================================================
       // 1. SUPPORT ROOMS (type: 'support') - Always include platform-wide rooms
@@ -2051,7 +2051,7 @@ router.get(
 
       const { orgFilter, categoryFilter, search, status: statusFilter } = req.query;
 
-      const rooms: any[] = [];
+      const rooms: (string | number | boolean | null)[] = [];
 
       // Get all active conversations across all workspaces
       let query = db

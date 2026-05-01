@@ -806,7 +806,7 @@ class AIBrainAuthorizationService {
       
       return approvals.map(approval => {
         const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[approval.actionType];
-        const approvalsArray = (approval.approvals as Array<any>) || [];
+        const approvalsArray = (approval.approvals as Array<unknown>) || [];
         
         return {
           id: approval.id,
@@ -836,7 +836,7 @@ class AIBrainAuthorizationService {
         return { found: false };
       }
       
-      const approvalsArray = (approval.approvals as Array<any>) || [];
+      const approvalsArray = (approval.approvals as Array<unknown>) || [];
       
       return {
         found: true,

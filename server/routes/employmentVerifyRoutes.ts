@@ -255,7 +255,7 @@ employmentVerifyRouter.get(
               WHERE workspace_id = $1 LIMIT 1`,
             [workspaceId],
           );
-          const row = settingRows.rows[0] as any;
+          const row = settingRows.rows[0] as Record<string, unknown>;
           const feeCents: number = row?.verification_fee_cents ?? 100;
           const enabled: boolean = row?.verification_enabled ?? true;
 

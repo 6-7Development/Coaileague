@@ -21,10 +21,10 @@ interface Checkpoint {
   workspaceId: string;
   automationType: string;
   status: 'paused' | 'resumed' | 'failed' | 'expired';
-  stateSnapshot: Record<string, any>;
-  partialResults: Record<string, any> | null;
+  stateSnapshot: Record<string, unknown>;
+  partialResults: Record<string, unknown> | null;
   creditsNeeded: number;
-  resumeParams: Record<string, any>;
+  resumeParams: Record<string, unknown>;
   createdAt: string;
   resumedAt: string | null;
   expiresAt: string;

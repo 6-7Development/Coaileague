@@ -198,7 +198,7 @@ class E2ECrawlRunner {
     const brokenImages: string[] = [];
 
     // Set up temporary listeners for this page
-    const consoleHandler = (msg: any) => {
+    const consoleHandler = (msg: unknown) => {
       const text = msg.text();
       if (msg.type() === 'error') {
         consoleErrors.push(text);

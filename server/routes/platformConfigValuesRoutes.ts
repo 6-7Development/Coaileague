@@ -243,7 +243,7 @@ platformConfigValuesRouter.patch('/values/:id', requireAuth, async (req: Request
     const { label, description, color, icon, sortOrder, isActive, metadata } = req.body;
 
     const updates: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (label !== undefined)       { updates.push(`label = $${idx++}`);       params.push(label); }

@@ -105,7 +105,7 @@ router.patch("/leads/:id", requireAuth, async (req: AuthenticatedRequest, res) =
     };
 
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let p = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) {

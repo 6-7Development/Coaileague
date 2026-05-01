@@ -234,7 +234,7 @@ export class AutomationCheckpointer {
   /**
    * Get the result saved from a prior completed step.
    */
-  getStepResult(checkpoint: AutomationCheckpoint, stepName: string): Record<string, any> | undefined {
+  getStepResult(checkpoint: AutomationCheckpoint, stepName: string): Record<string, unknown> | undefined {
     return checkpoint.partialResults[stepName] ?? checkpoint.steps.find(s => s.name === stepName)?.result;
   }
 

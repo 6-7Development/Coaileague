@@ -65,7 +65,7 @@ If ANY criterion is not met, verified must be false. Err on the side of caution 
   try {
     const base64 = documentBuffer.toString('base64');
 
-    const content: any[] = [];
+    const content: (string | number | boolean | null)[] = [];
     if (isImage) {
       const mediaType = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
       content.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });

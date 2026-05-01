@@ -35,12 +35,12 @@ export default function SupervisorDashboard() {
     staleTime: 30000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
 
-  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: any[] }>({
+  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/incidents"],
     staleTime: 60000,
   });

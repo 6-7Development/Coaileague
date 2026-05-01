@@ -85,7 +85,7 @@ export async function runLegacyBootstraps(): Promise<void> {
       results.ok++;
     } catch (err: unknown) {
       results.failed++;
-      log.error(`[legacyBootstrap] ${entry.name} failed`, { error: err?.message });
+      log.error(`[legacyBootstrap] ${entry.name} failed`, { error: err instanceof Error ? err.message : String(err) });
     }
   }
 

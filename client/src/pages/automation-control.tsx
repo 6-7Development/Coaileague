@@ -60,7 +60,7 @@ interface AutomationCheckpoint {
   steps: AutomationStepState[];
   resumable: boolean;
   resumeFromStep?: string;
-  partialResults: Record<string, any>;
+  partialResults: Record<string, unknown>;
 }
 
 interface AutomationHistoryItem {
@@ -76,7 +76,7 @@ interface AutomationHistoryItem {
   pausedAt?: string;
   pausedBy?: string;
   pauseReason?: string;
-  revisedPayload?: Record<string, any> | null;
+  revisedPayload?: Record<string, unknown> | null;
   revisionNotes?: string | null;
   revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string }>;
   trinityReanalysis?: string | null;
@@ -324,7 +324,7 @@ export default function AutomationControl() {
   });
 
   const reviseMutation = useMutation({
-    mutationFn: async ({ requestId, revisedPayload, notes }: { requestId: string; revisedPayload: Record<string, any>; notes: string }) => {
+    mutationFn: async ({ requestId, revisedPayload, notes }: { requestId: string; revisedPayload: Record<string, unknown>; notes: string }) => {
       const res = await apiRequest('PATCH', `/api/automation/trinity/revise/${requestId}`, { revisedPayload, notes });
       return await res.json();
     },
@@ -364,7 +364,7 @@ export default function AutomationControl() {
 
   const submitRevision = () => {
     if (!reviseModalId) return;
-    let parsed: Record<string, any>;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(revisePayloadText);
     } catch {

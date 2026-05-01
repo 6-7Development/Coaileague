@@ -175,7 +175,7 @@ export function EmployeeEditDialog({
 
   // Edit mutation
   const editMutation = useMutation({
-    mutationFn: async (data: { id: string; updates: Record<string, any> }) => {
+    mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
       const response = await secureFetch(`/api/employees/${data.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -431,7 +431,7 @@ export function EmployeeEditDialog({
 
   const handleSave = () => {
     if (!employee?.id) return;
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,

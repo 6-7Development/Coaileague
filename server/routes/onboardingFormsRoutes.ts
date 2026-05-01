@@ -186,7 +186,7 @@ router.post("/submit", requireAuth, async (req: AuthenticatedRequest, res) => {
 
     // ── Persist guard card and compliance data to employee record ────────────
     if (employee?.id && uploadedDocs) {
-      const docs = uploadedDocs as Record<string, any>;
+      const docs = uploadedDocs as Record<string, unknown>;
       // CATEGORY C — Raw SQL retained: ::date | Tables: employees | Verified: 2026-03-23
       await typedExec(sql`
         UPDATE employees SET

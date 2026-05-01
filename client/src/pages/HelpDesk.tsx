@@ -795,7 +795,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(userPlatformRoleForAccess || '');
 
  // Initial room status hydration from room list cache
- const { data: roomListData } = useQuery<{ rooms: any[] }>({
+ const { data: roomListData } = useQuery<{ rooms: unknown[] }>({
  queryKey: ['/api/chat/rooms'],
  enabled: !!conversationToJoin && conversationToJoin !== MAIN_ROOM_ID,
  staleTime: 30000,

@@ -995,7 +995,7 @@ export async function logRegulatorNotification(params: {
 
 export async function listRegulatorNotificationsForWorkspace(
   workspaceId: string,
-): Promise<Array<any>> {
+): Promise<Array<unknown>> {
   await ensureRegulatorNotificationTable();
   const { pool } = await import('../../db');
   try {

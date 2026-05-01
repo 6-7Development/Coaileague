@@ -255,7 +255,7 @@ function CheckpointForm({ tourId, checkpoint, onClose }: { tourId: string; check
   );
 }
 
-function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: any[] }) {
+function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: unknown[] }) {
   const { user } = useAuth();
   const workspaceId = (user as any)?.workspaceId;
   const { toast } = useToast();

@@ -136,7 +136,7 @@ export default function OversightHub() {
   };
 
   const getEntityIcon = (entityType: string) => {
-    const icons: Record<string, any> = {
+    const icons: Record<string, unknown> = {
       invoice: DollarSign,
       expense: FileText,
       timesheet: Clock,

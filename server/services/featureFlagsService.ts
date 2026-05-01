@@ -58,7 +58,7 @@ export const trinityRuntimeFlagsService = {
   }): Promise<TrinityRuntimeFlag[]> {
     let query = db.select().from(trinityRuntimeFlags);
     
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     
     if (filters?.category) {
       conditions.push(eq(trinityRuntimeFlags.category, filters.category));

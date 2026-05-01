@@ -227,7 +227,7 @@ export class MonitorRegistry {
       scope: task.scope,
       targetEntityType: task.targetEntityType,
       targetEntityId: task.targetEntityId,
-      configuration: task.configuration as Record<string, any>,
+      configuration: task.configuration as Record<string, unknown>,
       nextRunAt: task.nextRunAt,
     };
   }

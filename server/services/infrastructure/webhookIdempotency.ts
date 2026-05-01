@@ -166,7 +166,7 @@ export async function cleanupOldWebhookClaims(retentionDays: number = 30): Promi
       `[webhookIdempotency] Cleanup removed ${result.rowCount || 0} claims older than ${retentionDays} days`,
     );
   } catch (err: unknown) {
-    log.error('[webhookIdempotency] cleanup failed', { error: err?.message });
+    log.error('[webhookIdempotency] cleanup failed', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 

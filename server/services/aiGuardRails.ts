@@ -245,7 +245,7 @@ export class AIGuardRails {
           acc[field] = baseContext[field as keyof AIRequestContext];
         }
         return acc;
-      }, {} as Record<string, any>))
+      }, {} as Record<string, unknown>))
     };
   }
 

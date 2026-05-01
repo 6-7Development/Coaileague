@@ -49,7 +49,7 @@ export default function DisputesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Fetch all employees to determine current user's role
-  const { data: allEmployees, isLoading: loadingEmployees, isError: employeesError } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: allEmployees, isLoading: loadingEmployees, isError: employeesError } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
     enabled: !!user,

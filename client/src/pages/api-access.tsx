@@ -74,7 +74,7 @@ export default function ApiAccess() {
   });
 
   const createKeyMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest('POST', '/api/enterprise-features/api-keys', data);
       return res;
     },

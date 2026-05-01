@@ -51,7 +51,7 @@ export default function CompanyReports() {
     totalHours?: number;
     activeEmployees?: number;
     profitMargin?: number;
-    details?: any[];
+    details?: unknown[];
   };
   const { data: reportData, isLoading } = useQuery<ReportData>({
     queryKey: ['/api/reports/company-data', selectedReport, dateRange],

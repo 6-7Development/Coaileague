@@ -785,7 +785,7 @@ class OnboardingQuickBooksFlow {
       });
       
       for (const row of activeFlows) {
-        const rawData = row.flowData as Record<string, any>;
+        const rawData = row.flowData as Record<string, unknown>;
         if (rawData) {
           const flow: QuickBooksFlowState = {
             flowId: rawData.flowId || row.id,

@@ -555,7 +555,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'weighted-scoring',

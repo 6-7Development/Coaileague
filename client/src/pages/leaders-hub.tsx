@@ -209,7 +209,7 @@ export default function LeadersHub() {
   });
 
   // Fetch employees (for People tab)
-  const { data: employees = [] } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [] } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
   });

@@ -52,7 +52,7 @@ export function initializeVoiceSessionCleanup(): void {
         () => runCleanupCycle()
       );
     } catch (err: unknown) {
-      log.error('Voice session cleanup failed', { error: err?.message });
+      log.error('Voice session cleanup failed', { error: err instanceof Error ? err.message : String(err) });
     }
   };
 

@@ -209,8 +209,8 @@ export default function SpsPacketPortal() {
   const { toast } = useToast();
   
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [signatures, setSignatures] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [signatures, setSignatures] = useState<Record<string, unknown>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [submittedOk, setSubmittedOk] = useState(false);

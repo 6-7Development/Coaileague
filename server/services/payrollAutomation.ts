@@ -1076,7 +1076,7 @@ export class PayrollAutomationEngine {
   }> {
     // Get workspace pay schedule — read from billingSettingsBlob.payrollCycle (canonical source)
     const workspace = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const blob = (workspace[0]?.billingSettingsBlob as Record<string, any>) || {};
+    const blob = (workspace[0]?.billingSettingsBlob as Record<string, unknown>) || {};
     const paySchedule: string = blob.payrollCycle || workspace[0]?.payrollSchedule || 'bi-weekly';
 
     // Use custom period dates if provided, otherwise auto-detect
@@ -1865,7 +1865,7 @@ export async function amendPayrollEntry(
 // Export convenience functions for use in routes
 export const detectPayPeriod = async (workspaceId: string) => {
   const workspace = await db.select({ billingSettingsBlob: workspaces.billingSettingsBlob }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-  const blob = (workspace[0]?.billingSettingsBlob || {}) as Record<string, any>;
+  const blob = (workspace[0]?.billingSettingsBlob || {}) as Record<string, unknown>;
   // payrollCycle stored in billingSettingsBlob: weekly | biweekly | semimonthly | monthly
   const rawCycle: string = blob.payrollCycle || 'bi-weekly';
   // Normalize: biweekly → bi-weekly, semimonthly → semi-monthly

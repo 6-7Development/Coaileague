@@ -44,7 +44,7 @@ async function restoreWebhookConfigFromDb(token: string): Promise<boolean> {
       // Fallback: scan all workspaces for a matching token in their blob
       const all = await db.select({ id: workspaces.id, blob: workspaces.automationPolicyBlob }).from(workspaces).limit(500);
       for (const row of all) {
-        const blob = row.blob as Record<string, any> || {};
+        const blob = row.blob as Record<string, unknown> || {};
         if (blob.staffingWebhookToken === token) {
           trinityStaffingOrchestrator.registerWebhookToken(row.id, token, blob.staffingWebhookSecret || undefined, blob.staffingWebhookSystemUserId || undefined);
           return true;
@@ -52,7 +52,7 @@ async function restoreWebhookConfigFromDb(token: string): Promise<boolean> {
       }
       return false;
     }
-    const blob = ws.blob as Record<string, any> || {};
+    const blob = ws.blob as Record<string, unknown> || {};
     trinityStaffingOrchestrator.registerWebhookToken(ws.id, token, blob.staffingWebhookSecret || undefined, blob.staffingWebhookSystemUserId || undefined);
     return true;
   } catch {

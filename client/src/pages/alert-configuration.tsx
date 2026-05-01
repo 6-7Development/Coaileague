@@ -117,7 +117,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200',
 };
 
-const CHANNEL_ICONS: Record<string, any> = {
+const CHANNEL_ICONS: Record<string, unknown> = {
   in_app: Bell,
   email: Mail,
   sms: Smartphone,

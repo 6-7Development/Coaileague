@@ -447,7 +447,7 @@ class QuickBooksOrchestrationService {
       return null;
     }
 
-    const metadata = connection.metadata as Record<string, any> | null;
+    const metadata = connection.metadata as Record<string, unknown> | null;
     const environment = (metadata?.environment as 'sandbox' | 'production') || 'sandbox';
 
     return {

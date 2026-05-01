@@ -330,7 +330,7 @@ class UniversalStepLogger {
       let expired = 0;
 
       for (const entry of stateEntries) {
-        const meta = entry.metadata as Record<string, any>;
+        const meta = entry.metadata as Record<string, unknown>;
         if (!meta?.orchestrationId) continue;
 
         if (this.orchestrations.has(meta.orchestrationId)) continue;
@@ -786,7 +786,7 @@ class UniversalStepLogger {
         const tracker = await getExecutionTracker();
         if (tracker) {
           // Derive itemsProcessed from common summary field names across all daemon types
-          const derived = summary as Record<string, any> | undefined;
+          const derived = summary as Record<string, unknown> | undefined;
           const itemsProcessed: number =
             derived?.itemsProcessed ??
             derived?.shiftsGenerated ??

@@ -146,7 +146,7 @@ router.get('/api/notifications/combined', requireAuth, async (req, res) => {
       
       // Get gap intelligence findings for PLATFORM SUPPORT ROLES ONLY
       // SECURITY: Explicitly deny gap findings to workspace/org roles
-      let gapFindings: any[] = [];
+      let gapFindings: (string | number | boolean | null)[] = [];
       
       // Check if user has a workspace role - if so, they are NOT platform support
       const userHasWorkspaceRole = !!(workspace || member);

@@ -25,7 +25,7 @@ function ts(d: number, hoursAgo = 0): string {
 }
 
 // CATEGORY C — Raw SQL retained: Expansion seed helper executes dynamic INSERT/DDL statements via db.$client | Tables: dynamic | Verified: 2026-03-23
-async function q(sql: string, params: any[] = []): Promise<unknown> {
+async function q(sql: string, params: (string | number | boolean | null)[] = []): Promise<unknown> {
   return db.$client.query(sql, params);
 }
 

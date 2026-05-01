@@ -453,7 +453,7 @@ export async function getReportAnalytics(
   return analytics;
 }
 
-function groupBy(array: any[], key: string): Record<string, number> {
+function groupBy(array: unknown[], key: string): Record<string, number> {
   return array.reduce((acc, item) => {
     const value = item[key] || 'unknown';
     acc[value] = (acc[value] || 0) + 1;
@@ -461,7 +461,7 @@ function groupBy(array: any[], key: string): Record<string, number> {
   }, {});
 }
 
-function groupReportsByMonth(reports: any[]): Record<string, number> {
+function groupReportsByMonth(reports: unknown[]): Record<string, number> {
   return reports.reduce((acc, report) => {
     const month = new Date(report.lockedAt).toISOString().substring(0, 7); // YYYY-MM
     acc[month] = (acc[month] || 0) + 1;

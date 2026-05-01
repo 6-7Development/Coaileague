@@ -100,7 +100,7 @@ async function searchFAQ(message: string, workspaceId?: string): Promise<{ found
 
 // ─── Workspace Context Loader ──────────────────────────────────────────────
 
-async function loadWorkspaceContext(workspaceId: string): Promise<Record<string, any>> {
+async function loadWorkspaceContext(workspaceId: string): Promise<Record<string, unknown>> {
   const [ws, empCount, activeShifts, openInvoices, recentTickets] = await Promise.all([
     pool.query(`SELECT id, name FROM workspaces WHERE id = $1`, [workspaceId]),
     pool.query(`SELECT COUNT(*) FROM employees WHERE workspace_id = $1 AND status = 'active'`, [workspaceId]),
@@ -142,7 +142,7 @@ async function createSupportTicket(params: {
   priority?: string;
   trinityAttempted: boolean;
   trinityTranscript?: string;
-  actionsJson?: any[];
+  actionsJson?: unknown[];
   escalatedToHuman?: boolean;
   escalationReason?: string;
   resolvedByFaq?: boolean;
@@ -186,7 +186,7 @@ async function tryResolveAccountAccess(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'For account access issues, use the Forgot Password link on the login screen. If your account is locked, contact support.' };
@@ -214,7 +214,7 @@ async function tryResolveOnboardingStuck(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'If your onboarding is stuck, try refreshing the page. A support agent has been assigned to review your progress.' };
@@ -294,7 +294,7 @@ async function tryResolveDocumentMissing(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'Please check Documents in the main menu. If the document is missing, a support agent will resend it.' };
@@ -340,7 +340,7 @@ async function tryResolveNotificationIssue(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'Go to Settings > Notifications to ensure SMS and email alerts are enabled.' };
@@ -365,7 +365,7 @@ async function tryResolvePayrollDispute(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   const emp = userId ? await lookupEmployeeForUser(userId, workspaceId) : null;
   const r = await executeSupportAction({
@@ -527,7 +527,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
     const userId = req.userId;
 
     const category = classifyMessage(message);
-    const actionsLog: any[] = [];
+    const actionsLog: (string | number | boolean | null)[] = [];
 
     // ── Phase 6: Auditor HelpAI branch ─────────────────────────────────────
     // When the caller is a DPS/regulatory auditor, route through Trinity

@@ -164,7 +164,7 @@ export async function createScheduleForInvoice(
 
     return schedule.id;
   } catch (err: unknown) {
-    log.error('[RevenueRecognitionService] createScheduleForInvoice error', { error: err?.message });
+    log.error('[RevenueRecognitionService] createScheduleForInvoice error', { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -239,7 +239,7 @@ export async function recognizeCashRevenueOnPayment(
       metadata: { invoiceId, scheduleId: schedule.id, method: 'cash' },
     });
   } catch (err: unknown) {
-    log.warn('[RevenueRecognitionService] Ledger write failed (non-fatal)', { error: err?.message });
+    log.warn('[RevenueRecognitionService] Ledger write failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
   }
 
   // Audit log
@@ -255,7 +255,7 @@ export async function recognizeCashRevenueOnPayment(
       source: 'system',
     });
   } catch (err: unknown) {
-    log.warn('[RevenueRecognitionService] Audit log write failed (non-fatal)', { error: err?.message });
+    log.warn('[RevenueRecognitionService] Audit log write failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -430,7 +430,7 @@ export async function runMonthlyRecognitionForWorkspace(
       });
     } catch (err: unknown) {
       // If idempotency key already exists due to race condition, ignore
-      log.warn('[RevenueRecognitionService] Idempotency insert failed (race?)', { error: err?.message });
+      log.warn('[RevenueRecognitionService] Idempotency insert failed (race?)', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -448,7 +448,7 @@ export async function runMonthlyRecognitionForWorkspace(
         source: 'system',
       });
     } catch (err: unknown) {
-      log.warn('[RevenueRecognitionService] Audit batch write failed (non-fatal)', { error: err?.message });
+      log.warn('[RevenueRecognitionService] Audit batch write failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 

@@ -349,7 +349,7 @@ export class TaxFilingAssistanceService {
     taxYear?: number
   ): Promise<{
     employee: typeof employees.$inferSelect | null;
-    forms: any[];
+    forms: unknown[];
   }> {
     const empRecords = await db
       .select()

@@ -771,7 +771,7 @@ class ShiftChatroomWorkflowService {
     context: ShiftChatroomContext,
     chatroom: any,
     shift: any,
-    messages: any[]
+    messages: unknown[]
   ): Promise<DARGenerationResult> {
     const photoMessages = messages.filter(m => m.messageType === 'photo');
     const photoCount = photoMessages.length;
@@ -927,7 +927,7 @@ class ShiftChatroomWorkflowService {
    */
   private async runDARQualityReview(
     content: string,
-    messages: any[],
+    messages: unknown[],
     employeeName: string,
     shift: any
   ): Promise<{
@@ -1017,7 +1017,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Compile DAR content from messages
    */
-  private compileDARContent(shift: any, messages: any[], employeeName: string = 'Unknown'): string {
+  private compileDARContent(shift: any, messages: unknown[], employeeName: string = 'Unknown'): string {
     const lines: string[] = [
       `# DAILY ACTIVITY REPORT`,
       ``,
@@ -1084,7 +1084,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Generate DAR summary
    */
-  private generateDARSummary(shift: any, messages: any[]): string {
+  private generateDARSummary(shift: any, messages: unknown[]): string {
     const photoCount = messages.filter(m => m.messageType === 'photo').length;
     const activityCount = messages.filter(m => {
       const meta = m.metadata as any;
@@ -1135,7 +1135,7 @@ class ShiftChatroomWorkflowService {
    */
   async getSiteInfo(shiftId: string): Promise<{
     site: any | null;
-    contacts: any[];
+    contacts: unknown[];
     address: string | null;
   }> {
     const [shift] = await db.select().from(shifts).where(eq(shifts.id, shiftId));
@@ -1144,7 +1144,7 @@ class ShiftChatroomWorkflowService {
     }
 
     let site = null;
-    let contacts: any[] = [];
+    let contacts: (string | number | boolean | null)[] = [];
     let address: string | null = (shift as any).jobSiteAddress || null;
 
     if (shift.siteId) {
@@ -1506,7 +1506,7 @@ class ShiftChatroomWorkflowService {
    */
   private async generateAITranscript(
     chatroom: any,
-    messages: any[]
+    messages: unknown[]
   ): Promise<{ summary: string; actionItems: string[]; keyTopics: string[] }> {
     try {
       // Format messages for AI processing

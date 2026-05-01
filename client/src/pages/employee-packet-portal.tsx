@@ -27,7 +27,7 @@ interface PacketData {
   documentTitle: string;
   recipientName: string;
   recipientEmail: string;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   sectionInitials: Record<string, boolean>;
   status: string;
 }
@@ -270,7 +270,7 @@ export default function EmployeePacketPortal() {
   const { toast } = useToast();
 
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [sectionInitials, setSectionInitials] = useState<Record<string, boolean>>({});
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submittedOk, setSubmittedOk] = useState(false);

@@ -246,7 +246,7 @@ class UnifiedLifecycleManager {
     workspaceId: string,
     userId: string,
     context: LifecycleContext,
-    options: { sessionId?: string; executionId?: string; metadata?: Record<string, any> } = {}
+    options: { sessionId?: string; executionId?: string; metadata?: Record<string, unknown> } = {}
   ): Promise<LifecycleEvent> {
     const event: LifecycleEvent = {
       id: `lfe-${crypto.randomUUID()}`,

@@ -824,7 +824,7 @@ class InvoiceSubagentService {
   }
 
   private async generateReconciliationRecommendations(
-    discrepancies: any[],
+    discrepancies: unknown[],
     revenueAtRisk: number
   ): Promise<string[]> {
     const recommendations: string[] = [];
@@ -853,7 +853,7 @@ class InvoiceSubagentService {
     return recommendations;
   }
 
-  private async generateGapInsights(workspaceId: string, clientGaps: any[], totalRevenue: number): Promise<string> {
+  private async generateGapInsights(workspaceId: string, clientGaps: unknown[], totalRevenue: number): Promise<string> {
     if (clientGaps.length === 0) {
       return 'No unbilled revenue gaps detected. All approved work has been invoiced.';
     }

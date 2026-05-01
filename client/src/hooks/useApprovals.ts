@@ -14,7 +14,7 @@ export interface ApprovalRequest {
   requestType: string;
   title: string;
   description: string | null;
-  requestPayload: Record<string, any>;
+  requestPayload: Record<string, unknown>;
   decision: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
   decisionAt: string | null;
   decisionNote: string | null;

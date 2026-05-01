@@ -303,7 +303,7 @@ export class UniversalConfigRegistry {
     }
   }
 
-  async getAllConfig(workspaceId?: string): Promise<Record<string, Record<string, any>>> {
+  async getAllConfig(workspaceId?: string): Promise<Record<string, Record<string, unknown>>> {
     try {
       const conditions = [eq(platformConfigRegistry.isActive, true)];
       const results = await db
@@ -312,7 +312,7 @@ export class UniversalConfigRegistry {
         .where(and(...conditions))
         .orderBy(platformConfigRegistry.domain, platformConfigRegistry.key);
 
-      const config: Record<string, Record<string, any>> = {};
+      const config: Record<string, Record<string, unknown>> = {};
 
       for (const entry of results) {
         if (!entry.isGlobal && entry.workspaceId !== workspaceId) continue;
@@ -383,7 +383,7 @@ export class UniversalConfigRegistry {
 
       if (!snapshot) return false;
 
-      const data = snapshot.snapshotData as Record<string, Record<string, any>>;
+      const data = snapshot.snapshotData as Record<string, Record<string, unknown>>;
 
       for (const [domain, entries] of Object.entries(data)) {
         for (const [key, value] of Object.entries(entries)) {

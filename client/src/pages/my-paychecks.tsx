@@ -102,7 +102,7 @@ export default function MyPaychecks() {
 
   const handleDirectDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: Record<string, any> = {
+    const data: Record<string, unknown> = {
       bankAccountType: accountType,
       preferredPayoutMethod: payoutMethod,
       directDepositEnabled: payoutMethod === "direct_deposit",

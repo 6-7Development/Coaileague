@@ -101,7 +101,7 @@ async function ensurePlatformSurveyExists(): Promise<void> {
 
 // Seed on module load (non-blocking)
 ensurePlatformSurveyExists().catch((err) =>
-  log.warn('Could not seed platform survey', { error: err?.message })
+  log.warn('Could not seed platform survey', { error: err instanceof Error ? err.message : String(err) })
 );
 
 // ─────────────────────────────────────────────────────────────────────────

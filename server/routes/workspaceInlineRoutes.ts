@@ -386,7 +386,7 @@ async function applyAutomationUpdate(params: {
         .where(eq(workspaces.id, wsId))
         .limit(1);
       if (!ws) return res.status(404).json({ message: 'Workspace not found' });
-      const blob = (ws.brandingBlob || {}) as Record<string, any>;
+      const blob = (ws.brandingBlob || {}) as Record<string, unknown>;
 
       // If sub-org has no logo/branding, inherit from parent workspace
       let inheritedLogoUrl: string | null = null;
@@ -398,7 +398,7 @@ async function applyAutomationUpdate(params: {
           .where(eq(workspaces.id, ws.parentWorkspaceId))
           .limit(1);
         if (parent) {
-          const parentBlob = (parent.brandingBlob || {}) as Record<string, any>;
+          const parentBlob = (parent.brandingBlob || {}) as Record<string, unknown>;
           inheritedLogoUrl = parent.logoUrl || parentBlob.logoUrl || null;
           inheritedBrandColor = parent.brandColor || parentBlob.primaryColor || null;
         }
@@ -441,7 +441,7 @@ async function applyAutomationUpdate(params: {
         .from(workspaces)
         .where(eq(workspaces.id, wsId))
         .limit(1);
-      const current = ((existing?.brandingBlob || {}) as Record<string, any>);
+      const current = ((existing?.brandingBlob || {}) as Record<string, unknown>);
       const updatedBlob: Record<string, unknown> = { ...current, updatedAt: new Date().toISOString() };
       if (logoUrl !== undefined) updatedBlob.logoUrl = logoUrl;
       if (primaryColor !== undefined) updatedBlob.primaryColor = primaryColor;
@@ -534,7 +534,7 @@ async function applyAutomationUpdate(params: {
       }
       
       const user = await storage.getUser(userId);
-      const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+      const workspaceId = req.workspaceId || user?.currentWorkspaceId;
       
       if (!workspaceId) {
         return res.status(404).json({ message: "No workspace found" });
@@ -1601,7 +1601,7 @@ async function applyAutomationUpdate(params: {
             workspaceId: wsId,
             workspaceName: wsName,
             success: true,
-            payrollRunId: (payrollRun as any).id,
+            payrollRunId: payrollRun?.id,
           });
         } catch (err: unknown) {
           results.push({
@@ -1794,26 +1794,26 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
 
     // Build readiness report
     const orgChecks = [
-      { id: 'ein', label: 'Federal Tax ID (EIN)', ok: !!(ws as any).taxId, critical: true, section: 'org', tip: 'Required for W-2, 941, and payroll tax filings' },
-      { id: 'company_name', label: 'Company Name', ok: !!(ws as any).companyName || !!(ws as any).name, critical: true, section: 'org', tip: 'Appears on all invoices, pay stubs, and tax filings' },
-      { id: 'address', label: 'Company Address', ok: !!(ws as any).address, critical: true, section: 'org', tip: 'Required for invoice headers and regulatory compliance' },
-      { id: 'state_license', label: 'State Regulatory License', ok: !!(ws as any).stateLicenseNumber, critical: true, section: 'org', tip: 'Required for security companies by state law' },
+      { id: 'ein', label: 'Federal Tax ID (EIN)', ok: !!(ws as Record<string,unknown>).taxId, critical: true, section: 'org', tip: 'Required for W-2, 941, and payroll tax filings' },
+      { id: 'company_name', label: 'Company Name', ok: !!(ws as Record<string,unknown>).companyName || !!(ws as Record<string,unknown>).name, critical: true, section: 'org', tip: 'Appears on all invoices, pay stubs, and tax filings' },
+      { id: 'address', label: 'Company Address', ok: !!(ws as Record<string,unknown>).address, critical: true, section: 'org', tip: 'Required for invoice headers and regulatory compliance' },
+      { id: 'state_license', label: 'State Regulatory License', ok: !!(ws as Record<string,unknown>).stateLicenseNumber, critical: true, section: 'org', tip: 'Required for security companies by state law' },
     ];
 
     const invoiceChecks = [
-      { id: 'billing_email', label: 'Invoice From Email', ok: !!(ws as any).billingEmail, critical: true, section: 'invoice', tip: 'The email address used to send invoices to clients' },
-      { id: 'invoice_prefix', label: 'Invoice Number Prefix', ok: !!(ws as any).invoicePrefix, critical: false, section: 'invoice', tip: 'Prefix used in invoice numbers (e.g. INV-1000)' },
-      { id: 'payment_terms', label: 'Payment Terms', ok: !!((ws as any).paymentTermsDays && (ws as any).paymentTermsDays > 0), critical: false, section: 'invoice', tip: 'Number of days clients have to pay (e.g. Net 30)' },
-      { id: 'default_tax_rate', label: 'Default Tax Rate', ok: !!((ws as any).defaultTaxRate !== undefined), critical: false, section: 'invoice', tip: 'Applied to invoices unless overridden per client' },
+      { id: 'billing_email', label: 'Invoice From Email', ok: !!(ws as Record<string,unknown>).billingEmail, critical: true, section: 'invoice', tip: 'The email address used to send invoices to clients' },
+      { id: 'invoice_prefix', label: 'Invoice Number Prefix', ok: !!(ws as Record<string,unknown>).invoicePrefix, critical: false, section: 'invoice', tip: 'Prefix used in invoice numbers (e.g. INV-1000)' },
+      { id: 'payment_terms', label: 'Payment Terms', ok: !!((ws as Record<string,unknown>).paymentTermsDays && (ws as Record<string,unknown>).paymentTermsDays > 0), critical: false, section: 'invoice', tip: 'Number of days clients have to pay (e.g. Net 30)' },
+      { id: 'default_tax_rate', label: 'Default Tax Rate', ok: !!((ws as Record<string,unknown>).defaultTaxRate !== undefined), critical: false, section: 'invoice', tip: 'Applied to invoices unless overridden per client' },
       { id: 'clients_missing_email', label: `Client Billing Emails (${(clientRows as any).missing_email || 0} missing)`, ok: Number((clientRows as any).missing_email || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a billing email cannot receive invoices' },
       { id: 'clients_missing_rate', label: `Client Billable Rates (${(clientRows as any).missing_rate || 0} missing)`, ok: Number((clientRows as any).missing_rate || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a rate cannot be billed' },
     ];
 
     const payrollChecks = [
-      { id: 'payroll_schedule', label: 'Payroll Schedule', ok: !!(ws as any).payrollSchedule, critical: true, section: 'payroll', tip: 'How frequently employees are paid (weekly, biweekly, etc.)' },
-      { id: 'default_rate', label: 'Default Hourly Rate', ok: !!((ws as any).defaultHourlyRate && Number((ws as any).defaultHourlyRate) > 0), critical: false, section: 'payroll', tip: 'Fallback rate when employee does not have a defined rate' },
-      { id: 'sui_rate', label: 'State Unemployment Rate', ok: !!((ws as any).stateUnemploymentRate !== undefined), critical: false, section: 'payroll', tip: 'Employer SUI rate used for payroll cost reporting' },
-      { id: 'payroll_bank', label: 'Payroll Funding Bank', ok: !!(ws as any).payrollBankRouting, critical: false, section: 'payroll', tip: 'Bank account used to fund payroll disbursements' },
+      { id: 'payroll_schedule', label: 'Payroll Schedule', ok: !!(ws as Record<string,unknown>).payrollSchedule, critical: true, section: 'payroll', tip: 'How frequently employees are paid (weekly, biweekly, etc.)' },
+      { id: 'default_rate', label: 'Default Hourly Rate', ok: !!((ws as Record<string,unknown>).defaultHourlyRate && Number((ws as Record<string,unknown>).defaultHourlyRate) > 0), critical: false, section: 'payroll', tip: 'Fallback rate when employee does not have a defined rate' },
+      { id: 'sui_rate', label: 'State Unemployment Rate', ok: !!((ws as Record<string,unknown>).stateUnemploymentRate !== undefined), critical: false, section: 'payroll', tip: 'Employer SUI rate used for payroll cost reporting' },
+      { id: 'payroll_bank', label: 'Payroll Funding Bank', ok: !!(ws as Record<string,unknown>).payrollBankRouting, critical: false, section: 'payroll', tip: 'Bank account used to fund payroll disbursements' },
       { id: 'employees_missing_bank', label: `Employee Direct Deposit (${Number(pr.missing_bank || 0)} missing)`, ok: Number(pr.missing_bank || 0) === 0, critical: true, section: 'payroll', tip: 'Employees without bank info cannot receive direct deposit' },
       { id: 'employees_missing_w4', label: `Employee W-4 Forms (${Number(pr.missing_w4 || 0)} incomplete)`, ok: Number(pr.missing_w4 || 0) === 0, critical: true, section: 'payroll', tip: 'W-4 required to calculate correct federal withholding' },
       { id: 'employees_missing_i9', label: `Employee I-9 Verification (${Number(pr.missing_i9 || 0)} incomplete)`, ok: Number(pr.missing_i9 || 0) === 0, critical: true, section: 'payroll', tip: 'I-9 required by law to verify employment eligibility' },
@@ -1838,12 +1838,12 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
         payroll: { label: 'Payroll Pipeline', checks: payrollChecks, score: Math.round(payrollChecks.filter(c => c.ok).length / payrollChecks.length * 100) },
       },
       workspace: {
-        invoicePrefix: (ws as any).invoicePrefix || 'INV',
-        invoiceNextNumber: (ws as any).invoiceNextNumber || 1000,
-        paymentTermsDays: (ws as any).paymentTermsDays || 30,
-        billingEmail: (ws as any).billingEmail || null,
-        stateUnemploymentRate: (ws as any).stateUnemploymentRate || '0.027',
-        payrollSchedule: (ws as any).payrollSchedule || 'biweekly',
+        invoicePrefix: (ws as Record<string,unknown>).invoicePrefix || 'INV',
+        invoiceNextNumber: (ws as Record<string,unknown>).invoiceNextNumber || 1000,
+        paymentTermsDays: (ws as Record<string,unknown>).paymentTermsDays || 30,
+        billingEmail: (ws as Record<string,unknown>).billingEmail || null,
+        stateUnemploymentRate: (ws as Record<string,unknown>).stateUnemploymentRate || '0.027',
+        payrollSchedule: (ws as Record<string,unknown>).payrollSchedule || 'biweekly',
       },
       counts: {
         totalClients: Number((clientRows as any).total || 0),
@@ -1900,7 +1900,7 @@ router.post('/branding/logo', requireAuth, logoUpload.single('logo'), async (req
 
     // Persist to workspace columns and branding blob
     const [existing] = await db.select({ brandingBlob: workspaces.brandingBlob }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
-    const blobData = ((existing?.brandingBlob || {}) as Record<string, any>);
+    const blobData = ((existing?.brandingBlob || {}) as Record<string, unknown>);
     await db.update(workspaces).set({
       logoUrl: publicUrl,
       brandingBlob: { ...blobData, logoUrl: publicUrl, updatedAt: new Date().toISOString() },

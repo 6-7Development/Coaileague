@@ -576,7 +576,7 @@ class QuickFixService {
   }
 
   // Action executors
-  private async executeClearCache(payload: any): Promise<unknown> {
+  private async executeClearCache(payload: unknown): Promise<unknown> {
     const cacheType = payload?.cacheType || 'all';
     log.info(`[QuickFix] Clearing cache: ${cacheType}`);
     try {
@@ -589,7 +589,7 @@ class QuickFixService {
     }
   }
 
-  private async executeRestartService(payload: any): Promise<unknown> {
+  private async executeRestartService(payload: unknown): Promise<unknown> {
     const serviceName = payload?.serviceName;
     log.info(`[QuickFix] Service restart requested: ${serviceName}`);
     return { service: serviceName, restarted: false, note: 'Service restart requires manual deployment action', timestamp: new Date().toISOString() };
@@ -608,7 +608,7 @@ class QuickFixService {
     }
   }
 
-  private async executeForceLogout(payload: any): Promise<unknown> {
+  private async executeForceLogout(payload: unknown): Promise<unknown> {
     const targetUserId = payload?.targetUserId;
     log.info(`[QuickFix] Force logout user: ${targetUserId}`);
     if (!targetUserId) {

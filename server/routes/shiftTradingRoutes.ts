@@ -88,7 +88,7 @@ router.put("/availability/:id", requireAuth, async (req: AuthenticatedRequest, r
     const { dayOfWeek, startTime, endTime, isAvailable, effectiveFrom, effectiveUntil } = req.body;
 
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let p = 1;
     if (dayOfWeek !== undefined) { setClauses.push(`day_of_week=$${p++}`); params.push(dayOfWeek); }
     if (startTime) { setClauses.push(`start_time=$${p++}`); params.push(startTime); }

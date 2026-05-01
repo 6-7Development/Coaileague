@@ -1072,7 +1072,7 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
       case '2': {
         // Phase 25 — surface client context (provider workspace + caller phone +
         // pre-resolved clientId) so clientExtension can enrich Trinity's prompt.
-        const meta = (session?.metadata as Record<string, any> | null) || {};
+        const meta = (session?.metadata as Record<string, unknown> | null) || {};
         const providerWorkspaceId = meta.client_provider_workspace_id || undefined;
         const clientId = meta.client_id || undefined;
         const callerPhone = (req.body.From as string | undefined) || session?.callerNumber || undefined;
@@ -1476,7 +1476,7 @@ voiceRouter.post('/transcription-done', twilioSignatureMiddleware, async (req: R
             `SELECT workspace_id, metadata, caller_number FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
             [CallSid],
           );
-          const meta = (sessRow.rows[0]?.metadata as Record<string, any> | null) || {};
+          const meta = (sessRow.rows[0]?.metadata as Record<string, unknown> | null) || {};
           const complaintCompany: string = meta.complaint_company || '';
           const complaintOfficer: string = meta.complaint_officer || '';
           const callerPhone: string = From || sessRow.rows[0]?.caller_number || '';
@@ -1555,7 +1555,7 @@ voiceRouter.post('/transcription-done', twilioSignatureMiddleware, async (req: R
             `SELECT workspace_id, metadata, caller_number FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
             [CallSid],
           );
-          const meta = (sessRow.rows[0]?.metadata as Record<string, any> | null) || {};
+          const meta = (sessRow.rows[0]?.metadata as Record<string, unknown> | null) || {};
           const providerWorkspaceId: string = qsWorkspaceId
             || meta.client_provider_workspace_id
             || sessRow.rows[0]?.workspace_id
@@ -1663,7 +1663,7 @@ voiceRouter.post('/status-callback', twilioSignatureMiddleware, async (req: Requ
           .limit(1);
 
         if (session) {
-          const sessionMeta = (session.metadata as Record<string, any> | null) ?? {};
+          const sessionMeta = (session.metadata as Record<string, unknown> | null) ?? {};
           await recordCallUsage({
             workspaceId: session.workspaceId,
             callSessionId: session.id,
@@ -4230,7 +4230,7 @@ voiceRouter.post('/provider-branded-menu', twilioSignatureMiddleware, async (req
         `SELECT metadata FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
         [callSid],
       );
-      const meta = (r.rows[0]?.metadata as Record<string, any> | null) || {};
+      const meta = (r.rows[0]?.metadata as Record<string, unknown> | null) || {};
       providerName = meta.provider_name || '';
       licenseNumber = meta.provider_license || '';
       licenseState = meta.provider_license_state || '';
@@ -4851,7 +4851,7 @@ voiceRouter.post('/owner-menu', twilioSignatureMiddleware, async (req: Request, 
         `SELECT metadata, caller_number FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
         [callSid],
       );
-      const meta = (r.rows[0]?.metadata as Record<string, any> | null) || {};
+      const meta = (r.rows[0]?.metadata as Record<string, unknown> | null) || {};
       ownerVerified = !!meta.owner_pin_verified;
       callerUserId = meta.user_id || '';
       callerPhone = r.rows[0]?.caller_number || (req.body.From as string) || '';

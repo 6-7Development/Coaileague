@@ -78,7 +78,7 @@ interface ShiftReport {
   pdf_generated_at: string | null;
   trinity_articulated: boolean;
   photo_count: number | null;
-  photo_manifest: any[] | null;
+  photo_manifest: unknown[] | null;
   verified_by: string | null;
   verified_at: string | null;
   sent_to_client: boolean;
@@ -201,7 +201,7 @@ export default function DocumentVault() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-vault", data);
       return res.json();
     },

@@ -61,7 +61,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
       return res.status(403).json({ error: "Manager access required" });
     }
 
-    const newPatterns: any[] = [];
+    const newPatterns: (string | number | boolean | null)[] = [];
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
 

@@ -180,7 +180,7 @@ export const PIPELINE_ERROR_CODES: Record<string, { remediation: string; retryab
 export interface EscalationConfig {
   enabled: boolean;
   maxRetries?: number;
-  retryHandler?: (ctx: PipelineContext, fetchedData: Record<string, unknown>, previousError: Error, tier: string) => Promise<any>;
+  retryHandler?: (ctx: PipelineContext, fetchedData: Record<string, unknown>, previousError: Error, tier: string) => Promise<unknown>;
   escalationChain?: Array<'ai_retry' | 'ai_architect' | 'human_review'>;
   humanReviewHandler?: (ctx: PipelineContext, error: Error, attempts: PipelineContext['escalationHistory']) => Promise<string>;
 }
@@ -201,7 +201,7 @@ export interface PipelineOptions {
 }
 
 export interface StepHandlers<T = any> {
-  fetch?: (ctx: PipelineContext) => Promise<Record<string, any>>;
+  fetch?: (ctx: PipelineContext) => Promise<Record<string, unknown>>;
   validate?: (ctx: PipelineContext, fetchedData: Record<string, unknown>) => Promise<{ valid: boolean; errors?: string[] }>;
   process: (ctx: PipelineContext, fetchedData: Record<string, unknown>) => Promise<T>;
   mutate?: (ctx: PipelineContext, processResult: T) => Promise<{ tables: string[]; recordsChanged: number }>;

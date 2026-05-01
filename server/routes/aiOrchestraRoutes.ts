@@ -340,7 +340,7 @@ router.get('/meta-cognition/logs', requireAuth, async (req: Request, res: Respon
     return res.json({
       success: true,
       logs: (logs as any).rows,
-      total: parseInt(((countResult as any).rows[0] as any)?.total || '0'),
+      total: parseInt(((countResult as any).rows[0] as Record<string, unknown>)?.total || '0'),
       limit,
       offset,
     });

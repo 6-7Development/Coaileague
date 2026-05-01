@@ -8,7 +8,7 @@ import { platformEventBus } from '../platformEventBus';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityScheduleTimeclockActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -738,7 +738,7 @@ export function registerScheduleTimeclockActions() {
       byEmployee.get(s.employeeId)!.push(s);
     }
 
-    const conflicts: any[] = [];
+    const conflicts: (string | number | boolean | null)[] = [];
     for (const [empId, empShifts] of byEmployee) {
       for (let i = 0; i < empShifts.length; i++) {
         for (let j = i + 1; j < empShifts.length; j++) {

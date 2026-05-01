@@ -88,7 +88,7 @@ bulkOperationsRouter.post('/import/employees', requireAuth, requireManager, uplo
       return res.status(400).json({ error: 'CSV file or data array required' });
     }
 
-    const imported: any[] = [];
+    const imported: (string | number | boolean | null)[] = [];
     const errors: Array<{ row: number; error: string }> = [];
 
     for (let i = 0; i < data.length; i++) {
@@ -148,7 +148,7 @@ bulkOperationsRouter.post('/import/clients', requireAuth, requireManager, upload
       return res.status(400).json({ error: 'CSV file or data array required' });
     }
 
-    const imported: any[] = [];
+    const imported: (string | number | boolean | null)[] = [];
     const errors: Array<{ row: number; error: string }> = [];
 
     for (let i = 0; i < data.length; i++) {
@@ -209,7 +209,7 @@ bulkOperationsRouter.post('/import/shifts', requireAuth, requireManager, upload.
       return res.status(400).json({ error: 'CSV file or data array required' });
     }
 
-    const imported: any[] = [];
+    const imported: (string | number | boolean | null)[] = [];
     const errors: Array<{ row: number; error: string }> = [];
 
     for (let i = 0; i < data.length; i++) {

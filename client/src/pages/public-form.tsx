@@ -37,7 +37,7 @@ interface PublicFormData {
   signatureLabel: string;
   successMessage: string;
   expiresAt: string;
-  prePopulatedData: Record<string, any>;
+  prePopulatedData: Record<string, unknown>;
   sentToName?: string;
   branding?: { logoUrl?: string; primaryColor?: string; companyName?: string };
   alreadySubmitted?: boolean;
@@ -48,7 +48,7 @@ export default function PublicFormPage() {
   const [formData, setFormData] = useState<PublicFormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
   const [signature, setSignature] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -72,7 +72,7 @@ export default function PublicFormPage() {
         setFormData(data);
 
         if (data.prePopulatedData && Object.keys(data.prePopulatedData).length > 0) {
-          const pre: Record<string, any> = {};
+          const pre: Record<string, unknown> = {};
           const pd = data.prePopulatedData;
           for (const field of data.fields) {
             const candidates = [

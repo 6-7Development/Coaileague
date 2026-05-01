@@ -373,7 +373,7 @@ class EmployeeRoleSyncService {
     }
   }
 
-  private async handleEmployeeUpdated(data: { employeeId: string; changes: Record<string, any> }): Promise<void> {
+  private async handleEmployeeUpdated(data: { employeeId: string; changes: Record<string, unknown> }): Promise<void> {
     const hasRoleChange = data.changes.role || data.changes.position || data.changes.title || data.changes.organizationalTitle;
     
     if (hasRoleChange) {

@@ -292,7 +292,7 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     return true;
   } catch (error: unknown) {
     recordDbFailure();
-    log.error('Database health check failed', { error: error?.message });
+    log.error('Database health check failed', { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -303,7 +303,7 @@ process.on('SIGTERM', async () => {
     await pool.end();
     log.info('Pool closed gracefully');
   } catch (err: unknown) {
-    log.error('Error closing pool', { error: err?.message });
+    log.error('Error closing pool', { error: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -313,6 +313,6 @@ process.on('SIGINT', async () => {
     await pool.end();
     log.info('Pool closed gracefully');
   } catch (err: unknown) {
-    log.error('Error closing pool', { error: err?.message });
+    log.error('Error closing pool', { error: err instanceof Error ? err.message : String(err) });
   }
 });

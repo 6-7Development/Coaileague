@@ -21,7 +21,7 @@ export default function DeputyAdminDashboard() {
     summary: { totalWorkspaces: number; activeEmployees: number };
   }>({ queryKey: ["/api/analytics/stats"], staleTime: 60000 });
 
-  const { data: emailData } = useQuery<{ emails: any[]; total: number }>({
+  const { data: emailData } = useQuery<{ emails: unknown[]; total: number }>({
     queryKey: ["/api/email/inbox", { folder: "inbox", limit: 5 }],
     staleTime: 60000,
   });

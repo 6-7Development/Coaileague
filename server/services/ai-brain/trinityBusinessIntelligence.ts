@@ -57,7 +57,7 @@ interface MetacognitionResult {
 
 class TrinityBusinessIntelligence {
   private patternCache = new Map<string, { data: any; expiry: number }>();
-  private activeAnalysis = new Map<string, Promise<any>>();
+  private activeAnalysis = new Map<string, Promise<unknown>>();
   private CACHE_TTL = 5 * 60 * 1000;
 
   private getCached<T>(key: string): T | null {
@@ -93,7 +93,7 @@ class TrinityBusinessIntelligence {
     siteName?: string;
     agencyName?: string;
     limit?: number;
-  }): Promise<{ invoices: any[]; total: number; metacognition: MetacognitionResult }> {
+  }): Promise<{ invoices: unknown[]; total: number; metacognition: MetacognitionResult }> {
     const startTime = Date.now();
     const limit = Math.min(query.limit || 25, 100);
     const knowledgeGaps: string[] = [];

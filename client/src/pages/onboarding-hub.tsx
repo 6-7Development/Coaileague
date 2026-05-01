@@ -139,7 +139,7 @@ function statusBadge(status: string | null) {
 }
 
 function categoryIcon(cat: string) {
-  const icons: Record<string, any> = {
+  const icons: Record<string, unknown> = {
     identity: Shield, tax: FileText, compliance: CheckCheck, policy: ClipboardList,
     equipment: Zap, company: Building2, documents: FileCheck, billing: FileText,
     clients: Users, team: Users, operations: Clock,

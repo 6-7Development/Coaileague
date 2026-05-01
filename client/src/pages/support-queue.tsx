@@ -53,7 +53,7 @@ interface ActiveSession {
   messageCount: number;
   lastMessage?: string;
   updatedAt: string;
-  messages?: any[];
+  messages?: unknown[];
 }
 
 const pageConfig: CanvasPageConfig = {

@@ -21,7 +21,7 @@ const createRecordSchema = z.object({
   notes: z.string().optional(),
 });
 
-const q = (text: string, params?: any[]) => typedPool(text, params);
+const q = (text: string, params?: unknown[]) => typedPool(text, params);
 
 const router = Router();
 

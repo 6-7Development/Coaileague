@@ -38,7 +38,7 @@ interface StoredCredentials {
   expiresAt: Date | null;
   refreshTokenExpiresAt: Date | null;
   status: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface RefreshResult {
@@ -310,7 +310,7 @@ class QuickBooksTokenRefreshDaemon {
     }
   }
   
-  private async incrementFailedAttempts(id: string, attempts: number, passedMetadata: Record<string, any> | null): Promise<void> {
+  private async incrementFailedAttempts(id: string, attempts: number, passedMetadata: Record<string, unknown> | null): Promise<void> {
     try {
       // First fetch current metadata to perform deep merge
       const [current] = await db.select({ metadata: partnerConnections.metadata })
@@ -319,7 +319,7 @@ class QuickBooksTokenRefreshDaemon {
         .limit(1);
       
       // Deep merge: preserve existing keys, update failure tracking fields
-      const existingMetadata = (current?.metadata as Record<string, any>) || {};
+      const existingMetadata = (current?.metadata as Record<string, unknown>) || {};
       const newMetadata = {
         ...existingMetadata,
         ...(passedMetadata || {}),

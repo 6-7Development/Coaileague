@@ -13,7 +13,7 @@ import { typedQuery } from '../../lib/typedSql';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityCommsProactiveActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -237,7 +237,7 @@ export function registerCommsProactiveActions() {
     }
 
     // Build the emailEvents query
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(emailEvents.workspaceId, workspaceId));
     if (userId) conditions.push(eq(emailEvents.userId, userId));
     if (resolvedRecipientEmail) conditions.push(eq(emailEvents.recipientEmail, resolvedRecipientEmail));

@@ -269,7 +269,7 @@ export class QuickBooksIntegration {
     return { success: errors.length === 0, synced, errors };
   }
   
-  async syncInvoicesToQuickBooks(credentials: QuickBooksCredentials, invoices: any[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
+  async syncInvoicesToQuickBooks(credentials: QuickBooksCredentials, invoices: unknown[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
     if (!editionConfig.syncCapabilities.invoices) {
       return { success: false, synced: 0, errors: [`Invoice sync not supported for ${editionConfig.displayName}`] };
@@ -384,7 +384,7 @@ export class QuickBooksIntegration {
     return QB_API_VERSION;
   }
 
-  async syncTimeActivities(credentials: QuickBooksCredentials, timeEntries: any[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
+  async syncTimeActivities(credentials: QuickBooksCredentials, timeEntries: unknown[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
     if (!editionConfig.syncCapabilities.timeActivities) {
       return { success: false, synced: 0, errors: [`Time Activities sync not supported for ${editionConfig.displayName}. Upgrade to Essentials or higher.`] };
@@ -425,7 +425,7 @@ export class QuickBooksIntegration {
     return { success: errors.length === 0, synced, errors };
   }
 
-  private mapTimeEntryToQuickBooks(entry: any): any {
+  private mapTimeEntryToQuickBooks(entry: unknown): any {
     return {
       NameOf: 'Employee',
       EmployeeRef: { value: entry.employeeQbId },
@@ -441,7 +441,7 @@ export class QuickBooksIntegration {
 
   async syncCustomers(
     credentials: QuickBooksCredentials, 
-    customers: any[],
+    customers: unknown[],
     onProgress?: (processed: number, total: number, errors: string[]) => void
   ): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
@@ -473,7 +473,7 @@ export class QuickBooksIntegration {
 
   async syncEmployees(
     credentials: QuickBooksCredentials, 
-    employees: any[],
+    employees: unknown[],
     onProgress?: (processed: number, total: number, errors: string[]) => void
   ): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];

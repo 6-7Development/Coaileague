@@ -646,7 +646,7 @@ Generate personalized onboarding tasks for this organization.`;
         maxOutputTokens: 1024,
       });
 
-      let aiTasks: any[] = [];
+      let aiTasks: (string | number | boolean | null)[] = [];
       try {
         const jsonMatch = response.text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {

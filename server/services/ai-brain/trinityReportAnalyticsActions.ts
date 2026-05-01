@@ -23,7 +23,7 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityReportAnalyticsActions');
 
 // mkAction helper for compact analytics registrations
-function mkAction(actionId: string, fn: (params: any) => Promise<any>) {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>) {
   return {
     actionId,
     name: actionId,

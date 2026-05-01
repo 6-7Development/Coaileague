@@ -451,7 +451,7 @@ export interface PlatformEvent {
   source?: string;
   timestamp?: string | Date;
   data?: Record<string, unknown>;
-  metadata?: Record<string, any> & {
+  metadata?: Record<string, unknown> & {
     conversationId?: string;
     roomSlug?: string;
     ticketId?: string;
@@ -479,7 +479,7 @@ export interface EventSubscriber {
 class PlatformEventBus {
   private subscribers: Map<string, EventSubscriber[]> = new Map();
   private wsHandler: ((event: PlatformEvent) => void) | null = null;
-  private internalListeners: Map<string, ((payload: any) => void)[]> = new Map();
+  private internalListeners: Map<string, ((payload: unknown) => void)[]> = new Map();
 
   /**
    * Register the WebSocket broadcast handler
@@ -523,7 +523,7 @@ class PlatformEventBus {
   /**
    * Register a lightweight internal listener
    */
-  on(eventName: string, listener: (payload: any) => void) {
+  on(eventName: string, listener: (payload: unknown) => void) {
     if (!this.internalListeners.has(eventName)) {
       this.internalListeners.set(eventName, []);
     }

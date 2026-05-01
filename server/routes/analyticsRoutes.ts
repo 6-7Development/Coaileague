@@ -181,18 +181,18 @@ router.get("/stats", async (req: AuthenticatedRequest, res) => {
         ZERO_AUTOMATION),
     ]);
 
-    const totalWorkspaces = parseInt(String((workspacesResult as any)?.[0]?.count ?? "0"));
-    const activeEmployees = parseInt(String((employeesResult as any)?.[0]?.count ?? "0"));
-    const activeClients = parseInt(String((clientsResult as any)?.[0]?.count ?? "0"));
-    const upcomingShifts = parseInt(String((shiftsResult as any)?.[0]?.count ?? (shiftsResult as any)?.rows?.[0]?.count ?? "0"));
-    const openTickets = parseInt((ticketsResult as any)?.rows?.[0]?.open_tickets ?? "0");
-    const unresolvedEscalations = parseInt((ticketsResult as any)?.rows?.[0]?.escalations ?? (ticketsResult as any)?.[0]?.escalations ?? "0");
-    const currentRevenue = parseFloat((revenueResult as any)?.rows?.[0]?.current_month ?? (revenueResult as any)?.[0]?.currentMonth ?? "0");
-    const prevRevenue = parseFloat((revenueResult as any)?.rows?.[0]?.prev_month ?? (revenueResult as any)?.[0]?.prevMonth ?? "0");
+    const totalWorkspaces = parseInt(String((workspacesResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const activeEmployees = parseInt(String((employeesResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const activeClients = parseInt(String((clientsResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const upcomingShifts = parseInt(String((shiftsResult as Record<string,string>[] | undefined)?.[0]?.[count] ?? (shiftsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[count] ?? "0"));
+    const openTickets = parseInt((ticketsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[open_tickets] ?? "0");
+    const unresolvedEscalations = parseInt((ticketsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[escalations] ?? (ticketsResult as Record<string,string>[] | undefined)?.[0]?.[escalations] ?? "0");
+    const currentRevenue = parseFloat((revenueResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[current_month] ?? (revenueResult as Record<string,string>[] | undefined)?.[0]?.[currentMonth] ?? "0");
+    const prevRevenue = parseFloat((revenueResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[prev_month] ?? (revenueResult as Record<string,string>[] | undefined)?.[0]?.[prevMonth] ?? "0");
     const revenueDelta = currentRevenue - prevRevenue;
 
-    const totalRuns = parseInt((automationResult as any)?.rows?.[0]?.total_runs ?? "0");
-    const successes = parseInt((automationResult as any)?.rows?.[0]?.successes ?? "0");
+    const totalRuns = parseInt((automationResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[total_runs] ?? "0");
+    const successes = parseInt((automationResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[successes] ?? "0");
     const successRate = totalRuns > 0 ? Math.round((successes / totalRuns) * 100) : 0;
     // Rough estimation: each automation run saves ~2 minutes of manual work
     const hoursSaved = Math.round((totalRuns * 2) / 60);
@@ -1293,8 +1293,8 @@ router.get("/insights", async (req: AuthenticatedRequest, res) => {
 
     const insights: string[] = [];
     const recommendations: string[] = [];
-    const anomalies: any[] = [];
-    const forecasts: any[] = [];
+    const anomalies: (string | number | boolean | null)[] = [];
+    const forecasts: (string | number | boolean | null)[] = [];
 
     const totalHours = parseFloat(String(((hoursRow as any)[0]?.total ?? (hoursRow as any).rows?.[0]?.total) || '0'));
     const otHours = parseFloat(String(((hoursRow as any)[0]?.ot ?? (hoursRow as any).rows?.[0]?.ot) || '0'));
@@ -1486,13 +1486,13 @@ router.get("/heatmap", async (req: AuthenticatedRequest, res) => {
     for (const r of heatmapRows) map[`${r.dayOfWeek}_${r.hourOfDay}`] = r;
 
     // Build 7×24 grid
-    const grid: any[][] = [];
+    const grid: unknown[][] = [];
     let maxValue = 0;
     let minValue = Infinity;
     let totalShifts = 0;
 
     for (let d = 0; d < 7; d++) {
-      const dayRow: any[] = [];
+      const dayRow: (string | number | boolean | null)[] = [];
       for (let h = 0; h < 24; h++) {
         const key = `${d}_${h}`;
         const r = map[key];

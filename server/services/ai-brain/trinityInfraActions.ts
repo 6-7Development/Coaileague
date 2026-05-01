@@ -9,7 +9,7 @@ import { quickbooksSyncReceipts } from '@shared/schema/domains/billing/index';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityInfraActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -86,7 +86,7 @@ export function registerInfraActions() {
     const { quickbooksSyncService } = await import('../partners/quickbooksSyncService');
     const queue = await quickbooksSyncService.getManualReviewQueue(workspaceId, status);
     return {
-      conflicts: queue.map((item: any) => ({
+      conflicts: queue.map((item: unknown) => ({
         id: item.id,
         type: item.entityType,
         description: item.reason,

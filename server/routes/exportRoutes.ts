@@ -312,7 +312,7 @@ router.post("/tenant-takeout", requireOwner, async (req: AuthenticatedRequest, r
 
     // auditor_nda_acceptances is keyed by auditor_id, not workspace_id —
     // include acceptances from every auditor who has audited this tenant.
-    let ndaAcceptances: any[] = [];
+    let ndaAcceptances: (string | number | boolean | null)[] = [];
     try {
       const r = await db.execute(sql`
         SELECT na.*

@@ -39,7 +39,7 @@ interface Proposal {
 }
 
 interface Analytics {
-  snapshots: any[];
+  snapshots: unknown[];
   live: {
     total_deals: number;
     won: number;

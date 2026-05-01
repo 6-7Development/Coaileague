@@ -24,7 +24,7 @@ export default function AuditorDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: docsRes, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });

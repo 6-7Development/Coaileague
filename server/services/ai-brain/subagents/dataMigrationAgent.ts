@@ -142,7 +142,7 @@ class DataMigrationAgent {
    */
   async extractFromSpreadsheet(params: {
     workspaceId: string;
-    data: Record<string, any>[];
+    data: Record<string, unknown>[];
     headers: string[];
     extractionType: 'employees' | 'teams' | 'schedules' | 'auto';
   }): Promise<ExtractedData> {
@@ -518,7 +518,7 @@ Only include arrays that have data. If no data found for a category, omit that a
   }
 
   private applyColumnMapping(
-    data: Record<string, any>[],
+    data: Record<string, unknown>[],
     mapping: Record<string, string>,
     dataType: string
   ): Partial<ExtractedData> {
@@ -768,7 +768,7 @@ Only include arrays that have data. If no data found for a category, omit that a
     rawData: {
       fileContent?: string; // base64 for PDF
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
       manualData?: Record<string, unknown>;
     };
@@ -839,7 +839,7 @@ Only include arrays that have data. If no data found for a category, omit that a
     rawData: {
       fileContent?: string;
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
       manualData?: Record<string, unknown>;
       entryType?: 'employee' | 'team' | 'schedule' | 'bulk_text';
@@ -1100,7 +1100,7 @@ Respond with JSON only:
     rawData: {
       fileContent?: string;
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
       manualData?: Record<string, unknown>;
       entryType?: 'employee' | 'team' | 'schedule' | 'bulk_text';

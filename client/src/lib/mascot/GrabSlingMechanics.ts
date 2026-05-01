@@ -4,4 +4,4 @@ export type SlingResult = any;
 export type GrabConfig = any;
 export type GrabEventType = any;
 export type GrabEvent = any;
-export const grabSlingMechanics = (..._args: any[]): any => {};
+export const grabSlingMechanics = (..._args: unknown[]): any => {};

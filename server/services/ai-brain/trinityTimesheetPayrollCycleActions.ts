@@ -12,7 +12,7 @@ import { calculatePayrollEstimate } from '../payroll/payrollEstimateMath';
 import { AtomicFinancialLockService, FinancialLockConflict } from '../atomicFinancialLockService';
 const log = createLogger('trinityTimesheetPayrollCycleActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>, category: string = 'automation'): ActionHandler {
+function mkAction(actionId: string, fn: (params: any) => Promise<unknown>, category: string = 'automation'): ActionHandler {
   return {
     actionId,
     name: actionId,
@@ -31,11 +31,11 @@ function mkAction(actionId: string, fn: (params: any) => Promise<any>, category:
   };
 }
 
-function mkPayrollAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkPayrollAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return mkAction(actionId, fn, 'payroll');
 }
 
-function mkInvoiceAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkInvoiceAction(actionId: string, fn: (params: any) => Promise<unknown>): ActionHandler {
   return mkAction(actionId, fn, 'invoicing');
 }
 

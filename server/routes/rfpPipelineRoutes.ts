@@ -176,7 +176,7 @@ router.get("/:id", async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.patch("/:id", requireManager as any, async (req: AuthenticatedRequest, res) => {
+router.patch("/:id", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });

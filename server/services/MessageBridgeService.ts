@@ -67,7 +67,7 @@ interface ProviderAdapter {
     from?: string;
     attachmentUrl?: string;
     metadata?: Record<string, unknown>;
-  }): Promise<{ externalMessageId: string; providerResponse: Record<string, any> }>;
+  }): Promise<{ externalMessageId: string; providerResponse: Record<string, unknown> }>;
 }
 
 class MessageBridgeService {
@@ -470,7 +470,7 @@ class MessageBridgeService {
 
     let deliveryStatus: DeliveryStatus = 'pending';
     let externalMessageId: string | null = null;
-    let providerResponse: Record<string, any> | null = null;
+    let providerResponse: Record<string, unknown> | null = null;
 
     const adapter = this.providerAdapters.get(channelType);
     if (adapter) {

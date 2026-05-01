@@ -349,7 +349,7 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
             body: 'Hi! Trinity here. We received your message and a support specialist will follow up with you shortly.',
             type: 'system_alert',
           }).catch((sendErr: any) => {
-            log.warn('[TwilioWebhooks] Fallback SMS send failed (non-critical)', { error: sendErr?.message });
+            log.warn('[TwilioWebhooks] Fallback SMS send failed (non-critical)', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
           });
         }
       });

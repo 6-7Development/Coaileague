@@ -138,7 +138,7 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
 
     const { name, url, events, isActive } = parsed.data;
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let paramIdx = 1;
 
     if (name !== undefined) { fields.push(`name = $${paramIdx++}`); values.push(name); }

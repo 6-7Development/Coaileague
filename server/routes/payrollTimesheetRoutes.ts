@@ -140,7 +140,7 @@ async function writeAudit(
       userAgent: req.get("user-agent") ?? undefined,
     });
   } catch (err: unknown) {
-    log.warn("[audit] payroll timesheet audit write failed", { error: err?.message });
+    log.warn("[audit] payroll timesheet audit write failed", { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -204,7 +204,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 
     return res.json(timesheets);
   } catch (err: unknown) {
-    log.error("Error listing timesheets", { error: err?.message });
+    log.error("Error listing timesheets", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to list timesheets" });
   }
 });
@@ -272,7 +272,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
 
     return res.status(201).json(timesheet);
   } catch (err: unknown) {
-    log.error("Error creating timesheet", { error: err?.message });
+    log.error("Error creating timesheet", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to create timesheet" });
   }
 });
@@ -320,7 +320,7 @@ router.get("/:id", async (req: AuthenticatedRequest, res) => {
       entries,
     });
   } catch (err: unknown) {
-    log.error("Error fetching timesheet", { error: err?.message });
+    log.error("Error fetching timesheet", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to fetch timesheet" });
   }
 });
@@ -439,7 +439,7 @@ router.put("/:id/entries", async (req: AuthenticatedRequest, res) => {
 
     return res.json({ timesheet: updated, entries: updatedEntries });
   } catch (err: unknown) {
-    log.error("Error updating timesheet entries", { error: err?.message });
+    log.error("Error updating timesheet entries", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to update timesheet entries" });
   }
 });
@@ -549,7 +549,7 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
       const status = err.message.split(':')[1] || 'unknown';
       return res.status(409).json({ message: `Timesheet is already ${status} — cannot submit`, code: 'CONFLICT' });
     }
-    log.error("Error submitting timesheet", { error: err?.message });
+    log.error("Error submitting timesheet", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to submit timesheet" });
   }
 });
@@ -631,7 +631,7 @@ router.post("/:id/approve", async (req: AuthenticatedRequest, res) => {
       const status = err.message.split(':')[1] || 'unknown';
       return res.status(409).json({ message: `Timesheet is already ${status} — cannot approve`, code: 'CONFLICT' });
     }
-    log.error("Error approving timesheet", { error: err?.message });
+    log.error("Error approving timesheet", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to approve timesheet" });
   }
 });
@@ -722,7 +722,7 @@ router.post("/:id/reject", async (req: AuthenticatedRequest, res) => {
       const status = err.message.split(':')[1] || 'unknown';
       return res.status(409).json({ message: `Timesheet is already ${status} — cannot reject`, code: 'CONFLICT' });
     }
-    log.error("Error rejecting timesheet", { error: err?.message });
+    log.error("Error rejecting timesheet", { error: err instanceof Error ? err.message : String(err) });
     return res.status(500).json({ message: "Failed to reject timesheet" });
   }
 });

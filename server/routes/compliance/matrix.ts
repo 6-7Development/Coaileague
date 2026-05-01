@@ -55,7 +55,7 @@ router.get("/", async (req: Request, res: Response) => {
     const states = await db.select().from(complianceStates);
     const stateIds = stateFilter ? [stateFilter] : states.map(s => s.id);
 
-    let requirements: any[] = [];
+    let requirements: (string | number | boolean | null)[] = [];
     if (stateIds.length > 0) {
       requirements = await db.select().from(complianceRequirements)
         .where(and(
@@ -78,7 +78,7 @@ router.get("/", async (req: Request, res: Response) => {
     }).from(complianceDocuments)
       .where(eq(complianceDocuments.workspaceId, workspaceId));
 
-    const checklistMap = new Map<string, any>();
+    const checklistMap = new Map<string, unknown>();
     for (const cl of checklists) {
       const key = `${cl.complianceRecordId}:${cl.requirementId}`;
       checklistMap.set(key, cl);
@@ -91,7 +91,7 @@ router.get("/", async (req: Request, res: Response) => {
       docMap.get(key)!.push(doc);
     }
 
-    const recordsByEmployee = new Map<string, any>();
+    const recordsByEmployee = new Map<string, unknown>();
     for (const rec of records) {
       recordsByEmployee.set(rec.employeeId, rec);
     }

@@ -1052,7 +1052,7 @@ export class QuickBooksSyncService {
    */
   private findBestContractorMatch(
     qboVendor: QBOVendor,
-    coaileagueContractors: any[]
+    coaileagueContractors: unknown[]
   ): EntityMatch {
     const qboEmail = qboVendor.PrimaryEmailAddr?.Address?.toLowerCase();
     const qboName = (qboVendor.DisplayName || '').toLowerCase();
@@ -1150,7 +1150,7 @@ export class QuickBooksSyncService {
 
   private findBestClientMatch(
     qboCustomer: QBOCustomer,
-    coaileagueClients: any[]
+    coaileagueClients: unknown[]
   ): EntityMatch {
     const qboEmail = qboCustomer.PrimaryEmailAddr?.Address?.toLowerCase();
     const qboName = (qboCustomer.DisplayName || '').toLowerCase();
@@ -1301,7 +1301,7 @@ export class QuickBooksSyncService {
 
   private async findBestEmployeeMatch(
     qboEmployee: QBOEmployee,
-    coaileagueEmployees: any[],
+    coaileagueEmployees: unknown[],
     workspaceId: string
   ): Promise<EntityMatch> {
     const qboEmail = qboEmployee.PrimaryEmailAddr?.Address?.toLowerCase();
@@ -2033,7 +2033,7 @@ export class QuickBooksSyncService {
     });
 
     try {
-      const response = await this.makeRequest<{ CDCResponse: any[] }>(
+      const response = await this.makeRequest<{ CDCResponse: unknown[] }>(
         'GET',
         `/cdc?changedSince=${sinceStr}&entities=Customer,Employee,Invoice`,
         realmId,
@@ -2193,7 +2193,7 @@ export class QuickBooksSyncService {
 
   async snapshotManuallyEditedTimeEntries(
     workspaceId: string
-  ): Promise<{ snapshotId: string; entries: any[]; timestamp: Date }> {
+  ): Promise<{ snapshotId: string; entries: unknown[]; timestamp: Date }> {
     const manuallyEditedEntries = await db.select({
       id: timeEntries.id,
       employeeId: timeEntries.employeeId,
@@ -2255,9 +2255,9 @@ export class QuickBooksSyncService {
 
   async reconcileManualEditsAfterSync(
     workspaceId: string,
-    preSnapshot: { snapshotId: string; entries: any[]; timestamp: Date }
-  ): Promise<{ preserved: number; overwritten: number; discrepancies: any[] }> {
-    const discrepancies: any[] = [];
+    preSnapshot: { snapshotId: string; entries: unknown[]; timestamp: Date }
+  ): Promise<{ preserved: number; overwritten: number; discrepancies: unknown[] }> {
+    const discrepancies: (string | number | boolean | null)[] = [];
     let preserved = 0;
     let overwritten = 0;
 

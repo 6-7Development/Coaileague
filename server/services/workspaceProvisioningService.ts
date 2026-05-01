@@ -54,7 +54,7 @@ export async function provisionWorkspace(params: {
     }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
 
     if (workspace) {
-      const currentSettings = (workspace.billingSettingsBlob as Record<string, any>) || {};
+      const currentSettings = (workspace.billingSettingsBlob as Record<string, unknown>) || {};
       if (!currentSettings.payrollCycle) {
         const payrollCycle = workspace.payrollSchedule || workspace.payrollCycle || 'biweekly';
         await db.update(workspaces).set({

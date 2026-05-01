@@ -609,7 +609,7 @@ Order tasks logically: understand -> plan -> implement -> test -> commit`;
     }
   }
 
-  private extractJSONArray(text: string): any[] {
+  private extractJSONArray(text: string): unknown[] {
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       try {

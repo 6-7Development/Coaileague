@@ -663,7 +663,7 @@ class AvailabilityService {
       shiftDurationHours?: number;
     }
   ): any {
-    const schedule: any[] = [];
+    const schedule: (string | number | boolean | null)[] = [];
     const shiftsPerDay = options.shiftsPerDay || 2;
     
     const currentDate = new Date(options.startDate);

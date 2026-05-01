@@ -33,7 +33,7 @@ export interface ServiceHealth {
 export interface HealthCheckConfig {
   serviceId: string;
   serviceName: string;
-  checkFn: () => Promise<{ healthy: boolean; responseTime: number; metadata?: Record<string, any> }>;
+  checkFn: () => Promise<{ healthy: boolean; responseTime: number; metadata?: Record<string, unknown> }>;
   intervalMs: number;
   timeout: number;
   degradedThreshold: number; // response time threshold for degraded status
