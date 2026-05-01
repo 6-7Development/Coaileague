@@ -11,9 +11,11 @@ if (process.env.GCS_KEY_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   try {
     _fs.writeFileSync(_keyPath, process.env.GCS_KEY_JSON, { mode: 0o600 });
     process.env.GOOGLE_APPLICATION_CREDENTIALS = _keyPath;
-    log.info('[GCS] Credentials written from GCS_KEY_JSON env var');
+    // console used here intentionally — this bootstrap runs before the structured
+    // logger is initialized (logger const is defined ~180 lines below)
+    console.log('[GCS] Credentials written from GCS_KEY_JSON env var');
   } catch (e) {
-    log.error('[GCS] Failed to write credentials:', e);
+    console.error('[GCS] Failed to write credentials:', e);
   }
 }
 

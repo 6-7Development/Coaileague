@@ -689,6 +689,8 @@ PLATFORM STACK
 | KI-007 | D6 Messaging | FCM push notifications not implemented | HIGH | 🔲 Open | Resend/Twilio fallback active |
 | KI-009 | Platform | Hollowed files from logger migration — 15 files stripped of exports | CRITICAL | ✅ Fixed f9bb50f8 | `server/routes/integrations-status.ts` + 18 others |
 | KI-008 | D3 Finance | ChatDock durable message store missing (Redis Streams) | HIGH | 🔲 Open | ChatDock reliability foundation |
+| KI-009 | D1/D8 | server/index.ts GCS bootstrap used `log` before `createLogger` defined (TDZ crash) | CRITICAL | ✅ Fixed `a42b9d24` | `server/index.ts` L7-18 → `console.log/error` |
+| KI-010 | All | Phase 3 logger migration hollowed 15 files (no exports) causing build failures | CRITICAL | ✅ Fixed `f9bb50f8` | Restored from git baseline |
 
 
 ---
