@@ -380,6 +380,95 @@ section('Front-end loop polish');
     /\(Original message had no readable body/.test(src));
 }
 
+// ─── Single-call external send (no orphan-draft race) ────────────────────────
+section('Single-call external send');
+{
+  const src = readFile('server/routes/externalEmailRoutes.ts');
+  record('POST /api/external-emails/send endpoint exists',
+    /router\.post\(["']\/send["']/.test(src), '', 'high');
+  record('single-call endpoint inserts and dispatches in one handler',
+    /router\.post\(["']\/send["'][\s\S]{0,2000}db\.insert\(externalEmailsSent\)[\s\S]{0,2000}sendEmail\(/.test(src));
+  record('single-call endpoint marks row failed on Resend rejection',
+    /router\.post\(["']\/send["'][\s\S]{0,3000}status:\s*'failed'[\s\S]{0,500}return res\.status\(502\)/.test(src));
+}
+{
+  const src = readFile('client/src/components/email/EmailHubCanvas.tsx');
+  record('compose UI uses single-call /api/external-emails/send',
+    /apiRequest\('POST',\s*'\/api\/external-emails\/send'/.test(src), '', 'high');
+  record('compose UI no longer fires the legacy two-call sequence',
+    !/external-emails\/\$\{resData\.id\}\/send/.test(src));
+}
+
+// ─── Optimistic UI mutations ─────────────────────────────────────────────────
+section('Optimistic UI mutations');
+{
+  const src = readFile('client/src/components/email/EmailHubCanvas.tsx');
+  const hasSnapshot = /const snapshotInboxes = \(\): CacheSnapshot/.test(src);
+  const hasRestore = /const restoreInboxes = \(snap: CacheSnapshot\)/.test(src);
+  const hasRemove = /const removeFromCache = \(emailId: string\)/.test(src);
+  const hasUpdate = /const updateInCache = \(emailId: string/.test(src);
+  record('optimistic helpers (snapshot/restore/remove/update) defined',
+    hasSnapshot && hasRestore && hasRemove && hasUpdate);
+
+  // Each mutation must have onMutate (apply optimistic change) AND
+  // onError that calls restoreInboxes(ctx.snap) for proper rollback.
+  const mutations = ['archiveMutation', 'deleteMutation', 'starMutation'];
+  for (const m of mutations) {
+    const block = src.slice(src.indexOf(`const ${m} = useMutation`), src.indexOf(`const ${m} = useMutation`) + 2500);
+    const hasOnMutate = /onMutate:\s*async/.test(block);
+    const cancelsQueries = /queryClient\.cancelQueries/.test(block);
+    const rollsBack = /restoreInboxes\(ctx\.snap\)/.test(block);
+    record(`${m} applies optimistic update`, hasOnMutate && cancelsQueries);
+    record(`${m} rolls back cache on error`, rollsBack, '', 'high');
+  }
+}
+
+// ─── Template per-category split ─────────────────────────────────────────────
+section('Template per-category split');
+{
+  const idx = readFile('server/services/email/templates/index.ts');
+  record('templates barrel exports combined emailTemplates',
+    /export const emailTemplates = \{/.test(idx));
+  record('templates barrel re-exports each category',
+    /accountTemplates/.test(idx) && /billingTemplates/.test(idx) &&
+    /supportTemplates/.test(idx) && /onboardingTemplates/.test(idx) &&
+    /schedulingTemplates/.test(idx));
+
+  for (const [file, expected] of [
+    ['account', ['verification', 'passwordReset', 'employeeTemporaryPassword', 'accountDeactivation']],
+    ['billing', ['subscriptionWelcome', 'subscriptionCancellation', 'paymentFailed']],
+    ['support', ['supportTicketConfirmation', 'reportDelivery', 'maintenanceNotification']],
+    ['onboarding', ['managerOnboardingNotification', 'clientWelcome', 'newMemberWelcome',
+                    'employeeInvitation', 'supportRoleBriefing', 'onboardingComplete',
+                    'organizationInvitation', 'publicLeadWelcome', 'assistedOnboardingHandoff']],
+    ['scheduling', ['inboundOpportunityNotification', 'shiftOfferNotification']],
+  ]) {
+    const src = readFile(`server/services/email/templates/${file}.ts`);
+    const allFound = expected.every(name => new RegExp(`^\\s+${name}: \\(data:`, 'm').test(src));
+    record(`templates/${file}.ts contains [${expected.join(', ')}]`, allFound);
+  }
+
+  // emailService.ts must import from the new barrel and not redefine the const inline.
+  const svc = readFile('server/services/emailService.ts');
+  record('emailService imports emailTemplates from new barrel',
+    /import \{ emailTemplates \} from "\.\/email\/templates"/.test(svc), '', 'high');
+  record('emailService no longer defines inline emailTemplates const',
+    !/^const emailTemplates = \{/m.test(svc));
+
+  // Every template referenced in emailService.ts must still resolve.
+  const callers = [...svc.matchAll(/emailTemplates\.([a-zA-Z]+)/g)].map(m => m[1]);
+  const available = new Set();
+  for (const file of ['account','billing','support','onboarding','scheduling']) {
+    const src = readFile(`server/services/email/templates/${file}.ts`);
+    for (const m of src.matchAll(/^\s+([a-zA-Z]+): \(data:/gm)) available.add(m[1]);
+  }
+  const missing = callers.filter(c => !available.has(c));
+  record('every emailTemplates.X caller resolves to a defined template',
+    missing.length === 0,
+    missing.length ? `missing: ${[...new Set(missing)].join(', ')}` : `${callers.length} call sites, all resolve`,
+    'high');
+}
+
 // ─── Live Resend round-trip (REST API, no SDK required) ──────────────────────
 section('Live Resend send (REST round-trip)');
 

@@ -3776,6 +3776,47 @@ export function EmailHubCanvas() {
     }
   }, [isMobile]);
 
+  // Optimistic mutation helper — snapshots both inbox feeds, applies a
+  // local mutator, and returns a rollback closure for onError. Keeps the
+  // UI feedback instant on archive/delete/star while preserving correctness:
+  // a server failure restores the prior cache so users never see a
+  // ghost-state where an action "looked done" but didn't apply.
+  type CacheSnapshot = { internal: any; external: any };
+  const snapshotInboxes = (): CacheSnapshot => ({
+    internal: queryClient.getQueriesData({ queryKey: ['/api/internal-email/inbox'] }),
+    external: queryClient.getQueriesData({ queryKey: ['/api/external-emails'] }),
+  });
+  const restoreInboxes = (snap: CacheSnapshot) => {
+    snap.internal.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
+    snap.external.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
+  };
+  const removeFromCache = (emailId: string) => {
+    queryClient.setQueriesData({ queryKey: ['/api/internal-email/inbox'] }, (old: any) => {
+      if (!old?.emails) return old;
+      return { ...old, emails: old.emails.filter((e: any) => e.id !== emailId) };
+    });
+    queryClient.setQueriesData({ queryKey: ['/api/external-emails'] }, (old: any) => {
+      if (!old?.data) return old;
+      return { ...old, data: old.data.filter((row: any) => (row.email?.id ?? row.id) !== emailId) };
+    });
+  };
+  const updateInCache = (emailId: string, patch: Record<string, any>) => {
+    queryClient.setQueriesData({ queryKey: ['/api/internal-email/inbox'] }, (old: any) => {
+      if (!old?.emails) return old;
+      return { ...old, emails: old.emails.map((e: any) => e.id === emailId ? { ...e, ...patch } : e) };
+    });
+    queryClient.setQueriesData({ queryKey: ['/api/external-emails'] }, (old: any) => {
+      if (!old?.data) return old;
+      return {
+        ...old,
+        data: old.data.map((row: any) =>
+          (row.email?.id ?? row.id) === emailId
+            ? (row.email ? { ...row, email: { ...row.email, ...patch } } : { ...row, ...patch })
+            : row),
+      };
+    });
+  };
+
   const archiveMutation = useMutation({
     mutationFn: async (email: UnifiedEmail) => {
       if (email.type === 'internal') {
@@ -3784,15 +3825,26 @@ export function EmailHubCanvas() {
         await apiRequest('PATCH', `/api/external-emails/${email.id}`, { status: 'archived' });
       }
     },
+    onMutate: async (email) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/internal-email/inbox'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/external-emails'] });
+      const snap = snapshotInboxes();
+      removeFromCache(email.id);
+      // Move out of the detail pane immediately so the user sees the action land.
+      if (selectedEmail?.id === email.id) {
+        setSelectedEmail(null);
+        setViewState('hub');
+      }
+      return { snap };
+    },
     onSuccess: () => {
       toast({ title: 'Email archived' });
-      setSelectedEmail(null);
-      setViewState('hub');
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
       queryClient.invalidateQueries({ queryKey: ['/api/external-emails'] });
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/mailbox/auto-create'] });
     },
-    onError: () => {
+    onError: (_err, _email, ctx) => {
+      if (ctx?.snap) restoreInboxes(ctx.snap);
       toast({ title: 'Failed to archive email', variant: 'destructive' });
     },
   });
@@ -3805,15 +3857,25 @@ export function EmailHubCanvas() {
         await apiRequest('DELETE', `/api/external-emails/${email.id}`);
       }
     },
+    onMutate: async (email) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/internal-email/inbox'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/external-emails'] });
+      const snap = snapshotInboxes();
+      removeFromCache(email.id);
+      if (selectedEmail?.id === email.id) {
+        setSelectedEmail(null);
+        setViewState('hub');
+      }
+      return { snap };
+    },
     onSuccess: () => {
       toast({ title: 'Email deleted' });
-      setSelectedEmail(null);
-      setViewState('hub');
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
       queryClient.invalidateQueries({ queryKey: ['/api/external-emails'] });
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/mailbox/auto-create'] });
     },
-    onError: () => {
+    onError: (_err, _email, ctx) => {
+      if (ctx?.snap) restoreInboxes(ctx.snap);
       toast({ title: 'Failed to delete email', variant: 'destructive' });
     },
   });
@@ -3826,9 +3888,25 @@ export function EmailHubCanvas() {
         await apiRequest('PATCH', `/api/external-emails/${email.id}`, { isStarred: starred });
       }
     },
+    onMutate: async ({ email, starred }) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/internal-email/inbox'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/external-emails'] });
+      const snap = snapshotInboxes();
+      updateInCache(email.id, { isStarred: starred });
+      // Reflect the toggle in the open detail pane so the star icon flips
+      // before the network round-trip completes.
+      if (selectedEmail?.id === email.id) {
+        setSelectedEmail({ ...selectedEmail, isStarred: starred });
+      }
+      return { snap };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
       queryClient.invalidateQueries({ queryKey: ['/api/external-emails'] });
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.snap) restoreInboxes(ctx.snap);
+      toast({ title: 'Failed to update star', variant: 'destructive' });
     },
   });
 
@@ -3885,23 +3963,19 @@ export function EmailHubCanvas() {
 
       let result;
       if (isExternal) {
-        const res = await apiRequest('POST', '/api/external-emails', {
+        // Single-call send: the server inserts and dispatches in one
+        // round-trip and returns 502 with detail if Resend rejects, so
+        // there's no orphan-draft race between the two old requests.
+        setSendingStep(4);
+        const res = await apiRequest('POST', '/api/external-emails/send', {
           toEmail: recipients[0],
           ccEmails: data.cc.split(',').map(e => e.trim()).filter(Boolean),
           subject: data.subject,
           bodyHtml: `<div style="white-space: pre-wrap;">${data.body}</div>`,
+          bodyText: data.body,
           attachments: data.attachments,
         });
-        const resData = await res.json();
-
-        // Step 5: MUTATE - Saving to database
-        setSendingStep(4);
-        await new Promise(r => setTimeout(r, 200));
-
-        if (resData?.id) {
-          await apiRequest('POST', `/api/external-emails/${resData.id}/send`);
-        }
-        result = resData;
+        result = await res.json();
       } else {
         // Step 5: MUTATE - Saving to database
         setSendingStep(4);

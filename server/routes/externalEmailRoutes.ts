@@ -117,6 +117,95 @@ export function registerExternalEmailRoutes(app: Express, requireAuth: any, atta
     }
   });
 
+  // POST /api/external-emails/send — single-call create + deliver.
+  // Replaces the legacy two-call pattern (POST / then POST /:id/send) used
+  // by the compose UI. The two-call flow left an orphan row on Resend
+  // failure between the two requests; this version inserts and dispatches
+  // in one round-trip and only marks the row sent after Resend confirms.
+  // The legacy endpoints remain for scheduled send / draft auto-save use.
+  router.post("/send", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = req.workspaceId;
+      const userId = (req.user)?.id;
+      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+
+      const {
+        fromEmail, toEmail, ccEmails, bccEmails, subject, bodyHtml, bodyText,
+        emailType, relatedEntityType, relatedEntityId, attachments,
+      } = req.body;
+
+      if (!toEmail || !subject || !bodyHtml) {
+        return res.status(400).json({ error: 'toEmail, subject, and bodyHtml are required' });
+      }
+
+      const [email] = await db.insert(externalEmailsSent).values({
+        workspaceId,
+        sentBy: userId,
+        fromEmail: fromEmail || EMAIL.senders.noreply,
+        toEmail,
+        ccEmails,
+        bccEmails,
+        subject,
+        bodyHtml,
+        bodyText,
+        emailType: emailType || 'manual',
+        relatedEntityType,
+        relatedEntityId,
+        isDraft: false,
+        status: 'pending',
+        attachments: attachments ? JSON.stringify(attachments) : null,
+      }).returning();
+
+      try {
+        const { sendEmail } = await import('../email');
+        const result = await sendEmail({
+          to: toEmail,
+          subject,
+          html: bodyHtml,
+          text: bodyText || undefined,
+          workspaceId,
+        });
+
+        if (!result.success) {
+          await db.update(externalEmailsSent)
+            .set({ status: 'failed', errorMessage: result.error || 'Email delivery failed' })
+            .where(eq(externalEmailsSent.id, email.id));
+          return res.status(502).json({
+            success: false,
+            emailId: email.id,
+            error: 'Email failed to send',
+            detail: result.error || 'Email delivery failed',
+          });
+        }
+
+        const [updated] = await db.update(externalEmailsSent)
+          .set({
+            status: 'sent',
+            sentAt: new Date(),
+            isDraft: false,
+            externalMessageId: result.id,
+          })
+          .where(eq(externalEmailsSent.id, email.id))
+          .returning();
+
+        return res.json({ success: true, data: updated });
+      } catch (sendErr: unknown) {
+        await db.update(externalEmailsSent)
+          .set({ status: 'failed', errorMessage: (sendErr as any)?.message ?? 'Unknown error' })
+          .where(eq(externalEmailsSent.id, email.id));
+        return res.status(502).json({
+          success: false,
+          emailId: email.id,
+          error: 'Email failed to send',
+          detail: (sendErr as any)?.message,
+        });
+      }
+    } catch (error: unknown) {
+      log.error('[ExternalEmail] /send error:', error);
+      res.status(500).json({ error: 'An internal error occurred' });
+    }
+  });
+
   router.post("/:id/send", requireAuth, async (req: Request, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
