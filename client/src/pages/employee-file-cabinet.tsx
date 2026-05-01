@@ -190,7 +190,7 @@ function AccessLogDialog({ open, onOpenChange, documentId }: { open: boolean; on
 
   return (
     <UniversalModal open={open} onOpenChange={onOpenChange}>
-      <UniversalModalContent size="full" className="max-h-[80vh]">
+      <UniversalModalContent size="full" className="max-h-[80vh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>Document Access Audit Trail</UniversalModalTitle>
           <UniversalModalDescription>Complete record of all access events for compliance</UniversalModalDescription>

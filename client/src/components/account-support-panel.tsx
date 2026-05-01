@@ -123,7 +123,7 @@ export function AccountSupportPanel({
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[90vh] p-0 overflow-hidden">
+      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[90vh] p-0 overflow-y-auto">
         {/* @ts-ignore */}
         <DialogStyledHeader variant="info" className="p-5 sm:p-6">
           <UniversalModalTitle className="flex items-center gap-3 text-xl sm:text-2xl text-inherit">

@@ -432,7 +432,7 @@ export function WorkspaceTabsNav() {
                         )} />
                       </Button>
                     </UniversalModalTrigger>
-                    <UniversalModalContent side="bottom" className="h-[70vh] overflow-y-auto sm:max-w-3xl" showHomeButton={false}>
+                    <UniversalModalContent side="bottom" className="max-h-[calc(70dvh-56px)] sm:max-h-[70dvh] overflow-y-auto overflow-y-auto sm:max-w-3xl" showHomeButton={false}>
                       {isPlatformFamily ? (
                         <PlatformGroupedMobile
                           routes={family.routes}

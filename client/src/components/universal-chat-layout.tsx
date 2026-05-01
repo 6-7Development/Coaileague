@@ -483,7 +483,7 @@ export function UniversalChatLayout({
                   <span className="text-xs">More</span>
                 </Button>
               </UniversalModalTrigger>
-              <UniversalModalContent side="bottom" className="h-auto max-h-[60vh]">
+              <UniversalModalContent side="bottom" className="h-auto max-max-h-[calc(60dvh-56px)] sm:max-h-[60dvh] overflow-y-auto">
                 <UniversalModalHeader className="pb-2">
                   <UniversalModalTitle className="flex items-center gap-2">
                     <Wrench className="w-4 h-4" />

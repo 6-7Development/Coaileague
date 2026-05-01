@@ -42,7 +42,7 @@ const sheetVariants = cva(
     "transition ease-in-out",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:duration-250 data-[state=open]:duration-300",
-    "overflow-hidden box-border",
+    "flex flex-col overflow-hidden box-border",
   ].join(" "),
   {
     variants: {

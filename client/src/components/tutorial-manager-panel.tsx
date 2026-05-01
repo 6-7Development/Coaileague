@@ -242,7 +242,7 @@ export function TutorialManagerPanel({ isOpen, onClose }: TutorialManagerPanelPr
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" className="max-h-[90vh] overflow-hidden">
+      <UniversalModalContent size="full" className="max-h-[90vh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-blue-600" />

@@ -498,7 +498,7 @@ export function TrinityTaskWidget() {
         </div>
       </UniversalModalHeader>
 
-      <ScrollArea className="max-h-[60vh] px-1 py-3">
+      <ScrollArea className="max-h-[calc(60dvh-56px)] sm:max-h-[60vh] px-1 py-3 overflow-y-auto">
         {isLoading && tasks.length === 0 ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
             <Bell className="h-4 w-4 mr-2 animate-pulse" /> Checking with Trinity…

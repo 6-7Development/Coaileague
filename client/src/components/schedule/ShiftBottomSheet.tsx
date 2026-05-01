@@ -250,7 +250,7 @@ export function ShiftBottomSheet({
       <ModalGuardContent isDirty={isDirty}>
         <Drawer open={open} onOpenChange={handleGuardedOpenChange}>
           <DrawerContent 
-            className="max-h-[100dvh] h-[100dvh] sm:max-h-[85vh] sm:h-auto focus:outline-none flex flex-col"
+            className="max-h-[calc(100dvh-56px)] sm:max-h-[85vh] sm:h-auto overflow-y-auto focus:outline-none flex flex-col"
             data-testid="shift-bottom-sheet"
           >
             <MobileSheetHandle />

@@ -280,7 +280,7 @@ export function UserDiagnosticsPanel({
   if (variant === 'mobile') {
     return (
       <UniversalModal open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <UniversalModalContent side="bottom" className="h-[90vh] flex flex-col overflow-hidden sm:max-w-3xl" showHomeButton={false}>
+        <UniversalModalContent side="bottom" className="max-h-[calc(90dvh-56px)] sm:max-h-[90dvh] overflow-y-auto flex flex-col overflow-hidden sm:max-w-3xl" showHomeButton={false}>
           <UniversalModalHeader className="flex-shrink-0">
             <UniversalModalTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />

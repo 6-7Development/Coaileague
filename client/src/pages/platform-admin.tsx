@@ -810,14 +810,14 @@ function SupportSessionsManager() {
       </UniversalModal>
 
       <UniversalModal open={showAuditDialog} onOpenChange={setShowAuditDialog}>
-        <UniversalModalContent size="xl" className="max-h-[80vh]">
+        <UniversalModalContent size="xl" className="max-h-[80vh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle>Session Audit Log</UniversalModalTitle>
             <UniversalModalDescription>
               All actions performed during this support session
             </UniversalModalDescription>
           </UniversalModalHeader>
-          <ScrollArea className="max-h-[50vh]">
+          <ScrollArea className="max-h-[50vh] overflow-y-auto">
             {loadingAudit ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
@@ -1304,7 +1304,7 @@ export default function PlatformAdmin() {
 
       {/* Platform Settings Dialog */}
       <UniversalModal open={showSettings} onOpenChange={setShowSettings}>
-        <UniversalModalContent size="xl" className="max-h-[85vh]">
+        <UniversalModalContent size="xl" className="max-h-[85vh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -1442,7 +1442,7 @@ export default function PlatformAdmin() {
 
       {/* Support Queue Dialog */}
       <UniversalModal open={showSupportQueue} onOpenChange={setShowSupportQueue}>
-        <UniversalModalContent size="full" className="max-h-[80vh]">
+        <UniversalModalContent size="full" className="max-h-[80vh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle className="flex items-center gap-2">
               <Ticket className="h-5 w-5" />

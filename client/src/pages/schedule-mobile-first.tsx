@@ -1195,7 +1195,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
 
 
       {/* Manager Tools Drawer */}
-      <UniversalModal open={showManagerTools} onOpenChange={setShowManagerTools} side="bottom" className="h-auto max-h-[65vh]">
+      <UniversalModal open={showManagerTools} onOpenChange={setShowManagerTools} side="bottom" className="h-auto max-max-h-[calc(65dvh-56px)] sm:max-h-[65dvh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>Schedule Tools</UniversalModalTitle>
         </UniversalModalHeader>

@@ -351,7 +351,7 @@ export function SetupGuidePanel({
               </Badge>
             </Button>
           </UniversalModalTrigger>
-          <UniversalModalContent side="bottom" className="h-[85vh] p-0 rounded-t-xl sm:max-w-3xl" showHomeButton={false}>
+          <UniversalModalContent side="bottom" className="max-h-[calc(85dvh-56px)] sm:max-h-[85dvh] overflow-y-auto p-0 rounded-t-xl sm:max-w-3xl" showHomeButton={false}>
             <UniversalModalHeader className="sr-only">
               <UniversalModalTitle>Setup Guide</UniversalModalTitle>
             </UniversalModalHeader>

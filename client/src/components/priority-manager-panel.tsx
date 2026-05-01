@@ -84,7 +84,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" className="max-h-[90vh] flex flex-col">
+      <UniversalModalContent size="full" className="max-h-[90vh] flex flex-col overflow-y-auto">
         <UniversalModalHeader className="flex-shrink-0">
           <UniversalModalTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-blue-500" />
@@ -143,7 +143,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[50vh]">
+                <ScrollArea className="max-h-[50vh] overflow-y-auto">
                   {isLoading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
