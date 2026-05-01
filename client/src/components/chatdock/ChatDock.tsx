@@ -5,7 +5,7 @@ import { useChatDock } from "@/contexts/ChatDockContext";
 import { useChatRoomSummaries, useChatUnreadTotal, useRoomTypingUser } from "@/hooks/useChatManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
-import { X, ArrowLeft, Send, Search, Users, MessageCircle, MessageSquare, ChevronRight, Loader2, WifiOff, Plus, MoreVertical, Paperclip, Image, Video, Mic, UserPlus, LogOut, Eye, EyeOff, VolumeX, Volume2, Trash2, Ban, Shield, Crown, Info, Settings, Check, CheckCheck, FileText, Reply, Pencil, Forward, Pin, SmilePlus, ExternalLink, XCircle, ArrowDown, ThumbsUp, Heart, Laugh, Frown, Flame, Headphones, Calendar, Phone, Mail, AlertCircle, MapPin, Download,  } from "lucide-react";
+import { X, ArrowLeft, Send, Search, Users, MessageCircle, MessageSquare, ChevronRight, Loader2, WifiOff, Plus, MoreVertical, Paperclip, Image, Video, Mic, UserPlus, LogOut, Eye, EyeOff, VolumeX, Volume2, Trash2, Ban, Shield, Crown, Info, Settings, Check, CheckCheck, FileText, Reply, Pencil, Forward, Pin, SmilePlus, ExternalLink, XCircle, ArrowDown, ThumbsUp, Heart, Laugh, Frown, Flame, Headphones, Calendar, Phone, Mail, AlertCircle, MapPin, Download, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -1381,6 +1381,87 @@ function DeliveryStatusIndicator({ status }: { status: string }) {
 }
 
 /**
+ * VoicePlayer (B6) — Messenger/WhatsApp-style voice-message player.
+ * Tap-to-play, progress bar that scrubs on click, monotonic time readout.
+ * No extra deps — uses native <audio> + a CSS-driven fill.
+ */
+function VoicePlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onTime = () => {
+      setCurrent(a.currentTime);
+      if (a.duration && Number.isFinite(a.duration)) {
+        setProgress((a.currentTime / a.duration) * 100);
+      }
+    };
+    const onLoaded = () => {
+      if (a.duration && Number.isFinite(a.duration)) setDuration(a.duration);
+    };
+    const onEnd = () => { setIsPlaying(false); setProgress(0); setCurrent(0); };
+    a.addEventListener('timeupdate', onTime);
+    a.addEventListener('loadedmetadata', onLoaded);
+    a.addEventListener('ended', onEnd);
+    return () => {
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('loadedmetadata', onLoaded);
+      a.removeEventListener('ended', onEnd);
+    };
+  }, []);
+
+  const toggle = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) { void a.play(); setIsPlaying(true); haptics.light(); }
+    else { a.pause(); setIsPlaying(false); }
+  };
+
+  const scrub = (e: React.MouseEvent<HTMLDivElement>) => {
+    const a = audioRef.current;
+    if (!a || !a.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    a.currentTime = a.duration * ratio;
+    setProgress(ratio * 100);
+    setCurrent(a.currentTime);
+  };
+
+  const fmt = (s: number) => {
+    if (!Number.isFinite(s) || s < 0) return '0:00';
+    const m = Math.floor(s / 60);
+    const r = Math.floor(s % 60);
+    return `${m}:${r.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="chatdock-voice" data-testid="chatdock-voice">
+      <button
+        type="button"
+        onClick={toggle}
+        className="chatdock-tap inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#1877f2] text-white"
+        aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
+      >
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </button>
+      <div className="chatdock-voice-bar" onClick={scrub} role="slider" aria-label="Voice message progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+        <div
+          className="chatdock-voice-bar-fill"
+          style={{ ['--chatdock-voice-progress' as any]: `${progress}%` }}
+        />
+      </div>
+      <span className="chatdock-voice-time">{fmt(current)}{duration > 0 ? ` / ${fmt(duration)}` : ''}</span>
+      <audio ref={audioRef} src={src} preload="metadata" />
+    </div>
+  );
+}
+
+/**
  * Room-list preview line (B5).  Sub-component because hooks can't run inside
  * a callback inside renderRoomItem.  Subscribes to live typing pings so the
  * preview swaps to "Maya is typing…" with a subtle pulse — same trick
@@ -1733,6 +1814,13 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
   const touchStartRef = useRef<{ x: number; y: number; msgId: string | null }>({ x: 0, y: 0, msgId: null });
   const lastTapRef = useRef<{ msgId: string; time: number }>({ msgId: "", time: 0 });
   const [swipeReplyId, setSwipeReplyId] = useState<string | null>(null);
+  // B3 — live swipe translation per message. We keep one entry at a time so
+  // the dragged row applies translateX(...) and reveals the reply hint past
+  // the 32px threshold; on release the row either snaps back or commits the
+  // reply.
+  const [activeSwipe, setActiveSwipe] = useState<{ msgId: string; dx: number; reached: boolean } | null>(null);
+  const SWIPE_REPLY_THRESHOLD = 56;
+  const SWIPE_HINT_THRESHOLD = 32;
   const seenMessageIds = useRef<Set<string>>(new Set());
   const initialLoadDone = useRef(false);
   const newMessageIds = useRef<Set<string>>(new Set());
@@ -1898,6 +1986,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
   const handleTouchStart = useCallback((e: ReactTouchEvent, msgId: string) => {
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, msgId };
     setSwipeReplyId(null);
+    setActiveSwipe(null);
     longPressTimerRef.current = setTimeout(() => {
       setActiveMessageMenu(msgId);
       longPressTimerRef.current = null;
@@ -1906,16 +1995,45 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
 
   const handleTouchMove = useCallback((e: ReactTouchEvent) => {
     if (!touchStartRef.current.msgId) return;
-    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    const rawDx = e.touches[0].clientX - touchStartRef.current.x;
+    const dx = Math.max(0, rawDx); // only swipe right
     const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y);
-    if (Math.abs(dx) > 10 || dy > 10) {
+    if (Math.abs(rawDx) > 10 || dy > 10) {
       if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
     }
-    if (dx > 60 && dy < 30) {
-      setSwipeReplyId(touchStartRef.current.msgId);
+    // Vertical scroll wins — abort swipe.
+    if (dy > 16 && dy > dx) {
+      if (activeSwipe) setActiveSwipe(null);
       touchStartRef.current = { x: 0, y: 0, msgId: null };
+      return;
     }
-  }, []);
+    if (dx > 4) {
+      // Apply rubber-banding past the threshold for a Messenger-feel.
+      const damped = dx <= SWIPE_REPLY_THRESHOLD ? dx : SWIPE_REPLY_THRESHOLD + (dx - SWIPE_REPLY_THRESHOLD) * 0.3;
+      const reached = dx >= SWIPE_HINT_THRESHOLD;
+      const wasReached = !!activeSwipe?.reached;
+      setActiveSwipe({ msgId: touchStartRef.current.msgId!, dx: damped, reached });
+      // Haptic tick the moment we cross the hint threshold (Messenger trick).
+      if (reached && !wasReached) {
+        haptics.light();
+      }
+    }
+  }, [activeSwipe]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    const swipe = activeSwipe;
+    if (swipe) {
+      const committed = swipe.dx >= SWIPE_REPLY_THRESHOLD;
+      setActiveSwipe(null);
+      if (committed) {
+        // Defer to setSwipeReplyId so the existing replyingTo wiring at line ~2122 picks it up.
+        setSwipeReplyId(swipe.msgId);
+        haptics.medium();
+      }
+    }
+    touchStartRef.current = { x: 0, y: 0, msgId: null };
+  }, [activeSwipe]);
 
   const handleDoubleTap = useCallback((msgId: string) => {
     const now = Date.now();
@@ -2348,18 +2466,27 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                 {showUnreadDivider && <UnreadDivider />}
                 <div
                   className={cn(
-                    "flex flex-col relative group",
+                    "chatdock-swipe-row flex flex-col relative group",
                     isGrouped ? "py-px" : "py-0.5",
                     isOwn ? "items-end" : "items-start",
                     isHighlighted && "bg-primary/5 rounded-lg -mx-1 px-1",
-                    isNewMessage && "animate-in fade-in slide-in-from-bottom-2 duration-200"
+                    isNewMessage && "animate-in fade-in slide-in-from-bottom-2 duration-200",
                   )}
                   data-testid={`chat-msg-${msg.id}`}
+                  data-swiping={activeSwipe?.msgId === msg.id ? "true" : "false"}
+                  data-swipe-reached={activeSwipe?.msgId === msg.id && activeSwipe.reached ? "true" : "false"}
+                  style={activeSwipe?.msgId === msg.id ? { transform: `translateX(${activeSwipe.dx}px)` } : undefined}
                   onTouchStart={isMobile ? (e) => handleTouchStart(e, msg.id) : undefined}
                   onTouchMove={isMobile ? handleTouchMove : undefined}
-                  onTouchEnd={isMobile ? () => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } } : undefined}
+                  onTouchEnd={isMobile ? handleTouchEnd : undefined}
+                  onTouchCancel={isMobile ? handleTouchEnd : undefined}
                   onClick={isMobile ? () => handleDoubleTap(msg.id) : undefined}
                 >
+                  {/* B3: swipe-to-reply hint icon — fades in when the swipe
+                       crosses the hint threshold, before the commit threshold. */}
+                  <span className="chatdock-swipe-reply-hint inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#1877f2]/15 text-[#1877f2]" aria-hidden="true">
+                    <Reply className="h-4 w-4" />
+                  </span>
                   {!isOwn && !isGrouped && (
                     <span className="text-[10px] font-medium text-muted-foreground mb-0.5 px-2 inline-flex items-center gap-1">
                       {isBot
@@ -2464,7 +2591,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                             <video src={isMediaMessage[2]} controls className="max-w-full rounded-lg max-h-48" />
                           )}
                           {isMediaMessage[1].includes("audio") && (
-                            <audio src={isMediaMessage[2]} controls className="max-w-full" />
+                            <VoicePlayer src={isMediaMessage[2]} />
                           )}
                           {isMediaMessage[1].includes("file") && (
                             <a href={isMediaMessage[2]} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 underline text-xs">
