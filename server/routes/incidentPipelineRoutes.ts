@@ -21,8 +21,8 @@ function uid(req: any): string {
   return req.user?.id || req.session?.userId;
 }
 
-async function q(text: string, params: any[] = []) {
-  const r = await typedPool(text, params);
+async function q(text: string, params: any[] = []): Promise<any[]> {
+  const r = await typedPool<any>(text, params);
   return r.rows;
 }
 
@@ -167,12 +167,13 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
 
         const vaultResult = await saveToVault({
           workspaceId,
+          workspaceName: workspaceId,
           documentTitle: `Incident Report — ${incident.title}`,
-          category: 'incident_report',
+          category: 'operations',
           relatedEntityType: 'incident_report',
           relatedEntityId: id,
           generatedBy: userId,
-          pdfBuffer,
+          rawBuffer: pdfBuffer,
         });
 
         if (vaultResult.success && vaultResult.vault) {

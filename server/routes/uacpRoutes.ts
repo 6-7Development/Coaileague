@@ -119,20 +119,29 @@ router.get('/dashboard', requireAdminAccess, async (req, res) => {
  */
 router.post('/authorize', requireAuth, async (req, res) => {
   try {
+    const ENTITY_TYPES = ['human', 'bot', 'subagent', 'trinity', 'service', 'external'] as const;
+    const RESOURCE_TYPES = ['action', 'domain', 'endpoint', 'data'] as const;
     const authorizeSchema = z.object({
-      subject: z.object({ entityType: z.string(), entityId: z.string() }),
-      resource: z.object({ resourceType: z.string(), resourceId: z.string() }),
+      subject: z.object({
+        entityType: z.enum(ENTITY_TYPES),
+        entityId: z.string(),
+        role: z.string().optional(),
+        workspaceId: z.string().optional(),
+        attributes: z.record(z.any()).optional(),
+      }),
+      resource: z.object({
+        resourceType: z.enum(RESOURCE_TYPES),
+        resourceId: z.string(),
+        action: z.string().default('read'),
+        metadata: z.record(z.any()).optional(),
+      }),
       context: z.record(z.unknown()).optional(),
     });
     const authParsed = authorizeSchema.safeParse(req.body);
     if (!authParsed.success) return res.status(400).json({ error: 'Validation failed', details: authParsed.error.flatten() });
     const { subject, resource, context } = authParsed.data;
 
-    if (!subject?.entityType || !subject?.entityId || !resource?.resourceType || !resource?.resourceId) {
-      return res.status(400).json({ error: 'Missing required fields: subject, resource' });
-    }
-
-    const decision = await policyDecisionPoint.authorize(subject, resource, context || {});
+    const decision = await policyDecisionPoint.authorize(subject, resource, (context || {}) as Record<string, any>);
     res.json(decision);
 
   } catch (error) {
@@ -213,17 +222,22 @@ router.get('/agents/:agentId', requireAdminAccess, async (req, res) => {
 router.post('/agents', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
+    if (!user?.id) {
+      return res.status(401).json({ error: 'User context required' });
+    }
+    const ENTITY_TYPES = ['human', 'bot', 'subagent', 'trinity', 'service', 'external'] as const;
+    const RISK_PROFILES = ['low', 'medium', 'high', 'critical'] as const;
     const agentRegSchema = z.object({
       agentId: z.string().min(1).max(100),
       name: z.string().min(1).max(200),
       description: z.string().max(1000).optional(),
-      entityType: z.string().min(1).max(50),
+      entityType: z.enum(ENTITY_TYPES),
       role: z.string().max(50).optional(),
       permissions: z.array(z.string()).optional(),
       allowedTools: z.array(z.string()).optional(),
       allowedDomains: z.array(z.string()).optional(),
       missionObjective: z.string().max(1000).optional(),
-      riskProfile: z.string().max(50).optional(),
+      riskProfile: z.enum(RISK_PROFILES).optional(),
       maxAutonomyLevel: z.number().int().min(0).max(10).optional(),
       isGlobal: z.boolean().optional(),
     });
@@ -231,17 +245,12 @@ router.post('/agents', requireAdminAccess, async (req, res) => {
     if (!agentRegParsed.success) return res.status(400).json({ error: 'Validation failed', details: agentRegParsed.error.flatten() });
     const { agentId, name, description, entityType, role, permissions, allowedTools, allowedDomains, missionObjective, riskProfile, maxAutonomyLevel, isGlobal } = agentRegParsed.data;
 
-    if (!agentId || !name || !entityType) {
-      return res.status(400).json({ error: 'Missing required fields: agentId, name, entityType' });
-    }
-
     const result = await agentIdentityService.registerAgent({
       agentId,
       name,
       description,
       entityType,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      workspaceId: isGlobal ? undefined : user.currentWorkspaceId,
+      workspaceId: isGlobal ? undefined : (user as any).currentWorkspaceId,
       isGlobal: isGlobal || false,
       role,
       permissions,
@@ -250,7 +259,6 @@ router.post('/agents', requireAdminAccess, async (req, res) => {
       missionObjective,
       riskProfile,
       maxAutonomyLevel,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       createdBy: user.id,
     });
 

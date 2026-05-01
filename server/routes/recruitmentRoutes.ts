@@ -37,6 +37,13 @@ import {
   sendEmailRound2,
   processEmailReply,
 } from '../services/recruitment/emailInterviewService';
+import {
+  createChatInterviewRoom,
+  getCopilotEvents,
+  analyzeChatResponse,
+  closeChatInterviewSession,
+  createVoiceInterviewSession,
+} from '../services/recruitment/chatInterviewService';
 import { z } from 'zod';
 import { createLogger } from '../lib/logger';
 

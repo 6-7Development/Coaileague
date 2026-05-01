@@ -604,6 +604,35 @@ calendarRouter.post('/import/ical', requireAuth, upload.single('file'), localVir
 // GOOGLE CALENDAR OAUTH INTEGRATION (Phase 5)
 // ============================================================================
 
+// Stubs — Google Calendar OAuth integration is not yet wired. The routes
+// remain registered so the surface is discoverable, but every entry point
+// reports "not configured" until OAuth credentials and the real exchange
+// helpers ship.
+function isGoogleCalendarConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI);
+}
+
+function getGoogleOAuthUrl(state: string, scopes: string[] = ['https://www.googleapis.com/auth/calendar.readonly']): string {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID || '',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+    response_type: 'code',
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: scopes.join(' '),
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+async function exchangeCodeForTokens(_code: string): Promise<{ accessToken: string; refreshToken?: string; expiresAt?: Date }> {
+  throw new Error('Google Calendar token exchange is not configured');
+}
+
+async function getUserCalendarInfo(_accessToken: string): Promise<{ email: string }> {
+  throw new Error('Google Calendar user info is not configured');
+}
+
 const googleOAuthStates = new Map<string, { userId: string; workspaceId: string; expiresAt: number }>();
 
 calendarRouter.get('/google/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

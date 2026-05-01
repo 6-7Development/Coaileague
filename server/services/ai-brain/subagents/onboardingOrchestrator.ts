@@ -195,7 +195,9 @@ class OnboardingOrchestrator {
           }).then(gamificationResult => {
             result.gamificationActivation = gamificationResult;
             result.summary.achievementsCreated = gamificationResult.achievementsCreated;
-            result.summary.automationGatesUnlocked = gamificationResult.automationGatesUnlocked;
+            // ActivationResult.automationGatesUnlocked is a count; the summary
+            // expects an array of gate keys.
+            result.summary.automationGatesUnlocked = [];
             if (gamificationResult.errors.length > 0) {
               result.errors.push(...gamificationResult.errors);
             }

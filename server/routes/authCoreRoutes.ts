@@ -72,8 +72,35 @@ import {
   resetPassword,
   validatePassword,
   verifyEmailToken,
-  requireAuth,
+  verifyPassword,
 } from "../auth";
+import { verifyMfaToken } from "../services/auth/mfa";
+
+const SUPPORT_PLATFORM_ROLES = new Set([
+  'root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent',
+  'compliance_officer', 'co_admin', 'sysops',
+]);
+
+function validatePendingMfaToken(token: unknown): string {
+  if (!token || typeof token !== 'string') {
+    throw new Error('Missing or invalid pending MFA token');
+  }
+  let decoded: string;
+  try {
+    decoded = Buffer.from(token, 'base64url').toString('utf8');
+  } catch {
+    throw new Error('Malformed pending MFA token');
+  }
+  const [userId, issuedAtRaw] = decoded.split(':');
+  const issuedAt = Number(issuedAtRaw);
+  if (!userId || !issuedAt || Number.isNaN(issuedAt)) {
+    throw new Error('Invalid pending MFA token payload');
+  }
+  if (Date.now() - issuedAt > 5 * 60 * 1000) {
+    throw new Error('Pending MFA token expired');
+  }
+  return userId;
+}
 import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole , type AuthenticatedRequest} from "../rbac";
 import { emailService } from "../services/emailService";
 import { platformEventBus } from "../services/platformEventBus";
@@ -268,12 +295,20 @@ function isMfaMandatory(role: string): boolean {
   return mandatoryRoles.includes(role);
 }
 
-async function generateAndSendSupportOtp(userId: string): Promise<{success: boolean; message?: string}> {
+async function generateAndSendSupportOtp(
+  _userId: string,
+  _phone?: string,
+): Promise<{ success: boolean; message?: string; notConfigured?: boolean }> {
   // TODO: Full OTP implementation via Resend/SMS
-  return { success: false, message: 'OTP service not yet configured. Contact support.' };
+  return { success: false, notConfigured: true, message: 'OTP service not yet configured. Contact support.' };
 }
 
-async function adminResetUserMfa(targetUserId: string, adminId: string): Promise<void> {
+async function adminResetUserMfa(
+  targetUserId: string,
+  _adminId: string,
+  _adminRole?: string,
+  _workspaceId?: string,
+): Promise<void> {
   // TODO: Reset MFA for user — update users table
   await pool.query('UPDATE users SET mfa_enabled = false, mfa_secret = null WHERE id = $1', [targetUserId])
     .catch(() => {});
@@ -289,7 +324,12 @@ async function removeSession(sessionId: string): Promise<void> {
   await pool.query('DELETE FROM sessions WHERE sid = $1', [sessionId]).catch(() => {});
 }
 
-async function isDeviceTrusted(userId: string, deviceToken: string): Promise<boolean> {
+async function isDeviceTrusted(
+  _userId: string,
+  _deviceToken: string,
+  _ipAddress?: string,
+  _userAgent?: string,
+): Promise<boolean> {
   // TODO: Implement device trust via JWT or DB record
   return false;
 }

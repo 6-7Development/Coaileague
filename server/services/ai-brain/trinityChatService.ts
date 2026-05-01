@@ -500,7 +500,8 @@ class TrinityChatService {
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const { userId, workspaceId, message, sessionId, images } = request;
-    // Trinity has no mode toggle — her biological brain decides how to respond
+    // Trinity is unified — `mode` is retained for the session column default only.
+    const mode: ConversationMode = request.mode ?? 'business';
 
     // THALAMUS — Universal Sensory Gateway (first organ every signal passes through)
     // Non-blocking for LOW priority; async-logged for background processing
@@ -637,7 +638,7 @@ class TrinityChatService {
             supportMode: true,
             supportAgentId: userId,
             supportTicketId: request.supportTicketId || null,
-            sessionId: session?.id || null,
+            sessionId: sessionId || null,
             messagePreview: request.message.substring(0, 120),
             trustTier: request.trustTier || 'owner',
           }),

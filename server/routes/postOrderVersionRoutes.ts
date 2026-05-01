@@ -326,12 +326,13 @@ router.post("/versions/:versionId/acknowledge", requireAuth, async (req: Authent
         const pdfBuffer = Buffer.from(await doc.save());
         await saveToVault({
           workspaceId: wid,
+          workspaceName: wid,
           documentTitle: `Post Order Acknowledgment — v${version.version_number}`,
           category: 'compliance',
           relatedEntityType: 'post_order_acknowledgment',
           relatedEntityId: id,
           generatedBy: empId,
-          pdfBuffer,
+          rawBuffer: pdfBuffer,
         });
         log.info(`[PostOrder] Acknowledgment vaulted — version ${version.version_number}, officer ${empId}`);
       } catch (vaultErr: any) {

@@ -24,6 +24,12 @@ import { createLogger } from '../../lib/logger';
 import { diagnoseBusinessArtifactCoverage } from '../documents/businessArtifactDiagnosticService';
 import { invoiceService } from '../billing/invoice';
 import { generateTimesheetSupportPackage } from '../documents/timesheetSupportPackageGenerator';
+import {
+  generateProofOfEmployment,
+  generateDirectDepositConfirmation,
+  generatePayrollRunSummary,
+  generateW3Transmittal,
+} from '../documents/businessFormsGenerators';
 import { scoreRfpComplexity, buildRfpExtractionPrompt, type RfpScoringInputs } from '../billing/rfpComplexityScorer';
 const log = createLogger('trinityDocumentActions');
 const I9_COMPLIANCE_WINDOW_DAYS = 90;
@@ -638,7 +644,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
   });
   // ── Elite AI Actions — Per-Use Pricing ($89-199 range) ──────────────────
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.contract_analysis',
     description: 'Line-by-line liability flagging, missing-protection callouts, and auto-redlines against PSB requirements. Cites exact statute violations.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
@@ -647,7 +653,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
       if (!workspaceId || (!documentId && !documentText)) {
         return { success: false, message: 'workspaceId and (documentId or documentText) required' };
       }
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
+      const { claudeService } = await import('./trinity-orchestration/claudeService');
       const prompt = `You are a security industry contract specialist. Analyze this security services contract and provide:
 1. LIABILITY FLAGS: Specific clauses creating liability exposure (cite clause numbers)
 2. MISSING PROTECTIONS: Standard PSB/security industry protections that are absent
@@ -660,23 +666,19 @@ ${documentText ? 'CONTRACT TEXT:\n' + documentText.slice(0, 8000) : 'Document ID
 
 Return structured JSON with fields: liabilityFlags[], missingProtections[], statuteViolations[], redlines[], riskScore, executiveSummary`;
 
-      const analysis = await claudeVerificationService.verify({
-        workspaceId,
-        context: prompt,
-        taskType: 'contract_analysis',
-      });
+      const analysis = await claudeService.call(prompt);
 
       return {
         success: true,
         actionId: request.actionId,
-        contractAnalysis: analysis?.result || analysis,
+        contractAnalysis: analysis,
         priceCents: 14900, // $149 base (within $89-189 range)
         featureKey: 'contract_analysis',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.compliance_audit_report',
     description: 'Full audit-readiness report with compliance score, findings categorized by severity, and auditor-ready exhibit index.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
@@ -686,7 +688,7 @@ Return structured JSON with fields: liabilityFlags[], missingProtections[], stat
         return { success: false, message: 'workspaceId required' };
       }
 
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
+      const { claudeService } = await import('./trinity-orchestration/claudeService');
       const { db } = await import('../../db');
       const { pool } = await import('../../db');
 
@@ -731,23 +733,21 @@ Generate a formal compliance audit report with:
 
 Return structured JSON.`;
 
-      const report = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'compliance_audit'
-      });
+      const report = await claudeService.call(prompt);
 
       return {
         success: true,
         actionId: request.actionId,
-        auditReport: report?.result || report,
+        auditReport: report,
         workspaceId,
         generatedAt: new Date().toISOString(),
         priceCents: 16900, // $169 (within $129-199 range)
         featureKey: 'compliance_audit_report',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.incident_investigation_report',
     description: 'Court-ready incident investigation narrative with timeline, root cause analysis, and officer conduct assessment for insurance and litigation.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager', 'supervisor'],
@@ -768,7 +768,7 @@ Return structured JSON.`;
         incident = result.rows[0];
       }
 
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
+      const { claudeService } = await import('./trinity-orchestration/claudeService');
       const prompt = `You are a security incident investigation specialist and expert witness preparer.
       
 Generate a court-ready incident investigation report for this security incident:
@@ -788,23 +788,21 @@ The report must include:
 
 Write in formal investigative report style. Use passive voice for officer actions. Cite specific policies and statutes where applicable. This report may be used in legal proceedings.`;
 
-      const report = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'incident_investigation'
-      });
+      const report = await claudeService.call(prompt);
 
       return {
         success: true,
         actionId: request.actionId,
-        investigationReport: report?.result || report,
+        investigationReport: report,
         incidentId,
         generatedAt: new Date().toISOString(),
         priceCents: 3900, // $39 (within $29-39 range)
         featureKey: 'incident_investigation_report',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.officer_performance_review',
     description: 'Structured performance review narrative from 12 months of shift, attendance, incident, and compliance data.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
@@ -828,7 +826,7 @@ Write in formal investigative report style. Use passive voice for officer action
       const attendance = attendanceData.rows[0] || {};
       const score = scoreData.rows[0] || {};
 
-      const { claudeVerificationService } = await import('./trinity-orchestration/trinityVerificationService');
+      const { claudeService } = await import('./trinity-orchestration/claudeService');
       const prompt = `You are an HR performance review specialist for security operations.
 
 Generate a formal officer performance review for:
@@ -859,14 +857,12 @@ Generate a formal HR performance review with:
 
 Write in professional HR review style. Be specific and evidence-based. Avoid vague platitudes.`;
 
-      const review = await claudeVerificationService.verify({
-        workspaceId, context: prompt, taskType: 'performance_review'
-      });
+      const review = await claudeService.call(prompt);
 
       return {
         success: true,
         actionId: request.actionId,
-        performanceReview: review?.result || review,
+        performanceReview: review,
         employeeId,
         reviewPeriodMonths,
         generatedAt: new Date().toISOString(),
@@ -874,61 +870,7 @@ Write in professional HR review style. Be specific and evidence-based. Avoid vag
         featureKey: 'officer_performance_review',
       };
     },
-  }));
-
-}
-
-export async function scanOverdueI9s(workspaceId: string): Promise<void> {
-  const complianceWindowStart = new Date(Date.now() - I9_COMPLIANCE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const i9DeadlineCutoff = new Date(Date.now() - I9_DEADLINE_DAYS * 24 * 60 * 60 * 1000);
-
-  const overdue = await db.execute(sql`
-    SELECT e.id, e.first_name, e.last_name, e.hire_date, p.i9_complete
-    FROM employees e
-    LEFT JOIN employee_onboarding_progress p ON p.employee_id = e.id AND p.workspace_id = e.workspace_id
-    WHERE e.workspace_id = ${workspaceId}
-      AND e.is_active = true
-      AND e.hire_date IS NOT NULL
-      AND e.hire_date > ${complianceWindowStart}
-      AND (p.i9_complete IS NULL OR p.i9_complete = false)
-      AND e.hire_date < ${i9DeadlineCutoff}
-  `);
-
-  const rows = (overdue as any).rows || [];
-  for (const emp of rows) {
-    const title = `I-9 Overdue: ${emp.first_name} ${emp.last_name}`;
-    const [existing] = await db.select({ id: aiApprovals.id })
-      .from(aiApprovals)
-      .where(and(
-        eq(aiApprovals.workspaceId, workspaceId),
-        eq(aiApprovals.status, 'pending'),
-        eq(aiApprovals.requestType, 'compliance_alert'),
-        eq(aiApprovals.title, title),
-      ))
-      .limit(1);
-
-    if (existing) continue;
-
-    await db.insert(aiApprovals).values({
-      workspaceId,
-      approvalKind: 'compliance',
-      title,
-      description: `I-9 not completed. Hired ${format(new Date(emp.hire_date), 'MMM d')}. Company compliance policy requires completion within 3 days of hire date. Risk: ICE audit liability.`,
-      requestType: 'compliance_alert',
-      priority: 'urgent',
-      sourceSystem: 'trinity',
-      status: 'pending',
-      riskLevel: 'high',
-      payload: {
-        employeeId: emp.id,
-        employeeName: `${emp.first_name} ${emp.last_name}`.trim(),
-        alertType: 'i9_overdue',
-      },
-      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  }
+  });
 
   // ── Business Document Generators (Phase: Business Forms) ──────────────────
 
@@ -1070,4 +1012,57 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
     },
   });
 
+}
+
+export async function scanOverdueI9s(workspaceId: string): Promise<void> {
+  const complianceWindowStart = new Date(Date.now() - I9_COMPLIANCE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const i9DeadlineCutoff = new Date(Date.now() - I9_DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+
+  const overdue = await db.execute(sql`
+    SELECT e.id, e.first_name, e.last_name, e.hire_date, p.i9_complete
+    FROM employees e
+    LEFT JOIN employee_onboarding_progress p ON p.employee_id = e.id AND p.workspace_id = e.workspace_id
+    WHERE e.workspace_id = ${workspaceId}
+      AND e.is_active = true
+      AND e.hire_date IS NOT NULL
+      AND e.hire_date > ${complianceWindowStart}
+      AND (p.i9_complete IS NULL OR p.i9_complete = false)
+      AND e.hire_date < ${i9DeadlineCutoff}
+  `);
+
+  const rows = (overdue as any).rows || [];
+  for (const emp of rows) {
+    const title = `I-9 Overdue: ${emp.first_name} ${emp.last_name}`;
+    const [existing] = await db.select({ id: aiApprovals.id })
+      .from(aiApprovals)
+      .where(and(
+        eq(aiApprovals.workspaceId, workspaceId),
+        eq(aiApprovals.status, 'pending'),
+        eq(aiApprovals.requestType, 'compliance_alert'),
+        eq(aiApprovals.title, title),
+      ))
+      .limit(1);
+
+    if (existing) continue;
+
+    await db.insert(aiApprovals).values({
+      workspaceId,
+      approvalKind: 'compliance',
+      title,
+      description: `I-9 not completed. Hired ${format(new Date(emp.hire_date), 'MMM d')}. Company compliance policy requires completion within 3 days of hire date. Risk: ICE audit liability.`,
+      requestType: 'compliance_alert',
+      priority: 'urgent',
+      sourceSystem: 'trinity',
+      status: 'pending',
+      riskLevel: 'high',
+      payload: {
+        employeeId: emp.id,
+        employeeName: `${emp.first_name} ${emp.last_name}`.trim(),
+        alertType: 'i9_overdue',
+      },
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
 }

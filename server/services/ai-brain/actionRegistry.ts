@@ -31,7 +31,6 @@ import {
   clients,
   notifications,
   workspaces,
-  employees,
 } from '@shared/schema';
 import { universalNotificationEngine } from '../universalNotificationEngine';
 import { broadcastShiftUpdate, broadcastToWorkspace } from '../../websocket';
@@ -743,7 +742,7 @@ class AIBrainActionRegistry {
         if (!workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
 
         // STATE LOCK: Load current shift before making any changes
-        const [current] = await db.select({ status: shifts.status, startTime: shifts.startTime, endTime: shifts.endTime })
+        const [current] = await db.select({ status: shifts.status, startTime: shifts.startTime, endTime: shifts.endTime, updatedAt: shifts.updatedAt })
           .from(shifts).where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))).limit(1);
         if (!current) return createResult(request.actionId, false, 'Shift not found', null, start);
 
@@ -2093,9 +2092,9 @@ class AIBrainActionRegistry {
         if (targetShift) {
           try {
             const shiftHours = targetShift.endTime && targetShift.startTime
-              ? (new Date(targetShift.endTime as string).getTime() - new Date(targetShift.startTime as string).getTime()) / 3600000
+              ? (new Date(targetShift.endTime as unknown as string).getTime() - new Date(targetShift.startTime as unknown as string).getTime()) / 3600000
               : 0;
-            const weekStart = new Date(targetShift.startTime as string);
+            const weekStart = new Date(targetShift.startTime as unknown as string);
             weekStart.setDate(weekStart.getDate() - weekStart.getDay());
             weekStart.setHours(0,0,0,0);
             const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
@@ -2649,6 +2648,21 @@ class AIBrainActionRegistry {
           .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)))
           .returning();
 
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'invoice', entityId: invoiceId,
+            success: true,
+            message: `Invoice updated: ${Object.keys(updateSet).filter(k => k !== 'updatedAt').join(', ')}`,
+            changesBefore: { status: existing.status } as Record<string, unknown>,
+            changesAfter: updated as Record<string, unknown>,
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[billing.invoice_update] audit log failed (non-fatal):', auditErr?.message);
+        }
+
         broadcastToWorkspace(workspaceId, { type: 'invoices_updated', action: 'updated', invoiceId });
         return createResult(request.actionId, true, 'Invoice updated', updated, start);
       },
@@ -2792,6 +2806,21 @@ class AIBrainActionRegistry {
           .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)))
           .returning();
 
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'invoice', entityId: invoiceId,
+            success: true, message: `Invoice cancelled (reason: ${reason})`,
+            changesBefore: existing as Record<string, unknown>,
+            changesAfter: updated as Record<string, unknown>,
+            payload: { reason },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[billing.invoice_cancel] audit log failed (non-fatal):', auditErr?.message);
+        }
+
         broadcastToWorkspace(workspaceId, { type: 'invoices_updated', action: 'cancelled', invoiceId });
         return createResult(request.actionId, true, `Invoice cancelled (reason: ${reason})`, updated, start);
       },
@@ -2855,6 +2884,20 @@ class AIBrainActionRegistry {
             taxable: item.taxable,
             taxAmount: item.taxAmount,
           })));
+        }
+
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'invoice', entityId: cloned.id,
+            success: true, message: `Invoice duplicated from ${invoiceId}`,
+            changesAfter: cloned as Record<string, unknown>,
+            payload: { sourceInvoiceId: invoiceId, lineItemsCopied: sourceItems.length },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[billing.invoice_duplicate] audit log failed (non-fatal):', auditErr?.message);
         }
 
         broadcastToWorkspace(workspaceId, { type: 'invoices_updated', action: 'duplicated', invoiceId: cloned.id });
@@ -2935,6 +2978,24 @@ class AIBrainActionRegistry {
           });
         } catch (err: any) {
           log.warn('[billing.apply_payment] ledger write failed (non-fatal):', err?.message);
+        }
+
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'invoice', entityId: invoiceId,
+            success: true,
+            message: isFullyPaid
+              ? `Payment $${amountNum.toFixed(2)} applied — invoice paid in full`
+              : `Partial payment $${amountNum.toFixed(2)} applied`,
+            changesBefore: { status: preCheck.status, amountPaid: preCheck.amountPaid } as Record<string, unknown>,
+            changesAfter: updated as Record<string, unknown>,
+            payload: { amount: amountNum, paymentMethod, reference, paymentRecordId: paymentRow?.id },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[billing.apply_payment] audit log failed (non-fatal):', auditErr?.message);
         }
 
         broadcastToWorkspace(workspaceId, {
@@ -3252,6 +3313,21 @@ class AIBrainActionRegistry {
             grantedBy: request.userId,
             grantedReason: reason || 'Assigned via AI Brain',
           });
+        }
+
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'platform_role', entityId: userId,
+            success: true,
+            message: `Platform role assigned: ${role}`,
+            changesAfter: { userId, role } as Record<string, unknown>,
+            payload: { reason },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[platform_roles.assign] audit log failed (non-fatal):', auditErr?.message);
         }
 
         return createResult(request.actionId, true, 'Platform role assigned successfully', { userId, role }, start);
@@ -3733,7 +3809,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const searchTerm = request.payload?.query || '';
-        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as any).filter(c => 
+        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as any).filter((c: any) =>
           c.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.title?.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -4464,6 +4540,20 @@ class AIBrainActionRegistry {
           dueInDays,
           notes,
         });
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'invoice', entityId: 'batch',
+            success: true,
+            message: `Drafted ${result.totals.invoiceCount} invoices ($${result.totals.totalBillable})`,
+            changesAfter: { invoiceCount: result.totals.invoiceCount, totalBillable: result.totals.totalBillable } as Record<string, unknown>,
+            payload: { startDate, endDate, clientIds, taxRate, dueInDays },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[finance.stage_billing_run] audit log failed (non-fatal):', auditErr?.message);
+        }
         return createResult(request.actionId, true, `Drafted ${result.totals.invoiceCount} invoices ($${result.totals.totalBillable})`, result, start);
       },
     };
@@ -4486,6 +4576,20 @@ class AIBrainActionRegistry {
           periodStart: periodStart ? new Date(periodStart) : undefined,
           periodEnd: periodEnd ? new Date(periodEnd) : undefined,
         });
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'payroll_run', entityId: (result as any)?.payrollRunId ?? 'batch',
+            success: true,
+            message: `Drafted payroll run for ${result.totals.employeeCount} employees ($${result.totals.totalGrossPay} gross)`,
+            changesAfter: { employeeCount: result.totals.employeeCount, totalGrossPay: result.totals.totalGrossPay } as Record<string, unknown>,
+            payload: { periodStart, periodEnd },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[finance.stage_payroll_batch] audit log failed (non-fatal):', auditErr?.message);
+        }
         return createResult(request.actionId, true, `Drafted payroll run for ${result.totals.employeeCount} employees ($${result.totals.totalGrossPay} gross)`, result, start);
       },
     };
@@ -4520,6 +4624,24 @@ class AIBrainActionRegistry {
           payrollRunIds,
           reason,
         });
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'financial_batch', entityId: 'batch',
+            success: true,
+            message: `Locked ${result.invoices.length} invoices, ${result.payrollRuns.filter(p => p.status === 'approved').length} payroll runs, ${result.lockedTimeEntryIds.length} time entries`,
+            changesAfter: {
+              invoiceCount: result.invoices.length,
+              payrollRunCount: result.payrollRuns.length,
+              lockedTimeEntryCount: result.lockedTimeEntryIds.length,
+            } as Record<string, unknown>,
+            payload: { invoiceIds, payrollRunIds, reason },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[finance.finalize_financial_batch] audit log failed (non-fatal):', auditErr?.message);
+        }
         return createResult(
           request.actionId,
           true,
@@ -4572,6 +4694,20 @@ class AIBrainActionRegistry {
           thresholdPct,
           requireGpsVerified,
         });
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'time_entry', entityId: entryId,
+            success: true,
+            message: `${result.decision}: ${result.reason ?? ''}`,
+            changesAfter: result as unknown as Record<string, unknown>,
+            payload: { thresholdPct, requireGpsVerified },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[time.auto_approve_by_variance] audit log failed (non-fatal):', auditErr?.message);
+        }
         return createResult(request.actionId, true, `${result.decision}: ${result.reason ?? ''}`, result, start);
       },
     };
@@ -4600,6 +4736,20 @@ class AIBrainActionRegistry {
           addedBy: request.userId || 'system',
           reason,
         });
+        try {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+            userRole: request.userRole, platformRole: request.platformRole,
+            entityType: 'payroll_entry', entityId: payrollEntryId,
+            success: true,
+            message: `${kind} adjustment $${amount} applied; net=$${result.newNetPay}`,
+            changesAfter: { kind, label, amount: Number(amount), newNetPay: result.newNetPay } as Record<string, unknown>,
+            payload: { reason },
+            durationMs: Date.now() - start,
+          });
+        } catch (auditErr: any) {
+          log.warn('[finance.add_payroll_adjustment] audit log failed (non-fatal):', auditErr?.message);
+        }
         return createResult(request.actionId, true, `${kind} adjustment $${amount} applied; net=$${result.newNetPay}`, result, start);
       },
     };
@@ -4681,6 +4831,25 @@ class AIBrainActionRegistry {
             priorIncidents,
             rawNarrative,
           });
+
+          try {
+            await logActionAudit({
+              actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
+              userRole: request.userRole, platformRole: request.platformRole,
+              entityType: 'disciplinary', entityId: (result as any)?.documentId ?? subjectId,
+              success: true,
+              message: `Disciplinary document generated: ${result.documentTitle} (${result.severityLevel})`,
+              changesAfter: {
+                documentType: result.documentType,
+                documentTitle: result.documentTitle,
+                severityLevel: result.severityLevel,
+              } as Record<string, unknown>,
+              payload: { subjectId, subjectType, what, why },
+              durationMs: Date.now() - start,
+            });
+          } catch (auditErr: any) {
+            log.warn('[hr.initiate_disciplinary] audit log failed (non-fatal):', auditErr?.message);
+          }
 
           return createResult(
             request.actionId,

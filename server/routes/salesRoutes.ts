@@ -23,7 +23,7 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
 
       const list = await db.select().from(orgInvitations)
         .where(and(eq(orgInvitations.sentBy, user?.id!), eq(orgInvitations.workspaceId, workspaceId)))
-        .orderBy(desc(orgInvitations.createdAt));
+        .orderBy(desc(orgInvitations.sentAt));
       res.json({ success: true, data: list });
     } catch (error: unknown) {
       res.status(500).json({ error: sanitizeError(error) });
@@ -54,8 +54,11 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
   salesRouter.get("/proposals", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
+      if (!user?.id) {
+        return res.status(401).json({ error: "User context required" });
+      }
       const list = await db.select().from(proposals)
-        .where(and(eq(proposals.proposalType, 'sales'), eq(proposals.createdBy, user?.id)))
+        .where(and(eq(proposals.proposalType, 'sales'), eq(proposals.createdBy, user.id)))
         .orderBy(desc(proposals.createdAt));
       res.json({ success: true, data: list });
     } catch (error: unknown) {
@@ -130,13 +133,16 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
       }
 
       const user = req.user;
+      if (!user?.id) {
+        return res.status(401).json({ error: "User context required" });
+      }
       const result = await trinityOutreachService.sendOutreachInvitations(
         candidates,
-        user?.id,
+        user.id,
         { customMessage, trialDays }
       );
 
-      res.json({ success: true, ...result });
+      res.json({ ...result, success: true });
     } catch (error: unknown) {
       res.status(500).json({ error: sanitizeError(error) });
     }
@@ -145,8 +151,11 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
   salesRouter.get("/outreach/pipeline", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
-      const summary = await trinityOutreachService.getPipelineSummary(user?.id);
-      const prospects = await trinityOutreachService.getProspectsByStage(user?.id);
+      if (!user?.id) {
+        return res.status(401).json({ error: "User context required" });
+      }
+      const summary = await trinityOutreachService.getPipelineSummary(user.id);
+      const prospects = await trinityOutreachService.getProspectsByStage(user.id);
 
       res.json({ success: true, summary, prospects });
     } catch (error: unknown) {
@@ -157,9 +166,12 @@ export function registerSalesRoutes(app: Express, requireAuth: any, attachWorksp
   salesRouter.get("/outreach/pipeline/:stage", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
+      if (!user?.id) {
+        return res.status(401).json({ error: "User context required" });
+      }
       const stage = req.params.stage;
       const prospects = await trinityOutreachService.getProspectsByStage(
-        user?.id,
+        user.id,
         stage === 'all' ? undefined : stage as any
       );
 

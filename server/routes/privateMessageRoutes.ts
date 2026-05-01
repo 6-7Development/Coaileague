@@ -193,8 +193,8 @@ router.post('/send', requireAuth, async (req: AuthenticatedRequest, res) => {
         const { broadcastToUser } = await import('../websocket');
         const wsPayload = {
           type: 'private_message_received',
-          conversationId: newMessage?.conversationId,
-          message: newMessage,
+          conversationId: sentMessage?.conversationId ?? conversation.id,
+          message: sentMessage,
         };
         if (recipientId) broadcastToUser(recipientId, wsPayload);
         if (userId) broadcastToUser(userId, wsPayload);

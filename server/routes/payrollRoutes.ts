@@ -175,11 +175,11 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
           action: 'payroll.export.csv',
           entityType: 'payroll',
           entityId: workspaceId,
-          details: JSON.stringify({
+          metadata: {
             exportedRows: entries.length,
             dateRange: { startDate: startDate || null, endDate: endDate || null },
             exportedAt: new Date().toISOString(),
-          }),
+          },
           ipAddress: req.ip || null,
           createdAt: new Date(),
         });
@@ -2301,7 +2301,6 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
       complianceTag: 'soc2',
     }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     // broadcastToWorkspace already imported at top
     broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
     platformEventBus.publish({

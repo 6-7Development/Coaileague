@@ -1514,7 +1514,6 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
     } else if (category === 'careers') {
       pipelineResult = await processCareersApplication(email, workspaceId!, logId);
     } else if (category === 'staffing') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       pipelineResult = await processStaffing(email, sender, aiData, logId);
     } else {
       pipelineResult = {
