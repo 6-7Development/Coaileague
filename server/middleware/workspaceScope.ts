@@ -164,6 +164,53 @@ export const ensureWorkspaceAccess: RequestHandler = async (req: Request, res: R
   next();
 };
 
+/**
+ * Gate for AI / Trinity feature routes that should only fire once a tenant
+ * has finished onboarding. Reads workspaces.onboardingFullyComplete (now set
+ * by TrinityOnboardingCompletionHandler in trinityEventSubscriptions.ts).
+ *
+ * Behaviour:
+ *   - Platform staff bypass (so support agents can debug pre-completion).
+ *   - 412 ONBOARDING_INCOMPLETE if the workspace has not finished setup.
+ *     The 412 status lets the client distinguish "you must finish onboarding"
+ *     from "you are not authenticated" (401) and "you are forbidden" (403).
+ *   - Defaults to allow on lookup error so a transient DB hiccup doesn't
+ *     blackhole every Trinity route.
+ *
+ * Must run AFTER ensureWorkspaceAccess so authReq.workspaceId is populated.
+ */
+export const requireOnboardingComplete: RequestHandler = async (req, res, next) => {
+  const authReq = req as AuthenticatedRequest;
+
+  if (authReq.platformRole && hasPlatformWideAccess(authReq.platformRole)) {
+    return next();
+  }
+
+  const workspaceId = authReq.workspaceId;
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'Workspace required', code: 'WORKSPACE_REQUIRED' });
+  }
+
+  try {
+    const [ws] = await db
+      .select({ done: workspaces.onboardingFullyComplete })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    if (ws && ws.done === false) {
+      return res.status(412).json({
+        error: 'Workspace onboarding is not complete. Finish setup before using Trinity features.',
+        code: 'ONBOARDING_INCOMPLETE',
+      });
+    }
+  } catch (err: any) {
+    log.warn('[requireOnboardingComplete] lookup failed, allowing through:', err?.message);
+  }
+
+  next();
+};
+
 export function requireWorkspaceParam(paramName: string = 'workspaceId'): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     const authReq = req as AuthenticatedRequest;

@@ -383,6 +383,104 @@ auditorRouter.post('/audits/:id/close', requireAuditor, async (req: any, res: Re
 
 // ─── 9. EXTEND AUDIT ──────────────────────────────────────────────────────────
 
+// ─── 7. AUDITOR SETTINGS ─────────────────────────────────────────────────────
+// Persistence layer so auditors can save per-auditor preferences (notification
+// thresholds, export format, dashboard layout) across sessions. Compound
+// unique on (auditorId, workspaceId); workspaceId omitted = global default
+// for the auditor. NDA gate intentionally NOT applied here so auditors can
+// configure notification routing before opening any tenant data.
+
+auditorRouter.get('/settings', requireAuditor, async (req: any, res: Response) => {
+  try {
+    const auditorId = req.session.auditorId as string;
+    const workspaceId = (req.query?.workspaceId as string | undefined)?.trim() || null;
+
+    const { db } = await import('../db');
+    const { auditorSettings } = await import('@shared/schema');
+    const { and, eq, isNull } = await import('drizzle-orm');
+
+    const whereClause = workspaceId
+      ? and(eq(auditorSettings.auditorId, auditorId), eq(auditorSettings.workspaceId, workspaceId))
+      : and(eq(auditorSettings.auditorId, auditorId), isNull(auditorSettings.workspaceId));
+
+    const [row] = await db.select().from(auditorSettings).where(whereClause).limit(1);
+    res.json({ ok: true, settings: row || null, isDefault: !row });
+  } catch (err: any) {
+    log.error('[AuditorSettings] GET failed:', err?.message);
+    res.status(500).json({ ok: false, error: 'Failed to load settings' });
+  }
+});
+
+auditorRouter.patch('/settings', requireAuditor, async (req: any, res: Response) => {
+  try {
+    const auditorId = req.session.auditorId as string;
+    const workspaceId = (req.body?.workspaceId as string | undefined)?.trim() || null;
+
+    // If workspace-scoped settings are requested, the auditor must actually
+    // have an audit window open for that workspace. Prevents an auditor from
+    // creating preference rows for tenants they cannot access.
+    if (workspaceId) {
+      const allowed = await auditorHasAuditForWorkspace(auditorId, workspaceId);
+      if (!allowed) {
+        return res.status(403).json({ ok: false, error: 'No active audit for this workspace' });
+      }
+    }
+
+    const allowed = [
+      'emailNotifications',
+      'smsNotifications',
+      'notifyOnDocumentUploaded',
+      'notifyOnComplianceScoreChange',
+      'complianceAlertThreshold',
+      'dashboardLayout',
+      'defaultExportFormat',
+      'defaultDateRangeDays',
+      'preferences',
+    ] as const;
+
+    const updates: Record<string, unknown> = { auditorId, workspaceId, updatedAt: new Date() };
+    for (const f of allowed) {
+      if (req.body?.[f] !== undefined) updates[f] = req.body[f];
+    }
+
+    const { db } = await import('../db');
+    const { auditorSettings } = await import('@shared/schema');
+    const { and, eq, isNull } = await import('drizzle-orm');
+
+    const whereClause = workspaceId
+      ? and(eq(auditorSettings.auditorId, auditorId), eq(auditorSettings.workspaceId, workspaceId))
+      : and(eq(auditorSettings.auditorId, auditorId), isNull(auditorSettings.workspaceId));
+
+    const [existing] = await db.select().from(auditorSettings).where(whereClause).limit(1);
+
+    let row;
+    if (existing) {
+      [row] = await db.update(auditorSettings).set(updates as any).where(eq(auditorSettings.id, existing.id)).returning();
+    } else {
+      [row] = await db.insert(auditorSettings).values(updates as any).returning();
+    }
+
+    // Sync: notify the auditor's own session-bound clients so a second
+    // browser tab refreshes immediately. We piggy-back on broadcastToWorkspace
+    // when scoped, otherwise rely on the response triggering local refetch.
+    if (workspaceId) {
+      try {
+        const { broadcastToWorkspace } = await import('../websocket');
+        broadcastToWorkspace(workspaceId, {
+          type: 'auditor_settings_updated',
+          auditorId,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (_) { /* websocket is best-effort */ }
+    }
+
+    res.json({ ok: true, settings: row });
+  } catch (err: any) {
+    log.error('[AuditorSettings] PATCH failed:', err?.message);
+    res.status(500).json({ ok: false, error: 'Failed to save settings' });
+  }
+});
+
 auditorRouter.post('/audits/:id/extend', requireAuditor, async (req: any, res: Response) => {
   try {
     const days = Math.min(parseInt(req.body?.days || '30', 10) || 30, 90);

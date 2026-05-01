@@ -10,7 +10,7 @@
 import { sanitizeError } from '../../middleware/errorHandler';
 import { Router, type Express } from "express";
 import { requireAuth } from "../../auth";
-import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
+import { ensureWorkspaceAccess, requireOnboardingComplete } from "../../middleware/workspaceScope";
 import { requirePlatformStaff, requireTrinityAccess, requirePlatformRole, AuthenticatedRequest } from "../../rbac";
 import { registerWorkboardRoutes } from "../workboardRoutes";
 import { registerFaqRoutes } from "../faq-routes";
@@ -158,11 +158,20 @@ export function mountTrinityRoutes(app: Express): void {
   app.use("/api/trinity/staffing/webhook", trinityStaffingPublicRouter);
   app.use("/api/trinity/staffing", requireAuth, ensureWorkspaceAccess, trinityStaffingRouter);
 
-  app.use("/api/trinity/intake", requireAuth, ensureWorkspaceAccess, trinityIntakeRouter);
+  // Advanced Trinity surfaces (structured intake flows, multi-agent swarm,
+  // self-edit configuration) require a fully-onboarded workspace. The
+  // TrinityOnboardingCompletionHandler in trinityEventSubscriptions.ts
+  // flips workspaces.onboardingFullyComplete on the onboarding_completed
+  // event; until then these routes return 412 ONBOARDING_INCOMPLETE so the
+  // client can prompt the user to finish setup.
+  //
+  // Chat / session / crisis are intentionally NOT gated so trial tenants and
+  // owners mid-onboarding can still talk to Trinity for help and emergencies.
+  app.use("/api/trinity/intake", requireAuth, ensureWorkspaceAccess, requireOnboardingComplete, trinityIntakeRouter);
   app.use("/api/trinity/chat", requireAuth, ensureWorkspaceAccess, trinityChatRouter);
-  app.use("/api/trinity/self-edit", requireAuth, ensureWorkspaceAccess, trinitySelfEditRouter);
+  app.use("/api/trinity/self-edit", requireAuth, ensureWorkspaceAccess, requireOnboardingComplete, trinitySelfEditRouter);
   app.use("/api/trinity/session", requireAuth, ensureWorkspaceAccess, trinitySessionRouter);
-  app.use("/api/trinity/swarm", requireAuth, ensureWorkspaceAccess, trinitySwarmRouter);
+  app.use("/api/trinity/swarm", requireAuth, ensureWorkspaceAccess, requireOnboardingComplete, trinitySwarmRouter);
   app.use("/api/trinity/crisis", requireAuth, ensureWorkspaceAccess, trinityCrisisRouter);
   // ── ACC + Thalamic Brain Dashboard ───────────────────────────────────────────
   app.use("/api/trinity", brainDashboardRouter);

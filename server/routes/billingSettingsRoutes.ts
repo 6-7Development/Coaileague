@@ -30,11 +30,35 @@ router.get("/workspace", async (req: AuthenticatedRequest, res) => {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: "Workspace required" });
 
-    const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
-      .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const settings = ws?.blob || null;
+    const [ws] = await db.select({
+      blob: workspaces.billingSettingsBlob,
+      parentWorkspaceId: workspaces.parentWorkspaceId,
+    }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
 
-    res.json({ settings, isDefault: !settings || Object.keys(settings as object).length === 0 });
+    const ownBlob = (ws?.blob as Record<string, any> | null) || null;
+
+    // Sub-tenant inheritance: if this workspace has a parent, merge parent's
+    // blob underneath the sub-tenant's own keys so unset overrides fall
+    // through to the parent. The sub-tenant's own keys always win.
+    let merged: Record<string, any> | null = ownBlob;
+    let inheritedFromParent = false;
+    if (ws?.parentWorkspaceId) {
+      const [parent] = await db.select({ blob: workspaces.billingSettingsBlob })
+        .from(workspaces).where(eq(workspaces.id, ws.parentWorkspaceId)).limit(1);
+      const parentBlob = (parent?.blob as Record<string, any> | null) || null;
+      if (parentBlob) {
+        merged = { ...parentBlob, ...(ownBlob || {}) };
+        inheritedFromParent = !ownBlob || Object.keys(ownBlob).length === 0;
+      }
+    }
+
+    const settings = merged;
+    res.json({
+      settings,
+      isDefault: !settings || Object.keys(settings).length === 0,
+      inheritedFromParent,
+      parentWorkspaceId: ws?.parentWorkspaceId || null,
+    });
   } catch (error: unknown) {
     log.error("[BillingSettings] Error fetching workspace settings:", sanitizeError(error));
     res.status(500).json({ message: "Failed to fetch billing settings" });
@@ -80,6 +104,13 @@ router.post("/workspace", requireManager, async (req: AuthenticatedRequest, res)
         sourceRoute: 'POST /api/billing-settings',
       });
     } catch (_) { /* audit is best-effort */ }
+
+    // Sync: tell every connected client in this workspace (and any
+    // sub-tenants that inherit from it) to invalidate their settings cache.
+    try {
+      const { broadcastSettingsUpdated } = await import('../services/settingsSyncBroadcaster');
+      await broadcastSettingsUpdated(workspaceId, 'workspace_billing_settings', Object.keys(req.body));
+    } catch (_) { /* broadcast is best-effort */ }
 
     res.json({ settings: merged });
   } catch (error: unknown) {
@@ -207,6 +238,14 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
         sourceRoute: 'PATCH /api/billing-settings/workspace',
       });
     } catch (_) { /* audit is best-effort */ }
+
+    // Sync: invalidate settings cache for every connected client in this
+    // workspace + sub-tenants. Closes the gap where co-admins editing
+    // billing in parallel needed a manual refresh to see each other's writes.
+    try {
+      const { broadcastSettingsUpdated } = await import('../services/settingsSyncBroadcaster');
+      await broadcastSettingsUpdated(workspaceId, 'workspace_billing_settings', Object.keys(req.body));
+    } catch (_) { /* broadcast is best-effort */ }
 
     res.json({ settings: updates });
   } catch (error: unknown) {
@@ -592,6 +631,11 @@ router.patch('/seat-hard-cap', async (req: any, res) => {
         sourceRoute: 'PATCH /billing-settings/seat-hard-cap',
       });
     } catch { /* non-blocking */ }
+
+    try {
+      const { broadcastSettingsUpdated } = await import('../services/settingsSyncBroadcaster');
+      await broadcastSettingsUpdated(workspaceId, 'subscription_seat_cap', ['seatHardCapEnabled']);
+    } catch (_) { /* broadcast is best-effort */ }
 
     res.json({ success: true, seatHardCapEnabled: body.enabled });
   } catch (err: unknown) {

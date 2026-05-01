@@ -1296,6 +1296,48 @@ export const auditorAccounts = pgTable("auditor_accounts", {
   index("idx_auditor_accounts_token").on(table.inviteToken),
 ]);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITOR SETTINGS — per-auditor preferences scoped (optionally) per workspace.
+// Persists notification preferences, dashboard config, and export defaults so
+// auditors don't reset state every session. Compound unique key on
+// (auditor_id, workspace_id) lets one auditor have different prefs per audited
+// workspace; workspace_id NULL means "global default for this auditor."
+// ─────────────────────────────────────────────────────────────────────────────
+export const auditorSettings = pgTable("auditor_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  auditorId: varchar("auditor_id").notNull(),
+  workspaceId: varchar("workspace_id"),
+
+  // Notification routing
+  emailNotifications: boolean("email_notifications").notNull().default(true),
+  smsNotifications: boolean("sms_notifications").notNull().default(false),
+  notifyOnDocumentUploaded: boolean("notify_on_document_uploaded").notNull().default(true),
+  notifyOnComplianceScoreChange: boolean("notify_on_compliance_score_change").notNull().default(true),
+  complianceAlertThreshold: integer("compliance_alert_threshold").notNull().default(70),
+
+  // Dashboard / report defaults
+  dashboardLayout: varchar("dashboard_layout", { length: 32 }).notNull().default('default'),
+  defaultExportFormat: varchar("default_export_format", { length: 16 }).notNull().default('pdf'),
+  defaultDateRangeDays: integer("default_date_range_days").notNull().default(30),
+
+  // Free-form bag for forward-compat preferences without schema churn
+  preferences: jsonb("preferences").default({}),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uniq_auditor_settings_auditor_workspace").on(table.auditorId, table.workspaceId),
+  index("idx_auditor_settings_auditor").on(table.auditorId),
+]);
+
+export const insertAuditorSettingsSchema = createInsertSchema(auditorSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type AuditorSettings = typeof auditorSettings.$inferSelect;
+export type InsertAuditorSettings = z.infer<typeof insertAuditorSettingsSchema>;
+
 export const auditSessions = pgTable("audit_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
