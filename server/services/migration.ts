@@ -44,7 +44,7 @@ export interface MigrationDocument {
   mimeType: string;
   detectedType: MigrationType;
   confidence: string;
-  extractedData: any;
+  extractedData: unknown;
   validationErrors: unknown[];
   warnings: unknown[];
   recordsExtracted: number;
@@ -61,7 +61,7 @@ export interface MigrationRecord {
   documentId: string;
   workspaceId: string;
   recordType: MigrationType;
-  extractedData: any;
+  extractedData: unknown;
   importedToTable: string | null;
   importedRecordId: string | null;
   importStatus: string;

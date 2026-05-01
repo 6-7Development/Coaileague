@@ -34,7 +34,7 @@ export interface ReflectionContext {
   userId: string;
   originalIntent: string;
   executedSteps: ExecutedStep[];
-  currentOutput: any;
+  currentOutput: unknown;
   expectedSchema?: Record<string, unknown>;
   goal?: string;
 }
@@ -43,7 +43,7 @@ export interface ExecutedStep {
   stepId: string;
   action: string;
   input: Record<string, unknown>;
-  output: any;
+  output: unknown;
   durationMs: number;
   timestamp: Date;
 }

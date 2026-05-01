@@ -760,7 +760,7 @@ export default router;
 // ============================================================================
 // LEGACY EXPORT (for backward compatibility with registerHealthRoutes)
 // ============================================================================
-export function registerHealthRoutes(app: any, requireAuth: any) {
+export function registerHealthRoutes(app: any, requireAuth: unknown) {
   // Mount the router at root level
   app.use(router);
 }

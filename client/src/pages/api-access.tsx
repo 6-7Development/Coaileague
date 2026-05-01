@@ -155,7 +155,7 @@ export default function ApiAccess() {
     id: 'api-access',
     title: 'API Access Management',
     subtitle: 'Manage API keys for programmatic access to your workspace',
-    category: 'admin' as any,
+    category: 'admin',
     showHeader: true,
   };
 

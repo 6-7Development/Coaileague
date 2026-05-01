@@ -78,7 +78,7 @@ inviteRouter.post('/', requireManager, async (req: AuthenticatedRequest, res) =>
       expiresAt,
       status: 'sent',
       sentBy: userId,
-    } as any).returning();
+    }).returning();
 
     const workspace = await storage.getWorkspace(workspaceId);
     const inviter = await storage.getUser(userId);

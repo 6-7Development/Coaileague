@@ -52,7 +52,7 @@ export function registerHelpdeskActions() {
     const { workspaceId, status, limit = 10 } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
     const conditions = [eq(supportTickets.workspaceId, workspaceId)];
-    if (status) conditions.push(eq(supportTickets.status as any, status));
+    if (status) conditions.push(eq(supportTickets.status, status));
     const tickets = await db.select({
       id: supportTickets.id,
       ticketNumber: supportTickets.ticketNumber,

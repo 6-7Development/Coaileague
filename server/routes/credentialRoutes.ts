@@ -180,7 +180,7 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
       certificateUrl: certificateUrl || null,
       verificationUrl: verificationUrl || null,
       status: 'active',
-    } as any).returning();
+    }).returning();
 
     log.info(`[Credentials] Created "${name}" for employee ${targetEmployeeId}`);
     res.status(201).json({ success: true, credential: created });

@@ -403,13 +403,13 @@ router.get('/download/:docId', requireSRAAuth, async (req: SRARequest, res: Resp
         )
       );
 
-    const doc = docs.find(d => (d.metadata as any)?.docId === docId);
+    const doc = docs.find(d => (d.metadata as Record<string,unknown>)?.docId === docId);
 
     if (!doc) {
       return res.status(404).json({ success: false, error: 'Document not found.' });
     }
 
-    const pdfBase64 = (doc.metadata as any)?.pdfBase64 as string | undefined;
+    const pdfBase64 = (doc.metadata as Record<string,unknown>)?.pdfBase64 as string | undefined;
     if (!pdfBase64) {
       return res.status(404).json({ success: false, error: 'PDF data is not available for this document.' });
     }

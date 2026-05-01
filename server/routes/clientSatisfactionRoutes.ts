@@ -74,7 +74,7 @@ router.get("/clients/:clientId/trend", requireAuth, async (req: AuthenticatedReq
       }
     }
 
-    const avg = records.length ? records.reduce((s: number, r: any) => s + parseFloat(r.satisfaction_score || 0), 0) / records.length : null;
+    const avg = records.length ? records.reduce((s: number, r: unknown) => s + parseFloat(r.satisfaction_score || 0), 0) / records.length : null;
     res.json({ records, churnRisk, churnMessage, averageScore: avg ? Math.round(avg * 10) / 10 : null });
   } catch (err: unknown) {
     res.status(500).json({ error: sanitizeError(err) });

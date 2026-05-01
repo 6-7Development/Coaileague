@@ -20,9 +20,9 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     const user = req.user;
     const { employeeId, status, startDate, endDate } = req.query;
 
-    const role = (user as any).workspaceRole || (user as any).role || "";
+    const role = req.user?.workspaceRole || req.user?.role || "";
     const isManager = ["manager", "department_manager", "org_manager", "co_owner", "org_owner", "supervisor"].includes(role)
-      || ["root_admin", "deputy_admin", "sysop", "support_manager"].includes((user as any).platformRole || "");
+      || ["root_admin", "deputy_admin", "sysop", "support_manager"].includes(req.user?.platformRole || "");
 
     let filterEmployeeId: string | undefined;
     if (!isManager) {
@@ -74,7 +74,6 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     const log = await storage.createMileageLog(validated);
     return res.status(201).json(log);
   } catch (err: unknown) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (err?.name === "ZodError") return res.status(400).json({ message: "Validation failed", errors: (err as any).errors });
     log.error("[mileage POST /]", err);
     return res.status(500).json({ message: "Failed to create mileage log" });
@@ -101,9 +100,9 @@ router.patch("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     const existing = await storage.getMileageLog(req.params.id, workspaceId);
     if (!existing) return res.status(404).json({ message: "Mileage log not found" });
 
-    const role = (user as any).workspaceRole || (user as any).role || "";
+    const role = req.user?.workspaceRole || req.user?.role || "";
     const isManager = ["manager", "department_manager", "org_manager", "co_owner", "org_owner", "supervisor"].includes(role)
-      || ["root_admin", "deputy_admin", "sysop", "support_manager"].includes((user as any).platformRole || "");
+      || ["root_admin", "deputy_admin", "sysop", "support_manager"].includes(req.user?.platformRole || "");
 
     if (!isManager) {
       if (!["draft", "rejected"].includes(existing.status || "")) {

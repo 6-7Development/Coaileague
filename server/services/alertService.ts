@@ -394,7 +394,7 @@ class AlertService {
         .from(employees)
         .where(and(
           eq(employees.workspaceId, workspaceId),
-          inArray(employees.role as any, config.notifyRoles)
+          inArray(employees.role, config.notifyRoles)
         ));
 
       for (const emp of employeesWithRoles) {

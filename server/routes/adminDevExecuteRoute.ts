@@ -30,7 +30,7 @@ const router = Router();
 
 // ─── Token middleware ─────────────────────────────────────────────────────────
 
-function requireAdminScriptToken(req: AuthenticatedRequest, res: any, next: any): void {
+function requireAdminScriptToken(req: AuthenticatedRequest, res: any, next: unknown): void {
   const expectedToken = process.env.ADMIN_SCRIPT_TOKEN;
 
   if (!expectedToken) {

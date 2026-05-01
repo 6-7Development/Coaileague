@@ -403,7 +403,7 @@ class EmployeeRoleSyncService {
   }
 
   async getEmployeeRoleContext(employeeId: string): Promise<{
-    employee: any;
+    employee: Record<string, unknown>;
     currentRole: WorkspaceRole | null;
     suggestedRole: WorkspaceRole;
     roleMatchesPosition: boolean;

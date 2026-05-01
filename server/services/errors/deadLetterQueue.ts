@@ -1,6 +1,6 @@
 export interface DeadLetterEntry {
   id: string;
-  operation: any;
+  operation: unknown;
   enqueuedAt: Date;
   retryCount: number;
   lastError?: string;

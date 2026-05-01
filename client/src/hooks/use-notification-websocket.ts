@@ -231,7 +231,7 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
                 toastRef.current({
                   title: data.notification.title,
                   description: data.notification.message,
-                  variant: "info" as any,
+                  variant: "info",
                 });
               }
             }
@@ -250,7 +250,7 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
               toastRef.current({
                 title: "New Update Available",
                 description: data.update.title,
-                variant: "info" as any,
+                variant: "info",
               });
             }
           }
@@ -457,10 +457,10 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
       setUnreadCount(0);
     };
 
-    window.addEventListener('notifications_clear_optimistic' as any, handleOptimisticClear);
+    window.addEventListener('notifications_clear_optimistic', handleOptimisticClear);
     
     return () => {
-      window.removeEventListener('notifications_clear_optimistic' as any, handleOptimisticClear);
+      window.removeEventListener('notifications_clear_optimistic', handleOptimisticClear);
     };
   }, []);
 

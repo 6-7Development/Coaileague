@@ -568,7 +568,7 @@ async function suiteAuditorPortal() {
       agencyName: 'State Bureau of Security',
       stateCode: 'TX',
       isActive: true,
-    } as any).returning();
+    }).returning();
     assert(!!acct.id, 'Should have an ID');
     assert(acct.stateCode === 'TX', 'State code should match');
     await cleanupTestAuditor(testEmail);
@@ -581,14 +581,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Test Audit Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     assert(!!session.id, 'Session should have ID');
     assert(session.stateCode === 'TX', 'State code should match');
     await cleanupTestAuditor(testEmail);
@@ -601,14 +601,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Findings Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const [finding] = await db.insert(auditFindings).values({
       auditSessionId: session.id,
       auditorId: acct.id,
@@ -618,7 +618,7 @@ async function suiteAuditorPortal() {
       description: 'Certificate of Insurance not provided within the required timeframe',
       severity: 'high',
       fineAmount: 50000, // $500.00
-    } as any).returning();
+    }).returning();
     assert(!!finding.id, 'Finding should have ID');
     assert(finding.findingType === 'violation', 'Finding type should match');
     assert(finding.fineAmount === 50000, 'Fine amount should match');
@@ -632,14 +632,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Doc Request Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const [req] = await db.insert(auditorDocumentRequests).values({
       auditSessionId: session.id,
       auditorId: acct.id,
@@ -647,7 +647,7 @@ async function suiteAuditorPortal() {
       requestedDocType: 'coi',
       requestNotes: 'Please provide current COI from 2026',
       status: 'requested',
-    } as any).returning();
+    }).returning();
     assert(!!req.id, 'Request should have ID');
     assert(req.requestedDocType === 'coi', 'Doc type should match');
     assert(req.status === 'requested', 'Status should be requested');
@@ -661,14 +661,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Followup Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const scheduledFor = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 1 week from now
     const [followup] = await db.insert(auditorFollowups).values({
       auditSessionId: session.id,
@@ -680,7 +680,7 @@ async function suiteAuditorPortal() {
       contactPhone: '713-555-9999',
       notes: 'Follow up on missing COI submission',
       isCompleted: false,
-    } as any).returning();
+    }).returning();
     assert(!!followup.id, 'Followup should have ID');
     assert(followup.isCompleted === false, 'Followup should not be completed yet');
     // Mark completed

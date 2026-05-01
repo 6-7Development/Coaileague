@@ -161,11 +161,11 @@ export async function notifyCertificationExpiring(params: {
         eq(employees.workspaceId, params.workspaceId),
         eq(employees.isActive, true),
         or(
-          eq(employees.workspaceRole as any, 'org_owner'),
-          eq(employees.workspaceRole as any, 'co_owner'),
-          eq(employees.workspaceRole as any, 'manager'),
-          eq(employees.workspaceRole as any, 'supervisor'),
-          eq(employees.workspaceRole as any, 'compliance_officer'),
+          eq(employees.workspaceRole, 'org_owner'),
+          eq(employees.workspaceRole, 'co_owner'),
+          eq(employees.workspaceRole, 'manager'),
+          eq(employees.workspaceRole, 'supervisor'),
+          eq(employees.workspaceRole, 'compliance_officer'),
         )
       ),
       columns: { userId: true, id: true, workspaceRole: true },
@@ -221,8 +221,8 @@ export async function notifyPayrollReadyForReview(params: {
         eq(employees.workspaceId, params.workspaceId),
         eq(employees.isActive, true),
         or(
-          eq(employees.workspaceRole as any, 'org_owner'),
-          eq(employees.workspaceRole as any, 'co_owner')
+          eq(employees.workspaceRole, 'org_owner'),
+          eq(employees.workspaceRole, 'co_owner')
         )
       ),
       columns: { userId: true, id: true },

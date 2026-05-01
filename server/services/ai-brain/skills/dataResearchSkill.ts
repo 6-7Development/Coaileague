@@ -24,7 +24,7 @@ interface ResearchFinding {
   insight: string;
   confidence: number;
   dataPoints: number;
-  evidence: any;
+  evidence: unknown;
   severity?: 'info' | 'low' | 'medium' | 'high' | 'critical';
 }
 
@@ -138,7 +138,7 @@ class DataResearchSkill extends BaseSkill {
     source: string,
     params: ResearchParams,
     logs: string[]
-  ): Promise<{ data: unknown[]; summary: any; dataPoints: number }> {
+  ): Promise<{ data: unknown[]; summary: unknown; dataPoints: number }> {
     const wsId = params.workspaceId;
 
     try {
@@ -208,7 +208,7 @@ class DataResearchSkill extends BaseSkill {
 
   private async analyzeSource(
     source: string,
-    sourceData: { data: unknown[]; summary: any; dataPoints: number },
+    sourceData: { data: unknown[]; summary: unknown; dataPoints: number },
     params: ResearchParams,
     logs: string[]
   ): Promise<ResearchFinding[]> {
@@ -249,7 +249,7 @@ class DataResearchSkill extends BaseSkill {
         const { summary, data } = sourceData;
         const overdue = data.filter((i: unknown) => i.status === 'overdue' || i.status === 'past_due');
         if (overdue.length > 0) {
-          const overdueAmount = overdue.reduce((sum: number, inv: any) =>
+          const overdueAmount = overdue.reduce((sum: number, inv: unknown) =>
             sum + (parseFloat(inv.total?.toString() || '0') || 0), 0);
           findings.push({
             category: 'finance',

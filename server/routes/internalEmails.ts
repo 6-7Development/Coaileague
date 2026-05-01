@@ -979,7 +979,6 @@ router.post("/send", requireAuth, async (req: Request, res: Response) => {
             'internal_external',
           workspaceId
           );
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           if (result.messageId) lastMessageId = (result as Record<string, unknown>).messageId;
         }
 
@@ -1018,7 +1017,7 @@ router.post("/send", requireAuth, async (req: Request, res: Response) => {
       }),
       actorId: user.id,
       actorRole: 'end_user',
-      actorEmail: (user as any).email,
+      actorEmail: req.user?.email,
       ipAddress: req.ip,
       userAgent: req.get('user-agent') || null,
     });
@@ -1184,7 +1183,7 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
         newValue: JSON.stringify(updateData),
         actorId: user.id,
         actorRole: 'end_user',
-        actorEmail: (user as any).email,
+        actorEmail: req.user?.email,
         ipAddress: req.ip,
         userAgent: req.get('user-agent') || null,
       });

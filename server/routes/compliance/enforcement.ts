@@ -773,7 +773,7 @@ router.get("/cross-org-hiring-score/verify/:token", requireAuth, requireManagerR
   }
 });
 
-function getHiringRecommendation(complianceScore: number, behaviorScore: any): {
+function getHiringRecommendation(complianceScore: number, behaviorScore: unknown): {
   recommendation: 'strongly_recommend' | 'recommend' | 'neutral' | 'caution' | 'do_not_recommend';
   reasons: string[];
 } {

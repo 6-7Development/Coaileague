@@ -143,7 +143,7 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
       <span style={{ color: accent, flexShrink: 0, marginTop: '1px' }}>{variantIcons[variant]}</span>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', color: 'var(--color-text-primary)', lineHeight: 'var(--leading-normal)' as any }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', color: 'var(--color-text-primary)', lineHeight: 'var(--leading-normal)' }}>
           {message}
         </p>
         {action && (
@@ -156,7 +156,7 @@ function ToastItem({ item, onDismiss }: { item: ToastItem; onDismiss: (id: strin
               gap: '4px',
               fontSize: 'var(--text-xs)',
               fontFamily: 'var(--font-body)',
-              fontWeight: 'var(--weight-semibold)' as any,
+              fontWeight: 'var(--weight-semibold)',
               color: accent,
               background: 'none',
               border: 'none',

@@ -320,7 +320,7 @@ Respond with ONLY valid JSON, no markdown:`;
           jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
         }
         
-        let parsed: any;
+        let parsed: unknown;
         try {
           parsed = JSON.parse(jsonText);
         } catch (initialErr) {

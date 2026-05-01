@@ -268,7 +268,7 @@ We appreciate your interest in joining the team!`
     ];
   }
 
-  private async scoreResponse(responseText: string, question: any): Promise<{ score: number; flags: string[]; assessment: string }> {
+  private async scoreResponse(responseText: string, question: unknown): Promise<{ score: number; flags: string[]; assessment: string }> {
     const text = responseText.toLowerCase();
     const criteria = question.scoring_criteria || {};
     const keywords: string[] = criteria.keywords || [];

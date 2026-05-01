@@ -63,7 +63,7 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
       phone: phone || null,
       status: 'in_progress',
       currentStep: 'personal_info',
-    } as any).returning();
+    }).returning();
 
     const [invite] = await db.insert(onboardingInvites).values({
       workspaceId,
@@ -75,7 +75,7 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
       expiresAt: new Date(Date.now() + 30 * 86400000),
       status: 'sent',
       sentBy: req.userId || 'trinity-auto',
-    } as any).returning();
+    }).returning();
 
     const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
       .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`)).catch(() => []);
@@ -86,7 +86,7 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
         idempotencyKey: `info-${Date.now()}-${mgr.userId}`,
         message: `Trinity created a hiring record for ${firstName} ${lastName} (${email}). Next step: background check initiation. PERC/Guard Card pipeline started.`,
         priority: 'normal',
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
 
     return createResult(req.actionId, true,
@@ -236,7 +236,7 @@ const confirmLicenseReceived = mkAction('hiring.confirm_license_received', async
         expirationDate: new Date(expirationDate),
         status: 'active',
         fileName: `PERC_Card_${percCardNumber}`,
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
 
     await platformEventBus.publish({
@@ -284,8 +284,8 @@ const getHiringPipelineStatus = mkAction('hiring.pipeline_status', async (req) =
     }).from(onboardingApplications)
       .where(and(
         eq(onboardingApplications.workspaceId, wid),
-        ne(onboardingApplications.status as any, 'completed'),
-        ne(onboardingApplications.status as any, 'rejected'),
+        ne(onboardingApplications.status, 'completed'),
+        ne(onboardingApplications.status, 'rejected'),
       ))
       .orderBy(desc(onboardingApplications.createdAt))
       .catch(() => []);
@@ -316,8 +316,8 @@ const checkMultiStateLicenseEligibility = mkAction('hiring.check_multistate_lice
     const licenses = await db.select().from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.employeeId, employeeId),
-        inArray(employeeDocuments.documentType as any, ['security_license', 'armed_license', 'guard_card']),
-        eq(employeeDocuments.status as any, 'active'),
+        inArray(employeeDocuments.documentType, ['security_license', 'armed_license', 'guard_card']),
+        eq(employeeDocuments.status, 'active'),
       )).catch(() => []);
 
     const STATE_REQUIREMENTS: Record<string, { authority: string; cardName: string; transfersFromTX: boolean; notes: string }> = {
@@ -381,7 +381,7 @@ const getExpiringLicensesAlert = mkAction('hiring.expiring_licenses_alert', asyn
         eq(employeeDocuments.workspaceId, wid),
         lte(employeeDocuments.expirationDate, cutoff),
         gte(employeeDocuments.expirationDate, new Date()),
-        inArray(employeeDocuments.documentType as any, ['security_license', 'armed_license', 'guard_card', 'perc_card']),
+        inArray(employeeDocuments.documentType, ['security_license', 'armed_license', 'guard_card', 'perc_card']),
       ))
       .orderBy(employeeDocuments.expirationDate)
       .catch(() => []);

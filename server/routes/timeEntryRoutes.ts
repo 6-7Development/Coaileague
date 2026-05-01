@@ -867,7 +867,6 @@ const router = Router();
       }
 
       const breakEnd = new Date();
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const breakStart = (timeEntry as any).breakStartTime ? new Date(timeEntry.breakStartTime) : breakEnd;
       const breakMinutes = Math.round((breakEnd.getTime() - breakStart.getTime()) / (1000 * 60));
       const existingBreakMinutes = parseInt(String(timeEntry.totalBreakMinutes || '0'), 10);

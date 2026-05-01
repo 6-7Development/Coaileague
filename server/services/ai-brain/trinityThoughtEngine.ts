@@ -171,7 +171,7 @@ class TrinityThoughtEngine {
           parentThoughtId: context.parentThoughtId || lastThought || null,
           wasActedUpon: false,
         },
-      } as any).returning();
+      }).returning();
 
       this.pushThought(wsKey, thought.id);
       

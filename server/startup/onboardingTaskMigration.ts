@@ -112,7 +112,7 @@ export async function runOnboardingTaskMigration() {
             task.is_required,
             true,
             task.sort_order,
-            (task as any).document_type ?? null,
+            (task as Record<string, unknown>).document_type ?? null,
           ]
         );
       }

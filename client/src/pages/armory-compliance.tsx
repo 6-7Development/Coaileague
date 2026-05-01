@@ -469,7 +469,7 @@ export default function ArmoryCompliancePage(): JSX.Element {
     title: "Armory Compliance",
     subtitle:
       "Weapon qualifications, inspections overdue, and ammo reorder alerts",
-    category: "operations" as any,
+    category: "operations",
     showHeader: true,
   };
 

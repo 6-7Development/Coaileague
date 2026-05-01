@@ -767,7 +767,7 @@ class TrinityNotificationBridge {
     }
   }
 
-  private async alertTrinityAboutIssues(issues: string[], metrics: any): Promise<void> {
+  private async alertTrinityAboutIssues(issues: string[], metrics: unknown): Promise<void> {
     log.info('[TrinityNotificationWatchdog] Alerting Trinity/AI Brain about notification system issues');
 
     // Create internal alert for support/admin staff

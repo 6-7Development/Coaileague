@@ -712,7 +712,7 @@ router.post('/activate', requireManager, async (req: AuthenticatedRequest, res) 
 router.get('/status', async (req: AuthenticatedRequest, res) => {
     try {
       let userId: string;
-      let user: any;
+      let user: Record<string, unknown>;
       
       if (req.requireAuth && req.requireAuth() && req.user?.claims) {
         userId = req.user?.id;

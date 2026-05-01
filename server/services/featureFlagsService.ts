@@ -16,7 +16,7 @@ const log = createLogger('featureFlagsService');
 
 
 // In-memory cache for fast flag lookups - longer TTL for resilience
-const flagCache = new Map<string, { value: any; expiresAt: number; flag: TrinityRuntimeFlag }>();
+const flagCache = new Map<string, { value: unknown; expiresAt: number; flag: TrinityRuntimeFlag }>();
 const CACHE_TTL_MS = TIMEOUTS.featureFlagCacheTtlMs;
 const STALE_CACHE_TTL_MS = TIMEOUTS.featureFlagStaleTtlMs;
 
@@ -38,7 +38,7 @@ interface FlagUpdateResult {
 
 interface FlagValue {
   key: string;
-  value: any;
+  value: unknown;
   valueType: ValueType;
   isEnabled: boolean;
 }
@@ -325,7 +325,7 @@ export const trinityRuntimeFlagsService = {
     category?: string;
     flagType?: FlagType;
     valueType?: ValueType;
-    defaultValue: any;
+    defaultValue: unknown;
     safetyLevel?: SafetyLevel;
     allowedActors?: string[];
     requiresApproval?: boolean;

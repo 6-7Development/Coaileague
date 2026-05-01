@@ -195,8 +195,8 @@ async function detectFinanceMode(workspaceId: string): Promise<WorkspaceFinanceM
   return {
     mode,
     qbConnected: connected,
-    qbRealmId: (connection as any).realmId ?? null,
-    qbLastSync: (connection as any).updatedAt ?? null,
+    qbRealmId: (connection as Record<string, unknown>).realmId ?? null,
+    qbLastSync: (connection as Record<string, unknown>).updatedAt ?? null,
     qbStatus,
     internalPayrollEnabled: true,
     internalInvoicingEnabled: true,
@@ -323,7 +323,6 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
   if (recentPayrollRun) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const lastEnd = new Date(recentPayrollRun as any).periodEnd;
     periodStart = new Date(lastEnd.getTime() + 86400000);
     periodEnd = new Date(periodStart.getTime() + 6 * 86400000);

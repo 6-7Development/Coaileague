@@ -20,7 +20,7 @@ const log = createLogger('trinityVerificationService');
 export interface VerificationRequest {
   operation: TrinityOperation;
   trinityConfidence: ConfidenceScore;
-  trinityProposedAction: any;
+  trinityProposedAction: unknown;
   context: AIActionContext;
 }
 

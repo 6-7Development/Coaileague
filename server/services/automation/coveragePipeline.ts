@@ -734,8 +734,7 @@ class CoveragePipelineService {
             status: 'confirmed',
             aiGenerated: true,
             description: `Coverage for original shift ${originalShift.id}. Reason: ${request.reason}`,
-          } as any)
-          .returning();
+          }).returning();
 
         newShiftId = newShift.id;
 
@@ -854,8 +853,8 @@ class CoveragePipelineService {
         and(
           eq(employees.workspaceId, request.workspaceId),
           or(
-            eq(employees.workspaceRole as any, 'org_owner'),
-            eq(employees.workspaceRole as any, 'co_owner')
+            eq(employees.workspaceRole, 'org_owner'),
+            eq(employees.workspaceRole, 'co_owner')
           )
         )
       );

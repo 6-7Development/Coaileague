@@ -189,7 +189,6 @@ async function persistComponent(component: ComponentAnalysis, registeredBy: stri
         registeredBy,
         lastScannedAt: new Date(),
         isActive: true,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } as InsertAiComponentRegistry)
       .returning();
 

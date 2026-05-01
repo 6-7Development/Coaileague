@@ -495,7 +495,7 @@ spsDocumentRouter.post('/safe', async (req: AuthenticatedRequest, res) => {
       workspaceId,
       ...input,
       uploadedBy: (req.user)?.id,
-    } as any).returning();
+    }).returning();
 
     res.status(201).json(safe);
   } catch (err) {

@@ -443,7 +443,7 @@ export async function runStaffingPipelineStressTest(): Promise<{
       },
       ipAddress: '127.0.0.1',
       userAgent: 'stress-test',
-    } as any).returning();
+    }).returning();
 
     if (!logEntry?.id) throw new Error('Audit log not returned');
     if (logEntry.action !== 'coi_request') throw new Error(`Expected action=coi_request, got ${logEntry.action}`);
@@ -469,7 +469,7 @@ export async function runStaffingPipelineStressTest(): Promise<{
       },
       ipAddress: '127.0.0.1',
       userAgent: 'stress-test',
-    } as any).returning();
+    }).returning();
 
     if (!logEntry?.id) throw new Error('Audit log not returned');
     if (logEntry.action !== 'contract_renewal_request') throw new Error(`Wrong action: ${logEntry.action}`);

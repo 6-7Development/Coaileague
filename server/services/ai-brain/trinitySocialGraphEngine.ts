@@ -75,7 +75,7 @@ class TrinitySocialGraphEngine {
     return insights;
   }
 
-  private async calculateEntityProfile(workspaceId: string, emp: any): Promise<Partial<SocialEntityProfile>> {
+  private async calculateEntityProfile(workspaceId: string, emp: unknown): Promise<Partial<SocialEntityProfile>> {
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: created_at, chat_messages, employees | Verified: 2026-03-23
     const { rows: chatActivity } = await typedPool(`
       SELECT

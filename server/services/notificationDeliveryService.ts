@@ -454,7 +454,7 @@ export class NotificationDeliveryService {
         await this.deliverPush(record);
         break;
       default:
-        throw new Error(`Unknown channel: ${(record as any).channel}`);
+        throw new Error(`Unknown channel: ${(record as Record<string, unknown>).channel}`);
     }
   }
 
@@ -554,7 +554,7 @@ export class NotificationDeliveryService {
     const recipientUserId = record.recipientUserId ?? String(payload.recipientUserId ?? '');
     const employeeId = String(payload.employeeId ?? '');
 
-    let result: any;
+    let result: unknown;
     if (recipientUserId && recipientUserId !== 'system') {
       // Preferred: consent checked + attempt logged inside sendSMSToUser
       result = await sendSMSToUser(recipientUserId, body, record.notificationType);

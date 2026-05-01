@@ -162,7 +162,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
       subject: e.subject,
       bodyText: e.body_text,
       threadId: e.thread_id,
-      inReplyTo: (e as any).in_reply_to || null,
+      inReplyTo: (e as EmployeeWithStatus).in_reply_to || null,
       sentAt: sql`${e.sent_at}::timestamptz`,
       folderData: JSON.parse(e.folder_data),
       isInternal: true,

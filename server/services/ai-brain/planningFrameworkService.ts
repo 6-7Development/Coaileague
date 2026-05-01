@@ -307,7 +307,7 @@ Provide your plan as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(response.response || '{}');
     } catch {
@@ -388,7 +388,7 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     return {
       iterationNumber,
@@ -521,7 +521,7 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     return this.buildPlanFromResponse(planId, request, {
       steps: parsed.synthesis?.finalSteps || [],
@@ -580,7 +580,7 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     // Flatten subgoals into steps
     const steps: (string | number | boolean | null)[] = [];

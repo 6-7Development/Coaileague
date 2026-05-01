@@ -195,7 +195,7 @@ export default function BackgroundChecks() {
     id: 'background-checks',
     title: 'Background Check Management',
     subtitle: 'Manage employee background verification and compliance',
-    category: 'admin' as any,
+    category: 'admin',
     showHeader: true,
   };
 

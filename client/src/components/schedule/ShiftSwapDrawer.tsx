@@ -70,7 +70,7 @@ export function ShiftSwapDrawer({
   const { data: swapRequests = [], isLoading: loadingRequests } = useQuery<ShiftSwapRequest[]>({
     queryKey: ['/api/scheduling/swap-requests'],
     enabled: open,
-    select: (data: any): ShiftSwapRequest[] => Array.isArray(data) ? data : (data?.requests || []),
+    select: (data: unknown): ShiftSwapRequest[] => Array.isArray(data) ? data : (data?.requests || []),
   });
 
   const requestSwapMutation = useMutation({

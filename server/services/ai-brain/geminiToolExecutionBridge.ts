@@ -27,7 +27,7 @@ export interface ToolExecutionResult {
   success: boolean;
   toolName: string;
   actionId: string;
-  result: any;
+  result: unknown;
   error?: string;
   executionTimeMs: number;
   conversationId?: string;

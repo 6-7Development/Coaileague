@@ -73,7 +73,7 @@ export default function AccountManagerPage() {
     id: 'account-manager',
     title: 'Dedicated Account Manager',
     subtitle: 'Your enterprise support contact and escalation path',
-    category: 'admin' as any,
+    category: 'admin',
     showHeader: true,
   };
 

@@ -36,7 +36,6 @@ export function registerCommsProactiveActions() {
     const { userId, title, message, workspaceId, urgent } = params;
     if (!userId || !title || !message) return { error: 'userId, title, message required' };
     if (urgent) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as any);
       return { sent: true, userId, result };
     }
@@ -57,7 +56,7 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('notify.email_officer', async (params) => {
     const { workspaceId, officerId, subject, message, priority } = params;
     if (!workspaceId || !officerId || !message) return { error: 'workspaceId, officerId, message required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
     const userId = (emp as any)?.userId || officerId;
     await createNotification({ workspaceId, userId, type: 'scheduled_email', title: subject || 'Message from CoAIleague', message, priority: priority || 'normal',
  idempotencyKey: `scheduled_email-${String(Date.now())}-${'system'}`,
@@ -87,9 +86,8 @@ export function registerCommsProactiveActions() {
  idempotencyKey: `scheduled_email-${String(Date.now())}-${mgr.userId}`,
         })
         .catch((err: Error) => log.warn(`[TrinityComms] Manager email notification persist failed for user ${mgr.userId}:`, err.message));
-      const mgrUser = await db.query.users?.findFirst({ where: eq(users.id, mgr.userId) } as any).catch(() => null);
+      const mgrUser = await db.query.users?.findFirst({ where: eq(users.id, mgr.userId) }).catch(() => null);
       if ((mgrUser as any)?.email) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint,
         await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: mgr.userId, channel: 'email', body: { to: (mgrUser as any).email, subject: subject || 'Manager Alert from Trinity', html: `<p>${message}</p>` } }).catch(() => null);
         emailsSent++;
       }
@@ -103,7 +101,7 @@ export function registerCommsProactiveActions() {
     if (!workspaceId || !message) return { error: 'workspaceId and message required' };
     let toEmail = clientEmail;
     if (!toEmail && clientId) {
-      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) } as any).catch(() => null);
+      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) }).catch(() => null);
       toEmail = (client as any)?.email || (client as any)?.billingEmail || (client as any)?.pocEmail;
     }
     if (!toEmail) return { sent: false, error: 'No email address found for client', clientId };
@@ -156,7 +154,7 @@ export function registerCommsProactiveActions() {
       .catch(() => [{ count: 0 }]);
     const pendingPayroll = await db.select({ count: sql`COUNT(*)` })
       .from(payrollRuns)
-      .where(and(eq(payrollRuns.workspaceId, workspaceId), eq(payrollRuns.status as any, 'pending')))
+      .where(and(eq(payrollRuns.workspaceId, workspaceId), eq(payrollRuns.status, 'pending')))
       .catch(() => [{ count: 0 }]);
     return {
       generatedAt: new Date().toISOString(),
@@ -298,7 +296,7 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('system.org_calendar', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) } as any).catch(() => null);
+    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) }).catch(() => null);
     const today = new Date();
     const expiringCerts = await db.select({ expirationDate: employeeDocuments.expirationDate, documentType: employeeDocuments.documentType, employeeId: employeeDocuments.employeeId })
       .from(employeeDocuments)

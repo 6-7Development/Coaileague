@@ -91,7 +91,7 @@ async function findEmployeeByPhone(fromPhone: string) {
   }
 }
 
-async function handleClockIn(args: string[], officer: any): Promise<string> {
+async function handleClockIn(args: string[], officer: unknown): Promise<string> {
   const { pool } = await import('../../db');
   // Accept either the linked-employee fast path (CLOCKIN <pin>) or the
   // full path with explicit employee number (CLOCKIN <emp#> <pin>).
@@ -151,7 +151,7 @@ async function handleClockIn(args: string[], officer: any): Promise<string> {
   return `Trinity: Clocked in ${emp.first_name} at ${now.toLocaleTimeString()}. Reference ${referenceId}. Have a great shift!`;
 }
 
-async function handleClockOut(args: string[], officer: any): Promise<string> {
+async function handleClockOut(args: string[], officer: unknown): Promise<string> {
   const { pool } = await import('../../db');
   let employeeNumber = officer?.employee_number || '';
   let pin = '';
@@ -198,7 +198,7 @@ async function handleClockOut(args: string[], officer: any): Promise<string> {
 async function handleComplaintOrRequest(
   kind: 'complaint' | 'request',
   body: string,
-  officer: any,
+  officer: Record<string, unknown>,
   fromPhone: string
 ): Promise<string> {
   const summary = body.replace(/^(complaint|request|ticket)\s*[:\-]?\s*/i, '').trim().slice(0, 1000);
@@ -236,7 +236,7 @@ async function handleComplaintOrRequest(
   }
 }
 
-async function handleVerify(args: string[], officer: any, fromPhone: string): Promise<string> {
+async function handleVerify(args: string[], officer: Record<string, unknown>, fromPhone: string): Promise<string> {
   const target = args.join(' ').trim().slice(0, 200);
   if (!target) {
     return `Trinity: Send VERIFY followed by the employee number or full name to start an employment verification request. We respond in writing within 2 business days.`;
@@ -261,7 +261,7 @@ async function handleVerify(args: string[], officer: any, fromPhone: string): Pr
   }
 }
 
-async function handleStatus(officer: any, fromPhone: string): Promise<string> {
+async function handleStatus(officer: Record<string, unknown>, fromPhone: string): Promise<string> {
   try {
     const { pool } = await import('../../db');
     const r = await pool.query(

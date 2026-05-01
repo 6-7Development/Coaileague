@@ -270,7 +270,7 @@ export class SandboxQuickBooksSimulator {
       displayName: `${e.firstName} ${e.lastName}`,
       companyName: '',
       email: e.email || '',
-      taxId: (e as any).ssn || undefined,
+      taxId: (e as EmployeeWithStatus).ssn || undefined,
       is1099: (e as any).employmentType === '(1099)' || (e as any).employmentType === 'contractor',
       balance: 0,
       syncStatus: e.quickbooksVendorId ? 'synced' : 'pending' as const,
@@ -354,15 +354,14 @@ export class SandboxQuickBooksSimulator {
         id: run.id,
         payPeriodStart: new Date(run.periodStart!),
         payPeriodEnd: new Date(run.periodEnd!),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        payDate: (run as any).payDate ? new Date(run.payDate) : new Date(),
+        payDate: (run as Record<string, unknown>).payDate ? new Date(run.payDate) : new Date(),
         totalGross: parseFloat(run.totalGrossPay || '0'),
         totalNet: parseFloat(run.totalNetPay || '0'),
         totalTaxes: parseFloat(run.totalFederalTax || '0') + parseFloat(run.totalStateTax || '0') + parseFloat(run.totalFicaTax || '0'),
         employeeCount: entries.length,
         status: run.status as any,
         entries: entryDetails,
-        syncStatus: (run as any).quickbooksPayrollId ? 'synced' : 'pending',
+        syncStatus: (run as Record<string, unknown>).quickbooksPayrollId ? 'synced' : 'pending',
       });
     }
 

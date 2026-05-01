@@ -2,7 +2,7 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('agentCache');
 
 interface CacheEntry {
-  value: any;
+  value: unknown;
   expiresAt: number;
   accessCount: number;
   lastAccessedAt: number;

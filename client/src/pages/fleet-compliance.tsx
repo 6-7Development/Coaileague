@@ -143,7 +143,7 @@ export default function FleetCompliancePage(): JSX.Element {
     id: 'fleet-compliance',
     title: 'Fleet Compliance',
     subtitle: 'Vehicle registration + insurance expiry alerts',
-    category: 'operations' as any,
+    category: 'operations',
     showHeader: true,
   };
 

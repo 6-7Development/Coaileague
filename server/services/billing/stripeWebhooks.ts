@@ -492,7 +492,7 @@ export class StripeWebhookService {
    */
   private async handleInvoicePaymentSucceeded(event: Stripe.Event): Promise<WebhookResult> {
     const invoice = event.data.object as Stripe.Invoice;
-    const subscriptionId = (invoice as any).subscription as string;
+    const subscriptionId = (invoice as Record<string, unknown>).subscription as string;
     
     if (!subscriptionId) {
       return { success: true, handled: false, message: 'Not a subscription invoice' };
@@ -585,7 +585,7 @@ export class StripeWebhookService {
         stripeInvoiceId: invoice.id,
         invoiceNumber: invoice.number,
         amount: amountPaid,
-        subscriptionId: (invoice as any).subscription,
+        subscriptionId: (invoice as Record<string, unknown>).subscription,
         source: 'stripe_webhook_invoice_payment_succeeded',
       },
       visibility: 'manager',
@@ -605,8 +605,8 @@ export class StripeWebhookService {
    */
   private async handleInvoicePaymentFailed(event: Stripe.Event): Promise<WebhookResult> {
     const invoice = event.data.object as Stripe.Invoice;
-    const subscriptionId = (invoice as any).subscription as string;
-    const attemptCount = (invoice as any).attempt_count ?? 1;
+    const subscriptionId = (invoice as Record<string, unknown>).subscription as string;
+    const attemptCount = (invoice as Record<string, unknown>).attempt_count ?? 1;
     
     if (!subscriptionId) {
       return { success: true, handled: false, message: 'Not a subscription invoice' };
@@ -1490,7 +1490,7 @@ export class StripeWebhookService {
    */
   private async handleInvoiceCreated(event: Stripe.Event): Promise<WebhookResult> {
     const invoice = event.data.object as Stripe.Invoice;
-    log.info('Stripe invoice created (draft)', { stripeInvoiceId: invoice.id, status: invoice.status, subscriptionId: (invoice as any).subscription });
+    log.info('Stripe invoice created (draft)', { stripeInvoiceId: invoice.id, status: invoice.status, subscriptionId: (invoice as Record<string, unknown>).subscription });
     return { success: true, handled: true, message: `invoice.created acknowledged — Stripe invoice ${invoice.id} (status: ${invoice.status})` };
   }
 
@@ -1502,7 +1502,7 @@ export class StripeWebhookService {
   private async handleInvoiceFinalized(event: Stripe.Event): Promise<WebhookResult> {
     const invoice = event.data.object as Stripe.Invoice;
     const amountDue = parseFloat(centsToMoneyString(invoice.amount_due));
-    log.info('Stripe invoice finalized — payment will be attempted', { stripeInvoiceId: invoice.id, amountDue, subscriptionId: (invoice as any).subscription });
+    log.info('Stripe invoice finalized — payment will be attempted', { stripeInvoiceId: invoice.id, amountDue, subscriptionId: (invoice as Record<string, unknown>).subscription });
     return { success: true, handled: true, message: `invoice.finalized acknowledged — $${amountDue.toFixed(2)} will be collected via Stripe` };
   }
 
@@ -1666,7 +1666,7 @@ export class StripeWebhookService {
       const billingUrl = `${process.env.BASE_URL || process.env.APP_BASE_URL || ''}/settings?tab=billing`;
       const template = buildBillingEventEmail({
         recipientName:  owner.firstName || owner.email.split('@')[0],
-        workspaceName:  (workspace as any).name || PLATFORM.name,
+        workspaceName:  (workspace as Record<string, unknown>).name || PLATFORM.name,
         planName:       data.tier || data.newTier || undefined,
         event:          billingEvent,
         actionUrl:      billingUrl,
@@ -1902,7 +1902,7 @@ export class StripeWebhookService {
    */
   private async handleInvoiceUpcoming(event: Stripe.Event): Promise<WebhookResult> {
     const invoice = event.data.object as Stripe.Invoice;
-    const subscriptionId = (invoice as any).subscription as string;
+    const subscriptionId = (invoice as Record<string, unknown>).subscription as string;
     const amountDue = parseFloat(centsToMoneyString(invoice.amount_due));
     const dueDate = invoice.period_end
       ? new Date(invoice.period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })

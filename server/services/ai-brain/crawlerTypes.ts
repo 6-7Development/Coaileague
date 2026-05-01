@@ -534,7 +534,7 @@ export interface TrinityLearningTest {
   description: string;
   
   // Test execution
-  inputProvided: any;
+  inputProvided: unknown;
   expectedLearning: string;
   actualLearning?: string;
   
@@ -558,7 +558,7 @@ export interface TrinityScoringTest {
   
   // Test execution
   scenarioType: 'confidence' | 'accuracy' | 'self_assessment';
-  inputContext: any;
+  inputContext: unknown;
   expectedScoreRange?: { min: number; max: number };
   actualScore?: number;
   

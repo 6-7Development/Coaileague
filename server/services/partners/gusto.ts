@@ -342,10 +342,10 @@ export class GustoService {
     const gustoPayroll: Partial<GustoPayroll> = {
       company_id: companyId,
       pay_period: {
-        start_date: (payrollRun as any).startDate.toISOString().split('T')[0],
-        end_date: (payrollRun as any).endDate.toISOString().split('T')[0],
+        start_date: (payrollRun as Record<string, unknown>).startDate.toISOString().split('T')[0],
+        end_date: (payrollRun as Record<string, unknown>).endDate.toISOString().split('T')[0],
       },
-      payroll_deadline: (payrollRun as any).payDate?.toISOString().split('T')[0],
+      payroll_deadline: (payrollRun as Record<string, unknown>).payDate?.toISOString().split('T')[0],
     };
 
     const createGustoPayroll = withUsageTracking(
@@ -369,8 +369,8 @@ export class GustoService {
         featureKey: 'payroll_creation',
         metadata: {
           payrollRunId,
-          startDate: (payrollRun as any).startDate,
-          endDate: (payrollRun as any).endDate,
+          startDate: (payrollRun as Record<string, unknown>).startDate,
+          endDate: (payrollRun as Record<string, unknown>).endDate,
         },
       }
     );
@@ -385,7 +385,7 @@ export class GustoService {
       entityType: 'payroll_run',
       coaileagueEntityId: payrollRunId,
       partnerEntityId: result.payrollId,
-      partnerEntityName: `Payroll ${(payrollRun as any).startDate.toLocaleDateString()}`,
+      partnerEntityName: `Payroll ${(payrollRun as Record<string, unknown>).startDate.toLocaleDateString()}`,
       syncStatus: 'synced',
       lastSyncAt: new Date(),
       mappingSource: 'auto',

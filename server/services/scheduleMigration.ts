@@ -163,7 +163,7 @@ export async function extractScheduleFromFile(
     const text = response.text();
 
     // Parse and validate response
-    let jsonData: any;
+    let jsonData: unknown;
     try {
       // Strip markdown code blocks if present
       const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim();

@@ -262,7 +262,6 @@ class BotCommandExecutorService {
         action: `bot_command_${request.action}`,
         entityType: request.targetEntityType,
         entityId: request.targetEntityId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         details: {
           botId: request.botId,
           commandedBy: request.commandedBy,

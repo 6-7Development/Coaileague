@@ -1892,8 +1892,7 @@ router.delete(
 
       const isWorkspaceAdmin = (ADMIN_ROLES as readonly string[]).includes(authReq.workspaceRole || "");
       const user = authReq.user;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (!conversation) {
@@ -2294,10 +2293,8 @@ router.post(
 
       const user = authReq.user;
       const { hasManagerAccess } = await import('../rbac');
-      const workspaceRole = (authReq as any).workspaceRole || (user as any).workspaceRole || 'employee';
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const workspaceRole = (authReq as any).workspaceRole || req.user?.workspaceRole || 'employee';
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (resolved.roomType === 'support') {
@@ -2378,10 +2375,8 @@ router.post(
 
       const user = authReq.user;
       const { hasManagerAccess } = await import('../rbac');
-      const workspaceRole = (authReq as any).workspaceRole || (user as any).workspaceRole || 'employee';
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const workspaceRole = (authReq as any).workspaceRole || req.user?.workspaceRole || 'employee';
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (resolved.roomType === 'support') {

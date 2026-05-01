@@ -255,9 +255,9 @@ export class TaxFormGeneratorService {
         .filter(entry => entry.code !== '' && entry.amount > 0);
 
       const w2Data: W2Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
         employeeSSN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
         employeeName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
         employeeAddress: (employee as EmployeeWithStatus).address || '',
@@ -348,9 +348,9 @@ export class TaxFormGeneratorService {
       }
 
       const form1099Data: Form1099Data = {
-        payerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        payerName: (workspace as any).companyName || workspace.name || 'Payer',
-        payerAddress: (workspace as any).address || '',
+        payerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        payerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Payer',
+        payerAddress: (workspace as Record<string, unknown>).address || '',
         recipientTIN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
         recipientName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
         recipientAddress: (employee as EmployeeWithStatus).address || '',
@@ -579,9 +579,9 @@ export class TaxFormGeneratorService {
       }
 
       const form940Data: Form940Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
         taxYear: year,
         totalPayments,
         exemptPayments,
@@ -851,9 +851,9 @@ export class TaxFormGeneratorService {
       const balanceDue = totalTaxesAfterAdjustments;
 
       const form941Data: Form941Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
         quarter,
         taxYear: year,
         line1_numberOfEmployees: numberOfEmployees,

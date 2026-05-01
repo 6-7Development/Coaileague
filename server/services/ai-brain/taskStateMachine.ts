@@ -530,7 +530,7 @@ class TaskStateMachine {
   /**
    * Add reflection to task
    */
-  async addReflection(taskId: string, reflection: any): Promise<boolean> {
+  async addReflection(taskId: string, reflection: unknown): Promise<boolean> {
     try {
       const [task] = await db.select()
         .from(aiBrainTasks)

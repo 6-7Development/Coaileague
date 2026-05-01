@@ -2,7 +2,6 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { PREMIUM_FEATURES, CREDIT_PACKAGES, canAccessFeature, getFeatureTokenCost, isPremiumFeature, isEliteFeature, isFeatureIncludedInTier, getMonthlyLimit } from '@shared/config/premiumFeatures';
 import { BILLING } from '@shared/billingConfig';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { TOKEN_COSTS, TIER_TOKEN_ALLOCATIONS, TOKEN_FREE_FEATURES, SUPPORT_POOL_FEATURES, PER_UNIT_FEATURES } from '../services/billing/tokenManager';
 import { STRIPE_PRODUCTS } from '../stripe-config';
 import { typedQuery } from '../lib/typedSql';
@@ -182,7 +181,6 @@ async function phase2_credit_costs_defined() {
   let zeroCostFeatures = 0;
   let paidFeatures = 0;
   for (const [key, cost] of Object.entries(TOKEN_COSTS)) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (cost === 0) zeroCostFeatures++;
     else paidFeatures++;
   }
@@ -227,7 +225,6 @@ async function phase3_subscription_tiers() {
   record({
     name: 'TIER_TOKEN_ALLOCATIONS Match billingConfig',
     phase: 'SUBSCRIPTION_TIERS',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     passed: tierAllocations.free === 250 && tierAllocations.starter === 2500 && tierAllocations.professional === 10000 && tierAllocations.enterprise === 50000,
     details: `free=${tierAllocations.free}, starter=${tierAllocations.starter}, professional=${tierAllocations.professional}, enterprise=${tierAllocations.enterprise}`,
     severity: 'critical'
@@ -243,8 +240,6 @@ async function phase3_subscription_tiers() {
     details: `FREE=$${STRIPE_PRODUCTS.FREE.amount / 100}, STARTER=$${STRIPE_PRODUCTS.STARTER.amount / 100}, PROFESSIONAL=$${STRIPE_PRODUCTS.PROFESSIONAL.amount / 100}, ENTERPRISE=$${STRIPE_PRODUCTS.ENTERPRISE.amount / 100}`,
     severity: 'critical'
   });
-
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const freeGetsCredits = BILLING.tiers.free.monthlyTokens === 250;
   const freeNoOverage = (BILLING.tiers.free as any).allowTokenOverage === false;
   record({

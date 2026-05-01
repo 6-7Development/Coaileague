@@ -204,7 +204,7 @@ export async function identifyAtRiskManagers(
     .where(eq(employerRatings.workspaceId, workspaceId))
     .groupBy(employerRatings.targetId)
     .having(sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT)) < ${threshold}`)
-    .orderBy(sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT)) ASC`);
+    .orderBy(sql`AVG(CAST(${(employerRatings).overallRating} AS FLOAT)) ASC`);
 
   return managerRatings.map(r => ({
     managerId: r.managerId,

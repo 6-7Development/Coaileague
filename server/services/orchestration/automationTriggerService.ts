@@ -365,7 +365,6 @@ class AutomationTriggerService {
         required: ['triggerId'],
       },
       handler: async (params) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await this.executeTrigger(params.triggerId, (params as any).force);
       },
     });

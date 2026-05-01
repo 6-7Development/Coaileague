@@ -168,7 +168,7 @@ export async function runShiftEscalationScan(): Promise<ShiftEscalationResult> {
         .where(
           and(
             eq(employees.workspaceId, ws.id),
-            inArray(employees.workspaceRole as any, ['org_owner', 'co_owner', 'org_admin', 'manager']),
+            inArray(employees.workspaceRole, ['org_owner', 'co_owner', 'org_admin', 'manager']),
           )
         );
 

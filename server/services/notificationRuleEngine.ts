@@ -69,7 +69,7 @@ export class NotificationRuleEngine {
     return rules;
   }
 
-  evaluateConditions(notification: UNSNotification, conditions: any): boolean {
+  evaluateConditions(notification: UNSNotification, conditions: unknown): boolean {
     if (conditions.type && conditions.type.length > 0) {
       if (!conditions.type.includes(notification.subCategory)) {
         return false;
@@ -254,7 +254,7 @@ export class NotificationRuleEngine {
     data: {
       name: string;
       description?: string;
-      conditions: any;
+      conditions: unknown;
       action: string;
       actionConfig?: unknown;
       priority?: number;
@@ -285,9 +285,9 @@ export class NotificationRuleEngine {
     updates: Partial<{
       name: string;
       description: string;
-      conditions: any;
+      conditions: unknown;
       action: string;
-      actionConfig: any;
+      actionConfig: unknown;
       priority: number;
       isActive: boolean;
     }>

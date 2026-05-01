@@ -101,22 +101,22 @@ export function registerEmergencyStaffingActions() {
       requiresApproval: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
     await db.insert(orchestrationRunSteps).values({
-      runId: (run as any).id,
+      runId: (run as Record<string, unknown>).id,
       stepNumber: 1,
       stepName: 'Incident Declared',
       stepType: 'action',
       status: 'completed',
       inputData: { type, affectedSiteIds },
-      outputData: { incidentId: (run as any).id, declaredAt: new Date().toISOString() },
+      outputData: { incidentId: (run as Record<string, unknown>).id, declaredAt: new Date().toISOString() },
       startedAt: new Date(),
       completedAt: new Date(),
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     // Scan for available officers near the incident if lat/lng provided
     let nearbyOfficers: (string | number | boolean | null)[] = [];
@@ -126,8 +126,8 @@ export function registerEmergencyStaffingActions() {
       
       nearbyOfficers = allActive
         .map(emp => {
-          const empLat = (emp as any).lastKnownLat || (emp as any).homeLat;
-          const empLng = (emp as any).lastKnownLng || (emp as any).homeLng;
+          const empLat = (emp as EmployeeWithStatus).lastKnownLat || (emp as EmployeeWithStatus).homeLat;
+          const empLng = (emp as EmployeeWithStatus).lastKnownLng || (emp as EmployeeWithStatus).homeLng;
           if (empLat && empLng) {
             return { ...emp, distance: haversineDistance(lat, lng, Number(empLat), Number(empLng)) };
           }
@@ -138,7 +138,7 @@ export function registerEmergencyStaffingActions() {
     }
 
     return {
-      incidentId: (run as any).id,
+      incidentId: (run as Record<string, unknown>).id,
       status: 'active',
       nearbyOfficersCount: nearbyOfficers.length,
       nearbyOfficers: nearbyOfficers.slice(0, 10).map(o => ({ id: o.id, name: `${o.firstName} ${o.lastName}`, distance: Math.round(o.distance) }))
@@ -221,7 +221,7 @@ export function registerEmergencyStaffingActions() {
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { sent: true, recipientCount: allActive.length };
   }));
@@ -273,7 +273,7 @@ export function registerEmergencyStaffingActions() {
         notes: `Emergency assignment for incident ${incidentId}`,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any).returning();
+      }).returning();
       createdShifts.push(newShift);
     }
 
@@ -288,7 +288,7 @@ export function registerEmergencyStaffingActions() {
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { incidentId, assignedCount: createdShifts.length, shifts: createdShifts };
   }));
@@ -311,7 +311,7 @@ export function registerEmergencyStaffingActions() {
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { incidentId, mutualAidRequested: true, subcontractorCount: subcontractorIds?.length || 0 };
   }));
@@ -340,7 +340,7 @@ export function registerEmergencyStaffingActions() {
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { incidentId, status: 'resolved', resolvedAt: new Date() };
   }));

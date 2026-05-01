@@ -18,7 +18,7 @@ const log = createLogger('aiRequestDeduplicator');
 
 
 interface CachedAIResult {
-  result: any;
+  result: unknown;
   tokenCount: number;
   timestamp: number;
   promptHash: string;

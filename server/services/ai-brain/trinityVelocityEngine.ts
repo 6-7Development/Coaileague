@@ -6,7 +6,7 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityVelocityEngine');
 
 interface CacheEntry {
-  value: any;
+  value: unknown;
   expiresAt: number;
   accessCount: number;
 }
@@ -33,7 +33,7 @@ class AgentCache {
     return entry.value;
   }
 
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     if (this.cache.size >= 1000) {
       const oldest = [...this.cache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt)[0];
       if (oldest) this.cache.delete(oldest[0]);

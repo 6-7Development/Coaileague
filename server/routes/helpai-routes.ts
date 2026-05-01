@@ -850,8 +850,7 @@ helpaiRouter.get('/admin/sessions', requireAuth, requireHelpAIAccess, async (req
   try {
     const user = req.user;
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 500);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
 
     const sessions = await helpAIOrchestrator.getSessionHistory(workspaceId, limit);
     const stats = await helpAIOrchestrator.getSessionStats(workspaceId);
@@ -883,8 +882,7 @@ helpaiRouter.get('/admin/sessions/:id/actions', requireAuth, requireHelpAIAccess
 helpaiRouter.get('/admin/stats', requireAuth, requireHelpAIAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
     const stats = await helpAIOrchestrator.getSessionStats(workspaceId);
     res.json({ success: true, stats });
   } catch (error: unknown) {

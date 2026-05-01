@@ -111,7 +111,7 @@ class TrinityTemporalConsciousnessEngine {
     await this.updateOrgArc(workspaceId).catch(() => null);
   }
 
-  private async updateOfficerArc(workspaceId: string, emp: any): Promise<void> {
+  private async updateOfficerArc(workspaceId: string, emp: unknown): Promise<void> {
     const now = new Date();
     const metrics30 = await this.getOfficerMetrics(workspaceId, emp.id, 30);
     const metrics90 = await this.getOfficerMetrics(workspaceId, emp.id, 90);

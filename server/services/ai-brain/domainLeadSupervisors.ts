@@ -716,7 +716,7 @@ Provide a JSON response with:
     }
   }
 
-  private shouldEscalate(supervisor: DomainLeadSupervisor, error: any): boolean {
+  private shouldEscalate(supervisor: DomainLeadSupervisor, error: unknown): boolean {
     // Escalate on critical errors or repeated failures
     const recentFailures = supervisor.metrics.tasksFailed;
     const totalTasks = supervisor.metrics.tasksAssigned;

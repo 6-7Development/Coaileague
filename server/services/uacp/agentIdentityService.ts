@@ -513,7 +513,7 @@ class AgentIdentityService {
     targetType: EntityType;
     targetId: string;
     workspaceId?: string;
-    changeDetails: any;
+    changeDetails: unknown;
     previousState?: unknown;
     newState?: unknown;
   }): Promise<void> {

@@ -341,7 +341,7 @@ export class AIGuardRails {
     operation: string,
     context: AIRequestContext,
     error: Error
-  ): { fallbackData: any; shouldRetry: boolean; error: string } {
+  ): { fallbackData: unknown; shouldRetry: boolean; error: string } {
     const fallbacks: Record<string, unknown> = {
       sentiment_analysis: {
         sentiment: 'neutral',
@@ -463,7 +463,7 @@ export class AIGuardRails {
       );
 
     const successfulOps = relevantLogs.filter((log: unknown) => log.result?.success).length;
-    const totalCredits = relevantLogs.reduce((sum: number, log: any) => sum + (log.result?.creditsUsed || 0), 0);
+    const totalCredits = relevantLogs.reduce((sum: number, log: unknown) => sum + (log.result?.creditsUsed || 0), 0);
     const suspicious = relevantLogs.filter((log: unknown) => log.type === 'SUSPICIOUS_INPUT').length;
 
     return {

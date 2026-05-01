@@ -138,8 +138,6 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
       return { success: false, error: `Lazy sync failed: ${lazySyncResult.error}`, retryable: true };
     }
   }
-
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const lineItems = (invoice.lineItems as any[]) || [];
   
   const qbInvoice: QuickBooksInvoice = {
@@ -168,7 +166,7 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
           ItemRef: { value: '1' },
           Qty: 1,
           UnitPrice: Number(invoice.total) || 0,
-          Description: `Security services - ${(invoice as any).periodStart || 'Current period'}`,
+          Description: `Security services - ${(invoice as Record<string, unknown>).periodStart || 'Current period'}`,
         },
       },
     ];

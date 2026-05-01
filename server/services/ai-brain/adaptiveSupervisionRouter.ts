@@ -315,7 +315,7 @@ class AdaptiveSupervisionRouter {
       }
 
       // Execute handoff based on type
-      let response: any;
+      let response: unknown;
       let targetProcessingTimeMs: number | undefined;
 
       switch (request.type) {
@@ -694,7 +694,7 @@ class AdaptiveSupervisionRouter {
    * Execute synchronous handoff
    */
   private async executeSyncHandoff(request: HandoffRequest): Promise<{
-    response: any;
+    response: unknown;
     processingTimeMs: number;
   }> {
     const startTime = Date.now();

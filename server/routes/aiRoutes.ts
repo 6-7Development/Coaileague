@@ -160,7 +160,7 @@ router.get('/audit-logs', requireAuth, async (req: AuthenticatedRequest, res) =>
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ 
         message: 'Access denied. AALV requires support role access.',
         requiredRoles: AALV_SUPPORT_ROLES
@@ -286,7 +286,7 @@ router.get('/audit-logs/stats', requireAuth, async (req: AuthenticatedRequest, r
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 
@@ -324,7 +324,7 @@ router.get('/audit-logs/:id', requireAuth, async (req: AuthenticatedRequest, res
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 
@@ -348,7 +348,7 @@ router.post('/audit-logs/:id/review', requireAuth, async (req: AuthenticatedRequ
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 

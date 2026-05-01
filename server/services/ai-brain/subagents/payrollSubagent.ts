@@ -992,7 +992,7 @@ class PayrollSubagentService {
     return null;
   }
 
-  private async storeIdempotencyResult(key: string, result: any): Promise<void> {
+  private async storeIdempotencyResult(key: string, result: unknown): Promise<void> {
     try {
       await db.insert(idempotencyKeys).values({
         workspaceId: 'system',

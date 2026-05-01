@@ -205,7 +205,7 @@ class TrinityScanOrchestrator {
       const performanceMap = new Map<string, { success: number; fail: number; total: number }>();
       
       for (const record of telemetry) {
-        const key = (record as any).subagentName || 'unknown';
+        const key = (record as Record<string, unknown>).subagentName || 'unknown';
         const current = performanceMap.get(key) || { success: 0, fail: 0, total: 0 };
         current.total++;
         if (record.status === 'completed') current.success++;

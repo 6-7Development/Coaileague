@@ -194,7 +194,7 @@ interface ScheduleOSInput {
 
 interface PredictionInput {
   predictionType: string;
-  historicalData: any;
+  historicalData: unknown;
 }
 
 interface BusinessInsightInput {
@@ -348,7 +348,7 @@ export class AIBrainService {
       })
       .where(eq(aiBrainJobs.id, job.id));
 
-    let output: any;
+    let output: unknown;
     let confidenceScore: number | undefined;
     let tokensUsed = 0;
 
@@ -562,7 +562,7 @@ export class AIBrainService {
    * 7. THOUGHT LOGGING: Record the reasoning chain for Trinity's metacognition
    * 8. LEARN: Store successful interactions for future use
    */
-  private async executeHelpAISupport(job: AiBrainJob, input: HelpAIInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executeHelpAISupport(job: AiBrainJob, input: HelpAIInput): Promise<{ output: unknown; tokensUsed: number }> {
     // Phase 48: Defence-in-depth — sanitize the message a second time at the AI
     // service boundary in case it arrives via a path that bypassed the route layer.
     const rawMessage = input.message;
@@ -1385,7 +1385,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
   /**
    * AI Scheduling Generation - AI-powered scheduling
    */
-  private async executeScheduleGeneration(job: AiBrainJob, input: ScheduleOSInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeScheduleGeneration(job: AiBrainJob, input: ScheduleOSInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { shifts: inputShifts, employees: inputEmployees, constraints } = input;
 
     const enrichedInput = await this.enrichWithExternalIds(
@@ -1539,7 +1539,7 @@ Constraints: ${JSON.stringify(enrichedInput.constraints, null, 2)}`;
   /**
    * IntelligenceOS Prediction - Predictive analytics
    */
-  private async executePrediction(job: AiBrainJob, input: PredictionInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executePrediction(job: AiBrainJob, input: PredictionInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { predictionType, historicalData } = input;
 
     const systemPrompt = `You are CoAIleague IntelligenceOS AI, an expert at predictive workforce analytics.
@@ -1592,7 +1592,7 @@ Return a JSON object with:
   /**
    * NEW: Business Insight Generation - Sales, Finance, Operations, Automation, Growth
    */
-  private async executeBusinessInsight(job: AiBrainJob, input: BusinessInsightInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeBusinessInsight(job: AiBrainJob, input: BusinessInsightInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { insightType, timeframe = 'monthly', focusArea } = input;
 
     // Gather relevant data based on insight type
@@ -1756,7 +1756,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: Platform Recommendation - Self-selling AI
    */
-  private async executePlatformRecommendation(job: AiBrainJob, input: PlatformRecommendationInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executePlatformRecommendation(job: AiBrainJob, input: PlatformRecommendationInput): Promise<{ output: unknown; tokensUsed: number }> {
     const { userNeed, currentPlan, currentUsage } = input;
 
     const response = await geminiClient.generatePlatformRecommendation({
@@ -1779,7 +1779,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: FAQ Update - Learn and persist new FAQs
    */
-  private async executeFAQUpdate(job: AiBrainJob, input: FAQUpdateInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executeFAQUpdate(job: AiBrainJob, input: FAQUpdateInput): Promise<{ output: unknown; tokensUsed: number }> {
     const { question, answer, category = 'general', tags = [] } = input;
 
     try {
@@ -1817,7 +1817,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: Platform Awareness - Answer questions about any platform feature
    */
-  private async executePlatformAwareness(job: AiBrainJob, input: PlatformAwarenessInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executePlatformAwareness(job: AiBrainJob, input: PlatformAwarenessInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { query, queryType = 'help', context } = input;
 
     // Search for relevant features based on the query
@@ -1920,7 +1920,7 @@ ${context?.currentFeature ? `User is currently using: ${context.currentFeature}`
   /**
    * NEW: Issue Diagnosis - AI diagnoses user issues based on symptoms
    */
-  private async executeIssueDiagnosis(job: AiBrainJob, input: IssueDiagnosisInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeIssueDiagnosis(job: AiBrainJob, input: IssueDiagnosisInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { description, symptoms, affectedFeature, context } = input;
 
     // Find matching issues from the platform registry
@@ -2020,7 +2020,7 @@ ${context ? `Additional Context: ${JSON.stringify(context)}` : ''}`;
    * Trinity AI Summarization - Generate concise summary of support conversations
    * Used when closing tickets to provide both user and staff with resolution summary
    */
-  private async executeTrinitySum(job: AiBrainJob, input: { message: string; maxWords?: number }): Promise<{ output: any; tokensUsed: number }> {
+  private async executeTrinitySum(job: AiBrainJob, input: { message: string; maxWords?: number }): Promise<{ output: unknown; tokensUsed: number }> {
     const { message, maxWords = 100 } = input;
 
     const systemPrompt = `You are Trinity AI, the intelligent orchestrator for CoAIleague support platform.

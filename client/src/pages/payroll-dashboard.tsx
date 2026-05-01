@@ -68,7 +68,7 @@ export default function PayrollDashboard() {
     queryKey: ['/api/payroll/runs', workspaceId],
     enabled: !!workspaceId,
     queryFn: () => apiFetch('/api/payroll/runs', PayrollRunListResponse) as unknown as Promise<PayrollRun[]>,
-    retry: (failureCount, error: any) => error?.status >= 500 && failureCount < 2,
+    retry: (failureCount, error: unknown) => error?.status >= 500 && failureCount < 2,
   });
   const {
     data: runsData,
@@ -83,7 +83,7 @@ export default function PayrollDashboard() {
     queryKey: ['/api/payroll/runs', workspaceId, selectedRun],
     enabled: !!selectedRun,
     queryFn: () => apiFetch(`/api/payroll/runs/${selectedRun}`, PayrollRunDetailResponse) as unknown as Promise<PayrollRunDetail>,
-    retry: (failureCount, error: any) => error?.status >= 500 && failureCount < 2,
+    retry: (failureCount, error: unknown) => error?.status >= 500 && failureCount < 2,
   });
 
   const createRunMutation = useMutation({

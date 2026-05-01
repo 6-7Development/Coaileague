@@ -41,7 +41,7 @@ export interface EventPayload {
   aggregateId: string;
   aggregateType: string;
   payload: Record<string, unknown>;
-  changes?: { before: any; after: any };
+  changes?: { before: unknown; after: any };
 }
 
 export class AuditLogger {
@@ -297,7 +297,7 @@ export class AuditLogger {
       actionType: string;
       targetEntityType: string;
       targetEntityId: string;
-      changes?: { before: any; after: any };
+      changes?: { before: unknown; after: any };
       reason?: string;
       metadata?: Record<string, unknown>;
     },

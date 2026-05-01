@@ -89,7 +89,7 @@ export async function scanPayrollReadiness(workspaceId: string): Promise<Payroll
     .where(
       and(
         eq(employees.workspaceId, workspaceId),
-        eq(employees.status as any, 'active'),
+        eq(employees.status, 'active'),
       )
     );
 
@@ -304,7 +304,7 @@ export async function runPayrollReadinessScanAllWorkspaces(): Promise<{
     .where(
       and(
         eq(workspaces.isSuspended, false),
-        not(eq(workspaces.subscriptionStatus as any, 'cancelled'))
+        not(eq(workspaces.subscriptionStatus, 'cancelled'))
       )
     );
 

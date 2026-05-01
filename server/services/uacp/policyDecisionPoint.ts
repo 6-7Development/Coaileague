@@ -67,7 +67,7 @@ export interface AccessDecision {
 
 class PolicyDecisionPoint {
   private static instance: PolicyDecisionPoint;
-  private policyCache: Map<string, { policy: any; cachedAt: number }> = new Map();
+  private policyCache: Map<string, { policy: unknown; cachedAt: number }> = new Map();
   private attributeCache: Map<string, { attributes: Record<string, unknown>; cachedAt: number }> = new Map();
   private readonly CACHE_TTL_MS = 60000; // 1 minute cache
 
@@ -248,7 +248,7 @@ class PolicyDecisionPoint {
         const [user] = await db.select().from(users).where(eq(users.id, subject.entityId)).limit(1);
         if (user) {
           attributes.role = user.role;
-          attributes.platformRole = (user as any).platformRole;
+          attributes.platformRole = req.user?.platformRole;
           attributes.email = user.email;
           attributes.lastLoginAt = user.lastLoginAt;
         }

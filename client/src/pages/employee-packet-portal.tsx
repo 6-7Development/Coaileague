@@ -328,7 +328,7 @@ export default function EmployeePacketPortal() {
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const setField = (key: string, value: any) =>
+  const setField = (key: string, value: unknown) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
   const setInitial = (key: string, value: boolean) =>
     setSectionInitials((prev) => ({ ...prev, [key]: value }));

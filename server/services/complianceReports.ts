@@ -186,7 +186,7 @@ interface AuditLogEntry {
   userName: string;
   entityType: string;
   entityId: string;
-  changes: any;
+  changes: unknown;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -334,7 +334,6 @@ export async function generateBreakComplianceReport(
 
     const requiredMealBreakMinutes = (laborRules as any)?.mealBreakMinutes || 30;
     const requiredRestBreakMinutes = (laborRules as any)?.restBreakMinutes || 10;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const mealBreakThresholdHours = (laborRules as any)?.mealBreakAfterHours ? parseFloat(laborRules.mealBreakAfterHours) : 5;
 
     if (shiftDurationHours >= mealBreakThresholdHours && mealBreaks.length === 0) {
@@ -662,8 +661,8 @@ export async function generateComplianceReport(options: GenerateReportOptions): 
   const report = reportRecord[0];
 
   try {
-    let reportData: any;
-    let summaryStats: any;
+    let reportData: unknown;
+    let summaryStats: unknown;
     let hasViolations = false;
     let violationCount = 0;
     let criticalViolationCount = 0;

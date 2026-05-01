@@ -580,7 +580,6 @@ async function suiteInternalNotifications() {
 
   const testNotifId = crypto.randomUUID();
   await test('DB: INSERT notification — schedule_change type', async () => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id: testNotifId,
       userId: DEV_USER,
@@ -598,7 +597,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — payroll_processed type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -616,7 +614,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — invoice_generated type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -634,7 +631,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — shift_assigned type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -652,7 +648,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — ai_approval_needed type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -670,7 +665,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — document_expiring type (certification expiry)', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -688,7 +682,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — document_uploaded type (document signed)', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -826,7 +819,6 @@ async function suiteE2EWorkflows() {
     });
     if (!emailTpl.subject.includes('Perimeter Patrol')) throw new Error('Subject missing shift name');
     const notifInsertId = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id: notifInsertId,
       userId: DEV_USER,
@@ -856,7 +848,6 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Payroll Run Completed → Employee Emails + Manager Notification', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,

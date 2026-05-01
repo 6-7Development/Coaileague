@@ -74,7 +74,7 @@ export function registerChangePropagationActions() {
         if (employeeId && oldValue !== undefined && newValue !== undefined) {
           const result = await helpaiOrchestrator.executeAction('settings.propagate_pay_rate_change', {
             workspaceId, employeeId, oldRate: oldValue, newRate: newValue, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_pay_rate_change');
           impacts.push(`Pay rate change from $${oldValue}/hr to $${newValue}/hr — payroll drafts recomputed, schedule cost calculations flagged`);
         }
@@ -87,7 +87,7 @@ export function registerChangePropagationActions() {
         if (clientId && oldValue !== undefined && newValue !== undefined) {
           const result = await helpaiOrchestrator.executeAction('settings.propagate_bill_rate_change', {
             workspaceId, clientId, oldRate: oldValue, newRate: newValue, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_bill_rate_change');
           impacts.push(`Bill rate change from $${oldValue}/hr to $${newValue}/hr — draft invoice line items recalculated, margin risk assessed`);
         }
@@ -101,7 +101,7 @@ export function registerChangePropagationActions() {
         if (employeeId) {
           const result = await helpaiOrchestrator.executeAction('settings.propagate_license_expiry', {
             workspaceId, employeeId, docType: settingKey, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_license_expiry');
           impacts.push(`License/certification expired — officer removed from future shifts, replacement slots created`);
         }
@@ -141,7 +141,7 @@ export function registerChangePropagationActions() {
     const rateChange = newRateNum - oldRateNum;
     const rateChangePct = oldRateNum > 0 ? ((rateChange / oldRateNum) * 100).toFixed(1) : 'N/A';
 
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
     const empName = `${(emp as any)?.firstName || ''} ${(emp as any)?.lastName || ''}`.trim() || employeeId;
 
     // ── STEP 1: Find all draft/pending payroll runs for this workspace ──
@@ -233,7 +233,7 @@ export function registerChangePropagationActions() {
         impact: entries.length > 0
           ? `Recomputed ${entries.length} payroll entry(s) at new rate $${newRate}/hr`
           : 'No entries for this employee in this run',
-        period: `${(run as any).periodStart} - ${(run as any).periodEnd}`,
+        period: `${(run as Record<string, unknown>).periodStart} - ${(run as Record<string, unknown>).periodEnd}`,
       });
     }
 
@@ -413,7 +413,7 @@ export function registerChangePropagationActions() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
 
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
     const empName = `${(emp as any)?.firstName || ''} ${(emp as any)?.lastName || ''}`.trim() || employeeId;
     const userId = (emp as any)?.userId;
 

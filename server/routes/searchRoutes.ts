@@ -343,7 +343,7 @@ const ENTITY_SEARCHERS: Array<{
 
 // ── Route registration ────────────────────────────────────────────────────────
 
-export function registerSearchRoutes(app: Express, requireAuth: any) {
+export function registerSearchRoutes(app: Express, requireAuth: unknown) {
   const searchRouter = express.Router();
 
   // GET /api/search?q=&types=officer,client&limit=20&offset=0

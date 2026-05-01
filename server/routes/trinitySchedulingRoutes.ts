@@ -371,10 +371,10 @@ router.get('/pending-approvals', requireAuth, async (req: AuthenticatedRequest, 
     const { eq, and, desc } = await import('drizzle-orm');
     const pending = await db.select().from(trinityProposedActions)
       .where(and(
-        eq((trinityProposedActions as any).workspaceId, workspaceId),
+        eq((trinityProposedActions as Record<string,unknown>).workspaceId as string, workspaceId),
         eq((trinityProposedActions as any).status, 'pending'),
       ))
-      .orderBy(desc((trinityProposedActions as any).createdAt))
+      .orderBy(desc((trinityProposedActions).createdAt))
       .limit(50);
     res.json({ approvals: pending });
   } catch (err: unknown) {

@@ -213,8 +213,7 @@ export function registerInvoiceEmailActions() {
         
         // Enhance with totals
         const overdueCount = (result as Record<string, unknown>).length;
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        const totalOverdueAmount = result.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
+        const totalOverdueAmount = result.reduce((sum: number, inv: unknown) => sum + Number(inv.total), 0);
 
         return createResult(request.actionId, true, `Found ${overdueCount} overdue invoices`, {
           overdueCount,
@@ -321,8 +320,7 @@ export function registerInvoiceEmailActions() {
         try {
           const result = await checkOverdueInvoices(workspaceId);
           const overdueCount = (result as Record<string, unknown>).length;
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          const totalOverdueAmount = result.reduce((sum: number, inv: any) => sum + Number(inv.total), 0);
+          const totalOverdueAmount = result.reduce((sum: number, inv: unknown) => sum + Number(inv.total), 0);
           return createResult(request.actionId, true, `Found ${overdueCount} overdue invoices`, {
             overdueCount, totalOverdueAmount, clients: result
           }, start);

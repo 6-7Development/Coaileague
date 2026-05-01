@@ -60,7 +60,7 @@ export default function SubOrgsPage(): JSX.Element {
       setPrimaryState("");
       await qc.invalidateQueries({ queryKey: ["/api/workspace/sub-orgs"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         title: "Could not create sub-organization",
         description: err?.message || "Try again.",
@@ -72,11 +72,11 @@ export default function SubOrgsPage(): JSX.Element {
   const switchMut = useMutation({
     mutationFn: (workspaceId: string) =>
       apiRequest("POST", `/api/workspace/switch/${workspaceId}`, {}),
-    onSuccess: (data: any) => {
+    onSuccess: (data: unknown) => {
       toast({ title: `Switched to ${data?.workspaceName || "sub-organization"}` });
       window.location.href = "/dashboard";
     },
-    onError: async (err: any) => {
+    onError: async (err: unknown) => {
       try {
         const body = await err?.response?.json?.();
         if (body?.code === "ONBOARDING_INCOMPLETE") {

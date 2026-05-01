@@ -91,9 +91,9 @@ export function registerDrugTestingActions() {
       requiresApproval: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
-    const testId = (run as any).id;
+    const testId = (run as Record<string, unknown>).id;
     if (employee.userId) {
       await notifyUser(
         workspaceId,
@@ -106,7 +106,7 @@ export function registerDrugTestingActions() {
 
     return {
       success: true,
-      testId: (run as any).id,
+      testId: (run as Record<string, unknown>).id,
       employeeName: inputParams.employeeName,
       deadline
     };

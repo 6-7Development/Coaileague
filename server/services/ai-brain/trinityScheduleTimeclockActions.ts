@@ -224,7 +224,7 @@ export function registerScheduleTimeclockActions() {
         eq(shifts.workspaceId, workspaceId),
         gte(shifts.startTime, weekStart),
         lt(shifts.startTime, weekEnd),
-        eq(shifts.status as any, 'draft')
+        eq(shifts.status, 'draft')
       );
     } else {
       return { error: 'shiftIds array or weekOf date required' };
@@ -255,8 +255,8 @@ export function registerScheduleTimeclockActions() {
     const { workspaceId, shiftId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
     const whereClause = shiftId
-      ? and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, shiftId), eq(shifts.status as any, 'pending'))
-      : and(eq(shifts.workspaceId, workspaceId), eq(shifts.status as any, 'pending'));
+      ? and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, shiftId), eq(shifts.status, 'pending'))
+      : and(eq(shifts.workspaceId, workspaceId), eq(shifts.status, 'pending'));
     await db.update(shifts)
       .set({ status: 'confirmed', updatedAt: new Date() } as any)
       .where(whereClause);
@@ -324,11 +324,11 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || lat === undefined || lng === undefined) return { error: 'shiftId, lat, lng required' };
     const shift = await db.query.shifts?.findFirst({
       where: and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || '')),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!shift) return { verified: false, reason: 'Shift not found' };
     const clientData = shift.clientId ? await db.query.clients?.findFirst({
       where: eq(clients.id, shift.clientId)
-    } as any).catch(() => null) : null;
+    }).catch(() => null) : null;
     const siteLat = (clientData as any)?.latitude;
     const siteLng = (clientData as any)?.longitude;
     const geofenceRadius = (clientData as any)?.geofenceRadius || 200;
@@ -373,7 +373,7 @@ export function registerScheduleTimeclockActions() {
         lte(shifts.startTime, threshold),
         gte(shifts.startTime, new Date(checkDate.getTime() - 8 * 3600000)),
         ne(shifts.status, 'cancelled'),
-        ne(shifts.status as any, 'completed')
+        ne(shifts.status, 'completed')
       ));
     const missedWithNoPunch: typeof missedShifts = [];
     for (const s of missedShifts) {
@@ -427,7 +427,7 @@ export function registerScheduleTimeclockActions() {
       employeeId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
     return { created: true, shift: newShift };
   }));
 

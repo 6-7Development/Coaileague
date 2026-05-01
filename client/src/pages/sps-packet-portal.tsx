@@ -288,7 +288,7 @@ export default function SpsPacketPortal() {
     }
   });
 
-  const updateField = (section: string, field: string, value: any) => {
+  const updateField = (section: string, field: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [section]: {

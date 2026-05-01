@@ -286,9 +286,9 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
     doc.text(`Regular Hours: ${report.summary.regularHours.toFixed(2)}`);
     doc.text(`Overtime Hours: ${report.summary.overtimeHours.toFixed(2)}`);
     if (report.summary.breakDeductions) {
-      doc.text(`Break Deductions: ${(report as any).summary.breakDeductions.toFixed(2)} hours`);
+      doc.text(`Break Deductions: ${(report as Record<string, unknown>).summary.breakDeductions.toFixed(2)} hours`);
     }
-    doc.text(`Status: Approved (${(report as any).summary.statusBreakdown?.approved || 0}) | Pending (${(report as any).summary.statusBreakdown?.pending || 0}) | (Rejected as any) (${(report.summary as any).statusBreakdown?.rejected || 0})`);
+    doc.text(`Status: Approved (${(report as Record<string, unknown>).summary.statusBreakdown?.approved || 0}) | Pending (${(report as Record<string, unknown>).summary.statusBreakdown?.pending || 0}) | (Rejected as any) (${(report.summary as any).statusBreakdown?.rejected || 0})`);
     doc.moveDown(2);
 
     doc.fontSize(14).text('Time Entries', { underline: true });
@@ -330,10 +330,7 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
         yPos += 20;
         doc.font('Helvetica').fontSize(8);
       }
-
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const clockIn = (entry as unknown).clockIn ? new (Date as any)(entry.clockIn) : null;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const clockOut = (entry as unknown).clockOut ? new (Date as any)(entry.clockOut) : null;
 
       const rowData = [

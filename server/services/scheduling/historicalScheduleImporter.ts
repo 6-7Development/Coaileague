@@ -97,7 +97,6 @@ class HistoricalScheduleImporterService {
       log.info(`[HistoricalImporter] Parsed ${records.length} records from CSV`);
 
       // Map column names (flexible matching)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const mappedRecords: ImportedShift[] = records.map((record: unknown, index: number) => {
         try {
           return this.mapCSVRecord(record, options);

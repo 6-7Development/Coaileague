@@ -65,7 +65,7 @@ export function registerComplianceIncidentActions() {
       .from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.workspaceId, workspaceId),
-        eq(employeeDocuments.status as any, 'approved'),
+        eq(employeeDocuments.status, 'approved'),
         lte(employeeDocuments.expirationDate, cutoffDate),
         gte(employeeDocuments.expirationDate, new Date())
       ))
@@ -85,9 +85,9 @@ export function registerComplianceIncidentActions() {
   helpaiOrchestrator.registerAction(mkAction('compliance.request_document', async (params) => {
     const { workspaceId, officerId, docType, message } = params;
     if (!workspaceId || !officerId || !docType) return { error: 'workspaceId, officerId, docType required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
     if (!emp) return { error: 'Officer not found' };
-    const memberId = (emp as any).userId || officerId;
+    const memberId = (emp as EmployeeWithStatus).userId || officerId;
     await createNotification({
       workspaceId,
       userId: memberId,
@@ -159,7 +159,7 @@ export function registerComplianceIncidentActions() {
     const { workspaceId, incidentId, clientId, message } = params;
     if (!workspaceId || !incidentId) return { error: 'workspaceId and incidentId required' };
     if (clientId) {
-      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) } as any).catch(() => null);
+      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) }).catch(() => null);
       const clientUserId = typeof (client as any)?.userId === 'string' ? (client as ClientWithExtras).userId : undefined;
       if (client && (client as ClientWithExtras).email && clientUserId) {
         await createNotification({
@@ -186,7 +186,7 @@ export function registerComplianceIncidentActions() {
         entityId: officerId,
         workspaceId: workspaceId || '',
         windowType: flagType || 'incident_review',
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
     return { flagged: true, incidentId, officerId, complianceWindowCreated: !!officerId };
   }));
@@ -200,7 +200,7 @@ export function registerComplianceIncidentActions() {
       clientId,
       limit,
       severity,
-    } as any).catch(() => []);
+    }).catch(() => []);
     return { incidents, count: (incidents as any[]).length };
   }));
 
@@ -209,7 +209,7 @@ export function registerComplianceIncidentActions() {
     if (!workspaceId || !clientId) return { error: 'workspaceId and clientId required' };
     const client = await db.query.clients?.findFirst({
       where: and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!client) return { error: 'Client not found' };
     const recentShifts = await db.select({ id: shifts.id, status: shifts.status, startTime: shifts.startTime })
       .from(shifts)
@@ -224,7 +224,7 @@ export function registerComplianceIncidentActions() {
     if (!clientId) return { error: 'clientId required' };
     const client = await db.query.clients?.findFirst({
       where: eq(clients.id, clientId),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!client) return { error: 'Client/site not found' };
     return {
       clientId,
@@ -295,8 +295,8 @@ export function registerComplianceIncidentActions() {
     const { clientContracts } = await import('../../../shared/schema').catch(() => ({ clientContracts: null }));
     if (!clientContracts) return { error: 'Client contracts schema not available' };
     const where = clientId
-      ? and(eq((clientContracts as any).workspaceId, workspaceId), eq((clientContracts as any).clientId, clientId))
-      : eq((clientContracts as any).workspaceId, workspaceId);
+      ? and(eq((clientContracts as Record<string,unknown>).workspaceId as string, workspaceId), eq((clientContracts as any).clientId, clientId))
+      : eq((clientContracts as Record<string,unknown>).workspaceId as string, workspaceId);
     const contracts = await db.select().from(clientContracts as any).where(where).limit(50).catch(() => []);
     return { clientId: clientId ?? 'all', contractCount: contracts.length, contracts };
   }));
@@ -316,14 +316,14 @@ export function registerComplianceIncidentActions() {
     }).from(invoices).where(
       and(eq(invoices.workspaceId, workspaceId), eq(invoices.clientId, clientId))
     ).orderBy(invoices.createdAt).limit(Number(limit)).catch(() => []);
-    const totalBilled = history.reduce((s: number, i: any) => s + parseFloat(i.totalAmount || '0'), 0);
+    const totalBilled = history.reduce((s: number, i: unknown) => s + parseFloat(i.totalAmount || '0'), 0);
     return { clientId, historyCount: history.length, totalBilled: Math.round(totalBilled * 100) / 100, history };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('employee.get_full_profile', async (params) => {
     const { workspaceId, employeeId } = params;
     if (!employeeId) return { error: 'employeeId required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
     if (!emp) return { error: 'Employee not found' };
     const docs = await db.select({ documentType: employeeDocuments.documentType, status: employeeDocuments.status, expirationDate: employeeDocuments.expirationDate })
       .from(employeeDocuments)
@@ -346,15 +346,14 @@ export function registerComplianceIncidentActions() {
     if (!workspaceId || !employeeId || !newRole) return { error: 'workspaceId, employeeId, newRole required' };
     await db.update(workspaceMembers)
       .set({ role: newRole as any, updatedAt: new Date() } as any)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId as any, employeeId)));
+      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId, employeeId)));
     return { updated: true, employeeId, newRole };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('employee.initiate_onboarding', async (params) => {
     const { workspaceId, employeeId, startDate } = params;
     if (!workspaceId || !employeeId) return { error: 'workspaceId and employeeId required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
     const memberId = (emp as any)?.userId || employeeId;
     await createNotification({
       workspaceId,
@@ -477,7 +476,7 @@ export function registerComplianceIncidentActions() {
       priority: severity === 'critical' ? 'urgent' : 'high',
       targetRole: 'compliance_officer',
       metadata: { violationType, severity, officerId, detectedAt: detectedAt || new Date().toISOString() },
-    } as any).catch(() => null);
+    }).catch(() => null);
     await db.insert(auditLogs).values({
       workspaceId,
       userId: officerId || null,

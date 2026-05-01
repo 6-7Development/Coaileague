@@ -108,8 +108,8 @@ export interface SyncResult {
 export interface SyncConflict {
   entityType: EntityType;
   entityId: string;
-  localValue: any;
-  remoteValue: any;
+  localValue: unknown;
+  remoteValue: unknown;
   field: string;
   resolution?: 'local_wins' | 'remote_wins' | 'merge' | 'manual';
 }
@@ -682,7 +682,7 @@ class HRISIntegrationService {
   }
 
   private async syncInbound(params: {
-    connection: any;
+    connection: unknown;
     entityType: EntityType;
     fullSync?: boolean;
     sinceDate?: Date;
@@ -769,7 +769,7 @@ class HRISIntegrationService {
   }
 
   private async syncOutbound(params: {
-    connection: any;
+    connection: unknown;
     entityType: EntityType;
     sinceDate?: Date;
     dryRun?: boolean;
@@ -891,7 +891,7 @@ class HRISIntegrationService {
     return result;
   }
 
-  private getNestedValue(obj: any, path: string): any {
+  private getNestedValue(obj: unknown, path: string): any {
     const parts = path.split('.');
     let current = obj;
 
@@ -909,7 +909,7 @@ class HRISIntegrationService {
     return current;
   }
 
-  private transformValue(value: any, transform?: string): any {
+  private transformValue(value: unknown, transform?: string): any {
     if (!transform || transform === 'none') return value;
 
     switch (transform) {
@@ -1041,7 +1041,7 @@ class HRISIntegrationService {
     }
   }
 
-  private async updateRemoteRecord(connection: any, entityType: EntityType, remoteId: string, localRecord: any): Promise<void> {
+  private async updateRemoteRecord(connection: any, entityType: EntityType, remoteId: string, localRecord: unknown): Promise<void> {
     log.info(`[HRISIntegration] Would update remote ${entityType} ${remoteId} with local data`);
   }
 

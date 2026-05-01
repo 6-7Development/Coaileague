@@ -155,7 +155,7 @@ export function registerExternalIntelligenceActions() {
       return { date, conditions: label, riskLevel, precipProbabilityPct: precipPct, windMph: Number(windMph), tempHighF: Number(tempMaxF), tempLowF: Number(tempMinF), operationalRisks: risks };
     });
 
-    const maxRisk = days.reduce((max: string, d: any) => {
+    const maxRisk = days.reduce((max: string, d: unknown) => {
       const order = { low: 0, medium: 1, high: 2, critical: 3 };
       return (order[d.riskLevel as keyof typeof order] ?? 0) > (order[max as keyof typeof order] ?? 0) ? d.riskLevel : max;
     }, 'low');
@@ -238,7 +238,7 @@ export function registerExternalIntelligenceActions() {
       requiresApproval: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
     const title = `Proactive Risk Flag: ${riskType}`;
     const message = `Trinity has flagged a ${riskType} risk for site ${site?.name || siteId}. Details: ${details}`;
@@ -247,7 +247,7 @@ export function registerExternalIntelligenceActions() {
 
     return {
       success: true,
-      flagId: (run as any).id,
+      flagId: (run as Record<string, unknown>).id,
       riskType,
       siteName: site?.name,
       notified: 'managers'

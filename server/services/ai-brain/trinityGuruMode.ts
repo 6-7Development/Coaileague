@@ -117,8 +117,8 @@ export interface EvolutionRule {
 export interface EvolutionImprovement {
   id: string;
   parameter: string;
-  currentValue: any;
-  proposedValue: any;
+  currentValue: unknown;
+  proposedValue: unknown;
   expectedImprovementPercent: number;
   riskLevel: EvolutionRiskLevel;
   status: 'proposed' | 'testing' | 'approved' | 'rejected' | 'rolled_back';
@@ -649,7 +649,7 @@ class TrinityGuruMode {
   // 3. SAFE SELF-EVOLUTION FRAMEWORK
   // -------------------------------------------------------------------------
   
-  async proposeEvolution(parameter: string, currentValue: any, proposedValue: any): Promise<EvolutionImprovement | null> {
+  async proposeEvolution(parameter: string, currentValue: any, proposedValue: unknown): Promise<EvolutionImprovement | null> {
     const rule = EVOLUTION_RULES.find(r => r.parameter === parameter);
     if (!rule) {
       log.info(`[Evolution] Unknown parameter: ${parameter}`);

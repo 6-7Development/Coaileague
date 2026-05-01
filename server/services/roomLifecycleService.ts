@@ -30,9 +30,9 @@ interface RoomLifecycleResult {
   reopenedAt?: string;
 }
 
-let broadcastToRoom: ((roomId: string, message: any) => void) | null = null;
+let broadcastToRoom: ((roomId: string, message: unknown) => void) | null = null;
 
-export function registerRoomBroadcaster(fn: (roomId: string, message: any) => void) {
+export function registerRoomBroadcaster(fn: (roomId: string, message: unknown) => void) {
   broadcastToRoom = fn;
 }
 

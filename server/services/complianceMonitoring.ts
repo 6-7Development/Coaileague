@@ -105,7 +105,7 @@ export class ComplianceMonitoringService {
     });
 
     // Group by employee and calculate weekly hours
-    const employeeHours = new Map<string, { employee: any; totalHours: number }>();
+    const employeeHours = new Map<string, { employee: Record<string, unknown>; totalHours: number }>();
 
     for (const shift of recentShifts) {
       if (!shift.employee) continue;

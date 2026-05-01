@@ -234,7 +234,7 @@ class TrinityDisciplinaryAnalyzer {
     };
   }
 
-  private determineDisciplinaryApproach(priorComplaints: number, allegation: string, history: any): string {
+  private determineDisciplinaryApproach(priorComplaints: number, allegation: string, history: unknown): string {
     if (this.isSeriousAllegation(allegation)) {
       return 'Serious allegation — escalate to owner immediately. Do not handle at supervisor level. Document everything.';
     }

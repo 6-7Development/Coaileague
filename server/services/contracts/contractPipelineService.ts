@@ -1268,9 +1268,7 @@ class ContractPipelineService {
     if (new Date() > accessToken.expiresAt) {
       return { valid: false, error: 'Access token has expired' };
     }
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (accessToken.maxUses && accessToken.useCount! >= (accessToken as any).maxUses) {
+    if (accessToken.maxUses && accessToken.useCount! >= (accessToken as Record<string, unknown>).maxUses) {
       return { valid: false, error: 'Access token has exceeded maximum uses' };
     }
 
@@ -1289,7 +1287,7 @@ class ContractPipelineService {
     }
 
     // ── S7: expose recipientEmail so sign routes can bind token↔signer ───────
-    return { valid: true, contract, recipientEmail: (accessToken as any).recipientEmail ?? null };
+    return { valid: true, contract, recipientEmail: (accessToken as Record<string, unknown>).recipientEmail ?? null };
   }
   
   /**

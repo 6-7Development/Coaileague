@@ -2279,7 +2279,7 @@ async function runPaymentReminderCheck() {
             if (recipientEmail) {
               try {
                 const { emailService } = await import('./emailService');
-                const outstanding = Number(invoice.total) - Number((invoice as any).amountPaid || '0');
+                const outstanding = Number(invoice.total) - Number((invoice as Record<string, unknown>).amountPaid || '0');
                 const subject = daysOverdue > 0
                   ? `[Overdue] Invoice ${invoice.invoiceNumber} is ${daysOverdue} day(s) past due - $${outstanding.toFixed(2)}`
                   : `[Reminder] Invoice ${invoice.invoiceNumber} payment due - $${outstanding.toFixed(2)}`;
@@ -2654,8 +2654,7 @@ export function startAutonomousScheduler() {
   // table indefinitely and blocked automation that was waiting on
   // them. Workflow audit 2026-04-08 flagged this as "approval workflows
   // / expireOldApprovals never called by cron" — this is the fix.
-  // @ts-expect-error — TS migration: fix in refactoring sprint
-  registerJobInfo('Approval Expiry Sweep', (SCHEDULER_CONFIG as any).approvalExpiry.schedule, (SCHEDUL as any)(ER_CONFIG.approvalExpiry.description as any), (SCHEDULER_CONFIG as any).approvalExpiry.enabled);
+  registerJobInfo('Approval Expiry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, (SCHEDUL as any)(ER_CONFIG.approvalExpiry.description as any), (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.enabled);
   if (SCHEDULER_CONFIG.approvalExpiry.enabled) {
     cron.schedule(SCHEDULER_CONFIG.approvalExpiry.schedule, () => {
       trackJobExecution('Approval Expiry Sweep', async () => {
@@ -2682,7 +2681,7 @@ export function startAutonomousScheduler() {
         }
       });
     });
-    log.info('Approval Expiry Sweep registered', { schedule: (SCHEDULER_CONFIG as any).approvalExpiry.schedule, description: (SCHEDULER_CONFIG as any).approvalExpiry.description });
+    log.info('Approval Expiry Sweep registered', { schedule: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, description: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.description });
   }
 
   // 4. Idempotency Key Cleanup (4 AM daily)
@@ -2695,15 +2694,15 @@ export function startAutonomousScheduler() {
   }
 
   // Phase 26F — Invoice lifecycle retry sweep (hourly at :17)
-  registerJobInfo('Invoice Lifecycle Retry Sweep', (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule, (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.description, (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.enabled);
-  if ((SCHEDULER_CONFIG as any).invoiceLifecycleSweep.enabled) {
-    cron.schedule((SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule, () => {
+  registerJobInfo('Invoice Lifecycle Retry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule, (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.description, (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.enabled);
+  if ((SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.enabled) {
+    cron.schedule((SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule, () => {
       trackJobExecution('Invoice Lifecycle Retry Sweep', async () => {
         const { sweepStuckInvoiceLifecycleEntries } = await import('./trinity/workflows/invoiceLifecycleWorkflow');
         await sweepStuckInvoiceLifecycleEntries();
       });
     });
-    log.info('Invoice Lifecycle Retry Sweep registered', { schedule: (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule });
+    log.info('Invoice Lifecycle Retry Sweep registered', { schedule: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule });
   }
 
   // License Expiry Alert Sweep (Daily 6 AM)
@@ -4351,7 +4350,7 @@ export function startAutonomousScheduler() {
     (async () => {
       try {
         const { helpaiOrchestrator } = await import('./helpai/platformActionHub');
-        const overdueResult = await helpaiOrchestrator.executeAction({ actionId: 'task.track_overdue', params: {}, userId: 'trinity-system' } as any).catch(() => null);
+        const overdueResult = await helpaiOrchestrator.executeAction({ actionId: 'task.track_overdue', params: {}, userId: 'trinity-system' }).catch(() => null);
         const overdueTasks = overdueResult?.data?.overdueTasks || [];
         let escalated = 0;
         for (const task of overdueTasks) {
@@ -4360,7 +4359,7 @@ export function startAutonomousScheduler() {
               taskId: task.taskId,
               workspaceId: task.workspaceId,
               reason: `Task overdue by ${task.hoursOverdue} hours — auto-escalating to level ${task.escalationLevel + 1}`,
-            } } as any).catch(() => null);
+            } }).catch(() => null);
             escalated++;
           }
         }

@@ -405,7 +405,7 @@ export async function dispatchFromChat(
   const enrichedPayload = await enrichPayload(intent.actionId, intent.payload, message, context);
 
   // Consult governance — gracefully fall back to risk-tier defaults on failure
-  let governance: any;
+  let governance: unknown;
   try {
     governance = await automationGovernanceService.evaluateExecution(
       {

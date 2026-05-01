@@ -71,7 +71,7 @@ export interface ToolCall {
 export interface ToolResult {
   toolCallId: string;
   toolName: string;
-  result: any;
+  result: unknown;
   success: boolean;
   executionTimeMs: number;
 }

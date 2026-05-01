@@ -228,7 +228,7 @@ aiBrainRouter.get('/patterns', requireAuth, async (req: Request, res: Response) 
         }
         return acc;
       }, [])
-      .sort((a: any, b: any) => b.count - a.count)
+      .sort((a: unknown, b: unknown) => b.count - a.count)
       .slice(0, 10);
 
     res.json(patterns);

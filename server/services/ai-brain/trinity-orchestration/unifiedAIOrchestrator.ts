@@ -311,7 +311,7 @@ class UnifiedAIOrchestrator {
   async requestClaudeConsultation(params: {
     topic: string;
     question: string;
-    trinityContext: any;
+    trinityContext: unknown;
     context: AIActionContext;
   }): Promise<{ response: string; creditsUsed: number }> {
     const consultation = await claudeService.consult(params);

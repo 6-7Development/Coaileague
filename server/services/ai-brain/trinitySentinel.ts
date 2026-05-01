@@ -673,11 +673,10 @@ class TrinitySentinel {
         case 'restart': {
           log.info(`[TrinitySentinel] Restarting service ${action.target}`);
           const { serviceControlManager } = await import('./serviceControl');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const currentState = serviceControlManager.getServiceStatus(action as any).target;
           if (currentState) {
-            await serviceControlManager.pauseService(action.target as any, 'sentinel-remediation');
-            await serviceControlManager.resumeService(action.target as any, 'sentinel-remediation');
+            await serviceControlManager.pauseService(action.target, 'sentinel-remediation');
+            await serviceControlManager.resumeService(action.target, 'sentinel-remediation');
             action.result = `Service ${action.target} restarted (pause+resume)`;
           } else {
             action.result = `Service ${action.target} not found in control registry`;

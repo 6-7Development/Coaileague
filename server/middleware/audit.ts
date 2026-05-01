@@ -40,7 +40,6 @@ export async function auditContextMiddleware(req: Request, res: Response, next: 
       try {
         // Load user to get their current workspace
         const user = await storage.getUser(userId);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId = user?.currentWorkspaceId;
       } catch (error) {
         log.warn('Failed to load user workspace for audit context:', error);
@@ -232,7 +231,7 @@ export const auditHelpers = {
    * the fact of change is recorded but the raw values are never written to
    * audit_logs.metadata, preventing exfiltration via the audit trail.
    */
-  async employeeUpdated(req: Request, employeeId: string, before: any, after: any) {
+  async employeeUpdated(req: Request, employeeId: string, before: any, after: unknown) {
     // FIX [AUDIT LOG PII]: Scrub sensitive financial/identity fields before writing
     // to audit_logs. Without this, a manager updating payroll info would cause the
     // raw SSN and bank account number to be stored in the audit_logs.metadata JSONB
@@ -257,7 +256,7 @@ export const auditHelpers = {
   /**
    * Log employee deletion
    */
-  async employeeDeleted(req: Request, employeeId: string, employeeData: any) {
+  async employeeDeleted(req: Request, employeeId: string, employeeData: unknown) {
     await createAuditLog(req, 'delete', 'employee', employeeId, { deleted: employeeData }, {
       isSensitiveData: true,
       complianceTag: 'gdpr',

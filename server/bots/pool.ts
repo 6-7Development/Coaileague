@@ -89,8 +89,6 @@ class BotPoolManagerClass {
     }
     const orgCounts = this.orgBotCounts.get(orgId)!;
     orgCounts.set(botId, (orgCounts.get(botId) || 0) + 1);
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ircEmitter.emit({
       event: IRC_EVENTS.JOIN,
       roomId,
@@ -119,8 +117,6 @@ class BotPoolManagerClass {
 
     instance.status = 'terminating';
     const definition = BOT_REGISTRY[instance.botId];
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ircEmitter.emit({
       event: IRC_EVENTS.PART,
       roomId: instance.roomId,

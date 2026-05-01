@@ -315,7 +315,7 @@ export async function refundInvoice(
   // GAP-8 FIX: Issue the actual Stripe refund before modifying our DB.
   // Previously this function only updated the database — money never left Stripe.
   let stripeRefundId: string | undefined;
-  const stripePaymentIntentId: string | null = (invoice as any).paymentIntentId || null;
+  const stripePaymentIntentId: string | null = (invoice as Record<string, unknown>).paymentIntentId || null;
   if (stripePaymentIntentId) {
     try {
       // Use canonical lazy Stripe factory (TRINITY.md §F).

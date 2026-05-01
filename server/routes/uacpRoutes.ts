@@ -33,7 +33,7 @@ const log = createLogger('UacpRoutes');
 const router = Router();
 
 // Middleware to check admin access
-const requireAdminAccess = (req: AuthenticatedRequest, res: any, next: any) => {
+const requireAdminAccess = (req: AuthenticatedRequest, res: any, next: unknown) => {
   const user = req.user;
   const allowedRoles = ['org_owner', 'co_owner', 'org_admin', 'root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
   
@@ -54,8 +54,7 @@ const requireAdminAccess = (req: AuthenticatedRequest, res: any, next: any) => {
 router.get('/dashboard', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
 
     // Count agents by status
     const agentStats = await db.select({
@@ -384,8 +383,7 @@ router.get('/attributes/:entityType/:entityId', requireAdminAccess, async (req, 
         eq(entityAttributes.isActive, true),
         or(
           isNull(entityAttributes.workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          eq((entityAttributes as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
+          eq((entityAttributes as Record<string,unknown>).workspaceId as string, req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId || 'no-workspace')
         )
       ))
       .orderBy(entityAttributes.attributeName);
@@ -453,8 +451,7 @@ router.post('/attributes', requireAdminAccess, async (req, res) => {
 router.delete('/attributes/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
 
     await db.update(entityAttributes)
       .set({ isActive: false, updatedAt: new Date() })
@@ -486,8 +483,7 @@ router.get('/policies', requireAdminAccess, async (req, res) => {
       .from(accessPolicies)
       .where(or(
         eq(accessPolicies.isGlobal, true),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        eq((accessPolicies as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
+        eq((accessPolicies as Record<string,unknown>).workspaceId as string, req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId || 'no-workspace')
       ))
       .orderBy(accessPolicies.priority);
 
@@ -520,8 +516,7 @@ router.post('/policies', requireAdminAccess, async (req, res) => {
     // Only root/platform admins can create global policies
     if (isGlobal) {
       const adminRoles = ['root', 'platform_admin', 'root_admin'];
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      if (!adminRoles.includes(user.role) && !adminRoles.includes((user as any).platformRole)) {
+      if (!adminRoles.includes(user.role) && !adminRoles.includes(req.user?.platformRole)) {
         return res.status(403).json({ error: 'Only platform admins can create global policies' });
       }
     }
@@ -562,8 +557,7 @@ router.patch('/policies/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
     const updates = req.body;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
 
     await db.update(accessPolicies)
       .set({ ...updates, updatedAt: new Date() })
@@ -591,8 +585,7 @@ router.patch('/policies/:id', requireAdminAccess, async (req, res) => {
 router.delete('/policies/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
     await db.update(accessPolicies)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(accessPolicies.id, req.params.id), eq(accessPolicies.workspaceId, workspaceId)));
@@ -624,8 +617,7 @@ router.get('/events', requireAdminAccess, async (req, res) => {
       .from(accessControlEvents)
       .where(or(
         isNull(accessControlEvents.workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        eq((accessControlEvents as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
+        eq((accessControlEvents as Record<string,unknown>).workspaceId as string, req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId || 'no-workspace')
       ))
       .orderBy(desc(accessControlEvents.createdAt))
       .limit(Math.min(Number(limit) || 50, 500));
@@ -662,8 +654,7 @@ router.get('/users', requireAdminAccess, async (req, res) => {
       lastLoginAt: users.lastLoginAt,
     })
     .from(users)
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    .where(eq(users.currentWorkspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace'))
+    .where(eq(users.currentWorkspaceId, req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId || 'no-workspace'))
     .orderBy(users.email);
 
     res.json({ users: userList });
@@ -792,8 +783,7 @@ router.post('/seed-agents', requireAdminAccess, async (req, res) => {
     
     // Only root/platform admins can seed agents
     const adminRoles = ['root', 'platform_admin', 'root_admin'];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (!adminRoles.includes(user.role) && !adminRoles.includes((user as any).platformRole)) {
+    if (!adminRoles.includes(user.role) && !adminRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Only platform admins can seed agents' });
     }
 

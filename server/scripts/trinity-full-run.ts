@@ -146,7 +146,7 @@ async function runScheduler() {
   return { result, elapsed: Date.now() - t0 };
 }
 
-async function printResults(totalGenerated: number, elapsed: number, result: any) {
+async function printResults(totalGenerated: number, elapsed: number, result: unknown) {
   const now = new Date();
   const assigned = result.summary?.totalAssigned || 0;
   const failed = result.summary?.totalFailed || 0;

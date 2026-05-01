@@ -215,7 +215,7 @@ class ChatConnectionManager {
     this.subscribedRooms.add(roomId);
   }
 
-  handleExternalMessage(data: any) {
+  handleExternalMessage(data: unknown) {
     this.handleIncomingMessage(data);
   }
 
@@ -229,7 +229,7 @@ class ChatConnectionManager {
     }
   }
 
-  private handleIncomingMessage(data: any) {
+  private handleIncomingMessage(data: unknown) {
     if (data.type === "chat_message" || data.type === "new_message") {
       const conversationId = data.conversationId || data.roomId;
       if (!conversationId) return;

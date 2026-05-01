@@ -361,8 +361,8 @@ router.post('/command', requirePlatformStaff, async (req: Request, res: Response
     
     const userId = user.id;
     // Only use authenticated user's role from session, not from request body
-    const userRole = (user as any).platformRole || user.role || 'employee';
-    const workspaceId = req.workspaceId || user.currentWorkspaceId || (user as any).workspaceId || 'default';
+    const userRole = req.user?.platformRole || user.role || 'employee';
+    const workspaceId = req.workspaceId || user.currentWorkspaceId || req.user?.workspaceId || 'default';
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ 

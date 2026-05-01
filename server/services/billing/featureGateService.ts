@@ -421,7 +421,7 @@ class FeatureGateService {
 
     if (!user) return false;
 
-    const platformRole = (user as any).platformRole;
+    const platformRole = req.user?.platformRole;
     if (platformRole && SUPPORT_ROLES.includes(platformRole)) {
       return true;
     }
@@ -543,7 +543,6 @@ class FeatureGateService {
       return { allowed: true };
     } else if (access === false) {
       // Find the minimum tier that allows this feature
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const tierHierarchy: TierKey[] = ['free', 'trial', 'starter', 'professional', 'business', 'enterprise', 'strategic' as TierKey];
       const requiredTier = tierHierarchy.find(t => featureAccess[t] === true);
       return { allowed: false, requiredTier: requiredTier || 'professional' };
@@ -571,7 +570,7 @@ class FeatureGateService {
     if (!workspace) return false;
 
     // Check if addons are stored in workspace metadata
-    const metadata = (workspace as any).metadata as any;
+    const metadata = (workspace as Record<string, unknown>).metadata as any;
     if (metadata?.activeAddons?.includes(addonKey)) {
       return true;
     }

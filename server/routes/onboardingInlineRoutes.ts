@@ -243,7 +243,7 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
 router.get('/status', async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any).activeWorkspaceId || (user as any).defaultWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.activeWorkspaceId || req.user?.defaultWorkspaceId;
 
     if (!workspaceId) {
       return res.json({ status: 'not_started', progress: 0 });

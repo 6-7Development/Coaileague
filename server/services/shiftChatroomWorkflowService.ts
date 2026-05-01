@@ -672,7 +672,7 @@ class ShiftChatroomWorkflowService {
         // Persist every GPS-tagged shift photo to shift_proof_photos so it
         // survives restarts and is available to transparency PDFs.
         if (message.messageType === 'photo' && chatroom.shiftId && message.attachmentUrl) {
-          const rawGps = (message.metadata as any)?.gps ?? {};
+          const rawGps = (message.metadata as Record<string,unknown>)?.gps ?? {};
           const latRaw = rawGps.lat ?? rawGps.latitude;
           const lngRaw = rawGps.lng ?? rawGps.longitude;
           const lat = latRaw !== undefined && latRaw !== null ? Number(latRaw) : NaN;
@@ -696,7 +696,7 @@ class ShiftChatroomWorkflowService {
             // fallback to shift assignment when sender lookup is unavailable.
             const employeeIdForPhoto = senderEmployee?.id || shiftAssignment?.employeeId || null;
             if (employeeIdForPhoto) {
-              const capturedAtRaw = (message.metadata as any)?.capturedAt;
+              const capturedAtRaw = (message.metadata as Record<string,unknown>)?.capturedAt;
               const capturedAt = capturedAtRaw ? new Date(capturedAtRaw) : new Date();
               const safeCapturedAt = Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt;
               const chainOfCustodyHash = crypto
@@ -718,8 +718,8 @@ class ShiftChatroomWorkflowService {
                 gpsAddress: rawGps.address ?? null,
                 gpsAccuracy: rawGps.accuracy !== undefined && rawGps.accuracy !== null ? String(rawGps.accuracy) : null,
                 capturedAt: safeCapturedAt,
-                deviceMeta: (message.metadata as any)?.deviceMeta ?? null,
-                photoType: (message.metadata as any)?.photoType ?? 'hourly_proof',
+                deviceMeta: (message.metadata as Record<string,unknown>)?.deviceMeta ?? null,
+                photoType: (message.metadata as Record<string,unknown>)?.photoType ?? 'hourly_proof',
                 notes: message.content || null,
                 isAuditProtected: true,
                 chainOfCustodyHash,
@@ -1274,7 +1274,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Check if data can be deleted (audit integrity system)
    */
-  canDelete(entityType: 'message' | 'photo' | 'dar' | 'chatroom', entity: any): {
+  canDelete(entityType: 'message' | 'photo' | 'dar' | 'chatroom', entity: unknown): {
     allowed: boolean;
     reason: string;
   } {

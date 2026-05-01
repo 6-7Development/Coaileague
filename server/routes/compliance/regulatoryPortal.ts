@@ -99,7 +99,7 @@ router.use(readLimiter);
 // ── Phase 30 Tier Enforcement ──────────────────────────────────────────────────
 // Auditor dashboard routes verify the *audited workspace* is on Business+ tier.
 // This prevents orgs on lower tiers from inadvertently exposing auditor portals.
-router.use('/dashboard', async (req: AuthenticatedRequest, res: Response, next: any) => {
+router.use('/dashboard', async (req: AuthenticatedRequest, res: Response, next: unknown) => {
   try {
     // Extract workspaceId from path: /dashboard/:workspaceId/...
     const workspaceId = req.path.split('/').filter(Boolean)[0];
@@ -355,7 +355,7 @@ router.post('/request/:id/dispute', requireAuth, async (req: Request, res: Respo
   try {
     const { reason } = req.body;
     const actor = req.user;
-    const actorWorkspaceId = req.workspaceId || (actor as any)?.workspaceId || actor?.currentWorkspaceId;
+    const actorWorkspaceId = req.workspaceId || (actor as Record<string, unknown>)?.workspaceId || actor?.currentWorkspaceId;
     if (!actorWorkspaceId) return res.status(400).json({ success: false, error: 'Workspace context required' });
 
     const [request] = await db.select().from(auditorVerificationRequests)

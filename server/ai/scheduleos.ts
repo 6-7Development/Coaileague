@@ -565,7 +565,7 @@ Analyze the solution quality and provide:
           return !hasTimeEntry && shift.status === 'scheduled';
         }).length;
 
-        const totalHours = timeEntriesData.reduce((sum: number, e: any) => {
+        const totalHours = timeEntriesData.reduce((sum: number, e: unknown) => {
           return sum + (parseFloat(e.totalHours?.toString() || '0'));
         }, 0);
 
@@ -1290,7 +1290,6 @@ RESPONSE FORMAT (JSON)
       assignments,
       unfilled,
       processingTimeMs,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       warnings: marginWarnings.length > 0 ? marginWarnings : undefined,
     };
   }

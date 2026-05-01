@@ -237,7 +237,7 @@ export function registerInfraActions() {
       : await db.select().from(payrollRuns)
           .where(and(
             eq(payrollRuns.workspaceId, workspaceId),
-            inArray(payrollRuns.status as any, ['approved', 'completed', 'paid'])
+            inArray(payrollRuns.status, ['approved', 'completed', 'paid'])
           ))
           .orderBy(desc(payrollRuns.createdAt))
           .limit(1)

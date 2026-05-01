@@ -43,7 +43,7 @@ function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Pro
 }
 
 async function getEmployeeUserId(employeeId: string): Promise<string | null> {
-  const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+  const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
   return (emp as any)?.userId || null;
 }
 
@@ -56,7 +56,7 @@ export function registerShiftConfirmationActions() {
       where: workspaceId
         ? and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))
         : eq(shifts.id, shiftId),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!shift) return { error: `Shift ${shiftId} not found` };
     if (!(shift as any).employeeId) return { error: 'Shift has no assigned officer — cannot send confirmation', shiftId };
     if ((shift as any).acknowledgedAt) return { alreadyConfirmed: true, shiftId, confirmedAt: (shift as any).acknowledgedAt };
@@ -66,7 +66,7 @@ export function registerShiftConfirmationActions() {
       .where(eq(shifts.id, shiftId));
 
     const clientData = (shift as any).clientId
-      ? await db.query.clients?.findFirst({ where: eq(clients.id, (shift as any).clientId) } as any).catch(() => null)
+      ? await db.query.clients?.findFirst({ where: eq(clients.id, (shift as any).clientId) }).catch(() => null)
       : null;
     const siteName = (clientData as any)?.name || 'your assigned site';
     const startTime = new Date((shift as any).startTime);
@@ -103,7 +103,7 @@ export function registerShiftConfirmationActions() {
     if (!shiftId || !officerId || confirmed === undefined) {
       return { error: 'shiftId, officerId, confirmed (true/false) required' };
     }
-    const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) } as any).catch(() => null);
+    const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) }).catch(() => null);
     if (!shift) return { error: `Shift ${shiftId} not found` };
     const ws = workspaceId || (shift as any).workspaceId;
     const now = new Date();
@@ -146,7 +146,7 @@ export function registerShiftConfirmationActions() {
         notes: `Replacement needed — original officer declined. Reason: ${reason || 'Not provided'}`,
         createdAt: now,
         updatedAt: now,
-      } as any).returning().catch(() => [null]);
+      }).returning().catch(() => [null]);
 
       const managers = await db.select({ userId: workspaceMembers.userId })
         .from(workspaceMembers)
@@ -194,10 +194,8 @@ export function registerShiftConfirmationActions() {
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         eq(shifts.requiresAcknowledgment, true),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        isNull(shifts as any).acknowledgedAt,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        isNull(shifts as any).deniedAt,
+        isNull(shifts.acknowledgedAt),
+        isNull(shifts.deniedAt),
         ne(shifts.status, 'cancelled'),
         gte(shifts.startTime, now),
         lt(shifts.startTime, threshold),

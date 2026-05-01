@@ -538,7 +538,7 @@ export function registerMissingDomainActions(): void {
         coverageQueued: { type: 'boolean' },
       },
     },
-    handler: async (params: Record<string, unknown>, ctx: any) => {
+    handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: 'stub', shiftStatus: 'open', coverageQueued: true };
     },
   } as any);
@@ -565,7 +565,7 @@ export function registerMissingDomainActions(): void {
         status:    { type: 'string', enum: ['resolved'] },
       },
     },
-    handler: async (params: Record<string, unknown>, ctx: any) => {
+    handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: params.callOffId, status: 'resolved' };
     },
   } as any);

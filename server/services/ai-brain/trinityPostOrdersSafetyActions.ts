@@ -52,7 +52,7 @@ const getPostOrdersForShift = mkAction('postorders.get_for_shift', async (req) =
       .orderBy(desc(shiftOrders.createdAt));
 
     if (orders.length === 0) {
-      const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) } as any).catch(() => null);
+      const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) }).catch(() => null);
       return createResult(req.actionId, true,
         `No specific post orders on file for shift ${shiftId}. ${(shift as any)?.notes ? 'Shift notes: ' + (shift as any).notes : 'Officer should follow general company policy.'} Always call client contact if uncertain about site-specific procedures.`,
         { shiftId, orders: [], hasOrders: false, shiftNotes: (shift as any)?.notes || null }, start);

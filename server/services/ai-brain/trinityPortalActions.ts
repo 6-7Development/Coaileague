@@ -282,7 +282,7 @@ export function registerPortalActions(): void {
           email: client.email || '',
           isActive: true,
           expiresAt,
-        } as any).returning();
+        }).returning();
       }
 
       const appBase = process.env.APP_BASE_URL || 'https://www.coaileague.com';

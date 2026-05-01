@@ -107,7 +107,7 @@ export interface AutomationResult {
   status: 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed' | 'paused';
   summary: string;
   details: Record<string, unknown>;
-  preview: any;
+  preview: unknown;
   estimatedImpact?: {
     recordsAffected: number;
     estimatedValue?: number;
@@ -763,7 +763,7 @@ class TrinityAutomationToggleService {
   private async generatePreview(request: AutomationRequest): Promise<{
     summary: string;
     details: Record<string, unknown>;
-    previewData: any;
+    previewData: unknown;
     impact: AutomationResult['estimatedImpact'];
   }> {
     switch (request.feature) {

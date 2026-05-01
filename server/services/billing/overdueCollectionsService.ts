@@ -54,7 +54,7 @@ async function alreadyEscalated(invoiceId: string, tier: number): Promise<boolea
     .from(universalAuditTrail)
     .where(and(
       eq(universalAuditTrail.entityId, invoiceId),
-      eq(universalAuditTrail.action as any, action),
+      eq(universalAuditTrail.action, action),
       gte(universalAuditTrail.createdAt, cutoff)
     ))
     .limit(1);
@@ -278,7 +278,7 @@ export async function runOverdueCollectionsSweep(): Promise<CollectionsResult> {
     })
     .from(invoices)
     .where(and(
-      eq(invoices.status as any, 'sent'),
+      eq(invoices.status, 'sent'),
       lt(invoices.dueDate, now)
     ));
 
@@ -330,7 +330,7 @@ export async function runOverdueCollectionsSweep(): Promise<CollectionsResult> {
       await db
         .update(invoices)
         .set({ status: 'overdue' })
-        .where(and(eq(invoices.id, inv.id), eq(invoices.status as any, 'sent')));
+        .where(and(eq(invoices.id, inv.id), eq(invoices.status, 'sent')));
 
       if (days >= 30) {
         if (await alreadyEscalated(inv.id, 3)) continue;

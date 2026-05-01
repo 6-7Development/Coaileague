@@ -237,7 +237,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
       },
       tests: {
         total: tests.length,
-        byCategory: tests.reduce((acc: Record<string, number>, t: any) => {
+        byCategory: tests.reduce((acc: Record<string, number>, t: unknown) => {
           acc[t.category] = (acc[t.category] || 0) + 1;
           return acc;
         }, {}),

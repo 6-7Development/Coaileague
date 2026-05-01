@@ -447,7 +447,7 @@ class DurableJobQueueService {
     log.info(`[DurableJobQueue] Job ${jobId} completed`);
   }
 
-  private async markJobFailed(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async markJobFailed(jobId: string, error: string, jobRow: unknown): Promise<void> {
     const now = new Date();
     const attempts = (jobRow.attempts || 0) + 1;
     const maxRetries = jobRow.max_retries || this.DEFAULT_MAX_RETRIES;
@@ -471,11 +471,11 @@ class DurableJobQueueService {
     }
   }
 
-  private async handleJobFailure(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async handleJobFailure(jobId: string, error: string, jobRow: unknown): Promise<void> {
     await this.markJobFailed(jobId, error, jobRow);
   }
 
-  private async scheduleRetry(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async scheduleRetry(jobId: string, error: string, jobRow: unknown): Promise<void> {
     const now = new Date();
     const attempts = (jobRow.attempts || 0) + 1;
     const retryDelayMs = jobRow.retry_delay_ms || this.DEFAULT_RETRY_DELAY_MS;

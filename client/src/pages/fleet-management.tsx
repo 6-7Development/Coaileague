@@ -169,7 +169,7 @@ export default function FleetManagement() {
     id: "fleet-management",
     title: "Fleet Management",
     subtitle: "Track and manage your organization's vehicles, mileage, and maintenance",
-    category: "operations" as any,
+    category: "operations",
     showHeader: true,
     headerActions: (
       <Button onClick={() => setShowAddDialog(true)} data-testid="button-add-vehicle">

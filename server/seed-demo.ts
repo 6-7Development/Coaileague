@@ -385,7 +385,7 @@ async function populateDemoData() {
     platformFeePercentage: "10.00",
     platformFeeAmount: invoice1PlatformFee.toFixed(2),
     businessAmount: invoice1BusinessAmount.toFixed(2),
-  } as any).returning();
+  }).returning();
   const invoice1 = invoice1Result[0];
 
   await db.insert(invoiceLineItems).values({
@@ -421,7 +421,7 @@ async function populateDemoData() {
     platformFeePercentage: "10.00",
     platformFeeAmount: invoice2PlatformFee.toFixed(2),
     businessAmount: invoice2BusinessAmount.toFixed(2),
-  } as any).returning();
+  }).returning();
   const invoice2 = invoice2Result[0];
 
   await db.insert(invoiceLineItems).values([

@@ -235,7 +235,7 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
         // Calculate engagement score based on rating questions (1-5 scale)
         const ratingResponses = Object.values(responses).filter((r: unknown) => typeof r === 'number' && r >= 1 && r <= 5);
         if (ratingResponses.length > 0) {
-          const avgRating = ratingResponses.reduce((sum: number, r: any) => sum + r, 0) / ratingResponses.length;
+          const avgRating = ratingResponses.reduce((sum: number, r: unknown) => sum + r, 0) / ratingResponses.length;
           engagementScore = (avgRating / 5) * 100; // Convert 1-5 scale to 0-100
         }
         

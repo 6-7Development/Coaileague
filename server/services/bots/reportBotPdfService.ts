@@ -120,7 +120,7 @@ class ReportBotPdfService {
             ? `${emp.firstName} ${emp.lastName}`
             : (emp.firstName || 'Officer');
           officerEmployeeId = emp.id;
-          officerLicenseNumber = (emp as any).licenseNumber || (emp as any).badgeNumber || '';
+          officerLicenseNumber = (emp as EmployeeWithStatus).licenseNumber || (emp as EmployeeWithStatus).badgeNumber || '';
         }
       }
 

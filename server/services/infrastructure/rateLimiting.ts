@@ -364,7 +364,7 @@ export const rateLimiting = RateLimitingService.getInstance();
  * Express middleware for rate limiting
  */
 export function rateLimitMiddleware(getTenantId: (req: any) => string, getPlan?: (req: any) => TenantQuota['plan']) {
-  return (req: any, res: any, next: any) => {
+  return (req: any, res: any, next: unknown) => {
     const tenantId = getTenantId(req);
     const plan = getPlan ? getPlan(req) : 'free';
 

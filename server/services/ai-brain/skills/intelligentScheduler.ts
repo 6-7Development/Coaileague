@@ -429,24 +429,24 @@ export class IntelligentSchedulerSkill extends BaseSkill {
         const shiftCount = shiftCountByEmployee[emp.id] || 0;
         
         const homeLocation = {
-          lat: parseFloat((emp as any).homeLatitude || (emp as any).latitude || '0') || params.shiftLocation.lat,
-          lng: parseFloat((emp as any).homeLongitude || (emp as any).longitude || '0') || params.shiftLocation.lng,
+          lat: parseFloat((emp as EmployeeWithStatus).homeLatitude || (emp as EmployeeWithStatus).latitude || '0') || params.shiftLocation.lat,
+          lng: parseFloat((emp as EmployeeWithStatus).homeLongitude || (emp as EmployeeWithStatus).longitude || '0') || params.shiftLocation.lng,
         };
 
-        const compositeScore = parseFloat((emp as any).compositeScore || '0');
-        const attendanceVal = parseFloat((emp as any).attendanceRate || '0');
-        const perfRating = parseFloat((emp as any).performanceRating || '0');
+        const compositeScore = parseFloat((emp as EmployeeWithStatus).compositeScore || '0');
+        const attendanceVal = parseFloat((emp as EmployeeWithStatus).attendanceRate || '0');
+        const perfRating = parseFloat((emp as EmployeeWithStatus).performanceRating || '0');
 
         candidates.push({
           employeeId: emp.id,
           employeeName: `${emp.firstName} ${emp.lastName}`,
           reliabilityRating: compositeScore > 0 ? Math.min(1, compositeScore / 100) : (attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : 0.6),
           skills: empSkills,
-          attendanceRate: attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : ((emp as any).status === 'active' ? 0.7 : 0.5),
-          performanceRating: perfRating > 0 ? Math.min(1, perfRating / 5) : ((emp as any).status === 'active' ? 0.6 : 0.4),
+          attendanceRate: attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : ((emp as EmployeeWithStatus).status === 'active' ? 0.7 : 0.5),
+          performanceRating: perfRating > 0 ? Math.min(1, perfRating / 5) : ((emp as EmployeeWithStatus).status === 'active' ? 0.6 : 0.4),
           homeLocation,
           previousShiftsWithClient: shiftCount,
-          avgClientRating: parseFloat((emp as any).qualityScore || '0') > 0 ? Math.min(5, parseFloat((emp as any).qualityScore) / 20) : 3.5,
+          avgClientRating: parseFloat((emp as EmployeeWithStatus).qualityScore || '0') > 0 ? Math.min(5, parseFloat((emp as EmployeeWithStatus).qualityScore) / 20) : 3.5,
           isContractor: false,
         });
       }

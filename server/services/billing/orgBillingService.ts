@@ -108,7 +108,7 @@ class OrgBillingServiceImpl {
     try {
       const usageBreakdown = await tokenManager.getMonthlyBreakdown(workspaceId);
       creditsUsedThisPeriod = usageBreakdown.reduce(
-        (sum: number, item: any) => sum + (Number(item.totalCredits) || 0), 0
+        (sum: number, item: unknown) => sum + (Number(item.totalCredits) || 0), 0
       );
     } catch {
       // Non-critical fallback: if ledger query fails, use balance math
@@ -141,7 +141,7 @@ class OrgBillingServiceImpl {
       hasHardCap: HARD_CAP_TIERS.has(tier),
       hasSoftCap: SOFT_CAP_TIERS.has(tier),
       nextResetAt: null,
-      nextBillingDate: (workspace as any).nextInvoiceAt ?? null,
+      nextBillingDate: (workspace as Record<string, unknown>).nextInvoiceAt ?? null,
       lastInvoiceAmount: lastInvoice?.totalAmount ? parseFloat(lastInvoice.totalAmount) : null,
       lastInvoiceDate: lastInvoice?.createdAt ?? null,
       totalSpentAllTime: 0,

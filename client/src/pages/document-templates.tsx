@@ -486,7 +486,7 @@ export default function DocumentTemplatesPage() {
 }
 
 function TemplateFormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: (f: typeof EMPTY_FORM) => void }) {
-  const update = (field: string, value: any) => setForm({ ...form, [field]: value });
+  const update = (field: string, value: unknown) => setForm({ ...form, [field]: value });
 
   return (
     <>

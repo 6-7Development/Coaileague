@@ -82,7 +82,7 @@ function getBillableAmountLabel(entry: unknown): string {
   return formatCurrency(getBillableAmountValue(entry));
 }
 
-function employeeName(employee: any, fallbackId: string): string {
+function employeeName(employee: Record<string, unknown>, fallbackId: string): string {
   if (!employee) return fallbackId;
   const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
   return name || fallbackId;

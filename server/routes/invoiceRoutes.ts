@@ -171,7 +171,7 @@ import { createHash } from "crypto";
       // ── TRACE PROTOCOL V2: DOCUMENT VAULT & PDF INTEGRITY ────────────────────
       // All production documents must be hashed and registered in the vault.
       
-      const generatePdf = async (doc: any) => {
+      const generatePdf = async (doc: unknown) => {
         // Header
         doc.fontSize(24).text(workspace.companyName || PLATFORM.name, { align: 'center' });
         doc.fontSize(10).text(workspace.address || '', { align: 'center' });
@@ -375,7 +375,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           
           // Get last invoice for this client
           const clientInvoices = allInvoices.filter((inv: unknown) => inv.clientId === client.id);
-          const lastInvoice = clientInvoices.sort((a: any, b: any) => 
+          const lastInvoice = clientInvoices.sort((a: unknown, b: unknown) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
 
@@ -459,8 +459,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
                 total: totalStr,
                 status: "draft",
                 notes: `Auto-generated invoice for ${billingCycle} billing cycle`,
-              } as any)
-              .returning();
+              }).returning();
 
             try {
               await AtomicFinancialLockService.stageForInvoice({
@@ -483,7 +482,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           generatedInvoices.push({
             invoice,
             client,
-            unbilledHours: unbilledEntries.reduce((sum: number, e: any) => 
+            unbilledHours: unbilledEntries.reduce((sum: number, e: unknown) => 
               sum + parseFloat(e.totalHours as string || "0"), 0
             ),
           });
@@ -578,7 +577,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // ── WRITE-PROTECT: Closed invoices cannot be re-sent ──────────────────────
       // GAP-31 FIX: Added 'refunded' — a refunded invoice must not be re-sent to client.
       const SEND_BLOCKED_STATUSES = ['paid', 'void', 'cancelled', 'refunded', 'disputed'] as const;
-      if (SEND_BLOCKED_STATUSES.includes((invoice as any).status)) {
+      if (SEND_BLOCKED_STATUSES.includes((invoice as Record<string, unknown>).status)) {
         return res.status(403).json({
           message: "This record has been closed and cannot be modified",
           code: 'RECORD_CLOSED',
@@ -2749,7 +2748,7 @@ router.post('/portal/:accessToken/invoice/:invoiceId/dispute', async (req, res) 
       performedBy: `portal:${portal.clientId}`,
       metadata: { reason: reason || 'No reason provided', clientId: portal.clientId, source: 'client_portal' },
       createdAt: new Date(),
-    } as any).catch((err: unknown) => log.warn('[BillingAudit] billing_audit_log write failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[BillingAudit] billing_audit_log write failed (non-blocking):', err?.message));
 
     // LAW 21 — Notify org owner of client-initiated invoice dispute
     (async () => {

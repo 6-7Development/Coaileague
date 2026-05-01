@@ -197,7 +197,7 @@ advancedSchedulingRouter.post('/swap-requests', requireAuth, async (req: Request
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
     res.status(201).json({ success: true, swapRequest: created });
   } catch (err: unknown) {
@@ -275,7 +275,7 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireAuth, asy
     const { eq, and } = await import('drizzle-orm');
     const [updated] = await db.update(shiftSwapRequests)
       .set({ status: 'approved', updatedAt: new Date() } as any)
-      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as any).workspaceId, workspaceId) : undefined))
+      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as Record<string,unknown>).workspaceId as string, workspaceId) : undefined))
       .returning();
     if (!updated) return res.status(404).json({ error: 'Swap request not found' });
     res.json({ success: true, swapRequest: updated });
@@ -296,7 +296,7 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/reject', requireAuth, asyn
     const { eq, and } = await import('drizzle-orm');
     const [updated] = await db.update(shiftSwapRequests)
       .set({ status: 'rejected', updatedAt: new Date(), ...(reason ? { rejectionReason: reason } : {}) } as any)
-      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as any).workspaceId, workspaceId) : undefined))
+      .where(and(eq(shiftSwapRequests.id, swapId), (shiftSwapRequests as any).workspaceId ? eq((shiftSwapRequests as Record<string,unknown>).workspaceId as string, workspaceId) : undefined))
       .returning();
     if (!updated) return res.status(404).json({ error: 'Swap request not found' });
     res.json({ success: true, swapRequest: updated });
@@ -416,7 +416,7 @@ advancedSchedulingRouter.post('/shifts/:shiftId/duplicate', requireManager, asyn
       endTime: newEnd ? new Date(newEnd) : targetDate ? new Date(targetDate) : original.endTime,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
     res.json({ success: true, shift: created[0] });
   } catch (err: unknown) {
     res.status(500).json({ error: err.message || 'Failed to duplicate shift' });

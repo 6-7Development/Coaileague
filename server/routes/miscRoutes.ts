@@ -734,7 +734,7 @@ router.get("/api/identity/me", requireAuth, async (req: AuthenticatedRequest, re
       supportCode = null;
     }
 
-    const platformRole = (user as any).platformRole ?? null;
+    const platformRole = req.user?.platformRole ?? null;
     const isPlatformStaff = !!platformRole &&
       ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(platformRole);
     const userType: 'employee' | 'support_agent' | 'client' | 'platform_admin' | 'guest' =
@@ -798,7 +798,7 @@ router.get("/api/identity/me", requireAuth, async (req: AuthenticatedRequest, re
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          displayName: (user as any).displayName,
+          displayName: req.user?.displayName,
           role: user.role,
           platformRole,
           currentWorkspaceId: user.currentWorkspaceId,
@@ -1867,7 +1867,7 @@ router.delete("/api/shift-templates/:id", requireAuth, async (req: Authenticated
     const { db } = await import('../db');
     const { eq, and } = await import('drizzle-orm');
     const [deleted] = await db.delete(shiftTemplates)
-      .where(and(eq(shiftTemplates.id, id), eq(shiftTemplates.workspaceId as any, workspaceId)))
+      .where(and(eq(shiftTemplates.id, id), eq(shiftTemplates.workspaceId, workspaceId)))
       .returning();
     if (!deleted) return res.status(404).json({ message: 'Template not found' });
     res.json({ success: true });

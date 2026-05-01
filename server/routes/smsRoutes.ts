@@ -18,7 +18,7 @@ const log = createLogger('SmsRoutes');
 
 
 interface AuthenticatedRequest extends Request {
-  user: any;
+  user: Record<string, unknown>;
   workspaceId?: string;
 }
 

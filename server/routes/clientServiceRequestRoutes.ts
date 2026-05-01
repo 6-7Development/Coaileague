@@ -97,8 +97,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
           slaStatus: 'on_track',
           lockVersion: 0,
           escalationLevel: 0,
-        } as any)
-        .returning();
+        }).returning();
 
       // Back-link on the service request
       await tx

@@ -4,7 +4,7 @@ import { FormSection, FieldError } from './shared';
 
 interface Props {
   data: Record<string, unknown>;
-  onChange: (field: string, value: any) => void;
+  onChange: (field: string, value: unknown) => void;
   errors: Record<string, string>;
 }
 

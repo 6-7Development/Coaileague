@@ -1014,7 +1014,7 @@ class AIBrainMasterOrchestrator {
             notes: notes || null,
             createdAt: new Date(),
             updatedAt: new Date(),
-          } as any).returning();
+          }).returning();
 
           if (!created) {
             return { success: false, actionId: request.actionId, message: 'Failed to create payroll run', executionTimeMs: Date.now() - startTime };
@@ -1027,7 +1027,7 @@ class AIBrainMasterOrchestrator {
             title: 'Payroll Run Created',
             description: `New payroll run for period ${periodStart} to ${periodEnd}`,
             metadata: { payrollRunId: (created as any).id, periodStart, periodEnd, createdBy: request.userId },
-          } as any).catch(() => null);
+          }).catch(() => null);
 
           return {
             success: true,
@@ -3838,7 +3838,7 @@ class AIBrainMasterOrchestrator {
     // Listens to lightweight internal brain broadcasts emitted via platformEventBus.emit()
     // by broadcastToGlobalWorkspace(). These are NOT full platform events (no DB persist)
     // but need to be surfaced here for cross-region observability and knowledge graph updates.
-    platformEventBus.on('brain.global_workspace', (message: any) => {
+    platformEventBus.on('brain.global_workspace', (message: unknown) => {
       try {
         const { fromRegion, eventType: evtType, confidence = 0.8, workspaceId: wsId } = message;
         log.info(`[Global Workspace] Internal broadcast received: ${fromRegion} → ${evtType} (ws=${wsId ?? 'global'}, conf=${confidence.toFixed(2)})`);
@@ -5179,7 +5179,7 @@ Return the complete component code with all imports.`,
           }
 
           const { trinityMemoryService } = await import('./trinityMemoryService');
-          let result: any;
+          let result: unknown;
           
           switch (operation) {
             case 'store':
@@ -5490,7 +5490,7 @@ Provide your analysis in the following format:
         }
         
         try {
-          let result: any;
+          let result: unknown;
           switch (operation) {
             case 'read':
               result = await (trinityExecutionFabric as any).readFile(path);

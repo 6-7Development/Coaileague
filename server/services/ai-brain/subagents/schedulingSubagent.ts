@@ -489,7 +489,7 @@ Generate a JSON schedule with format:
         
         // Calculate metrics
         const schedule = parsed.schedule || [];
-        const totalHours = schedule.reduce((sum: number, s: any) => {
+        const totalHours = schedule.reduce((sum: number, s: unknown) => {
           const hours = this.calculateShiftHours(s.startTime, s.endTime);
           return sum + hours;
         }, 0);
@@ -717,7 +717,7 @@ Generate a JSON schedule with format:
       .where(eq(laborLawRules.jurisdiction, jurisdiction));
   }
 
-  private async fetchAvailableEmployeesForShift(workspaceId: string, shiftData: any) {
+  private async fetchAvailableEmployeesForShift(workspaceId: string, shiftData: unknown) {
     return await db.select()
       .from(employees)
       .where(and(
@@ -906,7 +906,7 @@ Generate a JSON schedule with format:
     return date;
   }
 
-  private async calculateSwapScore(employee: any, shiftData: any): Promise<{
+  private async calculateSwapScore(employee: Record<string, unknown>, shiftData: unknown): Promise<{
     total: number;
     matchedSkills: string[];
     availability: string;
@@ -1014,7 +1014,7 @@ Generate a JSON schedule with format:
     const responseText = aiResult.text;
     
     // Parse JSON response from Gemini
-    let parsedResponse: any;
+    let parsedResponse: unknown;
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

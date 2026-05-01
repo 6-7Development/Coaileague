@@ -27,7 +27,7 @@ interface UseOnboardingFormReturn {
   currentStep: number;
   completedSteps: number[];
   stepData: Record<string, unknown>;
-  setField: (field: string, value: any) => void;
+  setField: (field: string, value: unknown) => void;
   goToStep: (step: number) => void;
   submitStep: (step: number) => Promise<{ success: boolean; errors: { field: string; message: string }[] }>;
   finalize: () => Promise<{ pdfUrl: string }>;
@@ -65,7 +65,7 @@ export function useOnboardingForm(onboardingId: string): UseOnboardingFormReturn
   }, [session?.id]); // only on session load, not every render
 
   // ── Field updates (optimistic) ──────────────────────────────────────────────
-  const setField = useCallback((field: string, value: any) => {
+  const setField = useCallback((field: string, value: unknown) => {
     setStepData(prev => ({ ...prev, [field]: value }));
     dirtyRef.current = true;
   }, []);

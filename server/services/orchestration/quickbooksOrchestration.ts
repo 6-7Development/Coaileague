@@ -222,9 +222,7 @@ class QuickBooksOrchestrationService {
               errorCode: 'CONNECTION_MISSING',
             };
           }
-
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          if (connection.accessTokenExpiresAt && new Date() > (connection as any).accessTokenExpiresAt) {
+          if (connection.accessTokenExpiresAt && new Date() > (connection as Record<string, unknown>).accessTokenExpiresAt) {
             try {
               await quickbooksOAuthService.refreshAccessToken(connection.id);
             } catch (refreshError : unknown) {
@@ -438,7 +436,7 @@ class QuickBooksOrchestrationService {
    */
   private async fetchConnectionContext(workspaceId: string): Promise<QBConnectionContext | null> {
     const connection = await this.getConnectionRecord(workspaceId);
-    if (!connection || !connection.accessToken || !(connection as any).partnerAccountId) {
+    if (!connection || !connection.accessToken || !(connection as Record<string, unknown>).partnerAccountId) {
       return null;
     }
 
@@ -453,7 +451,7 @@ class QuickBooksOrchestrationService {
     return {
       connectionId: connection.id,
       accessToken: decryptedToken,
-      realmId: (connection as any).partnerAccountId,
+      realmId: (connection as Record<string, unknown>).partnerAccountId,
       environment,
       apiBase: environment === 'production'
         ? (INTEGRATIONS as any).quickbooks.apiBaseUrl

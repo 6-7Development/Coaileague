@@ -66,7 +66,7 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
       })
         .from(invoices)
         .where(and(
-          eq((invoices as any).workspaceId, workspaceId),
+          eq((invoices as Record<string,unknown>).workspaceId as string, workspaceId),
           eq((invoices as any).clientId, client.id),
           gte(invoices.createdAt, monthStart)
         ))

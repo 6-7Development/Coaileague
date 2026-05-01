@@ -153,7 +153,7 @@ export async function runTimesheetReminderScan(): Promise<{
             and(
               eq(notifications.workspaceId, ws.id),
               eq(notifications.type, 'timesheet_submission_reminder'),
-              gte(notifications.createdAt as any, periodStart),
+              gte(notifications.createdAt, periodStart),
             ),
           )
           .catch(() => []);
@@ -215,7 +215,7 @@ export async function runTimesheetReminderScan(): Promise<{
               and(
                 eq(notifications.workspaceId, ws.id),
                 eq(notifications.type, 'timesheet_approval_reminder'),
-                gte(notifications.createdAt as any, periodStart),
+                gte(notifications.createdAt, periodStart),
               ),
             )
             .catch(() => []);

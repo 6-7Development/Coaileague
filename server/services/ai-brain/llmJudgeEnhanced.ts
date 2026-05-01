@@ -29,7 +29,7 @@ const log = createLogger('llmJudgeEnhanced');
 export interface RiskEvaluationRequest {
   subjectId: string;
   subjectType: 'action' | 'hotpatch' | 'response' | 'output' | 'workflow';
-  content: any;
+  content: unknown;
   context: Record<string, unknown>;
   workspaceId?: string;
   userId?: string;
@@ -104,7 +104,7 @@ export interface PolicyRule {
 export interface PolicyCondition {
   field: string;
   operator: 'equals' | 'contains' | 'gt' | 'lt' | 'matches' | 'in';
-  value: any;
+  value: unknown;
 }
 
 export interface RegressionPattern {
@@ -678,7 +678,7 @@ Respond with JSON:
     });
   }
 
-  private getNestedValue(obj: any, path: string): any {
+  private getNestedValue(obj: unknown, path: string): any {
     return path.split('.').reduce((current, key) => current?.[key], obj);
   }
 

@@ -211,7 +211,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       requiresSignature: true,
       signatureRequired: 'specific_users',
       totalSignaturesRequired: Array.isArray(signingSequence) ? signingSequence.length : 2,
-    } as any).returning();
+    }).returning();
 
     // 2. Create the canonical disciplinary record. We cross-link the
     //    org_documents id in `notes` (JSON) so the fully-signed event can
@@ -233,7 +233,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       issuedBy: userId,
       status: 'pending_signature',
       notes: JSON.stringify(notesPayload),
-    } as any).returning();
+    }).returning();
 
     // 3. Kick off the signing sequence starting with the subject (employee
     //    or contractor signs first, then the manager countersigns).

@@ -280,7 +280,7 @@ export function registerSchedulingCognitionActions() {
     const siteLon = client.longitude ? Number(client.longitude) : null;
     if (officerLat && officerLon && siteLat && siteLon) {
       distanceMiles = Math.round(haversineMiles(officerLat, officerLon, siteLat, siteLon) * 10) / 10;
-      const maxRadius = (emp as any).travelRadiusMiles || 25;
+      const maxRadius = (emp as EmployeeWithStatus).travelRadiusMiles || 25;
       const clientMax = client.maxDrivingDistance;
       withinTravelRadius = distanceMiles <= maxRadius;
       const effectiveMax = Math.min(maxRadius, clientMax || 999);
@@ -289,9 +289,9 @@ export function registerSchedulingCognitionActions() {
 
     // ── Armed/License validation ──────────────────────────────────────────────
     const requiresArmed = client.requiresArmed || false;
-    const officerIsArmed = (emp as any).isArmed || compliance?.isArmed || false;
-    const armedLicenseVerified = (emp as any).armedLicenseVerified || false;
-    const guardCardVerified = (emp as any).guardCardVerified || false;
+    const officerIsArmed = (emp as EmployeeWithStatus).isArmed || compliance?.isArmed || false;
+    const armedLicenseVerified = (emp as EmployeeWithStatus).armedLicenseVerified || false;
+    const guardCardVerified = (emp as EmployeeWithStatus).guardCardVerified || false;
     const armedLicenseExpiry = compliance?.armedLicenseExpiration ? new Date(compliance.armedLicenseExpiration) : null;
     const guardCardExpiry = compliance?.guardCardExpirationDate ? new Date(compliance.guardCardExpirationDate) : null;
     const armedLicenseValid = officerIsArmed && armedLicenseVerified && (armedLicenseExpiry ? armedLicenseExpiry > new Date() : true);
@@ -309,14 +309,14 @@ export function registerSchedulingCognitionActions() {
     const profitabilityScore = profitMarginPct === null ? 70 : profitMarginPct >= 30 ? 100 : profitMarginPct >= 20 ? 85 : profitMarginPct >= 10 ? 65 : profitMarginPct > 0 ? 40 : 0;
 
     // ── Performance and experience scores ────────────────────────────────────
-    const perfScore = (emp as any).schedulingScore || emp.performanceScore || 75;
+    const perfScore = (emp as EmployeeWithStatus).schedulingScore || emp.performanceScore || 75;
     const rating = Number(emp.rating || 4);
     const siteExperiencePct = totalShifts > 0 ? (siteShifts / totalShifts) * 100 : 0;
     const minScoreRequired = Number((client as ClientWithExtras).minOfficerSchedulingScore || 0);
     const meetsMinScore = perfScore >= minScoreRequired;
 
     // ── Availability check ────────────────────────────────────────────────────
-    const availMode = (emp as any).availabilityMode || 'always_available';
+    const availMode = (emp as EmployeeWithStatus).availabilityMode || 'always_available';
     const availPct = emp.availabilityPercentage || 90;
     const availScore = availMode === 'unavailable' ? 0 : availMode === 'on_call' ? 60 : availPct;
 
@@ -335,7 +335,7 @@ export function registerSchedulingCognitionActions() {
     const tier = compositeScore >= 85 ? 'preferred' : compositeScore >= 70 ? 'compatible' : compositeScore >= 50 ? 'marginal' : 'disqualified';
 
     const disqualifiers: string[] = [];
-    if (!withinTravelRadius && distanceMiles !== null) disqualifiers.push(`Beyond travel radius (${distanceMiles} mi, max ${(emp as any).travelRadiusMiles || 25} mi)`);
+    if (!withinTravelRadius && distanceMiles !== null) disqualifiers.push(`Beyond travel radius (${distanceMiles} mi, max ${(emp as EmployeeWithStatus).travelRadiusMiles || 25} mi)`);
     if (requiresArmed && !armedLicenseValid) disqualifiers.push(`Armed license required but officer not qualified`);
     if (!meetsMinScore) disqualifiers.push(`Performance score ${perfScore} below site minimum ${minScoreRequired}`);
     if (availMode === 'unavailable') disqualifiers.push(`Officer marked unavailable`);
@@ -436,9 +436,9 @@ export function registerSchedulingCognitionActions() {
     const allCandidates = activeEmployees.map(e => {
       const weekHours = loadMap.get(e.id) || 0;
       const score = Number((e as any).schedulingScore ?? 75);
-      const isArmed = (e as any).isArmed || false;
-      const armedVerified = (e as any).armedLicenseVerified || false;
-      const availMode = (e as any).availabilityMode || 'always_available';
+      const isArmed = (e as EmployeeWithStatus).isArmed || false;
+      const armedVerified = (e as EmployeeWithStatus).armedLicenseVerified || false;
+      const availMode = (e as EmployeeWithStatus).availabilityMode || 'always_available';
       const travelRadius = Number((e as any).travelRadiusMiles ?? 25);
       const eLat = e.latitude ? Number(e.latitude) : null;
       const eLon = e.longitude ? Number(e.longitude) : null;
@@ -622,10 +622,10 @@ export function registerSchedulingCognitionActions() {
     const ranked = allEmp.map(e => {
       const weekHours = hourMap.get(e.id) || 0;
       const score = Number((e as any).schedulingScore ?? 75);
-      const isArmed = (e as any).isArmed || false;
-      const armedVerified = (e as any).armedLicenseVerified || false;
+      const isArmed = (e as EmployeeWithStatus).isArmed || false;
+      const armedVerified = (e as EmployeeWithStatus).armedLicenseVerified || false;
       const travelRadius = Number((e as any).travelRadiusMiles ?? 25);
-      const availMode = (e as any).availabilityMode || 'always_available';
+      const availMode = (e as EmployeeWithStatus).availabilityMode || 'always_available';
       const payRate = Number(e.hourlyRate || 0);
       const margin = billRate > 0 && payRate > 0 ? billRate - payRate : null;
       const marginPct = margin !== null && billRate > 0 ? (margin / billRate) * 100 : null;
@@ -1568,7 +1568,7 @@ export function registerComplianceBrainActions() {
       db.select({ count: sql<number>`COUNT(*)::int` }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true))),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(timeEntries).where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, start), lte(timeEntries.clockIn, end))),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(payrollRuns).where(and(eq(payrollRuns.workspaceId, workspaceId), gte(payrollRuns.createdAt, start), lte(payrollRuns.createdAt, end))),
-      db.select({ count: sql<number>`COUNT(*)::int` }).from(complianceDocuments).where(and(eq(complianceDocuments.workspaceId, workspaceId), lt(complianceDocuments.expirationDate, new Date()), ne(complianceDocuments.status as any, 'approved'))),
+      db.select({ count: sql<number>`COUNT(*)::int` }).from(complianceDocuments).where(and(eq(complianceDocuments.workspaceId, workspaceId), lt(complianceDocuments.expirationDate, new Date()), ne(complianceDocuments.status, 'approved'))),
       db.select({ completed: sql<number>`COUNT(CASE WHEN ${employeePayrollInfo.i9Completed} = true THEN 1 END)::int`, total: sql<number>`COUNT(*)::int` }).from(employeePayrollInfo).where(eq(employeePayrollInfo.workspaceId, workspaceId)),
     ]);
 
@@ -1764,7 +1764,7 @@ export function registerClientBillingIntelligenceActions() {
       daysOverdue: sql<number>`GREATEST(0, EXTRACT(DAY FROM NOW() - ${invoices.dueDate}))::int`,
     })
       .from(invoices)
-      .where(and(eq(invoices.workspaceId, workspaceId), inArray(invoices.status as any, ['sent', 'overdue', 'pending'])))
+      .where(and(eq(invoices.workspaceId, workspaceId), inArray(invoices.status, ['sent', 'overdue', 'pending'])))
       .orderBy(sql`GREATEST(0, EXTRACT(DAY FROM NOW() - ${invoices.dueDate})) DESC`);
 
     const clientPaymentHistory = await db.select({
@@ -1827,7 +1827,7 @@ export function registerPredictiveAnalyticsBrainActions() {
       totalNet: sql<number>`${payrollRuns.totalNetPay}::numeric(12,2)`,
     })
       .from(payrollRuns)
-      .where(and(eq(payrollRuns.workspaceId, workspaceId), gte(payrollRuns.createdAt, since), ne(payrollRuns.status as any, 'cancelled')))
+      .where(and(eq(payrollRuns.workspaceId, workspaceId), gte(payrollRuns.createdAt, since), ne(payrollRuns.status, 'cancelled')))
       .orderBy(desc(payrollRuns.createdAt))
       .limit(6);
 
@@ -2324,7 +2324,7 @@ export function registerNaturalLanguageReasoningActions() {
     const [openShifts, overtimeWorkers, overdueInvoices, activeEmployees, payrollTotal] = await Promise.all([
       db.select({ count: sql<number>`COUNT(*)::int` }).from(shifts).where(and(eq(shifts.workspaceId, workspaceId), isNull(shifts.employeeId), gte(shifts.startTime, now), ne(shifts.status, 'cancelled'))),
       db.select({ count: sql<number>`COUNT(DISTINCT ${timeEntries.employeeId})::int` }).from(timeEntries).where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, since), isNotNull(timeEntries.clockOut))),
-      db.select({ count: sql<number>`COUNT(*)::int`, total: sql<number>`SUM(${invoices.total})::numeric(10,2)` }).from(invoices).where(and(eq(invoices.workspaceId, workspaceId), inArray(invoices.status as any, ['overdue', 'sent']))),
+      db.select({ count: sql<number>`COUNT(*)::int`, total: sql<number>`SUM(${invoices.total})::numeric(10,2)` }).from(invoices).where(and(eq(invoices.workspaceId, workspaceId), inArray(invoices.status, ['overdue', 'sent']))),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true))),
       db.select({ total: sql<number>`COALESCE(SUM(${payrollRuns.totalGrossPay}), 0)::numeric(10,2)` }).from(payrollRuns).where(and(eq(payrollRuns.workspaceId, workspaceId), gte(payrollRuns.createdAt, since))),
     ]);

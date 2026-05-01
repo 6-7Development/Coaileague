@@ -221,7 +221,7 @@ export default function ExpenseApprovalsPage() {
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0 sm:pt-0">
             <div className="text-lg sm:text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400 truncate" data-testid="count-reimbursed">
-              ${reimbursedExpenses.reduce((sum: number, e: any) => sum + parseFloat(e.amount), 0).toFixed(2)}
+              ${reimbursedExpenses.reduce((sum: number, e: unknown) => sum + parseFloat(e.amount), 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>

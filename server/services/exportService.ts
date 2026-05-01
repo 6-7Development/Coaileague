@@ -320,8 +320,7 @@ export async function anonymizeEmployeeData(
         actionDescription: `GDPR erasure executed — all PII fields anonymized for employee ${employeeId}`,
         isSensitiveData: true,
         complianceTag: 'gdpr',
-      } as any)
-      .catch(() => {}); // non-blocking — don't fail the anonymization if audit write fails
+      }).catch(() => {}); // non-blocking — don't fail the anonymization if audit write fails
   });
 
   return {

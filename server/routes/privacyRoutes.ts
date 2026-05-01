@@ -253,7 +253,7 @@ async function generateWorkspaceExport(workspaceId: string): Promise<Buffer> {
 
 // ── Route registration ────────────────────────────────────────────────────────
 
-export function registerPrivacyRoutes(app: Express, requireAuth: any) {
+export function registerPrivacyRoutes(app: Express, requireAuth: unknown) {
   const router = express.Router();
 
   // ── Data subject requests ───────────────────────────────────────────────────

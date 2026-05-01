@@ -18,7 +18,7 @@ import { secureFetch } from "@/lib/csrf";
 import { markCoreActionPerformed } from "@/lib/pushNotifications";
 
 /** Parse compliance / eligibility block errors into a user-readable string */
-function parseScheduleError(error: any): string {
+function parseScheduleError(error: unknown): string {
   if (!error) return 'An unexpected error occurred';
   const raw: string = error.message || String(error);
   // Strip leading "NNN: " status prefix from ApiError

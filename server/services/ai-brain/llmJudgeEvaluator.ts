@@ -45,7 +45,7 @@ export interface EvaluationRequest {
   userId: string;
   
   // What to evaluate
-  content: any;
+  content: unknown;
   contentType: 'text' | 'json' | 'code' | 'decision' | 'plan';
   context?: string;
   

@@ -1188,7 +1188,7 @@ export default function AdminCustomForms() {
     onError: () => toast({ title: "Failed to delete form", variant: "destructive" }),
   });
 
-  function handleSave(data: any) {
+  function handleSave(data: unknown) {
     if (editingForm) {
       updateMutation.mutate({ id: editingForm.id, data });
     } else {

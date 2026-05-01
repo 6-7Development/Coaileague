@@ -413,7 +413,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Calculate qualification match score
    */
-  private calculateQualificationScore(employee: any, request: WorkRequest): number {
+  private calculateQualificationScore(employee: Record<string, unknown>, request: WorkRequest): number {
     let score = 0.5;
     
     const certs = employee.certifications || [];
@@ -431,7 +431,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Calculate proximity score using haversine distance when available
    */
-  private calculateProximityScore(employee: any, request: WorkRequest): number {
+  private calculateProximityScore(employee: Record<string, unknown>, request: WorkRequest): number {
     const empLat = parseFloat(employee.homeLatitude || employee.latitude || '0');
     const empLng = parseFloat(employee.homeLongitude || employee.longitude || '0');
     const reqCoords = request.location?.coordinates;

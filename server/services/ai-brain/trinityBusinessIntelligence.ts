@@ -390,7 +390,7 @@ class TrinityBusinessIntelligence {
   }
 
   async analyzeInvoiceForQB(workspaceId: string, invoiceId: string): Promise<{
-    qbReadyPayload: any;
+    qbReadyPayload: unknown;
     formatDecisions: string[];
     metacognition: MetacognitionResult;
   }> {

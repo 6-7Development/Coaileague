@@ -132,7 +132,7 @@ export class IssueDetectionService {
   /**
    * Validate field format
    */
-  private isValidFormat(fieldName: string, value: any): boolean {
+  private isValidFormat(fieldName: string, value: unknown): boolean {
     if (value === null || value === undefined) return false;
 
     const formatRules: Record<string, RegExp> = {

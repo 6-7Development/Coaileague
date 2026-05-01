@@ -299,7 +299,7 @@ async function verifySupportOtp(userId: string, otp: string): Promise<boolean> {
   return false;
 }
 
-async function trustDevice(userId: string, ipAddress: string, userAgent: string, res: any): Promise<void> {
+async function trustDevice(userId: string, ipAddress: string, userAgent: string, res: unknown): Promise<void> {
   // PLANNED: Device trust cookie — JWT signed with deviceId, 30d TTL, stored in device_trust_tokens
   // Generates a signed JWT stored in dt_token cookie
   try {
@@ -1042,7 +1042,7 @@ const DEV_ACCOUNTS = {
   },
 } as const;
 
-async function devLoginById(userId: string, targetWorkspaceId: string, label: string, req: AuthenticatedRequest, res: any) {
+async function devLoginById(userId: string, targetWorkspaceId: string, label: string, req: AuthenticatedRequest, res: unknown) {
   if (isProduction()) {
     return res.status(404).json({ message: "Not found" });
   }

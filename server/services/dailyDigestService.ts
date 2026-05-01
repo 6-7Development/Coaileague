@@ -58,7 +58,7 @@ interface DigestData {
 }
 
 async function getEmployeeDigestData(
-  employee: any,
+  employee: Record<string, unknown>,
   workspace: any
 ): Promise<DigestData | null> {
   const today = new Date();

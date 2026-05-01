@@ -28,7 +28,7 @@ export type ConfigDomain = typeof CONFIG_DOMAINS[keyof typeof CONFIG_DOMAINS];
 
 export class UniversalConfigRegistry {
   private static instance: UniversalConfigRegistry;
-  private cache: Map<string, { value: any; expiry: number }> = new Map();
+  private cache: Map<string, { value: unknown; expiry: number }> = new Map();
   private cacheTTL = 60000;
 
   static getInstance(): UniversalConfigRegistry {
@@ -51,7 +51,7 @@ export class UniversalConfigRegistry {
     return undefined;
   }
 
-  private setCache(cacheKey: string, value: any): void {
+  private setCache(cacheKey: string, value: unknown): void {
     this.cache.set(cacheKey, { value, expiry: Date.now() + this.cacheTTL });
   }
 
@@ -616,8 +616,8 @@ export class UniversalConfigRegistry {
     domain: string;
     key: string;
     action: string;
-    previousValue: any;
-    newValue: any;
+    previousValue: unknown;
+    newValue: unknown;
     changedBy?: string;
     changeSource?: string;
     workspaceId?: string;

@@ -348,7 +348,7 @@ function SectionRenderer({
 }: {
   section: TemplateSection;
   formData: Record<string, unknown>;
-  onFieldChange: (id: string, value: any) => void;
+  onFieldChange: (id: string, value: unknown) => void;
   errors: Record<string, string>;
   disabled?: boolean;
 }) {
@@ -521,7 +521,7 @@ export function UniversalFormRenderer({
   });
 
   // ── Field change ────────────────────────────────────────────────────────────
-  const handleFieldChange = (fieldId: string, value: any) => {
+  const handleFieldChange = (fieldId: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
     if (errors[fieldId]) {
       setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });

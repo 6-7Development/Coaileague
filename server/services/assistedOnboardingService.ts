@@ -157,7 +157,7 @@ class AssistedOnboardingService {
 
       try {
         const { provisionWorkspace } = await import('./workspaceProvisioningService');
-        await provisionWorkspace({ workspaceId: workspace.id, ownerId: supportUserId, workspaceName: (workspace as any).name });
+        await provisionWorkspace({ workspaceId: workspace.id, ownerId: supportUserId, workspaceName: (workspace as Record<string, unknown>).name });
       } catch (provError: unknown) {
         log.warn('[AssistedOnboarding] Workspace provisioning failed (non-blocking):', (provError as any)?.message);
       }
@@ -175,7 +175,7 @@ class AssistedOnboardingService {
       // Provision email addresses for the workspace
       try {
         const { emailProvisioningService } = await import('./email/emailProvisioningService');
-        const emailSlug = (workspace as any).emailSlug || workspace.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
+        const emailSlug = (workspace as Record<string, unknown>).emailSlug || workspace.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
         await emailProvisioningService.provisionWorkspaceAddresses(workspace.id, emailSlug);
         log.info(`[AssistedOnboarding] Email addresses provisioned for workspace ${workspace.id}`);
       } catch (emailError) {

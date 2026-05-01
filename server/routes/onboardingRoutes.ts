@@ -44,7 +44,7 @@ function releaseBulkImportLock(workspaceId: string) {
   bulkImportLocks.delete(workspaceId);
 }
 
-const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: any, next: any) => {
+const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: any, next: unknown) => {
   if (!isFeatureEnabled('enableOnboardingPipeline')) {
     return res.status(403).json({ 
       error: 'Onboarding pipeline feature is not enabled',
@@ -54,7 +54,7 @@ const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: any, next: any)
   next();
 };
 
-const requireWorkspace = (req: AuthenticatedRequest, res: any, next: any) => {
+const requireWorkspace = (req: AuthenticatedRequest, res: any, next: unknown) => {
   const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.workspaceId;
   if (!workspaceId) {
     return res.status(403).json({ error: 'No workspace selected' });

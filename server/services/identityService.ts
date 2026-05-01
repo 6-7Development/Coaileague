@@ -972,7 +972,7 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
         record.employeeId = emp.id;
         record.employeeNumber = emp.employeeNumber || undefined;
         record.position = emp.position || undefined;
-        record.department = (emp as any).department || undefined;
+        record.department = (emp as EmployeeWithStatus).department || undefined;
         record.hireDate = emp.hireDate?.toISOString() || undefined;
         record.isActive = emp.isActive ?? true;
         // Employee external ID

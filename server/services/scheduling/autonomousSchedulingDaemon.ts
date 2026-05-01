@@ -532,7 +532,7 @@ class AutonomousSchedulingDaemonService {
    */
   async triggerManualRun(workspaceId: string, mode: 'current_day' | 'current_week' | 'next_week'): Promise<{
     success: boolean;
-    result: any;
+    result: unknown;
   }> {
     try {
       const result = await trinityAutonomousScheduler.executeAutonomousScheduling({

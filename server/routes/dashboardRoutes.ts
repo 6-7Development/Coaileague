@@ -277,7 +277,7 @@ router.get("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || req.user?.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const [saved] = await db
@@ -303,7 +303,7 @@ router.post("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || req.user?.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const { widgets } = req.body;

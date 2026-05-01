@@ -210,7 +210,7 @@ export default function ArmoryManagement() {
     id: "armory-management",
     title: "Armory Management",
     subtitle: "Track weapons inventory, checkouts, and inspections",
-    category: "operations" as any,
+    category: "operations",
     showHeader: true,
     headerActions: (
       <Button onClick={() => setShowAddDialog(true)} data-testid="button-add-weapon">

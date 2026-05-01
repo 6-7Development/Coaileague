@@ -2214,10 +2214,8 @@ export function setupWebSocket(server: Server) {
                 
                 // Get room modes from conversation metadata
                 const joinedConversation = await storage.getChatConversation(conversationId);
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 const roomModes = (joinedConversation?.metadata as unknown)?.modes || 
                                   (roomMode ? [roomMode] : [RoomMode.ORG]);
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 const activeBots = (joinedConversation?.metadata as unknown)?.activeBots || [];
                 const roomName = joinedConversation?.subject || 'Chat Room';
                 
@@ -3891,9 +3889,7 @@ export function setupWebSocket(server: Server) {
                   
                   // Get room modes dynamically from conversation metadata
                   const helpConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   const roomModes = (helpConversation?.metadata as unknown)?.modes || [];
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   const activeBots = (helpConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Import the chatroom command service for dynamic bot command help
@@ -3932,7 +3928,6 @@ export function setupWebSocket(server: Server) {
                   const { RoomMode } = await import('@shared/types/chat');
                   
                   const cmdConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   const cmdRoomModes = (cmdConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
                   
                   ws.send(JSON.stringify({
@@ -4145,9 +4140,7 @@ export function setupWebSocket(server: Server) {
                   const { botPool: botsPool } = await import('./bots');
                   
                   const botConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   const botRoomModes = (botConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   const metadataBots = (botConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Merge metadata bots with live pool instances
@@ -5548,7 +5541,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     const { BOT_REGISTRY: rb3 } = await import('./bots/registry');
                     const { botAIService: rAI } = await import('./bots/botAIService');
                     const reportMsgs = await storage.createChatMessage(ws.conversationId, 50);
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     const reportText = (reportMsgs as unknown).filter(m => m.senderType === 'user' || m.senderType === 'customer').map(m => m.message).join('\n');
                     const reportSummary = await rAI.generateReportSummary(ws.workspaceId, 'general', reportText, ws.userId);
                     const endReportMsg = await storage.createChatMessage({

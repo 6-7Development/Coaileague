@@ -240,8 +240,8 @@ export async function detectOrphanedPayrollRuns(): Promise<void> {
       .from(payrollRuns)
       .innerJoin(workspaces, eq(payrollRuns.workspaceId, workspaces.id))
       .where(and(
-        eq(payrollRuns.status as any, 'processed'),
-        lte(payrollRuns.updatedAt as any, twoHoursAgo),
+        eq(payrollRuns.status, 'processed'),
+        lte(payrollRuns.updatedAt, twoHoursAgo),
       ));
 
     for (const run of processedRuns) {

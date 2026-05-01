@@ -144,7 +144,7 @@ export interface EscalationRequest {
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   diagnosticSummary: string;
-  proposedFix: any;
+  proposedFix: unknown;
   alternativeFixes: unknown[];
   affectedUserId?: string;
   affectedFeature?: string;
@@ -1890,7 +1890,7 @@ class WorkboardJobLifecycle {
   /**
    * Mark job as completed
    */
-  async completeJob(jobId: string, result: any): Promise<void> {
+  async completeJob(jobId: string, result: unknown): Promise<void> {
     await this.updateJobStatus({
       jobId,
       status: 'completed',
@@ -2195,8 +2195,8 @@ class SubagentSupervisor {
 
       // PHASE 2: EXECUTE
       await this.updateTelemetryPhase(telemetryId, 'executing', 'execute');
-      let executeResult: any;
-      let executeError: any;
+      let executeResult: unknown;
+      let executeError: unknown;
       
       try {
         executeResult = await Promise.race([
@@ -2922,7 +2922,7 @@ class SubagentSupervisor {
     return { success: true };
   }
 
-  private async validatePhase(context: SubagentExecutionContext, subagent: AiSubagentDefinition, result: any): Promise<{ success: boolean; error?: string }> {
+  private async validatePhase(context: SubagentExecutionContext, subagent: AiSubagentDefinition, result: unknown): Promise<{ success: boolean; error?: string }> {
     // Basic validation - subagents can override with specific validation logic
     if (result === undefined || result === null) {
       return { success: false, error: 'Action returned no result' };
@@ -2939,7 +2939,7 @@ class SubagentSupervisor {
   // DR. HOLMES DIAGNOSTICS
   // ============================================================================
 
-  private async runDiagnostics(context: SubagentExecutionContext, subagent: AiSubagentDefinition, error: any): Promise<DiagnosticResult> {
+  private async runDiagnostics(context: SubagentExecutionContext, subagent: AiSubagentDefinition, error: unknown): Promise<DiagnosticResult> {
     log.info(`[DrHolmes] Running diagnostics for ${subagent.name} error:`, error.message);
     
     const knownPatterns = (subagent.knownPatterns as string[]) || [];
@@ -3050,7 +3050,7 @@ class SubagentSupervisor {
     pattern: string,
     context: SubagentExecutionContext,
     error: { code: string; message: string }
-  ): Promise<{ success: boolean; action: string; result: any; reason?: string }> {
+  ): Promise<{ success: boolean; action: string; result: unknown; reason?: string }> {
     const { domain, workspaceId, userId, parameters } = context;
 
     // Strategy execution based on domain and pattern

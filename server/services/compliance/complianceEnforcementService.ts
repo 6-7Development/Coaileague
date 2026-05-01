@@ -116,7 +116,7 @@ class ComplianceEnforcementService {
       requiredDocTypes,
       submittedDocTypes: [],
       approvedDocTypes: [],
-    } as any).returning();
+    }).returning();
 
     log.info(`[ComplianceEnforcement] Initialized ${entityType} window for ${entityId}, deadline: ${windowDeadline.toISOString()}`);
     return window;
@@ -277,7 +277,7 @@ class ComplianceEnforcementService {
         missingDocTypes,
         frozenAt: new Date(),
         frozenBySystem: true,
-      } as any).returning();
+      }).returning();
 
       await tx.update(complianceWindows)
         .set({
@@ -357,7 +357,7 @@ class ComplianceEnforcementService {
         extensionDeadline,
         decidedAt: new Date(),
         decisionNotes: 'Automatically approved — one-time end-of-month extension granted',
-      } as any).returning();
+      }).returning();
 
       // Update compliance window: mark appeal used, grant extension, unfreeze
       await tx.update(complianceWindows)
@@ -483,14 +483,14 @@ class ComplianceEnforcementService {
 
       // Check if extension deadline has passed
       if (win.appealUsed && win.extensionDeadline && now > win.extensionDeadline) {
-        await this.autoFreezeAccount(win.entityType as any, win.entityId, win.id);
+        await this.autoFreezeAccount(win.entityType, win.entityId, win.id);
         extensionExpired++;
         continue;
       }
 
       // Check if 14-day deadline has passed
       if (now > win.windowDeadline && !win.appealUsed) {
-        await this.autoFreezeAccount(win.entityType as any, win.entityId, win.id);
+        await this.autoFreezeAccount(win.entityType, win.entityId, win.id);
         frozen++;
         continue;
       }

@@ -373,7 +373,7 @@ class OnboardingQuickBooksFlow {
     }
   }
 
-  private async handleSyncComplete(flowId: string, syncResult: any): Promise<void> {
+  private async handleSyncComplete(flowId: string, syncResult: unknown): Promise<void> {
     const flow = this.flows.get(flowId);
     if (!flow) return;
 

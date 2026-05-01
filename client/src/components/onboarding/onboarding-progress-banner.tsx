@@ -86,7 +86,7 @@ export function OnboardingProgressBanner(): JSX.Element | null {
       qc.invalidateQueries({ queryKey: ["/api/workspace/onboarding/progress"] });
       qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({ title: "Could not finish onboarding", description: err?.message || "Try again.", variant: "destructive" });
     },
   });

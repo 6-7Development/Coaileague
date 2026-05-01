@@ -228,10 +228,10 @@ class WorkboardService {
 
       // Use SubagentSupervisor with parallel dispatch
       const analysisResult = await subagentSupervisor.analyzeRequest({
-        content: (task as any).requestContent,
-        type: (task as any).requestType,
+        content: (task as Record<string, unknown>).requestContent,
+        type: (task as Record<string, unknown>).requestType,
         workspaceId: task.workspaceId,
-        userId: (task as any).userId,
+        userId: (task as Record<string, unknown>).userId,
         executionMode: 'trinity_fast'
       });
 
@@ -245,7 +245,7 @@ class WorkboardService {
           assignedAgentName: analysisResult.agentName,
           estimatedTokens: analysisResult.estimatedTokens,
           status: 'assigned',
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'assigned',
             timestamp: new Date().toISOString(),
             actor: 'system',
@@ -259,7 +259,7 @@ class WorkboardService {
         .where(eq(aiWorkboardTasks.id, taskId));
 
       // Get credit reservation ID from task metadata
-      const metadata = (task as any).requestMetadata as Record<string, unknown> || {};
+      const metadata = (task as Record<string, unknown>).requestMetadata as Record<string, unknown> || {};
       const reservationId = metadata.creditReservationId;
       const estimatedCredits = metadata.estimatedCredits || Math.ceil((analysisResult.estimatedTokens || 10) * FAST_MODE_CONFIG.creditMultiplier);
 
@@ -270,9 +270,9 @@ class WorkboardService {
       const result = await subagentSupervisor.executeFastModeParallel({
         agentId: analysisResult.agentId,
         taskId,
-        content: (task as any).requestContent,
+        content: (task as Record<string, unknown>).requestContent,
         workspaceId: task.workspaceId,
-        userId: (task as any).userId,
+        userId: (task as Record<string, unknown>).userId,
         context: metadata
       });
 
@@ -299,7 +299,7 @@ class WorkboardService {
         // Legacy tasks without reservation - use directDeduct with proper refund on failure
         const deductResult = await subagentBanker.directDeduct({
           workspaceId: task.workspaceId,
-          userId: (task as any).userId,
+          userId: (task as Record<string, unknown>).userId,
           credits: estimatedCredits,
           actionType: 'fast_mode_task',
           actionId: taskId,
@@ -313,7 +313,7 @@ class WorkboardService {
           if (!result.success) {
             await subagentBanker.refillCredits({
               workspaceId: task.workspaceId,
-              userId: (task as any).userId,
+              userId: (task as Record<string, unknown>).userId,
               credits: estimatedCredits,
               source: 'refund',
               description: `Refund for failed fast mode task: ${taskId.substring(0, 8)}`
@@ -338,7 +338,7 @@ class WorkboardService {
           errorMessage: result.error || null,
           actualTokens: estimatedCredits,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: analysisResult.agentId,
@@ -365,7 +365,7 @@ class WorkboardService {
         .limit(1);
       
       if (task) {
-        const metadata = (task as any).requestMetadata as Record<string, unknown> || {};
+        const metadata = (task as Record<string, unknown>).requestMetadata as Record<string, unknown> || {};
         const reservationId = metadata.creditReservationId;
         if (reservationId) {
           await subagentBanker.consumeReservation({
@@ -418,13 +418,13 @@ class WorkboardService {
 
       // Step 2: Analyze and route via SubagentSupervisor
       const routingResult = await subagentSupervisor.routeVoiceCommand({
-        transcript: (task as any).requestContent,
-        userId: (task as any).userId,
+        transcript: (task as Record<string, unknown>).requestContent,
+        userId: (task as Record<string, unknown>).userId,
         workspaceId: task.workspaceId,
         context: {
-          source: (task as any).requestType,
+          source: (task as Record<string, unknown>).requestType,
           timestamp: task.createdAt?.toISOString() || new Date().toISOString(),
-          platform: (task as any).requestMetadata?.platform || 'web'
+          platform: (task as Record<string, unknown>).requestMetadata?.platform || 'web'
         }
       });
 
@@ -438,7 +438,7 @@ class WorkboardService {
           assignedAgentId: routingResult.assignedAgent,
           assignedAgentName: routingResult.assignedAgent,
           estimatedTokens: routingResult.estimatedTokens,
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'assigned',
             timestamp: new Date().toISOString(),
             actor: 'SubagentSupervisor',
@@ -449,7 +449,7 @@ class WorkboardService {
         .where(eq(aiWorkboardTasks.id, taskId));
 
       // Step 4: Deduct credits
-      await this.recordUsage(task.workspaceId, (task as any).userId, routingResult.estimatedTokens, taskId);
+      await this.recordUsage(task.workspaceId, (task as Record<string, unknown>).userId, routingResult.estimatedTokens, taskId);
 
       // Step 5: Update to in_progress
       await this.updateTaskStatus(taskId, 'in_progress', routingResult.assignedAgent);
@@ -466,7 +466,7 @@ class WorkboardService {
           errorMessage: result.error,
           actualTokens: routingResult.estimatedTokens,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: routingResult.assignedAgent
@@ -487,8 +487,7 @@ class WorkboardService {
         .set({
           status: 'failed',
           errorMessage: (error instanceof Error ? error.message : String(error)) || 'Unknown error',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'failed',
             timestamp: new Date().toISOString(),
             actor: 'system',
@@ -609,7 +608,7 @@ class WorkboardService {
   ): Promise<void> {
     const updates: Record<string, unknown> = {
       status,
-      statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+      statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
         status,
         timestamp: new Date().toISOString(),
         actor
@@ -677,14 +676,14 @@ class WorkboardService {
 
     if (!task) return;
 
-    const notifyChannels = (task as any).notifyVia || ['trinity'];
+    const notifyChannels = (task as Record<string, unknown>).notifyVia || ['trinity'];
 
     for (const channel of notifyChannels) {
       switch (channel) {
         case 'trinity':
           // Trinity mascot notification - log for now, integrate later
           log.info('[WorkboardService] Trinity notification:', {
-            userId: (task as any).userId,
+            userId: (task as Record<string, unknown>).userId,
             type: result.success ? 'task_completed' : 'task_failed',
             message: result.summary
           });
@@ -706,7 +705,7 @@ class WorkboardService {
             title: result.success ? 'Task Completed' : 'Task Failed',
             description: result.summary || 'Your AI workboard task has been processed.',
             workspaceId: task.workspaceId,
-            userId: (task as any).userId,
+            userId: (task as Record<string, unknown>).userId,
             metadata: { taskId: task.id }
           });
           break;
@@ -766,7 +765,7 @@ class WorkboardService {
         status: 'pending',
         retryCount: (task.retryCount || 0) + 1,
         errorMessage: null,
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'pending',
           timestamp: new Date().toISOString(),
           actor: 'system',
@@ -788,8 +787,7 @@ class WorkboardService {
       .set({
         status: 'escalated',
         errorMessage: reason,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'escalated',
           timestamp: new Date().toISOString(),
           actor: 'system',
@@ -891,8 +889,7 @@ class WorkboardService {
           .set({
             status: 'failed',
             errorMessage: 'Insufficient credits for this action',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+            statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
               status: 'failed',
               timestamp: new Date().toISOString(),
               actor: 'credit_check',
@@ -937,7 +934,7 @@ class WorkboardService {
           errorMessage: result.success ? null : result.error,
           actualTokens: result.data?.tokensUsed || routingResult.estimatedTokens,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: routingResult.assignedAgent
@@ -976,8 +973,7 @@ class WorkboardService {
             .set({
               status: 'failed',
               errorMessage: (error instanceof Error ? error.message : String(error)),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
-              statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+              statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
                 status: 'failed',
                 timestamp: new Date().toISOString(),
                 actor: 'voice_command_sync',
@@ -1086,8 +1082,7 @@ class WorkboardService {
     await db.update(aiWorkboardTasks)
       .set({
         status: 'cancelled',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'cancelled',
           timestamp: new Date().toISOString(),
           actor: userId
@@ -1132,7 +1127,7 @@ class WorkboardService {
       } else if (task.status === 'failed' || task.status === 'escalated') {
         stats.failed++;
       }
-      stats.totalTokens += (task as any).actualTokens || (task as any).estimatedTokens || 0;
+      stats.totalTokens += (task as Record<string, unknown>).actualTokens || (task as Record<string, unknown>).estimatedTokens || 0;
     }
 
     return stats;

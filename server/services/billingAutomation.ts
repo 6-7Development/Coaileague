@@ -331,7 +331,7 @@ async function createInvoiceFromBillableSummary(
   );
   if (allEntriesZeroRate) {
     const unbilledHours = clientSummary.entries.reduce(
-      (h: number, e: any) => h + (Number(e.totalHours) || 0),
+      (h: number, e: unknown) => h + (Number(e.totalHours) || 0),
       0,
     );
     log.warn(
@@ -424,13 +424,13 @@ async function createInvoiceFromBillableSummary(
           type: 'billing_rate_missing',
           category: 'billing',
           title: `Missing Billing Rate: ${employeeName}`,
-          description: `${employeeName}'s time entries have no billing rate configured — ${entries.reduce((h: number, e: any) => h + (e.totalHours || 0), 0).toFixed(2)} billable hours will NOT appear on the client invoice. Configure a client rate, employee hourly rate, or workspace default rate.`,
+          description: `${employeeName}'s time entries have no billing rate configured — ${entries.reduce((h: number, e: unknown) => h + (e.totalHours || 0), 0).toFixed(2)} billable hours will NOT appear on the client invoice. Configure a client rate, employee hourly rate, or workspace default rate.`,
           workspaceId,
           metadata: {
             employeeId,
             employeeName,
             clientId: entries[0]?.clientId,
-            unbilledHours: entries.reduce((h: number, e: any) => h + (e.totalHours || 0), 0),
+            unbilledHours: entries.reduce((h: number, e: unknown) => h + (e.totalHours || 0), 0),
             timeEntryIds: entries.map((e: unknown) => e.timeEntryId),
             // severity in event metadata
           },
@@ -451,7 +451,7 @@ async function createInvoiceFromBillableSummary(
     // Collect all time entry IDs for this employee's grouped entries
     const allEntryIds: string[] = entries.map((e: unknown) => e.timeEntryId).filter(Boolean);
     // Use the earliest clock-in date as the service date for these line items
-    const earliestClockIn: Date | null = entries.reduce((earliest: Date | null, e: any) => {
+    const earliestClockIn: Date | null = entries.reduce((earliest: Date | null, e: unknown) => {
       if (!e.clockIn) return earliest;
       const d = new Date(e.clockIn);
       return !earliest || d < earliest ? d : earliest;
@@ -862,7 +862,7 @@ async function sendInvoiceEmail(invoice: Invoice, clientEmail: string, portalUrl
     const formattedDue = invoice.dueDate
       ? new Date(invoice.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : 'Upon Receipt';
-    const issuedSource = (invoice as any).issueDate || invoice.createdAt;
+    const issuedSource = (invoice as Record<string, unknown>).issueDate || invoice.createdAt;
     const formattedIssued = issuedSource
       ? new Date(issuedSource).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });

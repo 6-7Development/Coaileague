@@ -28,19 +28,19 @@ export function registerWorkspaceTimeActions() {
   helpaiOrchestrator.registerAction(mkAction('workspace.get_org_context', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) } as any).catch(() => null);
+    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) }).catch(() => null);
     if (!workspace) return { error: 'Workspace not found' };
     const [empCount] = await db.select({ count: count() }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.status, 'active')));
-    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId as any, workspaceId) } as any).catch(() => null);
+    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId, workspaceId) }).catch(() => null);
     return {
       workspaceId,
-      name: (workspace as any).name,
-      industry: (workspace as any).industry,
-      size: (workspace as any).size,
+      name: (workspace as Record<string, unknown>).name,
+      industry: (workspace as Record<string, unknown>).industry,
+      size: (workspace as Record<string, unknown>).size,
       activeEmployees: empCount?.count || 0,
       subscriptionTier: (subscription as any)?.tier || 'free',
       subscriptionStatus: (subscription as any)?.status || 'active',
-      createdAt: (workspace as any).createdAt,
+      createdAt: (workspace as Record<string, unknown>).createdAt,
     };
   }));
 
@@ -61,7 +61,7 @@ export function registerWorkspaceTimeActions() {
   helpaiOrchestrator.registerAction(mkAction('workspace.get_subscription_status', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId as any, workspaceId) } as any).catch(() => null);
+    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId, workspaceId) }).catch(() => null);
     if (!subscription) return { workspaceId, tier: 'free', status: 'active', credits: null };
     return {
       workspaceId,

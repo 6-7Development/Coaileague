@@ -138,7 +138,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
         aiModel: aiAnalysis?.model || null,
         complianceCategory: complianceData?.category || null,
         regulatoryReference: complianceData?.regulatoryReference || null,
-      } as any).returning();
+      }).returning();
 
       return { duplicate: false, dispute: newDispute } as const;
     });

@@ -141,7 +141,7 @@ export default function SsoConfiguration() {
     id: 'sso-configuration',
     title: 'SSO Configuration',
     subtitle: 'Configure Single Sign-On for your organization',
-    category: 'admin' as any,
+    category: 'admin',
     showHeader: true,
   };
 

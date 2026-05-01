@@ -70,7 +70,7 @@ export class TrinityEmailProcessor {
     }
   }
 
-  getAddressType(toAddress: string, workspace: any): AddressType {
+  getAddressType(toAddress: string, workspace: unknown): AddressType {
     const to = (toAddress || '').toLowerCase();
     if (workspace.careers_email && to === workspace.careers_email.toLowerCase()) return 'careers';
     if (workspace.verify_email && to === workspace.verify_email.toLowerCase()) return 'verify';
@@ -164,7 +164,7 @@ export class TrinityEmailProcessor {
     return result.rows[0] || null;
   }
 
-  async storeInboundEmail(emailData: InboundEmailData, workspaceId: string, sender: any): Promise<unknown> {
+  async storeInboundEmail(emailData: InboundEmailData, workspaceId: string, sender: unknown): Promise<unknown> {
     const result = await pool.query(
       `INSERT INTO inbound_emails
        (workspace_id, from_email, from_name, to_email, subject, body_text, body_html,
@@ -208,7 +208,7 @@ export class TrinityEmailProcessor {
     }
   }
 
-  private async handleCareersEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleCareersEmail(email: any, workspace: any, sender: unknown): Promise<void> {
     log.info(`[careers] New career inquiry from ${email.from_email} to ${workspace.company_name}`);
     try {
       await pool.query(
@@ -223,27 +223,27 @@ export class TrinityEmailProcessor {
     }
   }
 
-  private async handleVerificationEmail(email: any, workspace: any, _sender: any): Promise<void> {
+  private async handleVerificationEmail(email: any, workspace: any, _sender: unknown): Promise<void> {
     log.info(`[verify] Employment verification request from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleSupportEmail(email: any, workspace: any, _sender: any): Promise<void> {
+  private async handleSupportEmail(email: any, workspace: any, _sender: unknown): Promise<void> {
     log.info(`[support] Support request from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleCalloffEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleCalloffEmail(email: any, workspace: any, sender: unknown): Promise<void> {
     log.info(`[calloffs] Calloff email from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleTrinityDirectEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleTrinityDirectEmail(email: any, workspace: any, sender: unknown): Promise<void> {
     log.info(`[trinity-direct] Direct Trinity message from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleMainInboxEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleMainInboxEmail(email: any, workspace: any, sender: unknown): Promise<void> {
     log.info(`[main] Main inbox email from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }

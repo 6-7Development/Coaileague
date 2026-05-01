@@ -157,8 +157,8 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
     if (!report) return res.status(404).json({ error: "Report not found" });
 
     // Check if a vaulted PDF already exists for this report
-    if ((report as any).vaultDocumentNumber) {
-      const vaultRecord = await getVaultRecord(workspaceId, (report as any).vaultDocumentNumber);
+    if ((report as Record<string, unknown>).vaultDocumentNumber) {
+      const vaultRecord = await getVaultRecord(workspaceId, (report as Record<string, unknown>).vaultDocumentNumber);
       if (vaultRecord) {
         return res.json({ success: true, vaultRecord, cached: true });
       }

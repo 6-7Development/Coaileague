@@ -108,7 +108,7 @@ Rules:
       }
     }
 
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(jsonText);
     } catch {

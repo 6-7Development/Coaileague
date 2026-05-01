@@ -161,7 +161,7 @@ export class ChatParityService {
     }
   }
 
-  isMessageVisibleToUser(message: any, userId: string): boolean {
+  isMessageVisibleToUser(message: unknown, userId: string): boolean {
     if (message.isDeletedForEveryone) return false;
     const deletedFor = (message.deletedForUserIds as string[]) || [];
     if (deletedFor.includes(userId)) return false;
@@ -249,7 +249,7 @@ export class ChatParityService {
     action: 'close' | 'suspend' | 'mute_all' | 'nuke';
     reason: string;
     triggeredBy: string;
-    broadcastFn?: (roomId: string, message: any) => void;
+    broadcastFn?: (roomId: string, message: unknown) => void;
   }): Promise<{ success: boolean; systemMessage?: string }> {
     const botId = `helpai-moderator-${Date.now().toString(36)}`;
     const botName = 'HelpAI Moderator';

@@ -201,7 +201,7 @@ class DocumentGeneratorSkill extends BaseSkill {
     if (params.documentType === 'report' || params.documentType === 'analysis') {
       if (rawData.employees?.length > 0) {
         const activeCount = rawData.employees.filter((e: unknown) => e.isActive).length;
-        const avgPayRate = rawData.employees.reduce((sum: number, e: any) => sum + (parseFloat(e.payRate) || 0), 0) / (rawData.employees.length || 1);
+        const avgPayRate = rawData.employees.reduce((sum: number, e: unknown) => sum + (parseFloat(e.payRate) || 0), 0) / (rawData.employees.length || 1);
 
         sections.push({
           title: 'Workforce Overview',

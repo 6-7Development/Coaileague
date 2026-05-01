@@ -19,7 +19,7 @@ type ImpactStyle = 'light' | 'medium' | 'heavy';
 let capHapticsModule: Promise<typeof import('@capacitor/haptics')> | null = null;
 function getCapacitorHaptics() {
   if (!capHapticsModule) {
-    capHapticsModule = import('@capacitor/haptics').catch(() => null as any);
+    capHapticsModule = import('@capacitor/haptics').catch(() => null);
   }
   return capHapticsModule;
 }

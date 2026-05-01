@@ -268,7 +268,7 @@ class RealTimeBridgeService {
     });
   }
 
-  sendActionResult(actionId: string, result: any) {
+  sendActionResult(actionId: string, result: unknown) {
     this.broadcastHelpAI({
       type: 'action_result',
       actionId,

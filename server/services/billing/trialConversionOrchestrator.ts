@@ -288,7 +288,7 @@ class TrialConversionOrchestrator {
 
     // CLASS B FIX: Idempotency guard for trial expiry warnings
     // Check if we've already warned for this specific threshold day
-    const lastWarnedAt = (workspace as any).metadata?.last_trial_warning_day;
+    const lastWarnedAt = (workspace as Record<string, unknown>).metadata?.last_trial_warning_day;
     if (lastWarnedAt === daysRemaining) {
       log.info(`[TrialConversionOrchestrator] Skipping duplicate ${daysRemaining}-day warning for workspace ${workspaceId}`);
       return;
@@ -368,7 +368,6 @@ class TrialConversionOrchestrator {
     const { workspaceId, workspaceName } = trial;
 
     await db.update(subscriptions)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ status: 'active', tier: 'free' })
       .where(eq(subscriptions.workspaceId, workspaceId));
 

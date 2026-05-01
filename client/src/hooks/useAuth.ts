@@ -62,7 +62,7 @@ export function useAuth() {
     // Retry up to 8 times for server errors (5xx / network) — DB may be briefly unavailable
     // on startup. 503 specifically means the circuit breaker or DB is not yet warmed up.
     // Never retry for client auth errors (4xx) — those are definitive answers.
-    retry: (failureCount, err: any) => {
+    retry: (failureCount, err: unknown) => {
       const status = parseInt(err?.message?.split(":")[0]);
       if (status >= 400 && status < 500) return false; // auth decision is final
       return failureCount < 8; // retry aggressively for 5xx / network errors

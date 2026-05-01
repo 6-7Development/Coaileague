@@ -774,7 +774,7 @@ class AutonomousFixPipelineService {
       findingId,
       finding.description,
       finding.filePath ? [finding.filePath] : [],
-      async (attempt: any, suggestedApproach: any, revisedPatches: any) => {
+      async (attempt: any, suggestedApproach: any, revisedPatches: unknown) => {
         // Rollback previous attempt if it exists
         if (lastOperationId) {
           await trinityCodeOps.rollbackOperation(lastOperationId);
@@ -916,7 +916,6 @@ class AutonomousFixPipelineService {
       workspaceId: 'system',
       userId: 'trinity',
       files: (validatedSpec as any).affectedFiles,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       message: `[Trinity AutoFix] ${(validatedSpec as any).title}\n\nApproach: ${(validatedSpec as any).approach.substring(0, 200)}...\(nConfidence as any): ${(validatedSpec.confidence * 100).toFixed(0)}%\nAttempts: ${iterationResult.attempts.length}`,
       author: this.config.commitAuthor,
     });

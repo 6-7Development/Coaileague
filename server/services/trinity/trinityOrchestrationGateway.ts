@@ -773,8 +773,7 @@ class TrinityOrchestrationGateway {
 
     // Check feature registry for related features
     const allFeatures = featureRegistryService.getFeature();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const matchedFeatures = (allFeatures as any).filter(f => 
+    const matchedFeatures = (allFeatures as Record<string, unknown>).filter(f => 
       keywords.some(kw => 
         f.key.toLowerCase().includes(kw) || 
         f.name.toLowerCase().includes(kw) ||
@@ -913,7 +912,7 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * This middleware should be mounted early in the middleware chain.
  */
 export function trinityOrchestrationMiddleware() {
-  return async (req: any, res: any, next: any) => {
+  return async (req: any, res: any, next: unknown) => {
     const startTime = Date.now();
     const originalEnd = res.end;
     const originalJson = res.json;

@@ -499,7 +499,7 @@ class QuickFixService {
       const startTime = Date.now();
 
       // Execute the fix based on action code
-      let result: any;
+      let result: unknown;
       let success = true;
       let changesSummary = '';
 

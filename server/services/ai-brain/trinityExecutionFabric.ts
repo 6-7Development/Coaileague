@@ -145,7 +145,7 @@ export interface ValidationResult {
 export interface StepResult {
   stepId: string;
   success: boolean;
-  output: any;
+  output: unknown;
   error?: string;
   durationMs: number;
   tokensUsed?: number;
@@ -221,7 +221,7 @@ export interface ExecutionTimelineEntry {
   phase: ExecutionPhase;
   action: string;
   input: Record<string, unknown>;
-  output: any;
+  output: unknown;
   durationMs: number;
   success: boolean;
   error?: string;
@@ -263,8 +263,8 @@ export interface ReplayResult {
 export interface ReplayDivergence {
   stepId: string;
   field: string;
-  originalValue: any;
-  replayValue: any;
+  originalValue: unknown;
+  replayValue: unknown;
   severity: 'info' | 'warning' | 'error';
 }
 
@@ -278,7 +278,7 @@ interface CapabilityAdapter {
   execute: (params: Record<string, unknown>, context: ExecutionContext) => Promise<unknown>;
   validate: (params: Record<string, unknown>) => Promise<boolean>;
   estimateCost: (params: Record<string, unknown>) => number;
-  createRollback?: (params: Record<string, unknown>, result: any) => RollbackStep | null;
+  createRollback?: (params: Record<string, unknown>, result: unknown) => RollbackStep | null;
 }
 
 const capabilityAdapters: Map<CapabilityType, CapabilityAdapter> = new Map();

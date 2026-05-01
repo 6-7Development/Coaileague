@@ -209,7 +209,7 @@ function validateRequiredFields(
 
   const firstName = (record.firstName || '').trim();
   const lastName = (record.lastName || '').trim();
-  const companyName = ((record as any).companyName || '').trim();
+  const companyName = ((record as Record<string, unknown>).companyName || '').trim();
   const name = (record.name || '').trim();
 
   let displayName = '';
@@ -436,8 +436,8 @@ async function ensureEmployee(employeeId: string, workspaceId: string): Promise<
   const conn = await getQBConnection(workspaceId);
   if (!conn) return { success: false, qbId: null, created: false, matched: false, error: 'QuickBooks not connected', retryable: true };
 
-  const existingQbId = (emp as any).quickbooksEmployeeId;
-  const storedRealmId = (emp as any).quickbooksRealmId;
+  const existingQbId = (emp as EmployeeWithStatus).quickbooksEmployeeId;
+  const storedRealmId = (emp as EmployeeWithStatus).quickbooksRealmId;
   if (existingQbId && verifyEnvironment(conn, storedRealmId)) {
     return { success: true, qbId: existingQbId, created: false, matched: false };
   }
@@ -505,8 +505,8 @@ async function ensureVendor(employeeId: string, workspaceId: string): Promise<La
   const conn = await getQBConnection(workspaceId);
   if (!conn) return { success: false, qbId: null, created: false, matched: false, error: 'QuickBooks not connected', retryable: true };
 
-  const existingQbId = (emp as any).quickbooksVendorId;
-  const storedRealmId = (emp as any).quickbooksRealmId;
+  const existingQbId = (emp as EmployeeWithStatus).quickbooksVendorId;
+  const storedRealmId = (emp as EmployeeWithStatus).quickbooksRealmId;
   if (existingQbId && verifyEnvironment(conn, storedRealmId)) {
     return { success: true, qbId: existingQbId, created: false, matched: false };
   }

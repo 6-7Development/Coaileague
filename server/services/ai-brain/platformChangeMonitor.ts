@@ -409,7 +409,6 @@ class PlatformChangeMonitorService {
         const content = fs.readFileSync(routesPath, 'utf-8');
         routeCount = (content.match(/app\.(get|post|put|patch|delete)\(/gi) || []).length;
       }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[PlatformChangeMonitor] Route scan failed:', e.message); }
 
     return {

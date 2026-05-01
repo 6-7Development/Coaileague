@@ -22,7 +22,7 @@ async function checkWorkspaceAccess(userId: string, workspaceId: string): Promis
   return { hasAccess: false };
 }
 
-export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
+export function registerAiBrainMemoryRoutes(app: Express, requireAuth: unknown) {
   /**
    * GET /api/ai-brain/memory/profile
    * Get user memory profile for intelligent context

@@ -76,9 +76,9 @@ export function UniversalEmptyState({
             margin: 0,
             fontSize: sz.titleSize,
             fontFamily: 'var(--font-display)',
-            fontWeight: 'var(--weight-semibold)' as any,
+            fontWeight: 'var(--weight-semibold)',
             color: 'var(--color-text-primary)',
-            lineHeight: 'var(--leading-tight)' as any,
+            lineHeight: 'var(--leading-tight)',
           }}
         >
           {title}
@@ -90,7 +90,7 @@ export function UniversalEmptyState({
               fontSize: sz.descSize,
               fontFamily: 'var(--font-body)',
               color: 'var(--color-text-secondary)',
-              lineHeight: 'var(--leading-relaxed)' as any,
+              lineHeight: 'var(--leading-relaxed)',
             }}
           >
             {description}
@@ -110,7 +110,7 @@ export function UniversalEmptyState({
             height: '40px',
             fontSize: 'var(--text-sm)',
             fontFamily: 'var(--font-body)',
-            fontWeight: 'var(--weight-medium)' as any,
+            fontWeight: 'var(--weight-medium)',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--color-brand-primary)',
             background: action.variant === 'primary' ? 'var(--color-brand-primary)' : 'transparent',

@@ -111,7 +111,7 @@ export default function WhiteLabelBranding() {
     id: "white-label-branding",
     title: "White-Label Branding",
     subtitle: "Upload your logo and customize colors — your brand shows live on the dashboard header",
-    category: "settings" as any,
+    category: "settings",
     showHeader: true,
   };
 

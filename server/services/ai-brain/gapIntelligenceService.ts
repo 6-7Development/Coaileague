@@ -690,7 +690,7 @@ class GapIntelligenceService {
    * Generate actionable description for scan results
    * Avoids vague "Found X issues" patterns - includes specific examples and guidance
    */
-  private generateActionableDescription(scanType: string, summary: any): string {
+  private generateActionableDescription(scanType: string, summary: unknown): string {
     // If no issues found, return a clear success message
     if (summary.totalFindings === 0) {
       return `${this.getScanTypeLabel(scanType)} completed with no issues detected. Platform code quality verified.`;
@@ -762,7 +762,7 @@ class GapIntelligenceService {
     return guidance[scanType] || 'Review findings and address high-severity issues first.';
   }
 
-  private async emitScanEvent(scanType: string, summary: any): Promise<void> {
+  private async emitScanEvent(scanType: string, summary: unknown): Promise<void> {
     // Generate actionable, specific description instead of vague counts
     const actionableDescription = this.generateActionableDescription(scanType, summary);
     

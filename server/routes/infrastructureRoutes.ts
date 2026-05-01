@@ -45,7 +45,7 @@ function requireEnterpriseFeature(featureName: keyof typeof FEATURE_FLAGS) {
   return (req: Request, res: Response, next: Function) => {
     // Check if user is platform staff (always allowed)
     const user = req.user;
-    const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes((user as any).platformRole);
+    const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes(req.user?.platformRole);
     
     if (isPlatformStaff || isFeatureEnabled(featureName)) {
       return next();
@@ -75,7 +75,7 @@ router.use((req: Request, res: Response, next: Function) => {
   
   // Check if user is platform staff (always allowed)
   const user = req.user;
-  const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes((user as any).platformRole);
+  const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes(req.user?.platformRole);
   
   if (isPlatformStaff) {
     return next();

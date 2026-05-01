@@ -2567,7 +2567,7 @@ router.get('/sessions/query', requireTrinityAccess, async (req, res) => {
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     
@@ -2619,7 +2619,7 @@ router.get('/sessions/:id/interactions', requireTrinityAccess, async (req, res) 
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     
@@ -2654,7 +2654,7 @@ router.get('/analytics', requireTrinityAccess, async (req, res) => {
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as any)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     

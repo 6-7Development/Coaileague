@@ -91,7 +91,7 @@ const appliedHotpatches: Map<string, HotpatchResult> = new Map();
 
 class TrinityAutonomousNotifierService {
   private static instance: TrinityAutonomousNotifierService;
-  private broadcastHandler: ((message: any) => void) | null = null;
+  private broadcastHandler: ((message: unknown) => void) | null = null;
   private hotpatchEnabled: boolean = true;
   private autoTicketEnabled: boolean = true;
 
@@ -112,7 +112,7 @@ class TrinityAutonomousNotifierService {
   // CONFIGURATION
   // ==========================================================================
 
-  setBroadcastHandler(handler: (message: any) => void): void {
+  setBroadcastHandler(handler: (message: unknown) => void): void {
     this.broadcastHandler = handler;
     log.info('[TrinityNotifier] Broadcast handler registered');
   }

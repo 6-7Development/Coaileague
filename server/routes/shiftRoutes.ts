@@ -1664,11 +1664,9 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
       try {
         const { trinityDecisionLogger } = await import('../services/trinityDecisionLogger');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const chosenEmp = (employees as unknown).find(e => e.id === assignment.employeeId);
         const alternatives = result.assignments.length > 1
           ? result.assignments.slice(1).map((a: unknown) => {
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               const altEmp = (employees as unknown).find(e => e.id === a.employeeId);
               return {
                 employeeId: a.employeeId,
@@ -1713,7 +1711,6 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       }
 
       // 🔔 NOTIFICATION: Notify assigned employee
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const employee = (employees as unknown).find(e => e.id === assignment.employeeId);
       if (employee?.email && updatedShift) {
         const startTime = new Date(updatedShift.startTime).toLocaleString('en-US', {

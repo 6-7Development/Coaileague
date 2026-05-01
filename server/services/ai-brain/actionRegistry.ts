@@ -2024,7 +2024,7 @@ class AIBrainActionRegistry {
             lt(shifts.startTime, targetShift.endTime as Date),
             gt(shifts.endTime, targetShift.startTime as Date),
             sql`${shifts.id} != ${shiftId}`,
-            notInArray(shifts.status as any, ['cancelled', 'calloff', 'no_show']),
+            notInArray(shifts.status, ['cancelled', 'calloff', 'no_show']),
           )).limit(1);
           if (overlapping.length > 0) {
             return createResult(request.actionId, false,
@@ -2077,7 +2077,7 @@ class AIBrainActionRegistry {
 
         // PROXIMITY_ALERT: Employee address far from site (advisory)
         if (emp) {
-          const empZip = (emp as any).zip || (emp as any).zipCode;
+          const empZip = (emp as EmployeeWithStatus).zip || (emp as EmployeeWithStatus).zipCode;
           const siteZip = targetShift ? (targetShift as any).siteZip : null;
           // Simple check: if zip codes differ significantly (first 3 digits), flag it
           if (empZip && siteZip && empZip.substring(0, 3) !== siteZip.substring(0, 3)) {
@@ -2508,7 +2508,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, false, 'Invoice not found in this workspace', null, start);
         }
 
-        if ((invoice as any).status !== 'draft') {
+        if ((invoice as Record<string, unknown>).status !== 'draft') {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -2516,14 +2516,14 @@ class AIBrainActionRegistry {
             entityType: 'invoice',
             entityId: invoiceId,
             success: false,
-            errorMessage: `Cannot add line items to invoice in status '${(invoice as any).status}'. Only drafts accept new line items.`,
+            errorMessage: `Cannot add line items to invoice in status '${(invoice as Record<string, unknown>).status}'. Only drafts accept new line items.`,
             payload: { items },
             durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
             false,
-            `Cannot add line items to invoice in status '${(invoice as any).status}'. Only drafts accept new line items.`,
+            `Cannot add line items to invoice in status '${(invoice as Record<string, unknown>).status}'. Only drafts accept new line items.`,
             null,
             start,
           );
@@ -2555,7 +2555,7 @@ class AIBrainActionRegistry {
         try {
           const inserted = await db.transaction(async (tx) => {
             const out = await tx.insert(invoiceLineItems).values(rows as any).returning();
-            const newTotalCents = Math.round(parseFloat(String((invoice as any).total ?? '0')) * 100) + appendedTotalCents;
+            const newTotalCents = Math.round(parseFloat(String((invoice as Record<string, unknown>).total ?? '0')) * 100) + appendedTotalCents;
             await tx.update(invoices)
               .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as Record<string, unknown>)
               .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, request.workspaceId!)));

@@ -62,7 +62,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(payrollRuns)
     .where(and(
       eq(payrollRuns.workspaceId, workspaceId),
-      inArray(payrollRuns.status as any, ['draft', 'pending', 'approved']),
+      inArray(payrollRuns.status, ['draft', 'pending', 'approved']),
     ))
     .orderBy(payrollRuns.disbursementDate)
     .limit(1)
@@ -83,7 +83,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
       lte(invoices.dueDate, payrollCutoff),
     ))
     .catch(() => [{ total: 0 }]);
@@ -96,7 +96,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
     ))
     .catch(() => [{ total: 0 }]);
 
@@ -108,7 +108,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      eq(invoices.status as any, 'overdue'),
+      eq(invoices.status, 'overdue'),
     ))
     .catch(() => [{ total: 0 }]);
 
@@ -122,7 +122,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
     ))
     .catch(() => []);
 
@@ -196,7 +196,7 @@ const agingReportAction = mkAction('billing.aging_report_detailed', async (req) 
       status: invoices.status,
       issueDate: invoices.issueDate,
     }).from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['sent', 'overdue'])))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['sent', 'overdue'])))
       .orderBy(invoices.dueDate)
       .catch(() => []);
 
@@ -278,7 +278,7 @@ const receivablesCollectionPriority = mkAction('billing.collection_priority', as
       dueDate: invoices.dueDate,
       status: invoices.status,
     }).from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['sent', 'overdue'])))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['sent', 'overdue'])))
       .orderBy(invoices.dueDate)
       .limit(20)
       .catch(() => []);
@@ -316,12 +316,12 @@ const revenueForecast = mkAction('billing.revenue_forecast', async (req) => {
 
     const lastMonth = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
       .from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['paid']), gte(invoices.paidAt, thirtyDaysAgo)))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['paid']), gte(invoices.paidAt, thirtyDaysAgo)))
       .catch(() => [{ total: 0 }]);
 
     const priorMonth = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
       .from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['paid']), gte(invoices.paidAt, sixtyDaysAgo), lt(invoices.paidAt, thirtyDaysAgo)))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['paid']), gte(invoices.paidAt, sixtyDaysAgo), lt(invoices.paidAt, thirtyDaysAgo)))
       .catch(() => [{ total: 0 }]);
 
     const lastMonthRevenue = parseFloat(String((lastMonth[0] as any)?.total || 0));
@@ -350,7 +350,7 @@ const quickCashSummary = mkAction('billing.quick_cash_summary', async (req) => {
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
         const row = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
           .from(invoices)
-          .where(and(eq(invoices.workspaceId, wid), eq(invoices.status as any, 'paid'), gte(invoices.paidAt, thirtyDaysAgo)))
+          .where(and(eq(invoices.workspaceId, wid), eq(invoices.status, 'paid'), gte(invoices.paidAt, thirtyDaysAgo)))
           .catch(() => [{ total: 0 }]);
         return parseFloat(String((row[0] as any)?.total || 0));
       })(),

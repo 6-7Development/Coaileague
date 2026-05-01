@@ -334,7 +334,7 @@ function MessageActions({
   const pinMessage = {
     ...actions.pinMessage,
     mutate: () => actions.pinMessage.mutate(undefined, {
-      onSuccess: async (res: any) => {
+      onSuccess: async (res: unknown) => {
         try {
           const data = typeof res?.json === 'function' ? await res.json() : res;
           toast({ title: data?.pinned ? "Message pinned" : "Message unpinned" });
@@ -949,7 +949,7 @@ function VoicePlayer({ src }: { src: string }) {
       <div className="chatdock-voice-bar" onClick={scrub} role="slider" aria-label="Voice message progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
         <div
           className="chatdock-voice-bar-fill"
-          style={{ ['--chatdock-voice-progress' as any]: `${progress}%` }}
+          style={{ ['--chatdock-voice-progress']: `${progress}%` }}
         />
       </div>
       <span className="chatdock-voice-time">{fmt(current)}{duration > 0 ? ` / ${fmt(duration)}` : ''}</span>
@@ -1077,7 +1077,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
       toast({ title: "Message edited" });
       setEditingMessage(null);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({ title: "Edit failed", description: error.message, variant: "destructive" });
     },
   });

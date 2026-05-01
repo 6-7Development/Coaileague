@@ -56,7 +56,7 @@ export function getDepartmentCode(
 /**
  * Check if Work ID already exists in database
  */
-export async function isWorkIdUnique(workId: string, db: any): Promise<boolean> {
+export async function isWorkIdUnique(workId: string, db: unknown): Promise<boolean> {
   const existing = await db.query.users.findFirst({
     where: (users: any, { eq }: any) => eq(users.workId, workId),
   });

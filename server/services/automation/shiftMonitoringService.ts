@@ -433,7 +433,7 @@ class ShiftMonitoringService {
     };
   }
 
-  private async handleLateClockIn(shift: any, employee: any, minutesLate: number): Promise<void> {
+  private async handleLateClockIn(shift: any, employee: Record<string, unknown>, minutesLate: number): Promise<void> {
     const alert: ShiftAlert = {
       type: 'late_clock_in',
       shiftId: shift.id,
@@ -451,7 +451,7 @@ class ShiftMonitoringService {
     await this.notifyFieldManagers(shift.workspaceId, alert);
   }
 
-  private async handleNoCallNoShow(shift: any, employee: any, minutesLate: number): Promise<void> {
+  private async handleNoCallNoShow(shift: any, employee: Record<string, unknown>, minutesLate: number): Promise<void> {
     const alert: ShiftAlert = {
       type: 'no_call_no_show',
       shiftId: shift.id,
@@ -719,10 +719,10 @@ class ShiftMonitoringService {
           and(
             eq(employees.workspaceId, workspaceId),
             or(
-              eq(employees.workspaceRole as any, 'manager'),
-              eq(employees.workspaceRole as any, 'supervisor'),
-              eq(employees.workspaceRole as any, 'department_manager'),
-              eq(employees.workspaceRole as any, 'field_supervisor')
+              eq(employees.workspaceRole, 'manager'),
+              eq(employees.workspaceRole, 'supervisor'),
+              eq(employees.workspaceRole, 'department_manager'),
+              eq(employees.workspaceRole, 'field_supervisor')
             )
           )
         );
@@ -765,8 +765,8 @@ class ShiftMonitoringService {
           and(
             eq(employees.workspaceId, workspaceId),
             or(
-              eq(employees.workspaceRole as any, 'org_owner'),
-              eq(employees.workspaceRole as any, 'co_owner')
+              eq(employees.workspaceRole, 'org_owner'),
+              eq(employees.workspaceRole, 'co_owner')
             )
           )
         );

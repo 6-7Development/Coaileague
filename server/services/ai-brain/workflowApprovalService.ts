@@ -103,7 +103,7 @@ class WorkflowApprovalService {
     finding: GapFinding & { id?: number },
     proposedFix: {
       affectedFiles: string[];
-      changes: any;
+      changes: unknown;
       rollbackPlan?: string;
     }
   ): Promise<AiWorkflowApproval | null> {
@@ -169,7 +169,7 @@ class WorkflowApprovalService {
     title: string;
     description: string;
     affectedFiles: string[];
-    proposedChanges: any;
+    proposedChanges: unknown;
     rollbackPlan?: string;
     riskLevel?: string;
     workOrderId?: string;

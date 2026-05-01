@@ -493,7 +493,7 @@ export class ClientPortalHelpAIService {
           billingPeriod: new Date().toISOString().slice(0, 7),
           inputData: { messageLength: msg.length, turn: session.messages.length },
           outputData: { responseLength: aiResponse.length, provider: result.provider },
-        } as any).catch((err: unknown) => {
+        }).catch((err: unknown) => {
           log.warn('[ClientPortalHelpAI] workspaceAiUsage insert failed (non-blocking):', (err as Error)?.message);
         });
       }

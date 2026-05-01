@@ -332,7 +332,7 @@ export async function cancelTransfer(transferId: string): Promise<boolean> {
 
 // In-memory JWK cache to avoid a Plaid API round-trip on every webhook delivery.
 // TTL: 5 minutes. Plaid rotates keys infrequently but the cache avoids DOS potential.
-const _jwkCache = new Map<string, { key: any; expiresAt: number }>();
+const _jwkCache = new Map<string, { key: unknown; expiresAt: number }>();
 
 export async function verifyPlaidWebhookJwt(token: string | undefined): Promise<boolean> {
   if (!token) {

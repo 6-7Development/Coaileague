@@ -128,8 +128,8 @@ router.post("/analytics/generate", requireAuth, mutationLimiter, async (req: Aut
 
     const allValues = deals.map((d: unknown) => parseFloat(d.estimated_monthly_value || d.estimated_annual_value || 0));
     const avgValue = allValues.length ? allValues.reduce((a: number, b: number) => a + b, 0) / allValues.length : 0;
-    const totalPipeline = deals.filter((d: unknown) => !['won','lost'].includes(d.stage)).reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
-    const totalWon = won.reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
+    const totalPipeline = deals.filter((d: unknown) => !['won','lost'].includes(d.stage)).reduce((s: number, d: unknown) => s + parseFloat(d.estimated_monthly_value || 0), 0);
+    const totalWon = won.reduce((s: number, d: unknown) => s + parseFloat(d.estimated_monthly_value || 0), 0);
 
     // Average days to close
     const closeTimes = won.concat(lost).filter((d: unknown) => d.actual_close_date && d.created_at).map((d: unknown) =>

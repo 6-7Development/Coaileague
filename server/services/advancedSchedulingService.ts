@@ -688,7 +688,6 @@ export async function getAvailableEmployeesForSwap(
       id: e.id,
       name: `${e.firstName} ${e.lastName}`,
       isAvailable: !busyEmployeeIds.has(e.id),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       skills: Array.isArray(e.skills) ? (e as any).skills : [],
     }));
 }

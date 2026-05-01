@@ -626,7 +626,7 @@ Order tasks logically: understand -> plan -> implement -> test -> commit`;
     return tasks.filter(t => t.status === 'ready');
   }
 
-  markTaskComplete(workOrderId: string, taskId: string, output: any): void {
+  markTaskComplete(workOrderId: string, taskId: string, output: unknown): void {
     const tasks = this.taskGraphs.get(workOrderId) || [];
     const task = tasks.find(t => t.id === taskId);
     if (task) {

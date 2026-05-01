@@ -8174,11 +8174,9 @@ export class DatabaseStorage implements IStorage {
       .where(eq(aiResponses.workspaceId, workspaceId));
 
     if (filters?.sourceType) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = (query as unknown).where(eq(aiResponses.sourceType, filters.sourceType));
     }
     if (filters?.feature) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = (query as unknown).where(eq(aiResponses.feature, filters.feature));
     }
 
@@ -8835,9 +8833,7 @@ export class DatabaseStorage implements IStorage {
   async updateAiBrainActionLog(id: string, workspaceId: string, data: Partial<InsertAiBrainActionLog>): Promise<AiBrainActionLog | undefined> {
     const safeData: Record<string, unknown> = {};
     if (data.actorType !== undefined) safeData.actionType = data.actorType;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (data.actionData !== undefined) safeData.actionData = (data as unknown).actionData;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (data.result !== undefined) safeData.result = (data as unknown).result;
     if (Object.keys(safeData).length === 0) return this.getAiBrainActionLog(id);
     const [updated] = await db

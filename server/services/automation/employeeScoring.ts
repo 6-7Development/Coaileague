@@ -64,7 +64,7 @@ export interface EmployeeCandidate {
   
   // CRITICAL: Full employee object for direct use in AI Fill
   // This ensures only vetted candidates (passed hard filters) reach Gemini
-  fullEmployee: any; // Type: Employee from schema
+  fullEmployee: unknown; // Type: Employee from schema
   
   // Scores (0-1 normalized)
   skillsScore: number;

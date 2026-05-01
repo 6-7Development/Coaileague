@@ -284,9 +284,9 @@ class TrinityProactiveScannerService {
 
     // 5c. Active collections pipeline
     try {
-      const activeCollections = await db.select({ id: clients.id, companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName, collectionsStatus: (clients as ClientWithExtras).collectionsStatus, collectionAttemptCount: (clients as ClientWithExtras).collectionAttemptCount })
+      const activeCollections = await db.select({ id: clients.id, companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName, collectionsStatus: (clients as Record<string,unknown>).collectionsStatus, collectionAttemptCount: (clients as Record<string,unknown>).collectionAttemptCount })
         .from(clients)
-        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as ClientWithExtras).collectionsStatus as any, 'active')))
+        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as Record<string,unknown>).collectionsStatus as any, 'active')))
         .catch(() => []);
       if (activeCollections.length > 0) {
         const names = activeCollections.slice(0, 3).map((c: unknown) => c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown').join(', ');
@@ -301,8 +301,8 @@ class TrinityProactiveScannerService {
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
-        eq(timeEntries.status as any, 'pending'),
-        lte(timeEntries.updatedAt as any, yesterday)
+        eq(timeEntries.status, 'pending'),
+        lte(timeEntries.updatedAt, yesterday)
       ))
       .catch(() => []);
     const pendingApprovals = pendingTimesheets.length;
@@ -326,7 +326,7 @@ class TrinityProactiveScannerService {
             gte(shifts.startTime, now),
             lte(shifts.startTime, next14),
             ne(shifts.status, 'cancelled'),
-            inArray(shifts.employeeId as any, inactiveIds)
+            inArray(shifts.employeeId, inactiveIds)
           ))
           .catch(() => []);
         if (ghostShifts.length > 0) {
@@ -447,7 +447,7 @@ class TrinityProactiveScannerService {
                 lte(shifts.startTime, threshold15),
                 gte(shifts.startTime, new Date(now.getTime() - 4 * 3600000)),
                 ne(shifts.status, 'cancelled'),
-                inArray(shifts.employeeId as any, teamIds)
+                inArray(shifts.employeeId, teamIds)
               ))
               .catch(() => []);
 
@@ -483,7 +483,7 @@ class TrinityProactiveScannerService {
                 eq(employeeDocuments.workspaceId, workspaceId),
                 gte(employeeDocuments.expirationDate, now),
                 lte(employeeDocuments.expirationDate, new Date(now.getTime() + 7 * 86400000)),
-                inArray(employeeDocuments.employeeId as any, teamIds)
+                inArray(employeeDocuments.employeeId, teamIds)
               ))
               .catch(() => []);
             if (teamExpiringRows.length > 0) {
@@ -527,7 +527,7 @@ class TrinityProactiveScannerService {
         .from(payrollRuns)
         .where(and(
           eq(payrollRuns.workspaceId, workspaceId),
-          ne(payrollRuns.status as any, 'draft'),
+          ne(payrollRuns.status, 'draft'),
         ))
         .orderBy(desc(payrollRuns.periodStart))
         .limit(4)
@@ -657,8 +657,8 @@ class TrinityProactiveScannerService {
       .from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
-        eq(shifts.status as any, 'marketplace'),
-        lte(shifts.updatedAt as any, twoDaysAgo)
+        eq(shifts.status, 'marketplace'),
+        lte(shifts.updatedAt, twoDaysAgo)
       ))
       .catch(() => []);
     const staleMarketplaceOffers = staleOffers.length;
@@ -816,7 +816,7 @@ class TrinityProactiveScannerService {
           title: `Trinity Monthly Cycle — ${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`,
           message: summaryLines,
           priority: 'high',
-        } as any).catch(() => null);
+        }).catch(() => null);
       }
       executiveSummaryGenerated = true;
       alerts.push('Executive summary sent to workspace owner(s)');
@@ -910,7 +910,7 @@ class TrinityProactiveScannerService {
 
       case 'missed_clock_in':
         if (officerId && shiftId) {
-          const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
+          const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
           const userId = (emp as any)?.userId || officerId;
           await createNotification({
             workspaceId, userId, type: 'missed_clock_in',
@@ -938,7 +938,7 @@ class TrinityProactiveScannerService {
 
       case 'license_expiry':
         if (officerId && workspaceId) {
-          const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
+          const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
           const userId = (emp as any)?.userId || officerId;
           await createNotification({
             workspaceId, userId, type: 'compliance',
@@ -968,7 +968,7 @@ class TrinityProactiveScannerService {
               eq(timeEntries.id, payload.timeEntryId),
               eq(timeEntries.workspaceId, workspaceId),
             ) as any,
-          } as any).catch(() => null);
+          }).catch(() => null);
           if (entry) {
             const hasIssues = !(entry as unknown).clockOut || (entry as unknown).totalMinutes > 600 || (entry as unknown).totalMinutes < 0;
             if (!hasIssues) {
@@ -1001,7 +1001,7 @@ class TrinityProactiveScannerService {
               idempotencyKey: `incident-${Date.now()}-${mgr.userId}`,
               message: `An incident report has been filed (ID: ${payload.incidentId}). Please review and take appropriate action.`,
               priority: 'high',
-            } as any).catch(() => null);
+            }).catch(() => null);
           }
           return { handled: true, event: 'incident_filed', supervisorNotified: true };
         }
@@ -1092,7 +1092,7 @@ class TrinityProactiveScannerService {
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'sla_breach', title: `SLA Breach — ${payload.serviceName}`,
               idempotencyKey: `sla_breach-${Date.now()}-${mgr.userId}`,
-              message: `${payload.serviceName} missed its SLA target: ${payload.breachType || 'performance threshold exceeded'} (target: ${payload.targetValue}, actual: ${payload.actualValue}).`, priority: 'high' } as any).catch(() => null);
+              message: `${payload.serviceName} missed its SLA target: ${payload.breachType || 'performance threshold exceeded'} (target: ${payload.targetValue}, actual: ${payload.actualValue}).`, priority: 'high' }).catch(() => null);
           }
           return { handled: true, event: 'sla_breach', supervisorNotified: true };
         }
@@ -1157,7 +1157,7 @@ class TrinityProactiveScannerService {
     try {
       const pendingTimesheets = await db.select({ id: timeEntries.id })
         .from(timeEntries)
-        .where(and(eq(timeEntries.workspaceId, workspaceId), eq(timeEntries.status as any, 'pending'), lte(timeEntries.updatedAt as any, yesterday)))
+        .where(and(eq(timeEntries.workspaceId, workspaceId), eq(timeEntries.status, 'pending'), lte(timeEntries.updatedAt, yesterday)))
         .catch(() => []);
       if (pendingTimesheets.length > 0) {
         items.push({ urgency: 'high', title: `${pendingTimesheets.length} timesheet(s) pending >24 hours`, detail: `Timesheets have been waiting for approval longer than a business day. Delays affect payroll accuracy.`, actionHint: 'Use timesheet.auto_approve_clean or notify approvers', score: 70 });
@@ -1223,10 +1223,8 @@ class TrinityProactiveScannerService {
           gte(shifts.startTime, tomorrowStart),
           lte(shifts.startTime, tomorrowEnd),
           eq(shifts.requiresAcknowledgment, true),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          isNull(shifts as any).acknowledgedAt,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          isNull(shifts as any).deniedAt,
+          isNull(shifts.acknowledgedAt),
+          isNull(shifts.deniedAt),
         ))
         .catch(() => []);
       if (unconfirmedTomorrow.length > 0) {
@@ -1243,7 +1241,7 @@ class TrinityProactiveScannerService {
         .from(panicAlerts)
         .where(and(
           eq(panicAlerts.workspaceId, workspaceId),
-          eq(panicAlerts.status as any, 'active'),
+          eq(panicAlerts.status, 'active'),
           gte(panicAlerts.createdAt, last24h),
           isNullOp(panicAlerts.resolvedAt)
         ))
@@ -1269,8 +1267,7 @@ class TrinityProactiveScannerService {
           eq(orchestrationRuns.actionId, 'trinity.brief_dedup'),
           eq(orchestrationRuns.status, 'completed')
         ))
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        .orderBy(desc(orchestrationRuns as any).completedAt)
+        .orderBy(desc(orchestrationRuns.completedAt))
         .limit(1)
         .catch(() => []);
       if (dedupRecord.length > 0 && dedupRecord[0].outputResult) {
@@ -1289,7 +1286,7 @@ class TrinityProactiveScannerService {
         .where(and(
           eq(invoices.workspaceId, workspaceId),
           sql`${invoices.status} IN ('overdue', 'sent', 'pending')`,
-          lte(invoices.dueDate as any, fortyFiveDaysAgo),
+          lte(invoices.dueDate, fortyFiveDaysAgo),
           sql`${invoices.clientId} IS NOT NULL`
         ))
         .groupBy(invoices.clientId)
@@ -1355,7 +1352,7 @@ class TrinityProactiveScannerService {
         startedAt: now,
         completedAt: now,
         durationMs: 0,
-      } as any).catch(() => null);
+      }).catch(() => null);
     } catch (_dedupSaveErr) { /* non-fatal */ }
 
     // 11. Open training interventions + expiring module certificates
@@ -1602,7 +1599,7 @@ class TrinityProactiveScannerService {
       .from(invoices)
       .where(and(
         eq(invoices.workspaceId, workspaceId),
-        gte(invoices.createdAt as any, monthStart),
+        gte(invoices.createdAt, monthStart),
         eq(invoices.status, 'paid')
       ))
       .catch(() => [{ total: 0 }]);
@@ -1632,8 +1629,7 @@ class TrinityProactiveScannerService {
     for (const ws of activeWorkspaces) {
       try {
         const { trinityShiftConfirmationActions } = await import('./trinityShiftConfirmationActions').catch(() => ({ trinityShiftConfirmationActions: null }));
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        const scanResult = await helpaiOrchestrator.executeAction('shift.scan_tomorrows_shifts', { workspaceId: ws.id } as any).catch(() => null);
+        const scanResult = await helpaiOrchestrator.executeAction('shift.scan_tomorrows_shifts', { workspaceId: ws.id }).catch(() => null);
         log.info(`[TrinityProactiveScanner] Night-before confirmation: ws=${ws.id}, result=${JSON.stringify(scanResult?.data || {})}`);
       } catch (e: unknown) {
         log.error(`[TrinityProactiveScanner] Night-before confirmation failed for ${ws.id}: ${e.message}`);
@@ -1653,7 +1649,7 @@ class TrinityProactiveScannerService {
         .from(workspaceMembers)
         .where(and(
           eq(workspaceMembers.workspaceId, workspaceId),
-          inArray(workspaceMembers.role as any, ['org_owner', 'co_owner']),
+          inArray(workspaceMembers.role, ['org_owner', 'co_owner']),
         ))
         .catch(() => []);
 

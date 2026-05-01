@@ -1100,7 +1100,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       for (const user of usersData) {
         await tx.execute(sql`
           INSERT INTO users (id, email, first_name, last_name, password_hash, role, email_verified, current_workspace_id, created_at, updated_at, login_attempts, mfa_enabled)
-          VALUES (${user.id}, ${user.email}, ${user.firstName}, ${user.lastName}, ${user.passwordHash}, ${user.role}, ${user.emailVerified}, ${(user as any).currentWorkspaceId || null}, NOW(), NOW(), 0, FALSE)
+          VALUES (${user.id}, ${user.email}, ${user.firstName}, ${user.lastName}, ${user.passwordHash}, ${user.role}, ${user.emailVerified}, ${req.user?.currentWorkspaceId || null}, NOW(), NOW(), 0, FALSE)
           ON CONFLICT (id) DO NOTHING
         `);
       }
@@ -1155,7 +1155,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       for (const emp of employeesData) {
         await tx.execute(sql`
           INSERT INTO employees (id, user_id, workspace_id, first_name, last_name, email, hourly_rate, role, workspace_role, employee_number, created_at, updated_at)
-          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as any).role || null}, ${emp.workspaceRole}, ${emp.employeeNumber}, NOW(), NOW())
+          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as EmployeeWithStatus).role || null}, ${emp.workspaceRole}, ${emp.employeeNumber}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }

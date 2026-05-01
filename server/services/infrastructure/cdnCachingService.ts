@@ -18,7 +18,7 @@ const log = createLogger('cdnCachingService');
 
 interface CacheEntry {
   key: string;
-  value: any;
+  value: unknown;
   contentType: string;
   size: number;
   hash: string;
@@ -225,7 +225,7 @@ class CDNCachingService {
   /**
    * Warm cache with pre-computed values
    */
-  async warmCache(entries: Array<{ key: string; value: any; ttl?: number }>): Promise<number> {
+  async warmCache(entries: Array<{ key: string; value: unknown; ttl?: number }>): Promise<number> {
     let warmed = 0;
     
     for (const entry of entries) {
@@ -332,7 +332,7 @@ class CDNCachingService {
    * Cache middleware for Express routes
    */
   cacheMiddleware(ttl?: number) {
-    return (req: any, res: any, next: any) => {
+    return (req: any, res: any, next: unknown) => {
       const cacheKey = `route:${req.method}:${req.originalUrl}`;
       const cached = this.get(cacheKey);
       

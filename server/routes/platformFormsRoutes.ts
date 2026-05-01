@@ -551,8 +551,8 @@ router.post('/signing/sequences', requireAuth, async (req: Request, res: Respons
     // Email first signer in the sequence
     const firstToken = tokens.find(t => t.signer_order === 1 || t.status === 'pending');
     if (firstToken?.signer_email && isResendConfigured()) {
-      const senderName = (user as any).first_name
-        ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim()
+      const senderName = req.user?.first_name
+        ? `${req.user?.first_name} ${req.user?.last_name || ''}`.trim()
         : PLATFORM.name;
       const signingUrl = `${baseUrl}/sign/${firstToken.token}`;
       scheduleNonBlocking('platform-forms.signing-request-email', async () => {
@@ -1016,7 +1016,7 @@ router.post('/:formId/invite', requireAuth, async (req: Request, res: Response) 
 
     // Send invitation email via Resend
     if (email && isResendConfigured()) {
-      const senderName = (user as any).first_name ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim() : `Your ${PLATFORM.name} Team`;
+      const senderName = req.user?.first_name ? `${req.user?.first_name} ${req.user?.last_name || ''}`.trim() : `Your ${PLATFORM.name} Team`;
       scheduleNonBlocking('platform-forms.invitation-email', async () => {
         await sendCanSpamCompliantEmail({
           to: email,

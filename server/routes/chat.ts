@@ -818,13 +818,13 @@ const router = Router();
           workspaceId: workspaceId,
           conversationId,
           userId,
-          userName: (user as any).displayName || (user as any).username || "Anonymous",
+          userName: req.user?.displayName || req.user?.username || "Anonymous",
         })
         .onConflictDoUpdate({
           target: [typingIndicators.conversationId, typingIndicators.userId],
           set: {
             startedAt: sql`NOW()`,
-            userName: (user as any).displayName || (user as any).username || "Anonymous",
+            userName: req.user?.displayName || req.user?.username || "Anonymous",
           },
         });
       
@@ -941,7 +941,7 @@ const router = Router();
       }
       
       // Send welcome system message
-      const userName = (user as any).displayName || user.email;
+      const userName = req.user?.displayName || user.email;
       const welcomeMessage = `Chat created by ${userName}. Type: ${chatType}`;
       
       await storage.createChatMessage({

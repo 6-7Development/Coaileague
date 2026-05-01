@@ -101,7 +101,7 @@ const upload = multer({
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
-function requireAuditorSession(req: AuthenticatedRequest, res: Response, next: any): void {
+function requireAuditorSession(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (!req.session?.auditorId) {
     res.status(401).json({ ok: false, error: 'Auditor session required' });
     return;
@@ -109,7 +109,7 @@ function requireAuditorSession(req: AuthenticatedRequest, res: Response, next: a
   next();
 }
 
-function requireUserAuth(req: AuthenticatedRequest, res: Response, next: any): void {
+function requireUserAuth(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (!req.user?.id && !req.session?.userId) {
     res.status(401).json({ ok: false, error: 'Authentication required' });
     return;
@@ -118,7 +118,7 @@ function requireUserAuth(req: AuthenticatedRequest, res: Response, next: any): v
 }
 
 // Accept either a logged-in tenant user OR an auditor session
-function requireEitherAuth(req: AuthenticatedRequest, res: Response, next: any): void {
+function requireEitherAuth(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (req.user?.id || req.session?.userId || req.session?.auditorId) {
     return next();
   }

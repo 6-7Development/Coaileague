@@ -51,8 +51,8 @@ interface SyncPayload {
 interface ConflictResolution {
   entityType: string;
   entityId: string;
-  serverVersion: any;
-  clientVersion: any;
+  serverVersion: unknown;
+  clientVersion: unknown;
   resolution: 'server_wins' | 'client_wins' | 'merged';
   resolvedAt: Date;
 }

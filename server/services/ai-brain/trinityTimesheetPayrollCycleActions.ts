@@ -89,7 +89,7 @@ export function registerTimesheetPayrollCycleActions() {
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
-        eq(timeEntries.status as any, 'pending'),
+        eq(timeEntries.status, 'pending'),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate),
         gt(timeEntries.totalMinutes, 0),
@@ -202,7 +202,7 @@ export function registerTimesheetPayrollCycleActions() {
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.employeeId, employeeId),
-        eq(timeEntries.status as any, 'approved'),
+        eq(timeEntries.status, 'approved'),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate)
       ));
@@ -239,7 +239,7 @@ export function registerTimesheetPayrollCycleActions() {
       .where(and(eq(payrollEntries.payrollRunId, payrollRunId), eq(payrollEntries.workspaceId, workspaceId)))
       .catch(() => []);
     const computedTotal = entries.reduce((acc, e) => acc + parseFloat(String(e.grossPay || 0)), 0);
-    const storedTotal = parseFloat(String((run as any).totalGrossPay || 0));
+    const storedTotal = parseFloat(String((run as Record<string, unknown>).totalGrossPay || 0));
     const variance = Math.abs(computedTotal - storedTotal);
     const negativeNet = entries.filter(e => parseFloat(String(e.netPay || 0)) < 0).length;
     return {
@@ -281,7 +281,7 @@ export function registerTimesheetPayrollCycleActions() {
     return {
       paystub: {
         employeeId,
-        employeeName: emp ? `${(emp as any).firstName} ${(emp as any).lastName}` : 'Unknown',
+        employeeName: emp ? `${(emp as EmployeeWithStatus).firstName} ${(emp as EmployeeWithStatus).lastName}` : 'Unknown',
         payrollRunId,
         grossPay: entry[0].grossPay,
         netPay: entry[0].netPay,

@@ -192,7 +192,7 @@ router.post('/pay-invoice', requireAuth, async (req: AuthenticatedRequest, res) 
     const totalCents = parseInt(multiplyFinancialValues(toFinancialString(invoice.total as string), '100'));
     const platformFeeCents = parseInt(multiplyFinancialValues(toFinancialString(invoice.platformFeeAmount as string || '0'), '100'));
 
-    const invoiceCurrency = ((invoice as any).currency || 'usd').toLowerCase();
+    const invoiceCurrency = ((invoice as Record<string, unknown>).currency || 'usd').toLowerCase();
     const paymentIntent = await stripe.paymentIntents.create({
       automatic_payment_methods: { enabled: true },
       amount: totalCents,
@@ -838,7 +838,6 @@ router.post('/connect-dashboard', flexAuth, async (req: AuthenticatedRequest, re
     res.json({ url: loginLink.url });
   } catch (error: unknown) {
     log.error("Error creating Connect dashboard link:", error);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (error?.type === 'StripeInvalidRequestError' && (error as any)?.message?.includes('standard')) {
       const dashboardUrl = `https://dashboard.stripe.com`;
       return res.json({ url: dashboardUrl, note: 'Standard accounts use the main Stripe Dashboard' });

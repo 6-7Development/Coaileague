@@ -282,7 +282,7 @@ export class AutomationEngine {
     eventType: string;
     aggregateId: string;
     aggregateType: string;
-    schema: any;
+    schema: unknown;
     buildFallback: (details: { reason: string }) => T;
     transactionId?: string;
     minConfidence?: number;

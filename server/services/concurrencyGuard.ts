@@ -11,7 +11,7 @@ const log = createLogger('ConcurrencyGuard');
 const locks = new Map<string, Promise<void>>();
 
 // Idempotency cache: key → { result, expiresAt }
-const idempotencyCache = new Map<string, { result: any; expiresAt: number }>();
+const idempotencyCache = new Map<string, { result: unknown; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class WorkspaceLockError extends Error {
@@ -95,7 +95,7 @@ export function storeIdempotencyResult(
  * If X-Idempotency-Key header present and matches a cached result, return 200 immediately.
  */
 export function idempotencyMiddleware(workspaceIdExtractor?: (req: any) => string | undefined) {
-  return (req: any, res: any, next: any) => {
+  return (req: any, res: any, next: unknown) => {
     const idempotencyKey = req.headers['x-idempotency-key'] as string | undefined;
     if (!idempotencyKey) { next(); return; }
 

@@ -218,7 +218,7 @@ class TrinityRecognitionEngine {
 
     if (!top.length) return { nominated: false };
 
-    const best = top.sort((a: any, b: any) => Number(b.composite_score) - Number(a.composite_score))[0];
+    const best = top.sort((a: unknown, b: unknown) => Number(b.composite_score) - Number(a.composite_score))[0];
 
     const template = await this.getTemplate(workspaceId, 'officer_of_month');
     const companyName = await this.getCompanyName(workspaceId);
@@ -244,7 +244,7 @@ class TrinityRecognitionEngine {
         idempotencyKey: `trinity_ootm_nomination-${Date.now()}-${ownerUserId}`,
         message: `Trinity nominates ${best.first_name} ${best.last_name} for Officer of the Month (score: ${Math.round(Number(best.composite_score))}). Approve to send the announcement to the team.\n\nMessage:\n"${message}"`,
         priority: 'normal'
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
 
     return { nominated: true, officer: best };

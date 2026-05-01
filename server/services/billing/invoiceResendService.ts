@@ -66,7 +66,7 @@ export async function getUndeliveredInvoices(): Promise<UndeliveredSummary> {
     })
     .from(invoices)
     .where(and(
-      eq(invoices.status as any, 'sent'),
+      eq(invoices.status, 'sent'),
       or(
         eq(invoices.deliveryConfirmed, false),
         isNull(invoices.deliveryConfirmed)

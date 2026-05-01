@@ -115,7 +115,7 @@ Respond ONLY with valid JSON, no other text.`;
     const responseText = result.content?.trim() || '{}';
     
     // Parse AI response
-    let aiResponse: any;
+    let aiResponse: unknown;
     try {
       aiResponse = JSON.parse(responseText);
     } catch (parseError) {

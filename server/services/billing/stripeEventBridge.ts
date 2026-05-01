@@ -256,7 +256,7 @@ class StripeEventBridge {
     // Token allowance is tracked per calendar month via token_usage_monthly —
     // no renewal-triggered reset needed (a fresh row is created at the start
     // of each billing period automatically).
-    const billingReason = (invoice as any).billing_reason as string | undefined;
+    const billingReason = (invoice as Record<string, unknown>).billing_reason as string | undefined;
     const isRenewal = billingReason === 'subscription_cycle';
 
     await platformEventBus.publish({

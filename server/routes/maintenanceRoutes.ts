@@ -53,7 +53,7 @@ const diagnosticsReportSchema = z.object({
  * Middleware: accept either a valid DIAG_BYPASS_SECRET header (Trinity internal calls)
  * or a fully authenticated platform admin user. Rejects if neither condition is met.
  */
-function requireTrinityOrAdmin(req: AuthenticatedRequest, res: any, next: any) {
+function requireTrinityOrAdmin(req: AuthenticatedRequest, res: any, next: unknown) {
   const diagSecret = process.env.DIAG_BYPASS_SECRET;
   const suppliedSecret = req.headers['x-diagnostics-runner'];
   const trinityActor = req.headers['x-trinity-actor'];
@@ -114,8 +114,7 @@ router.post('/api/maintenance/activate', requireAuth, requirePlatformAdmin, asyn
       activatedBy: {
         type: 'admin',
         id: user.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        name: user.email || (user as any).username
+        name: user.email || req.user?.username
       },
       statusMessage: data.statusMessage,
       triadReportId: data.triadReportId

@@ -232,8 +232,8 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
         eq(shifts.workspaceId, workspaceId),
         gte(shifts.startTime, now),
         or(
-          eq(shifts.status as any, 'scheduled'),
-          eq(shifts.status as any, 'confirmed'),
+          eq(shifts.status, 'scheduled'),
+          eq(shifts.status, 'confirmed'),
         )
       ));
 
@@ -247,11 +247,11 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
           eq(employees.workspaceId, workspaceId),
           eq(employees.isActive, true),
           or(
-            eq(employees.workspaceRole as any, 'org_owner'),
-            eq(employees.workspaceRole as any, 'co_owner'),
-            eq(employees.workspaceRole as any, 'manager'),
-            eq(employees.workspaceRole as any, 'supervisor'),
-            eq(employees.workspaceRole as any, 'compliance_officer'),
+            eq(employees.workspaceRole, 'org_owner'),
+            eq(employees.workspaceRole, 'co_owner'),
+            eq(employees.workspaceRole, 'manager'),
+            eq(employees.workspaceRole, 'supervisor'),
+            eq(employees.workspaceRole, 'compliance_officer'),
           )
         ));
 

@@ -416,14 +416,14 @@ class AIBrainTestRunner {
   listTests(): TestCase[] {
     return Array.from(this.tests.values()).map(t => ({
       ...t,
-      run: undefined as any,
+      run: undefined,
     }));
   }
 
   listTestsByCategory(category: string): TestCase[] {
     return Array.from(this.tests.values())
       .filter(t => t.category === category)
-      .map(t => ({ ...t, run: undefined as any }));
+      .map(t => ({ ...t, run: undefined }));
   }
 
   async runTest(testId: string, triggeredBy: string = 'ai-brain'): Promise<TestResult> {

@@ -373,7 +373,6 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
  * Get broadcast stats
  * GET /api/broadcasts/:id/stats
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/:id/stats', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
@@ -393,7 +392,6 @@ router.get('/:id/stats', requireAuth, requireRole(['org_owner', 'co_owner', 'man
  * Update broadcast
  * PATCH /api/broadcasts/:id
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.patch('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
@@ -419,7 +417,6 @@ router.patch('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager
  * Deactivate/delete broadcast
  * DELETE /api/broadcasts/:id
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.delete('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);

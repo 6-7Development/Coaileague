@@ -62,14 +62,14 @@ export interface AgentExecutionContext {
   // Context from codebase
   relevantFiles: string[];
   relevantComponents: string[];
-  specContext: any;
+  specContext: unknown;
 }
 
 export interface ExecutedStepResult {
   stepId: string;
   action: string;
   input: Record<string, unknown>;
-  output: any;
+  output: unknown;
   success: boolean;
   confidence: number;
   durationMs: number;
@@ -447,7 +447,7 @@ class TrinityAgentParityLayer {
     const startTime = Date.now();
     
     try {
-      let output: any;
+      let output: unknown;
       
       switch (step.action) {
         case 'search_code':
@@ -944,8 +944,6 @@ class TrinityAgentParityLayer {
         currentOutput: { failedStep: step.action, reason: preFlightResult.reason },
         verificationResult: { passed: false, errors: [preFlightResult.reason || 'Pre-flight check failed'] },
       });
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (reflection.suggestedActions && (reflection as any).suggestedActions.length > 0) {
         this.log.info(`[AgentParity] Self-reflection suggests: ${(reflection as any).suggestedActions[0]}`);
         // Apply first suggested action if it's a parameter modification

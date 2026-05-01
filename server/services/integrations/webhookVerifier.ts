@@ -140,7 +140,7 @@ class WebhookVerifierService {
       };
     }
 
-    let parsedPayload: any;
+    let parsedPayload: unknown;
     try {
       parsedPayload = JSON.parse(payload);
     } catch {
@@ -243,7 +243,7 @@ class WebhookVerifierService {
       };
     }
 
-    let parsedPayload: any;
+    let parsedPayload: unknown;
     try {
       parsedPayload = JSON.parse(payload);
     } catch {

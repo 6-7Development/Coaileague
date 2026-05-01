@@ -186,7 +186,7 @@ class ClaudeService {
   async consult(params: {
     topic: string;
     question: string;
-    trinityContext: any;
+    trinityContext: unknown;
     context: AIActionContext;
   }): Promise<ClaudeConsultation> {
     const startTime = Date.now();

@@ -63,7 +63,7 @@ function assertEqual(name: string, expected: any, actual: any, tolerance: number
   return passed;
 }
 
-function logValue(label: string, value: any): void {
+function logValue(label: string, value: unknown): void {
   console.log(`     ${label}: ${value}`);
 }
 

@@ -101,7 +101,7 @@ export default function PublicFormPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const updateField = useCallback((fieldId: string, value: any) => {
+  const updateField = useCallback((fieldId: string, value: unknown) => {
     setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
     setValidationErrors((prev) => {
       if (!prev[fieldId]) return prev;

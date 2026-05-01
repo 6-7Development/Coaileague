@@ -405,8 +405,7 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
     .where(
       and(
         eq(workspaceMembers.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        inArray(workspaceMembers.workspaceRole as any, ['org_owner', 'co_owner', 'manager'])
+        inArray(workspaceMembers.workspaceRole, ['org_owner', 'co_owner', 'manager'])
       )
     );
   const managerUserIds = managerMembers.map(m => m.userId).filter(Boolean);

@@ -69,7 +69,7 @@ async function pollPendingTransfers(): Promise<void> {
       .where(
         and(
           isNotNull(payStubs.plaidTransferId),
-          inArray(payStubs.plaidTransferStatus as any, ['pending', 'posted'])
+          inArray(payStubs.plaidTransferStatus, ['pending', 'posted'])
         )
       )
       .limit(100);

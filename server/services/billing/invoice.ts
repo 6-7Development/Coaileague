@@ -1179,7 +1179,7 @@ export class InvoiceService {
     payerEmail?: string,
     payerName?: string,
     notes?: string,
-  ): Promise<{ payment: any; invoice: Invoice; remainingBalance: number }> {
+  ): Promise<{ payment: unknown; invoice: Invoice; remainingBalance: number }> {
     const { invoicePayments, paymentRecords } = await import('@shared/schema');
 
     const [invoice] = await db.select()

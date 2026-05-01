@@ -1122,7 +1122,7 @@ export function initializeTrinityEventSubscriptions(): void {
         const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
         if (!ws) return;
         const owners = await db.query.employees.findMany({
-          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role as any, ['org_owner', 'co_owner'])),
+          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role, ['org_owner', 'co_owner'])),
         });
         for (const owner of owners) {
           if (!owner.email) continue;
@@ -1145,7 +1145,7 @@ export function initializeTrinityEventSubscriptions(): void {
         const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
         if (!ws) return;
         const owners = await db.query.employees.findMany({
-          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role as any, ['org_owner', 'co_owner'])),
+          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role, ['org_owner', 'co_owner'])),
         });
         for (const owner of owners) {
           if (!owner.email) continue;
@@ -1178,7 +1178,7 @@ export function initializeTrinityEventSubscriptions(): void {
         const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
         if (!ws) return;
         const owners = await db.query.employees.findMany({
-          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role as any, ['org_owner', 'co_owner'])),
+          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role, ['org_owner', 'co_owner'])),
         });
         for (const owner of owners) {
           if (!owner.email) continue;
@@ -1217,7 +1217,7 @@ export function initializeTrinityEventSubscriptions(): void {
         const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
         if (!ws) return;
         const owners = await db.query.employees.findMany({
-          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role as any, ['org_owner', 'co_owner'])),
+          where: and(eq(employees.workspaceId, workspaceId), inArray(employees.role, ['org_owner', 'co_owner'])),
         });
         for (const owner of owners) {
           if (!owner.email) continue;
@@ -1901,8 +1901,7 @@ export function initializeTrinityEventSubscriptions(): void {
         if (employeeId) {
           const { workspaceMembers: wm } = await import('@shared/schema');
           const empUser = await db.select({ userId: wm.userId }).from(wm)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            .where(and(eq(wm.workspaceId, workspaceId), eq(wm.employeeId as any, employeeId)))
+            .where(and(eq(wm.workspaceId, workspaceId), eq(wm.employeeId, employeeId)))
             .limit(1).catch(() => []);
           if (empUser[0]) {
             const { createNotification } = await import('./notificationService');
@@ -2099,7 +2098,7 @@ export function initializeTrinityEventSubscriptions(): void {
               message: `A background automation job (${jobName}) failed with error: ${String(error).substring(0, 150)}. Trinity will attempt retry. If this persists, contact support.`,
               priority: 'high',
               actionUrl: '/settings',
-            } as any).catch(() => null);
+            }).catch(() => null);
           }
         }
       } catch (err: unknown) {
@@ -2265,7 +2264,7 @@ export function initializeTrinityEventSubscriptions(): void {
               message: `An officer submitted a manual GPS/geofence override (${overrideType}): "${reason}". Trinity is monitoring for habitual bypass patterns.`,
               priority: 'normal',
               actionUrl: employeeId ? `/employees/${employeeId}` : '/compliance-scenarios',
-            } as any).catch(() => null);
+            }).catch(() => null);
           }
         }
       } catch (err: unknown) {
@@ -2386,8 +2385,7 @@ export function initializeTrinityEventSubscriptions(): void {
         const { createNotification } = await import('./notificationService');
         const [ownerEmp] = await db.select({ userId: employees.userId })
           .from(employees)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          .where(and(eq(employees.workspaceId, workspaceId), eq(employees.workspaceRole as any, 'org_owner')))
+          .where(and(eq(employees.workspaceId, workspaceId), eq(employees.workspaceRole, 'org_owner')))
           .limit(1).catch(() => []);
         if (ownerEmp?.userId) {
           await createNotification({
@@ -2399,7 +2397,7 @@ export function initializeTrinityEventSubscriptions(): void {
             message: `Your organization's funding bank account (${metadata?.priorInstitution || 'Bank'} ending ...${metadata?.priorMask || '????'}) has been disconnected. Automatic ACH payroll disbursement is suspended until you reconnect a bank account in Payroll Settings.`,
             priority: 'urgent',
             actionUrl: '/settings',
-          } as any).catch(() => null);
+          }).catch(() => null);
         }
         log.info(`[TrinityEvents] workspace_bank_disconnected — payroll ACH suspended for workspace ${workspaceId}`);
       } catch (err: unknown) {

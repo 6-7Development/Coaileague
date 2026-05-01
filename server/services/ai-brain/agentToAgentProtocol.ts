@@ -517,7 +517,7 @@ class AgentToAgentProtocol {
   submitTeamWork(params: {
     teamId: string;
     agentId: string;
-    contribution: any;
+    contribution: unknown;
     status: 'completed' | 'failed';
   }): void {
     const team = this.teams.get(params.teamId);

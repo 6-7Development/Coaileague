@@ -220,11 +220,11 @@ export interface FastModeResult {
   agentResults: Array<{
     agentId: string;
     agentName: string;
-    result: any;
+    result: unknown;
     success: boolean;
     tokensUsed: number;
   }>;
-  aggregatedResult: any;
+  aggregatedResult: unknown;
   summary: string;
   proactiveInsights: string[];
   creditsUsed: number;
@@ -233,7 +233,7 @@ export interface FastModeResult {
 
 // Cache entry for repeated queries
 interface CacheEntry {
-  result: any;
+  result: unknown;
   timestamp: number;
   queryHash: string;
   creditsOriginal: number;
@@ -925,7 +925,7 @@ class FastModeService {
     }
   }
   
-  private determineComplexity(content: string, analysis: any): 'simple' | 'standard' | 'complex' {
+  private determineComplexity(content: string, analysis: unknown): 'simple' | 'standard' | 'complex' {
     const wordCount = content.split(/\s+/).length;
     
     if (wordCount < 10 && analysis.confidence > 0.8) return 'simple';
@@ -964,7 +964,7 @@ class FastModeService {
     return displayNames[agentId] || agentId;
   }
   
-  private aggregateResults(results: Array<{ agentId: string; result: any; success: boolean }>): any {
+  private aggregateResults(results: Array<{ agentId: string; result: unknown; success: boolean }>): any {
     if (results.length === 0) return null;
     if (results.length === 1) return results[0].result;
     
@@ -978,7 +978,7 @@ class FastModeService {
     };
   }
   
-  private generateSummary(agentResults: Array<{ agentId: string; agentName: string; success: boolean }>, aggregatedResult: any): string {
+  private generateSummary(agentResults: Array<{ agentId: string; agentName: string; success: boolean }>, aggregatedResult: unknown): string {
     const successCount = agentResults.filter(r => r.success).length;
     const totalAgents = agentResults.length;
     

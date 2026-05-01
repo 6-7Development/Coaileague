@@ -170,7 +170,7 @@ class WebSocketBusImpl implements WebSocketBus {
     }
   }
 
-  private dispatch(data: any) {
+  private dispatch(data: unknown) {
     const type = data.type;
     if (type) {
       const typeHandlers = this.handlers.get(type);

@@ -363,7 +363,6 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
 
     if (validated.email) {
       const { emailService } = await import('../services/emailService');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as Record<string, unknown>).name || 'Valued Client', validated.companyName || '', workspace.name || '');
       NotificationDeliveryService.send({ idempotencyKey: `notif:client:${client.id}:welcome`,
             type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
@@ -764,7 +763,7 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
             .set({ invoiceId: finalInvoiceId } as any)
             .where(and(
               inArray((timeEntries as any).id, unbilledEntries.map(e => e.id)),
-              eq((timeEntries as any).workspaceId, workspaceId),
+              eq((timeEntries as Record<string,unknown>).workspaceId as string, workspaceId),
             ));
 
           // Register in Document Vault for compliance/integrity
@@ -1035,7 +1034,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-function dockChatRateLimit(req: AuthenticatedRequest, res: any, next: any) {
+function dockChatRateLimit(req: AuthenticatedRequest, res: any, next: unknown) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = 60_000;

@@ -627,8 +627,8 @@ export class QuickBooksIntegration {
       clientId: invoice.clientId,
       clientName: 'Client',
       total: invoice.total,
-      issueDate: (invoice as any).issueDate,
-      dueDate: (invoice as any).dueDate,
+      issueDate: (invoice as Record<string, unknown>).issueDate,
+      dueDate: (invoice as Record<string, unknown>).dueDate,
     }]);
 
     if (!result.success) {

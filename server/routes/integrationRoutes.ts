@@ -166,7 +166,7 @@ router.get('/api/quickbooks/automation-health', requireAuth, async (req: Authent
         }
       }
 
-      autopilotEnabled = (connection as any).metadata?.syncEnabled === true;
+      autopilotEnabled = (connection as Record<string, unknown>).metadata?.syncEnabled === true;
     }
 
     const mappingCoverage = 100;
@@ -388,7 +388,7 @@ router.get('/api/quickbooks/connection-status', requireAuth, async (req: Authent
       canRefresh,
       needsReauthorization,
       connectionId: connection.id,
-      companyName: (connection as any).metadata?.companyName || 'Unknown Company',
+      companyName: (connection as Record<string, unknown>).metadata?.companyName || 'Unknown Company',
       lastSync: connection.lastSyncAt,
       lastError: connection.lastError,
       accessTokenExpiresAt: accessTokenExpiry?.toISOString(),

@@ -1060,7 +1060,7 @@ billingRouter.post('/trial/extend', async (req, res) => {
     if (userId) {
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const adminRoles = ['root_admin', 'deputy_admin', 'sysop', 'owner', 'admin'];
-      if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+      if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
         return res.status(403).json({ error: 'Admin role required to extend trials' });
       }
     }
@@ -1102,7 +1102,7 @@ billingRouter.post('/refunds', async (req: AuthenticatedRequest, res: Response, 
     if (userId) {
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const adminRoles = ['root_admin', 'deputy_admin', 'sysop', 'owner'];
-      if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+      if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
         return res.status(403).json({ error: 'Admin role required to process refunds' });
       }
     }
@@ -1405,7 +1405,7 @@ billingRouter.get('/production-readiness', async (req: AuthenticatedRequest, res
       .limit(1);
 
     const adminRoles = ['root_admin', 'deputy_admin', 'sysop'];
-    if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+    if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
       return res.status(403).json({ error: 'Admin role required' });
     }
 
@@ -1455,7 +1455,7 @@ billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRe
       .limit(1);
 
     const supportRoles = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
-    if (!user || !supportRoles.includes((user as any).platformRole || '')) {
+    if (!user || !supportRoles.includes(req.user?.platformRole || '')) {
       return res.status(403).json({ error: 'Forbidden: Support role required' });
     }
 

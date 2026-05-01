@@ -202,7 +202,7 @@ class TrinityReflectionEngineService {
       const prompt = this.buildReflectionPrompt(context);
       // Platform-level reflection - billed to PLATFORM_COST_CENTER
       const result = await meteredGemini.generate({
-        workspaceId: undefined as any,
+        workspaceId: undefined,
         featureKey: 'trinity_reflection_analysis',
         prompt,
         model: 'gemini-2.5-pro',

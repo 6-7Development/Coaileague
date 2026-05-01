@@ -484,7 +484,7 @@ async function loadShiftDisplayContext(
 
 async function notifySupervisors(params: {
   workspaceId: string;
-  shift: any;
+  shift: unknown;
   employeeId: string;
   offersSent: number;
   reason?: string;
@@ -556,7 +556,7 @@ async function notifySupervisors(params: {
 
 async function publishCalloffEvent(params: {
   workspaceId: string;
-  shift: any;
+  shift: unknown;
   employeeId: string;
   offersSent: number;
 }): Promise<void> {

@@ -190,7 +190,7 @@ const log = createLogger('PlatformActionHub');
 class PlatformActionHub {
   private serviceHealth: Map<string, ServiceHealthStatus> = new Map();
   private healthCheckInterval: NodeJS.Timeout | null = null;
-  private wsBroadcaster: ((message: any) => void) | null = null;
+  private wsBroadcaster: ((message: unknown) => void) | null = null;
   private initialized = false;
 
   constructor() {
@@ -211,7 +211,7 @@ class PlatformActionHub {
   /**
    * Initialize the orchestrator with WebSocket broadcaster
    */
-  initialize(wsBroadcaster?: (message: any) => void): void {
+  initialize(wsBroadcaster?: (message: unknown) => void): void {
     if (this.initialized) return;
     
     if (wsBroadcaster) {
@@ -1211,7 +1211,7 @@ class PlatformActionHub {
 
         let suggestion: any = availableUnitsArr[0];
         if (call?.latitude && call?.longitude) {
-          suggestion = availableUnitsArr.sort((a: any, b: any) => {
+          suggestion = availableUnitsArr.sort((a: unknown, b: unknown) => {
             const distA = Math.pow((a.latitude || 0) - call.latitude, 2) + Math.pow((a.longitude || 0) - call.longitude, 2);
             const distB = Math.pow((b.latitude || 0) - call.latitude, 2) + Math.pow((b.longitude || 0) - call.longitude, 2);
             return distA - distB;
