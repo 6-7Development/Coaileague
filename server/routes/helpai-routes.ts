@@ -86,7 +86,7 @@ helpaiRouter.get(
     try {
       const { category, tag, active } = req.query;
 
-      let apis: any;
+      let apis: unknown;
 
       if (category) {
         apis = await helpaiRegistryService.getAPIsByCategory(category as string);
@@ -449,11 +449,9 @@ helpaiRouter.post(
         category: 'system',
         name: actionId,
         payload,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: req.user?.currentWorkspaceId,
         userId: req.user?.id || 'unknown',
         userRole: req.user?.role || 'employee',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformRole: req.platformRole || (req.user)?.platformRole,
         priority: priority || 'normal',
         isTestMode: isTestMode || false
@@ -525,7 +523,7 @@ helpaiRouter.post(
 
       // Parse the command to determine action
       let actionId = 'ai.query';
-      let payload: Record<string, any> = { query: command, context };
+      let payload: Record<string, unknown> = { query: command, context };
 
       // Check for special command prefixes
       if (command.startsWith('/health')) {
@@ -554,11 +552,9 @@ helpaiRouter.post(
         category: 'support',
         name: 'Command Console',
         payload,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: req.user?.currentWorkspaceId,
         userId: req.user?.id || 'unknown',
         userRole: req.user?.role || 'employee',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformRole: req.platformRole || (req.user)?.platformRole
       };
 
@@ -608,11 +604,10 @@ helpaiRouter.post('/chat', async (req: Request, res: Response) => {
     // Try custom auth first (session-based)
     if (authReq.session?.userId) {
       userId = authReq.session.userId;
-      userName = (authReq as any).session.userName || 'User';
+      userName = (authReq as Record<string,unknown>).session.userName || 'User';
       workspaceId = authReq.session.workspaceId || workspaceId;
     }
     // Try Replit Auth (OIDC)
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     else if (authReq.isAuthenticated?.() && authReq.user?.id) {
       userId = authReq.user.id;
       userName = authReq.user?.email || 'User';
@@ -630,7 +625,6 @@ helpaiRouter.post('/chat', async (req: Request, res: Response) => {
       userName,
       userMessage: safeMessage,
       conversationHistory,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       storage
     });
 
@@ -671,7 +665,6 @@ helpaiRouter.post('/session/start', async (req: AuthenticatedRequest, res: Respo
 
     const result = await helpAIOrchestrator.startSession({
       userId: user?.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: user?.currentWorkspaceId,
       guestName: guestName || user?.firstName,
       guestEmail: guestEmail || user?.email,
@@ -695,7 +688,6 @@ helpaiRouter.post('/session/:id/close', requireAuth, async (req: AuthenticatedRe
     const { resolution } = req.body;
     const user = req.user;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await helpAIOrchestrator.closeSession(id, resolution, user.id);
     res.json({ success: result.success });
   } catch (error: unknown) {
@@ -716,7 +708,6 @@ helpaiRouter.post('/session/:id/escalate', requireAuth, async (req: Authenticate
       sessionId: id,
       message: `/escalate ${reason || 'manual escalation'}`,
       userId: req.user?.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: req.user?.currentWorkspaceId,
     });
 
@@ -736,9 +727,7 @@ helpaiRouter.post('/safety-code/generate', requireAuth, async (req: Authenticate
     const { purpose, sessionId } = req.body;
 
     const result = await helpAIOrchestrator.generateSafetyCode(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       user.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       user.currentWorkspaceId,
       purpose || 'helpdesk_auth',
       sessionId
@@ -786,9 +775,7 @@ helpaiRouter.post('/bot/summon', requireAuth, async (req: AuthenticatedRequest, 
       botName,
       command: command || '/summon',
       instructions,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: user.currentWorkspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userId: user.id,
     });
 
@@ -814,7 +801,6 @@ helpaiRouter.post('/session/:id/rate', async (req: AuthenticatedRequest, res: Re
       sessionId: id,
       message,
       userId: req.user?.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: req.user?.currentWorkspaceId,
     });
     res.json({ success: true, ...result });
@@ -864,8 +850,7 @@ helpaiRouter.get('/admin/sessions', requireAuth, requireHelpAIAccess, async (req
   try {
     const user = req.user;
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 500);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
 
     const sessions = await helpAIOrchestrator.getSessionHistory(workspaceId, limit);
     const stats = await helpAIOrchestrator.getSessionStats(workspaceId);
@@ -897,8 +882,7 @@ helpaiRouter.get('/admin/sessions/:id/actions', requireAuth, requireHelpAIAccess
 helpaiRouter.get('/admin/stats', requireAuth, requireHelpAIAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
     const stats = await helpAIOrchestrator.getSessionStats(workspaceId);
     res.json({ success: true, stats });
   } catch (error: unknown) {
@@ -963,7 +947,7 @@ helpaiRouter.get('/admin/action-log', requireAuth, async (req: AuthenticatedRequ
     }
 
     const { workspaceId, sessionId } = req.query;
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(helpaiActionLog.workspaceId, workspaceId as string));
     if (sessionId) conditions.push(eq(helpaiActionLog.sessionId, sessionId as string));
 
@@ -995,7 +979,7 @@ helpaiRouter.get('/v2/activity', requireAuth, async (req: AuthenticatedRequest, 
     const { workspaceId, limit: limitParam = '20' } = req.query;
     const limitN = Math.min(parseInt(limitParam as string) || 20, 100);
 
-    const convConditions: any[] = [];
+    const convConditions: (string | number | boolean | null)[] = [];
     if (workspaceId) convConditions.push(eq(helpaiConversations.workspaceId, workspaceId as string));
 
     const [conversations, slaLogs, proactiveAlerts, faqGaps, commandBus] = await Promise.allSettled([
@@ -1120,7 +1104,7 @@ helpaiRouter.get('/v2/command-bus', requireAuth, async (req: AuthenticatedReques
       return res.status(403).json({ message: "Admin access required" });
     }
     const { workspaceId, direction, status } = req.query;
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(trinityHelpaiCommandBusTable.workspaceId, workspaceId as string));
     if (direction) conditions.push(eq(trinityHelpaiCommandBusTable.direction, direction as string));
     if (status) conditions.push(eq(trinityHelpaiCommandBusTable.status, status as string));
@@ -1178,7 +1162,7 @@ helpaiRouter.get('/auditor/brief', requireAuth, async (req: AuthenticatedRequest
     });
 
     res.json({ brief, greeting });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HelpAI] Auditor brief error:', err?.message);
     res.status(500).json({ error: 'Failed to generate audit brief' });
   }

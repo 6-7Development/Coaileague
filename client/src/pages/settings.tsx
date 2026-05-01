@@ -194,12 +194,12 @@ type SettingsSection = typeof SETTINGS_SECTIONS[number]['id'];
 function ProfileTabContent() {
   const { toast } = useToast();
 
-  const { data: session, isLoading: sessionLoading } = useQuery<{ user?: any }>({
+  const { data: session, isLoading: sessionLoading } = useQuery<{ user?: unknown }>({
     queryKey: ['/api/auth/me'],
     staleTime: 5 * 60 * 1000,
   });
 
-  const currentUser = (session as any)?.user || session;
+  const currentUser = (session as unknown)?.user || session;
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -249,7 +249,7 @@ function ProfileTabContent() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).message || 'Failed to update forwarding email');
+        throw new Error((err as Record<string,unknown>).message || 'Failed to update forwarding email');
       }
       return res.json();
     },
@@ -306,7 +306,7 @@ function ProfileTabContent() {
         description: "Check your new inbox and click the link to confirm the change.",
       });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         variant: "destructive",
         title: "Request Failed",
@@ -642,14 +642,14 @@ function ProfileTabContent() {
             <Label className="text-xs sm:text-sm">Personal Forwarding Email</Label>
             <p className="text-xs text-muted-foreground">
               Copies of emails sent to your platform address (
-              {(currentUser as any)?.platformEmail || `${(currentUser?.firstName || 'u').toLowerCase().charAt(0)}.${(currentUser?.lastName || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@sps.${DOMAINS.root}`}
+              {(currentUser as unknown)?.platformEmail || `${(currentUser?.firstName || 'u').toLowerCase().charAt(0)}.${(currentUser?.lastName || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@sps.${DOMAINS.root}`}
               ) will be forwarded here. Leave blank to disable.
             </p>
             <div className="flex gap-2">
               <Input
                 type="email"
                 placeholder="your.personal@gmail.com"
-                defaultValue={(currentUser as any)?.personalForwardEmail || ''}
+                defaultValue={(currentUser as unknown)?.personalForwardEmail || ''}
                 id="personal-forward-email"
                 data-testid="input-personal-forward-email"
                 className="max-w-sm"
@@ -952,8 +952,6 @@ function ChangePasswordCard() {
     </Card>
   );
 }
-
-// @ts-expect-error — TS migration: fix in refactoring sprint
 function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
   const [workspaceSaveSuccess, setWorkspaceSaveSuccess] = useState(false);
   const { toast } = useToast();
@@ -1014,7 +1012,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
   }, [isDirty]);
 
   const updateWorkspaceMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest('PATCH', `/api/workspace`, data);
       return res.json();
     },
@@ -1027,7 +1025,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
         description: "Your workspace settings have been saved successfully.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Failed to save settings",
         description: error?.message || "An error occurred while saving your settings.",
@@ -1067,7 +1065,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
           <div className="flex items-center gap-2">
             <Input
               readOnly
-              value={(workspace as any)?.orgCode || (workspace as any)?.slug || 'Not set'}
+              value={(workspace as unknown)?.orgCode || (workspace as unknown)?.slug || 'Not set'}
               className="font-mono text-sm bg-muted"
               data-testid="input-org-invite-code"
             />
@@ -1076,7 +1074,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
               size="sm"
               variant="outline"
               onClick={() => {
-                const code = (workspace as any)?.orgCode || (workspace as any)?.slug || '';
+                const code = (workspace as unknown)?.orgCode || (workspace as unknown)?.slug || '';
                 if (!code) return;
                 navigator.clipboard.writeText(code);
                 toast({ title: "Org code copied!" });
@@ -1300,8 +1298,6 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
     </Card>
   );
 }
-
-// @ts-expect-error — TS migration: fix in refactoring sprint
 function InvoiceFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: Workspace, updateWorkspaceMutation: any }) {
   const form = useForm<InvoiceFinancialsFormValues>({
     resolver: zodResolver(invoiceFinancialsSchema),
@@ -1498,7 +1494,7 @@ function InvoiceFinancialsForm({ workspace, updateWorkspaceMutation }: { workspa
   );
 }
 
-function PayrollFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: any, updateWorkspaceMutation: any }) {
+function PayrollFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: Record<string, unknown>, updateWorkspaceMutation: any }) {
   const form = useForm<PayrollFinancialsFormValues>({
     resolver: zodResolver(payrollFinancialsSchema),
     defaultValues: {
@@ -1823,7 +1819,7 @@ function StorageTabContent() {
       </Card>
 
       {/* Overage info */}
-      {Object.values(data.overageBytes ?? {}).some((v: any) => v > 0) && (
+      {Object.values(data.overageBytes ?? {}).some((v: unknown) => v > 0) && (
         <Card data-testid="card-storage-overage" className="border-amber-500/40">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -1933,7 +1929,7 @@ export default function Settings() {
   });
 
   // Fetch labor law rules for jurisdiction selector
-  const { data: laborLawRulesResponse } = useQuery<{ success: boolean; data: any[] }>({
+  const { data: laborLawRulesResponse } = useQuery<{ success: boolean; data: Record<string, unknown>[] }>({
     queryKey: ['/api/breaks/rules'],
     enabled: isAuthenticated,
   });
@@ -2046,8 +2042,8 @@ export default function Settings() {
   const [forwardEmailValue, setForwardEmailValue] = useState('');
   // Sync forwardEmailValue from workspace data on load
   useEffect(() => {
-    if ((workspace as any)?.inboundEmailForwardTo !== undefined) {
-      setForwardEmailValue((workspace as any).inboundEmailForwardTo || '');
+    if ((workspace as unknown)?.inboundEmailForwardTo !== undefined) {
+      setForwardEmailValue((workspace as Record<string,unknown>).inboundEmailForwardTo || '');
     }
   }, [workspace]);
 
@@ -2080,7 +2076,7 @@ export default function Settings() {
         description: `Your org code is now: ${data.orgCode}. Email addresses provisioned.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update org code",
@@ -2109,7 +2105,7 @@ export default function Settings() {
         description: `Emails to staffing@${DOMAINS.root} will now route to your organization`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to claim generic staffing email",
@@ -2138,7 +2134,7 @@ export default function Settings() {
         description: "Generic staffing email is now available for other organizations",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to release generic staffing email",
@@ -2157,7 +2153,7 @@ export default function Settings() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).message || 'Failed to update forwarding email');
+        throw new Error((err as Record<string,unknown>).message || 'Failed to update forwarding email');
       }
       return res.json();
     },
@@ -2228,7 +2224,7 @@ export default function Settings() {
       refetchInvites();
       toast({ title: "Invitation sent!", description: `Invite sent to ${inv.inviteeEmail || data.inviteeEmail || 'recipient'}.` });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
     },
   });
@@ -2260,7 +2256,7 @@ export default function Settings() {
         description: "Break compliance settings updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update break compliance settings",
@@ -2271,7 +2267,7 @@ export default function Settings() {
 
   // Update notification preferences mutation
   const updateNotificationPrefsMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const response = await secureFetch('/api/notifications/preferences', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2288,7 +2284,7 @@ export default function Settings() {
         description: "Notification preferences updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update notification preferences",
@@ -2318,7 +2314,7 @@ export default function Settings() {
         description: "Test SMS sent successfully! Check your phone.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to send test SMS",
@@ -2432,13 +2428,12 @@ export default function Settings() {
       autoArchiveRead,
     }, {
       onSuccess: () => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         setHasUnsavedChanges(false);
       }
     });
   };
 
-  const quickSaveNotificationPref = (overrides: Record<string, any>) => {
+  const quickSaveNotificationPref = (overrides: Record<string, unknown>) => {
     updateNotificationPrefsMutation.mutate({
       enableEmail: overrides.enableEmail ?? enableEmail,
       enableSms: overrides.enableSms ?? enableSms,
@@ -2487,7 +2482,7 @@ export default function Settings() {
 
   // Update workspace mutation
   const updateWorkspaceMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const response = await secureFetch('/api/workspace', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2499,14 +2494,13 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/workspace'] });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setHasUnsavedChanges(false); // Clear unsaved changes flag after successful save
       toast({
         title: "Success",
         description: "Workspace updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update workspace",
@@ -2526,13 +2520,13 @@ export default function Settings() {
       if (!response.ok) throw new Error('Failed to seed templates');
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       toast({
         title: "Success",
         description: data.message || "Form templates seeded successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to seed form templates",
@@ -2543,7 +2537,7 @@ export default function Settings() {
 
   // Update invoicing automation mutation
   const updateInvoicingMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const response = await secureFetch('/api/workspace/automation/invoicing', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2563,7 +2557,7 @@ export default function Settings() {
         description: "Invoicing automation updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update invoicing automation",
@@ -2574,7 +2568,7 @@ export default function Settings() {
 
   // Update payroll automation mutation
   const updatePayrollMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const response = await secureFetch('/api/workspace/automation/payroll', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2594,7 +2588,7 @@ export default function Settings() {
         description: "Payroll automation updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update payroll automation",
@@ -2605,7 +2599,7 @@ export default function Settings() {
 
   // Update scheduling automation mutation
   const updateSchedulingMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const response = await secureFetch('/api/workspace/automation/scheduling', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2625,7 +2619,7 @@ export default function Settings() {
         description: "Scheduling automation updated successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update scheduling automation",
@@ -2638,99 +2632,55 @@ export default function Settings() {
   useEffect(() => {
     if (workspace) {
       const ws = workspace;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setAutoInvoicingEnabled(ws.autoInvoicingEnabled ?? true);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setInvoiceSchedule(ws.invoiceSchedule || "monthly");
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setInvoiceCustomDays(ws.invoiceCustomDays || undefined);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setInvoiceGenerationDay(ws.invoiceGenerationDay || 1);
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setAutoPayrollEnabled(ws.autoPayrollEnabled ?? true);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollSchedule(ws.payrollSchedule || "biweekly");
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollCustomDays(ws.payrollCustomDays || undefined);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollProcessDay(ws.payrollProcessDay || 1);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollCutoffDay(ws.payrollCutoffDay || 15);
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setAutoSchedulingEnabled(ws.autoSchedulingEnabled ?? true);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setScheduleGenerationInterval(ws.scheduleGenerationInterval || "weekly");
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setScheduleCustomDays(ws.scheduleCustomDays || undefined);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setScheduleAdvanceNoticeDays(ws.scheduleAdvanceNoticeDays || 7);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setScheduleGenerationDay(ws.scheduleGenerationDay ?? 0);
-
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setLaborLawJurisdiction(ws.laborLawJurisdiction || "US-FEDERAL");
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setAutoBreakSchedulingEnabled(ws.autoBreakSchedulingEnabled ?? true);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setBreakComplianceAlerts(ws.breakComplianceAlerts ?? true);
 
       // Financials tab workspace fields
       setWorkspaceName(ws.name || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setCompanyName(ws.companyName || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setTaxId(ws.taxId || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPhone(ws.phone || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setAddress(ws.address || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setWebsite(ws.website || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setCompanyCity(ws.companyCity || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setCompanyState(ws.companyState || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setCompanyZip(ws.companyZip || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setStateLicenseNumber(ws.stateLicenseNumber || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setStateLicenseState(ws.stateLicenseState || '');
       setStateLicenseExpiry(ws.stateLicenseExpiry ? String(ws.stateLicenseExpiry).split('T')[0] : '');
       setLogoUrl(ws.logoUrl || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setBrandColor(ws.brandColor || '#1a1a2e');
 
       // Invoice financials
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setBillingEmail(ws.billingEmail || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setInvoicePrefix(ws.invoicePrefix || 'INV');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setInvoiceNextNumber(ws.invoiceNextNumber || 1000);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setLateFeePercentage(ws.lateFeePercentage ? parseFloat(ws.lateFeePercentage) : 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setLateFeeDays(ws.lateFeeDays || 30);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPaymentTermsDays(ws.paymentTermsDays || 30);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setDefaultTaxRate(ws.defaultTaxRate ? parseFloat(ws.defaultTaxRate) * 100 : 8.875);
 
       // Payroll financials
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setStateUnemploymentRate(ws.stateUnemploymentRate ? parseFloat(ws.stateUnemploymentRate) * 100 : 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setWorkerCompRate(ws.workerCompRate ? parseFloat(ws.workerCompRate) * 100 : 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollBankName(ws.payrollBankName || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollBankRouting(ws.payrollBankRouting || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollBankAccount(ws.payrollBankAccount || '');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       setPayrollMemo(ws.payrollMemo || '');
     }
   }, [workspace]);
@@ -2924,7 +2874,7 @@ export default function Settings() {
     },
   ];
   const configuredStatusCount = statusItems.filter((item) => item.enabled).length;
-  const workspaceDisplayName = workspaceName || (workspace as any)?.name || 'your workspace';
+  const workspaceDisplayName = workspaceName || (workspace as unknown)?.name || 'your workspace';
   const settingsReadinessItems = [
     {
       label: 'Workspace profile',
@@ -3240,7 +3190,6 @@ export default function Settings() {
                     onCheckedChange={(checked) => {
                       setBreakComplianceAlerts(checked);
                       updateBreakComplianceMutation.mutate({
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         jurisdiction: laborLawJurisdiction,
                         enableBreakAlerts: checked,
                       });
@@ -3295,7 +3244,7 @@ export default function Settings() {
                     <SelectValue placeholder="Select your industry" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__placeholder__" disabled>Select…</SelectItem>
+                    <SelectItem value="">Select...</SelectItem>
                     {businessCategories?.map((category: any) => (
                       <SelectItem key={category.value} value={category.value}>
                         <div className="flex flex-col">
@@ -3316,7 +3265,7 @@ export default function Settings() {
                   <div className="flex items-start gap-3">
                     <FileText className="h-5 w-5 text-primary mt-0.5" />
                     <div className="flex-1 space-y-2">
-                      <h4 className="text-sm font-semibold">Available Forms for {businessCategories?.find((c: any) => c.value === selectedCategory)?.label}</h4>
+                      <h4 className="text-sm font-semibold">Available Forms for {businessCategories?.find((c: unknown) => c.value === selectedCategory)?.label}</h4>
                       <p className="text-xs text-muted-foreground">
                         {selectedCategory === 'general' && "Standard forms: Disciplinary Action, Incident Reports"}
                         {selectedCategory === 'security' && "Security forms: Daily Activity Reports (DAR), Incident Reports, Vehicle Logs"}
@@ -3361,7 +3310,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     <Input 
                       readOnly 
-                      value={(workspace as any)?.orgId || (workspace as any)?.organizationId || 'N/A'} 
+                      value={(workspace as unknown)?.orgId || (workspace as unknown)?.organizationId || 'N/A'} 
                       className="font-mono text-sm bg-muted"
                       data-testid="input-org-id"
                     />
@@ -3369,7 +3318,7 @@ export default function Settings() {
                       size="icon" 
                       variant="ghost"
                       onClick={() => {
-                        navigator.clipboard.writeText((workspace as any)?.orgId || (workspace as any)?.organizationId || '');
+                        navigator.clipboard.writeText((workspace as unknown)?.orgId || (workspace as unknown)?.organizationId || '');
                         toast({ title: "Copied!", description: "Organization Canonical ID copied to clipboard" });
                       }}
                       data-testid="button-copy-org-id"
@@ -3384,7 +3333,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     <Input 
                       readOnly 
-                      value={(workspace as any)?.organizationSerial || 'N/A'} 
+                      value={(workspace as unknown)?.organizationSerial || 'N/A'} 
                       className="font-mono text-sm bg-muted"
                       data-testid="input-org-serial"
                     />
@@ -3392,7 +3341,7 @@ export default function Settings() {
                       size="icon" 
                       variant="ghost"
                       onClick={() => {
-                        navigator.clipboard.writeText((workspace as any)?.organizationSerial || '');
+                        navigator.clipboard.writeText((workspace as unknown)?.organizationSerial || '');
                         toast({ title: "Copied!", description: "Organization Serial copied to clipboard" });
                       }}
                       data-testid="button-copy-org-serial"
@@ -3896,27 +3845,27 @@ export default function Settings() {
                   <Badge
                     data-testid="badge-current-plan"
                     className="capitalize"
-                    variant={(workspace as any)?.subscriptionTier === 'enterprise' ? 'default' : 'secondary'}
+                    variant={(workspace as unknown)?.subscriptionTier === 'enterprise' ? 'default' : 'secondary'}
                   >
-                    {(workspace as any)?.subscriptionTier === 'free' || !(workspace as any)?.subscriptionTier
+                    {(workspace as unknown)?.subscriptionTier === 'free' || !(workspace as unknown)?.subscriptionTier
                       ? 'Free Trial'
-                      : (workspace as any)?.subscriptionTier === 'free_trial'
+                      : (workspace as unknown)?.subscriptionTier === 'free_trial'
                       ? 'Free Trial'
-                      : (workspace as any)?.subscriptionTier?.charAt(0).toUpperCase() +
-                        ((workspace as any)?.subscriptionTier?.slice(1) || '')}
+                      : (workspace as unknown)?.subscriptionTier?.charAt(0).toUpperCase() +
+                        ((workspace as unknown)?.subscriptionTier?.slice(1) || '')}
                   </Badge>
-                  {(workspace as any)?.subscriptionStatus === 'active' && (
+                  {(workspace as unknown)?.subscriptionStatus === 'active' && (
                     <Badge variant="outline" className="text-xs text-green-600 border-green-500/30 dark:text-green-400" data-testid="badge-plan-status">
                       Active
                     </Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {(workspace as any)?.subscriptionTier === 'enterprise'
+                  {(workspace as unknown)?.subscriptionTier === 'enterprise'
                     ? 'Unlimited employees \u2022 Unlimited clients \u2022 Full Trinity AI suite'
-                    : (workspace as any)?.subscriptionTier === 'professional'
+                    : (workspace as unknown)?.subscriptionTier === 'professional'
                     ? 'Up to 25 employees \u2022 Unlimited clients \u2022 Advanced AI features'
-                    : (workspace as any)?.subscriptionTier === 'starter'
+                    : (workspace as unknown)?.subscriptionTier === 'starter'
                     ? 'Up to 10 employees \u2022 Unlimited clients \u2022 Core features'
                     : '5 employees \u2022 10 clients \u2022 Basic features (trial)'}
                 </p>
@@ -3927,11 +3876,11 @@ export default function Settings() {
                   onClick={() => setLocation('/billing')}
                   data-testid="button-upgrade"
                 >
-                  {(workspace as any)?.subscriptionTier && (workspace as any)?.subscriptionTier !== 'free' && (workspace as any)?.subscriptionTier !== 'free_trial'
+                  {(workspace as unknown)?.subscriptionTier && (workspace as unknown)?.subscriptionTier !== 'free' && (workspace as unknown)?.subscriptionTier !== 'free_trial'
                     ? 'Manage Plan'
                     : 'Upgrade Plan'}
                 </Button>
-                {(workspace as any)?.subscriptionTier && (workspace as any)?.subscriptionTier !== 'free' && (workspace as any)?.subscriptionTier !== 'free_trial' && (
+                {(workspace as unknown)?.subscriptionTier && (workspace as unknown)?.subscriptionTier !== 'free' && (workspace as unknown)?.subscriptionTier !== 'free_trial' && (
                   <Button
                     variant="outline"
                     onClick={() => billingPortalMutation.mutate()}
@@ -4113,7 +4062,7 @@ export default function Settings() {
                         <SelectValue placeholder="Select timing" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__placeholder__" disabled>Select…</SelectItem>
+                        <SelectItem value="">Select...</SelectItem>
                         {reminderOptions?.timingOptions?.map((option: any) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -4211,7 +4160,6 @@ export default function Settings() {
                     value={digestFrequency} 
                     onValueChange={(value) => {
                       setDigestFrequency(value);
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       setHasUnsavedChanges(true);
                     }}
                   >
@@ -4247,7 +4195,6 @@ export default function Settings() {
                       checked={enableAiSummarization} 
                       onCheckedChange={(checked) => {
                         setEnableAiSummarization(checked);
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         setHasUnsavedChanges(true);
                       }}
                       data-testid="switch-ai-summarization"
@@ -4273,7 +4220,6 @@ export default function Settings() {
                   checked={quietHoursEnabled} 
                   onCheckedChange={(checked) => {
                     setQuietHoursEnabled(checked);
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     setHasUnsavedChanges(true);
                   }}
                   data-testid="switch-quiet-hours-enabled"
@@ -4289,7 +4235,6 @@ export default function Settings() {
                       onValueChange={(v) => {
                         const hour = Math.min(23, Math.max(0, Number(v)));
                         setQuietHoursStart(hour);
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         setHasUnsavedChanges(true);
                       }}
                     >
@@ -4312,7 +4257,6 @@ export default function Settings() {
                       onValueChange={(v) => {
                         const hour = Math.min(23, Math.max(0, Number(v)));
                         setQuietHoursEnd(hour);
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         setHasUnsavedChanges(true);
                       }}
                     >
@@ -4361,7 +4305,6 @@ export default function Settings() {
                   checked={autoCleanupEnabled} 
                   onCheckedChange={(checked) => {
                     setAutoCleanupEnabled(checked);
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     setHasUnsavedChanges(true);
                   }}
                   data-testid="switch-auto-cleanup"
@@ -4376,7 +4319,6 @@ export default function Settings() {
                       value={String(retentionDays)} 
                       onValueChange={(v) => {
                         setRetentionDays(Number(v));
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         setHasUnsavedChanges(true);
                       }}
                     >
@@ -4408,7 +4350,6 @@ export default function Settings() {
                       checked={autoArchiveRead} 
                       onCheckedChange={(checked) => {
                         setAutoArchiveRead(checked);
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         setHasUnsavedChanges(true);
                       }}
                       data-testid="switch-auto-archive-read"
@@ -4458,7 +4399,7 @@ export default function Settings() {
                     const data = await res.json();
                     setMfaSetupData(data);
                     setMfaSetupOpen(true);
-                  } catch (error: any) {
+                  } catch (error: unknown) {
                     toast({ title: "Error", description: error.message || "Failed to start 2FA setup", variant: "destructive" });
                   }
                 }}
@@ -5460,7 +5401,7 @@ function CalendarIntegrationCard() {
         description: "Calendar subscription created successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create subscription",
@@ -5480,7 +5421,7 @@ function CalendarIntegrationCard() {
         description: "Subscription revoked successfully",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to revoke subscription",
@@ -5500,7 +5441,7 @@ function CalendarIntegrationCard() {
         description: "Subscription URL regenerated",
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
         description: error.message || "Failed to regenerate token",
@@ -5541,7 +5482,7 @@ function CalendarIntegrationCard() {
         description: data.message || `Imported ${data.result?.eventsImported || 0} events`,
         variant: data.success ? "default" : "destructive",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message || "Failed to import calendar",

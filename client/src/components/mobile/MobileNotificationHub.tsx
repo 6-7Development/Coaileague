@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, Check, X, Wrench, CheckCircle2, Bell, Trash2, RefreshCw, CheckCheck, Sparkles, ListChecks, Pencil, Megaphone, Home } from "lucide-react";
 import { useLocation } from "wouter";
@@ -29,7 +30,7 @@ interface UserNotification {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   category?: string;
   actionType?: string;
-  actionData?: any;
+  actionData?: unknown;
 }
 
 interface PlatformUpdate {
@@ -50,7 +51,7 @@ interface NotificationsData {
 
 interface ExpandableNotificationCardProps {
   notification: UserNotification;
-  onAction: (action: string, id: string, data?: any) => void;
+  onAction: (action: string, id: string, data?: unknown) => void;
   onDelete: (id: string) => void;
   isSelected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
@@ -356,7 +357,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
 
   const { user } = useAuth();
   const { workspaceRole, platformRole: accessPlatformRole } = useWorkspaceAccess();
-  const userPlatformRole = (user as any)?.platformRole || (user as any)?.platform_role;
+  const userPlatformRole = (user as Record<string,unknown>)?.platformRole || (user as Record<string,unknown>)?.platform_role;
   const effectivePlatformRole = accessPlatformRole || userPlatformRole;
   const BROADCAST_ALLOWED_PLATFORM = ['root_admin', 'deputy_admin', 'sysop', 'support_manager'];
   const BROADCAST_ALLOWED_WORKSPACE = ['org_owner', 'co_owner', 'org_admin', 'org_manager', 'manager'];
@@ -395,7 +396,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
           // Single retry per item
           try {
             return await apiRequest('DELETE', `/api/notifications/${id}`);
-          } catch (error: any) {
+          } catch (error : unknown) {
             if (error?.status === 404) return; // Already deleted
             // One retry after 100ms
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -509,7 +510,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
   }, [handleRefresh]);
   
   const actionMutation = useMutation({
-    mutationFn: async ({ action, id, data }: { action: string; id: string; data?: any }) => {
+    mutationFn: async ({ action, id, data }: { action: string; id: string; data?: unknown }) => {
       return apiRequest('POST', `/api/notifications/${id}/action`, { action, data });
     },
     onSuccess: () => {
@@ -529,7 +530,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
         try {
           const result = await apiRequest('DELETE', `/api/notifications/${id}`);
           return result;
-        } catch (error: any) {
+        } catch (error : unknown) {
           lastError = error;
           // Don't retry on 404 (already deleted) or 403 (unauthorized)
           if (error?.status === 404 || error?.status === 403) {
@@ -548,7 +549,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
       syncNotificationCleared(id);
       toast({ title: "Notification deleted" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       // Only show error if it's a real failure (not 404 which means it was already deleted)
       if (error?.status === 404) {
         // Already deleted - just refresh
@@ -601,7 +602,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
     },
   });
   
-  const handleAction = (action: string, id: string, data?: any) => {
+  const handleAction = (action: string, id: string, data?: unknown) => {
     actionMutation.mutate({ action, id, data });
   };
   
@@ -618,10 +619,10 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
   };
   
   // API returns 'notifications' not 'userNotifications' - fix the mapping
-  const userNotifications = (notificationsData as any)?.notifications || (notificationsData as any)?.userNotifications || [];
+  const userNotifications = (notificationsData as Record<string,unknown>)?.notifications || (notificationsData as Record<string,unknown>)?.userNotifications || [];
   const platformUpdates = notificationsData?.platformUpdates || [];
   const allNotifications: UserNotification[] = [
-    ...userNotifications.map((n: any) => ({
+    ...userNotifications.map((n) => ({
       id: n.id,
       type: n.type || 'notification',
       title: n.title || 'Notification',
@@ -634,7 +635,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
       actionType: n.actionType,
       actionData: n.actionData,
     })),
-    ...platformUpdates.map((p: any) => ({
+    ...platformUpdates.map((p) => ({
       id: p.id,
       type: 'platform',
       title: p.title,
@@ -647,7 +648,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   
   // API returns 'totalUnread' not 'unreadCount'
-  const unreadCount = (notificationsData as any)?.totalUnread || (notificationsData as any)?.unreadCount || 0;
+  const unreadCount = (notificationsData as Record<string,unknown>)?.totalUnread || (notificationsData as Record<string,unknown>)?.unreadCount || 0;
   
   // Filter notifications based on active filter
   const filteredNotifications = allNotifications.filter(n => {
@@ -676,7 +677,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
       <div className="bg-gradient-to-r from-primary to-primary/85 px-3 py-2.5 shadow-md flex-shrink-0">
         {selectionMode ? (
           <div className="flex items-center gap-1 text-primary-foreground">
-            <Button size="icon" variant="ghost" className="text-primary-foreground shrink-0" onClick={handleClearSelection} data-testid="button-cancel-selection">
+            <Button size="icon" aria-label="Cancel Selection" variant="ghost" className="text-primary-foreground shrink-0" onClick={handleClearSelection} data-testid="button-cancel-selection">
               <X className="w-5 h-5" />
             </Button>
             <span className="font-bold text-sm whitespace-nowrap shrink-0 px-1">{selectedIds.size} Selected</span>
@@ -718,7 +719,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
                 </Button>
               )}
               <Button
-                size="icon"
+                size="icon" aria-label="Sync Notifications"
                 variant="ghost"
                 className="text-primary-foreground"
                 onClick={handleRefresh}
@@ -730,7 +731,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
               </Button>
               {filteredNotifications.length > 0 && (
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Edit Mode"
                   variant="ghost"
                   className="text-primary-foreground"
                   onClick={handleEnterSelectionMode}
@@ -742,7 +743,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
               )}
               {allNotifications.length > 0 && (
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Clear All"
                   variant="ghost"
                   className="text-primary-foreground"
                   onClick={handleClearAll}
@@ -811,7 +812,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
           onClick={handleAskTrinity}
           data-testid="button-ask-trinity-notifications"
         >
-          <TrinityLogo size={16} />
+          <TrinityAnimatedLogo size={16} />
           <span className="text-xs">Ask Trinity</span>
         </Button>
       </div>

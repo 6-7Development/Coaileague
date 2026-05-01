@@ -79,7 +79,7 @@ function StatCard({
 }
 
 function ACCDashboardPanel({ workspaceId }: { workspaceId: string }) {
-  const { data, isLoading } = useQuery<{ success: boolean; stats: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; stats: Record<string, unknown> }>({
     queryKey: ["/api/trinity/acc/stats"],
     enabled: !!workspaceId,
   });
@@ -213,7 +213,7 @@ function ACCDashboardPanel({ workspaceId }: { workspaceId: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {stats.openUnresolved.map((conflict: any, i: number) => (
+            {stats.openUnresolved.map((conflict: unknown, i: number) => (
               <div
                 key={conflict.conflictId}
                 className="rounded-md border p-3 space-y-1"
@@ -239,7 +239,7 @@ function ACCDashboardPanel({ workspaceId }: { workspaceId: string }) {
 }
 
 function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
-  const { data, isLoading } = useQuery<{ success: boolean; stats: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; stats: Record<string, unknown> }>({
     queryKey: ["/api/trinity/thalamic/stats"],
     enabled: !!workspaceId,
   });
@@ -274,11 +274,11 @@ function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
   }
 
   const signalKeys = Object.entries(stats.bySignalType || {})
-    .sort((a: any, b: any) => b[1] - a[1])
+    .sort((a: unknown, b: unknown) => b[1] - a[1])
     .slice(0, 8);
 
   const regionKeys = Object.entries(stats.byRegion || {})
-    .sort((a: any, b: any) => b[1] - a[1]);
+    .sort((a: unknown, b: unknown) => b[1] - a[1]);
 
   return (
     <div className="space-y-4">
@@ -374,7 +374,7 @@ function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5">
-              {stats.recentSignals.slice(0, 10).map((sig: any, i: number) => (
+              {stats.recentSignals.slice(0, 10).map((sig: unknown, i: number) => (
                 <div
                   key={sig.signalId}
                   className="flex items-center justify-between text-xs py-1 border-b last:border-0 gap-2"
@@ -409,7 +409,7 @@ function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
 const Icon = ({ name, className }: any) => <span className={className}>●</span>;
 
 export default function AIBrainDashboard() {
-  const [extractedData, setExtractedData] = useState<any>(null);
+  const [extractedData, setExtractedData] = useState<null>(null);
   const [entityType, setEntityType] = useState<"employee" | "client" | "vendor" | "invoice">("employee");
 
   const { data: user } = useQuery<User>({
@@ -576,7 +576,7 @@ export default function AIBrainDashboard() {
                     <label className="block text-sm font-medium mb-2">Entity Type</label>
                     <select
                       value={entityType}
-                      onChange={(e) => setEntityType(e.target.value as any)}
+                      onChange={(e) => setEntityType(e.target.value as string)}
                       className="w-full px-3 py-2 border rounded-md"
                       data-testid="select-entity-type"
                     >

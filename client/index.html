@@ -365,13 +365,10 @@
       }
       .hl-logo-spin {
         width: 120px; height: 120px;
-        animation: hl-orbit 6s linear infinite;
         margin-bottom: 10px;
+        position: relative;
       }
-      .hl-arrow-blue   { animation: hl-pulseBlue   2s ease-in-out infinite; }
-      .hl-arrow-orange { animation: hl-pulseOrange 2s ease-in-out infinite 0.66s; transform-origin: 60px 60px; transform: rotate(120deg); }
-      .hl-arrow-purple { animation: hl-pulsePurple 2s ease-in-out infinite 1.33s; transform-origin: 60px 60px; transform: rotate(240deg); }
-      .hl-orb { animation: hl-orbGlow 2s ease-in-out infinite; }
+      /* Orbital arc animations (SMIL-driven, no JS needed) */
 
       /* ── Trinity label ── */
       .hl-trinity-label { text-align: center; animation: hl-fadeUp 0.5s ease both; }
@@ -483,11 +480,10 @@
       }
 
       /* ── Keyframes ── */
-      @keyframes hl-orbit    { to { transform: rotate(360deg); } }
+      @keyframes hl-orbit     { from { transform: rotate(0deg);   } to { transform: rotate(360deg);  } }
+      @keyframes hl-orbit-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg);    } }
+      @keyframes hl-armPulse  { 0%,100%{opacity:.7} 50%{opacity:1} }
       @keyframes hl-ringPulse { 0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.9;transform:scale(1.05)} }
-      @keyframes hl-pulseBlue   { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #3b82f6)}50%{opacity:.7;filter:drop-shadow(0 0 14px #93c5fd)} }
-      @keyframes hl-pulseOrange { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #f97316)}50%{opacity:.7;filter:drop-shadow(0 0 14px #fdba74)} }
-      @keyframes hl-pulsePurple { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #8b5cf6)}50%{opacity:.7;filter:drop-shadow(0 0 14px #c4b5fd)} }
       @keyframes hl-orbGlow  { 0%,100%{opacity:1;filter:drop-shadow(0 0 4px #fff)}50%{opacity:.85;filter:drop-shadow(0 0 10px #e2e8f0)} }
       @keyframes hl-fadeUp   { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
       @keyframes hl-msgFade  { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
@@ -503,7 +499,9 @@
       @keyframes hl-letterSwing      { 0%,100%{transform:rotate(0)}25%{transform:rotate(15deg)}50%{transform:rotate(-12deg)}75%{transform:rotate(7deg)} }
       @keyframes hl-letterWobble     { 0%,100%{transform:skewX(0)}20%{transform:skewX(-10deg)translateX(-3px)}50%{transform:skewX(8deg)translateX(3px)}80%{transform:skewX(-4deg)} }
       @keyframes hl-letterSlideRight { 0%,100%{transform:translateX(0)}30%{transform:translateX(6px)rotate(8deg)}60%{transform:translateX(-2px)rotate(-3deg)} }
-    </style>
+    
+      @keyframes hl-spin-trifecta { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
 
     <div id="html-loader" aria-label="Loading CoAIleague">
 
@@ -518,20 +516,90 @@
       <div class="hl-logo-wrap">
         <div class="hl-logo-spin">
           <svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-            <g class="hl-arrow-blue">
-              <polygon points="60,8 72,32 64,32 64,58 56,58 56,32 48,32" fill="#3b82f6"/>
-              <polygon points="60,4 76,28 44,28" fill="#60a5fa"/>
+            <defs>
+              <linearGradient id="hlg1" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%"   stop-color="#93C5FD" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.1"/>
+              </linearGradient>
+              <linearGradient id="hlg2" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%"   stop-color="#FED7AA" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#F97316" stop-opacity="0.1"/>
+              </linearGradient>
+              <linearGradient id="hlg3" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%"   stop-color="#C4B5FD" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0.1"/>
+              </linearGradient>
+              <radialGradient id="hlgc" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stop-color="#ffffff"/>
+                <stop offset="40%"  stop-color="#A78BFA"/>
+                <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.5"/>
+              </radialGradient>
+              <filter id="hlfa" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="3" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="hlfc" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="7" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+
+            <!-- Outer orbital ring: SMIL spin CW -->
+            <g>
+              <animateTransform attributeName="transform" type="rotate"
+                from="0 60 60" to="360 60 60" dur="8s" repeatCount="indefinite"/>
+              <circle cx="60" cy="60" r="53" fill="none" stroke="#93C5FD"
+                stroke-width="1" stroke-dasharray="7 22 2 22" opacity="0.28"/>
             </g>
-            <g class="hl-arrow-orange">
-              <polygon points="60,8 72,32 64,32 64,58 56,58 56,32 48,32" fill="#f97316"/>
-              <polygon points="60,4 76,28 44,28" fill="#fb923c"/>
+
+            <!-- Inner orbital ring: SMIL spin CCW -->
+            <g>
+              <animateTransform attributeName="transform" type="rotate"
+                from="360 60 60" to="0 60 60" dur="13s" repeatCount="indefinite"/>
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#FED7AA"
+                stroke-width="0.7" stroke-dasharray="4 16" opacity="0.18"/>
             </g>
-            <g class="hl-arrow-purple">
-              <polygon points="60,8 72,32 64,32 64,58 56,58 56,32 48,32" fill="#8b5cf6"/>
-              <polygon points="60,4 76,28 44,28" fill="#a78bfa"/>
+
+            <!-- Trifecta: all 3 arms rotate TOGETHER as one unit (CSS animation) -->
+            <g style="transform-origin: 60px 60px; animation: hl-spin-trifecta 6s linear infinite;">
+              <!-- Arm 1 — Blue (12 o'clock) -->
+              <g filter="url(#hlfa)">
+                <path d="M60 43 C55 34,53 19,60 6 C67 19,65 34,60 43 Z" fill="url(#hlg1)">
+                  <animate attributeName="opacity" values="0.65;1;0.65" dur="3s" repeatCount="indefinite"/>
+                </path>
+                <circle cx="60" cy="6" r="3" fill="#93C5FD" opacity="0.9">
+                  <animate attributeName="r" values="2;4;2" dur="3s" repeatCount="indefinite"/>
+                </circle>
+              </g>
+              <!-- Arm 2 — Orange (4 o'clock) -->
+              <g filter="url(#hlfa)" transform="rotate(120 60 60)">
+                <path d="M60 43 C55 34,53 19,60 6 C67 19,65 34,60 43 Z" fill="url(#hlg2)">
+                  <animate attributeName="opacity" values="0.65;1;0.65" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+                </path>
+                <circle cx="60" cy="6" r="3" fill="#FED7AA" opacity="0.9">
+                  <animate attributeName="r" values="2;4;2" dur="3s" begin="0.5s" repeatCount="indefinite"/>
+                </circle>
+              </g>
+              <!-- Arm 3 — Purple (8 o'clock) -->
+              <g filter="url(#hlfa)" transform="rotate(240 60 60)">
+                <path d="M60 43 C55 34,53 19,60 6 C67 19,65 34,60 43 Z" fill="url(#hlg3)">
+                  <animate attributeName="opacity" values="0.65;1;0.65" dur="3s" begin="1s" repeatCount="indefinite"/>
+                </path>
+                <circle cx="60" cy="6" r="3" fill="#C4B5FD" opacity="0.9">
+                  <animate attributeName="r" values="2;4;2" dur="3s" begin="1s" repeatCount="indefinite"/>
+                </circle>
+              </g>
             </g>
-            <circle class="hl-orb" cx="60" cy="60" r="10" fill="white"/>
-            <circle cx="60" cy="60" r="7" fill="#e2e8f0"/>
+
+            <!-- Core: breathing radial glow -->
+            <circle cx="60" cy="60" r="16" fill="url(#hlgc)" filter="url(#hlfc)" opacity="0.85">
+              <animate attributeName="r"       values="13;19;13"     dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.7;0.95;0.7" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="60" cy="60" r="7" fill="#ffffff" opacity="0.92">
+              <animate attributeName="opacity" values="0.7;1;0.7" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="57" cy="57" r="2.5" fill="#ffffff" opacity="0.8"/>
           </svg>
         </div>
         <div class="hl-trinity-label">
@@ -638,7 +706,7 @@
       // If React mounts before the floor expires, we defer dismissal until the
       // floor elapses.
       (function() {
-        var MIN_DISPLAY_MS = 3000;
+        var MIN_DISPLAY_MS = 1200; // Fast transition — React SplashScreen is suppressed
         var startedAt = Date.now();
         var dismissed = false;
         var pollInterval = null;
@@ -654,6 +722,8 @@
           if (!el) return;
           el.classList.add('fade-out');
           setTimeout(function() { el.classList.add('gone'); }, 350);
+          // Signal to React: HTML splash already ran — skip React SplashScreen
+          try { sessionStorage.setItem('coai_html_splash_done', '1'); } catch(e) {}
         }
 
         function requestDismiss() {

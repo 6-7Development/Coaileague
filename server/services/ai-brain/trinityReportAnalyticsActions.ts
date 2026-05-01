@@ -23,19 +23,18 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityReportAnalyticsActions');
 
 // mkAction helper for compact analytics registrations
-function mkAction(actionId: string, fn: (params: any) => Promise<any>) {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>) {
   return {
     actionId,
     name: actionId,
-    category: 'analytics' as any,
+    category: 'analytics',
     description: `Trinity analytics: ${actionId}`,
     handler: async (req: import('../helpai/platformActionHub').ActionRequest): Promise<import('../helpai/platformActionHub').ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        return { success: true, data } as any;
-      } catch (err: any) {
-        return { success: false, error: err?.message || 'Unknown error' } as any;
+        return { success: true, data } as unknown;
+      } catch (err: unknown) {
+        return { success: false, error: err?.message || 'Unknown error' } as unknown;
       }
     },
   };
@@ -49,7 +48,7 @@ function createResult(
   actionId: string, 
   success: boolean, 
   message: string, 
-  data?: any,
+  data?: unknown,
   startTime?: number
 ): ActionResult {
   return {
@@ -90,7 +89,7 @@ export function registerReportAnalyticsActions(): void {
           employeeId
         });
         return createResult(request.actionId, true, 'Timesheet report generated', report, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to generate timesheet report: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -113,7 +112,7 @@ export function registerReportAnalyticsActions(): void {
           employeeId
         );
         return createResult(request.actionId, true, 'Weekly report retrieved', report, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to get weekly report: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -136,7 +135,7 @@ export function registerReportAnalyticsActions(): void {
           employeeId
         );
         return createResult(request.actionId, true, 'Monthly report retrieved', report, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to get monthly report: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -163,7 +162,7 @@ export function registerReportAnalyticsActions(): void {
           new Date(endDate)
         );
         return createResult(request.actionId, true, 'Compliance report retrieved', report, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to get compliance report: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -215,7 +214,7 @@ export function registerReportAnalyticsActions(): void {
         });
 
         return createResult(request.actionId, true, 'Payroll summary retrieved', { runs: summary }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to get payroll summary: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -232,7 +231,7 @@ export function registerReportAnalyticsActions(): void {
       try {
         const forecast = await getRevenueForecast(request.workspaceId!);
         return createResult(request.actionId, true, 'Revenue forecast retrieved', forecast, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to get revenue forecast: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -263,7 +262,7 @@ export function registerReportAnalyticsActions(): void {
               AND status = 'sent'
               AND due_date < NOW()
           `);
-          const overdueAmount = Number((overdueInvoices as any[])[0]?.total_overdue || 0);
+          const overdueAmount = Number((overdueInvoices as unknown[])[0]?.total_overdue || 0);
 
           // 2. Activity: Active shifts in last 30 days
           // CATEGORY C — Raw SQL retained: Count( | Tables: shifts | Verified: 2026-03-23
@@ -297,7 +296,7 @@ export function registerReportAnalyticsActions(): void {
         }));
 
         return createResult(request.actionId, true, 'Client health scores calculated', { clients: healthScores }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to calculate client health scores: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -334,7 +333,7 @@ export function registerReportAnalyticsActions(): void {
           HAVING SUM(te.total_hours::numeric) > 32
         `);
 
-        const atRiskEmployees = (weeklyHours as any[]).map(row => ({
+        const atRiskEmployees = (weeklyHours as unknown[]).map(row => ({
           employeeId: row.employeeId,
           name: row.name,
           hoursThisWeek: Number(row.hoursThisWeek),
@@ -342,7 +341,7 @@ export function registerReportAnalyticsActions(): void {
         }));
 
         return createResult(request.actionId, true, 'Overtime risk analysis complete', { atRiskEmployees }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to analyze overtime risk: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -386,7 +385,7 @@ export function registerReportAnalyticsActions(): void {
           expired,
           rate: Number(rate.toFixed(1))
         }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to analyze compliance rate: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -418,7 +417,7 @@ export function registerReportAnalyticsActions(): void {
           GROUP BY c.id, c.company_name
         `);
 
-        const byClient = (profitabilityData as any[]).map(row => {
+        const byClient = (profitabilityData as unknown[]).map(row => {
           const revenue = Number(row.revenue || 0);
           const cost = Number(row.cost || 0);
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
@@ -433,7 +432,7 @@ export function registerReportAnalyticsActions(): void {
         });
 
         return createResult(request.actionId, true, 'Shift profitability analysis complete', { byClient }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, `Failed to analyze shift profitability: ${(error instanceof Error ? error.message : String(error))}`, null, start);
       }
     },
@@ -487,7 +486,7 @@ export function registerReportAnalyticsActions(): void {
       .groupBy(sql`time_entries.employee_id`)
       .orderBy(sql`SUM(time_entries.total_hours::numeric) DESC`);
     const rows = await baseQuery.catch(() => []);
-    return { periodDays, since, employees: rows.map((r: any) => ({
+    return { periodDays, since, employees: rows.map((r: unknown) => ({
       employeeId: r.employeeId,
       totalHours: +(parseFloat(String(r.totalHoursSum || 0))).toFixed(1),
       shiftsWorked: parseInt(String(r.entryCount || 0)),

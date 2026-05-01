@@ -78,7 +78,7 @@ interface StaffPacket {
   position: string;
   guardCardVerified: boolean;
   hireDate?: string;
-  documents: any[];
+  documents: unknown[];
   completeness: Record<string, DocCompleteness>;
   completedCount: number;
   totalRequired: number;
@@ -148,7 +148,7 @@ function DocDot({ present, label }: { present: boolean; label: string }) {
 // ── Company Tab ────────────────────────────────────────────────────────────────
 
 function CompanyTab() {
-  const { data, isLoading } = useQuery<{ success: boolean; data: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; data: Record<string, unknown> }>({
     queryKey: ["/api/sps/company-docs"],
   });
   const [contractFilter, setContractFilter] = useState("all");
@@ -162,7 +162,7 @@ function CompanyTab() {
   const credSlots = COMPANY_DOC_SLOTS.map(slot => ({
     ...slot,
     uploaded: (company?.companyDocs ?? []).some(
-      (d: any) =>
+      (d) =>
         d.documentType === slot.key ||
         d.documentName?.toLowerCase().includes(slot.label.toLowerCase().substring(0, 12))
     ),
@@ -568,7 +568,7 @@ function StaffTab() {
                     <div className="space-y-1">
                       {selected.documents
                         .filter(d => !selectedDocIds.has(d.id))
-                        .map((doc: any) => {
+                        .map((doc) => {
                           const dlUrl = doc.fileUrl
                             ? doc.fileUrl.replace("/view/", "/download/")
                             : null;
@@ -639,7 +639,7 @@ function ReportsTab() {
 
   const { data, isLoading } = useQuery<{
     success: boolean;
-    data: { reports: any[]; clients: string[] };
+    data: { reports: unknown[]; clients: string[] };
   }>({
     queryKey: ["/api/sps/reports", clientFilter],
     queryFn: () =>

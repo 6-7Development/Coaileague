@@ -56,8 +56,8 @@ interface MetacognitionResult {
 }
 
 class TrinityBusinessIntelligence {
-  private patternCache = new Map<string, { data: any; expiry: number }>();
-  private activeAnalysis = new Map<string, Promise<any>>();
+  private patternCache = new Map<string, { data: Record<string, unknown>; expiry: number }>();
+  private activeAnalysis = new Map<string, Promise<unknown>>();
   private CACHE_TTL = 5 * 60 * 1000;
 
   private getCached<T>(key: string): T | null {
@@ -67,7 +67,7 @@ class TrinityBusinessIntelligence {
     return null;
   }
 
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: Record<string, unknown>): void {
     this.patternCache.set(key, { data, expiry: Date.now() + this.CACHE_TTL });
   }
 
@@ -93,7 +93,7 @@ class TrinityBusinessIntelligence {
     siteName?: string;
     agencyName?: string;
     limit?: number;
-  }): Promise<{ invoices: any[]; total: number; metacognition: MetacognitionResult }> {
+  }): Promise<{ invoices: unknown[]; total: number; metacognition: MetacognitionResult }> {
     const startTime = Date.now();
     const limit = Math.min(query.limit || 25, 100);
     const knowledgeGaps: string[] = [];
@@ -113,7 +113,7 @@ class TrinityBusinessIntelligence {
       .where(eq(invoices.workspaceId, workspaceId))
       .$dynamic();
 
-    const conditions: any[] = [eq(invoices.workspaceId, workspaceId)];
+    const conditions: unknown[] = [eq(invoices.workspaceId, workspaceId)];
 
     if (query.clientName) {
       conditions.push(
@@ -145,7 +145,7 @@ class TrinityBusinessIntelligence {
     }
 
     if (query.status) {
-      conditions.push(eq(invoices.status, query.status as any));
+      conditions.push(eq(invoices.status, query.status as unknown));
     }
 
     if (query.minAmount) {
@@ -197,7 +197,7 @@ class TrinityBusinessIntelligence {
 
     if (query.employeeName) {
       const filtered = enrichedInvoices.filter(inv =>
-        inv.lineItems.some((li: any) =>
+        inv.lineItems.some((li: unknown) =>
           li.description?.toLowerCase().includes(query.employeeName!.toLowerCase()) ||
           (li.descriptionData?.officers || []).some((o: string) =>
             o.toLowerCase().includes(query.employeeName!.toLowerCase())
@@ -292,7 +292,7 @@ class TrinityBusinessIntelligence {
           if (li.description) sampleDescriptions.push(li.description);
           if (li.unitPrice) { totalRate += Number(li.unitPrice); rateCount++; }
           if (li.descriptionData) {
-            const dd = li.descriptionData as any;
+            const dd = li.descriptionData as unknown;
             if (dd.location) allSites.add(dd.location);
             if (dd.sub_client_name) allSites.add(dd.sub_client_name);
             if (dd.officers) dd.officers.forEach((o: string) => allEmployees.add(o));
@@ -362,7 +362,7 @@ class TrinityBusinessIntelligence {
 
     for (const p of patterns) {
       try {
-        (sharedKnowledgeGraph as any).storeEntity({
+        (sharedKnowledgeGraph as Record<string,unknown>).storeEntity({
           id: `invoice-pattern-${p.clientId}`,
           type: 'insight',
           domain: 'invoicing',
@@ -390,7 +390,7 @@ class TrinityBusinessIntelligence {
   }
 
   async analyzeInvoiceForQB(workspaceId: string, invoiceId: string): Promise<{
-    qbReadyPayload: any;
+    qbReadyPayload: unknown;
     formatDecisions: string[];
     metacognition: MetacognitionResult;
   }> {
@@ -446,7 +446,7 @@ class TrinityBusinessIntelligence {
 
     const qbLines = lineItems.map((item, idx) => {
       let description = item.li.description;
-      const dd = item.li.descriptionData as any;
+      const dd = item.li.descriptionData as unknown;
 
       if (dd && (dd.officers || dd.location || dd.schedule_description)) {
         const parts: string[] = [];
@@ -460,7 +460,7 @@ class TrinityBusinessIntelligence {
           parts.push(dd.schedule_description);
         }
         if (dd.service_dates && dd.service_dates.length > 0) {
-          parts.push(dd.service_dates.map((d: any) => `${d.date} ${d.time}`).join('; '));
+          parts.push(dd.service_dates.map((d: unknown) => `${d.date} ${d.time}`).join('; '));
         }
         if (parts.length > 0) {
           description = parts.join(' | ');
@@ -632,7 +632,7 @@ class TrinityBusinessIntelligence {
     learningApplied.push('Calculated per-client labor cost vs revenue margins');
 
     try {
-      (sharedKnowledgeGraph as any).storeEntity({
+      (sharedKnowledgeGraph as Record<string,unknown>).storeEntity({
         id: `payroll-pattern-${workspaceId}`,
         type: 'insight',
         domain: 'payroll',
@@ -780,7 +780,7 @@ class TrinityBusinessIntelligence {
     learningApplied.push('Detected shift duration categories per site for pattern matching');
 
     try {
-      (sharedKnowledgeGraph as any).storeEntity({
+      (sharedKnowledgeGraph as Record<string,unknown>).storeEntity({
         id: `schedule-pattern-${workspaceId}`,
         type: 'insight',
         domain: 'scheduling',
@@ -874,7 +874,6 @@ For agency/subcontract clients, pay special attention to external reference numb
             domain: domain === 'all' ? 'invoicing' : domain as KnowledgeDomain,
             action: `deep_analysis_${domain}`,
             outcome: 'success',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             reward: 1.0,
             context: { domain, questionProvided: !!question, dataPointsAnalyzed: contextParts.length },
             workspaceId,
@@ -893,7 +892,7 @@ For agency/subcontract clients, pay special attention to external reference numb
       }
 
       knowledgeGaps.push('Gemini analysis returned empty — falling back to pattern-based insights');
-    } catch (err: any) {
+    } catch (err: unknown) {
       knowledgeGaps.push(`Gemini analysis failed: ${(err instanceof Error ? err.message : String(err))} — using pattern-based insights only`);
     }
 
@@ -983,14 +982,14 @@ export function registerBusinessIntelligenceActions(): void {
       if (!request.workspaceId) {
         return { success: false, actionId: request.actionId, message: 'Workspace context required for analysis', executionTimeMs: Date.now() - startTime };
       }
-      const analysisType = request.payload?.type || (request as any).params?.type;
+      const analysisType = request.payload?.type || (request as Record<string,unknown>).params?.type;
 
       try {
         // type=search → search invoices
         if (analysisType === 'search') {
           const result = await trinityBusinessIntelligence.searchInvoices(
             request.workspaceId,
-            request.payload || (request as any).params || {}
+            request.payload || (request as Record<string,unknown>).params || {}
           );
           return {
             success: true, actionId: request.actionId, data: result,
@@ -1013,7 +1012,7 @@ export function registerBusinessIntelligenceActions(): void {
         if (analysisType === 'payroll_patterns') {
           const result = await trinityBusinessIntelligence.scanPayrollPatterns(
             request.workspaceId,
-            request.payload?.periodMonths || (request as any).params?.periodMonths || 3
+            request.payload?.periodMonths || (request as Record<string,unknown>).params?.periodMonths || 3
           );
           return {
             success: true, actionId: request.actionId, data: result,
@@ -1026,7 +1025,7 @@ export function registerBusinessIntelligenceActions(): void {
         if (analysisType === 'schedule_patterns') {
           const result = await trinityBusinessIntelligence.scanSchedulePatterns(
             request.workspaceId,
-            request.payload?.weeksBack || (request as any).params?.weeksBack || 4
+            request.payload?.weeksBack || (request as Record<string,unknown>).params?.weeksBack || 4
           );
           return {
             success: true, actionId: request.actionId, data: result,
@@ -1042,22 +1041,22 @@ export function registerBusinessIntelligenceActions(): void {
             workspaceId: request.workspaceId,
             userId: request.userId,
             payload: { ...request.payload, action: 'learn' },
-          } as any);
+          } as unknown);
           return settingsResult || { success: true, actionId: request.actionId, message: 'Preference forwarded to billing.settings', executionTimeMs: Date.now() - startTime };
         }
 
         // Default: type=deep (or no type) → deep analysis
         const result = await trinityBusinessIntelligence.deepAnalysis(
           request.workspaceId,
-          request.payload?.domain || (request as any).params?.domain || 'all',
-          request.payload?.question || (request as any).params?.question
+          request.payload?.domain || (request as Record<string,unknown>).params?.domain || 'all',
+          request.payload?.question || (request as Record<string,unknown>).params?.question
         );
         return {
           success: true, actionId: request.actionId, data: result,
           message: `Deep analysis complete. ${result.recommendations.length} recommendations generated. Confidence: ${(result.metacognition.confidence * 100).toFixed(0)}%`,
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return { success: false, actionId: request.actionId, message: sanitizeError(error), executionTimeMs: Date.now() - startTime };
       }
     },

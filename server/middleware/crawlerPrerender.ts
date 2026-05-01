@@ -235,7 +235,7 @@ const COMPARISON = [
 
 function renderFeaturesHTML(): string {
   const featureCards = FEATURES_DATA.map(f => {
-    const comingSoonBadge = (f as any).comingSoon ? ' <span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.85em;font-weight:bold;">Coming Soon</span>' : '';
+    const comingSoonBadge = (f as Record<string, unknown>).comingSoon ? ' <span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.85em;font-weight:bold;">Coming Soon</span>' : '';
     return `
     <article>
       <h3>${f.name}${comingSoonBadge} - ${f.tagline}</h3>

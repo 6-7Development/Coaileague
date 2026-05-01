@@ -138,7 +138,7 @@ router.get('/search', requireAuth, attachWorkspaceId, async (req: AuthenticatedR
     } = validatedParams.data;
 
     // Build WHERE conditions
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     // Workspace scoping - platform staff can see all, regular users see their workspace only
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -304,7 +304,7 @@ router.get('/search/by-number/:ticketNumber', requireAuth, attachWorkspaceId, as
     }
 
     // Build conditions
-    const conditions: any[] = [eq(supportTickets.ticketNumber, ticketNumber)];
+    const conditions: unknown[] = [eq(supportTickets.ticketNumber, ticketNumber)];
 
     // Workspace scoping for non-platform staff
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -316,9 +316,9 @@ router.get('/search/by-number/:ticketNumber', requireAuth, attachWorkspaceId, as
       where: and(...conditions),
     });
 
-    let ticket: any = rawTicket;
-    if (rawTicket && (rawTicket as any).workspaceId) {
-      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, (rawTicket as any).workspaceId) });
+    let ticket: unknown = rawTicket;
+    if (rawTicket && (rawTicket as Record<string,unknown>).workspaceId) {
+      const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, (rawTicket as Record<string,unknown>).workspaceId) });
       ticket = { ...rawTicket, workspace: ws || null };
     }
 
@@ -376,7 +376,7 @@ router.get('/search/by-status/:status', requireAuth, attachWorkspaceId, async (r
     const { page, limit, sortBy, sortOrder } = paginationResult.data;
 
     // Build conditions
-    const conditions: any[] = [eq(supportTickets.status, status)];
+    const conditions: unknown[] = [eq(supportTickets.status, status)];
 
     // Workspace scoping
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -463,7 +463,7 @@ router.get('/search/by-requestor', requireAuth, attachWorkspaceId, async (req: A
     const { page, limit, sortBy, sortOrder } = paginationResult.data;
 
     // Build conditions
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       or(
         ilike(supportTickets.requestedBy, `%${requestor}%`),
         ilike(supportTickets.description, `%${requestor}%`)
@@ -566,7 +566,7 @@ router.get('/search/full-text', requireAuth, attachWorkspaceId, async (req: Auth
       )
     );
 
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     if (textSearchConditions.length > 0) {
       // All search terms must match (AND logic)
@@ -667,18 +667,16 @@ router.get('/search/my-tickets', requireAuth, attachWorkspaceId, async (req: Aut
     } else if (includeAssigned) {
       // Show tickets created by OR assigned to user
       userCondition = or(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(supportTickets.reportedBy, userId),
         eq(supportTickets.assignedTo, userId),
         eq(supportTickets.platformAssignedTo, userId)
       );
     } else {
       // Default: only tickets created by user
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userCondition = eq(supportTickets.reportedBy, userId);
     }
 
-    const conditions: any[] = [userCondition];
+    const conditions: unknown[] = [userCondition];
 
     // Optional status filter
     const status = req.query.status as string;
@@ -925,7 +923,7 @@ router.get('/search/all', requirePlatformStaff, async (req: AuthenticatedRequest
     } = validatedParams.data;
 
     // Build WHERE conditions (no workspace filter for platform staff)
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
 
     if (ticketNumber) {
       conditions.push(ilike(supportTickets.ticketNumber, `%${ticketNumber}%`));

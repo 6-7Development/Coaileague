@@ -152,7 +152,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
 
   return (
     <UniversalModal open={open} onOpenChange={onOpenChange}>
-      <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto">
+      <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>{step ? 'Edit Step' : 'Add New Step'}</UniversalModalTitle>
           <UniversalModalDescription>
@@ -237,7 +237,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                   <SelectValue placeholder="Select a custom form template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {reportTemplates?.map((template: any) => (
+                  {reportTemplates?.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.title}
                     </SelectItem>
@@ -259,7 +259,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                 onCheckedChange={(checked) => setFormData({ 
                   ...formData, 
                   hasConditionalLogic: checked as boolean,
-                  conditionalLogic: checked ? ({ field: '', operator: 'equals', value: '', action: 'show' } as any) : null
+                  conditionalLogic: checked ? ({ field: '', operator: 'equals', value: '', action: 'show' } as unknown) : null
                 })}
                 data-testid="checkbox-conditional"
               />
@@ -280,7 +280,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                     <div>
                       <Label className="text-xs">Field</Label>
                       <Select
-                        value={(formData.conditionalLogic as any)?.field || ''}
+                        value={(formData.conditionalLogic as unknown)?.field || ''}
                         onValueChange={(value) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), field: value } as any
@@ -300,7 +300,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                     <div>
                       <Label className="text-xs">Operator</Label>
                       <Select
-                        value={(formData.conditionalLogic as any)?.operator || 'equals'}
+                        value={(formData.conditionalLogic as unknown)?.operator || 'equals'}
                         onValueChange={(value) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), operator: value } as any
@@ -320,7 +320,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                       <Label className="text-xs">Value</Label>
                       <Input
                         placeholder="e.g., Truck Driver"
-                        value={(formData.conditionalLogic as any)?.value || ''}
+                        value={(formData.conditionalLogic as unknown)?.value || ''}
                         onChange={(e) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), value: e.target.value } as any
@@ -362,7 +362,7 @@ const pageConfig: CanvasPageConfig = {
 export default function AIHiringWorkflowBuilder() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [editingStep, setEditingStep] = useState<any>(null);
+  const [editingStep, setEditingStep] = useState<null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
@@ -420,12 +420,12 @@ export default function AIHiringWorkflowBuilder() {
     setIsEditorOpen(true);
   };
 
-  const handleEditStep = (step: any) => {
+  const handleEditStep = (step) => {
     setEditingStep(step);
     setIsEditorOpen(true);
   };
 
-  const handleSaveStep = (stepData: any) => {
+  const handleSaveStep = (stepData) => {
     if (editingStep) {
       // Update existing step
       setSteps(steps.map(s => s.id === editingStep.id ? { ...stepData, id: editingStep.id, sequence: editingStep.sequence } : s));
@@ -500,7 +500,7 @@ export default function AIHiringWorkflowBuilder() {
       });
       navigate('/dashboard');
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Save failed",
         description: error.message || "Failed to save workflow template",

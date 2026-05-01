@@ -9,16 +9,16 @@ export interface OnboardingSession {
   status: string;
   currentStep: number;
   completedSteps: number[];
-  form1: Record<string, any> | null;
-  form2: Record<string, any> | null;
-  form3: Record<string, any> | null;
-  form4: Record<string, any> | null;
-  form5: Record<string, any> | null;
-  form6: Record<string, any> | null;
-  form7: Record<string, any> | null;
-  form8: Record<string, any> | null;
-  form9: Record<string, any> | null;
-  form10: Record<string, any> | null;
+  form1: Record<string, unknown> | null;
+  form2: Record<string, unknown> | null;
+  form3: Record<string, unknown> | null;
+  form4: Record<string, unknown> | null;
+  form5: Record<string, unknown> | null;
+  form6: Record<string, unknown> | null;
+  form7: Record<string, unknown> | null;
+  form8: Record<string, unknown> | null;
+  form9: Record<string, unknown> | null;
+  form10: Record<string, unknown> | null;
 }
 
 interface UseOnboardingFormReturn {
@@ -26,8 +26,8 @@ interface UseOnboardingFormReturn {
   isLoading: boolean;
   currentStep: number;
   completedSteps: number[];
-  stepData: Record<string, any>;
-  setField: (field: string, value: any) => void;
+  stepData: Record<string, unknown>;
+  setField: (field: string, value: unknown) => void;
   goToStep: (step: number) => void;
   submitStep: (step: number) => Promise<{ success: boolean; errors: { field: string; message: string }[] }>;
   finalize: () => Promise<{ pdfUrl: string }>;
@@ -41,7 +41,7 @@ export function useOnboardingForm(onboardingId: string): UseOnboardingFormReturn
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   // stepData holds local form state for the current step
-  const [stepData, setStepData] = useState<Record<string, any>>({});
+  const [stepData, setStepData] = useState<Record<string, unknown>>({});
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const dirtyRef = useRef(false);
@@ -61,11 +61,11 @@ export function useOnboardingForm(onboardingId: string): UseOnboardingFormReturn
     setCompletedSteps(session.completedSteps ?? []);
     // Pre-populate stepData from the form matching currentStep
     const formKey = `form${session.currentStep}` as keyof OnboardingSession;
-    setStepData((session[formKey] as Record<string, any>) ?? {});
+    setStepData((session[formKey] as Record<string, unknown>) ?? {});
   }, [session?.id]); // only on session load, not every render
 
   // ── Field updates (optimistic) ──────────────────────────────────────────────
-  const setField = useCallback((field: string, value: any) => {
+  const setField = useCallback((field: string, value: unknown) => {
     setStepData(prev => ({ ...prev, [field]: value }));
     dirtyRef.current = true;
   }, []);
@@ -75,7 +75,7 @@ export function useOnboardingForm(onboardingId: string): UseOnboardingFormReturn
     if (!session) return;
     setCurrentStep(step);
     const formKey = `form${step}` as keyof OnboardingSession;
-    setStepData((session[formKey] as Record<string, any>) ?? {});
+    setStepData((session[formKey] as Record<string, unknown>) ?? {});
     dirtyRef.current = false;
   }, [session]);
 
@@ -121,7 +121,7 @@ export function useOnboardingForm(onboardingId: string): UseOnboardingFormReturn
           // Pre-populate next step's data
           if (session) {
             const formKey = `form${result.nextStep}` as keyof OnboardingSession;
-            setStepData((session[formKey] as Record<string, any>) ?? {});
+            setStepData((session[formKey] as Record<string, unknown>) ?? {});
           }
           queryClient.invalidateQueries({ queryKey: ['/api/sps/forms', onboardingId] });
         }

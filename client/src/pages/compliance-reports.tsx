@@ -49,7 +49,7 @@ interface ComplianceReport {
   generatedAt: string;
   generatedBy: string;
   automated: boolean;
-  reportData: any;
+  reportData: Record<string, unknown>;
   exportFormats: string[];
   retentionYears: number;
 }
@@ -81,7 +81,6 @@ export default function ComplianceReportsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/compliance-reports/list'] });
     },
     onError: (error: Error) => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       toast({
         title: 'Generate Report Failed',
         description: error.message || 'Something went wrong.',

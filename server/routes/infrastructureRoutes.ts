@@ -45,7 +45,7 @@ function requireEnterpriseFeature(featureName: keyof typeof FEATURE_FLAGS) {
   return (req: Request, res: Response, next: Function) => {
     // Check if user is platform staff (always allowed)
     const user = req.user;
-    const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes((user as any).platformRole);
+    const isPlatformStaff = (user as Record<string,unknown>)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes(req.user?.platformRole);
     
     if (isPlatformStaff || isFeatureEnabled(featureName)) {
       return next();
@@ -75,14 +75,13 @@ router.use((req: Request, res: Response, next: Function) => {
   
   // Check if user is platform staff (always allowed)
   const user = req.user;
-  const isPlatformStaff = (user as any)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes((user as any).platformRole);
+  const isPlatformStaff = (user as Record<string,unknown>)?.platformRole && ['root_admin', 'sysop', 'support_agent'].includes(req.user?.platformRole);
   
   if (isPlatformStaff) {
     return next();
   }
   
   // ENTERPRISE FEATURE - Check if infrastructure dashboard is enabled
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (!isFeatureEnabled('INFRASTRUCTURE_DASHBOARD')) {
     return res.json({
       success: true,
@@ -132,8 +131,8 @@ router.get('/health', async (req: Request, res: Response) => {
     const slaCompliance = slaMonitoring.getComplianceSummary();
     
     // Format circuits for frontend (handle case where circuits property doesn't exist)
-    const circuitList = (circuitHealth as any).circuits || [];
-    const circuits = circuitList.map((c: any) => ({
+    const circuitList = (circuitHealth as Record<string,unknown>).circuits || [];
+    const circuits = circuitList.map((c: unknown) => ({
       name: c.name || 'unknown',
       displayName: c.displayName || c.name || 'Unknown Circuit',
       state: c.state || 'CLOSED',
@@ -147,8 +146,8 @@ router.get('/health', async (req: Request, res: Response) => {
     }));
     
     // Format SLA services for frontend (handle case where services property doesn't exist)
-    const serviceList = (slaCompliance as any).services || [];
-    const slaServices = serviceList.map((s: any) => ({
+    const serviceList = (slaCompliance as Record<string,unknown>).services || [];
+    const slaServices = serviceList.map((s: unknown) => ({
       serviceId: s.serviceId || 'unknown',
       displayName: s.displayName || 'Unknown Service',
       tier: s.tier || 'standard',
@@ -164,11 +163,11 @@ router.get('/health', async (req: Request, res: Response) => {
     // Calculate aggregate stats using actual returned properties
     const aggregateStats = {
       totalCircuits: circuits.length,
-      closedCircuits: circuits.filter((c: any) => c.state === 'CLOSED').length,
-      openCircuits: circuits.filter((c: any) => c.state === 'OPEN').length,
-      halfOpenCircuits: circuits.filter((c: any) => c.state === 'HALF_OPEN').length,
+      closedCircuits: circuits.filter((c: unknown) => c.state === 'CLOSED').length,
+      openCircuits: circuits.filter((c: unknown) => c.state === 'OPEN').length,
+      halfOpenCircuits: circuits.filter((c: unknown) => c.state === 'HALF_OPEN').length,
       overallHealth: circuitHealth.healthy ? 'healthy' : 'degraded',
-      slaCompliance: (slaCompliance as any).overallCompliance ?? slaCompliance.overallHealth ?? 'healthy',
+      slaCompliance: (slaCompliance as Record<string,unknown>).overallCompliance ?? slaCompliance.overallHealth ?? 'healthy',
     };
     
     const overallStatus = dbStatus === 'down' ? 'down' : (aggregateStats.openCircuits > 0 ? 'degraded' : 'healthy');
@@ -1006,7 +1005,6 @@ router.get('/launch/rehearsals/:rehearsalId', (req: Request, res: Response) => {
 router.post('/launch/rehearsals', async (req: Request, res: Response) => {
   try {
     const { type, name, description } = req.body;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const rehearsal = await launchRehearsalService.createRehearsal({ type, name, description });
     res.json({ success: true, data: rehearsal });
   } catch (error: unknown) {

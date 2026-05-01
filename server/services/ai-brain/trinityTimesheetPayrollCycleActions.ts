@@ -12,11 +12,11 @@ import { calculatePayrollEstimate } from '../payroll/payrollEstimateMath';
 import { AtomicFinancialLockService, FinancialLockConflict } from '../atomicFinancialLockService';
 const log = createLogger('trinityTimesheetPayrollCycleActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>, category: string = 'automation'): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>, category: string = 'automation'): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: category as any,
+    category: category as unknown,
     description: `Trinity action: ${actionId}`,
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -24,18 +24,18 @@ function mkAction(actionId: string, fn: (params: any) => Promise<any>, category:
       try {
         const data = await fn(req.payload || {});
         return { success: true, actionId, message: `${actionId} completed`, data, executionTimeMs: Date.now() - start };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { success: false, actionId, message: err?.message || 'Unknown error', executionTimeMs: Date.now() - start };
       }
     }
   };
 }
 
-function mkPayrollAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkPayrollAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return mkAction(actionId, fn, 'payroll');
 }
 
-function mkInvoiceAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkInvoiceAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return mkAction(actionId, fn, 'invoicing');
 }
 
@@ -61,7 +61,7 @@ export function registerTimesheetPayrollCycleActions() {
       employeeId: timeEntries.employeeId,
       clockIn: timeEntries.clockIn,
       clockOut: timeEntries.clockOut,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
     }).from(timeEntries).where(whereClause).orderBy(timeEntries.clockIn);
     const byEmployee: Record<string, { totalMinutes: number; entries: number }> = {};
@@ -89,17 +89,16 @@ export function registerTimesheetPayrollCycleActions() {
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
-        eq(timeEntries.status as any, 'pending'),
+        eq(timeEntries.status, 'pending'),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gt(timeEntries.totalMinutes, 0),
         sql`${timeEntries.notes} NOT ILIKE '%flag%' AND ${timeEntries.notes} NOT ILIKE '%review%' AND ${timeEntries.notes} NOT ILIKE '%PHOTO_REVIEW%'`
       ));
     if (cleanEntries.length === 0) return { approved: 0, message: 'No clean pending timesheets found' };
     const ids = cleanEntries.map(e => e.id);
     await db.update(timeEntries)
-      .set({ status: 'approved', updatedAt: new Date() } as any)
+      .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
       .where(sql`${timeEntries.id} = ANY(${ids})`);
     await platformEventBus.publish({
       eventType: 'automation_completed',
@@ -121,13 +120,13 @@ export function registerTimesheetPayrollCycleActions() {
       employeeId: timeEntries.employeeId,
       clockIn: timeEntries.clockIn,
       clockOut: timeEntries.clockOut,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
     }).from(timeEntries).where(and(
       eq(timeEntries.workspaceId, workspaceId),
       gte(timeEntries.clockIn, startDate),
       lte(timeEntries.clockIn, endDate),
-      sql`(${timeEntries.clockOut} IS NULL OR ${(timeEntries as any).totalMinutes} > 600 OR ${(timeEntries as any).totalMinutes} < 0)`
+      sql`(${timeEntries.clockOut} IS NULL OR ${(timeEntries as Record<string,unknown>).totalMinutes} > 600 OR ${(timeEntries as Record<string,unknown>).totalMinutes} < 0)`
     ));
     return {
       exceptions,
@@ -156,7 +155,7 @@ export function registerTimesheetPayrollCycleActions() {
       }
       throw err;
     }
-    const updates: any = { status: 'correction_pending', updatedAt: new Date() };
+    const updates: Record<string, unknown> = { status: 'correction_pending', updatedAt: new Date() };
     if (correctedClockIn) updates.clockIn = new Date(correctedClockIn);
     if (correctedClockOut) updates.clockOut = new Date(correctedClockOut);
     if (correctedClockIn && correctedClockOut) {
@@ -198,12 +197,12 @@ export function registerTimesheetPayrollCycleActions() {
     if (!workspaceId || !employeeId) return { error: 'workspaceId and employeeId required' };
     const startDate = periodStart ? new Date(periodStart) : new Date(Date.now() - 14 * 86400000);
     const endDate = periodEnd ? new Date(periodEnd) : new Date();
-    const entries = await db.select({ totalMinutes: (timeEntries as any).totalMinutes })
+    const entries = await db.select({ totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes })
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.employeeId, employeeId),
-        eq(timeEntries.status as any, 'approved'),
+        eq(timeEntries.status, 'approved'),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate)
       ));
@@ -240,7 +239,7 @@ export function registerTimesheetPayrollCycleActions() {
       .where(and(eq(payrollEntries.payrollRunId, payrollRunId), eq(payrollEntries.workspaceId, workspaceId)))
       .catch(() => []);
     const computedTotal = entries.reduce((acc, e) => acc + parseFloat(String(e.grossPay || 0)), 0);
-    const storedTotal = parseFloat(String((run as any).totalGrossPay || 0));
+    const storedTotal = parseFloat(String((run as Record<string, unknown>).totalGrossPay || 0));
     const variance = Math.abs(computedTotal - storedTotal);
     const negativeNet = entries.filter(e => parseFloat(String(e.netPay || 0)) < 0).length;
     return {
@@ -282,15 +281,15 @@ export function registerTimesheetPayrollCycleActions() {
     return {
       paystub: {
         employeeId,
-        employeeName: emp ? `${(emp as any).firstName} ${(emp as any).lastName}` : 'Unknown',
+        employeeName: emp ? `${(emp as EmployeeWithStatus).firstName} ${(emp as EmployeeWithStatus).lastName}` : 'Unknown',
         payrollRunId,
         grossPay: entry[0].grossPay,
         netPay: entry[0].netPay,
-        deductions: (entry as any)[0]?.deductions,
+        deductions: (entry as unknown)[0]?.deductions,
         regularHours: entry[0].regularHours,
         overtimeHours: entry[0].overtimeHours,
-        periodStart: (entry[0] as any).periodStart,
-        periodEnd: (entry[0] as any).periodEnd,
+        periodStart: (entry[0] as unknown).periodStart,
+        periodEnd: (entry[0] as unknown).periodEnd,
       }
     };
   }));
@@ -304,7 +303,7 @@ export function registerTimesheetPayrollCycleActions() {
       netPay: payrollEntries.netPay,
       regularHours: payrollEntries.regularHours,
       overtimeHours: payrollEntries.overtimeHours,
-      deductions: (payrollEntries as any).deductions,
+      deductions: (payrollEntries as Record<string,unknown>).deductions,
     }).from(payrollEntries)
       .where(and(eq(payrollEntries.payrollRunId, payrollRunId), eq(payrollEntries.workspaceId, workspaceId)));
     const csv = ['EmployeeId,GrossPay,NetPay,RegularHours,OvertimeHours,Deductions',
@@ -458,7 +457,7 @@ export function registerTimesheetPayrollCycleActions() {
     // GAP-20 FIX: workspaceId added to WHERE so a Trinity action cannot void a foreign workspace's invoice.
     if (!invoiceId || !workspaceId) return { error: 'invoiceId and workspaceId required' };
     await db.update(invoices)
-      .set({ status: 'void' as any, notes: `[VOIDED] ${reason || 'Trinity void and reissue'}`, updatedAt: new Date() } as any)
+      .set({ status: 'void', notes: `[VOIDED] ${reason || 'Trinity void and reissue'}`, updatedAt: new Date() } as unknown)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'invoice_voided',
@@ -476,7 +475,7 @@ export function registerTimesheetPayrollCycleActions() {
     if (!invoiceId || !workspaceId) return { error: 'invoiceId and workspaceId required' };
     const followUp = followupDate ? new Date(followupDate) : new Date(Date.now() + 5 * 86400000);
     await db.update(invoices)
-      .set({ notes: `[FOLLOWUP_SCHEDULED:${followUp.toISOString()}] ${message || 'Automated follow-up reminder'}`, updatedAt: new Date() } as any)
+      .set({ notes: `[FOLLOWUP_SCHEDULED:${followUp.toISOString()}] ${message || 'Automated follow-up reminder'}`, updatedAt: new Date() } as unknown)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'automation_completed',

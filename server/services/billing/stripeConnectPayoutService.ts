@@ -104,7 +104,7 @@ class StripeConnectPayoutService {
               ? await this.createOnboardingLink(account.id, workspaceId)
               : undefined
           };
-        } catch (err: any) {
+        } catch (err: unknown) {
           // Account may have been deleted, create new one
           log.info('[StripeConnect] Previous account not found, creating new');
         }
@@ -165,7 +165,7 @@ class StripeConnectPayoutService {
           payload: { accountId: account.id },
         },
         { generateHash: true }
-      ).catch((err: any) => log.warn('[StripeConnect] Audit log failed for account_created — operation succeeded but audit record missing', { employeeId, workspaceId, error: err?.message }));
+      ).catch((err: unknown) => log.warn('[StripeConnect] Audit log failed for account_created — operation succeeded but audit record missing', { employeeId, workspaceId, error: err?.message }));
 
       // Generate onboarding link
       const onboardingUrl = await this.createOnboardingLink(account.id, workspaceId);
@@ -177,7 +177,7 @@ class StripeConnectPayoutService {
         requiresOnboarding: true,
         onboardingUrl,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[StripeConnect] Error creating account:', error);
       return {
         hasAccount: false,
@@ -283,13 +283,13 @@ class StripeConnectPayoutService {
         amount: amountCents,
         currency: 'usd',
         destination: connectAccountId,
-        description: `Payroll: ${(entry as any).periodStart} - ${(entry as any).periodEnd}`,
+        description: `Payroll: ${(entry as unknown).periodStart} - ${(entry as unknown).periodEnd}`,
         metadata: {
           payrollEntryId,
           employeeId: entry.employeeId,
           workspaceId,
-          periodStart: (entry as any).periodStart?.toISOString() || '',
-          periodEnd: (entry as any).periodEnd?.toISOString() || '',
+          periodStart: (entry as unknown).periodStart?.toISOString() || '',
+          periodEnd: (entry as unknown).periodEnd?.toISOString() || '',
         },
         // GAP-57 FIX: Deterministic idempotency key scoped to payrollEntryId.
         // crypto.randomUUID() generates a NEW key on every retry, so Stripe won't
@@ -307,7 +307,7 @@ class StripeConnectPayoutService {
             notes: `Paid via Stripe Connect: ${transfer.id}`,
           })
           .where(eq(payrollEntries.id, payrollEntryId));
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[StripeConnect] Could not update payroll entry disbursement fields:', err);
         // Notify org owner — payout succeeded but tracking record failed (reconciliation risk)
         try {
@@ -324,13 +324,12 @@ class StripeConnectPayoutService {
               priority: 'high',
             });
           }
-        } catch (notifyErr: any) {
+        } catch (notifyErr: unknown) {
           log.warn('[StripeConnect] Notification for tracking error also failed (non-fatal):', notifyErr?.message);
         }
       }
 
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(payrollPayouts).values({
           workspaceId,
           payrollRunId: entry.payrollRunId,
@@ -344,7 +343,7 @@ class StripeConnectPayoutService {
           initiatedAt: new Date(),
           completedAt: new Date(),
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[StripeConnect] Could not insert payroll payout record:', err);
         // Notify org owner — payout succeeded but payout log insert failed (audit gap)
         try {
@@ -361,7 +360,7 @@ class StripeConnectPayoutService {
               priority: 'high',
             });
           }
-        } catch (notifyErr: any) {
+        } catch (notifyErr: unknown) {
           log.warn('[StripeConnect] Notification for payout log error also failed (non-fatal):', notifyErr?.message);
         }
       }
@@ -372,7 +371,7 @@ class StripeConnectPayoutService {
           workspaceId,
           payoutId: payrollEntryId,
           payoutAmountCents: amountCents,
-          recipientName: `${(entry as any).firstName || ''} ${(entry as any).lastName || ''}`.trim() || undefined,
+          recipientName: `${(entry as unknown).firstName || ''} ${(entry as unknown).lastName || ''}`.trim() || undefined,
         });
         if (feeResult.success && feeResult.amountCents > 0) {
           log.info(`[StripeConnect] Payout fee charged: $${(feeResult.amountCents / 100).toFixed(2)} for entry ${payrollEntryId}`);
@@ -388,7 +387,7 @@ class StripeConnectPayoutService {
               referenceType: 'payroll_entry',
               description: `Stripe Connect payout fee: $${(feeResult.amountCents / 100).toFixed(2)}`,
             });
-          } catch (ledgerErr: any) {
+          } catch (ledgerErr: unknown) {
             log.warn('[StripeConnect] Payout fee ledger record failed (non-fatal):', ledgerErr?.message);
           }
 
@@ -396,7 +395,7 @@ class StripeConnectPayoutService {
           try {
             const { recordMiddlewareFeeCharge } = await import('../finance/middlewareFeeService');
             await recordMiddlewareFeeCharge(workspaceId, 'payout_processing', feeResult.amountCents, payrollEntryId);
-          } catch (revenueErr: any) {
+          } catch (revenueErr: unknown) {
             log.warn('[StripeConnect] Payout revenue record failed (non-fatal):', revenueErr?.message);
           }
         }
@@ -418,7 +417,7 @@ class StripeConnectPayoutService {
           },
         },
         { generateHash: true }
-      ).catch((err: any) => log.warn('[StripeConnect] Audit log failed for payout_sent — payout succeeded but audit record missing', { payrollEntryId, transferId: transfer.id, amount: netPay, workspaceId, error: err?.message }));
+      ).catch((err: unknown) => log.warn('[StripeConnect] Audit log failed for payout_sent — payout succeeded but audit record missing', { payrollEntryId, transferId: transfer.id, amount: netPay, workspaceId, error: err?.message }));
 
       return {
         success: true,
@@ -426,7 +425,7 @@ class StripeConnectPayoutService {
         amount: netPay,
         currency: 'usd',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[StripeConnect] Payout error:', error);
       return {
         success: false,
@@ -454,7 +453,6 @@ class StripeConnectPayoutService {
         .where(
           and(
             eq(payrollEntries.payrollRunId, payrollRunId),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             eq(payrollEntries.status, 'approved')
           )
         );
@@ -497,7 +495,7 @@ class StripeConnectPayoutService {
               description: `Payroll run ${payrollRunId.substring(0, 8)} — ${results.processed} employee(s) disbursed $${totalNetPayDisbursed.toFixed(2)} via Stripe Connect`,
               metadata: { method: 'stripe_connect', entriesProcessed: results.processed, source: 'stripeConnectPayoutService' },
             });
-          } catch (ledgerErr: any) {
+          } catch (ledgerErr: unknown) {
             log.error(`[StripeConnect] payroll_disbursed ledger write failed for run ${payrollRunId}:`, ledgerErr.message);
           }
 
@@ -521,7 +519,7 @@ class StripeConnectPayoutService {
       }
 
       return results;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[StripeConnect] Payroll run error:', error);
       results.errors.push((error instanceof Error ? error.message : String(error)));
       return results;
@@ -565,7 +563,7 @@ class StripeConnectPayoutService {
         status: t.reversed ? 'reversed' : 'completed',
         created: new Date(t.created * 1000),
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[StripeConnect] Error fetching payout history:', error);
       return [];
     }

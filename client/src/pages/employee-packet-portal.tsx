@@ -27,7 +27,7 @@ interface PacketData {
   documentTitle: string;
   recipientName: string;
   recipientEmail: string;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   sectionInitials: Record<string, boolean>;
   status: string;
 }
@@ -79,7 +79,7 @@ function SignatureCanvas({ onChange }: { onChange: (data: string | null) => void
     if (!drawing) return;
     setDrawing(false);
     setHasSig(true);
-    onChange(canvasRef.current!.toDataURL());
+    onChange(canvasRef.current?.toDataURL());
   };
 
   const clear = () => {
@@ -270,7 +270,7 @@ export default function EmployeePacketPortal() {
   const { toast } = useToast();
 
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [sectionInitials, setSectionInitials] = useState<Record<string, boolean>>({});
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submittedOk, setSubmittedOk] = useState(false);
@@ -325,10 +325,10 @@ export default function EmployeePacketPortal() {
       return res.json();
     },
     onSuccess: () => setSubmittedOk(true),
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const setField = (key: string, value: any) =>
+  const setField = (key: string, value: unknown) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
   const setInitial = (key: string, value: boolean) =>
     setSectionInitials((prev) => ({ ...prev, [key]: value }));

@@ -24,7 +24,7 @@ export interface ResolvedContext {
   isPlatformAdmin: boolean;
   hasEscalationRights: boolean;
   source: 'user' | 'automation' | 'scheduler' | 'webhook' | 'trinity' | 'helpai';
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface ContextInput {
@@ -107,9 +107,9 @@ class ContextResolverService {
     try {
       const user = await storage.getUser(input.userId);
       if (user) {
-        context.platformRole = (user as any).platformRole || undefined;
-        context.isPlatformAdmin = PLATFORM_ADMIN_ROLES.includes((user as any).platformRole || '');
-        context.hasEscalationRights = ESCALATION_ROLES.includes((user as any).platformRole || '');
+        context.platformRole = req.user?.platformRole || undefined;
+        context.isPlatformAdmin = PLATFORM_ADMIN_ROLES.includes(req.user?.platformRole || '');
+        context.hasEscalationRights = ESCALATION_ROLES.includes(req.user?.platformRole || '');
         context.metadata.email = user.email;
         context.metadata.firstName = user.firstName;
       }
@@ -129,7 +129,7 @@ class ContextResolverService {
       if (context.workspaceId && input.userId) {
         const member = await storage.getWorkspaceMemberByUserId(input.userId);
         if (member) {
-          context.workspaceRole = (member as any).role;
+          context.workspaceRole = (member as Record<string,unknown>).role;
         }
 
         const employee = await storage.getEmployeeByUserId(input.userId, context.workspaceId);
@@ -249,7 +249,7 @@ class ContextResolverService {
   async escalate(
     context: ResolvedContext,
     type: 'notification' | 'alert' | 'approval' | 'trinity',
-    payload: Record<string, any>
+    payload: Record<string, unknown>
   ): Promise<void> {
     if (!context.hasEscalationRights && !context.isPlatformAdmin) {
       log.warn('[ContextResolver] Escalation attempted without rights');

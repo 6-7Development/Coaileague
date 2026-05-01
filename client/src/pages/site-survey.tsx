@@ -35,7 +35,7 @@ export default function SiteSurveyPage() {
   });
 
   const createSurveyMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       const res = await apiRequest('POST', '/api/site-survey', data);
       return res.json();
     },
@@ -45,13 +45,13 @@ export default function SiteSurveyPage() {
       setIsCreateOpen(false);
       toast({ title: 'Success', description: 'Site survey created successfully' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to create survey', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
   const updateSurveyMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('PATCH', `/api/site-survey/${id}`, data);
       return res.json();
     },
@@ -60,13 +60,13 @@ export default function SiteSurveyPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/site-survey', selectedSurveyId] });
       toast({ title: 'Success', description: 'Survey updated successfully' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to update survey', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
   const addZoneMutation = useMutation({
-    mutationFn: async ({ surveyId, data }: { surveyId: string; data: any }) => {
+    mutationFn: async ({ surveyId, data }: { surveyId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('POST', `/api/site-survey/${surveyId}/zones`, data);
       return res.json();
     },
@@ -74,13 +74,13 @@ export default function SiteSurveyPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/site-survey', selectedSurveyId] });
       toast({ title: 'Success', description: 'Zone added successfully' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to add zone', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
   const addRequirementMutation = useMutation({
-    mutationFn: async ({ surveyId, data }: { surveyId: string; data: any }) => {
+    mutationFn: async ({ surveyId, data }: { surveyId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('POST', `/api/site-survey/${surveyId}/requirements`, data);
       return res.json();
     },
@@ -88,20 +88,20 @@ export default function SiteSurveyPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/site-survey', selectedSurveyId] });
       toast({ title: 'Success', description: 'Requirement added successfully' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to add requirement', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
   const updateRequirementMutation = useMutation({
-    mutationFn: async ({ reqId, data }: { reqId: string; data: any }) => {
+    mutationFn: async ({ reqId, data }: { reqId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('PATCH', `/api/site-survey/requirements/${reqId}`, data);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/site-survey', selectedSurveyId] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to update requirement', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
@@ -372,7 +372,7 @@ export default function SiteSurveyPage() {
                         {selectedSurvey.zones?.length === 0 ? (
                           <div className="text-center p-6 text-muted-foreground border rounded-md border-dashed">No zones defined yet.</div>
                         ) : (
-                          selectedSurvey.zones?.map((zone: any) => (
+                          selectedSurvey.zones?.map((zone) => (
                             <div key={zone.id} className="p-3 border rounded-md flex justify-between items-start" data-testid={`row-zone-${zone.id}`}>
                               <div>
                                 <div className="font-medium flex items-center gap-2">
@@ -458,7 +458,7 @@ export default function SiteSurveyPage() {
                         {selectedSurvey.requirements?.length === 0 ? (
                           <div className="text-center p-6 text-muted-foreground border rounded-md border-dashed">No requirements defined yet.</div>
                         ) : (
-                          selectedSurvey.requirements?.map((req: any) => (
+                          selectedSurvey.requirements?.map((req) => (
                             <div key={req.id} className="p-3 border rounded-md flex items-center gap-4" data-testid={`row-req-${req.id}`}>
                               <Checkbox 
                                 id={`req-${req.id}`} 

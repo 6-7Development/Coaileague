@@ -50,7 +50,7 @@ export interface NotificationDiagnosticResult {
 
 export interface ComponentHealth {
   status: 'healthy' | 'degraded' | 'critical' | 'unknown';
-  metrics: Record<string, any>;
+  metrics: Record<string, unknown>;
   lastChecked: Date;
 }
 
@@ -69,7 +69,7 @@ export interface NotificationIssue {
 // METRICS COLLECTORS
 // ============================================================================
 
-async function collectNotificationMetrics(): Promise<Record<string, any>> {
+async function collectNotificationMetrics(): Promise<Record<string, unknown>> {
   try {
     // Count unread notifications
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -94,19 +94,19 @@ async function collectNotificationMetrics(): Promise<Record<string, any>> {
       recent24h: recentResult || [],
       status: 'collected'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return { status: 'error', error: (error instanceof Error ? error.message : String(error)) };
   }
 }
 
-async function collectMaintenanceAlertMetrics(): Promise<Record<string, any>> {
+async function collectMaintenanceAlertMetrics(): Promise<Record<string, unknown>> {
   try {
     // Active maintenance alerts
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
     const [activeResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(maintenanceAlerts)
-      .where(sql`${(maintenanceAlerts as any).isActive} = true AND (${(maintenanceAlerts as any).expiresAt} IS NULL OR ${(maintenanceAlerts as any).expiresAt} > NOW())`);
+      .where(sql`${(maintenanceAlerts as Record<string,unknown>).isActive} = true AND (${(maintenanceAlerts as Record<string,unknown>).expiresAt} IS NULL OR ${(maintenanceAlerts as Record<string,unknown>).expiresAt} > NOW())`);
 
     // Acknowledgment rate
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: maintenance_acknowledgments, maintenance_alerts | Verified: 2026-03-23
@@ -118,15 +118,15 @@ async function collectMaintenanceAlertMetrics(): Promise<Record<string, any>> {
 
     return {
       activeAlerts: Number(activeResult?.count || 0),
-      acknowledgedUsers: parseInt((ackResult as any[])[0]?.acknowledged_users || '0'),
+      acknowledgedUsers: parseInt((ackResult as unknown[])[0]?.acknowledged_users || '0'),
       status: 'collected'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return { status: 'error', error: (error instanceof Error ? error.message : String(error)) };
   }
 }
 
-async function collectWhatsNewMetrics(): Promise<Record<string, any>> {
+async function collectWhatsNewMetrics(): Promise<Record<string, unknown>> {
   try {
     // Unviewed entries
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -146,12 +146,12 @@ async function collectWhatsNewMetrics(): Promise<Record<string, any>> {
       recentViewers: Number(viewsResult?.uniqueViewers || 0),
       status: 'collected'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return { status: 'error', error: (error instanceof Error ? error.message : String(error)) };
   }
 }
 
-async function collectClearOperationMetrics(): Promise<Record<string, any>> {
+async function collectClearOperationMetrics(): Promise<Record<string, unknown>> {
   try {
     // Recent acknowledgments (indicates clear operations working)
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -173,7 +173,7 @@ async function collectClearOperationMetrics(): Promise<Record<string, any>> {
       clearOperationsWorking: true,
       status: 'collected'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return { status: 'error', error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -182,7 +182,7 @@ async function collectClearOperationMetrics(): Promise<Record<string, any>> {
 // DIAGNOSTIC ANALYSIS
 // ============================================================================
 
-async function analyzeScrollIssues(metrics: Record<string, any>): Promise<NotificationIssue[]> {
+async function analyzeScrollIssues(metrics: Record<string, unknown>): Promise<NotificationIssue[]> {
   const issues: NotificationIssue[] = [];
   
   // Check for potential overflow issues based on notification counts
@@ -206,7 +206,7 @@ async function analyzeScrollIssues(metrics: Record<string, any>): Promise<Notifi
   return issues;
 }
 
-async function analyzeClearOperationIssues(metrics: Record<string, any>): Promise<NotificationIssue[]> {
+async function analyzeClearOperationIssues(metrics: Record<string, unknown>): Promise<NotificationIssue[]> {
   const issues: NotificationIssue[] = [];
   
   // Check if acknowledgment system is working
@@ -246,7 +246,7 @@ async function analyzeClearOperationIssues(metrics: Record<string, any>): Promis
 
 async function performGeminiRootCauseAnalysis(
   issues: NotificationIssue[],
-  metrics: Record<string, any>,
+  metrics: Record<string, unknown>,
   workspaceId?: string
 ): Promise<{ analysis: string; recommendations: string[] }> {
   if (issues.length === 0) {
@@ -285,7 +285,6 @@ Format as a clear diagnostic report.`;
       featureKey: 'notification_diagnostics',
       systemPrompt: 'You are Trinity, an expert AI diagnostic agent.',
       userMessage: prompt,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       modelTier: 'diagnostics'
     });
     
@@ -298,7 +297,7 @@ Format as a clear diagnostic report.`;
         'Confirm backend acknowledgment logic returns updated isAcknowledged field'
       ]
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       analysis: `Gemini analysis unavailable: ${(error instanceof Error ? error.message : String(error))}`,
       recommendations: ['Run manual verification of notification endpoints']

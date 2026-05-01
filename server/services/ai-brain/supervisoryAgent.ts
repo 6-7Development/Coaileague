@@ -71,11 +71,11 @@ class SupervisoryAgentService {
       this.performHealthCheck();
     }, this.config.checkIntervalMs);
 
-    aiBrainEvents.on('workflow_failed', (data: any) => {
+    aiBrainEvents.on('workflow_failed', (data: Record<string, unknown>) => {
       this.handleWorkflowFailure(data);
     });
 
-    aiBrainEvents.on('workflow_completed', (data: any) => {
+    aiBrainEvents.on('workflow_completed', (data: Record<string, unknown>) => {
       if (!data.slaMet && this.config.alertOnSLABreach) {
         this.handleSLABreach(data);
       }
@@ -158,7 +158,7 @@ class SupervisoryAgentService {
         }
       }
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.warn('[SupervisoryAgent] Health check failed (will retry next interval):', error?.message || 'unknown');
     }
   }

@@ -391,21 +391,19 @@ ownerAnalyticsRouter.get('/reconciliation', requireOwnerRole, async (req: Authen
 
     const platformHoursData = await db.select({
       clientId: timeEntries.clientId,
-      totalHours: sql<number>`COALESCE(SUM(EXTRACT(EPOCH FROM (${(timeEntries as any).endTime} - ${(timeEntries as any).startTime})) / 3600), 0)`,
+      totalHours: sql<number>`COALESCE(SUM(EXTRACT(EPOCH FROM (${(timeEntries as Record<string,unknown>).endTime} - ${(timeEntries as Record<string,unknown>).startTime})) / 3600), 0)`,
     })
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(timeEntries.startTime, startDate),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(timeEntries.startTime, endDate)
       ))
       .groupBy(timeEntries.clientId);
 
     const invoiceData = await db.select({
       clientId: invoices.clientId,
-      totalHours: sql<number>`COALESCE(SUM(${(invoices as any).totalHours}), 0)`,
+      totalHours: sql<number>`COALESCE(SUM(${(invoices as Record<string,unknown>).totalHours}), 0)`,
     })
       .from(invoices)
       .where(and(
@@ -473,7 +471,6 @@ ownerAnalyticsRouter.get('/reconciliation', requireOwnerRole, async (req: Authen
           description: `${highDiscrepancies.length} client(s) have >5% variance between platform and invoiced hours. Review the Financial Watchdog tab.`,
           category: 'announcement',
           priority: 2,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           visibility: 'org_leadership',
           badge: 'ALERT',
           workspaceId,

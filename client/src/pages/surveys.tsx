@@ -46,7 +46,7 @@ export default function ClientSurveysPage() {
   });
 
   const createTemplateMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       const res = await apiRequest("POST", "/api/surveys/templates", data);
       return res.json();
     },
@@ -54,20 +54,20 @@ export default function ClientSurveysPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/surveys/templates"] });
       toast({ title: "Template created successfully" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Failed to create template", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
 
   const sendSurveyMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       const res = await apiRequest("POST", "/api/surveys/send", data);
       return res.json();
     },
     onSuccess: (data) => {
       toast({ title: "Survey sent!", description: `Public URL: ${data.responseUrl}` });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Failed to send survey", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
@@ -200,7 +200,7 @@ export default function ClientSurveysPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-[200px] flex items-end justify-between gap-2 pt-4">
-                    {analytics?.recentNpsScores?.map((score: any, i: number) => (
+                    {analytics?.recentNpsScores?.map((score: unknown, i: number) => (
                       <div key={i} className="flex-1 flex flex-col items-center gap-2">
                         <div 
                           className="w-full bg-primary rounded-t" 
@@ -268,7 +268,7 @@ export default function ClientSurveysPage() {
   );
 }
 
-function TemplateForm({ onSubmit }: { onSubmit: (data: any) => void }) {
+function TemplateForm({ onSubmit }: { onSubmit: (data) => void }) {
   const form = useForm<z.infer<typeof templateSchema>>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
@@ -340,7 +340,7 @@ function TemplateForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   );
 }
 
-function SendSurveyDialog({ templateId, onSend }: { templateId: string, onSend: (data: any) => void }) {
+function SendSurveyDialog({ templateId, onSend }: { templateId: string, onSend: (data) => void }) {
   const { data: clients } = useQuery<any[]>({ queryKey: ["/api/clients"] });
   const [selectedClient, setSelectedClient] = useState("");
 

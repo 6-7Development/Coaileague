@@ -161,7 +161,7 @@ export function usePushNotifications(options: PushNotificationOptions = {}) {
       });
 
       subscribeMutation.mutate(subscription.toJSON());
-    } catch (error: any) {
+    } catch (error : unknown) {
       console.error("Push subscription error:", error);
       toast({
         title: "Subscription Failed",
@@ -180,12 +180,10 @@ export function usePushNotifications(options: PushNotificationOptions = {}) {
         await subscription.unsubscribe();
         unsubscribeMutation.mutate(subscription.endpoint);
       } else {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         unsubscribeMutation.mutate();
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       console.error("Unsubscribe error:", error);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       unsubscribeMutation.mutate();
     }
   }, [unsubscribeMutation]);

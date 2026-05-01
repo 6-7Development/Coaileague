@@ -73,7 +73,7 @@ async function emitSchedulingEvent(
              'swap_requested' | 'swap_approved' | 'swap_rejected' | 'swap_cancelled' |
              'shift_duplicated' | 'week_duplicated' | 'conflict_detected',
   workspaceId: string,
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 ): Promise<void> {
   try {
     // Use human-readable messages as fallbacks when AI enrichment fails
@@ -315,7 +315,7 @@ export async function generateRecurringShifts(input: GenerateRecurringShiftsInpu
             clientId: template.clientId || null,
             title: template.title,
             description: template.description || null,
-            category: (template as any).category || 'general',
+            category: (template as Record<string,unknown>).category || 'general',
             startTime: shiftStartTime,
             endTime: shiftEndTime,
             billableToClient: template.billableToClient ?? true,
@@ -638,7 +638,7 @@ export async function getSwapRequests(
     },
   });
 
-  return requests as any;
+  return requests;
 }
 
 export async function getSwapRequestById(
@@ -688,8 +688,7 @@ export async function getAvailableEmployeesForSwap(
       id: e.id,
       name: `${e.firstName} ${e.lastName}`,
       isAvailable: !busyEmployeeIds.has(e.id),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      skills: Array.isArray(e.skills) ? (e as any).skills : [],
+      skills: Array.isArray(e.skills) ? (e as Record<string, unknown>).skills : [],
     }));
 }
 

@@ -256,7 +256,6 @@ export async function getUserWorkspaceRole(
   };
 }
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { storage } from './storage';
 
 export async function resolveWorkspaceForUser(userId: string, requestedWorkspaceId?: string): Promise<{
@@ -286,7 +285,7 @@ export function requireWorkspaceRole(allowedRoles: WorkspaceRole[]) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // Check for test mode - crawlers get full access
     if (req.isTestMode) {
-      req.platformRole = "root_admin" as any;
+      req.platformRole = "root_admin";
       return next();
     }
 
@@ -390,7 +389,7 @@ export const requireManagerOrPlatformStaff: RequestHandler = async (req, res, ne
   const authReq = req as AuthenticatedRequest;
   
   // Check for test mode - crawlers get full access
-  if ((authReq as any).isTestMode) {
+  if ((authReq as Record<string,unknown>).isTestMode) {
     authReq.platformRole = "root_admin";
     return next();
   }
@@ -422,7 +421,7 @@ export const requireManagerOrPlatformStaff: RequestHandler = async (req, res, ne
   // MANDATORY SECURITY: For non-platform staff, workspace context MUST come from req.user
   // or req.session. We ignore req.body/query/params to prevent parameter pollution
   // and cross-tenant ID injection attacks.
-  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as any).session?.workspaceId;
+  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as Record<string,unknown>).session?.workspaceId;
   const resolved = await resolveWorkspaceForUser(userId, requestedWorkspaceId as string | undefined);
   
   if (!resolved.workspaceId || !resolved.role) {
@@ -552,7 +551,7 @@ export const attachWorkspaceId: RequestHandler = async (req, res, next) => {
   // MANDATORY SECURITY: For non-platform staff, workspace context MUST come from req.user
   // or req.session. We ignore req.body/query/params to prevent parameter pollution
   // and cross-tenant ID injection attacks.
-  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as any).session?.workspaceId;
+  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as Record<string,unknown>).session?.workspaceId;
   
   // Check platform role first - platform staff can specify workspace via query
   const platformRole = await getUserPlatformRole(userId);
@@ -640,7 +639,7 @@ export const attachWorkspaceIdOptional: RequestHandler = async (req, res, next) 
   // MANDATORY SECURITY: For non-platform staff, workspace context MUST come from req.user
   // or req.session. We ignore req.body/query/params to prevent parameter pollution
   // and cross-tenant ID injection attacks.
-  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as any).session?.workspaceId;
+  const requestedWorkspaceId = authReq.user.currentWorkspaceId || (authReq as Record<string,unknown>).session?.workspaceId;
   
   const platformRole = await getUserPlatformRole(userId);
   
@@ -764,7 +763,7 @@ export function requirePlatformRole(allowedRoles: PlatformRole[]) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // Check for test mode - crawlers get full access
     if (req.isTestMode) {
-      req.platformRole = "root_admin" as any;
+      req.platformRole = "root_admin";
       return next();
     }
 
@@ -778,7 +777,7 @@ export function requirePlatformRole(allowedRoles: PlatformRole[]) {
           code: 'BOT_ACCESS_DENIED',
         });
       }
-      req.platformRole = 'Bot' as any;
+      req.platformRole = 'Bot';
       return next();
     }
 
@@ -1067,7 +1066,7 @@ export const enforcePaymentStatus: RequestHandler = async (req, res, next) => {
   }
 
   // No workspace context - skip (some routes don't need workspace)
-  const workspaceId = authReq.workspaceId || (authReq as any).user?.defaultWorkspaceId;
+  const workspaceId = authReq.workspaceId || (authReq as Record<string,unknown>).user?.defaultWorkspaceId;
   if (!workspaceId) {
     return next();
   }
@@ -1148,7 +1147,6 @@ export async function reactivateWorkspace(workspaceId: string): Promise<boolean>
 // Controls cross-org admin access with audit logging and org freeze capability
 // ============================================================================
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { storage } from './storage';
 import { createLogger } from './lib/logger';
 const log = createLogger('rbac');
@@ -1236,7 +1234,6 @@ export const attachSupportSessionContext: RequestHandler = async (req, res, next
         id: activeSession.id,
         adminUserId: activeSession.adminUserId,
         targetWorkspaceId: activeSession.workspaceId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         scope: activeSession.scope,
         isOrgFrozen: activeSession.isOrgFrozen || false,
         freezeReason: activeSession.freezeReason || undefined,
@@ -1283,7 +1280,6 @@ export const requireActiveSupport = (scopes: string[]): RequestHandler => {
       }
       
       // Check if the scope is allowed
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (!scopes.includes(activeSession.scope)) {
         return res.status(403).json({
           error: `Operation requires scope: ${scopes.join(' or ')}`,
@@ -1297,7 +1293,6 @@ export const requireActiveSupport = (scopes: string[]): RequestHandler => {
         id: activeSession.id,
         adminUserId: activeSession.adminUserId,
         targetWorkspaceId: activeSession.workspaceId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         scope: activeSession.scope,
         isOrgFrozen: activeSession.isOrgFrozen || false,
         freezeReason: activeSession.freezeReason || undefined,
@@ -1326,12 +1321,11 @@ export async function logSupportAction(
   workspaceId: string,
   action: string,
   severity: 'read' | 'write' | 'delete',
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): Promise<void> {
   try {
     await storage.createSupportAuditLog({
       sessionId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       adminUserId,
       workspaceId,
       action,

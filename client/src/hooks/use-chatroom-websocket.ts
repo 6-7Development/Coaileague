@@ -89,7 +89,7 @@ interface WebSocketMessage {
   releasedBy?: string;
   fromUser?: string;
   fromUserId?: string;
-  data?: any;
+  data?: unknown;
   bannerMessage?: string;
   staffName?: string;
   commandId?: string;
@@ -230,7 +230,7 @@ export function useChatroomWebSocket(
       sendJoin();
     }
 
-    unsubs.push(bus.subscribeAll((data: any) => {
+    unsubs.push(bus.subscribeAll((data) => {
       switch (data.type) {
         case 'conversation_joined':
           if (data.conversationId) {
@@ -296,7 +296,7 @@ export function useChatroomWebSocket(
         case 'error': {
           const errorMessage = typeof data.message === 'string' ? data.message : 'An error occurred';
 
-          if ((data as any).errorType === 'VOICE_REQUIRED') {
+          if ((data as Record<string,unknown>).errorType === 'VOICE_REQUIRED') {
             setIsSilenced(true);
             toastRef.current({
               title: 'Voice Required',
@@ -313,7 +313,7 @@ export function useChatroomWebSocket(
             errorMessage.includes('Authentication required') ||
             errorMessage.includes('Please log in') ||
             errorMessage.includes('Unauthorized') ||
-            (data as any).requiresAuth === true;
+            (data as Record<string,unknown>).requiresAuth === true;
 
           if (isTransientAuthError) {
             break;
@@ -499,26 +499,26 @@ export function useChatroomWebSocket(
           break;
 
         case 'secure_request':
-          if (onSecureRequestRef.current && (data as any).requestType) {
+          if (onSecureRequestRef.current && (data as Record<string,unknown>).requestType) {
             onSecureRequestRef.current({
-              type: (data as any).requestType,
-              requestedBy: (data as any).requestedBy || 'Support Staff',
-              message: (data as any).message,
+              type: (data as Record<string,unknown>).requestType,
+              requestedBy: (data as Record<string,unknown>).requestedBy || 'Support Staff',
+              message: (data as Record<string,unknown>).message,
             });
           }
           break;
 
         case 'spectator_released':
           setMessages((prev) => [...prev, createSystemMessage(
-            `${(data as any).releasedBy} has released you from hold. You can now chat.`,
+            `${(data as Record<string,unknown>).releasedBy} has released you from hold. You can now chat.`,
             conversationIdRef.current
           )]);
           break;
 
         case 'secure_data_received': {
           if (!isForActiveConversation(resolvedConversationIdRef.current, requestedConversationIdRef.current, joinedConversationIdRef.current, data)) break;
-          const secureData = (data as any).data;
-          let secureDataSummary = `🔒 Secure Data from ${(data as any).fromUser}:\n`;
+          const secureData = (data as Record<string,unknown>).data;
+          let secureDataSummary = `🔒 Secure Data from ${(data as Record<string,unknown>).fromUser}:\n`;
           if (secureData.email) secureDataSummary += `📧 Email: ${secureData.email}\n`;
           if (secureData.accountId) secureDataSummary += `🆔 Account ID: ${secureData.accountId}\n`;
           if (secureData.verification) secureDataSummary += `✓ Verification: ${secureData.verification}\n`;
@@ -598,7 +598,7 @@ export function useChatroomWebSocket(
                 setConversationParticipants((prev) => {
                   const next = new Map(prev);
                   const existing = next.get(data.roomId) || [];
-                  if (!existing.find((p: any) => p.id === data.userId)) {
+                  if (!existing.find((p) => p.id === data.userId)) {
                     next.set(data.roomId, [...existing, {
                       id: data.userId,
                       name: data.userName,
@@ -617,7 +617,7 @@ export function useChatroomWebSocket(
                 setConversationParticipants((prev) => {
                   const next = new Map(prev);
                   const existing = next.get(data.roomId) || [];
-                  next.set(data.roomId, existing.filter((p: any) => p.id !== data.userId));
+                  next.set(data.roomId, existing.filter((p) => p.id !== data.userId));
                   return next;
                 });
               }
@@ -626,7 +626,7 @@ export function useChatroomWebSocket(
             case 'irc:typing':
               if (data.roomId && data.userId !== userIdRef.current) {
                 // @ts-expect-error — TS migration: fix in refactoring sprint
-                setTypingUsers((prev: any) => {
+                setTypingUsers((prev) => {
                   const key = `${data.roomId}:${data.conversationId || data.roomId}`;
                   const current = prev instanceof Map ? (prev.get(key) || new Set()) : new Set();
                   current.add(data.userId);
@@ -637,7 +637,7 @@ export function useChatroomWebSocket(
 
             case 'irc:typing_stop':
               if (data.roomId) {
-                setTypingUsers((prev: any) => {
+                setTypingUsers((prev) => {
                   const key = `${data.roomId}:${data.conversationId || data.roomId}`;
                   const current = prev instanceof Map ? prev.get(key) : null;
                   if (current) {
@@ -656,14 +656,14 @@ export function useChatroomWebSocket(
                 if (data.roomId) {
                   const participants = next.get(data.roomId);
                   if (participants) {
-                    const updated = participants.map((p: any) =>
+                    const updated = participants.map((p) =>
                       p.id === data.userId ? { ...p, status: data.status } : p
                     );
                     next.set(data.roomId, updated);
                   }
                 } else {
                   for (const [roomId, participants] of next.entries()) {
-                    const updated = participants.map((p: any) =>
+                    const updated = participants.map((p) =>
                       p.id === data.userId ? { ...p, status: data.status } : p
                     );
                     next.set(roomId, updated);
@@ -677,7 +677,7 @@ export function useChatroomWebSocket(
               if (data.roomId && data.users) {
                 setConversationParticipants((prev) => {
                   const next = new Map(prev);
-                  next.set(data.roomId, data.users.map((u: any) => ({
+                  next.set(data.roomId, data.users.map((u) => ({
                     id: u.userId,
                     name: u.userName,
                     role: u.role || 'guest',
@@ -720,7 +720,6 @@ export function useChatroomWebSocket(
                   isSystemMessage: true,
                 };
 
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 setMessages((prev) => {
                   if (prev.some(m => m.id === systemMessage.id)) return prev;
                   return [...prev, systemMessage];
@@ -750,7 +749,6 @@ export function useChatroomWebSocket(
                     metadata: data.metadata,
                   };
 
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   setMessages((prev) => {
                     if (prev.some(m => m.id === ircMessage.id)) return prev;
                     return [...prev, ircMessage];
@@ -833,7 +831,7 @@ export function useChatroomWebSocket(
       return;
     }
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       type: 'chat_message',
       conversationId: targetConversationId,
       message: messageText,
@@ -917,7 +915,7 @@ export function useChatroomWebSocket(
     });
   }, [bus]);
 
-  const sendRawMessage = useCallback((data: any) => {
+  const sendRawMessage = useCallback((data) => {
     if (!bus.isConnected()) return;
 
     if (typeof data === 'string') {

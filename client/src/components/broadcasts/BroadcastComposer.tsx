@@ -131,7 +131,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
 
   const onSubmit = async (data: BroadcastFormData) => {
     // Build target config
-    let targetConfig: any = { type: data.targetType };
+    let targetConfig: Record<string, unknown> = { type: data.targetType };
     
     if (data.targetType === 'individuals') {
       targetConfig.employeeIds = selectedEmployees;
@@ -140,7 +140,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
     }
 
     // Build action config
-    let actionConfig: any = { type: data.actionType };
+    let actionConfig: Record<string, unknown> = { type: data.actionType };
     
     if (data.actionType === 'link') {
       actionConfig.url = data.actionUrl;
@@ -203,7 +203,6 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
                     <button
                       key={type.value}
                       type="button"
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       onClick={() => form.setValue('type', type.value)}
                       className={cn(
                         "flex items-center gap-2 p-3 rounded-lg border text-left transition-all",
@@ -284,7 +283,6 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
                       <button
                         key={target.value}
                         type="button"
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         onClick={() => form.setValue('targetType', target.value)}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border text-left transition-all",
@@ -377,7 +375,6 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
                 <Label>Action Button</Label>
                 <Select
                   value={watchActionType}
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   onValueChange={(v) => form.setValue('actionType', v as BroadcastActionType)}
                 >
                   <SelectTrigger>
@@ -410,7 +407,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
                   <div className="mt-2">
                     <Select
                       value={form.watch('feedbackFormType') || 'general'}
-                      onValueChange={(v) => form.setValue('feedbackFormType', v as any)}
+                      onValueChange={(v) => form.setValue('feedbackFormType', v as unknown)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Feedback type" />
@@ -441,7 +438,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
             </div>
           </ScrollArea>
 
-          <div className="flex gap-2 pt-3 pb-2 border-t shrink-0 bg-background">
+          <div className="flex gap-2 pt-3 border-t shrink-0 bg-background px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               type="button"
               variant="outline"

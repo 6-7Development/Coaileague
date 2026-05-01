@@ -52,13 +52,13 @@ export class KnowledgeGraphRepository {
     confidence?: number;
     sourceAgent?: string;
     sourceAction?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<KnowledgeEntityRecord | null> {
     try {
       const [result] = await db.insert(knowledgeEntities).values({
         id: entity.id,
-        type: entity.entityType as any,
-        domain: entity.domain as any,
+        type: entity.entityType as unknown,
+        domain: entity.domain as unknown,
         workspaceId: entity.workspaceId,
         name: entity.name,
         description: entity.content,
@@ -69,7 +69,7 @@ export class KnowledgeGraphRepository {
       }).returning();
       log.info(`[KnowledgeGraphRepo] Entity persisted: ${entity.name}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to persist entity:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -84,7 +84,7 @@ export class KnowledgeGraphRepository {
           .where(eq(knowledgeEntities.id, id));
       }
       return entity || null;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get entity:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -93,10 +93,10 @@ export class KnowledgeGraphRepository {
   async getEntitiesByDomain(domain: string, limit = 100): Promise<KnowledgeEntityRecord[]> {
     try {
       return await db.select().from(knowledgeEntities)
-        .where(eq(knowledgeEntities.domain, domain as any))
+        .where(eq(knowledgeEntities.domain, domain as unknown))
         .orderBy(desc(knowledgeEntities.usageCount))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get entities by domain:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -104,13 +104,13 @@ export class KnowledgeGraphRepository {
 
   async getEntitiesByType(entityType: string, workspaceId?: string, limit = 100): Promise<KnowledgeEntityRecord[]> {
     try {
-      const conditions: any[] = [eq(knowledgeEntities.type, entityType as any)];
+      const conditions: unknown[] = [eq(knowledgeEntities.type, entityType as unknown)];
       if (workspaceId) conditions.push(eq(knowledgeEntities.workspaceId, workspaceId));
       return await db.select().from(knowledgeEntities)
         .where(and(...conditions))
         .orderBy(desc(knowledgeEntities.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get entities by type:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -121,7 +121,7 @@ export class KnowledgeGraphRepository {
       return await db.select().from(knowledgeEntities)
         .orderBy(desc(knowledgeEntities.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get all entities:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -143,14 +143,14 @@ export class KnowledgeGraphRepository {
         id: rel.id,
         sourceId: rel.sourceId,
         targetId: rel.targetId,
-        type: rel.relationship as any,
+        type: rel.relationship as unknown,
         strength: rel.strength ? Number(rel.strength) : 0.5,
         metadata: { bidirectional: rel.bidirectional || false, evidence: rel.evidence },
         createdBy: rel.createdBy || 'system',
       }).returning();
       log.info(`[KnowledgeGraphRepo] Relationship persisted: ${rel.sourceId} -> ${rel.targetId}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to persist relationship:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -160,7 +160,7 @@ export class KnowledgeGraphRepository {
     try {
       return await db.select().from(knowledgeRelationships)
         .where(eq(knowledgeRelationships.sourceId, entityId));
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get relationships:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -171,7 +171,7 @@ export class KnowledgeGraphRepository {
       return await db.select().from(knowledgeRelationships)
         .orderBy(desc(knowledgeRelationships.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get all relationships:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -196,7 +196,7 @@ export class KnowledgeGraphRepository {
         relationshipCount: Number(relationships[0]?.count || 0),
         domainBreakdown,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[KnowledgeGraphRepo] Failed to get stats:`, (error instanceof Error ? error.message : String(error)));
       return { entityCount: 0, relationshipCount: 0, domainBreakdown: {} };
     }
@@ -225,8 +225,8 @@ export class A2AProtocolRepository {
     capabilities?: string[];
     domains?: string[];
     trustLevel?: number;
-    metadata?: Record<string, any>;
-  }): Promise<any> {
+    metadata?: Record<string, unknown>;
+  }): Promise<unknown> {
     try {
       // ON CONFLICT (id) DO NOTHING so restarts don't error on the
       // 7 core subagent seed inserts (payroll-subagent, invoice-subagent,
@@ -236,14 +236,13 @@ export class A2AProtocolRepository {
       // a row is skipped due to conflict, `result` will be undefined and
       // the logging code below handles that cleanly.
       const [result] = await db.insert(a2aAgents).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: 'system',
         id: agent.id,
         name: agent.name,
-        role: agent.role as any,
-        status: (agent.status || 'active') as any,
+        role: agent.role as unknown,
+        status: (agent.status || 'active') as unknown,
         capabilities: agent.capabilities || [],
-        domain: (agent.domains?.[0] || 'general') as any,
+        domain: (agent.domains?.[0] || 'general') as unknown,
         trustScore: agent.trustLevel ? Number(agent.trustLevel) : 0.8,
         messagesSent: 0,
         messagesReceived: 0,
@@ -251,7 +250,7 @@ export class A2AProtocolRepository {
       }).onConflictDoNothing({ target: a2aAgents.id }).returning();
       log.info(`[A2ARepo] Agent persisted: ${agent.name}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       if (error.code === '23505') {
         return this.updateAgent(agent.id, agent);
       }
@@ -260,11 +259,11 @@ export class A2AProtocolRepository {
     }
   }
 
-  async getAgent(id: string): Promise<any> {
+  async getAgent(id: string): Promise<unknown> {
     try {
       const [agent] = await db.select().from(a2aAgents).where(eq(a2aAgents.id, id));
       return agent || null;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to get agent:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -277,9 +276,9 @@ export class A2AProtocolRepository {
     messageCount: number;
     successCount: number;
     failureCount: number;
-  }>): Promise<any> {
+  }>): Promise<unknown> {
     try {
-      const updateData: any = { updatedAt: new Date() };
+      const updateData: Record<string, unknown> = { updatedAt: new Date() };
       if (updates.status) updateData.status = updates.status;
       if (updates.trustLevel !== undefined) updateData.trustScore = Number(updates.trustLevel);
       if (updates.lastActive) updateData.lastActiveAt = updates.lastActive;
@@ -287,16 +286,16 @@ export class A2AProtocolRepository {
 
       const [result] = await db.update(a2aAgents).set(updateData).where(eq(a2aAgents.id, id)).returning();
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to update agent:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getAllAgents(): Promise<any[]> {
+  async getAllAgents(): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(a2aAgents).orderBy(desc(a2aAgents.createdAt));
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to get all agents:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -311,31 +310,30 @@ export class A2AProtocolRepository {
     priority?: string;
     status?: string;
     subject?: string;
-    content: Record<string, any>;
+    content: Record<string, unknown>;
     correlationId?: string;
     replyTo?: string;
     ttlSeconds?: number;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const expiresAt = message.ttlSeconds
         ? new Date(Date.now() + (message.ttlSeconds * 1000))
         : new Date(Date.now() + 300000);
       const [result] = await db.insert(a2aMessages).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: 'system',
         id: message.id,
         fromAgent: message.senderId,
         toAgent: message.recipientId || 'broadcast',
-        type: message.messageType as any,
-        priority: (message.priority || 'normal') as any,
-        status: (message.status || 'pending') as any,
+        type: message.messageType as unknown,
+        priority: (message.priority || 'normal') as unknown,
+        status: (message.status || 'pending') as unknown,
         payload: { subject: message.subject, ...message.content },
         correlationId: message.correlationId,
         replyTo: message.replyTo,
         expiresAt,
       }).returning();
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to persist message:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -343,21 +341,21 @@ export class A2AProtocolRepository {
 
   async updateMessageStatus(id: string, status: string, deliveredAt?: Date, acknowledgedAt?: Date): Promise<void> {
     try {
-      const updateData: any = { status };
+      const updateData: Record<string, unknown> = { status };
       if (acknowledgedAt) updateData.processedAt = acknowledgedAt;
       await db.update(a2aMessages).set(updateData).where(eq(a2aMessages.id, id));
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to update message status:`, (error instanceof Error ? error.message : String(error)));
     }
   }
 
-  async getMessagesForAgent(agentId: string, limit = 50): Promise<any[]> {
+  async getMessagesForAgent(agentId: string, limit = 50): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(a2aMessages)
         .where(eq(a2aMessages.toAgent, agentId))
         .orderBy(desc(a2aMessages.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to get messages:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -371,10 +369,9 @@ export class A2AProtocolRepository {
     memberIds?: string[];
     taskType?: string;
     status?: string;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const [result] = await db.insert(a2aTeams).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: 'system',
         id: team.id,
         name: team.name,
@@ -386,7 +383,7 @@ export class A2AProtocolRepository {
       }).returning();
       log.info(`[A2ARepo] Team persisted: ${team.name}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to persist team:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -401,10 +398,9 @@ export class A2AProtocolRepository {
     trustLevel?: number;
     validationRequired?: boolean;
     expiresAt?: Date;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const [result] = await db.insert(a2aTrustRules).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: 'system',
         id: rule.id,
         sourceAgent: rule.agentId,
@@ -414,16 +410,16 @@ export class A2AProtocolRepository {
         trustLevel: rule.trustLevel !== undefined ? (rule.trustLevel > 0.8 ? 'full' : rule.trustLevel > 0.5 ? 'verified' : 'conditional') : 'conditional',
       }).returning();
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to persist trust rule:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getTrustRulesForAgent(agentId: string): Promise<any[]> {
+  async getTrustRulesForAgent(agentId: string): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(a2aTrustRules).where(eq(a2aTrustRules.sourceAgent, agentId));
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[A2ARepo] Failed to get trust rules:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -448,20 +444,20 @@ export class RLLoopRepository {
     id: string;
     agentId: string;
     actionType: string;
-    context: Record<string, any>;
-    parameters?: Record<string, any>;
+    context: Record<string, unknown>;
+    parameters?: Record<string, unknown>;
     outcome: string;
     reward?: number;
-    successIndicators?: Record<string, any>;
+    successIndicators?: Record<string, unknown>;
     failureReasons?: string[];
     executionTimeMs?: number;
-    resourceUsage?: Record<string, any>;
+    resourceUsage?: Record<string, unknown>;
     workspaceId?: string;
     userId?: string;
     feedbackSource?: string;
     humanValidated?: boolean;
     validationNotes?: string;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const payload = JSON.stringify({
         context: exp.context,
@@ -492,25 +488,25 @@ export class RLLoopRepository {
       }).onConflictDoNothing({ target: aiLearningEvents.id }).returning({ id: aiLearningEvents.id });
       log.verbose(`[RLRepo] Experience persisted: ${exp.agentId}/${exp.actionType} -> ${exp.outcome}`);
       return result?.[0] ?? null;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to persist experience:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getExperiencesForAgent(agentId: string, limit = 100): Promise<any[]> {
+  async getExperiencesForAgent(agentId: string, limit = 100): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(aiLearningEvents)
         .where(and(eq(aiLearningEvents.eventType, 'experience'), eq(aiLearningEvents.agentId, agentId)))
         .orderBy(desc(aiLearningEvents.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get experiences:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
   }
 
-  async getExperiencesByAction(agentId: string, actionType: string, limit = 50): Promise<any[]> {
+  async getExperiencesByAction(agentId: string, actionType: string, limit = 50): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(aiLearningEvents)
         .where(and(
@@ -520,19 +516,19 @@ export class RLLoopRepository {
         ))
         .orderBy(desc(aiLearningEvents.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get experiences by action:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
   }
 
-  async getAllExperiences(limit = 500): Promise<any[]> {
+  async getAllExperiences(limit = 500): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(aiLearningEvents)
         .where(eq(aiLearningEvents.eventType, 'experience'))
         .orderBy(desc(aiLearningEvents.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get all experiences:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -550,7 +546,7 @@ export class RLLoopRepository {
     maxConfidenceSeen?: number;
     decayFactor?: number;
     learningRate?: number;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const payload = JSON.stringify({
         current_confidence: model.currentConfidence,
@@ -586,13 +582,13 @@ export class RLLoopRepository {
       `);
       log.verbose(`[RLRepo] Confidence model upserted: ${model.agentId}/${model.actionType}`);
       return (result as unknown as any[])[0] ?? null;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to upsert confidence model:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getConfidenceModel(agentId: string, actionType: string): Promise<any> {
+  async getConfidenceModel(agentId: string, actionType: string): Promise<unknown> {
     try {
       const [model] = await db.select().from(aiLearningEvents)
         .where(and(
@@ -601,18 +597,18 @@ export class RLLoopRepository {
           eq(aiLearningEvents.action, actionType)
         ));
       return model || null;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get confidence model:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getAllConfidenceModels(): Promise<any[]> {
+  async getAllConfidenceModels(): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(aiLearningEvents)
         .where(eq(aiLearningEvents.eventType, 'confidence_update'))
         .orderBy(desc(aiLearningEvents.updatedAt));
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get all confidence models:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -622,17 +618,17 @@ export class RLLoopRepository {
     id: string;
     agentId: string;
     actionType: string;
-    oldStrategy: Record<string, any>;
-    newStrategy: Record<string, any>;
+    oldStrategy: Record<string, unknown>;
+    newStrategy: Record<string, unknown>;
     triggerReason: string;
-    triggerMetrics?: Record<string, any>;
+    triggerMetrics?: Record<string, unknown>;
     confidenceBefore?: number;
     confidenceAfter?: number;
     validated?: boolean;
     validationResult?: string;
     rollbackAvailable?: boolean;
     rolledBack?: boolean;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const [result] = await db.insert(aiLearningEvents).values({
         id: adaptation.id,
@@ -655,19 +651,19 @@ export class RLLoopRepository {
       }).returning();
       log.info(`[RLRepo] Strategy adaptation persisted: ${adaptation.agentId}/${adaptation.actionType}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to persist strategy adaptation:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
   }
 
-  async getAdaptationsForAgent(agentId: string, limit = 20): Promise<any[]> {
+  async getAdaptationsForAgent(agentId: string, limit = 20): Promise<Record<string,unknown>[]> {
     try {
       return await db.select().from(aiLearningEvents)
         .where(and(eq(aiLearningEvents.eventType, 'strategy_adaptation'), eq(aiLearningEvents.agentId, agentId)))
         .orderBy(desc(aiLearningEvents.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get adaptations:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -702,7 +698,7 @@ export class RLLoopRepository {
         modelCount: Number(modelCount[0]?.count || 0),
         adaptationCount: Number(adaptCount[0]?.count || 0),
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get metrics:`, (error instanceof Error ? error.message : String(error)));
       return { totalExperiences: 0, successRate: 0, avgReward: 0, modelCount: 0, adaptationCount: 0 };
     }
@@ -715,13 +711,13 @@ export class RLLoopRepository {
     workspaceId: string;
     agentId: string;
     actionType: string;
-    originalDecision: Record<string, any>;
-    correctedDecision: Record<string, any>;
+    originalDecision: Record<string, unknown>;
+    correctedDecision: Record<string, unknown>;
     correctionReason: string;
     correctedBy: string;
     entityType?: string;
     entityId?: string;
-  }): Promise<any> {
+  }): Promise<unknown> {
     try {
       const id = `correction-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
       const [result] = await db.insert(aiLearningEvents).values({
@@ -748,7 +744,7 @@ export class RLLoopRepository {
       }).returning();
       log.info(`[RLRepo] Correction recorded: ${correction.agentId}/${correction.actionType} by ${correction.correctedBy}`);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to record correction:`, (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -757,9 +753,9 @@ export class RLLoopRepository {
   /**
    * Look up past corrections for a given action type before making a new decision (T004)
    */
-  async lookupCorrections(agentId: string, actionType: string, workspaceId?: string, limit = 10): Promise<any[]> {
+  async lookupCorrections(agentId: string, actionType: string, workspaceId?: string, limit = 10): Promise<Record<string,unknown>[]> {
     try {
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(aiLearningEvents.eventType, 'experience'),
         eq(aiLearningEvents.agentId, agentId),
         eq(aiLearningEvents.action, actionType),
@@ -772,7 +768,7 @@ export class RLLoopRepository {
         .where(and(...conditions))
         .orderBy(desc(aiLearningEvents.createdAt))
         .limit(limit);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to lookup corrections:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -788,7 +784,7 @@ export class RLLoopRepository {
     correctionsByAction: Record<string, { total: number; corrections: number; accuracy: number }>;
   }> {
     try {
-      const conditions: any[] = [eq(aiLearningEvents.eventType, 'experience')];
+      const conditions: unknown[] = [eq(aiLearningEvents.eventType, 'experience')];
       if (agentId) conditions.push(eq(aiLearningEvents.agentId, agentId));
       if (workspaceId) conditions.push(eq(aiLearningEvents.workspaceId, workspaceId));
 
@@ -814,7 +810,7 @@ export class RLLoopRepository {
       }
 
       return { totalDecisions, totalCorrections, accuracyRate, correctionsByAction: byAction };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[RLRepo] Failed to get accuracy metrics:`, (error instanceof Error ? error.message : String(error)));
       return { totalDecisions: 0, totalCorrections: 0, accuracyRate: 0, correctionsByAction: {} };
     }

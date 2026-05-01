@@ -81,11 +81,11 @@ export interface OrchestrationTask {
   id: string;
   category: ServiceCategory;
   action: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   priority: 'low' | 'normal' | 'high' | 'critical';
   scheduledAt?: Date;
   executedAt?: Date;
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
@@ -161,10 +161,10 @@ class AIBrainMasterOrchestrator {
         notification = await storage.createNotification({
           userId,
           workspaceId,
-          scope: 'workspace' as any,
+          scope: 'workspace',
           title,
           message,
-          type: notificationType_db as any,
+          type: notificationType_db as unknown,
           isRead: false,
           actionUrl: '/dashboard',
           metadata,
@@ -347,7 +347,7 @@ class AIBrainMasterOrchestrator {
             workflow.id
           );
           log.info(`[AI Brain Orchestrator] Sent ${memberInfo?.workspaceId ? 'workspace' : 'user'}-scoped notification to user ${userId}`);
-        } catch (lookupError: any) {
+        } catch (lookupError: unknown) {
           log.error(`[AI Brain Orchestrator] Failed to lookup workspace, falling back to user-scoped: ${lookupError.message}`);
           // Fall back to user-scoped notification via notifyUser with null workspaceId
           await this.notifyUser(
@@ -383,7 +383,7 @@ class AIBrainMasterOrchestrator {
       });
 
       log.info(`[AI Brain Orchestrator] Workflow ${workflow.id} ${workflow.status}: ${completedSteps}/${totalSteps} steps, notification sent`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[AI Brain Orchestrator] Failed to send workflow notification: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
@@ -477,7 +477,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -564,7 +564,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -650,7 +650,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -729,7 +729,7 @@ class AIBrainMasterOrchestrator {
             data: { entries, count: entries.length },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -807,7 +807,6 @@ class AIBrainMasterOrchestrator {
           
           const { requestShiftSwap } = await import('../advancedSchedulingService');
           
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const swapRequest = await requestShiftSwap({
             workspaceId: effectiveWorkspaceId,
             originalShiftId,
@@ -825,7 +824,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -908,7 +907,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -960,12 +959,12 @@ class AIBrainMasterOrchestrator {
           return {
             success: true,
             actionId: request.actionId,
-            message: `Duplicated ${(result as any).shiftsCreated} shifts to new week`,
+            message: `Duplicated ${(result as Record<string, unknown>).shiftsCreated} shifts to new week`,
             data: result,
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1015,7 +1014,7 @@ class AIBrainMasterOrchestrator {
             notes: notes || null,
             createdAt: new Date(),
             updatedAt: new Date(),
-          } as any).returning();
+          }).returning();
 
           if (!created) {
             return { success: false, actionId: request.actionId, message: 'Failed to create payroll run', executionTimeMs: Date.now() - startTime };
@@ -1027,8 +1026,8 @@ class AIBrainMasterOrchestrator {
             workspaceId: effectiveWs!,
             title: 'Payroll Run Created',
             description: `New payroll run for period ${periodStart} to ${periodEnd}`,
-            metadata: { payrollRunId: (created as any).id, periodStart, periodEnd, createdBy: request.userId },
-          } as any).catch(() => null);
+            metadata: { payrollRunId: ((created as {id?: string}).id), periodStart, periodEnd, createdBy: request.userId },
+          }).catch(() => null);
 
           return {
             success: true,
@@ -1037,7 +1036,7 @@ class AIBrainMasterOrchestrator {
             data: created,
             executionTimeMs: Date.now() - startTime,
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return { success: false, actionId: request.actionId, message: `Failed to create payroll run: ${(error instanceof Error ? error.message : String(error))}`, executionTimeMs: Date.now() - startTime };
         }
       },
@@ -1070,7 +1069,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1098,7 +1097,7 @@ class AIBrainMasterOrchestrator {
             .limit(500);
           
           // Simple anomaly detection
-          const anomalies: any[] = [];
+          const anomalies: (string | number | boolean | null)[] = [];
           for (const entry of recentEntries) {
             if (entry.clockOut && entry.clockIn) {
               const hours = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / (1000 * 60 * 60);
@@ -1119,7 +1118,7 @@ class AIBrainMasterOrchestrator {
             data: { entriesScanned: recentEntries.length, anomalies },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1180,7 +1179,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1235,7 +1234,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1274,7 +1273,7 @@ class AIBrainMasterOrchestrator {
           };
         }
         return { allowed: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { allowed: false, reason: `Dual-AI gate unavailable: ${err?.message ?? 'unknown'}` };
       }
     };
@@ -1332,7 +1331,7 @@ class AIBrainMasterOrchestrator {
             data: { runId, reason },
             executionTimeMs: Date.now() - startTime,
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1386,7 +1385,7 @@ class AIBrainMasterOrchestrator {
           return { success: false, actionId: request.actionId, message: 'Payroll entry not found for employee in run', executionTimeMs: Date.now() - startTime };
         }
 
-        const set: Record<string, any> = { updatedAt: new Date() };
+        const set: Record<string, unknown> = { updatedAt: new Date() };
         if (regularHours !== undefined) set.regularHours = String(regularHours);
         if (overtimeHours !== undefined) set.overtimeHours = String(overtimeHours);
         set.notes = sql`COALESCE(${payrollEntries.notes}, '') || ${`\n[ADJUSTED ${new Date().toISOString()}] by ${request.userId ?? 'trinity'}: ${reason}`}`;
@@ -1625,8 +1624,8 @@ class AIBrainMasterOrchestrator {
           const employeeList = await db.select().from(employees)
             .where(eq(employees.workspaceId, wsId));
           
-          const expiringCerts: any[] = [];
-          const expiredCerts: any[] = [];
+          const expiringCerts: (string | number | boolean | null)[] = [];
+          const expiredCerts: (string | number | boolean | null)[] = [];
           
           // Get certifications separately from the employeeCertifications table
           const certList = await db.select({
@@ -1677,7 +1676,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: expiredCerts.length > 0 || expiringCerts.length > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1712,7 +1711,7 @@ class AIBrainMasterOrchestrator {
               gte(timeEntries.clockIn, startDate)
             ));
           
-          const violations: any[] = [];
+          const violations: (string | number | boolean | null)[] = [];
           const employeeHours = new Map<string, number>();
           
           // Check for overtime violations
@@ -1735,7 +1734,7 @@ class AIBrainMasterOrchestrator {
               
               // Check for missing break (>6 hours without break)
               // Using breakDurationMinutes from schema (cast to any for optional field access)
-              const breakDuration = (entry as any).breakDurationMinutes || 0;
+              const breakDuration = (entry as Record<string,unknown>).breakDurationMinutes || 0;
               if (hours > 6 && !breakDuration) {
                 violations.push({
                   type: 'missing_break',
@@ -1782,7 +1781,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: violations.length > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1806,7 +1805,7 @@ class AIBrainMasterOrchestrator {
         
         try {
           const wsId = workspaceId || request.workspaceId!;
-          const remediationActions: any[] = [];
+          const remediationActions: (string | number | boolean | null)[] = [];
           
           // Generate remediation recommendations
           if (violationType === 'missing_break' && autoFix) {
@@ -1849,7 +1848,7 @@ class AIBrainMasterOrchestrator {
             data: { remediationActions, violationType },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1933,7 +1932,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -1989,7 +1988,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             broadcastSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2070,7 +2069,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2115,7 +2114,7 @@ class AIBrainMasterOrchestrator {
             data: { rules: configuredRules },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2164,7 +2163,7 @@ class AIBrainMasterOrchestrator {
                 notificationSent: true,
                 broadcastSent: true
               };
-            } catch (error: any) {
+            } catch (error: unknown) {
               return {
                 success: false,
                 actionId: request.actionId,
@@ -2208,7 +2207,6 @@ class AIBrainMasterOrchestrator {
               message,
               workspaceId,
               targetRoles: Array.isArray(targetRoles) ? targetRoles : [targetRoles],
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               severity: priority === 'P0' ? 'critical' : priority === 'P1' ? 'high' : 'medium',
               source: 'ai_brain_orchestrator',
             });
@@ -2244,7 +2242,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             broadcastSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2309,7 +2307,7 @@ class AIBrainMasterOrchestrator {
             data: { jobName, triggeredAt: new Date().toISOString() },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2340,7 +2338,7 @@ class AIBrainMasterOrchestrator {
             data: healthData,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2379,7 +2377,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             broadcastSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2421,8 +2419,8 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const upcomingReviews: any[] = [];
-          const overdueReviews: any[] = [];
+          const upcomingReviews: (string | number | boolean | null)[] = [];
+          const overdueReviews: (string | number | boolean | null)[] = [];
           const now = new Date();
           
           for (const emp of employeeList) {
@@ -2470,7 +2468,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: overdueReviews.length > 0 || upcomingReviews.length > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2516,7 +2514,7 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const remindersSent: any[] = [];
+          const remindersSent: (string | number | boolean | null)[] = [];
           const now = new Date();
           
           for (const cert of certList) {
@@ -2565,7 +2563,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: remindersSent.length > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2598,7 +2596,7 @@ class AIBrainMasterOrchestrator {
             ))
             .limit(500);
           
-          const upcomingAnniversaries: any[] = [];
+          const upcomingAnniversaries: (string | number | boolean | null)[] = [];
           const today = new Date();
           
           for (const emp of employeeList) {
@@ -2638,7 +2636,7 @@ class AIBrainMasterOrchestrator {
             data: { upcomingAnniversaries, lookAheadDays },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2668,13 +2666,13 @@ class AIBrainMasterOrchestrator {
         const startTime = Date.now();
         
         try {
-          const healthChecks: any[] = [];
+          const healthChecks: (string | number | boolean | null)[] = [];
           
           // Check database connectivity
           try {
             const [dbResult] = await db.select({ count: sql<number>`1` }).from(employees).limit(1);
             healthChecks.push({ service: 'database', status: 'healthy', latencyMs: Date.now() - startTime });
-          } catch (dbError: any) {
+          } catch (dbError: unknown) {
             healthChecks.push({ service: 'database', status: 'unhealthy', error: dbError.message });
           }
           
@@ -2684,7 +2682,7 @@ class AIBrainMasterOrchestrator {
             const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!);
             await stripeClient.balance.retrieve();
             healthChecks.push({ service: 'stripe', status: 'healthy' });
-          } catch (stripeError: any) {
+          } catch (stripeError: unknown) {
             healthChecks.push({ service: 'stripe', status: 'degraded', error: stripeError.message });
           }
           
@@ -2696,7 +2694,7 @@ class AIBrainMasterOrchestrator {
               status: 'healthy',
               activeConnections: 'monitoring available'
             });
-          } catch (wsError: any) {
+          } catch (wsError: unknown) {
             healthChecks.push({ service: 'websocket', status: 'unknown', error: wsError.message });
           }
           
@@ -2729,7 +2727,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: unhealthyServices.length > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2752,7 +2750,7 @@ class AIBrainMasterOrchestrator {
         const { issues } = request.payload || {};
         
         try {
-          const remediationResults: any[] = [];
+          const remediationResults: (string | number | boolean | null)[] = [];
           
           for (const issue of (issues || [])) {
             switch (issue.type) {
@@ -2822,7 +2820,7 @@ class AIBrainMasterOrchestrator {
             data: { remediationResults },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2877,7 +2875,7 @@ class AIBrainMasterOrchestrator {
             data: performanceReport,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2925,7 +2923,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2966,7 +2964,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -2994,7 +2992,6 @@ class AIBrainMasterOrchestrator {
               userNeed: userNeed || 'improve workflow',
               currentUsage: context
             },
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             priority: 'medium',
             workspaceId: request.workspaceId,
             userId: request.userId
@@ -3007,7 +3004,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3049,7 +3046,7 @@ class AIBrainMasterOrchestrator {
             data: { workflowId: workflow.id, stepCount: workflow.steps.length },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3094,7 +3091,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3132,7 +3129,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3172,7 +3169,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3221,7 +3218,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3261,7 +3258,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3303,7 +3300,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3344,7 +3341,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3383,7 +3380,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3422,7 +3419,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3465,7 +3462,7 @@ class AIBrainMasterOrchestrator {
             data: report,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3511,7 +3508,6 @@ class AIBrainMasterOrchestrator {
 
           if (subAction === 'connect_integration') {
             // Consolidated from onboarding.connect_integration (domainSupervisorActions.ts)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const { domainLeadSupervisorService } = await import('./domainLeadSupervisorService');
             const result = await domainLeadSupervisorService.submitTask(
               'onboarding_ops',
@@ -3545,7 +3541,7 @@ class AIBrainMasterOrchestrator {
             data: config,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -3645,7 +3641,7 @@ class AIBrainMasterOrchestrator {
         
         const result = await helpaiOrchestrator.executeAction({
           actionId: `${step.category}.${step.action}`,
-          category: step.category as any,
+          category: step.category as unknown,
           name: step.action,
           payload: step.parameters,
           userId,
@@ -3671,7 +3667,7 @@ class AIBrainMasterOrchestrator {
           step.error = result.message;
           break;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         step.executedAt = new Date();
         step.error = (error instanceof Error ? error.message : String(error));
         workflow.status = 'failed';
@@ -3755,7 +3751,7 @@ class AIBrainMasterOrchestrator {
         // which each created ADDITIONAL platform update records, causing double/triple notifications.
         // Now we only send a lightweight WebSocket broadcast for instant UI feedback.
         if (event.type === 'automation_completed' && event.metadata) {
-          const metadata = event.metadata as Record<string, any>;
+          const metadata = event.metadata as Record<string, unknown>;
           const workspaceId = event.workspaceId;
           const jobLabel = metadata.jobName || metadata.automationType;
 
@@ -3782,9 +3778,8 @@ class AIBrainMasterOrchestrator {
         // platform_updates + per-user notifications. We only send a targeted WebSocket
         // broadcast to the specific user for immediate UI feedback (no duplicate DB records).
         if (event.type === 'ai_brain_action' && event.userId && event.workspaceId) {
-          const metadata = event.metadata as Record<string, any> | undefined;
+          const metadata = event.metadata as Record<string, unknown> | undefined;
           if (metadata?.source !== 'ai_brain_orchestrator') {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             broadcastNotificationToUser(event.userId, {
               type: 'ai_action_update',
               title: event.title,
@@ -3796,7 +3791,6 @@ class AIBrainMasterOrchestrator {
         }
 
         if (event.type === 'ai_error' && event.userId && event.workspaceId) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           broadcastNotificationToUser(event.userId, {
             type: 'ai_action_update',
             title: event.title || 'AI Error',
@@ -3807,7 +3801,6 @@ class AIBrainMasterOrchestrator {
         }
 
         if (event.type === 'ai_escalation' && event.userId && event.workspaceId) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           broadcastNotificationToUser(event.userId, {
             type: 'ai_action_update',
             title: event.title || 'AI Escalation',
@@ -3829,7 +3822,7 @@ class AIBrainMasterOrchestrator {
           const parts = event.type.split('.');   // ['brain', 'cerebellum', 'reportbot', 'completed']
           const regionName = parts[1]?.toUpperCase();
           const eventLabel = parts.slice(2).join('.');
-          log.info(`[Global Workspace] ${regionName} → ${eventLabel} (confidence: ${(event as any).metadata?.confidence ?? '?'})`);
+          log.info(`[Global Workspace] ${regionName} → ${eventLabel} (confidence: ${(event as Record<string,unknown>).metadata?.confidence ?? '?'})`);
         }
 
         // Phase 2 — Trinity Event Brain. Trinity explicitly reacts to the
@@ -3845,7 +3838,7 @@ class AIBrainMasterOrchestrator {
     // Listens to lightweight internal brain broadcasts emitted via platformEventBus.emit()
     // by broadcastToGlobalWorkspace(). These are NOT full platform events (no DB persist)
     // but need to be surfaced here for cross-region observability and knowledge graph updates.
-    platformEventBus.on('brain.global_workspace', (message: any) => {
+    platformEventBus.on('brain.global_workspace', (message: unknown) => {
       try {
         const { fromRegion, eventType: evtType, confidence = 0.8, workspaceId: wsId } = message;
         log.info(`[Global Workspace] Internal broadcast received: ${fromRegion} → ${evtType} (ws=${wsId ?? 'global'}, conf=${confidence.toFixed(2)})`);
@@ -3864,7 +3857,7 @@ class AIBrainMasterOrchestrator {
    */
   async executeActionWithNotification(
     actionId: string,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
     userId: string,
     userRole: string,
     workspaceId?: string,
@@ -3872,13 +3865,12 @@ class AIBrainMasterOrchestrator {
   ): Promise<ActionResult> {
     const request: ActionRequest = {
       actionId,
-      category: actionId.split('.')[0] as any,
+      category: actionId.split('.')[0] as unknown,
       name: actionId,
       payload,
       userId,
       userRole,
       workspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       priority: 'medium',
     };
 
@@ -3953,7 +3945,7 @@ class AIBrainMasterOrchestrator {
           }
 
           // Add credits used to request metadata for logging
-          (request as any).creditsUsed = consumeResult.creditsUsed;
+          (request as Record<string,unknown>).creditsUsed = consumeResult.creditsUsed;
         }
       }
 
@@ -3977,7 +3969,7 @@ class AIBrainMasterOrchestrator {
       await this.notifyActionComplete(request, result, actionName);
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       trinityThoughtEngine.reflect(
         'action',
         actionId,
@@ -4090,7 +4082,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4140,7 +4132,7 @@ class AIBrainMasterOrchestrator {
             data: { suggestions },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4188,7 +4180,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: summary.totalProcessed > 0
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4236,7 +4228,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4278,7 +4270,7 @@ class AIBrainMasterOrchestrator {
             data: analysis,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4341,7 +4333,7 @@ class AIBrainMasterOrchestrator {
             data: analysis,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4385,7 +4377,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4428,7 +4420,7 @@ class AIBrainMasterOrchestrator {
             data: analysis,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4474,7 +4466,7 @@ class AIBrainMasterOrchestrator {
             data: simulation,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4526,7 +4518,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4583,7 +4575,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4651,7 +4643,7 @@ class AIBrainMasterOrchestrator {
             executionTimeMs: Date.now() - startTime,
             notificationSent: true
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4711,7 +4703,7 @@ class AIBrainMasterOrchestrator {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4741,7 +4733,7 @@ class AIBrainMasterOrchestrator {
             data: { cleanedCount },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4781,7 +4773,7 @@ class AIBrainMasterOrchestrator {
             data: { context },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4816,7 +4808,7 @@ class AIBrainMasterOrchestrator {
             data: { profile },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4864,7 +4856,7 @@ class AIBrainMasterOrchestrator {
             message: 'Insight shared across agents',
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4919,7 +4911,7 @@ class AIBrainMasterOrchestrator {
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -4992,7 +4984,7 @@ class AIBrainMasterOrchestrator {
             message: 'Outcome recorded for learning',
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5021,7 +5013,7 @@ class AIBrainMasterOrchestrator {
         return { allowed: true };
       }
       return { allowed: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[Gemini3Tools] Access validation error: ${(error instanceof Error ? error.message : String(error))}`);
       return { allowed: false, reason: 'Access validation failed' };
     }
@@ -5082,7 +5074,7 @@ Provide a comprehensive analysis with:
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error(`[Gemini3Tools] Deep think failed: ${(error instanceof Error ? error.message : String(error))}`);
           return {
             success: false,
@@ -5151,7 +5143,7 @@ Return the complete component code with all imports.`,
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error(`[Gemini3Tools] Generate UI failed: ${(error instanceof Error ? error.message : String(error))}`);
           return {
             success: false,
@@ -5187,11 +5179,11 @@ Return the complete component code with all imports.`,
           }
 
           const { trinityMemoryService } = await import('./trinityMemoryService');
-          let result: any;
+          let result: unknown;
           
           switch (operation) {
             case 'store':
-              await (trinityMemoryService as any).storeMemory(
+              await (trinityMemoryService as Record<string,unknown>).storeMemory(
                 request.workspaceId!,
                 request.userId!,
                 namespace || 'default',
@@ -5201,7 +5193,7 @@ Return the complete component code with all imports.`,
               result = { stored: true, key };
               break;
             case 'retrieve':
-              result = await (trinityMemoryService as any).retrieveMemory(
+              result = await (trinityMemoryService as Record<string,unknown>).retrieveMemory(
                 request.workspaceId!,
                 request.userId!,
                 namespace || 'default',
@@ -5209,7 +5201,7 @@ Return the complete component code with all imports.`,
               );
               break;
             case 'build_context':
-              result = await (trinityMemoryService as any).buildContext(
+              result = await (trinityMemoryService as Record<string,unknown>).buildContext(
                 request.workspaceId!,
                 request.userId!,
                 { maxTokens: 4000 }
@@ -5227,7 +5219,7 @@ Return the complete component code with all imports.`,
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error(`[Gemini3Tools] Context memory failed: ${(error instanceof Error ? error.message : String(error))}`);
           return {
             success: false,
@@ -5297,7 +5289,7 @@ Return the complete implementation.`,
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error(`[Gemini3Tools] Vibe coding failed: ${(error instanceof Error ? error.message : String(error))}`);
           return {
             success: false,
@@ -5365,7 +5357,7 @@ Provide your analysis in the following format:
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error(`[Gemini3Tools] Fact check failed: ${(error instanceof Error ? error.message : String(error))}`);
           return {
             success: false,
@@ -5412,7 +5404,7 @@ Provide your analysis in the following format:
         }
         
         try {
-          const result = await (trinityExecutionFabric as any).executeWithPipeline(
+          const result = await (trinityExecutionFabric as Record<string,unknown>).executeWithPipeline(
             task,
             request.workspaceId,
             request.userId
@@ -5424,7 +5416,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5446,7 +5438,7 @@ Provide your analysis in the following format:
         const payload = request.payload || {};
         
         try {
-          const testResults = await (trinityExecutionFabric as any).runTests(
+          const testResults = await (trinityExecutionFabric as Record<string,unknown>).runTests(
             payload.category || 'all',
             payload.testIds
           );
@@ -5457,7 +5449,7 @@ Provide your analysis in the following format:
             data: testResults,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5498,19 +5490,19 @@ Provide your analysis in the following format:
         }
         
         try {
-          let result: any;
+          let result: unknown;
           switch (operation) {
             case 'read':
-              result = await (trinityExecutionFabric as any).readFile(path);
+              result = await (trinityExecutionFabric as Record<string,unknown>).readFile(path);
               break;
             case 'write':
-              result = await (trinityExecutionFabric as any).writeFile(path, content || '');
+              result = await (trinityExecutionFabric as Record<string,unknown>).writeFile(path, content || '');
               break;
             case 'edit':
-              result = await (trinityExecutionFabric as any).editFile(path, oldContent || '', newContent || '');
+              result = await (trinityExecutionFabric as Record<string,unknown>).editFile(path, oldContent || '', newContent || '');
               break;
             case 'search':
-              result = await (trinityExecutionFabric as any).searchFiles(pattern || '', path);
+              result = await (trinityExecutionFabric as Record<string,unknown>).searchFiles(pattern || '', path);
               break;
             default:
               throw new Error(`Unknown file operation: ${operation}`);
@@ -5522,7 +5514,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5562,7 +5554,6 @@ Provide your analysis in the following format:
         try {
           const result = await selfReflectionEngine.reflect({
             executionId: payload.executionId || `exec-${Date.now()}`,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
             originalIntent: payload.intent || 'Unknown intent',
@@ -5580,7 +5571,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5625,7 +5616,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5663,7 +5654,6 @@ Provide your analysis in the following format:
             : payload.criteria || EVALUATION_TEMPLATES.text_quality;
           
           const result = await llmJudgeEvaluator.evaluate({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
             content: payload.content,
@@ -5680,7 +5670,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5704,7 +5694,6 @@ Provide your analysis in the following format:
         try {
           const result = await llmJudgeEvaluator.evaluateWithConsensus(
             {
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               workspaceId: request.workspaceId,
               userId: request.userId,
               content: payload.content,
@@ -5722,7 +5711,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5755,7 +5744,6 @@ Provide your analysis in the following format:
         
         try {
           const plan = await planningFrameworkService.createPlan({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
             goal: payload.goal,
@@ -5774,7 +5762,7 @@ Provide your analysis in the following format:
             data: plan,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5816,7 +5804,7 @@ Provide your analysis in the following format:
             data: validation,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5849,7 +5837,6 @@ Provide your analysis in the following format:
         
         try {
           const decision = await adaptiveSupervisionRouter.route({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
             intent: payload.intent || payload.query,
@@ -5866,7 +5853,7 @@ Provide your analysis in the following format:
             data: decision,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5904,7 +5891,6 @@ Provide your analysis in the following format:
             request: payload.request || {},
             type: payload.type || 'sync',
             expectsResponse: payload.expectsResponse ?? true,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
           });
@@ -5918,7 +5904,7 @@ Provide your analysis in the following format:
             data: result,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5952,7 +5938,6 @@ Provide your analysis in the following format:
             tokenCount: payload.tokenCount || 0,
             outcome: payload.outcome || 'success',
             userFeedback: payload.userFeedback,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: request.workspaceId,
             userId: request.userId,
           });
@@ -5963,7 +5948,7 @@ Provide your analysis in the following format:
             message: 'Behavior sample recorded',
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -5995,7 +5980,7 @@ Provide your analysis in the following format:
             data: { health, recentDrifts, recentAnomalies },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6047,7 +6032,7 @@ Provide your analysis in the following format:
             data: profile,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6091,7 +6076,7 @@ Provide your analysis in the following format:
             message: `Deployment status: ${status.environment} environment, uptime ${Math.floor(status.uptime / 60)} minutes`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6112,7 +6097,6 @@ Provide your analysis in the following format:
         const startTime = Date.now();
         
         try {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const { serviceOrchestrationWatchdog } = await import('./serviceOrchestrationWatchdog');
           const orphanServices = serviceOrchestrationWatchdog.getOrphanServices();
           const sentinel = trinitySentinel.getStatus();
@@ -6129,7 +6113,7 @@ Provide your analysis in the following format:
             message: `Platform services: ${sentinel.healthChecks} monitored, ${orphanServices.length} orphaned, overall health: ${sentinel.overallHealth}`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6164,9 +6148,7 @@ Provide your analysis in the following format:
             orchestrationStatus,
           ] = await Promise.all([
             Promise.resolve(trinitySentinel.getStatus()),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             Promise.resolve(platformIntentRouter.getHealth()),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             subagentSupervisor.getSystemHealth(),
             import('./orchestrationBridge').then(m => m.getOrchestrationStatus()),
           ]);
@@ -6185,7 +6167,6 @@ Provide your analysis in the following format:
           // Try to get service watchdog data
           let watchdogData = null;
           try {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const { serviceOrchestrationWatchdog } = await import('./serviceOrchestrationWatchdog');
             watchdogData = {
               orphanServices: serviceOrchestrationWatchdog.getOrphanServices(),
@@ -6250,7 +6231,7 @@ Provide your analysis in the following format:
             message: `Unified Dashboard: Overall health ${sentinelStatus.overallHealth}, ${sentinelStatus.unresolvedAlerts} alerts, ${subagentHealth.totalSubagents} subagents (${subagentHealth.healthySubagents} healthy)`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6288,7 +6269,7 @@ Provide your analysis in the following format:
             message: `Platform services: ${healthSummary.runningCount} running, ${healthSummary.pausedCount} paused, ${healthSummary.errorCount} errors. Overall: ${healthSummary.overall}`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6331,7 +6312,7 @@ Provide your analysis in the following format:
             message: result.message,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6373,7 +6354,7 @@ Provide your analysis in the following format:
             message: result.message,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6411,7 +6392,7 @@ Provide your analysis in the following format:
             message: `Error cleared for service: ${serviceName}`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -6453,7 +6434,7 @@ Provide your analysis in the following format:
             message: `Restarted ${successCount}/${results.length} services`,
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,

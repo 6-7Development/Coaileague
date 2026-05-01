@@ -71,7 +71,7 @@ const STATUS_COLORS = {
 function StatCard({ title, value, icon: Icon, trend }: { 
   title: string; 
   value: number | string; 
-  icon: any;
+  icon: string | React.ReactNode;
   trend?: string;
 }) {
   return (

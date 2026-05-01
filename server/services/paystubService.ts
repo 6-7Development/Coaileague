@@ -23,6 +23,7 @@ import {
 import { createLogger } from '../lib/logger';
 import { saveToVault } from './documents/businessFormsVaultService';
 import { hoursBetween } from './scheduling/schedulingMath';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('paystubService');
 
 
@@ -135,7 +136,7 @@ export class PaystubService {
     const overtimeHours = this.roundCurrency(Math.max(0, totalHours - 40));
 
     // RC4 (Phase 2): All pay arithmetic via FinancialCalculator (Decimal.js).
-    const rateStr = toFinancialString(String((employee as any).hourlyRate || (employee as any).payRate || '0'));
+    const rateStr = toFinancialString(String((employee as EmployeeWithStatus).hourlyRate || (employee as EmployeeWithStatus).payRate || '0'));
     const regularRateStr = rateStr;
     const overtimeRateStr = multiplyFinancialValues(rateStr, '1.5');
 
@@ -349,7 +350,7 @@ export class PaystubService {
         return { success: false, error: 'No hours worked in this period' };
       }
 
-      const pdfBuffer = await this.generatePDF(data, (ws as any)?.name);
+      const pdfBuffer = await this.generatePDF(data, (ws as Record<string,unknown>)?.name);
 
       if (sendNotification) {
         const employee = await db.query.employees.findFirst({
@@ -377,7 +378,7 @@ export class PaystubService {
       const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
       const vaultResult = await saveToVault({
         workspaceId,
-        workspaceName: (ws as any)?.name || workspaceId,
+        workspaceName: (ws as Record<string,unknown>)?.name || workspaceId,
         documentTitle: 'Employee Pay Stub',
         category: 'payroll',
         period: periodLabel,

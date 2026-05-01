@@ -20,7 +20,7 @@ export function AISystemStatusBanner() {
   const { dbDegraded } = useAuth();
 
   const { data, isLoading, error } = useQuery<AISystemStatus>({
-    queryKey: ['/api/ai-brain/system-status'],
+    queryKey: ['/api/ai-brain/status'],
     refetchInterval: 60000,
     staleTime: 30000,
     retry: 1,

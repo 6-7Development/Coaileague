@@ -66,7 +66,7 @@ export interface ManagedKey {
   lastRotatedAt?: Date;
   rotationCount: number;
   workspaceId?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface RotationPolicy {
@@ -214,7 +214,7 @@ class ApiKeyRotationService {
     keyType: KeyType;
     workspaceId?: string;
     expiresInDays?: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<{ keyId: string; keyValue: string }> {
     const keyId = crypto.randomUUID();
     const policy = this.policies.get(params.keyType);
@@ -230,7 +230,6 @@ class ApiKeyRotationService {
 
     try {
       // CATEGORY C — Raw SQL retained: ::jsonb | Tables: managed_api_keys | Verified: 2026-03-23
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(managedApiKeys).values({
         id: keyId,
         name: params.name,
@@ -262,7 +261,7 @@ class ApiKeyRotationService {
       log.info(`[ApiKeyRotation] Generated new ${params.keyType}: ${params.name}`);
       return { keyId, keyValue };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[ApiKeyRotation] Failed to generate key:', error);
       throw error;
     }
@@ -319,7 +318,7 @@ class ApiKeyRotationService {
       // Get existing key
       const result = await db.select().from(managedApiKeys).where(eq(managedApiKeys.id, keyId));
       
-      const oldKey = ((result as any).rows as any[])[0];
+      const oldKey = ((result as Record<string, unknown>).rows as unknown[][])[0];
       if (!oldKey) {
         return { success: false, oldKeyId: keyId, error: 'Key not found' };
       }
@@ -383,7 +382,7 @@ class ApiKeyRotationService {
         newKeyValue,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[ApiKeyRotation] Rotation failed:', error);
       return { success: false, oldKeyId: keyId, error: (error instanceof Error ? error.message : String(error)) };
     }
@@ -442,7 +441,7 @@ class ApiKeyRotationService {
         SELECT * FROM managed_api_keys WHERE status = 'expiring_soon'
       `);
 
-      for (const key of (expiringResult as any[]) || []) {
+      for (const key of (expiringResult as unknown[]) || []) {
         try {
           await platformEventBus.publish({
             type: 'api_key_expiring',
@@ -473,7 +472,7 @@ class ApiKeyRotationService {
             AND status = 'expiring_soon'
         `);
 
-        for (const row of (result as any[]) || []) {
+        for (const row of (result as unknown[]) || []) {
           await this.rotateKey(row.id, 'system', 'Auto-rotation due to expiry');
         }
       } catch (error) {
@@ -490,7 +489,6 @@ class ApiKeyRotationService {
     reason?: string,
     performedBy?: string
   ): Promise<void> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(keyRotationHistory).values({
       keyId: keyId,
       action: action,
@@ -501,7 +499,7 @@ class ApiKeyRotationService {
     });
   }
 
-  private rowToManagedKey(row: any): ManagedKey {
+  private rowToManagedKey(row: unknown): ManagedKey {
     return {
       id: row.id,
       name: row.name,
@@ -532,7 +530,7 @@ class ApiKeyRotationService {
       
       // CATEGORY C — Raw SQL retained: Dynamic query execution | Tables: managed_api_keys | Verified: 2026-03-23
       const result = await typedQuery(query);
-      return (result as any[]).map(this.rowToManagedKey);
+      return (result as unknown[]).map(this.rowToManagedKey);
     } catch (error) {
       log.error('[ApiKeyRotation] Failed to get keys:', error);
       return [];

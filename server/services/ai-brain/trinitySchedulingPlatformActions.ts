@@ -5,21 +5,18 @@ import { eq, and, gte, lte, isNull, ne, sql, count, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinitySchedulingPlatformActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'scheduling' as any,
+    category: 'scheduling',
     description: `Trinity scheduling action: ${actionId}`,
     inputSchema: { type: 'object' as const, properties: {} },
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || req.payload || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     },
@@ -92,7 +89,7 @@ export function registerSchedulingPlatformActions() {
           lte(shifts.endTime, to),
           ne(shifts.status, 'cancelled'),
         ));
-      busyIds = new Set(conflicting.map((c: any) => c.employeeId).filter(Boolean));
+      busyIds = new Set(conflicting.map((c: unknown) => c.employeeId).filter(Boolean));
       available = allActive.filter(e => !busyIds.has(e.id));
     }
 
@@ -169,7 +166,7 @@ export function registerSchedulingPlatformActions() {
         ne(shifts.status, 'cancelled'),
       ))
       .orderBy(shifts.employeeId, shifts.startTime);
-    const conflicts: any[] = [];
+    const conflicts: (string | number | boolean | null)[] = [];
     const byEmployee: Record<string, typeof upcoming> = {};
     for (const s of upcoming) {
       if (!s.employeeId) continue;

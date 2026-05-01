@@ -37,7 +37,7 @@ function getEmbeddingClient(): OpenAI | null {
 async function checkSupportPoolAvailable(): Promise<boolean> {
   try {
     const { tokenManager } = await import('../services/billing/tokenManager');
-    return (tokenManager as any).checkSupportPoolAvailable();
+    return (tokenManager as Record<string, unknown>).checkSupportPoolAvailable();
   } catch {
     return true;
   }
@@ -54,14 +54,13 @@ export function registerFaqRoutes(app: Express) {
     const { category, search, limit = 50, includeUnpublished } = req.query;
     
     // Use canonical staff detection from rbac.ts
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const showUnpublished = isPlatformStaff(req.user) && includeUnpublished === 'true';
 
     // Build base query with all records
     let query = db.select().from(helposFaqs);
 
     // Build where conditions using Drizzle's and() function
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     
     // Filter by published status (unless staff requesting unpublished)
     if (!showUnpublished) {
@@ -85,7 +84,7 @@ export function registerFaqRoutes(app: Express) {
 
     // Apply all conditions together using Drizzle's and() combinator
     if (conditions.length > 0) {
-      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as any;
+      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as unknown;
     }
 
     const faqs = await query.orderBy(desc(helposFaqs.viewCount)).limit(Math.min(Math.max(1, Number(limit) || 20), 100));
@@ -111,7 +110,6 @@ app.get('/api/helpos/faqs/:id', requireAuth, async (req: AuthenticatedRequest, r
     }
 
     // Block access to unpublished FAQs for non-staff users (use canonical staff check)
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!faq[0].isPublished && !isPlatformStaff(req.user)) {
       return res.status(404).json({ message: 'FAQ not found' });
     }
@@ -151,13 +149,12 @@ app.post('/api/helpos/faqs', requirePlatformStaff, async (req: AuthenticatedRequ
         });
         embeddingVector = JSON.stringify(embeddingResponse.data[0].embedding);
         const { tokenManager } = await import('../services/billing/tokenManager');
-        await (tokenManager as any).deductSupportPoolCredits('faq_embedding', 'FAQ Create Embedding', wsId || undefined, req.user?.id);
+        await (tokenManager as Record<string,unknown>).deductSupportPoolCredits('faq_embedding', 'FAQ Create Embedding', wsId || undefined, req.user?.id);
       } catch (embeddingError) {
         log.error('Error generating embedding:', embeddingError);
       }
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const newFaq = await db.insert(helposFaqs).values({
       category: validatedData.category,
       question: validatedData.question,
@@ -215,7 +212,7 @@ app.patch('/api/helpos/faqs/:id', requirePlatformStaff, async (req: Authenticate
         });
         embeddingVector = JSON.stringify(embeddingResponse.data[0].embedding);
         const { tokenManager } = await import('../services/billing/tokenManager');
-        await (tokenManager as any).deductSupportPoolCredits('faq_embedding', 'FAQ Update Embedding', wsId || undefined, req.user?.id);
+        await (tokenManager as Record<string,unknown>).deductSupportPoolCredits('faq_embedding', 'FAQ Update Embedding', wsId || undefined, req.user?.id);
       } catch (embeddingError) {
         log.error('Error generating embedding:', embeddingError);
       }
@@ -315,7 +312,6 @@ app.post('/api/helpos/faqs/search/semantic', readLimiter, requireAuth, async (re
     }
 
     // Use canonical staff detection from rbac.ts
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const canSearchUnpublished = isPlatformStaff(req.user);
 
     const wsId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId || null;
@@ -347,7 +343,7 @@ app.post('/api/helpos/faqs/search/semantic', readLimiter, requireAuth, async (re
 
     // Calculate cosine similarity for each FAQ
     const faqsWithSimilarity = allFaqs.map(faq => {
-      const faqVector = JSON.parse(faq.embeddingVector!);
+      const faqVector: unknown = JSON.parse(faq.embeddingVector!);
       const similarity = cosineSimilarity(queryVector, faqVector);
       return {
         ...faq,
@@ -363,7 +359,7 @@ app.post('/api/helpos/faqs/search/semantic', readLimiter, requireAuth, async (re
 
     try {
       const { tokenManager } = await import('../services/billing/tokenManager');
-      await (tokenManager as any).deductSupportPoolCredits('faq_embedding', 'FAQ Semantic Search Embedding', wsId || undefined);
+      await (tokenManager as Record<string,unknown>).deductSupportPoolCredits('faq_embedding', 'FAQ Semantic Search Embedding', wsId || undefined);
     } catch (billingErr: unknown) {
       log.error('[FAQ AI] Support pool deduction failed:', billingErr);
     }
@@ -450,7 +446,7 @@ app.post('/api/helpos/faqs/generate/from-ticket', requirePlatformStaff, async (r
       return res.status(503).json({ message: result.error || 'AI service unavailable' });
     }
 
-    const suggestion = JSON.parse(result.content || '{}');
+    const suggestion: unknown = JSON.parse(result.content || '{}');
 
     // Generate embedding for the suggested answer
     const embClient = getEmbeddingClient();
@@ -520,7 +516,7 @@ app.post('/api/helpos/faqs/generate/from-conversation', requirePlatformStaff, as
       return res.status(503).json({ message: result.error || 'AI service unavailable' });
     }
 
-    const refined = JSON.parse(result.content || '{}');
+    const refined: unknown = JSON.parse(result.content || '{}');
 
     // Generate embedding
     const embClient2 = getEmbeddingClient();
@@ -574,7 +570,6 @@ app.post('/api/helpos/faqs/bulk-import', requirePlatformStaff, async (req: Authe
     for (const faq of faqs) {
       try {
         // Validate FAQ structure
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const validated = insertHelposFaqSchema.omit({ id: true }).parse({
           category: faq.category || 'general',
           question: faq.question,
@@ -589,11 +584,10 @@ app.post('/api/helpos/faqs/bulk-import', requirePlatformStaff, async (req: Authe
         // Generate embedding
         const embeddingResponse = await bulkEmbeddingClient.embeddings.create({
           model: 'text-embedding-3-small',
-          input: `${(validated as any).question} ${(validated as any).answer}`,
+          input: `${(validated as Record<string,unknown>).question} ${(validated as Record<string,unknown>).answer}`,
         });
 
         // Create FAQ
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const [created] = await db.insert(helposFaqs).values({
           ...validated,
           embeddingVector: JSON.stringify(embeddingResponse.data[0].embedding),
@@ -611,7 +605,7 @@ app.post('/api/helpos/faqs/bulk-import', requirePlatformStaff, async (req: Authe
     if (createdFaqs.length > 0) {
       try {
         const { tokenManager } = await import('../services/billing/tokenManager');
-        await (tokenManager as any).deductSupportPoolCredits('faq_embedding', 'FAQ Bulk Import Embeddings', wsId || undefined);
+        await (tokenManager as Record<string,unknown>).deductSupportPoolCredits('faq_embedding', 'FAQ Bulk Import Embeddings', wsId || undefined);
       } catch (billingErr: unknown) {
         log.error('[FAQ AI] Support pool deduction failed:', billingErr);
       }
@@ -747,7 +741,7 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
       try {
         const jsonMatch = geminiResponse.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           rankings = parsed.rankings || [];
         }
       } catch (parseError) {
@@ -869,9 +863,8 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
     // Bill to shared platform support pool (not individual org)
     try {
       const { tokenManager } = await import('../services/billing/tokenManager');
-      await (tokenManager as any).deductSupportPoolCredits('faq_search', 'FAQ AI Search', wsId || undefined);
+      await (tokenManager as Record<string,unknown>).deductSupportPoolCredits('faq_search', 'FAQ AI Search', wsId || undefined);
     } catch (billingErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.warn('[FAQ] Support pool billing failed (non-blocking):', billingErr.message);
     }
 

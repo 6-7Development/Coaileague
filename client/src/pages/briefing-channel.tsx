@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef } from "react";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
@@ -88,9 +89,7 @@ function BriefingCard({ post }: { post: BriefingPost }) {
     setTtsLoading(true);
     try {
       const ttsText = `${post.title}. ${post.message.replace(/\n/g, ' ')}`;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const blob = await apiRequest("POST", "/api/voice/tts", { text: ttsText, voice: "alloy" }, { responseType: 'blob' });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioRef.current = audio;
@@ -119,7 +118,7 @@ function BriefingCard({ post }: { post: BriefingPost }) {
     >
       {/* Category Header */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 bg-muted/20">
-        <TrinityLogo size={16} />
+        <TrinityAnimatedLogo size={16} />
         <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
           {category}
         </span>
@@ -184,7 +183,7 @@ function BriefingCard({ post }: { post: BriefingPost }) {
             onClick={handleAskTrinity}
             data-testid={`briefing-ask-trinity-${post.id}`}
           >
-            <TrinityLogo size={12} />
+            <TrinityAnimatedLogo size={12} />
             <span className="ml-1">Ask Trinity</span>
           </Button>
           <Button
@@ -280,12 +279,12 @@ export default function BriefingChannelPage() {
             onClick={handleAskTrinityForBriefing}
             data-testid="button-briefing-ask-trinity"
           >
-            <TrinityLogo size={14} />
+            <TrinityAnimatedLogo size={14} />
             <span className="ml-1.5">Ask for briefing</span>
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Briefing Refresh"
             className="h-8 w-8"
             onClick={handleRefresh}
             disabled={isFetching}
@@ -340,7 +339,7 @@ export default function BriefingChannelPage() {
                 onClick={handleAskTrinityForBriefing}
                 data-testid="button-briefing-request-now"
               >
-                <TrinityLogo size={14} />
+                <TrinityAnimatedLogo size={14} />
                 <span className="ml-1.5">Request briefing now</span>
               </Button>
             </div>

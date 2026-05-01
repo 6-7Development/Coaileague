@@ -118,7 +118,6 @@ export const orchestratedDocumentExtraction = {
   ) {
     return automationOrchestration.executeAutomation(
       {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         domain: 'document_processing',
         automationName: 'ai-document-extraction',
         automationType: 'document_processing',
@@ -158,16 +157,13 @@ export const orchestratedDocumentExtraction = {
             type: 'automation_completed',
             category: 'automation',
             title: 'Document Extraction Complete',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             description: `Extracted ${documentType} "${documentName}" — ${Math.round((result.confidence || 0) * 100)}% confidence`,
             workspaceId: ctx.workspaceId,
             metadata: {
               orchestrationId: ctx.orchestrationId,
               documentName,
               documentType,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               confidence: result.confidence,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               status: result.status,
               source: 'documentExtraction',
             },
@@ -190,7 +186,7 @@ export async function executeWithEscalation<T>(
     creditCost?: number;
   }
 ): Promise<T> {
-  const domain = (options?.domain || 'general') as any;
+  const domain = (options?.domain || 'general') as unknown;
   const maxRetries = options?.maxRetries ?? 2;
 
   const result = await automationOrchestration.executeAutomation(
@@ -252,7 +248,6 @@ export async function executeWithEscalation<T>(
   };
 
   const ticketId = await createHumanReviewTicket(
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     pipelineCtx,
     new Error(result.error || 'Operation failed after retry'),
     pipelineCtx.escalationHistory

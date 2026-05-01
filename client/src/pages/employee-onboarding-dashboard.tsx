@@ -77,7 +77,7 @@ interface WorkspaceOnboardingOverview {
   employeeStatuses: EmployeeOnboardingStatus[];
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   not_started: { label: "Not Started", color: "secondary", icon: Clock },
   uploaded: { label: "Uploaded", color: "outline", icon: FileText },
   pending_review: { label: "Pending Review", color: "secondary", icon: Clock },

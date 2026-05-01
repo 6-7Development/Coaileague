@@ -88,7 +88,6 @@ class OnboardingQuickBooksFlow {
     }});
 
     platformEventBus.subscribe('partner_sync_complete', { name: 'OnboardingQBFlow-PartnerSyncComplete', handler: async (event) => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const flow = this.getFlowByWorkspace(event.workspaceId);
       if (flow && flow.stage === 'initial_sync_running') {
         await this.handleSyncComplete(flow.flowId, event.payload || {});
@@ -97,7 +96,7 @@ class OnboardingQuickBooksFlow {
   }
 
   private registerActions() {
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_start',
       name: 'Start QuickBooks Onboarding Flow',
       category: 'integrations',
@@ -110,12 +109,12 @@ class OnboardingQuickBooksFlow {
         },
         required: ['workspaceId', 'userId'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return await this.initiateOAuth(params.workspaceId, params.userId);
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_status',
       name: 'Get QuickBooks Flow Status',
       category: 'integrations',
@@ -127,7 +126,7 @@ class OnboardingQuickBooksFlow {
         },
         required: ['workspaceId'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         const flow = this.getFlowByWorkspace(params.workspaceId);
         if (!flow) {
           return { success: false, message: 'No active flow found' };
@@ -136,7 +135,7 @@ class OnboardingQuickBooksFlow {
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_retry_stage',
       name: 'Retry Failed Flow Stage',
       category: 'integrations',
@@ -148,12 +147,12 @@ class OnboardingQuickBooksFlow {
         },
         required: ['flowId'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return await this.retryFailedStage(params.flowId);
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_configure',
       name: 'Configure Automation Settings',
       category: 'integrations',
@@ -168,7 +167,7 @@ class OnboardingQuickBooksFlow {
         },
         required: ['flowId'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         const flow = this.flows.get(params.flowId);
         if (!flow) {
           return { success: false, message: 'Flow not found' };
@@ -184,7 +183,7 @@ class OnboardingQuickBooksFlow {
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_skip_stage',
       name: 'Skip Optional Stage',
       category: 'integrations',
@@ -197,12 +196,12 @@ class OnboardingQuickBooksFlow {
         },
         required: ['flowId', 'stage'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return await this.skipStage(params.flowId, params.stage as FlowStage);
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_stats',
       name: 'Get QuickBooks Flow Statistics',
       category: 'integrations',
@@ -216,7 +215,7 @@ class OnboardingQuickBooksFlow {
       },
     });
 
-    (helpaiOrchestrator as any).registerAction({
+    (helpaiOrchestrator as Record<string,unknown>).registerAction({
       actionId: 'quickbooks.flow_reset',
       name: 'Reset QuickBooks Flow',
       category: 'integrations',
@@ -228,7 +227,7 @@ class OnboardingQuickBooksFlow {
         },
         required: ['workspaceId'],
       },
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return await this.resetFlow(params.workspaceId);
       },
     });
@@ -357,7 +356,7 @@ class OnboardingQuickBooksFlow {
         flow.stage = 'flow_failed';
         await this.persistFlow(flow);
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OnboardingQuickBooksFlow] Initial sync failed:`, error);
       flow.errors.push(`Initial sync failed: ${(error instanceof Error ? error.message : String(error))}`);
       flow.stage = 'flow_failed';
@@ -374,7 +373,7 @@ class OnboardingQuickBooksFlow {
     }
   }
 
-  private async handleSyncComplete(flowId: string, syncResult: any): Promise<void> {
+  private async handleSyncComplete(flowId: string, syncResult: unknown): Promise<void> {
     const flow = this.flows.get(flowId);
     if (!flow) return;
 
@@ -403,7 +402,7 @@ class OnboardingQuickBooksFlow {
       await this.persistFlow(flow);
 
       await this.importEmployees(flowId);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OnboardingQuickBooksFlow] Data mapping failed:`, error);
       flow.warnings.push(`Data mapping partially failed: ${(error instanceof Error ? error.message : String(error))}`);
       await this.importEmployees(flowId);
@@ -442,7 +441,7 @@ class OnboardingQuickBooksFlow {
       } else {
         await this.configureAutomation(flowId);
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OnboardingQuickBooksFlow] Employee import failed:`, error);
       flow.errors.push(`Employee import failed: ${(error instanceof Error ? error.message : String(error))}`);
       flow.stage = 'flow_failed';
@@ -477,7 +476,7 @@ class OnboardingQuickBooksFlow {
       });
 
       await this.configureAutomation(flowId);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OnboardingQuickBooksFlow] Schedule generation failed:`, error);
       flow.warnings.push(`Schedule generation skipped: ${(error instanceof Error ? error.message : String(error))}`);
       await this.configureAutomation(flowId);
@@ -500,7 +499,7 @@ class OnboardingQuickBooksFlow {
       await this.persistFlow(flow);
 
       await this.completeFlow(flowId);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OnboardingQuickBooksFlow] Automation configuration failed:`, error);
       flow.warnings.push(`Automation partially configured: ${(error instanceof Error ? error.message : String(error))}`);
       await this.completeFlow(flowId);
@@ -531,7 +530,6 @@ class OnboardingQuickBooksFlow {
           flowId,
           importedEmployeeCount: flow.importedEmployeeCount,
           automationSettings: flow.automationSettings,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           durationMs: flow.completedAt.getTime() - flow.startedAt.getTime(),
         },
       }),
@@ -647,7 +645,7 @@ class OnboardingQuickBooksFlow {
         message: 'QuickBooks onboarding flow reset. You can now start a fresh migration.',
         clearedFlows: Math.max(clearedCount, dbDeletedCount),
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[OnboardingQuickBooksFlow] Reset failed:', error);
       return {
         success: false,
@@ -708,7 +706,7 @@ class OnboardingQuickBooksFlow {
   }
 
 
-  private serializeFlowData(flow: QuickBooksFlowState): Record<string, any> {
+  private serializeFlowData(flow: QuickBooksFlowState): Record<string, unknown> {
     return {
       flowId: flow.flowId,
       workspaceId: flow.workspaceId,
@@ -787,7 +785,7 @@ class OnboardingQuickBooksFlow {
       });
       
       for (const row of activeFlows) {
-        const rawData = row.flowData as Record<string, any>;
+        const rawData = row.flowData as Record<string, unknown>;
         if (rawData) {
           const flow: QuickBooksFlowState = {
             flowId: rawData.flowId || row.id,
@@ -940,7 +938,7 @@ class OnboardingQuickBooksFlow {
 
           results.imported++;
           log.info(`[QB Import] Imported employee: ${emp.firstName} ${emp.lastName}`);
-        } catch (error: any) {
+        } catch (error : unknown) {
           results.errors.push(`${emp.displayName}: ${(error instanceof Error ? error.message : String(error))}`);
           results.failed++;
         }

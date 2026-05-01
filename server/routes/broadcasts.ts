@@ -18,7 +18,6 @@ import { createLogger } from '../lib/logger';
 const log = createLogger('Broadcasts');
 
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -47,7 +46,6 @@ async function getUserInfo(req: AuthenticatedRequest) {
   const userId = req.user?.id || req.session?.userId || req.session?.passport?.user?.id;
   let workspaceId = req.workspaceId || req.user?.currentWorkspaceId || req.user?.workspaceId || req.session?.passport?.user?.workspaceId;
   let employeeId = req.employeeId || req.user?.employeeId || req.session?.passport?.user?.employeeId;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   let role = req.workspaceRole || req.user?.role || (req.user)?.workspaceRole || (req.user)?.platformRole || req.session?.passport?.user?.role;
 
   const ambiguousRoles = ['org_admin', 'org_owner', 'support_agent'];
@@ -164,7 +162,6 @@ const submitFeedbackSchema = z.object({
  * Create org-level broadcast
  * POST /api/broadcasts
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', 'department_manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const validated = createBroadcastSchema.parse(req.body);
@@ -200,8 +197,8 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
       // Opt-in via `smsChannel: true` in the body. For workspace-wide broadcasts
       // or larger targeting (>10 recipients), Twilio rate limits mandate queuing.
       try {
-        const smsChannel = (req.body as any)?.smsChannel === true;
-        const smsBody = ((req.body as any)?.smsBody || validated.message || '').toString().slice(0, 320);
+        const smsChannel = (req.body as unknown)?.smsChannel === true;
+        const smsBody = ((req.body as unknown)?.smsBody || validated.message || '').toString().slice(0, 320);
         if (smsChannel && smsBody && !validated.isDraft) {
           const { rows: recipients } = await pool.query(
             `SELECT id, phone FROM employees
@@ -210,7 +207,7 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
           );
           if (recipients.length > 10) {
             const { queueSMS } = await import('../services/sms/smsQueueService');
-            const messages = recipients.map((r: any) => ({
+            const messages = recipients.map((r: unknown) => ({
               workspaceId,
               to: r.phone,
               body: smsBody,
@@ -222,7 +219,7 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
             log.info(`[Broadcast] Queued ${result.queued} SMS messages via outbox`);
           }
         }
-      } catch (smsErr: any) {
+      } catch (smsErr : unknown) {
         log.warn('[BroadcastRoutes] SMS dispatch failed (non-fatal):', smsErr?.message);
       }
     }
@@ -249,14 +246,13 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
  * List broadcasts for org
  * GET /api/broadcasts
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
     const broadcasts = await broadcastService.getBroadcasts({
       workspaceId,
-      type: req.query.type as any,
-      priority: req.query.priority as any,
+      type: req.query.type as unknown,
+      priority: req.query.priority as unknown,
       isActive: req.query.isActive === 'true',
       includeDrafts: req.query.includeDrafts === 'true',
       includeExpired: req.query.includeExpired === 'true',
@@ -275,7 +271,6 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
  * Get broadcasts for current employee
  * GET /api/broadcasts/my
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/my', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId } = await getUserInfo(req);
@@ -299,13 +294,12 @@ router.get('/my', requireAuth, async (req: AuthenticatedRequest, res) => {
  * GET /api/broadcasts/briefing
  * Access: org_owner, co_owner, manager, department_manager only
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/briefing', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', 'department_manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
     const broadcasts = await broadcastService.getBroadcasts({
       workspaceId,
-      type: 'briefing' as any,
+      type: 'briefing',
       isActive: true,
       includeDrafts: false,
       includeExpired: false,
@@ -323,12 +317,11 @@ router.get('/briefing', requireAuth, requireRole(['org_owner', 'co_owner', 'mana
  * List all platform broadcasts (for admin dashboard)
  * GET /api/broadcasts/platform
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/platform', requireAuth, requireRole(['sysop', 'root_admin', 'deputy_admin', 'support_agent', 'support_manager']), async (req, res) => {
   try {
     const broadcasts = await broadcastService.getBroadcasts({
       workspaceId: undefined,
-      type: req.query.type as any,
+      type: req.query.type as unknown,
       isActive: req.query.isActive === 'true',
       includeDrafts: true,
       includeExpired: true,
@@ -348,7 +341,6 @@ router.get('/platform', requireAuth, requireRole(['sysop', 'root_admin', 'deputy
  * Get broadcast by ID with stats and recipient info for current user
  * GET /api/broadcasts/:id
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userInfo = await getUserInfo(req);
@@ -381,8 +373,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
  * Get broadcast stats
  * GET /api/broadcasts/:id/stats
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
-router.get('/:id/stats', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: any, res) => {
+router.get('/:id/stats', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
     const broadcast = await broadcastService.getBroadcastById(req.params.id);
@@ -401,8 +392,7 @@ router.get('/:id/stats', requireAuth, requireRole(['org_owner', 'co_owner', 'man
  * Update broadcast
  * PATCH /api/broadcasts/:id
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
-router.patch('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: any, res) => {
+router.patch('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
     const existing = await broadcastService.getBroadcastById(req.params.id);
@@ -427,8 +417,7 @@ router.patch('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager
  * Deactivate/delete broadcast
  * DELETE /api/broadcasts/:id
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
-router.delete('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: any, res) => {
+router.delete('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = await getUserInfo(req);
     const existing = await broadcastService.getBroadcastById(req.params.id);
@@ -456,7 +445,6 @@ router.delete('/:id', requireAuth, requireRole(['org_owner', 'co_owner', 'manage
  * Mark broadcast as read
  * POST /api/broadcasts/:id/read
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/:id/read', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId } = await getUserInfo(req);
@@ -472,7 +460,6 @@ router.post('/:id/read', requireAuth, async (req: AuthenticatedRequest, res) => 
  * Acknowledge broadcast
  * POST /api/broadcasts/:id/acknowledge
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/:id/acknowledge', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId } = await getUserInfo(req);
@@ -492,7 +479,6 @@ router.post('/:id/acknowledge', requireAuth, async (req: AuthenticatedRequest, r
  * Dismiss broadcast
  * POST /api/broadcasts/:id/dismiss
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/:id/dismiss', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeId } = await getUserInfo(req);
@@ -511,7 +497,6 @@ router.post('/:id/dismiss', requireAuth, async (req: AuthenticatedRequest, res) 
  * Submit feedback for a broadcast
  * POST /api/broadcasts/:id/feedback
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/:id/feedback', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const validated = submitFeedbackSchema.parse(req.body);
@@ -545,7 +530,6 @@ router.post('/:id/feedback', requireAuth, async (req: AuthenticatedRequest, res)
  * POST /api/broadcasts/platform
  * Requires platform admin or support role
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/platform', requireAuth, requireRole(['root_admin', 'sysop', 'support_manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const validated = createBroadcastSchema.parse(req.body);
@@ -591,7 +575,6 @@ router.post('/platform', requireAuth, requireRole(['root_admin', 'sysop', 'suppo
  * List feedback responses for a broadcast
  * GET /api/broadcasts/:id/feedback
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/:id/feedback', requireAuth, requireRole(['org_owner', 'co_owner', 'org_admin', 'sysop', 'root_admin']), async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;

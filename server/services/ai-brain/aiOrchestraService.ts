@@ -50,8 +50,8 @@ export interface TaskRequest {
   workspaceId: string;
   userId?: string;
   taskType: string;
-  input: Record<string, any>;
-  context?: Record<string, any>;
+  input: Record<string, unknown>;
+  context?: Record<string, unknown>;
   priority?: number;
   forceProvider?: AIProvider;
   forceModelId?: string;
@@ -60,7 +60,7 @@ export interface TaskRequest {
 export interface TaskResult {
   success: boolean;
   taskId: string;
-  output?: Record<string, any>;
+  output?: Record<string, unknown>;
   content?: string;
   confidenceScore?: number;
   modelUsed: string;
@@ -127,7 +127,6 @@ class AIOrchestrationService {
     for (const model of models) {
       try {
         await db.insert(aiModels)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .values({
             workspaceId: PLATFORM_WORKSPACE_ID,
             ...model,
@@ -161,7 +160,6 @@ class AIOrchestrationService {
     for (const taskType of taskTypes) {
       try {
         await db.insert(aiTaskTypes)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .values({
             workspaceId: PLATFORM_WORKSPACE_ID,
             ...taskType,
@@ -291,10 +289,9 @@ class AIOrchestrationService {
         result.fallbacksUsed = fallbacksUsed;
         return result;
 
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.error(`[AIOrchestra] Model ${model.modelName} failed:`, (error instanceof Error ? error.message : String(error)));
         
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(aiExecutionLog).values({
           taskId: queueEntry.id,
           workspaceId: request.workspaceId,
@@ -349,7 +346,7 @@ class AIOrchestrationService {
         case 'openai':
           const openaiResult = await openaiClient.generate({
             prompt,
-            modelId: model.modelName as any,
+            modelId: model.modelName as unknown,
             systemPrompt: 'You are an AI assistant for a workforce management platform. Be precise, professional, and helpful.',
           });
           response = {
@@ -363,7 +360,7 @@ class AIOrchestrationService {
         case 'anthropic':
           const claudeResult = await claudeService.processRequest({
             task: prompt,
-            taskType: request.taskType as any,
+            taskType: request.taskType as string,
             context: { sessionId: taskId, workspaceId: request.workspaceId, userId: request.userId, task: prompt },
           });
           response = {
@@ -394,7 +391,6 @@ class AIOrchestrationService {
       const latencyMs = Date.now() - startTime;
       const confidenceScore = this.calculateConfidence(response.content, request);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(aiExecutionLog).values({
         taskId,
         workspaceId: request.workspaceId,
@@ -454,15 +450,11 @@ class AIOrchestrationService {
     }
 
     const chains = await db.select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiFallbackChains)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiFallbackChains.taskTypeId, taskType.id),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiFallbackChains.isActive, true)
       ))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(asc(aiFallbackChains.sequenceOrder));
 
     if (chains.length > 0) {
@@ -490,7 +482,7 @@ class AIOrchestrationService {
       const models = await db.select()
         .from(aiModels)
         .where(and(
-          eq(aiModels.provider, provider as any),
+          eq(aiModels.provider, provider as unknown),
           eq(aiModels.isActive, true)
         ));
       
@@ -587,7 +579,7 @@ class AIOrchestrationService {
         avgLatencyMs: health.avgLatency24hMs ?? 0,
         successRate: parseFloat(health.successRate24h?.toString() || '1'),
         errorCount1h: health.errorCount1h ?? 0,
-        status: (health as any).status || 'healthy',
+        status: (health as Record<string,unknown>).status || 'healthy',
       };
     } catch (error) {
       return null;
@@ -606,7 +598,7 @@ class AIOrchestrationService {
         .where(eq(aiModelHealth.modelId, modelId));
 
       if (existing) {
-        const updates: any = { updatedAt: new Date() };
+        const updates: Record<string, unknown> = { updatedAt: new Date() };
         
         if (success) {
           updates.lastSuccessAt = new Date();
@@ -624,7 +616,6 @@ class AIOrchestrationService {
           .where(eq(aiModelHealth.modelId, modelId));
       } else {
         await db.insert(aiModelHealth).values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: 'system',
           modelId,
           isHealthy: success,
@@ -708,7 +699,7 @@ class AIOrchestrationService {
       avgLatencyMs: r.ai_model_health.avgLatency24hMs ?? 0,
       successRate: parseFloat(r.ai_model_health.successRate24h?.toString() || '1'),
       errorCount1h: r.ai_model_health.errorCount1h ?? 0,
-      status: (r.ai_model_health.status as any) || 'healthy',
+      status: (r.ai_model_health.status as unknown) || 'healthy',
     }));
   }
 }
@@ -732,7 +723,7 @@ export { metaCognitionService };
 
 export async function executeWithMetaCognition(
   request: TaskRequest
-): Promise<{ taskResult: TaskResult; metaCognition?: any }> {
+): Promise<{ taskResult: TaskResult; metaCognition?: unknown }> {
   const taskResult = await aiOrchestrationService.executeTask(request);
   
   // Convert task result to model response format for meta-cognition

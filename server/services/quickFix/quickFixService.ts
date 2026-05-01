@@ -297,7 +297,7 @@ class QuickFixService {
   async requestQuickFix(
     context: QuickFixContext,
     actionCode: string,
-    payload?: Record<string, any>,
+    payload?: Record<string, unknown>,
     aiRecommendation?: { id: string; confidence: number; reasoning: string }
   ): Promise<{ success: boolean; requestId?: string; status: string; message: string }> {
     // Find the action
@@ -465,7 +465,7 @@ class QuickFixService {
   async executeQuickFix(
     requestId: string,
     executorContext: QuickFixContext
-  ): Promise<{ success: boolean; message: string; result?: any }> {
+  ): Promise<{ success: boolean; message: string; result?: unknown }> {
     try {
       const requests = await db
         .select()
@@ -499,7 +499,7 @@ class QuickFixService {
       const startTime = Date.now();
 
       // Execute the fix based on action code
-      let result: any;
+      let result: unknown;
       let success = true;
       let changesSummary = '';
 
@@ -511,7 +511,7 @@ class QuickFixService {
 
         case 'restart_service':
           result = await this.executeRestartService(request.payloadJson);
-          changesSummary = `Service restarted: ${(request as any).payloadJson?.serviceName || 'unknown'}`;
+          changesSummary = `Service restarted: ${(request as Record<string,unknown>).payloadJson?.serviceName || 'unknown'}`;
           break;
 
         case 'refresh_connections':
@@ -521,7 +521,7 @@ class QuickFixService {
 
         case 'force_logout_user':
           result = await this.executeForceLogout(request.payloadJson);
-          changesSummary = `User sessions invalidated: ${(request as any).payloadJson?.targetUserId}`;
+          changesSummary = `User sessions invalidated: ${(request as Record<string,unknown>).payloadJson?.targetUserId}`;
           break;
 
         default:
@@ -576,7 +576,7 @@ class QuickFixService {
   }
 
   // Action executors
-  private async executeClearCache(payload: any): Promise<any> {
+  private async executeClearCache(payload: unknown): Promise<unknown> {
     const cacheType = payload?.cacheType || 'all';
     log.info(`[QuickFix] Clearing cache: ${cacheType}`);
     try {
@@ -589,13 +589,13 @@ class QuickFixService {
     }
   }
 
-  private async executeRestartService(payload: any): Promise<any> {
+  private async executeRestartService(payload: unknown): Promise<unknown> {
     const serviceName = payload?.serviceName;
     log.info(`[QuickFix] Service restart requested: ${serviceName}`);
     return { service: serviceName, restarted: false, note: 'Service restart requires manual deployment action', timestamp: new Date().toISOString() };
   }
 
-  private async executeRefreshConnections(): Promise<any> {
+  private async executeRefreshConnections(): Promise<unknown> {
     log.info('[QuickFix] Verifying database connections');
     try {
       const { pool } = await import('../../db');
@@ -608,7 +608,7 @@ class QuickFixService {
     }
   }
 
-  private async executeForceLogout(payload: any): Promise<any> {
+  private async executeForceLogout(payload: unknown): Promise<unknown> {
     const targetUserId = payload?.targetUserId;
     log.info(`[QuickFix] Force logout user: ${targetUserId}`);
     if (!targetUserId) {

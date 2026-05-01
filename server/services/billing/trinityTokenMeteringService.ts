@@ -149,7 +149,7 @@ export class TrinityTokenMeteringService {
         !shouldBill, // free tenants: mark billed immediately (no invoice needed)
       ]);
     } catch (err: unknown) {
-      log.error('[TrinityTokenMetering] insert failed (non-fatal):', (err as any)?.message);
+      log.error('[TrinityTokenMetering] insert failed (non-fatal):', (err as Error)?.message);
     }
 
     return usage;
@@ -335,7 +335,7 @@ export class TrinityTokenMeteringService {
 
       return { totalTokensThisPeriod, softCapPercent: Math.round(softCapPercent * 10) / 10, billingStatus };
     } catch (err: unknown) {
-      log.warn('[TrinityTokenMetering] getBudget failed (non-fatal):', (err as any)?.message);
+      log.warn('[TrinityTokenMetering] getBudget failed (non-fatal):', (err as Error)?.message);
       return { totalTokensThisPeriod: 0, softCapPercent: 0, billingStatus };
     }
   }
@@ -378,7 +378,7 @@ export class TrinityTokenMeteringService {
 
       return { byModelTier, periodStart: periodStartStr, billingStatus };
     } catch (err: unknown) {
-      log.warn('[TrinityTokenMetering] getModelTierBreakdown failed:', (err as any)?.message);
+      log.warn('[TrinityTokenMetering] getModelTierBreakdown failed:', (err as Error)?.message);
       return { byModelTier: [], periodStart: periodStartStr, billingStatus };
     }
   }

@@ -304,9 +304,8 @@ export async function aggregateBillableHours(params: {
         billingRate: resolved.billingRate,
         amount: totalAmount,
         rateSource: resolved.rateSource,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         manuallyEdited: timeEntry.manuallyEdited || false,
-        manualEditReason: (timeEntry as any).manualEditReason || null,
+        manualEditReason: (timeEntry as Record<string,unknown>).manualEditReason || null,
       });
     }
   }
@@ -331,7 +330,6 @@ export async function aggregateBillableHours(params: {
         .select({ id: clients.id, companyName: clients.companyName })
         .from(clients)
         .where(inArray(clients.id, recoveredClientIds));
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       recoveredClientNames = new Map(recoveredClients.map(c => [c.id, c.companyName]));
     }
 
@@ -397,8 +395,8 @@ export async function aggregateBillableHours(params: {
         billingRate: entry.billingRate,
         amount: entry.amount,
         rateSource: entry.rateSource,
-        manuallyEdited: (entry as any).manuallyEdited || false,
-        manualEditReason: (entry as any).manualEditReason || null,
+        manuallyEdited: (entry as Record<string,unknown>).manuallyEdited || false,
+        manualEditReason: (entry as Record<string,unknown>).manualEditReason || null,
       };
     });
 

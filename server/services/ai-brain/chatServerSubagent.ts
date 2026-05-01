@@ -164,7 +164,7 @@ class ChatServerHealthManager {
   private subscribeToEvents(): void {
     platformEventBus.subscribe('ai_error', {
       name: 'ChatServerSubagent',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         this.errorCount++;
         if (event.data?.skill?.includes('chat') || event.data?.conversationId) {
           await this.handleAIError(event);
@@ -174,7 +174,7 @@ class ChatServerHealthManager {
 
     platformEventBus.subscribe('chat_message', {
       name: 'ChatServerSubagent',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         this.messageCount++;
         await this.handleChatEvent(event);
       }
@@ -185,7 +185,7 @@ class ChatServerHealthManager {
     this.diagnosticInterval = setInterval(async () => {
       try {
         await this.runDiagnostics();
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[ChatServerSubagent] Diagnostics failed (will retry):', error?.message || 'unknown');
       }
     }, 60000);
@@ -400,7 +400,7 @@ class ChatServerHealthManager {
       this.selfAwareness.currentState = 'idle';
       return true;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       action.status = 'failed';
       action.completedAt = new Date();
       action.result = `Self-healing failed: ${(error instanceof Error ? error.message : String(error))}`;
@@ -471,7 +471,6 @@ class ChatServerHealthManager {
         category: 'bugfix',
         priority: report.status === 'critical' ? 5 : 3,
         metadata: {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: report.status === 'critical' ? 'critical' : 'warning',
           issues: report.issues,
           recommendedActions: this.getRecommendedActions(report)
@@ -601,7 +600,7 @@ class ChatServerHealthManager {
   // EVENT HANDLERS
   // ============================================================================
 
-  private async handleChatEvent(event: any): Promise<void> {
+  private async handleChatEvent(event: unknown): Promise<void> {
     if (event.type === 'ai_error' || event.type === 'ai_timeout') {
       const issue = this.createIssue(
         'bot',
@@ -612,7 +611,7 @@ class ChatServerHealthManager {
     }
   }
 
-  private async handleAIError(event: any): Promise<void> {
+  private async handleAIError(event: unknown): Promise<void> {
     log.info(`[ChatServerSubagent] Detected AI error in chat context:`, event.data?.errorMessage);
   }
 

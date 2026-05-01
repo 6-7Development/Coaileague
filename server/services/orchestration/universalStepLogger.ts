@@ -32,7 +32,7 @@ const log = createLogger('universalStepLogger');
 
 
 // Import execution tracker dynamically to avoid circular deps
-let executionTracker: any = null;
+let executionTracker: unknown = null;
 const getExecutionTracker = async () => {
   if (!executionTracker) {
     const mod = await import('./automationExecutionTracker');
@@ -81,11 +81,11 @@ export interface StepLogEntry {
   startedAt: Date;
   completedAt?: Date;
   durationMs?: number;
-  inputPayload?: Record<string, any>;
-  outputPayload?: Record<string, any>;
+  inputPayload?: Record<string, unknown>;
+  outputPayload?: Record<string, unknown>;
   error?: string;
   errorCode?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface OrchestrationContext {
@@ -96,7 +96,7 @@ export interface OrchestrationContext {
   workspaceId: string;
   userId?: string;
   triggeredBy: 'user' | 'cron' | 'event' | 'api' | 'ai_brain' | 'webhook';
-  triggerDetails?: Record<string, any>;
+  triggerDetails?: Record<string, unknown>;
   requiredFeature?: string;
   requiredTier?: FeatureTier;
   requiresApproval?: boolean;
@@ -104,7 +104,7 @@ export interface OrchestrationContext {
   parentOrchestrationId?: string;
   steps: StepLogEntry[];
   status: 'in_progress' | 'completed' | 'failed' | 'pending_approval' | 'rejected';
-  stagedPayload?: Record<string, any>;
+  stagedPayload?: Record<string, unknown>;
   idempotencyKey?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -117,7 +117,7 @@ export interface StartOrchestrationParams {
   workspaceId: string;
   userId?: string;
   triggeredBy: OrchestrationContext['triggeredBy'];
-  triggerDetails?: Record<string, any>;
+  triggerDetails?: Record<string, unknown>;
   requiredFeature?: string;
   requiredTier?: FeatureTier;
   requiresApproval?: boolean;
@@ -127,7 +127,7 @@ export interface StartOrchestrationParams {
 
 export interface StepResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   errorCode?: string;
   blockedReason?: string;
@@ -228,7 +228,7 @@ class UniversalStepLogger {
         if (this.activeLocks.get(lockKey) === orchestrationId) {
           this.activeLocks.delete(lockKey);
           // Mark completed in idempotency service to free the key
-          (idempotencyService as any).markCompleted(lockKey, 'released');
+          (idempotencyService as Record<string,unknown>).markCompleted(lockKey, 'released');
         }
       }
       this.heldLockKeys.delete(orchestrationId);
@@ -330,7 +330,7 @@ class UniversalStepLogger {
       let expired = 0;
 
       for (const entry of stateEntries) {
-        const meta = entry.metadata as Record<string, any>;
+        const meta = entry.metadata as Record<string, unknown>;
         if (!meta?.orchestrationId) continue;
 
         if (this.orchestrations.has(meta.orchestrationId)) continue;
@@ -502,7 +502,7 @@ class UniversalStepLogger {
     step: OrchestrationStep,
     executor: () => Promise<StepResult>,
     options?: {
-      inputPayload?: Record<string, any>;
+      inputPayload?: Record<string, unknown>;
       validateSubscription?: boolean;
       acquireLock?: string;
       skipOnPreviousFailure?: boolean;
@@ -636,11 +636,11 @@ class UniversalStepLogger {
         this.activeLocks.delete(lockKey);
         const heldKeys = this.heldLockKeys.get(orchestrationId);
         if (heldKeys) heldKeys.delete(lockKey);
-        (idempotencyService as any).markCompleted(lockKey, 'released');
+        (idempotencyService as Record<string,unknown>).markCompleted(lockKey, 'released');
       }
       
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       stepEntry.completedAt = new Date();
       stepEntry.durationMs = stepEntry.completedAt.getTime() - stepEntry.startedAt.getTime();
       stepEntry.status = 'failed';
@@ -665,7 +665,7 @@ class UniversalStepLogger {
         this.activeLocks.delete(lockKey);
         const heldKeys = this.heldLockKeys.get(orchestrationId);
         if (heldKeys) heldKeys.delete(lockKey);
-        (idempotencyService as any).markCompleted(lockKey, 'released');
+        (idempotencyService as Record<string,unknown>).markCompleted(lockKey, 'released');
       }
       
       return { success: false, error: stepEntry.error, errorCode: 'UNHANDLED_EXCEPTION' };
@@ -675,7 +675,7 @@ class UniversalStepLogger {
   /**
    * Stage payload for approval (holds MUTATE until approved)
    */
-  async stagePayload(orchestrationId: string, payload: Record<string, any>): Promise<void> {
+  async stagePayload(orchestrationId: string, payload: Record<string, unknown>): Promise<void> {
     const context = this.orchestrations.get(orchestrationId);
     if (!context) {
       throw new Error('Orchestration not found');
@@ -700,7 +700,7 @@ class UniversalStepLogger {
       description: `Orchestration ${orchestrationId} in domain '${context.domain}' requires human approval`,
       workspaceId: context.workspaceId,
       metadata: { orchestrationId, domain: context.domain, actionName: context.actionName },
-    }).catch((err: any) => log.warn('[UniversalStepLogger] publish orchestration_pending_approval failed:', err.message));
+    }).catch((err: unknown) => log.warn('[UniversalStepLogger] publish orchestration_pending_approval failed:', err.message));
   }
 
   /**
@@ -756,13 +756,13 @@ class UniversalStepLogger {
       description: `Orchestration ${orchestrationId} rejected by ${rejectedBy}: ${reason}`,
       workspaceId: context.workspaceId,
       metadata: { orchestrationId, rejectedBy, reason, domain: context.domain, actionName: context.actionName },
-    }).catch((err: any) => log.warn('[UniversalStepLogger] publish orchestration_rejected failed:', err.message));
+    }).catch((err: unknown) => log.warn('[UniversalStepLogger] publish orchestration_rejected failed:', err.message));
   }
 
   /**
    * Complete orchestration successfully
    */
-  async completeOrchestration(orchestrationId: string, summary?: Record<string, any>): Promise<void> {
+  async completeOrchestration(orchestrationId: string, summary?: Record<string, unknown>): Promise<void> {
     const context = this.orchestrations.get(orchestrationId);
     if (!context) {
       throw new Error('Orchestration not found');
@@ -786,7 +786,7 @@ class UniversalStepLogger {
         const tracker = await getExecutionTracker();
         if (tracker) {
           // Derive itemsProcessed from common summary field names across all daemon types
-          const derived = summary as Record<string, any> | undefined;
+          const derived = summary as Record<string, unknown> | undefined;
           const itemsProcessed: number =
             derived?.itemsProcessed ??
             derived?.shiftsGenerated ??
@@ -913,8 +913,8 @@ class UniversalStepLogger {
     context: OrchestrationContext,
     step: OrchestrationStep,
     status: StepStatus,
-    inputPayload?: Record<string, any>,
-    outputPayload?: Record<string, any>,
+    inputPayload?: Record<string, unknown>,
+    outputPayload?: Record<string, unknown>,
     error?: string
   ): Promise<void> {
     const now = new Date();
@@ -1046,7 +1046,7 @@ class UniversalStepLogger {
       description: `Feature '${context.requiredFeature}' requires ${check.requiredTier} tier (workspace is on ${check.currentTier})`,
       workspaceId: context.workspaceId,
       metadata: { orchestrationId: context.orchestrationId, feature: context.requiredFeature, currentTier: check.currentTier, requiredTier: check.requiredTier, message: check.upsellMessage, domain: context.domain, actionName: context.actionName },
-    }).catch((err: any) => log.warn('[UniversalStepLogger] publish upsell_triggered failed:', err.message));
+    }).catch((err: unknown) => log.warn('[UniversalStepLogger] publish upsell_triggered failed:', err.message));
     
     log.info(`[UniversalStepLogger] Upsell triggered for ${context.requiredFeature}: ${check.currentTier} → ${check.requiredTier}`);
   }
@@ -1054,7 +1054,7 @@ class UniversalStepLogger {
   private async logToDatabase(
     context: OrchestrationContext,
     action: string,
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): Promise<void> {
     if (!context.workspaceId) {
       return;
@@ -1135,7 +1135,7 @@ export interface FullOrchestrationConfig<T> {
   onValidate: () => Promise<StepResult>;
   onProcess: () => Promise<StepResult>;
   onMutate: () => Promise<StepResult>;
-  onConfirm: (stagedData?: any) => Promise<StepResult>;
+  onConfirm: (stagedData?: unknown) => Promise<StepResult>;
   onNotify: () => Promise<StepResult>;
 }
 
@@ -1235,7 +1235,7 @@ export async function executeFullOrchestration<T>(
       orchestrationId: context.orchestrationId, 
       result: confirmResult.data as T 
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     await universalStepLogger.failOrchestration(context.orchestrationId, (error instanceof Error ? error.message : String(error)), 'UNHANDLED_EXCEPTION');
     return { success: false, orchestrationId: context.orchestrationId, error: (error instanceof Error ? error.message : String(error)) };
   }

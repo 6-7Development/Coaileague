@@ -14,7 +14,7 @@ const log = createLogger('atsRoutes');
 // CATEGORY C — All db.$client.query calls in this file use raw SQL for complex ATS operations | Tables: job_postings, applicants, interview_sessions, interview_session_messages | Verified: 2026-03-23
 const router = Router();
 
-function scoreApplicant(data: any): { score: number; rationale: string } {
+function scoreApplicant(data: Record<string, unknown>): { score: number; rationale: string } {
   let score = 0;
   const reasons: string[] = [];
   if (data.has_guard_card) {
@@ -86,7 +86,7 @@ router.patch("/postings/:id", requireAuth, async (req: AuthenticatedRequest, res
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
     const allowed = ['title','description','position_type','employment_type','status','pay_rate_min','pay_rate_max'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }
@@ -137,7 +137,7 @@ router.get("/applicants", requireAuth, async (req: AuthenticatedRequest, res) =>
                  FROM applicants a
                  LEFT JOIN job_postings jp ON jp.id = a.job_posting_id AND jp.workspace_id = $1
                  WHERE a.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (posting_id) { query += ` AND a.job_posting_id = $${i++}`; vals.push(posting_id); }
     if (status) { query += ` AND a.status = $${i++}`; vals.push(status); }
@@ -224,7 +224,7 @@ router.post("/applicants", requireAuth, async (req: AuthenticatedRequest, res) =
       description: `Trinity Score: ${score}/100. ${score >= 80 ? 'HIGH SCORE — Review recommended.' : ''}`,
       workspaceId: wid,
       metadata: { applicantId: id, score }
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     const r = await db.$client.query(`SELECT * FROM applicants WHERE id = $1 AND workspace_id = $2`, [id, wid]);
     res.status(201).json(r.rows[0]);
@@ -241,7 +241,7 @@ router.patch("/applicants/:id/status", requireAuth, async (req: AuthenticatedReq
     const { status, rejection_reason, notes } = req.body;
     if (!status) return res.status(400).json({ error: "status required" });
     const updates: string[] = ['status = $1'];
-    const vals: any[] = [status];
+    const vals: unknown[] = [status];
     let i = 2;
     if (rejection_reason) { updates.push(`rejection_reason = $${i++}`); vals.push(rejection_reason); }
     if (notes) { updates.push(`notes = $${i++}`); vals.push(notes); }
@@ -259,7 +259,7 @@ router.patch("/applicants/:id/status", requireAuth, async (req: AuthenticatedReq
         description: 'New hire triggers employee onboarding flow.',
         workspaceId: wid,
         metadata: { applicantId: req.params.id }
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
     const r = await db.$client.query(`SELECT * FROM applicants WHERE id = $1 AND workspace_id = $2`, [req.params.id, wid]);
     res.json(r.rows[0]);
@@ -308,7 +308,7 @@ router.patch("/interviews/:id/complete", requireAuth, async (req: AuthenticatedR
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
     const { rating, recommendation, notes } = req.body;
     const pgClient3 = await db.$client.connect();
-    let interviewRow: any;
+    let interviewRow: unknown;
     try {
       await pgClient3.query('BEGIN');
       await pgClient3.query(
@@ -382,7 +382,7 @@ router.post("/offers/:id/accept", requireAuth, async (req: AuthenticatedRequest,
     const wid = req.workspaceId!;
     if (!hasManagerAccess(req.workspaceRole || '')) return res.status(403).json({ error: "Manager access required" });
     const pgClient5 = await db.$client.connect();
-    let offerRow: any;
+    let offerRow: unknown;
     try {
       await pgClient5.query('BEGIN');
       await pgClient5.query(

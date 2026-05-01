@@ -202,7 +202,7 @@ function isSelf(context: FilterContext): boolean {
  * Filter sensitive fields from an employee record.
  * Pay rates stripped unless requester is owner/authorized role/self.
  */
-export function filterSensitiveFields<T extends Record<string, any>>(
+export function filterSensitiveFields<T extends Record<string, unknown>>(
   record: T,
   context: FilterContext
 ): T {
@@ -212,13 +212,13 @@ export function filterSensitiveFields<T extends Record<string, any>>(
 
   if (!canViewPayRates(context)) {
     for (const field of PAY_RATE_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
   if (!canViewSensitivePersonalInfo(context)) {
     for (const field of SENSITIVE_PERSONAL_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
@@ -228,7 +228,7 @@ export function filterSensitiveFields<T extends Record<string, any>>(
 /**
  * Filter sensitive fields from an array of employee records.
  */
-export function filterSensitiveFieldsArray<T extends Record<string, any>>(
+export function filterSensitiveFieldsArray<T extends Record<string, unknown>>(
   records: T[],
   context: FilterContext
 ): T[] {
@@ -240,20 +240,20 @@ export function filterSensitiveFieldsArray<T extends Record<string, any>>(
  * Filter employee record for API response.
  * Uses employee.userId as entityOwnerId for self-access check.
  */
-export function filterEmployeeForResponse<T extends Record<string, any>>(
+export function filterEmployeeForResponse<T extends Record<string, unknown>>(
   employee: T,
   context: FilterContext
 ): T {
   return filterSensitiveFields(employee, {
     ...context,
-    entityOwnerId: (employee as any).userId,
+    entityOwnerId: (employee as EmployeeWithStatus).userId,
   });
 }
 
 /**
  * Filter array of employee records for API response.
  */
-export function filterEmployeesForResponse<T extends Record<string, any>>(
+export function filterEmployeesForResponse<T extends Record<string, unknown>>(
   employees: T[],
   context: FilterContext
 ): T[] {
@@ -264,13 +264,13 @@ export function filterEmployeesForResponse<T extends Record<string, any>>(
 /**
  * Filter contractor records for API response.
  */
-export function filterContractorForResponse<T extends Record<string, any>>(
+export function filterContractorForResponse<T extends Record<string, unknown>>(
   contractor: T,
   context: FilterContext
 ): T {
   return filterSensitiveFields(contractor, {
     ...context,
-    entityOwnerId: (contractor as any).userId,
+    entityOwnerId: (contractor as Record<string,unknown>).userId,
   });
 }
 
@@ -285,7 +285,7 @@ export function filterContractorForResponse<T extends Record<string, any>>(
  * Managers retain: name, address, post orders, service type, officers required,
  *   client onboarding status, and all operational scheduling fields.
  */
-export function filterClientForResponse<T extends Record<string, any>>(
+export function filterClientForResponse<T extends Record<string, unknown>>(
   client: T,
   context: FilterContext
 ): T {
@@ -295,16 +295,16 @@ export function filterClientForResponse<T extends Record<string, any>>(
 
   if (!canViewClientFinancials(context)) {
     for (const field of CLIENT_FINANCIAL_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
     for (const field of CLIENT_INTEGRATION_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
   if (!canViewClientContactInfo(context)) {
     for (const field of CLIENT_CONTACT_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
@@ -314,7 +314,7 @@ export function filterClientForResponse<T extends Record<string, any>>(
 /**
  * Filter an array of client records for API response.
  */
-export function filterClientsForResponse<T extends Record<string, any>>(
+export function filterClientsForResponse<T extends Record<string, unknown>>(
   clients: T[],
   context: FilterContext
 ): T[] {
@@ -325,7 +325,7 @@ export function filterClientsForResponse<T extends Record<string, any>>(
 /**
  * Create filter context from an Express request object.
  */
-export function createFilterContext(req: any): FilterContext {
+export function createFilterContext(req: unknown): FilterContext {
   return {
     workspaceRole: req.workspaceRole || req.user?.workspaceRole,
     platformRole: req.platformRole || req.user?.platformRole,
@@ -337,7 +337,7 @@ export function createFilterContext(req: any): FilterContext {
 /**
  * Express middleware to attach filter context to the request.
  */
-export function attachFilterContext(req: any, res: any, next: () => void) {
+export function attachFilterContext(req: import("express").Request, res: import("express").Response, next: () => void) {
   req.filterContext = createFilterContext(req);
   next();
 }

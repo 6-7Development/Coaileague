@@ -38,7 +38,6 @@ export interface TrustLevelThresholds {
   new: { minSessions: 0; maxSessions: 2; minAvgConfidence: 0 };
   learning: { minSessions: 3; maxSessions: 9; minAvgConfidence: 0.4 };
   established: { minSessions: 10; maxSessions: 49; minAvgConfidence: 0.6 };
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   expert: { minSessions: 50; maxSessions: Infinity; minAvgConfidence: 0.75 };
 }
 
@@ -341,7 +340,7 @@ class TrinityConfidenceTracker {
       for (const turn of turns) {
         const results = turn.toolResults as any[] || [];
         totalToolCalls += results.length;
-        successfulToolCalls += results.filter((r: any) => r.success).length;
+        successfulToolCalls += results.filter((r: unknown) => r.success).length;
       }
 
       const knowledgeGapsDetected = turns.filter(t => t.knowledgeGapDetected).length;

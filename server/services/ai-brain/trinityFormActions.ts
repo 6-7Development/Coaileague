@@ -26,20 +26,17 @@ import { createLogger } from '../../lib/logger';
 
 const log = createLogger('trinityFormActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity form action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     },
@@ -77,7 +74,7 @@ export function registerFormActions() {
       const prefilled: Record<string, string> = {};
 
       // Resolve employee context
-      let emp: any = null;
+      let emp: unknown = null;
       if (employeeId) {
         const [row] = await db
           .select()
@@ -87,8 +84,8 @@ export function registerFormActions() {
       }
 
       // Resolve shift context
-      let shift: any = null;
-      let client: any = null;
+      let shift: unknown = null;
+      let client: unknown = null;
       if (shiftId) {
         const [shiftRow] = await db
           .select()
@@ -217,7 +214,7 @@ export function registerFormActions() {
               autoSubmitted: true,
             },
           });
-        } catch (notifErr: any) {
+        } catch (notifErr: unknown) {
           log.warn('[trinityFormActions] Notification failed (non-fatal):', notifErr?.message);
         }
       }
@@ -245,7 +242,7 @@ export function registerFormActions() {
 
       if (!workspaceId) return { error: 'workspaceId is required' };
 
-      const conditions: any[] = [eq(customFormSubmissions.workspaceId, workspaceId)];
+      const conditions: unknown[] = [eq(customFormSubmissions.workspaceId, workspaceId)];
       if (formId) conditions.push(eq(customFormSubmissions.formId, formId));
       if (employeeId) conditions.push(eq(customFormSubmissions.submittedBy, employeeId));
       if (status) conditions.push(eq(customFormSubmissions.status, status));

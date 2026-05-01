@@ -16,7 +16,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { requireAuth } from '../auth';
-import { requireWorkspaceRole } from '../rbac';
+import { requireWorkspaceRole, AuthenticatedRequest} from '../rbac';
 import { createLogger } from '../lib/logger';
 import { verifyClockInPin } from '../services/trinityVoice/clockInPinService';
 import { pinVerifyLimiter } from '../middleware/rateLimiter';
@@ -49,9 +49,8 @@ async function getEmployee(employeeId: string, workspaceId: string) {
 clockinPinRouter.post(
   '/:employeeId/pin/set',
   requireAuth,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   requireWorkspaceRole(['manager', 'owner', 'root_admin']),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { employeeId } = req.params;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -65,7 +64,7 @@ clockinPinRouter.post(
 
       const hash = await bcrypt.hash(pin.replace(/\D/g, ''), BCRYPT_ROUNDS);
       await pool.query(
-        `UPDATE employees SET clockin_pin_hash = $1 WHERE id = $2`,
+        `UPDATE employees SET clockin_pin_hash = $1 WHERE id = $2 AND workspace_id = $3`,
         [hash, employeeId],
       );
 
@@ -74,7 +73,7 @@ clockinPinRouter.post(
         message: `Clock-in PIN set for ${emp.first_name} ${emp.last_name}`,
         employeeNumber: emp.employee_number,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] set error:', err);
       res.status(500).json({ error: 'Failed to set PIN' });
     }
@@ -86,7 +85,7 @@ clockinPinRouter.post(
   '/:employeeId/pin/verify',
   requireAuth,
   pinVerifyLimiter,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { employeeId } = req.params;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -117,7 +116,7 @@ clockinPinRouter.post(
           lastName: emp.last_name,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] verify error:', err);
       res.status(500).json({ error: 'PIN verification failed', valid: false });
     }
@@ -129,7 +128,7 @@ clockinPinRouter.post(
   '/pin/verify-by-number',
   requireAuth,
   pinVerifyLimiter,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
       const { employeeNumber, pin } = req.body;
@@ -153,13 +152,13 @@ clockinPinRouter.post(
       res.json({
         valid: true,
         employee: {
-          id: result.employee!.id,
-          employeeNumber: result.employee!.employeeNumber,
-          firstName: result.employee!.firstName,
-          lastName: result.employee!.lastName,
+          id: result.employee?.id ?? '',
+          employeeNumber: result.employee?.employeeNumber ?? null,
+          firstName: result.employee?.firstName ?? '',
+          lastName: result.employee?.lastName ?? '',
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] verify-by-number error:', err);
       res.status(500).json({ error: 'PIN verification failed', valid: false });
     }
@@ -170,9 +169,8 @@ clockinPinRouter.post(
 clockinPinRouter.delete(
   '/:employeeId/pin',
   requireAuth,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   requireWorkspaceRole(['manager', 'owner', 'root_admin']),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { employeeId } = req.params;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -180,9 +178,9 @@ clockinPinRouter.delete(
       const emp = await getEmployee(employeeId, workspaceId);
       if (!emp) return res.status(404).json({ error: 'Employee not found' });
 
-      await pool.query(`UPDATE employees SET clockin_pin_hash = NULL WHERE id = $1`, [employeeId]);
+      await pool.query(`UPDATE employees SET clockin_pin_hash = NULL WHERE id = $1 AND workspace_id = $2`, [employeeId]);
       res.json({ success: true, message: 'PIN cleared' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] clear error:', err);
       res.status(500).json({ error: 'Failed to clear PIN' });
     }
@@ -193,9 +191,8 @@ clockinPinRouter.delete(
 clockinPinRouter.get(
   '/:employeeId/pin/status',
   requireAuth,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   requireWorkspaceRole(['manager', 'owner', 'root_admin']),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const { employeeId } = req.params;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -207,7 +204,7 @@ clockinPinRouter.get(
         hasPin: !!emp.clockin_pin_hash,
         employeeNumber: emp.employee_number,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] status error:', err);
       res.status(500).json({ error: 'Failed to check PIN status' });
     }
@@ -219,7 +216,7 @@ clockinPinRouter.get(
 clockinPinRouter.post(
   '/me/pin/set',
   requireAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.session?.userId;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -248,7 +245,7 @@ clockinPinRouter.post(
       );
 
       res.json({ success: true, message: 'Clock-in PIN updated successfully', employeeNumber: emp.employee_number });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] self-service set error:', err);
       res.status(500).json({ error: 'Failed to set PIN' });
     }
@@ -259,7 +256,7 @@ clockinPinRouter.post(
 clockinPinRouter.delete(
   '/me/pin',
   requireAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.session?.userId;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -271,7 +268,7 @@ clockinPinRouter.delete(
         [userId, workspaceId],
       );
       res.json({ success: true, message: 'PIN cleared' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] self-service clear error:', err);
       res.status(500).json({ error: 'Failed to clear PIN' });
     }
@@ -282,7 +279,7 @@ clockinPinRouter.delete(
 clockinPinRouter.get(
   '/me/pin/status',
   requireAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.session?.userId;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -297,7 +294,7 @@ clockinPinRouter.get(
       );
 
       res.json({ hasPin: empRes.rows[0]?.has_pin ?? false });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[PIN] self-service status error:', err);
       res.status(500).json({ error: 'Failed to get PIN status' });
     }

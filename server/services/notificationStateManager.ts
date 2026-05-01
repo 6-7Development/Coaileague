@@ -41,7 +41,7 @@ type BroadcastFunction = (
   workspaceId: string,
   userId: string,
   updateType: string,
-  data: any,
+  data: Record<string, unknown>,
   unreadCount?: number
 ) => void;
 
@@ -395,7 +395,7 @@ class NotificationStateManager {
   async onNewNotification(
     userId: string,
     workspaceId: string,
-    notification: any
+    notification: unknown
   ): Promise<void> {
     try {
       const newCounts = await this.getUnreadCounts(userId, workspaceId);

@@ -205,7 +205,7 @@ class ProofOfServiceService {
         isAuditProtected: true,
         chainOfCustodyHash: genesisSignature,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[POS] Failed to persist photo ${id}:`, err?.message);
       throw err;
     }
@@ -272,7 +272,7 @@ class ProofOfServiceService {
     };
     pos.chainOfCustody.push(newEvent);
 
-    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, any>;
+    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, unknown>;
     await db.update(shiftProofPhotos)
       .set({
         deviceMeta: { ...deviceMeta, fullPayload: pos },
@@ -296,7 +296,7 @@ class ProofOfServiceService {
     for (let i = 1; i < pos.chainOfCustody.length; i++) {
       const prev = pos.chainOfCustody[i - 1];
       const curr = pos.chainOfCustody[i];
-      const currWithoutSig: any = { ...curr };
+      const currWithoutSig: Record<string, unknown> = { ...curr };
       delete currWithoutSig.signature;
       const expectedSig = this.generateCustodySignature(
         prev.signature || null,
@@ -338,7 +338,7 @@ class ProofOfServiceService {
     );
     pos.chainOfCustody.push(reviewEvent);
 
-    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, any>;
+    const deviceMeta = (row.deviceMeta ?? {}) as Record<string, unknown>;
     await db.update(shiftProofPhotos)
       .set({
         deviceMeta: { ...deviceMeta, fullPayload: pos },
@@ -400,8 +400,8 @@ class ProofOfServiceService {
     };
   }
 
-  private revivePosDates(payload: any): ProofOfServicePhoto {
-    const toDate = (v: any) => (v ? new Date(v) : v);
+  private revivePosDates(payload: unknown): ProofOfServicePhoto {
+    const toDate = (v: unknown) => (v ? new Date(v) : v);
     return {
       ...payload,
       capture: {
@@ -413,7 +413,7 @@ class ProofOfServiceService {
         ...payload.compliance,
         reviewedAt: payload.compliance?.reviewedAt ? toDate(payload.compliance.reviewedAt) : undefined,
       },
-      chainOfCustody: (payload.chainOfCustody || []).map((e: any) => ({
+      chainOfCustody: (payload.chainOfCustody || []).map((e: unknown) => ({
         ...e, timestamp: toDate(e.timestamp),
       })),
       capturedAt: toDate(payload.capturedAt),
@@ -498,39 +498,39 @@ class ProofOfServiceService {
   private detectMockLocation(deviceMeta: DeviceInfo): boolean {
     const suspiciousSignals: string[] = [];
 
-    if ((deviceMeta as any).isMockProvider === true) suspiciousSignals.push('explicit_mock_provider');
-    if ((deviceMeta as any).isFromMockProvider === true) suspiciousSignals.push('is_from_mock_provider');
-    if ((deviceMeta as any).locationProvider === 'mock') suspiciousSignals.push('location_provider_mock');
-    if ((deviceMeta as any).mockLocationsEnabled === true) suspiciousSignals.push('mock_locations_enabled');
+    if ((deviceMeta as Record<string,unknown>).isMockProvider === true) suspiciousSignals.push('explicit_mock_provider');
+    if ((deviceMeta as Record<string,unknown>).isFromMockProvider === true) suspiciousSignals.push('is_from_mock_provider');
+    if ((deviceMeta as Record<string,unknown>).locationProvider === 'mock') suspiciousSignals.push('location_provider_mock');
+    if ((deviceMeta as Record<string,unknown>).mockLocationsEnabled === true) suspiciousSignals.push('mock_locations_enabled');
 
-    const model = ((deviceMeta as any).model || '').toLowerCase();
-    const manufacturer = ((deviceMeta as any).manufacturer || '').toLowerCase();
+    const model = ((deviceMeta as Record<string,unknown>).model || '').toLowerCase();
+    const manufacturer = ((deviceMeta as Record<string,unknown>).manufacturer || '').toLowerCase();
     const EMULATOR_PATTERNS = ['sdk_gphone', 'android sdk', 'emulator', 'genymotion', 'bluestacks', 'nox', 'memu', 'ldplayer', 'youwave'];
     if (EMULATOR_PATTERNS.some(p => model.includes(p) || manufacturer.includes(p))) {
       suspiciousSignals.push('known_emulator_device');
     }
 
-    const accuracy = (deviceMeta as any).accuracy;
+    const accuracy = (deviceMeta as Record<string,unknown>).accuracy;
     if (accuracy !== undefined) {
       if (accuracy === 0) suspiciousSignals.push('perfect_zero_accuracy');
-      if (accuracy > 200 && (deviceMeta as any).locationProvider === 'gps') {
+      if (accuracy > 200 && (deviceMeta as Record<string,unknown>).locationProvider === 'gps') {
         suspiciousSignals.push('gps_provider_unrealistic_accuracy');
       }
     }
 
-    const speed = (deviceMeta as any).speed;
+    const speed = (deviceMeta as Record<string,unknown>).speed;
     if (speed !== undefined && speed > 111) {
       suspiciousSignals.push('impossible_velocity');
     }
 
-    const installedApps: string[] = (deviceMeta as any).installedApps || [];
+    const installedApps: string[] = (deviceMeta as Record<string,unknown>).installedApps || [];
     const GPS_SPOOF_PACKAGES = ['com.lexa.fakegps', 'com.incorporateapps.fakegps', 'com.blogspot.newapphorizons.fakegps',
       'com.incorporateapps.fakegpslocation', 'com.rosteam.gpsemulator', 'com.theappninjas.gpsspooferpro'];
     if (installedApps.some(pkg => GPS_SPOOF_PACKAGES.includes(pkg))) {
       suspiciousSignals.push('gps_spoofing_app_detected');
     }
 
-    if ((deviceMeta as any).developerMode === true && (deviceMeta as any).allowMockLocations === true) {
+    if ((deviceMeta as Record<string,unknown>).developerMode === true && (deviceMeta as Record<string,unknown>).allowMockLocations === true) {
       suspiciousSignals.push('developer_mock_locations_active');
     }
 
@@ -569,7 +569,7 @@ class ProofOfServiceService {
       );
       clearTimeout(timeout);
       if (response.ok) {
-        const data = await response.json() as any;
+        const data = await response.json() as unknown;
         if (data?.display_name) {
           const a = data.address || {};
           const parts = [

@@ -79,7 +79,7 @@ export function getRecoveryActions(type: string) {
 /**
  * Determine if error is recoverable
  */
-export function isRecoverable(error: any): boolean {
+export function isRecoverable(error: unknown): boolean {
   if (!error) return true;
   
   const status = error.status || error.statusCode;

@@ -59,7 +59,7 @@ async function main() {
   // ── 1. Health endpoint returns 200 and status=healthy ─────────────────────
   try {
     const { status, body } = await httpGet(`${baseUrl}/health`);
-    let parsed: any = {};
+    let parsed: Record<string, unknown> = {};
     try { parsed = JSON.parse(body); } catch {}
     const isHealthy = status === 200 && parsed.status === 'healthy';
     results.push({
@@ -83,7 +83,7 @@ async function main() {
         blocker: false,
       });
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     results.push({
       name: 'Health endpoint reachable',
       pass: false,
@@ -158,7 +158,7 @@ async function main() {
           blocker: true,
         });
       }
-    } catch (err: any) {
+    } catch (err : unknown) {
       results.push({
         name: 'Statewide DB check',
         pass: false,

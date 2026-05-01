@@ -52,7 +52,7 @@ export async function getOfficerCurrentStatus(employeeId: string, workspaceId: s
         shiftStart: shifts.startTime,
         shiftEnd: shifts.endTime,
         siteId: shifts.siteId,
-        siteName: (shifts as any).siteName,
+        siteName: (shifts as Record<string,unknown>).siteName,
         siteAddress: sites.addressLine1,
         timeEntryId: timeEntries.id,
         clockIn: timeEntries.clockIn,
@@ -69,7 +69,6 @@ export async function getOfficerCurrentStatus(employeeId: string, workspaceId: s
       })
       .from(employees)
       .leftJoin(shifts, and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(shifts.assignedEmployeeId, employees.id),
         eq(shifts.workspaceId, employees.workspaceId),
         lte(shifts.startTime, drizzleSql`NOW() + INTERVAL '30 minutes'`),
@@ -155,7 +154,7 @@ export async function getScheduledOfficersStatus(workspaceId: string): Promise<O
         shiftStart: shifts.startTime,
         shiftEnd: shifts.endTime,
         siteId: shifts.siteId,
-        siteName: (shifts as any).siteName,
+        siteName: (shifts as Record<string,unknown>).siteName,
         siteAddress: sites.addressLine1,
         timeEntryId: timeEntries.id,
         clockIn: timeEntries.clockIn,
@@ -172,7 +171,7 @@ export async function getScheduledOfficersStatus(workspaceId: string): Promise<O
       })
       .from(shifts)
       .innerJoin(employees, and(
-        eq(drizzleSql`${employees.id}::text`, drizzleSql`${(shifts as any).assignedEmployeeId}::text`),
+        eq(drizzleSql`${employees.id}::text`, drizzleSql`${(shifts as Record<string,unknown>).assignedEmployeeId}::text`),
         eq(employees.workspaceId, shifts.workspaceId),
       ))
       .leftJoin(sites, and(eq(sites.id, shifts.siteId), eq(sites.workspaceId, shifts.workspaceId)))
@@ -197,7 +196,6 @@ export async function getScheduledOfficersStatus(workspaceId: string): Promise<O
         lte(shifts.startTime, drizzleSql`NOW() + INTERVAL '2 hours'`),
         gte(shifts.endTime, drizzleSql`NOW() - INTERVAL '2 hours'`),
         ne(shifts.status, 'cancelled'),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         isNotNull(shifts.assignedEmployeeId),
       ))
       .orderBy(asc(shifts.startTime))
@@ -259,7 +257,6 @@ export async function autoProvisionCADUnit(
 
     // Converted to Drizzle ORM: CASE WHEN → sql fragment
     const result = await db.insert(cadUnits).values({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId,
       unitIdentifier,
       employeeId,
@@ -282,9 +279,7 @@ export async function autoProvisionCADUnit(
         currentStatus: sql`case when ${cadUnits.currentStatus} = 'off_duty' then 'available' else ${cadUnits.currentStatus} end`,
         currentSiteId: siteId,
         currentSiteName: siteName,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         latitude: latitude ? String(latitude) : cadUnits.latitude,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         longitude: longitude ? String(longitude) : cadUnits.longitude,
         lastLocationUpdate: latitude ? sql`now()` : cadUnits.lastLocationUpdate,
         shiftId: shiftId,

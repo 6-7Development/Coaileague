@@ -54,14 +54,14 @@ interface AlertConfiguration {
   workspaceId: string;
   alertType: AlertType;
   isEnabled: boolean;
-  thresholds: Record<string, any>;
+  thresholds: Record<string, unknown>;
   severity: AlertSeverity;
   channels: string[];
   notifyRoles: string[];
   notifyUserIds: string[] | null;
   cooldownMinutes: number;
   maxAlertsPerHour: number;
-  alertSchedule: Record<string, any>;
+  alertSchedule: Record<string, unknown>;
   customTitle: string | null;
   customMessage: string | null;
   createdAt: string;
@@ -75,7 +75,7 @@ interface AlertHistory {
   severity: AlertSeverity;
   title: string;
   message: string;
-  triggerData: Record<string, any>;
+  triggerData: Record<string, unknown>;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
   channelsNotified: string[];
@@ -91,7 +91,7 @@ interface AlertHistory {
   createdAt: string;
 }
 
-const ALERT_TYPE_INFO: Record<AlertType, { label: string; description: string; icon: any; thresholdLabel: string; thresholdUnit: string }> = {
+const ALERT_TYPE_INFO: Record<AlertType, { label: string; description: string; icon: string | React.ReactNode; thresholdLabel: string; thresholdUnit: string }> = {
   overtime: {
     label: 'Overtime Alert',
     description: 'Alert when employee overtime exceeds threshold',
@@ -157,7 +157,7 @@ const SEVERITY_COLORS: Record<AlertSeverity, string> = {
   critical: 'bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/30',
 };
 
-const CHANNEL_INFO: Record<AlertChannel, { label: string; icon: any }> = {
+const CHANNEL_INFO: Record<AlertChannel, { label: string; icon: string | React.ReactNode }> = {
   in_app: { label: 'In-App', icon: Bell },
   email: { label: 'Email', icon: Mail },
   sms: { label: 'SMS', icon: Smartphone },
@@ -195,7 +195,7 @@ export default function AlertSettings() {
       queryClient.invalidateQueries({ queryKey: ['/api/alerts/config'] });
       toast({ title: 'Alert configuration updated' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Error updating alert', description: error.message, variant: 'destructive' });
     },
   });
@@ -209,7 +209,7 @@ export default function AlertSettings() {
       setSelectedConfig(null);
       toast({ title: 'Alert configuration saved' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Error saving configuration', description: error.message, variant: 'destructive' });
     },
   });
@@ -226,7 +226,7 @@ export default function AlertSettings() {
       setAcknowledgeNotes('');
       toast({ title: 'Alert acknowledged' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Error acknowledging alert', description: error.message, variant: 'destructive' });
     },
   });
@@ -239,7 +239,7 @@ export default function AlertSettings() {
       queryClient.invalidateQueries({ queryKey: ['/api/alerts/history'] });
       toast({ title: 'Test alert sent', description: 'Check your notification channels' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Error sending test alert', description: error.message, variant: 'destructive' });
     },
   });

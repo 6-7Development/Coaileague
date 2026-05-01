@@ -34,7 +34,7 @@ function sraFetch(path: string) {
   return fetch(path, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" }).then(r => r.json());
 }
 
-function sraRequest(method: string, path: string, body?: any) {
+function sraRequest(method: string, path: string, body?: unknown) {
   const token = localStorage.getItem("sra_session_token");
   return fetch(path, {
     method,
@@ -75,10 +75,10 @@ export default function SRAFindings() {
     queryFn: () => sraFetch("/api/sra/findings"),
   });
 
-  const findings: any[] = data?.data || [];
+  const findings: unknown[] = data?.data || [];
 
   const createMutation = useMutation({
-    mutationFn: (body: any) => sraRequest("POST", "/api/sra/findings", body),
+    mutationFn: (body) => sraRequest("POST", "/api/sra/findings", body),
     onSuccess: (res) => {
       if (!res.success) { setFormError(res.error || "Failed to create finding."); return; }
       qc.invalidateQueries({ queryKey: ["/api/sra/findings"] });
@@ -86,15 +86,15 @@ export default function SRAFindings() {
       setFormError("");
       setNewFinding({ findingType: "", severity: "minor", description: "", occupationCodeReference: "", recommendedAction: "", complianceDeadline: "", fineAmount: "" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setFormError(error.message || "Failed to create finding. Please try again.");
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: any }) => sraRequest("PATCH", `/api/sra/findings/${id}`, body),
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => sraRequest("PATCH", `/api/sra/findings/${id}`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/sra/findings"] }),
-    onError: (error: any) => {
+    onError: (error) => {
       setFormError(error.message || "Failed to update finding. Please try again.");
     },
   });
@@ -140,7 +140,7 @@ export default function SRAFindings() {
         {/* Create Finding Modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-card rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-card rounded-lg shadow-2xl w-full max-w-lg max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b">
                 <h2 className="text-lg font-semibold text-[#1a3a6b]">New Audit Finding</h2>
                 <button data-testid="button-close-finding-form" onClick={() => setShowForm(false)}>
@@ -288,7 +288,7 @@ export default function SRAFindings() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((f: any) => (
+            {filtered.map((f) => (
               <Card key={f.id} data-testid={`finding-card-${f.id}`} className="hover-elevate">
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4 flex-wrap">

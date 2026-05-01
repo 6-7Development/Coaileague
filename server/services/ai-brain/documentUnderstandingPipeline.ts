@@ -163,7 +163,6 @@ class DocumentUnderstandingPipelineService {
 
     const result = await automationOrchestration.executeAutomation(
       {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         domain: 'document',
         automationName: 'document-ingestion-pipeline',
         automationType: 'document_processing',
@@ -217,7 +216,7 @@ class DocumentUnderstandingPipelineService {
 
             overallConfidence += docResult.confidence;
             warnings.push(...docResult.warnings);
-          } catch (docError: any) {
+          } catch (docError: unknown) {
             errors.push(`Failed to process ${doc.fileName}: ${docError.message}`);
           }
         }
@@ -225,7 +224,7 @@ class DocumentUnderstandingPipelineService {
         overallConfidence = documentCount > 0 ? overallConfidence / documentCount : 0;
 
         const EXTRACTION_CONFIDENCE_THRESHOLD = 0.7;
-        const flagLowConfidence = (items: any[] | undefined, entityType: string) => {
+        const flagLowConfidence = (items: unknown[] | undefined, entityType: string) => {
           if (!items) return;
           for (const item of items) {
             if (item.confidence !== undefined && item.confidence < EXTRACTION_CONFIDENCE_THRESHOLD) {
@@ -252,11 +251,10 @@ class DocumentUnderstandingPipelineService {
         });
 
         platformEventBus.publish({
-          type: 'automation' as any,
+          type: 'automation',
           title: 'Document Ingestion Complete',
           description: `Extracted ${extractedData.employees?.length || 0} employees, ${extractedData.schedules?.length || 0} schedules`,
           data: { pipelineId, workspaceId: request.workspaceId, extractedCounts: { employees: extractedData.employees?.length || 0, schedules: extractedData.schedules?.length || 0, positions: extractedData.positions?.length || 0 } },
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: 'info',
           isNew: true
         }).catch((err) => log.warn('[documentUnderstandingPipeline] Fire-and-forget failed:', err));
@@ -275,7 +273,6 @@ class DocumentUnderstandingPipelineService {
     );
 
     if (result.success && result.data) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return result.data;
     }
 
@@ -382,7 +379,6 @@ Only include fields where data was found. Estimate confidence based on data clar
 
       const genResult = await meteredGemini.generate({
         prompt: fullPrompt,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: workspaceId,
         featureKey: 'ai_document_processing',
         systemInstruction: 'You are a document analysis AI. Extract structured data from documents and return valid JSON.',
@@ -392,12 +388,12 @@ Only include fields where data was found. Estimate confidence based on data clar
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return {
-          employees: (parsed.employees || []).map((e: any) => ({ ...e, confidence: parsed.confidence || 0.7 })),
-          schedules: (parsed.schedules || []).map((s: any) => ({ ...s, confidence: parsed.confidence || 0.7 })),
-          positions: (parsed.positions || []).map((p: any) => ({ ...p, confidence: parsed.confidence || 0.7 })),
-          contacts: (parsed.contacts || []).map((c: any) => ({ ...c, confidence: parsed.confidence || 0.7 })),
+          employees: (parsed.employees || []).map((e: unknown) => ({ ...e, confidence: parsed.confidence || 0.7 })),
+          schedules: (parsed.schedules || []).map((s: unknown) => ({ ...s, confidence: parsed.confidence || 0.7 })),
+          positions: (parsed.positions || []).map((p: unknown) => ({ ...p, confidence: parsed.confidence || 0.7 })),
+          contacts: (parsed.contacts || []).map((c: unknown) => ({ ...c, confidence: parsed.confidence || 0.7 })),
           confidence: parsed.confidence || 0.7,
           warnings: parsed.warnings || []
         };
@@ -412,7 +408,7 @@ Only include fields where data was found. Estimate confidence based on data clar
         warnings: ['Could not parse document structure']
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[DocumentPipeline] Vision processing error:', error);
       return {
         employees: [],
@@ -598,7 +594,7 @@ Only include fields where data was found. Estimate confidence based on data clar
               createdAt: new Date()
             });
             createdRecords.employees++;
-          } catch (err: any) {
+          } catch (err: unknown) {
             if (err.code === '23505') {
               skippedRecords++;
             } else {
@@ -620,11 +616,10 @@ Only include fields where data was found. Estimate confidence based on data clar
 
       // Emit event
       platformEventBus.publish({
-        type: 'automation' as any,
+        type: 'automation',
         title: 'Organization Setup Complete',
         description: `Created ${createdRecords.employees} employees, ${createdRecords.positions} positions`,
         data: { workspaceId, createdRecords },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         severity: 'success',
         isNew: true
       }).catch((err) => log.warn('[documentUnderstandingPipeline] Fire-and-forget failed:', err));
@@ -638,7 +633,7 @@ Only include fields where data was found. Estimate confidence based on data clar
         readinessChecklist
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[DocumentPipeline] Org setup error:', error);
       return {
         success: false,
@@ -693,7 +688,7 @@ Only include fields where data was found. Estimate confidence based on data clar
   // LOGGING
   // ---------------------------------------------------------------------------
 
-  private async logPipeline(pipelineId: string, action: string, data: Record<string, any>): Promise<void> {
+  private async logPipeline(pipelineId: string, action: string, data: Record<string, unknown>): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({
         action: `document_pipeline:${action}`,

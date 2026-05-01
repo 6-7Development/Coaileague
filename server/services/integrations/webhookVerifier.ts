@@ -30,7 +30,7 @@ interface WebhookEvent {
   provider: string;
   eventType: string;
   eventId: string;
-  payload: any;
+  payload: Record<string, unknown>;
   signature: string;
   timestamp: Date;
   workspaceId?: string;
@@ -140,7 +140,7 @@ class WebhookVerifierService {
       };
     }
 
-    let parsedPayload: any;
+    let parsedPayload: unknown;
     try {
       parsedPayload = JSON.parse(payload);
     } catch {
@@ -243,7 +243,7 @@ class WebhookVerifierService {
       };
     }
 
-    let parsedPayload: any;
+    let parsedPayload: unknown;
     try {
       parsedPayload = JSON.parse(payload);
     } catch {
@@ -278,7 +278,6 @@ class WebhookVerifierService {
         .from(idempotencyKeys)
         .where(
           and(
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             eq(idempotencyKeys.key, cacheKey),
             gte(idempotencyKeys.createdAt, cutoff)
           )
@@ -295,7 +294,7 @@ class WebhookVerifierService {
   private async recordEvent(
     provider: string,
     eventId: string,
-    payload: any,
+    payload: Record<string, unknown>,
     workspaceId?: string
   ): Promise<void> {
     const cacheKey = `${provider}:${eventId}`;

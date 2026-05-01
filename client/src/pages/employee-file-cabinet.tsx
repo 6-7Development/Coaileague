@@ -52,7 +52,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 // Status badge configuration
-const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: string | React.ReactNode }> = {
   uploaded: { label: "Uploaded", variant: "outline", icon: Clock },
   pending_review: { label: "Pending Review", variant: "secondary", icon: Clock },
   approved: { label: "Approved", variant: "default", icon: CheckCircle },
@@ -190,7 +190,7 @@ function AccessLogDialog({ open, onOpenChange, documentId }: { open: boolean; on
 
   return (
     <UniversalModal open={open} onOpenChange={onOpenChange}>
-      <UniversalModalContent size="full" className="max-h-[80vh]">
+      <UniversalModalContent size="full" className="max-h-[80vh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>Document Access Audit Trail</UniversalModalTitle>
           <UniversalModalDescription>Complete record of all access events for compliance</UniversalModalDescription>
@@ -203,7 +203,7 @@ function AccessLogDialog({ open, onOpenChange, documentId }: { open: boolean; on
             </div>
           ) : accessLogs && accessLogs.length > 0 ? (
             <div className="space-y-2">
-              {accessLogs.map((log: any) => (
+              {accessLogs.map((log) => (
                 <Card key={log.id} data-testid={`access-log-${log.id}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
@@ -246,7 +246,7 @@ function AccessLogDialog({ open, onOpenChange, documentId }: { open: boolean; on
   );
 }
 
-function PendingSignatureCard({ sig, onSign }: { sig: any; onSign: (sig: any) => void }) {
+function PendingSignatureCard({ sig, onSign }: { sig: any; onSign: (sig) => void }) {
   return (
     <Card className="hover-elevate border-amber-200 dark:border-amber-900" data-testid={`pending-sig-${sig.id}`}>
       <CardContent className="p-4">
@@ -300,7 +300,7 @@ export default function EmployeeFileCabinet() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const [showSignDialog, setShowSignDialog] = useState(false);
-  const [signingItem, setSigningItem] = useState<any>(null);
+  const [signingItem, setSigningItem] = useState<null>(null);
   const [signatureData, setSignatureData] = useState("");
   const canvasRef = useState<HTMLCanvasElement | null>(null);
 
@@ -327,12 +327,12 @@ export default function EmployeeFileCabinet() {
       setSignatureData("");
       toast({ title: "Document signed successfully" });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Signing failed", description: err.message, variant: "destructive" });
     },
   });
 
-  const handleSignPending = (sig: any) => {
+  const handleSignPending = (sig) => {
     setSigningItem(sig);
     setShowSignDialog(true);
   };
@@ -513,7 +513,7 @@ export default function EmployeeFileCabinet() {
             <Badge variant="outline" className="text-xs">{pendingSignatures.data.length}</Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pendingSignatures.data.map((sig: any) => (
+            {pendingSignatures.data.map((sig) => (
               <PendingSignatureCard
                 key={sig.id}
                 sig={sig}
@@ -531,7 +531,7 @@ export default function EmployeeFileCabinet() {
         </div>
       ) : documents && documents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documents.map((doc: any) => (
+          {documents.map((doc) => (
             <DocumentCard
               key={doc.id}
               document={doc}

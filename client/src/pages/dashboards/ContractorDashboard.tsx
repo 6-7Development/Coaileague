@@ -9,6 +9,7 @@ import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 import { SafeSection } from "@/components/ui/safe-section";
+import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 
 const pageConfig: CanvasPageConfig = {
   id: "contractor-dashboard",
@@ -19,7 +20,8 @@ const pageConfig: CanvasPageConfig = {
 };
 
 export default function ContractorDashboard() {
-  const [, setLocation] = useLocation();
+
+  const loadingTimedOut = useLoadingTimeout(4000); // 4s max skeleton  const [, setLocation] = useLocation();
   const { user } = useAuth();
 
   const { data: earningsData, isLoading: earningsLoading, isError: earningsIsError, error: earningsError, refetch: refetchEarnings } = useQuery<{
@@ -31,12 +33,12 @@ export default function ContractorDashboard() {
     staleTime: 60000,
   });
 
-  const { data: docsRes, isLoading: docsLoading, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isLoading: docsLoading, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
@@ -45,18 +47,18 @@ export default function ContractorDashboard() {
   const isDashboardError = earningsIsError || docsIsError || shiftsIsError;
   const dashboardError = earningsError || docsError || shiftsError;
 
-  const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
-  const pendingDocs = docs.filter((d: any) => d.status === "pending" || d.status === "requires_signature");
+  const docs: unknown[] = Array.isArray(docsRes) ? docsRes : (docsRes as Record<string,unknown>)?.data ?? [];
+  const pendingDocs = docs.filter((d) => d.status === "pending" || d.status === "requires_signature");
 
-  const shifts: any[] = Array.isArray(shiftsRes) ? shiftsRes : (shiftsRes as any)?.data ?? [];
-  const upcomingShifts = shifts.filter((s: any) => {
+  const shifts: unknown[] = Array.isArray(shiftsRes) ? shiftsRes : (shiftsRes as Record<string,unknown>)?.data ?? [];
+  const upcomingShifts = shifts.filter((s) => {
     if (!s.startTime) return false;
     return new Date(s.startTime) >= new Date();
   });
 
   const firstName = user?.firstName || user?.email?.split("@")[0] || "Contractor";
 
-  if (isLoading) {
+  if (isLoading && !loadingTimedOut) {
     return (
       <CanvasHubPage config={pageConfig}>
         <PageSkeleton />
@@ -134,7 +136,7 @@ export default function ContractorDashboard() {
               </Button>
             </div>
             <div className="space-y-2">
-              {upcomingShifts.slice(0, 4).map((shift: any) => (
+              {upcomingShifts.slice(0, 4).map((shift) => (
                 <div key={shift.id} className="flex items-center justify-between text-sm">
                   <span className="text-foreground truncate max-w-[160px]">{shift.siteName || "Assignment"}</span>
                   <Badge variant="secondary" className="text-xs">{shift.status ?? "scheduled"}</Badge>

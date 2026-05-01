@@ -35,7 +35,7 @@ export async function analyzeDispute(
   evidence: string[] | null,
   targetContext?: {
     targetType: string;
-    targetData?: any; // Review data, report data, etc.
+    targetData?: unknown; // Review data, report data, etc.
   },
   billingContext?: {
     workspaceId: string;
@@ -115,7 +115,7 @@ Respond ONLY with valid JSON, no other text.`;
     const responseText = result.content?.trim() || '{}';
     
     // Parse AI response
-    let aiResponse: any;
+    let aiResponse: unknown;
     try {
       aiResponse = JSON.parse(responseText);
     } catch (parseError) {
@@ -156,7 +156,7 @@ Respond ONLY with valid JSON, no other text.`;
 
     return disputeResult;
 
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('Error analyzing dispute with AI:', error);
     
     // Return fallback analysis

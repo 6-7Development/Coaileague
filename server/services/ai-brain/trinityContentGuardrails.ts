@@ -315,7 +315,7 @@ class TrinityContentGuardrails {
         .limit(10);
 
       const violations: ViolationRecord[] = logs.map(log => {
-        const meta = (log as any).metadata || {};
+        const meta = (log as Record<string,unknown>).metadata || {};
         const details = typeof meta.details === 'string' ? JSON.parse(meta.details) : (meta.details || {});
         return {
           id: log.id,

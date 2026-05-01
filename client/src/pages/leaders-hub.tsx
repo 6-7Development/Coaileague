@@ -165,7 +165,7 @@ export default function LeadersHub() {
   const [unlockAccountDialog, setUnlockAccountDialog] = useState(false);
   const [updateContactDialog, setUpdateContactDialog] = useState(false);
   const [escalationDialog, setEscalationDialog] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<null>(null);
 
   // Trinity welcome greeting on first login (from invite accept flow)
   useEffect(() => {
@@ -209,7 +209,7 @@ export default function LeadersHub() {
   });
 
   // Fetch employees (for People tab)
-  const { data: employees = [] } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [] } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
   });
@@ -337,7 +337,7 @@ export default function LeadersHub() {
     },
   });
 
-  const filteredEmployees = employees.filter((emp: any) =>
+  const filteredEmployees = employees.filter((emp) =>
     emp.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.email?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -482,7 +482,7 @@ export default function LeadersHub() {
                     </div>
                     {commandCenter.activeAlerts?.missedClockIns?.length > 0 ? (
                       <div className="mt-2 space-y-1">
-                        {commandCenter.activeAlerts.missedClockIns.slice(0, 3).map((m: any, i: number) => (
+                        {commandCenter.activeAlerts.missedClockIns.slice(0, 3).map((m: unknown, i: number) => (
                           <p key={i} className="text-xs text-muted-foreground">
                             Site: {m.siteName || 'Unknown'} — <span className="text-destructive">{m.minutesLate}m late</span>
                           </p>
@@ -506,7 +506,7 @@ export default function LeadersHub() {
                     </div>
                     {commandCenter.activeAlerts?.openIncidents?.length > 0 ? (
                       <div className="mt-2 space-y-1">
-                        {commandCenter.activeAlerts.openIncidents.slice(0, 3).map((inc: any, i: number) => (
+                        {commandCenter.activeAlerts.openIncidents.slice(0, 3).map((inc: unknown, i: number) => (
                           <p key={i} className="text-xs text-muted-foreground truncate">
                             {inc.title}
                             {inc.severity && <Badge variant="outline" className="ml-1 text-xs">{inc.severity}</Badge>}
@@ -533,7 +533,7 @@ export default function LeadersHub() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {commandCenter.trinityBrief.items.map((item: any, i: number) => (
+                    {commandCenter.trinityBrief.items.map((item: unknown, i: number) => (
                       <div key={i} className="flex items-start gap-2.5 text-sm" data-testid={`trinity-brief-item-${i}`}>
                         <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                         <div>
@@ -562,7 +562,7 @@ export default function LeadersHub() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-1.5">
-                      {commandCenter.todayShifts.officers.slice(0, 10).map((officer: any, i: number) => (
+                      {commandCenter.todayShifts.officers.slice(0, 10).map((officer: unknown, i: number) => (
                         <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/40 text-xs" data-testid={`officer-row-${i}`}>
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${officer.clockedIn ? 'bg-emerald-500' : officer.missedAlert ? 'bg-destructive' : 'bg-muted-foreground'}`} />
@@ -734,7 +734,7 @@ export default function LeadersHub() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <h4 className="font-semibold truncate">{task.title}</h4>
-                                    <Badge variant={getPriorityColor(task.priority) as any} className="shrink-0">
+                                    <Badge variant={getPriorityColor(task.priority) as string} className="shrink-0">
                                       {task.priority}
                                     </Badge>
                                   </div>
@@ -742,7 +742,7 @@ export default function LeadersHub() {
                                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                     <div className="flex items-center gap-1">
                                       <UserX className="h-3 w-3" />
-                                      {(task.employee as any).firstName ? `${(task.employee as any).firstName} ${(task.employee as any).lastName || ''}`.trim() : (task.employee as any).email}
+                                      {(task.employee as unknown).firstName ? `${(task.employee as unknown).firstName} ${(task.employee as unknown).lastName || ''}`.trim() : (task.employee as unknown).email}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />
@@ -815,7 +815,7 @@ export default function LeadersHub() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredEmployees.map((employee: any) => (
+                    filteredEmployees.map((employee) => (
                       <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
                         <TableCell className="font-medium">
                           {employee.firstName} {employee.lastName}
@@ -960,18 +960,18 @@ export default function LeadersHub() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {escalations.map((ticket: any) => (
+                    {escalations.map((ticket) => (
                       <TableRow key={ticket.id} data-testid={`row-ticket-${ticket.id}`}>
                         <TableCell className="font-mono text-sm">{ticket.ticketNumber}</TableCell>
                         <TableCell className="font-medium">{ticket.title}</TableCell>
                         <TableCell className="capitalize">{ticket.category?.replace('_', ' ')}</TableCell>
                         <TableCell>
-                          <Badge variant={getPriorityColor(ticket.priority) as any}>
+                          <Badge variant={getPriorityColor(ticket.priority) as string}>
                             {ticket.priority}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusColor(ticket.status) as any}>
+                          <Badge variant={getStatusColor(ticket.status) as string}>
                             {ticket.status}
                           </Badge>
                         </TableCell>
@@ -1063,7 +1063,7 @@ export default function LeadersHub() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees.map((emp: any) => (
+                        {employees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.firstName} {emp.lastName} ({emp.email})
                           </SelectItem>
@@ -1128,7 +1128,7 @@ export default function LeadersHub() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees.filter((emp: any) => emp.isLocked).map((emp: any) => (
+                        {employees.filter((emp) => emp.isLocked).map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.firstName} {emp.lastName} ({emp.email})
                           </SelectItem>
@@ -1193,7 +1193,7 @@ export default function LeadersHub() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees.map((emp: any) => (
+                        {employees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.firstName} {emp.lastName} ({emp.email})
                           </SelectItem>

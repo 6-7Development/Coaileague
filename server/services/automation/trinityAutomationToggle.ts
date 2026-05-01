@@ -98,7 +98,7 @@ export interface AutomationRequest {
   workspaceId: string;
   feature: AutomationFeature;
   requestedBy: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
 }
 
 export interface AutomationResult {
@@ -106,8 +106,8 @@ export interface AutomationResult {
   feature: AutomationFeature;
   status: 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed' | 'paused';
   summary: string;
-  details: any;
-  preview: any;
+  details: Record<string, unknown>;
+  preview: unknown;
   estimatedImpact?: {
     recordsAffected: number;
     estimatedValue?: number;
@@ -122,9 +122,9 @@ export interface AutomationResult {
   pausedAt?: Date;
   pausedBy?: string;
   pauseReason?: string;
-  revisedPayload?: Record<string, any> | null;
+  revisedPayload?: Record<string, unknown> | null;
   revisionNotes?: string | null;
-  revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string; payloadSnapshot: any }>;
+  revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string; payloadSnapshot: unknown }>;
   trinityReanalysis?: string | null;
   trinityReanalysisAt?: Date | null;
 }
@@ -238,7 +238,7 @@ class TrinityAutomationToggleService {
         where: eq(trinityAutomationSettings.workspaceId, workspaceId),
       });
 
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, unknown> = {
         schedulingEnabled: settings.scheduling,
         invoicingEnabled: settings.invoicing,
         payrollEnabled: settings.payroll,
@@ -395,7 +395,7 @@ class TrinityAutomationToggleService {
     // If a revised payload exists, apply it to the preview before execution
     const revisedPayload = request.revisedPayload;
     const effectivePreview = revisedPayload
-      ? { ...(request.preview as any || {}), previewData: revisedPayload }
+      ? { ...(request.preview as unknown || {}), previewData: revisedPayload }
       : request.preview;
 
     await db.update(trinityAutomationRequests)
@@ -468,7 +468,7 @@ class TrinityAutomationToggleService {
       await this.broadcastRequestUpdate(request.workspaceId, result!);
       return result!;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       await db.update(trinityAutomationRequests)
         .set({
           status: 'failed',
@@ -619,7 +619,7 @@ class TrinityAutomationToggleService {
       const result = await this.getRequestResult(requestId);
       return { ...(result!), analysis: analysis.summary };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       await db.update(trinityAutomationRequests)
         .set({
           status: 'failed',
@@ -712,8 +712,8 @@ class TrinityAutomationToggleService {
    * Convert database record to AutomationResult
    */
   private mapToResult(record: TrinityAutomationRequest): AutomationResult {
-    const preview = record.preview as any || {};
-    const r = record as any;
+    const preview = record.preview as unknown || {};
+    const r = record as unknown;
     return {
       requestId: record.id,
       feature: record.feature as AutomationFeature,
@@ -762,8 +762,8 @@ class TrinityAutomationToggleService {
    */
   private async generatePreview(request: AutomationRequest): Promise<{
     summary: string;
-    details: any;
-    previewData: any;
+    details: Record<string, unknown>;
+    previewData: unknown;
     impact: AutomationResult['estimatedImpact'];
   }> {
     switch (request.feature) {
@@ -876,8 +876,8 @@ class TrinityAutomationToggleService {
           return {
             summary: `I'll process payroll for ${employeeCount} employee${employeeCount !== 1 ? 's' : ''} — $${totalGross.toLocaleString()} total gross pay${overtimeEmployees > 0 ? ` (${overtimeEmployees} with overtime)` : ''}`,
             details: {
-              periodStart: (payPeriod as any).start.toISOString().split('T')[0],
-              periodEnd: (payPeriod as any).end.toISOString().split('T')[0],
+              periodStart: (payPeriod as Record<string,unknown>).start.toISOString().split('T')[0],
+              periodEnd: (payPeriod as Record<string,unknown>).end.toISOString().split('T')[0],
               employeeCount,
               totalGross,
               overtimeEmployees,
@@ -888,8 +888,8 @@ class TrinityAutomationToggleService {
             previewData: {
               type: 'payroll_preview',
               summary: `${employeeCount} employee${employeeCount !== 1 ? 's' : ''} — $${totalGross.toLocaleString()} gross pay`,
-              periodStart: (payPeriod as any).start.toISOString().split('T')[0],
-              periodEnd: (payPeriod as any).end.toISOString().split('T')[0],
+              periodStart: (payPeriod as Record<string,unknown>).start.toISOString().split('T')[0],
+              periodEnd: (payPeriod as Record<string,unknown>).end.toISOString().split('T')[0],
               employees: employeeBreakdown,
               totalGross,
               overtimeEmployees,
@@ -974,7 +974,7 @@ class TrinityAutomationToggleService {
     resuming = false,
   ): Promise<{ receipt: AutomationReceipt }> {
     const { workspaceId, feature, requestedBy } = request;
-    const context = request.context as Record<string, any>;
+    const context = request.context as Record<string, unknown>;
     let recordsCreated = 0;
     let recordsUpdated = 0;
     const externalSyncs: AutomationReceipt['payload']['externalSyncs'] = [];
@@ -993,7 +993,7 @@ class TrinityAutomationToggleService {
     const runStep = async <T>(
       name: string,
       fn: () => Promise<T>,
-      toSave?: (result: T) => Record<string, any>,
+      toSave?: (result: T) => Record<string, unknown>,
     ): Promise<T | null> => {
       const cp = await checkpointer.getCheckpoint() ?? initCp;
 
@@ -1009,14 +1009,14 @@ class TrinityAutomationToggleService {
         const result = await fn();
         await checkpointer.stepCompleted(name, toSave ? toSave(result) : undefined);
         return result;
-      } catch (err: any) {
+      } catch (err: unknown) {
         await checkpointer.stepFailed(name, err?.message ?? String(err));
         throw err;
       }
     };
 
     // Helper: get a step's saved result (for resume cases where runStep returns null)
-    const getSaved = async (name: string): Promise<Record<string, any> | undefined> => {
+    const getSaved = async (name: string): Promise<Record<string, unknown> | undefined> => {
       const cp = await checkpointer.getCheckpoint();
       return cp ? checkpointer.getStepResult(cp, name) : undefined;
     };
@@ -1067,8 +1067,8 @@ class TrinityAutomationToggleService {
 
           // Use fresh result or fall back to saved checkpoint result (resume case)
           const invoiceSaved = invoiceResult ?? await getSaved('generate_invoices');
-          recordsCreated = invoiceResult?.count ?? (invoiceSaved as any)?.invoiceCount ?? 0;
-          const billingDaysFinal = invoiceResult?.billingDays ?? (invoiceSaved as any)?.billingDays ?? 7;
+          recordsCreated = invoiceResult?.count ?? (invoiceSaved as Record<string,unknown>)?.invoiceCount ?? 0;
+          const billingDaysFinal = invoiceResult?.billingDays ?? (invoiceSaved as Record<string,unknown>)?.billingDays ?? 7;
           summaryDetail = `Generated ${recordsCreated} draft invoice(s) covering ${billingDaysFinal}-day billing period`;
 
           // Step 4: Notify completion
@@ -1120,7 +1120,6 @@ class TrinityAutomationToggleService {
             const periodEnd = context.periodEnd ? new Date(context.periodEnd) : undefined;
             const result = await PayrollAutomationEngine.processAutomatedPayroll(
               workspaceId,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               requestedBy,
               periodStart,
               periodEnd,
@@ -1136,9 +1135,9 @@ class TrinityAutomationToggleService {
 
           const payrollSaved = payrollResult ?? await getSaved('commit_payroll');
           recordsCreated = 1;
-          recordsUpdated = payrollResult?.timeEntryCount ?? (payrollSaved as any)?.timeEntryCount ?? 0;
-          const grossPay = payrollResult?.totalGrossPay ?? (payrollSaved as any)?.totalGrossPay ?? 0;
-          const empCount = payrollResult?.totalEmployees ?? (payrollSaved as any)?.totalEmployees ?? 0;
+          recordsUpdated = payrollResult?.timeEntryCount ?? (payrollSaved as Record<string,unknown>)?.timeEntryCount ?? 0;
+          const grossPay = payrollResult?.totalGrossPay ?? (payrollSaved as Record<string,unknown>)?.totalGrossPay ?? 0;
+          const empCount = payrollResult?.totalEmployees ?? (payrollSaved as Record<string,unknown>)?.totalEmployees ?? 0;
           summaryDetail = `Processed payroll for ${empCount} employee(s) — gross pay $${Number(grossPay).toFixed(2)}`;
 
           // Step 4: Notify completion
@@ -1177,8 +1176,8 @@ class TrinityAutomationToggleService {
           }, (r) => r);
 
           const schedSaved = schedResult ?? await getSaved('generate_shifts');
-          recordsCreated = schedResult?.shiftsCreated ?? (schedSaved as any)?.shiftsCreated ?? 0;
-          summaryDetail = `Generated ${recordsCreated} shift(s) for week of ${schedResult?.weekStart ?? (schedSaved as any)?.weekStart ?? 'this week'}`;
+          recordsCreated = schedResult?.shiftsCreated ?? (schedSaved as Record<string,unknown>)?.shiftsCreated ?? 0;
+          summaryDetail = `Generated ${recordsCreated} shift(s) for week of ${schedResult?.weekStart ?? (schedSaved as Record<string,unknown>)?.weekStart ?? 'this week'}`;
 
           // Step 3: Notify
           await runStep('notify', async () => {
@@ -1215,7 +1214,7 @@ class TrinityAutomationToggleService {
           const ttResult = await runStep('approve_entries', async () => {
             const updatedRows = await db
               .update(timeEntries)
-              .set({ status: 'approved', updatedAt: new Date() } as any)
+              .set({ status: 'approved', updatedAt: new Date() } as Record<string, unknown>)
               .where(and(
                 eq(timeEntries.workspaceId, workspaceId),
                 eq(timeEntries.status, 'pending'),
@@ -1227,7 +1226,7 @@ class TrinityAutomationToggleService {
           }, (r) => ({ approvedCount: r.approvedCount }));
 
           const ttSaved = ttResult ?? await getSaved('approve_entries');
-          recordsUpdated = ttResult?.approvedCount ?? (ttSaved as any)?.approvedCount ?? 0;
+          recordsUpdated = ttResult?.approvedCount ?? (ttSaved as Record<string,unknown>)?.approvedCount ?? 0;
           summaryDetail = `Auto-approved ${recordsUpdated} pending time entries with completed clock-out`;
 
           // Step 3: Notify
@@ -1268,7 +1267,7 @@ class TrinityAutomationToggleService {
         default:
           summaryDetail = `${feature} automation executed`;
       }
-    } catch (execError: any) {
+    } catch (execError: unknown) {
       // Checkpoint already saved the failed step — re-throw so approveAutomation marks as failed
       log.error(`[TrinityAutomation] ${feature} execution error for workspace ${workspaceId}:`, execError);
       throw execError;
@@ -1383,7 +1382,7 @@ class TrinityAutomationToggleService {
       .set({
         status: 'paused',
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(trinityAutomationRequests.id, requestId));
 
     // Converted to Drizzle ORM
@@ -1417,7 +1416,7 @@ class TrinityAutomationToggleService {
   async revisePayload(
     requestId: string,
     revisedBy: string,
-    revisedPayload: Record<string, any>,
+    revisedPayload: Record<string, unknown>,
     notes: string,
   ): Promise<AutomationResult> {
     const request = await db.query.trinityAutomationRequests.findFirst({
@@ -1438,7 +1437,7 @@ class TrinityAutomationToggleService {
     };
 
     await db.update(trinityAutomationRequests)
-      .set({ updatedAt: new Date() } as any)
+      .set({ updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(trinityAutomationRequests.id, requestId));
 
     // CATEGORY C — Raw SQL retained: ::jsonb | Tables: trinity_automation_requests | Verified: 2026-03-23
@@ -1477,11 +1476,10 @@ class TrinityAutomationToggleService {
       throw new Error(`Trinity re-analysis only available for pending or paused automations (current status: ${request.status})`);
     }
 
-    const preview = request.preview as any || {};
+    const preview = request.preview as unknown || {};
     const revisedPayload = request.revisedPayload;
     const effectivePayload = revisedPayload || preview.previewData || preview;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const prompt = `You are Trinity, the AI brain for ${PLATFORM.name} workforce management platform. 
 A user has requested you to re-analyze a staged automation payload before it is approved and executed.
 

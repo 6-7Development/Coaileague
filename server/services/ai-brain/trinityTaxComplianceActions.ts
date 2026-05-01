@@ -14,11 +14,11 @@ import { createLogger } from '../../lib/logger';
 import { PLATFORM } from '../../config/platformConfig';
 const log = createLogger('trinityTaxComplianceActions');
 
-function mkTaxAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkTaxAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'compliance' as any,
+    category: 'compliance',
     description: `Trinity tax compliance: ${actionId}`,
     // Tax actions: read/audit = owner + support; any table-update action must
     // be root_admin only (enforced by the 'root_admin_only' flag below).
@@ -30,7 +30,7 @@ function mkTaxAction(actionId: string, fn: (params: any) => Promise<any>): Actio
         // Use req.payload (ActionRequest contract) not req.params
         const data = await fn(req.payload || {});
         return { success: true, data };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }

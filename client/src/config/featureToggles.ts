@@ -101,7 +101,7 @@ export const FEATURE_TOGGLES = {
  */
 export function isFeatureEnabled(path: string): boolean {
   const parts = path.split(".");
-  let feature: any = FEATURE_TOGGLES;
+  let feature: unknown = FEATURE_TOGGLES;
 
   for (const part of parts) {
     feature = feature[part];
@@ -136,7 +136,7 @@ export function anyFeatureEnabled(paths: string[]): boolean {
  */
 export function getEnabledFeatures(category: string): string[] {
   const features: string[] = [];
-  const group = (FEATURE_TOGGLES as any)[category];
+  const group = (FEATURE_TOGGLES as unknown)[category];
 
   if (!group) return [];
 
@@ -153,7 +153,7 @@ export function getEnabledFeatures(category: string): string[] {
  * Get feature toggle group by category
  */
 export function getFeatureGroup(category: string): any {
-  return (FEATURE_TOGGLES as any)[category] || null;
+  return (FEATURE_TOGGLES as unknown)[category] || null;
 }
 
 /**
@@ -188,7 +188,7 @@ export function tierHasFeature(
     enterprise: [
       ...Object.keys(FEATURE_TOGGLES)
         .flatMap((category) =>
-          Object.keys((FEATURE_TOGGLES as any)[category]).map(
+          Object.keys((FEATURE_TOGGLES as unknown)[category]).map(
             (feature) => `${category}.${feature}`
           )
         ),

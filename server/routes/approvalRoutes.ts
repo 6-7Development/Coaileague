@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { approvalRequestService } from "../services/ai-brain/approvalRequestService";
 import { requireAuth } from '../auth';
-import { getUserPlatformRole } from '../rbac';
+import { getUserPlatformRole, AuthenticatedRequest} from '../rbac';
 import { db } from "../db";
 import { sql, eq, and } from "drizzle-orm";
 import { shifts, expenses } from "@shared/schema";
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) {
       return res.status(400).json({ success: false, error: "Workspace ID required" });
     }
@@ -66,7 +66,7 @@ router.get("/pending-count", async (req, res) => {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId;
     
     // Platform admins without a workspace context get 0 count (they view all workspaces)
     const callerPlatRole2 = await getUserPlatformRole(user.id);
@@ -98,7 +98,7 @@ router.get("/pending", async (req, res) => {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) {
       return res.status(400).json({ success: false, error: "Workspace ID required" });
     }
@@ -136,7 +136,7 @@ router.get("/all-pending-counts", async (req, res) => {
     if (!user?.id) {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
-    const workspaceId = req.workspaceId || (user as any).workspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) {
       return res.json({ success: true, data: { shifts: 0, timesheets: 0, timeoff: 0, expenses: 0, total: 0 } });
     }
@@ -185,7 +185,7 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: "Approval not found" });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (workspaceId && approval.workspaceId && approval.workspaceId !== workspaceId) {
       return res.status(403).json({ success: false, error: "Access denied" });
     }
@@ -195,7 +195,7 @@ router.get("/:id", async (req, res) => {
       approval: {
         ...approval,
         createdAt: approval.createdAt?.toISOString(),
-        decisionAt: (approval as any).decisionAt?.toISOString(),
+        decisionAt: (approval as Record<string,unknown>).decisionAt?.toISOString(),
         expiresAt: approval.expiresAt?.toISOString(),
       },
     });
@@ -292,7 +292,7 @@ router.post("/:id/cancel", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Timesheet Edit Requests — manager review of officer-submitted edit requests
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/pending', requireAuth, async (req: any, res) => {  // mounted at /api/timesheet-edit-requests/pending
+router.get('/pending', requireAuth, async (req: AuthenticatedRequest, res) => {  // mounted at /api/timesheet-edit-requests/pending
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(401).json({ error: 'Workspace required' });
@@ -301,12 +301,12 @@ router.get('/pending', requireAuth, async (req: any, res) => {  // mounted at /a
       .orderBy(desc(timesheetEditRequests.createdAt))
       .limit(50);
     res.json(pending);
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/:id/review', requireAuth, async (req: any, res) => {  // mounted at /api/timesheet-edit-requests/:id/review
+router.put('/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {  // mounted at /api/timesheet-edit-requests/:id/review
   try {
     const { id } = req.params;
     const { approved, reviewNotes } = req.body;
@@ -319,12 +319,12 @@ router.put('/:id/review', requireAuth, async (req: any, res) => {  // mounted at
         reviewedBy: userId,
         reviewedAt: new Date(),
         reviewNotes: reviewNotes || null,
-      } as any)
+      } as Record<string, unknown>)
       .where(and(eq(timesheetEditRequests.id, id), eq(timesheetEditRequests.workspaceId, workspaceId)))
       .returning();
     if (!updated) return res.status(404).json({ error: 'Edit request not found' });
     res.json({ success: true, request: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: err.message });
   }
 });

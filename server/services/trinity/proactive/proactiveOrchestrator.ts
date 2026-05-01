@@ -95,7 +95,7 @@ const SCHEDULES: ProactiveCronHandle[] = [
  */
 export interface SchedulerAdapter {
   registerJobInfo: (jobName: string, schedule: string, description: string, enabled: boolean) => void;
-  trackJobExecution: (jobName: string, fn: () => Promise<any>) => Promise<void>;
+  trackJobExecution: (jobName: string, fn: () => Promise<unknown>) => Promise<void>;
 }
 
 export function registerProactiveMonitors(adapter: SchedulerAdapter): void {
@@ -108,7 +108,7 @@ export function registerProactiveMonitors(adapter: SchedulerAdapter): void {
         });
       });
       log.info(`[${job.jobName}] registered`, { schedule: job.schedule });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[${job.jobName}] registration failed:`, err?.message);
     }
   }
@@ -129,7 +129,7 @@ export function getProactiveScheduleMetadata(): Array<{
 
 // ─── Trinity action handlers ──────────────────────────────────────────────────
 
-function ok(actionId: string, message: string, data: any, start: number): ActionResult {
+function ok(actionId: string, message: string, data: Record<string, unknown>, start: number): ActionResult {
   return { success: true, actionId, message, data, executionTimeMs: Date.now() - start };
 }
 
@@ -155,7 +155,7 @@ const runPreShiftIntelAction: ActionHandler = {
         result,
         start,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Pre-shift intel error: ${err.message}`, start);
     }
   },
@@ -193,7 +193,7 @@ const runRevenueScanAction: ActionHandler = {
         result,
         start,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Revenue scan error: ${err.message}`, start);
     }
   },
@@ -226,7 +226,7 @@ const sendWeeklyBriefAction: ActionHandler = {
         result,
         start,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Weekly brief error: ${err.message}`, start);
     }
   },
@@ -250,7 +250,7 @@ const runAnomalyWatchAction: ActionHandler = {
         result,
         start,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Anomaly watch error: ${err.message}`, start);
     }
   },

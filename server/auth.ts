@@ -130,7 +130,7 @@ export async function recordFailedLogin(userId: string): Promise<void> {
   if (!user) return;
 
   const attempts = (user.loginAttempts || 0) + 1;
-  const updates: any = {
+  const updates: Record<string, unknown> = {
     loginAttempts: attempts,
     updatedAt: new Date(),
   };
@@ -181,7 +181,7 @@ class FaultTolerantStore extends session.Store {
   private readonly CACHE_TTL_MS = 15 * 60 * 1000;
   private readonly CACHE_MAX = 1000;
 
-  constructor(inner: any, timeoutMs = 1500) {
+  constructor(inner: unknown, timeoutMs = 1500) {
     super();
     this.inner = inner;
     this.timeoutMs = timeoutMs;
@@ -211,8 +211,8 @@ class FaultTolerantStore extends session.Store {
   }
 
   private withTimeout<T>(
-    fn: (cb: (err: any, result?: T) => void) => void,
-    cb: (err: any, result?: T) => void
+    fn: (cb: (err: unknown, result?: T) => void) => void,
+    cb: (err: unknown, result?: T) => void
   ): void {
     let done = false;
     const timer = setTimeout(() => {
@@ -231,7 +231,7 @@ class FaultTolerantStore extends session.Store {
     });
   }
 
-  get(sid: string, cb: (err: any, session?: session.SessionData | null) => void): void {
+  get(sid: string, cb: (err: unknown, session?: session.SessionData | null) => void): void {
     this.withTimeout<session.SessionData | null>(
       (done) => this.inner.get(sid, done),
       (err, result) => {
@@ -246,7 +246,7 @@ class FaultTolerantStore extends session.Store {
     );
   }
 
-  set(sid: string, sess: session.SessionData, cb?: (err?: any) => void): void {
+  set(sid: string, sess: session.SessionData, cb?: (err?: unknown) => void): void {
     // Write to in-memory cache immediately for fast subsequent reads
     this.cacheSet(sid, sess);
     // Persist to DB store — call cb only after the write completes
@@ -260,7 +260,7 @@ class FaultTolerantStore extends session.Store {
     );
   }
 
-  destroy(sid: string, cb?: (err?: any) => void): void {
+  destroy(sid: string, cb?: (err?: unknown) => void): void {
     this.cache.delete(sid);
     this.withTimeout(
       (done) => this.inner.destroy(sid, done),
@@ -295,7 +295,7 @@ export async function ensureSessionsTable(): Promise<void> {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions (expire)
     `);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Non-fatal — connect-pg-simple will also attempt this on first write
     console.warn('[Auth] Sessions table ensure (non-fatal):', err?.message?.slice(0, 100));
   }
@@ -624,7 +624,6 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       rateLimitRemaining: rateLimitResult.remaining,
     });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     req.user = testUser;
     req.isTestMode = true;
     req.workspaceId = TEST_MODE_WORKSPACE_ID;
@@ -633,7 +632,6 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
 
     // Populate session so ensureWorkspaceAccess fast-path fires without a DB lookup
     if (!req.session) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       req.session = {};
     }
     req.session.userId = testUser.id;
@@ -651,7 +649,6 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   const botToken = req.get('x-trinity-bot-token');
   if (botToken && validateTrinityBotToken(botToken)) {
     log.info('Trinity bot bypass granted', { endpoint, method, ip: ipAddress });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     req.user = TRINITY_BOT_USER;
     req.platformRole = 'Bot';
     req.workspaceRole = undefined;
@@ -689,7 +686,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   // returns _dbDegraded:true so the frontend knows to show the amber banner.
   if (isDbCircuitOpen()) {
     const wsId = req.session?.workspaceId || req.session?.currentWorkspaceId || null;
-    const degradedUser: any = {
+    const degradedUser: Record<string, unknown> = {
       id: authenticatedUserId,
       email: '',
       firstName: null,
@@ -753,7 +750,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   }
 
   next();
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err?.message?.includes('CircuitBreaker') || err?.message?.includes('circuit is open')) {
       return res.status(503).json({ message: "Database temporarily unavailable — please try again shortly" });
     }
@@ -887,7 +884,7 @@ export const requireSupportStaff: RequestHandler = async (req, res, next) => {
 };
 
 // Dual auth middleware: Supports both session-based AND Replit OAuth
-export const requireAnyAuth: RequestHandler = async (req: any, res, next) => {
+export const requireAnyAuth: RequestHandler = async (req: unknown, res, next) => {
   // Try session-based auth first
   if (req.session?.userId) {
     const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
@@ -1061,7 +1058,7 @@ export async function resetPassword(
 
 export function setupAuth(app: Express) {
   // Ensure sessions table exists before session middleware — fixes black screen on Railway
-  ensureSessionsTable().catch((e: any) =>
+  ensureSessionsTable().catch((e: unknown) =>
     console.warn('[Auth] Session table bootstrap:', e?.message?.slice(0, 100))
   );
   app.set("trust proxy", 1);

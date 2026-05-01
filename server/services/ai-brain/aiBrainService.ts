@@ -183,18 +183,18 @@ interface HelpAIInput {
 }
 
 interface ScheduleOSInput {
-  shifts: any[];
-  employees: any[];
+  shifts: unknown[];
+  employees: unknown[];
   constraints?: {
     weekStart?: string;
     weekEnd?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
 interface PredictionInput {
   predictionType: string;
-  historicalData: any;
+  historicalData: unknown;
 }
 
 interface BusinessInsightInput {
@@ -213,7 +213,7 @@ interface FAQUpdateInput {
 interface PlatformRecommendationInput {
   userNeed: string;
   currentPlan?: string;
-  currentUsage?: any;
+  currentUsage?: unknown;
 }
 
 interface PlatformAwarenessInput {
@@ -230,14 +230,14 @@ interface IssueDiagnosisInput {
   description: string;
   symptoms: string[];
   affectedFeature?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface EnqueueJobRequest {
   workspaceId?: string;
   userId?: string;
   skill: string;
-  input: any;
+  input: Record<string, unknown>;
   priority?: 'low' | 'normal' | 'high' | 'critical';
   // Conversation context for proper chatroom routing
   conversationId?: string;
@@ -247,7 +247,7 @@ export interface EnqueueJobRequest {
 export interface JobResult {
   jobId: string;
   status: string;
-  output?: any;
+  output?: unknown;
   error?: string;
   confidenceScore?: number;
   requiresApproval?: boolean;
@@ -266,7 +266,7 @@ export class AIBrainService {
     const [job] = await db.insert(aiBrainJobs).values({
       workspaceId: request.workspaceId || null,
       userId: request.userId || null,
-      skill: request.skill as any,
+      skill: request.skill as unknown,
       input: request.input,
       priority: request.priority || 'normal',
       status: 'pending',
@@ -278,7 +278,7 @@ export class AIBrainService {
     try {
       const result = await this.executeJob(job);
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`❌ [AI Brain] Job ${job.id} failed:`, error);
       
       const errorMessage = (error instanceof Error ? error.message : String(error)) || 'Unknown error occurred';
@@ -348,19 +348,19 @@ export class AIBrainService {
       })
       .where(eq(aiBrainJobs.id, job.id));
 
-    let output: any;
+    let output: unknown;
     let confidenceScore: number | undefined;
     let tokensUsed = 0;
 
     // Cast input to typed interface based on skill
-    const input = job.input as any;
+    const input = job.input as unknown;
 
     // Create a timeout promise that rejects after JOB_TIMEOUT_MS
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => {
         const timeoutError = new Error(`Job execution timeout after ${JOB_TIMEOUT_MS}ms`);
-        (timeoutError as any).code = 'ETIMEDOUT';
-        (timeoutError as any).isTimeout = true;
+        (timeoutError as Record<string,unknown>).code = 'ETIMEDOUT';
+        (timeoutError as Record<string,unknown>).isTimeout = true;
         reject(timeoutError);
       }, JOB_TIMEOUT_MS);
     });
@@ -411,7 +411,6 @@ export class AIBrainService {
             confidenceScore = 0.95;
             break;
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'platform_awareness':
             const awarenessResult = await this.executePlatformAwareness(job, input as PlatformAwarenessInput);
             output = awarenessResult.output;
@@ -419,7 +418,6 @@ export class AIBrainService {
             confidenceScore = awarenessResult.confidence;
             break;
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'issue_diagnosis':
             const diagnosisResult = await this.executeIssueDiagnosis(job, input as IssueDiagnosisInput);
             output = diagnosisResult.output;
@@ -427,7 +425,6 @@ export class AIBrainService {
             confidenceScore = diagnosisResult.confidence;
             break;
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'trinity_summarize':
             // Trinity AI conversation summarization for ticket closure
             const summarizeResult = await this.executeTrinitySum(job, input);
@@ -436,11 +433,9 @@ export class AIBrainService {
             confidenceScore = 0.95;
             break;
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'helpai_greeting':
           case 'helpai_response':
           case 'helpai_faq_search':
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'helpai_urgency':
             // HelpAI skills - delegate to help support handler
             const helpaiResult = await this.executeHelpAISupport(job, input as HelpAIInput);
@@ -456,7 +451,7 @@ export class AIBrainService {
 
       // Race between execution and timeout
       await Promise.race([executionPromise, timeoutPromise]);
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Check if this is a timeout error
       if (error.code === 'ETIMEDOUT' || error.isTimeout) {
         const executionTime = Date.now() - startTime;
@@ -498,7 +493,7 @@ export class AIBrainService {
     const executionTime = Date.now() - startTime;
     await db.update(aiBrainJobs)
       .set({
-        status: finalStatus as any,
+        status: finalStatus as unknown,
         output,
         tokensUsed,
         confidenceScore,
@@ -567,7 +562,7 @@ export class AIBrainService {
    * 7. THOUGHT LOGGING: Record the reasoning chain for Trinity's metacognition
    * 8. LEARN: Store successful interactions for future use
    */
-  private async executeHelpAISupport(job: AiBrainJob, input: HelpAIInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executeHelpAISupport(job: AiBrainJob, input: HelpAIInput): Promise<{ output: unknown; tokensUsed: number }> {
     // Phase 48: Defence-in-depth — sanitize the message a second time at the AI
     // service boundary in case it arrives via a path that bypassed the route layer.
     const rawMessage = input.message;
@@ -660,7 +655,7 @@ export class AIBrainService {
         finalResponse = aiResponse.content;
         totalTokens = finalResponse.length / 4;
         log.info(`✅ [Chain-of-Command] ${aiResponse.provider} responded (${finalResponse.length} chars, fallback: ${aiResponse.fallbackUsed})`);
-      } catch (routingError: any) {
+      } catch (routingError : unknown) {
         log.warn(`⚠️ [Chain-of-Command] ${selectedProvider} routing failed, falling back to Gemini: ${routingError.message}`);
         const response = await geminiClient.generate({
           workspaceId,
@@ -946,7 +941,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
     options?: {
       sourceType?: 'ai_learned' | 'ticket_resolution' | 'feature_update' | 'gap_detection';
       sourceId?: string;
-      sourceContext?: Record<string, any>;
+      sourceContext?: Record<string, unknown>;
       confidence?: number;
       userId?: string;
     }
@@ -988,7 +983,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
                 sourceType: sourceType,
                 sourceId: sourceId || existingFaq.sourceId,
                 sourceContext: {
-                  ...(existingFaq.sourceContext as Record<string, any> || {}),
+                  ...(existingFaq.sourceContext as Record<string, unknown> || {}),
                   lastUpdate: new Date().toISOString(),
                   ...(sourceContext || {})
                 },
@@ -1087,7 +1082,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
         changedByAi: !changedBy,
         changeType,
         changeReason,
-        sourceType: faq.sourceType as any,
+        sourceType: faq.sourceType as string,
         sourceId: faq.sourceId
       });
     } catch (error) {
@@ -1105,7 +1100,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
       sourceId?: string;
       suggestedAnswer?: string;
       confidence?: number;
-      context?: Record<string, any>;
+      context?: Record<string, unknown>;
     }
   ): Promise<string | null> {
     try {
@@ -1390,7 +1385,7 @@ ${faqs.map(f => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')}
   /**
    * AI Scheduling Generation - AI-powered scheduling
    */
-  private async executeScheduleGeneration(job: AiBrainJob, input: ScheduleOSInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeScheduleGeneration(job: AiBrainJob, input: ScheduleOSInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { shifts: inputShifts, employees: inputEmployees, constraints } = input;
 
     const enrichedInput = await this.enrichWithExternalIds(
@@ -1536,7 +1531,7 @@ Constraints: ${JSON.stringify(enrichedInput.constraints, null, 2)}`;
         
         log.info(`✅ [AI Brain] Auto-approved ${createdShifts.length} shift(s) (confidence: ${(confidence * 100).toFixed(1)}%)`);
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AI Brain] Failed to persist schedule:', error);
     }
   }
@@ -1544,7 +1539,7 @@ Constraints: ${JSON.stringify(enrichedInput.constraints, null, 2)}`;
   /**
    * IntelligenceOS Prediction - Predictive analytics
    */
-  private async executePrediction(job: AiBrainJob, input: PredictionInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executePrediction(job: AiBrainJob, input: PredictionInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { predictionType, historicalData } = input;
 
     const systemPrompt = `You are CoAIleague IntelligenceOS AI, an expert at predictive workforce analytics.
@@ -1597,7 +1592,7 @@ Return a JSON object with:
   /**
    * NEW: Business Insight Generation - Sales, Finance, Operations, Automation, Growth
    */
-  private async executeBusinessInsight(job: AiBrainJob, input: BusinessInsightInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeBusinessInsight(job: AiBrainJob, input: BusinessInsightInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { insightType, timeframe = 'monthly', focusArea } = input;
 
     // Gather relevant data based on insight type
@@ -1682,7 +1677,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * Gather business context data for insights
    */
-  private async gatherBusinessContext(workspaceId: string, insightType: string, timeframe: string): Promise<any> {
+  private async gatherBusinessContext(workspaceId: string, insightType: string, timeframe: string): Promise<unknown> {
     const now = new Date();
     let startDate: Date;
     
@@ -1697,7 +1692,7 @@ ${JSON.stringify(contextData, null, 2)}`;
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    const context: any = { timeframe, workspaceId };
+    const context: Record<string, unknown> = { timeframe, workspaceId };
 
     try {
       if (insightType === 'sales' || insightType === 'finance' || insightType === 'growth') {
@@ -1761,7 +1756,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: Platform Recommendation - Self-selling AI
    */
-  private async executePlatformRecommendation(job: AiBrainJob, input: PlatformRecommendationInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executePlatformRecommendation(job: AiBrainJob, input: PlatformRecommendationInput): Promise<{ output: unknown; tokensUsed: number }> {
     const { userNeed, currentPlan, currentUsage } = input;
 
     const response = await geminiClient.generatePlatformRecommendation({
@@ -1784,7 +1779,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: FAQ Update - Learn and persist new FAQs
    */
-  private async executeFAQUpdate(job: AiBrainJob, input: FAQUpdateInput): Promise<{ output: any; tokensUsed: number }> {
+  private async executeFAQUpdate(job: AiBrainJob, input: FAQUpdateInput): Promise<{ output: unknown; tokensUsed: number }> {
     const { question, answer, category = 'general', tags = [] } = input;
 
     try {
@@ -1808,7 +1803,7 @@ ${JSON.stringify(contextData, null, 2)}`;
         },
         tokensUsed: 0
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         output: {
           success: false,
@@ -1822,7 +1817,7 @@ ${JSON.stringify(contextData, null, 2)}`;
   /**
    * NEW: Platform Awareness - Answer questions about any platform feature
    */
-  private async executePlatformAwareness(job: AiBrainJob, input: PlatformAwarenessInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executePlatformAwareness(job: AiBrainJob, input: PlatformAwarenessInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { query, queryType = 'help', context } = input;
 
     // Search for relevant features based on the query
@@ -1925,7 +1920,7 @@ ${context?.currentFeature ? `User is currently using: ${context.currentFeature}`
   /**
    * NEW: Issue Diagnosis - AI diagnoses user issues based on symptoms
    */
-  private async executeIssueDiagnosis(job: AiBrainJob, input: IssueDiagnosisInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+  private async executeIssueDiagnosis(job: AiBrainJob, input: IssueDiagnosisInput): Promise<{ output: unknown; tokensUsed: number; confidence: number }> {
     const { description, symptoms, affectedFeature, context } = input;
 
     // Find matching issues from the platform registry
@@ -1999,7 +1994,7 @@ ${context ? `Additional Context: ${JSON.stringify(context)}` : ''}`;
     try {
       const jsonMatch = response.text.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[1].trim());
+        const parsed: unknown = JSON.parse(jsonMatch[1].trim());
         diagnosis = { ...diagnosis, ...parsed };
       }
     } catch {
@@ -2025,7 +2020,7 @@ ${context ? `Additional Context: ${JSON.stringify(context)}` : ''}`;
    * Trinity AI Summarization - Generate concise summary of support conversations
    * Used when closing tickets to provide both user and staff with resolution summary
    */
-  private async executeTrinitySum(job: AiBrainJob, input: { message: string; maxWords?: number }): Promise<{ output: any; tokensUsed: number }> {
+  private async executeTrinitySum(job: AiBrainJob, input: { message: string; maxWords?: number }): Promise<{ output: unknown; tokensUsed: number }> {
     const { message, maxWords = 100 } = input;
 
     const systemPrompt = `You are Trinity AI, the intelligent orchestrator for CoAIleague support platform.
@@ -2104,7 +2099,6 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
       .where(eq(workspaces.id, workspaceId))
       .limit(1);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspaceSettings = (workspace?.settings as Record<string, boolean>) || {};
     return platformFeatureRegistry.getFeatureStatus(workspaceSettings);
   }
@@ -2117,7 +2111,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
     userId?: string;
     featureId: string;
     eventType: 'view' | 'use' | 'error' | 'help_request';
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<void> {
     const { workspaceId, userId, featureId, eventType, metadata } = event;
     
@@ -2138,7 +2132,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   /**
    * Enrich employee/org data with human-readable external IDs
    */
-  private async enrichWithExternalIds(data: any, workspaceId?: string): Promise<any> {
+  private async enrichWithExternalIds(data: Record<string, unknown>, workspaceId?: string): Promise<unknown> {
     if (!data) return data;
 
     if (workspaceId) {
@@ -2195,7 +2189,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   /**
    * Record platform event for cross-org learning
    */
-  async recordEvent(event: { eventType: string; feature: string; payload: any; rawData?: any }): Promise<void> {
+  async recordEvent(event: { eventType: string; feature: string; payload: Record<string, unknown>; rawData?: unknown }): Promise<void> {
     const fingerprint = this.generateFingerprint(event.eventType, event.feature, event.rawData);
     await this.updateGlobalPatterns(fingerprint, event.eventType, event.feature);
   }
@@ -2203,7 +2197,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   /**
    * Generate anonymized fingerprint for cross-org pattern matching
    */
-  private generateFingerprint(eventType: string, feature: string, rawData?: any): string {
+  private generateFingerprint(eventType: string, feature: string, rawData?: unknown): string {
     const normalized = {
       type: eventType,
       feature,
@@ -2222,27 +2216,22 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   private async updateGlobalPatterns(fingerprint: string, eventType: string, feature: string): Promise<void> {
     const [existing] = await db
       .select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiGlobalPatterns)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(aiGlobalPatterns.fingerprint, fingerprint))
       .limit(1);
 
     if (existing) {
       const currentOccurrences = existing.occurrences || 0;
       await db
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .update(aiGlobalPatterns)
         .set({
           occurrences: currentOccurrences + 1,
           lastSeenAt: new Date()
         })
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(aiGlobalPatterns.id, existing.id));
 
       log.info(`📊 [AI Brain] Pattern ${fingerprint} seen ${currentOccurrences + 1} times across orgs`);
     } else {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(aiGlobalPatterns).values({
         workspaceId: 'system',
         patternType: eventType,
@@ -2259,9 +2248,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   /**
    * Submit feedback for AI job - Helps brain learn
    */
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async submitFeedback(feedback: Omit<InsertAiFeedbackLoop, 'createdAt'>): Promise<void> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(aiFeedbackLoops).values(feedback);
     log.info(`💡 [AI Brain] Feedback received for job ${feedback.jobId}`);
   }
@@ -2270,7 +2257,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
    * Get pending approvals across all skills
    */
   async getPendingApprovals(workspaceId?: string): Promise<AiBrainJob[]> {
-    const conditions = [eq(aiBrainJobs.status, 'requires_approval' as any)];
+    const conditions = [eq(aiBrainJobs.status, 'requires_approval')];
     
     if (workspaceId) {
       conditions.push(eq(aiBrainJobs.workspaceId, workspaceId));
@@ -2290,7 +2277,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
     await db
       .update(aiBrainJobs)
       .set({
-        status: 'completed' as any,
+        status: 'completed',
         approvedBy: userId,
         approvedAt: new Date()
       })
@@ -2306,7 +2293,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
     await db
       .update(aiBrainJobs)
       .set({
-        status: 'failed' as any,
+        status: 'failed',
         rejectedBy: userId,
         rejectedAt: new Date(),
         rejectionReason: reason
@@ -2319,7 +2306,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   /**
    * Get AI Brain health metrics
    */
-  async getHealthMetrics(workspaceId?: string): Promise<any> {
+  async getHealthMetrics(workspaceId?: string): Promise<unknown> {
     const conditions = workspaceId ? [eq(aiBrainJobs.workspaceId, workspaceId)] : [];
 
     const stats = await db
@@ -2347,7 +2334,6 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   private async getGlobalPatternsCount(): Promise<number> {
     const result = await db
       .select({ count: sql<number>`count(*)` })
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiGlobalPatterns);
     return result[0]?.count || 0;
   }
@@ -2355,9 +2341,7 @@ Format: Write a 2-3 sentence summary that could be shown to both the user and st
   private async getValidatedSolutionsCount(): Promise<number> {
     const result = await db
       .select({ count: sql<number>`count(*)` })
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiSolutionLibrary)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(aiSolutionLibrary.validated, true));
     return result[0]?.count || 0;
   }

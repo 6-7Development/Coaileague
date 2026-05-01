@@ -101,7 +101,7 @@ const rootRouter = Router();
 // GET /health - Simple health check (for monitoring services like Render)
 rootRouter.get('/health', async (_req: Request, res: Response) => {
   const requestStart = Date.now();
-  const health: any = {
+  const health: Record<string, unknown> = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -109,9 +109,9 @@ rootRouter.get('/health', async (_req: Request, res: Response) => {
     features: [],
     dependencies: {},
     pool: {
-      total: (pool as any).totalCount ?? 0,
-      idle: (pool as any).idleCount ?? 0,
-      waiting: (pool as any).waitingCount ?? 0,
+      total: (pool as Record<string,unknown>).totalCount ?? 0,
+      idle: (pool as Record<string,unknown>).idleCount ?? 0,
+      waiting: (pool as Record<string,unknown>).waitingCount ?? 0,
     },
   };
 
@@ -220,7 +220,7 @@ apiHealthRouter.get('/slo', async (_req: Request, res: Response) => {
   try {
     const { SLO_TARGETS } = await import('../lib/sloConfig');
     res.json({ ok: true, targets: SLO_TARGETS });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ ok: false, error: err?.message || 'Failed to load SLO config' });
   }
 });
@@ -237,7 +237,7 @@ apiHealthRouter.post('/error-tracker-test', (_req: Request, res: Response) => {
       ok: true,
       note: 'Synthetic event fired. Check the configured observability backend. If no backend is configured, the event was no-op.',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ ok: false, error: err?.message || 'Unknown failure' });
   }
 });
@@ -249,7 +249,7 @@ apiHealthRouter.get('/ai-status', async (req: Request, res: Response) => {
   try {
     const gatewayHealth = await getGatewayHealth();
     const geminiHealth = await checkGeminiAI();
-    const gatewayStatus = (gatewayHealth as any)?.status;
+    const gatewayStatus = (gatewayHealth as Record<string,unknown>)?.status;
     const geminiOk = geminiHealth?.status === 'operational';
     const aiHealthy = gatewayStatus === 'operational' || gatewayStatus === 'healthy' || geminiOk;
     const overall = aiHealthy ? 'full' : 'partial';
@@ -299,7 +299,7 @@ apiHealthRouter.get('/gateway', async (req: Request, res: Response) => {
 });
 
 // In-memory cache for health summary (reduces DB hits on frequently-polled endpoint)
-let healthSummaryCache: { data: any; timestamp: number } | null = null;
+let healthSummaryCache: { data: Record<string, unknown>; timestamp: number } | null = null;
 const HEALTH_CACHE_TTL = 30000; // 30 seconds
 
 // GET /api/health/summary - Overall health summary (all services)
@@ -617,7 +617,7 @@ supportRouter.post(
         return res.status(403).json({ error: 'No workspace selected' });
       }
 
-      const workspaceId = req.workspaceId || (user as any)?.workspaceId || user.currentWorkspaceId;
+      const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user.currentWorkspaceId;
 
       // Parse and validate request body
       let reportData: ServiceIncidentReportPayload;
@@ -631,7 +631,6 @@ supportRouter.post(
       } catch (validationError: unknown) {
         return res.status(400).json({
           error: 'Invalid report data',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           details: validationError.errors || validationError.message,
         });
       }
@@ -761,7 +760,7 @@ export default router;
 // ============================================================================
 // LEGACY EXPORT (for backward compatibility with registerHealthRoutes)
 // ============================================================================
-export function registerHealthRoutes(app: any, requireAuth: any) {
+export function registerHealthRoutes(app: unknown, requireAuth: unknown) {
   // Mount the router at root level
   app.use(router);
 }

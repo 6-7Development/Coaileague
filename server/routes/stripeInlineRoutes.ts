@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { AuthenticatedRequest } from '../rbac';
 import { Router, RequestHandler } from "express";
 import crypto from 'crypto';
 import Stripe from 'stripe';
@@ -14,6 +15,7 @@ import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
 import { getStripe, isStripeConfigured } from '../services/billing/stripeClient';
 import { z } from 'zod';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('StripeInlineRoutes');
 
 
@@ -37,7 +39,7 @@ setInterval(_pruneStripeEventCache, 60 * 60 * 1000).unref(); // hourly cleanup
 // Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -45,11 +47,11 @@ if (!isStripeConfigured()) {
   log.warn('STRIPE_SECRET_KEY not found. Payment processing disabled. Add keys to activate.');
 }
 
-function resolveUserId(req: any): string | undefined {
+function resolveUserId(req: AuthenticatedRequest): string | undefined {
   return req.user?.id || req.user?.claims?.sub || req.session?.userId;
 }
 
-async function resolveWorkspace(req: any) {
+async function resolveWorkspace(req: AuthenticatedRequest) {
   const wsId = req.user?.currentWorkspaceId || req.session?.currentWorkspaceId || req.workspaceId;
   if (wsId) {
     const ws = await storage.getWorkspace(wsId);
@@ -62,7 +64,7 @@ async function resolveWorkspace(req: any) {
   return undefined;
 }
 
-const flexAuth: RequestHandler = async (req: any, res, next) => {
+const flexAuth: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
   if (req.session?.userId) {
     if (!req.user) {
       const user = await storage.getUser(req.session.userId);
@@ -87,7 +89,7 @@ router.get('/config', async (req, res) => {
   });
 });
 
-router.post('/connect-account', flexAuth, async (req: any, res) => {
+router.post('/connect-account', flexAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).json({ 
@@ -101,9 +103,7 @@ router.post('/connect-account', flexAuth, async (req: any, res) => {
       return res.status(404).json({ message: "Workspace not found" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (workspace.stripeConnectedAccountId) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const account = await stripe.accounts.retrieve(workspace.stripeConnectedAccountId);
       return res.json({ 
         accountId: account.id,
@@ -123,7 +123,6 @@ router.post('/connect-account', flexAuth, async (req: any, res) => {
     }, { idempotencyKey: `connect-acct-${workspace.id}` });
 
     await storage.updateWorkspace(workspace.id, {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       stripeConnectedAccountId: account.id,
     });
 
@@ -138,7 +137,7 @@ router.post('/connect-account', flexAuth, async (req: any, res) => {
   }
 });
 
-router.post('/onboarding-link', flexAuth, async (req: any, res) => {
+router.post('/onboarding-link', flexAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).json({ message: "Stripe keys required" });
@@ -146,16 +145,16 @@ router.post('/onboarding-link', flexAuth, async (req: any, res) => {
 
     const workspace = await resolveWorkspace(req);
     
-    if (!workspace || !(workspace as any).stripeConnectedAccountId) {
+    if (!workspace || !(workspace as WorkspaceWithExtras).stripeConnectedAccountId) {
       return res.status(400).json({ message: "Connect account must be created first" });
     }
 
     const accountLink = await stripe.accountLinks.create({
-      account: (workspace as any).stripeConnectedAccountId,
+      account: (workspace as WorkspaceWithExtras).stripeConnectedAccountId,
       refresh_url: `${req.protocol}://${req.get('host')}/settings`,
       return_url: `${req.protocol}://${req.get('host')}/settings?stripe_onboarding=success`,
       type: 'account_onboarding',
-    }, { idempotencyKey: `onboard-link-${(workspace as any).stripeConnectedAccountId}-${Math.floor(Date.now() / 60000)}` });
+    }, { idempotencyKey: `onboard-link-${(workspace as WorkspaceWithExtras).stripeConnectedAccountId}-${Math.floor(Date.now() / 60000)}` });
 
     res.json({ url: accountLink.url });
   } catch (error: unknown) {
@@ -164,7 +163,7 @@ router.post('/onboarding-link', flexAuth, async (req: any, res) => {
   }
 });
 
-router.post('/pay-invoice', requireAuth, async (req: any, res) => {
+router.post('/pay-invoice', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).json({ message: "Stripe keys required" });
@@ -172,7 +171,6 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
 
     const { invoiceId, paymentMethodId } = req.body;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const invoice = await storage.getInvoice(invoiceId);
     if (!invoice) {
       return res.status(404).json({ message: "Invoice not found" });
@@ -187,14 +185,14 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
     }
 
     const workspace = await storage.getWorkspace(invoice.workspaceId);
-    if (!workspace || !(workspace as any).stripeConnectedAccountId) {
+    if (!workspace || !(workspace as WorkspaceWithExtras).stripeConnectedAccountId) {
       return res.status(400).json({ message: "Workspace Stripe account not configured" });
     }
 
     const totalCents = parseInt(multiplyFinancialValues(toFinancialString(invoice.total as string), '100'));
     const platformFeeCents = parseInt(multiplyFinancialValues(toFinancialString(invoice.platformFeeAmount as string || '0'), '100'));
 
-    const invoiceCurrency = ((invoice as any).currency || 'usd').toLowerCase();
+    const invoiceCurrency = ((invoice as Record<string, unknown>).currency || 'usd').toLowerCase();
     const paymentIntent = await stripe.paymentIntents.create({
       automatic_payment_methods: { enabled: true },
       amount: totalCents,
@@ -203,7 +201,7 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
       confirm: true,
       application_fee_amount: platformFeeCents,
       transfer_data: {
-        destination: (workspace as any).stripeConnectedAccountId,
+        destination: (workspace as WorkspaceWithExtras).stripeConnectedAccountId,
       },
       metadata: {
         invoiceId: invoice.id,
@@ -217,7 +215,6 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
     // interpreted this as "payment complete" and showed a success message while the
     // invoice was never actually marked paid. Now we surface the clientSecret so the
     // frontend can complete the 3DS challenge via Stripe.js confirmCardPayment().
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_source_action') {
       return res.json({
         success: false,
@@ -280,7 +277,7 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
               .catch((err: Error) => log.warn('[PayInvoice] Fee ledger record failed (non-blocking):', err.message))
           ).catch((err: Error) => log.warn('[PayInvoice] Fee ledger import failed:', err.message));
         }
-      } catch (feeErr: any) {
+      } catch (feeErr: unknown) {
         log.warn('[PayInvoice] Middleware fee charge failed (non-blocking):', feeErr?.message);
       }
 
@@ -318,7 +315,7 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
           source: 'stripe_pay_invoice',
         },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     res.json({ 
@@ -332,7 +329,7 @@ router.post('/pay-invoice', requireAuth, async (req: any, res) => {
   }
 });
 
-router.post('/create-subscription', requireAuth, async (req: any, res) => {
+router.post('/create-subscription', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).json({ message: "Stripe keys required" });
@@ -370,7 +367,7 @@ router.post('/create-subscription', requireAuth, async (req: any, res) => {
           });
         }
         // Subscription exists but is not active (cancelled, past_due) — fall through to create new.
-      } catch (subLookupErr: any) {
+      } catch (subLookupErr: unknown) {
         // Stripe does not know this ID — the stored value is stale. Clear it and continue.
         log.warn(`[CreateSubscription] Stale stripeSubscriptionId on workspace ${workspace.id}: ${subLookupErr.message}`);
         await storage.updateWorkspace(workspace.id, { stripeSubscriptionId: null });
@@ -381,7 +378,7 @@ router.post('/create-subscription', requireAuth, async (req: any, res) => {
     const { STRIPE_PRODUCTS, getPriceId } = await import('../stripe-config');
     
     const validTiers = ['starter', 'professional', 'business', 'enterprise'] as const;
-    if (!validTiers.includes(tier as any)) {
+    if (!validTiers.includes(tier as unknown)) {
       return res.status(400).json({ message: "Invalid tier" });
     }
     
@@ -408,9 +405,9 @@ router.post('/create-subscription', requireAuth, async (req: any, res) => {
       invoice_settings: { default_payment_method: paymentMethodId },
     });
 
-    const stripePriceId = getPriceId(tier as any, 'monthly');
+    const stripePriceId = getPriceId(tier as unknown, 'monthly');
     
-    const subscriptionParams: any = {
+    const subscriptionParams: Record<string, unknown> = {
       customer: customerId,
       metadata: {
         workspaceId: workspace.id,
@@ -482,7 +479,7 @@ router.post('/create-subscription', requireAuth, async (req: any, res) => {
   }
 });
 
-router.post('/webhook', async (req: any, res) => {
+router.post('/webhook', async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).send('Stripe not configured');
@@ -550,7 +547,6 @@ router.post('/webhook', async (req: any, res) => {
         return res.status(500).json({ error: `Handler failed: ${mainWebhookResult.error}` });
       }
     } catch (routeErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error('[Stripe Webhook] Main pipeline threw for event:', event.type, routeErr.message);
       if (MONEY_CRITICAL_EVENTS.has(event.type)) {
         return res.status(500).json({ error: `Handler error: ${sanitizeError(routeErr)}` });
@@ -587,7 +583,7 @@ router.post('/webhook', async (req: any, res) => {
  * POST /api/stripe/billing-portal
  * Create a Stripe Customer Portal session so the org owner can manage billing
  */
-router.post('/billing-portal', requireAuth, async (req: any, res) => {
+router.post('/billing-portal', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) return res.status(503).json({ message: 'Payment processing not configured' });
 
@@ -628,7 +624,7 @@ router.post('/billing-portal', requireAuth, async (req: any, res) => {
  * POST /api/stripe/create-subscription-checkout
  * Create a Stripe Checkout session for subscription renewal or upgrade
  */
-router.post('/create-subscription-checkout', requireAuth, async (req: any, res) => {
+router.post('/create-subscription-checkout', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) return res.status(503).json({ message: 'Payment processing not configured' });
 
@@ -707,14 +703,14 @@ router.post('/create-subscription-checkout', requireAuth, async (req: any, res) 
 });
 
 
-router.get('/connect-status', flexAuth, async (req: any, res) => {
+router.get('/connect-status', flexAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspace = await resolveWorkspace(req);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
     }
 
-    if (!(workspace as any).stripeConnectedAccountId) {
+    if (!(workspace as WorkspaceWithExtras).stripeConnectedAccountId) {
       return res.json({
         status: 'not_started',
         accountId: null,
@@ -728,7 +724,7 @@ router.get('/connect-status', flexAuth, async (req: any, res) => {
     if (!isStripeConfigured()) {
       return res.json({
         status: 'stripe_not_configured',
-        accountId: (workspace as any).stripeConnectedAccountId,
+        accountId: (workspace as WorkspaceWithExtras).stripeConnectedAccountId,
         chargesEnabled: false,
         payoutsEnabled: false,
         detailsSubmitted: false,
@@ -736,7 +732,6 @@ router.get('/connect-status', flexAuth, async (req: any, res) => {
       });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const account = await stripe.accounts.retrieve(workspace.stripeConnectedAccountId);
 
     let status: string;
@@ -762,7 +757,7 @@ router.get('/connect-status', flexAuth, async (req: any, res) => {
   }
 });
 
-router.get('/fee-schedule', flexAuth, async (req: any, res) => {
+router.get('/fee-schedule', flexAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspace = await resolveWorkspace(req);
     if (!workspace) {
@@ -776,7 +771,6 @@ router.get('/fee-schedule', flexAuth, async (req: any, res) => {
     const competitorInvoiceRates = [
       competitors.quickbooks.invoiceRate,
       competitors.square.invoiceRate,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ].filter((r): r is number => r !== null);
     const maxCompetitorRate = competitorInvoiceRates.length > 0 ? Math.max(...competitorInvoiceRates) : 0;
     const savingsPercent = maxCompetitorRate > 0
@@ -788,7 +782,6 @@ router.get('/fee-schedule', flexAuth, async (req: any, res) => {
       competitors.gusto.payrollPerEmployee,
       competitors.patriot.payrollPerEmployee,
       competitors.square.payrollPerEmployee,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ].filter((r): r is number => r !== null);
     const maxPayrollPerEmployee = competitorPayrollPerEmployee.length > 0 ? Math.max(...competitorPayrollPerEmployee) : 0;
     const payrollSavingsPercent = maxPayrollPerEmployee > 0
@@ -825,7 +818,7 @@ router.get('/fee-schedule', flexAuth, async (req: any, res) => {
   }
 });
 
-router.post('/connect-dashboard', flexAuth, async (req: any, res) => {
+router.post('/connect-dashboard', flexAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isStripeConfigured()) {
       return res.status(503).json({ message: "Stripe keys required" });
@@ -836,18 +829,16 @@ router.post('/connect-dashboard', flexAuth, async (req: any, res) => {
       return res.status(404).json({ message: "Workspace not found" });
     }
 
-    if (!(workspace as any).stripeConnectedAccountId) {
+    if (!(workspace as WorkspaceWithExtras).stripeConnectedAccountId) {
       return res.status(400).json({ message: "No Stripe Connect account linked to this workspace" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const loginLink = await stripe.accounts.createLoginLink(workspace.stripeConnectedAccountId);
 
     res.json({ url: loginLink.url });
   } catch (error: unknown) {
     log.error("Error creating Connect dashboard link:", error);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (error?.type === 'StripeInvalidRequestError' && (error as any)?.message?.includes('standard')) {
+    if (error?.type === 'StripeInvalidRequestError' && (error as Record<string,unknown>)?.message?.includes('standard')) {
       const dashboardUrl = `https://dashboard.stripe.com`;
       return res.json({ url: dashboardUrl, note: 'Standard accounts use the main Stripe Dashboard' });
     }
@@ -869,7 +860,7 @@ router.get('/stripe-health', requireAuth, async (req, res) => {
   }
 
   const issues: string[] = [];
-  const checks: Record<string, any> = {};
+  const checks: Record<string, unknown> = {};
 
   const requiredEnvVars = [
     'STRIPE_SECRET_KEY',
@@ -895,21 +886,21 @@ router.get('/stripe-health', requireAuth, async (req, res) => {
     const balance = await stripe.balance.retrieve();
     checks.stripeConnected = 'connected';
     checks.stripeLiveMode = balance.livemode ? 'live' : 'test';
-  } catch (stripeErr: any) {
+  } catch (stripeErr: unknown) {
     checks.stripeConnected = `failed: ${stripeErr?.message || 'unknown'}`;
     issues.push('Stripe API connection failed');
   }
 
   try {
     const webhooks = await stripe.webhookEndpoints.list({ limit: 10 });
-    const ourWebhook = webhooks.data.find((w: any) =>
+    const ourWebhook = webhooks.data.find((w: unknown) =>
       typeof w.url === 'string' &&
       w.url.includes('coaileague.com') &&
       w.status === 'enabled'
     );
     checks.webhookRegistered = ourWebhook ? ourWebhook.url : 'not found';
     if (!ourWebhook) issues.push('Stripe webhook not registered');
-  } catch (err: any) {
+  } catch (err: unknown) {
     checks.webhookRegistered = `unverified: ${err?.message || 'unknown'}`;
   }
 

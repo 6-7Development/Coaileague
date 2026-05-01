@@ -210,7 +210,7 @@ class MeteredGptClient {
         latencyMs,
         creditsCharged: GPT_CREDIT_COSTS[tier],
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[MeteredGptClient] Error:`, (error instanceof Error ? error.message : String(error)));
       throw error;
     }
@@ -277,7 +277,7 @@ Respond with JSON: {"category": "chosen_category", "confidence": 0.0-1.0}`,
     });
 
     try {
-      const result = JSON.parse(response.content);
+      const result: unknown = JSON.parse(response.content);
       return {
         category: result.category || categories[0],
         confidence: typeof result.confidence === 'number' ? result.confidence : 0.5,
@@ -295,7 +295,7 @@ Respond with JSON: {"category": "chosen_category", "confidence": 0.0-1.0}`,
     fields: string[],
     workspaceId: string,
     userId?: string
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, unknown>> {
     const response = await this.execute({
       prompt: `Extract the following fields from this text: ${fields.join(', ')}
 
@@ -423,7 +423,7 @@ export async function gptExtract(
   fields: string[],
   workspaceId: string,
   userId?: string
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   return meteredGptClient.extract(text, fields, workspaceId, userId);
 }
 

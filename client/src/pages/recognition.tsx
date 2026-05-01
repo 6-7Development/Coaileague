@@ -32,7 +32,7 @@ export default function RecognitionPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isNominateModalOpen, setIsNominateModalOpen] = useState(false);
-  const employeeId = (user as any)?.employeeId as string | undefined;
+  const employeeId = (user as Record<string,unknown>)?.employeeId as string | undefined;
 
   const { data: awards, isLoading: isLoadingAwards } = useQuery<any[]>({
     queryKey: ["/api/recognition/wall"],
@@ -69,7 +69,7 @@ export default function RecognitionPage() {
       toast({ title: "Nomination submitted", description: "Your nomination has been sent for review." });
       setIsNominateModalOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Failed to submit nomination", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
@@ -84,7 +84,7 @@ export default function RecognitionPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/recognition/wall"] });
       toast({ title: "Nomination approved", description: "The officer has been recognized." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Failed to approve nomination", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
@@ -98,7 +98,7 @@ export default function RecognitionPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/recognition/pending"] });
       toast({ title: "Nomination rejected" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Failed to reject nomination", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
@@ -116,7 +116,7 @@ export default function RecognitionPage() {
     nominateMutation.mutate(values);
   };
 
-  const getEmployeeDisplayName = (employee: any) => {
+  const getEmployeeDisplayName = (employee) => {
     if (!employee) return "Unknown Officer";
     const fullName = [employee.firstName, employee.lastName].filter(Boolean).join(" ").trim();
     return fullName || employee.fullName || employee.fullLegalName || employee.name || employee.email || employee.id || "Unknown Officer";
@@ -317,7 +317,7 @@ export default function RecognitionPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myAwards?.map((award: any) => (
+              {myAwards?.map((award) => (
                 <Card key={award.id} className="hover-elevate">
                   <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                     <Avatar>

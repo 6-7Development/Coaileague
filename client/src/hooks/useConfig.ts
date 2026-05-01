@@ -27,7 +27,7 @@ export function useApiEndpoint(path: string): string {
  * Build API URL with query parameters
  * Usage: const url = useBuildApiUrl('/api/employees', { page: 1, limit: 10 })
  */
-export function useBuildApiUrl(endpoint: string, params?: Record<string, any>): string {
+export function useBuildApiUrl(endpoint: string, params?: Record<string, unknown>): string {
   return useMemo(() => configManager.buildApiUrl(endpoint, params), [endpoint, params]);
 }
 
@@ -99,7 +99,7 @@ export function useAITemperature(feature: string): number {
  * Get message with interpolation
  * Usage: const msg = useMessage('create.success', { entity: 'Employee' })
  */
-export function useMessage(path: string, vars?: Record<string, any>): string {
+export function useMessage(path: string, vars?: Record<string, unknown>): string {
   return useMemo(() => configManager.getMessage(path, vars), [path, JSON.stringify(vars)]);
 }
 

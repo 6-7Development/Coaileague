@@ -129,8 +129,8 @@ export function UniversalFAB() {
         const data = await res.json();
         if (!res.ok) {
           const err = new Error(data.message || "Failed to clock in");
-          (err as any).code = data.error;
-          (err as any).data = data;
+          (err as Error).code = data.error;
+          (err as Error).data = data;
           throw err;
         }
         return { action, data };
@@ -163,7 +163,7 @@ export function UniversalFAB() {
       });
       setIsExpanded(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       const code = error?.code;
       if (code === "NO_SHIFT_TODAY") {
         toast({

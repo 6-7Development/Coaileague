@@ -287,11 +287,11 @@ router.patch('/attempts/:id/section', async (req: AuthenticatedRequest, res) => 
     const { score, passed, missedTopics } = scoreSection(answers, sectionQuestions);
 
     const updatedSectionScores = {
-      ...(attempt.sectionScores as Record<string, any> || {}),
+      ...(attempt.sectionScores as Record<string, unknown> || {}),
       [sectionId]: { score, passed, missedTopics },
     };
     const updatedAnswers = {
-      ...(attempt.answers as Record<string, any> || {}),
+      ...(attempt.answers as Record<string, unknown> || {}),
       ...answers,
     };
 
@@ -498,7 +498,7 @@ router.post('/attempts/:id/final-exam', async (req: AuthenticatedRequest, res) =
             expiresAt: expiresAt!.toISOString(),
             officerName,
           },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       } catch { /* non-fatal */ }
 
       // Update training completion percentage (fire-and-forget)
@@ -512,7 +512,7 @@ router.post('/attempts/:id/final-exam', async (req: AuthenticatedRequest, res) =
         } catch (pctErr) {
           log.warn('[CertRoutes] Training completion pct update failed (non-fatal):', pctErr);
         }
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     } else if (interventionCreated) {
       try {
         platformEventBus.publish({
@@ -531,7 +531,7 @@ router.post('/attempts/:id/final-exam', async (req: AuthenticatedRequest, res) =
             missedTopics,
             officerName,
           },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       } catch { /* non-fatal */ }
     }
 
@@ -834,7 +834,6 @@ router.get('/my-certificates', async (req: AuthenticatedRequest, res) => {
     const [emp] = await db
       .select({ id: employees.id })
       .from(employees)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(and(eq(employees.workspaceId, workspaceId), eq(employees.userId, userId)))
       .limit(1);
 

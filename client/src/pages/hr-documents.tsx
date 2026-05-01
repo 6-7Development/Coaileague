@@ -1447,21 +1447,21 @@ function DocumentPreviewModal({
   const getPreviewSigners = (): Array<{ id: string; name: string; title: string; email: string }> => {
     if (!template.requiresSignature) return [];
     if (template.category === "employee" || template.category === "operational") {
-      const signers: any[] = [{ id: "employee-sig", name: empData.fullName, title: empData.position, email: empData.email }];
+      const signers: unknown[] = [{ id: "employee-sig", name: empData.fullName, title: empData.position, email: empData.email }];
       if (template.signatureCount >= 2) {
         signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
       return signers;
     }
     if (template.category === "contractor") {
-      const signers: any[] = [{ id: "contractor-sig", name: contractorData.fullName, title: `${contractorData.position}, ${contractorData.businessName}`, email: contractorData.email }];
+      const signers: unknown[] = [{ id: "contractor-sig", name: contractorData.fullName, title: `${contractorData.position}, ${contractorData.businessName}`, email: contractorData.email }];
       if (template.signatureCount >= 2) {
         signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
       return signers;
     }
     if (template.category === "client") {
-      const signers: any[] = [{ id: "client-sig", name: clientData.contact, title: `Facilities Director, ${clientData.clientName}`, email: clientData.email }];
+      const signers: unknown[] = [{ id: "client-sig", name: clientData.contact, title: `Facilities Director, ${clientData.clientName}`, email: clientData.email }];
       if (template.signatureCount >= 2) {
         signers.push({ id: "provider-sig", name: "Account Manager", title: `Account Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
@@ -1478,11 +1478,11 @@ function DocumentPreviewModal({
     if (!recipient) return;
 
     const recipientName = isClientDoc
-      ? (recipient as any).contactName || (recipient as any).name
-      : `${(recipient as any).firstName} ${(recipient as any).lastName}`;
+      ? (recipient as Record<string,unknown>).contactName || (recipient as Record<string,unknown>).name
+      : `${(recipient as Record<string,unknown>).firstName} ${(recipient as Record<string,unknown>).lastName}`;
     const recipientEmail = isClientDoc
-      ? (recipient as any).contactEmail
-      : (recipient as any).email;
+      ? (recipient as Record<string,unknown>).contactEmail
+      : (recipient as Record<string,unknown>).email;
 
     if (!recipientEmail) {
       toast({ title: "No email on file", description: `${recipientName} has no email address in the system.`, variant: "destructive" });

@@ -12,19 +12,18 @@ import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityMilestoneActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity milestone intelligence: ${actionId}`,
     inputSchema: { type: 'object' as const, properties: {} },
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
         return { success: true, actionId, message: 'Action completed', data, executionTimeMs: 0 };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { success: false, actionId, message: err?.message || 'Unknown error', executionTimeMs: 0 };
       }
     }
@@ -58,7 +57,7 @@ export function registerMilestoneActions() {
 
     let query = db.select().from(employees).where(eq(employees.workspaceId, workspaceId));
     if (employeeId) {
-      query = db.select().from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.id, employeeId))) as any;
+      query = db.select().from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.id, employeeId))) as unknown;
     }
 
     const allEmployees = await query;
@@ -127,7 +126,7 @@ export function registerMilestoneActions() {
       inputParams: { employeeId, milestone, performanceScore: emp.performanceScore, monthsSincePayChange },
       createdAt: new Date(),
       updatedAt: new Date()
-    } as any);
+    } as unknown);
 
     await notifyOwner(workspaceId, title, message);
 
@@ -146,7 +145,7 @@ export function registerMilestoneActions() {
       query = db.select().from(employees).where(and(
         eq(employees.workspaceId, workspaceId),
         eq(employees.id, employeeId)
-      )) as any;
+      )) as unknown;
     }
 
     const eligible = [];

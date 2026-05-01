@@ -50,7 +50,7 @@ interface PipelineResult {
   action: 'auto_approved' | 'pending_review' | 'synced' | 'failed' | 'skipped';
   confidenceScore?: number;
   details?: string;
-  qbSyncResult?: any;
+  qbSyncResult?: unknown;
 }
 
 const CONFIDENCE_THRESHOLDS = {
@@ -83,7 +83,7 @@ async function loadProfileFromDB(workspaceId: string): Promise<WorkspaceConfiden
     const workspace = await db.query.workspaces.findFirst({
       where: eq(workspaces.id, workspaceId),
     });
-    const prefs = (workspace as any)?.billingPreferences as any;
+    const prefs = (workspace as Record<string,unknown>)?.billingPreferences as unknown;
     if (prefs?.financialPipelineConfidence) {
       const saved = prefs.financialPipelineConfidence;
       return {
@@ -110,7 +110,7 @@ async function persistProfileToDB(profile: WorkspaceConfidenceProfile): Promise<
     const workspace = await db.query.workspaces.findFirst({
       where: eq(workspaces.id, profile.workspaceId),
     });
-    const existingPrefs = ((workspace as any)?.billingPreferences as any) || {};
+    const existingPrefs = ((workspace as Record<string,unknown>)?.billingPreferences as unknown) || {};
     await db.update(workspaces)
       .set({
         billingPreferences: {
@@ -128,7 +128,7 @@ async function persistProfileToDB(profile: WorkspaceConfidenceProfile): Promise<
             updatedAt: new Date().toISOString(),
           },
         },
-      } as any)
+      } as unknown)
       .where(eq(workspaces.id, profile.workspaceId));
   } catch (e) {
     log.warn('[FinancialPipeline] Failed to persist profile to DB:', e);
@@ -413,7 +413,7 @@ export async function onInvoiceApproved(invoiceId: string, workspaceId: string, 
       let clientName = `Invoice-${invoiceId.slice(0, 8)}`;
       if (inv?.clientId) {
         const client = await db.query.clients.findFirst({ where: eq(clients.id, inv.clientId) });
-        clientName = client?.companyName || (client as any)?.name || clientName;
+        clientName = client?.companyName || (client as Record<string,unknown>)?.name || clientName;
       }
       await quickbooksReceiptService.createInvoiceReceipt({
         workspaceId,
@@ -470,7 +470,7 @@ export async function onPayrollApproved(payrollRunId: string, workspaceId: strin
           ? `Internal payroll executed: ${internalResult.processedEntries} entries, $${internalResult.totalNetPay.toFixed(2)} net pay, ${internalResult.stripePayouts} Stripe payouts, ${internalResult.pendingManualPayments} manual payments`
           : `Internal payroll partially failed: ${internalResult.errors.join('; ')}`,
       };
-    } catch (e: any) {
+    } catch (e: unknown) {
       log.error('[FinancialPipeline] Internal payroll execution failed:', e);
       await recordOperationResult(workspaceId, 'payroll', false);
       return {

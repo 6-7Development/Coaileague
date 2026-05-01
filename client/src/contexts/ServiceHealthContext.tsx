@@ -60,7 +60,7 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
 
   // Only platform staff and users viewing a health-aware route need this data.
   // Gating avoids /api/health/summary polling on every authenticated page load.
-  const platformRole = String((user as any)?.platformRole || '');
+  const platformRole = String((user as Record<string,unknown>)?.platformRole || '');
   const isPlatformStaff = isPlatformStaffRole(platformRole);
   const routeNeedsHealthSummary = HEALTH_SUMMARY_ROUTES.includes(location);
   const shouldFetchHealthSummary = isAuthenticated && (isPlatformStaff || routeNeedsHealthSummary);
@@ -84,7 +84,7 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
         
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            return null as any;
+            return null;
           }
           const errorText = await response.text();
           console.error('[ServiceHealth] Health endpoint returned non-ok status:', {

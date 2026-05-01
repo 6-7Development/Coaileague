@@ -50,7 +50,7 @@ interface NotificationPayload {
   actionUrl?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface BundledNotification {
@@ -505,7 +505,6 @@ class NotificationSubagentService {
           message: payload.message,
           workspaceId,
           targetUserIds: [userId],
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: payload.priority === 'P0' ? 'critical' : payload.priority === 'P1' ? 'high' : 'medium',
           source: 'notification_subagent',
           metadata: {
@@ -531,7 +530,6 @@ class NotificationSubagentService {
           if (user?.email) {
             const priorityLabel = payload.priority === 'P0' ? '🚨 CRITICAL' : '⚠️ URGENT';
             await NotificationDeliveryService.send({
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               type: 'ai_brain_email',
               workspaceId: workspaceId || 'system',
               recipientUserId: userId,
@@ -553,7 +551,7 @@ class NotificationSubagentService {
             deliveredVia.push('email');
             log.info(`[NotificationSubagent] ${payload.priority} email sent to ${user.email}`);
           }
-        } catch (emailError: any) {
+        } catch (emailError : unknown) {
           log.error(`[NotificationSubagent] Email delivery failed:`, emailError.message);
           // Don't fail the notification if email fails - in-app still works
         }
@@ -568,7 +566,7 @@ class NotificationSubagentService {
         deliveredVia,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[NotificationSubagent] Delivery failed:`, (error instanceof Error ? error.message : String(error)));
       return {
         success: false,
@@ -620,7 +618,7 @@ class NotificationSubagentService {
       .map(e => ({ id: e.userId!, role: e.workspaceRole || 'employee' }));
   }
 
-  private isOutsideWorkHours(preferences: any): boolean {
+  private isOutsideWorkHours(preferences: unknown): boolean {
     if (!preferences?.quietHoursEnabled) return false;
     
     const now = new Date();
@@ -663,11 +661,11 @@ class NotificationSubagentService {
     let bundledCount = 0;
 
     for (const n of notifs) {
-      const priority = (n as any).metadata?.priority as NotificationPriority;
+      const priority = (n as Record<string,unknown>).metadata?.priority as NotificationPriority;
       if (priority && byPriority[priority] !== undefined) {
         byPriority[priority]++;
       }
-      if ((n as any).metadata?.isBundled) bundledCount++;
+      if ((n as Record<string,unknown>).metadata?.isBundled) bundledCount++;
     }
 
     return {

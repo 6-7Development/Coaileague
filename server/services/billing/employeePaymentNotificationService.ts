@@ -87,8 +87,7 @@ export async function sendEmployeePaymentMethodNotifications(): Promise<{ notifi
         let periodLabel = 'Pay Period';
         try {
           if (run.periodStart && run.periodEnd) {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            periodLabel = `${format(new Date(run as any).periodStart, 'MMM d')} – ${format(new Date(run as any).periodEnd, 'MMM d, yyyy')}`;
+            periodLabel = `${format(new Date(run as Record<string, unknown>).periodStart, 'MMM d')} – ${format(new Date(run as Record<string, unknown>).periodEnd, 'MMM d, yyyy')}`;
           }
         } catch { periodLabel = 'Pay Period'; }
 
@@ -126,7 +125,7 @@ export async function sendEmployeePaymentMethodNotifications(): Promise<{ notifi
 
         const payrollInfoRows = Array.isArray(payrollInfoRowsResult) ? payrollInfoRowsResult : [];
 
-        const payrollInfoByEmployee: Record<string, any> = {};
+        const payrollInfoByEmployee: Record<string, unknown> = {};
         for (const info of payrollInfoRows) {
           if (info?.employeeId) {
             payrollInfoByEmployee[info.employeeId] = info;
@@ -193,7 +192,7 @@ export async function sendEmployeePaymentMethodNotifications(): Promise<{ notifi
         log.warn('Failed to notify employees for payroll run', { runId: run.id, error: msg, stack });
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Employee payment notification scan failed', { error: (err instanceof Error ? err.message : String(err)) });
   }
 

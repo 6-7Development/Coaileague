@@ -33,7 +33,7 @@ router.post('/responses/:id/feedback', requireAuth, async (req: AuthenticatedReq
     }
 
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: 'No workspace selected' });
     }
@@ -47,7 +47,6 @@ router.post('/responses/:id/feedback', requireAuth, async (req: AuthenticatedReq
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const ratedResponse = await storage.rateAiResponse(id, ratingNum, feedback);
     if (!ratedResponse) {
       return res.status(500).json({ message: 'Failed to save feedback' });
@@ -73,7 +72,7 @@ router.get('/responses', requireAuth, async (req: AuthenticatedRequest, res) => 
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: 'No workspace selected' });
     }
@@ -112,7 +111,7 @@ router.get('/suggestions', requireAuth, async (req: AuthenticatedRequest, res) =
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: 'No workspace selected' });
     }
@@ -161,7 +160,7 @@ router.get('/audit-logs', requireAuth, async (req: AuthenticatedRequest, res) =>
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ 
         message: 'Access denied. AALV requires support role access.',
         requiredRoles: AALV_SUPPORT_ROLES
@@ -218,7 +217,7 @@ router.post('/trigger-fill', requireAuth, async (req: AuthenticatedRequest, res)
     }
 
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: 'No workspace selected' });
     }
@@ -287,7 +286,7 @@ router.get('/audit-logs/stats', requireAuth, async (req: AuthenticatedRequest, r
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 
@@ -299,7 +298,7 @@ router.get('/audit-logs/stats', requireAuth, async (req: AuthenticatedRequest, r
     for (const log of recentLogs) {
       const actionPrefix = log.actorType?.split('.')[0] || 'unknown';
       actionTypeCounts[actionPrefix] = (actionTypeCounts[actionPrefix] || 0) + 1;
-      const resultKey = (log as any).result || 'unknown';
+      const resultKey = (log as Record<string,unknown>).result || 'unknown';
       resultCounts[resultKey] = (resultCounts[resultKey] || 0) + 1;
     }
 
@@ -325,7 +324,7 @@ router.get('/audit-logs/:id', requireAuth, async (req: AuthenticatedRequest, res
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 
@@ -349,7 +348,7 @@ router.post('/audit-logs/:id/review', requireAuth, async (req: AuthenticatedRequ
     }
 
     const user = await storage.getUser(userId);
-    if (!(user as any)?.platformRole || !AALV_SUPPORT_ROLES.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !AALV_SUPPORT_ROLES.includes(req.user?.platformRole)) {
       return res.status(403).json({ message: 'Access denied. AALV requires support role access.' });
     }
 

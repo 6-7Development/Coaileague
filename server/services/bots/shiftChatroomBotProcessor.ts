@@ -58,7 +58,7 @@ async function saveFlowToDB(chatroomId: string, flow: IncidentFlow): Promise<voi
           updated_at = NOW()
       WHERE id = ${chatroomId}
     `);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[BotProcessor] Failed to persist incident flow to DB:', (err instanceof Error ? err.message : String(err))?.slice(0, 120));
   }
 }
@@ -69,7 +69,7 @@ async function loadFlowFromDB(chatroomId: string): Promise<IncidentFlow | null> 
     const rows = await typedQuery(sql`
       SELECT incident_flow_state FROM shift_chatrooms WHERE id = ${chatroomId} LIMIT 1
     `);
-    const row = rows[0] as any;
+    const row = rows[0] as Record<string, unknown>;
     if (!row || !row.incident_flow_state) return null;
     const state = typeof row.incident_flow_state === 'string'
       ? JSON.parse(row.incident_flow_state)
@@ -139,7 +139,7 @@ async function sendBotResponse(
   workspaceId: string,
   content: string,
   botEvent: string,
-  extraMeta: Record<string, any> = {}
+  extraMeta: Record<string, unknown> = {}
 ): Promise<void> {
   try {
     await db.insert(shiftChatroomMessages).values({
@@ -461,8 +461,8 @@ async function compileAndFileIncidentReport(
         status: 'open',
         reportedBy: reporterName,
         occurredAt: new Date(),
-      } as any);
-    } catch (err: any) {
+      } as unknown);
+    } catch (err: unknown) {
       log.warn('[ShiftChatroomBot] Incident DB save failed (non-blocking):', (err instanceof Error ? err.message : String(err)));
     }
   }
@@ -535,14 +535,14 @@ async function handleEndShift(
       .orderBy(shiftChatroomMessages.createdAt);
 
     const officerMessages = messages.filter(m => {
-      const meta = m.metadata as any;
+      const meta = m.metadata as unknown;
       return m.userId !== 'reportbot' && m.messageType !== 'system' && !meta?.isBot;
     });
 
     const photoCount = messages.filter(m => m.messageType === 'photo').length;
 
     const incidentMessages = messages.filter(m => {
-      const meta = m.metadata as any;
+      const meta = m.metadata as unknown;
       return meta?.botEvent === 'incident_report_complete';
     });
 
@@ -578,7 +578,7 @@ async function handleEndShift(
             'endshift_error'
           );
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[ShiftChatroomBot] endShift failed:', (err instanceof Error ? err.message : String(err)));
         await sendBotResponse(
           chatroomId, workspaceId,
@@ -587,7 +587,7 @@ async function handleEndShift(
         );
       }
     })();
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[ShiftChatroomBot] handleEndShift error:', (err instanceof Error ? err.message : String(err)));
     await sendBotResponse(chatroomId, workspaceId, 'End shift processing error. Contact supervisor.', 'endshift_error');
   }

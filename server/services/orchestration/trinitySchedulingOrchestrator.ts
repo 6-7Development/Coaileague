@@ -38,8 +38,8 @@ export interface SchedulingMutation {
   id: string;
   type: SchedulingMutationType;
   description: string;
-  beforeState?: Record<string, any>;
-  afterState?: Record<string, any>;
+  beforeState?: Record<string, unknown>;
+  afterState?: Record<string, unknown>;
   employeeId?: string;
   employeeName?: string;
   shiftId?: string;
@@ -53,8 +53,8 @@ export interface SchedulingMutation {
   dbOperation?: {
     table: 'shifts';
     action: 'insert' | 'update' | 'delete';
-    data?: Record<string, any>;
-    where?: Record<string, any>;
+    data?: Record<string, unknown>;
+    where?: Record<string, unknown>;
   };
 }
 
@@ -87,10 +87,10 @@ interface SchedulingContext {
   workspaceId: string;
   weekStart: Date;
   weekEnd: Date;
-  employees: any[];
-  clients: any[];
-  existingShifts: any[];
-  openShifts: any[];
+  employees: unknown[];
+  clients: unknown[];
+  existingShifts: unknown[];
+  openShifts: unknown[];
 }
 
 class TrinitySchedulingOrchestratorService {
@@ -242,7 +242,7 @@ class TrinitySchedulingOrchestratorService {
       log.info(`[TrinitySchedulingOrchestrator] Session ${sessionId} complete (DRY RUN): ${mutations.length} proposed mutations awaiting verification`);
       return result;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[TrinitySchedulingOrchestrator] Session ${sessionId} failed:`, error);
 
       await automationExecutionTracker.failExecution(executionId, {
@@ -265,9 +265,8 @@ class TrinitySchedulingOrchestratorService {
     const mutations = this.pendingSessions.get(executionId);
     if (!mutations || mutations.length === 0) {
       const execution = await automationExecutionTracker.getExecution(executionId);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (execution?.outputPayload?.pendingMutations) {
-        const storedMutations = (execution as any).outputPayload.pendingMutations as SchedulingMutation[];
+        const storedMutations = (execution as Record<string,unknown>).outputPayload.pendingMutations as SchedulingMutation[];
         return this.applyMutationsToDatabase(storedMutations, executionId);
       }
       return { success: true, appliedCount: 0, inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [] };
@@ -294,7 +293,7 @@ class TrinitySchedulingOrchestratorService {
     // Never trust per-mutation data for the workspace scope — pull it from the
     // authoritative execution record so every write is tenant-locked.
     const execution = await automationExecutionTracker.getExecution(executionId);
-    const workspaceId: string | undefined = (execution as any)?.workspaceId;
+    const workspaceId: string | undefined = (execution as Record<string,unknown>)?.workspaceId;
 
     if (!workspaceId) {
       const msg = `Cannot apply mutations: workspaceId not found on execution ${executionId}`;
@@ -612,7 +611,7 @@ class TrinitySchedulingOrchestratorService {
           startTime: new Date(openShift.startTime),
           endTime: new Date(openShift.endTime),
           estimatedHours: shiftHours,
-          estimatedCost: shiftHours * (selectedEmployee.hourlyRate || (selectedEmployee as any).payRate || 15),
+          estimatedCost: shiftHours * (selectedEmployee.hourlyRate || (selectedEmployee as Record<string,unknown>).payRate || 15),
           reason: `${selectedEmployee.firstName} has lowest workload at ${(employeeWorkload.get(selectedEmployee.id) || 0) - shiftHours}h/week`,
           dbOperation: {
             table: 'shifts',
@@ -694,7 +693,7 @@ class TrinitySchedulingOrchestratorService {
               startTime,
               endTime,
               estimatedHours: 8,
-              estimatedCost: 8 * (availableEmployee.hourlyRate || (availableEmployee as any).payRate || 15),
+              estimatedCost: 8 * (availableEmployee.hourlyRate || (availableEmployee as Record<string,unknown>).payRate || 15),
               reason: `Client ${client.companyName} has no coverage for ${format(shiftDate, 'EEEE')}`,
               dbOperation: {
                 table: 'shifts',

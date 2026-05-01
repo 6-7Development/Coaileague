@@ -21,11 +21,11 @@ const log = createLogger('DisputeRoutes');
 
 const router = Router();
 
-router.post('/', async (req: any, res) => {
+router.post('/', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -77,15 +77,15 @@ router.post('/', async (req: any, res) => {
     const appealDeadline = new Date();
     appealDeadline.setDate(appealDeadline.getDate() + 14);
 
-    let aiAnalysis: any = null;
-    let complianceData: any = null;
+    let aiAnalysis: unknown = null;
+    let complianceData: unknown = null;
     
     try {
-      complianceData = detectComplianceCategory(data.reason, (data as any).type);
+      complianceData = detectComplianceCategory(data.reason, (data as Record<string,unknown>).type);
       aiAnalysis = await analyzeDispute(
         data.title,
         data.reason,
-        (data as any).type,
+        (data as Record<string,unknown>).type,
         data.requestedOutcome || null,
         data.evidence || null
       );
@@ -138,7 +138,7 @@ router.post('/', async (req: any, res) => {
         aiModel: aiAnalysis?.model || null,
         complianceCategory: complianceData?.category || null,
         regulatoryReference: complianceData?.regulatoryReference || null,
-      } as any).returning();
+      }).returning();
 
       return { duplicate: false, dispute: newDispute } as const;
     });
@@ -158,16 +158,14 @@ router.post('/', async (req: any, res) => {
         .from(employees)
         .where(and(
           eq(employees.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           inArray(employees.workspaceRole, [...MANAGER_ROLES])
         ));
 
       for (const manager of managerEmployees) {
         await createNotification({
           workspaceId: workspaceId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           userId: manager.userId,
-          type: 'dispute_filed' as any,
+          type: 'dispute_filed',
           title: '🚨 New Dispute Filed',
           message: `${employee.firstName || 'Employee'} filed a dispute: "${data.title}"`,
           actionUrl: `/disputes/${dispute.id}`,
@@ -188,11 +186,10 @@ router.post('/', async (req: any, res) => {
         entityType: 'dispute',
         entityId: dispute.id,
         userId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         details: {
           title: data.title,
           type: data.disputeType,
-          amount: (data as any).amountDisputed,
+          amount: (data as Record<string,unknown>).amountDisputed,
           filedBy: employee.firstName,
         },
       });
@@ -207,11 +204,11 @@ router.post('/', async (req: any, res) => {
   }
 });
 
-router.get('/', async (req: any, res) => {
+router.get('/', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -234,11 +231,11 @@ router.get('/', async (req: any, res) => {
   }
 });
 
-router.get('/my-disputes', async (req: any, res) => {
+router.get('/my-disputes', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -251,11 +248,11 @@ router.get('/my-disputes', async (req: any, res) => {
   }
 });
 
-router.get('/target/:targetType/:targetId', async (req: any, res) => {
+router.get('/target/:targetType/:targetId', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -269,11 +266,11 @@ router.get('/target/:targetType/:targetId', async (req: any, res) => {
   }
 });
 
-router.get('/pending-review', async (req: any, res) => {
+router.get('/pending-review', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -285,7 +282,7 @@ router.get('/pending-review', async (req: any, res) => {
 
     const { analyzeDispute, detectComplianceCategory } = await import('../services/disputeAI');
     
-    const disputesWithAI = await Promise.all(disputes.map(async (dispute: any) => {
+    const disputesWithAI = await Promise.all(disputes.map(async (dispute: unknown) => {
       if (!dispute.aiSummary) {
         try {
           const aiAnalysis = await analyzeDispute(
@@ -301,7 +298,6 @@ router.get('/pending-review', async (req: any, res) => {
           await storage.updateDispute(dispute.id, workspaceId, {
             aiSummary: aiAnalysis.summary,
             aiRecommendation: aiAnalysis.recommendation,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             aiConfidenceScore: aiAnalysis.confidenceScore,
             aiAnalysisFactors: aiAnalysis.analysisFactors,
             aiProcessedAt: new Date(),
@@ -326,11 +322,11 @@ router.get('/pending-review', async (req: any, res) => {
   }
 });
 
-router.get('/disputeable-items', async (req: any, res) => {
+router.get('/disputeable-items', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -349,13 +345,13 @@ router.get('/disputeable-items', async (req: any, res) => {
     ]);
 
     res.json({
-      reviews: reviews.map((r: any) => ({
+      reviews: reviews.map((r: unknown) => ({
         id: r.id,
         type: 'performance_review',
         title: `${r.reviewType} Review - ${r.reviewPeriodStart ? new Date(r.reviewPeriodStart).toLocaleDateString() : 'N/A'}`,
         date: r.completedAt || r.createdAt,
       })),
-      writeups: writeUps.map((w: any) => ({
+      writeups: writeUps.map((w: unknown) => ({
         id: w.id,
         type: 'report_submission',
         title: w.reportNumber || 'Incident Report',
@@ -368,11 +364,11 @@ router.get('/disputeable-items', async (req: any, res) => {
   }
 });
 
-router.get('/:id', async (req: any, res) => {
+router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -398,14 +394,14 @@ router.get('/:id', async (req: any, res) => {
   }
 });
 
-router.patch('/:id/assign', async (req: any, res) => {
+router.patch('/:id/assign', async (req: AuthenticatedRequest, res) => {
   try {
     if (!hasManagerAccess(req.workspaceRole || '')) {
       return res.status(403).json({ message: "Manager access required to assign disputes" });
     }
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -433,14 +429,14 @@ router.patch('/:id/assign', async (req: any, res) => {
   }
 });
 
-router.patch('/:id', async (req: any, res) => {
+router.patch('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     if (!hasManagerAccess(req.workspaceRole || '')) {
       return res.status(403).json({ message: "Manager access required to update disputes" });
     }
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -461,11 +457,11 @@ router.patch('/:id', async (req: any, res) => {
   }
 });
 
-router.post('/:id/resolve', async (req: any, res) => {
+router.post('/:id/resolve', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -496,11 +492,11 @@ router.post('/:id/resolve', async (req: any, res) => {
   }
 });
 
-router.post('/:id/apply-changes', async (req: any, res) => {
+router.post('/:id/apply-changes', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -521,17 +517,13 @@ router.post('/:id/apply-changes', async (req: any, res) => {
     const resolution = dispute.resolutionAction;
     
     if (targetType === 'timeEntry' && resolution === 'approve') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const entry = await storage.getTimeEntry(targetId);
       if (entry) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await storage.updateTimeEntry(targetId, { status: 'approved' });
       }
     } else if (targetType === 'shift' && resolution === 'reschedule') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await storage.updateShift(targetId, { status: 'rescheduled', updatedAt: new Date() });
     } else if (targetType === 'payroll' && resolution === 'adjust_payment') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await storage.updatePayrollEntry(targetId, { status: 'adjusting', updatedAt: new Date() });
     }
     
@@ -543,11 +535,11 @@ router.post('/:id/apply-changes', async (req: any, res) => {
   }
 });
 
-router.post('/:id/review', async (req: any, res) => {
+router.post('/:id/review', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -574,7 +566,6 @@ router.post('/:id/review', async (req: any, res) => {
       reviewerRecommendation: decision,
       reviewerNotes,
       reviewStartedAt: new Date(),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       status: statusMap[decision],
       resolvedAt: decision !== 'escalate' ? new Date() : null,
       resolvedBy: decision !== 'escalate' ? userId : null,
@@ -592,7 +583,7 @@ router.post('/:id/review', async (req: any, res) => {
   }
 });
 
-router.get('/:id/investigation-context', async (req: any, res) => {
+router.get('/:id/investigation-context', async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userWorkspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -639,7 +630,6 @@ router.get('/:id/investigation-context', async (req: any, res) => {
       .where(
         and(
           eq(reportSubmissions.employeeId, employeeData.id),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(reportTemplates.isDisciplinary, true)
         )
       );
@@ -683,7 +673,7 @@ router.get('/:id/investigation-context', async (req: any, res) => {
     res.json({
       dispute: {
         id: dispute.id,
-        type: (dispute as any).type,
+        type: (dispute as Record<string,unknown>).type,
         title: dispute.title,
         reason: dispute.reason,
         filedAt: dispute.createdAt,
@@ -712,7 +702,7 @@ router.get('/:id/investigation-context', async (req: any, res) => {
   }
 });
 
-router.post('/:id/ai-analysis', async (req: any, res) => {
+router.post('/:id/ai-analysis', async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     
@@ -730,16 +720,16 @@ router.post('/:id/ai-analysis', async (req: any, res) => {
     const aiAnalysis = await analyzeDispute(
       dispute.title,
       dispute.reason,
-      (dispute as any).disputeType,
+      (dispute as Record<string,unknown>).disputeType,
       dispute.requestedOutcome,
       dispute.evidence
     );
 
-    const compliance = detectComplianceCategory(dispute.reason, (dispute as any).disputeType);
+    const compliance = detectComplianceCategory(dispute.reason, (dispute as Record<string,unknown>).disputeType);
 
     let sentimentResult = null;
     try {
-      sentimentResult = await (sentimentAnalyzer as any).analyze(dispute.reason);
+      sentimentResult = await (sentimentAnalyzer as Record<string,unknown>).analyze(dispute.reason);
     } catch (sentError) {
       log.error('Sentiment analysis failed:', sentError);
     }
@@ -747,7 +737,6 @@ router.post('/:id/ai-analysis', async (req: any, res) => {
     await storage.updateDispute(id, dispute.workspaceId, {
       aiSummary: aiAnalysis.summary,
       aiRecommendation: aiAnalysis.recommendation,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       aiConfidenceScore: aiAnalysis.confidenceScore,
       aiAnalysisFactors: aiAnalysis.analysisFactors,
       aiProcessedAt: new Date(),

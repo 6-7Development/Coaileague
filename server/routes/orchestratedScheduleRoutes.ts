@@ -18,7 +18,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get('/status', async (req: any, res) => {
+router.get('/status', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.workspaceId;
     const { pool } = await import('../db');
@@ -88,11 +88,9 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
       {
         domain: 'scheduling',
         automationName: 'ai_shift_fill',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         automationType: 'ai_call',
         workspaceId,
         userId: userId || 'system',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         triggeredBy: 'user',
         billable: true,
         creditCost: TOKEN_COSTS['ai_open_shift_fill'],
@@ -109,7 +107,7 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
 
         const scoredCandidates = await scoreEmployeesForShift(workspaceId, {
           shiftId,
-          requiredSkills: (shift as any).requiredSkills || [],
+          requiredSkills: (shift as Record<string,unknown>).requiredSkills || [],
           requiredCertifications: shift.requiredCertifications || [],
           maxDistance: 50,
           maxPayRate: shift.payRate ? parseFloat(shift.payRate) : undefined,
@@ -120,7 +118,7 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
         }
 
         const topCandidates = getTopCandidates(scoredCandidates, 5);
-        const vettedEmployees = topCandidates.map((c: any) => c.fullEmployee);
+        const vettedEmployees = topCandidates.map((c: unknown) => c.fullEmployee);
 
         const aiResult = await scheduleSmartAI({
           openShifts: [shift],
@@ -145,7 +143,6 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
               considerAbsenteeismRisk: true,
             }
           },
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           scoringContext: formatCandidatesForAI(topCandidates),
         });
 
@@ -232,11 +229,9 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
       {
         domain: 'scheduling',
         automationName: `schedule_${mode}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         automationType: 'ai_call',
         workspaceId,
         userId: userId || 'system',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         triggeredBy: 'user',
         billable: true,
         creditCost: TOKEN_COSTS[featureKey],
@@ -318,7 +313,7 @@ router.get('/executions', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/executions/:executionId', async (req: any, res: Response) => {
+router.get('/executions/:executionId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { executionId } = req.params;
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -344,7 +339,7 @@ router.get('/executions/:executionId', async (req: any, res: Response) => {
   }
 });
 
-router.get('/orchestration/:orchestrationId/steps', async (req: any, res: Response) => {
+router.get('/orchestration/:orchestrationId/steps', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { orchestrationId } = req.params;
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -429,7 +424,7 @@ router.get('/credit-status', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'workspaceId is required' });
     }
 
-    const account = await (tokenManager as any).getCreditsAccountWithStatus(
+    const account = await (tokenManager as Record<string,unknown>).getCreditsAccountWithStatus(
       workspaceId as string,
       userId
     );

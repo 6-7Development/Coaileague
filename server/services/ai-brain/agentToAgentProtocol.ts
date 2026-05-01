@@ -58,13 +58,13 @@ export interface A2AMessage {
   toAgent: string;
   type: MessageType;
   priority: MessagePriority;
-  payload: any;
+  payload: Record<string, unknown>;
   correlationId?: string;
   replyTo?: string;
   timestamp: Date;
   expiresAt?: Date;
   status: MessageStatus;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export type MessageType = 
@@ -96,14 +96,14 @@ export interface CollaborationTeam {
   createdAt: Date;
   completedAt?: Date;
   taskId?: string;
-  results?: any;
+  results?: unknown;
 }
 
 export interface TeamMember {
   agentId: string;
   role: string;
   joinedAt: Date;
-  contribution?: any;
+  contribution?: unknown;
   status: 'assigned' | 'working' | 'completed' | 'failed';
 }
 
@@ -148,7 +148,7 @@ class AgentToAgentProtocol {
   private messageQueues: Map<string, A2AMessage[]> = new Map();
   private teams: Map<string, CollaborationTeam> = new Map();
   private trustRules: Map<string, TrustRule> = new Map();
-  private messageHandlers: Map<string, (message: A2AMessage) => Promise<any>> = new Map();
+  private messageHandlers: Map<string, (message: A2AMessage) => Promise<unknown>> = new Map();
 
   private dbInitialized = false;
 
@@ -187,7 +187,7 @@ class AgentToAgentProtocol {
             successRate: dbAgent.successCount && dbAgent.messageCount 
               ? dbAgent.successCount / Math.max(1, dbAgent.messageCount) 
               : 1.0,
-            status: (dbAgent as any).status || 'active',
+            status: (dbAgent as Record<string,unknown>).status || 'active',
           };
           this.agents.set(agent.id, agent);
           this.messageQueues.set(agent.id, []);
@@ -196,7 +196,7 @@ class AgentToAgentProtocol {
 
       this.dbInitialized = true;
       log.info(`[A2A Protocol] Loaded ${dbAgents.length} agents from database`);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[A2A Protocol] Database load error:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -235,7 +235,7 @@ class AgentToAgentProtocol {
     return agent;
   }
 
-  registerMessageHandler(agentId: string, handler: (message: A2AMessage) => Promise<any>): void {
+  registerMessageHandler(agentId: string, handler: (message: A2AMessage) => Promise<unknown>): void {
     this.messageHandlers.set(agentId, handler);
   }
 
@@ -254,7 +254,7 @@ class AgentToAgentProtocol {
     from: string;
     to: string;
     type: MessageType;
-    payload: any;
+    payload: Record<string, unknown>;
     priority?: MessagePriority;
     correlationId?: string;
     replyTo?: string;
@@ -296,15 +296,15 @@ class AgentToAgentProtocol {
         id: message.id,
         fromAgent: message.fromAgent,
         toAgent: message.toAgent,
-        type: message.type as any,
-        priority: message.priority as any,
+        type: message.type as unknown,
+        priority: message.priority as unknown,
         payload: message.payload,
         correlationId: message.correlationId,
         replyTo: message.replyTo,
         status: 'pending',
         expiresAt: message.expiresAt,
       });
-    } catch (persistErr: any) {
+    } catch (persistErr : unknown) {
       log.warn('[A2A] Persist message failed (non-fatal):', persistErr?.message);
     }
 
@@ -335,7 +335,7 @@ class AgentToAgentProtocol {
             replyTo: message.id,
           });
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         message.status = 'failed';
         message.metadata = { error: (error instanceof Error ? error.message : String(error)) };
         await this.markMessagePersisted(message.id, 'failed');
@@ -357,9 +357,9 @@ class AgentToAgentProtocol {
   private async markMessagePersisted(messageId: string, status: 'delivered' | 'processed' | 'failed' | 'expired'): Promise<void> {
     try {
       await db.update(a2aMessages)
-        .set({ status: status as any, processedAt: new Date() })
+        .set({ status: status as unknown, processedAt: new Date() })
         .where(eq(a2aMessages.id, messageId));
-    } catch (persistErr: any) {
+    } catch (persistErr : unknown) {
       log.warn('[A2A] Mark message persisted failed (non-fatal):', persistErr?.message);
     }
   }
@@ -370,7 +370,7 @@ class AgentToAgentProtocol {
   async broadcast(params: {
     from: string;
     type: MessageType;
-    payload: any;
+    payload: Record<string, unknown>;
     filter?: {
       domain?: KnowledgeDomain;
       role?: AgentRole;
@@ -517,7 +517,7 @@ class AgentToAgentProtocol {
   submitTeamWork(params: {
     teamId: string;
     agentId: string;
-    contribution: any;
+    contribution: unknown;
     status: 'completed' | 'failed';
   }): void {
     const team = this.teams.get(params.teamId);

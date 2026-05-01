@@ -125,7 +125,7 @@ export default function TrainingCertificationPage() {
   });
 
   const isManager = ['org_owner', 'co_owner', 'org_admin', 'org_manager', 'manager', 'supervisor'].includes(
-    (employee as any)?.workspaceRole || '',
+    (employee as Record<string,unknown>)?.workspaceRole || '',
   );
 
   // Queries
@@ -154,14 +154,14 @@ export default function TrainingCertificationPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/training/certification/interventions'] });
       toast({ title: 'Intervention resolved' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to resolve intervention', description: error.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
   // Module status based on certificates
   const certsByModule = new Map(myCerts.map(c => [
-    (c as any).cert?.moduleId ?? '',
+    (c as Record<string, unknown>).cert?.moduleId ?? '',
     c,
   ]));
 

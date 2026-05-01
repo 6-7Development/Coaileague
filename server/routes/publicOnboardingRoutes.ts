@@ -86,7 +86,7 @@ router.post('/application', publicFormLimiter, async (req, res) => {
       // Atomic UPDATE: only succeeds if is_used is currently false
       const [claimed] = await tx
         .update(onboardingInvites)
-        .set({ isUsed: true, acceptedAt: new Date() } as any)
+        .set({ isUsed: true, acceptedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(onboardingInvites.id, invite.id), eq(onboardingInvites.isUsed, false)))
         .returning({ id: onboardingInvites.id });
 
@@ -108,15 +108,14 @@ router.post('/application', publicFormLimiter, async (req, res) => {
         status: 'in_progress',
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
-        position: (invite as any).position || applicationData.position || null,
+        position: (invite as Record<string,unknown>).position || applicationData.position || null,
         ...applicationData,
-      } as any);
+      } as unknown);
     });
 
     res.json(application);
   } catch (error: unknown) {
     log.error("[PublicOnboarding] Error creating application:", error);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const statusCode = error.statusCode || 400;
     res.status(statusCode).json({ message: sanitizeError(error) || "Failed to create application" });
   }
@@ -183,7 +182,6 @@ router.patch('/application/:id', async (req, res) => {
 
     const { workspaceId, ...updateData } = parsed.data;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const updated = await storage.updateOnboardingApplication(id, workspaceId, updateData);
 
     if (!updated) {
@@ -215,7 +213,6 @@ router.post('/signatures', async (req, res) => {
       return res.status(400).json({ message: "Invalid signature data", details: parsed.error.flatten() });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const signature = await storage.createDocumentSignature({
       ...parsed.data,
       ipAddress: req.ip,
@@ -233,7 +230,6 @@ router.post('/signatures', async (req, res) => {
 router.get('/signatures/:applicationId', async (req, res) => {
   try {
     const { applicationId } = req.params;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const signatures = await storage.getDocumentSignaturesByApplication(applicationId);
     res.json(signatures);
   } catch (error) {
@@ -256,7 +252,6 @@ router.post('/certifications', async (req, res) => {
 router.get('/certifications/:applicationId', async (req, res) => {
   try {
     const { applicationId } = req.params;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const certifications = await storage.getEmployeeCertificationsByApplication(applicationId);
     res.json(certifications);
   } catch (error) {
@@ -327,7 +322,7 @@ router.get('/contracts/:applicationId', async (req, res) => {
       const orgName = workspace?.name || 'The Organization';
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-      const contractsToCreate: any[] = [];
+      const contractsToCreate: (string | number | boolean | null)[] = [];
 
       contractsToCreate.push({
         id: crypto.randomUUID(),
@@ -503,7 +498,7 @@ router.post('/submit/:applicationId', publicFormLimiter, async (req, res) => {
     });
 
     if (application.employeeId) {
-      const employeeUpdate: Record<string, any> = {
+      const employeeUpdate: Record<string, unknown> = {
         onboardingStatus: 'pending_review',
         firstName: application.firstName,
         lastName: application.lastName,
@@ -519,14 +514,12 @@ router.post('/submit/:applicationId', publicFormLimiter, async (req, res) => {
       if (application.emergencyContactPhone) employeeUpdate.emergencyContactPhone = application.emergencyContactPhone;
       if (application.emergencyContactRelation) employeeUpdate.emergencyContactRelation = application.emergencyContactRelation;
       if (application.dateOfBirth) employeeUpdate.dateOfBirth = application.dateOfBirth;
-      if ((application as any).position) employeeUpdate.position = (application as any).position;
+      if ((application as Record<string,unknown>).position) employeeUpdate.position = (application as Record<string,unknown>).position;
       // Propagate payroll classification defaults from application tax data
       if (application.taxClassification) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (application.taxClassification === 'w2') {
           employeeUpdate.payType = 'hourly';
           employeeUpdate.workerType = 'employee';
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         } else if (application.taxClassification === '1099') {
           employeeUpdate.payType = 'contractor';
           employeeUpdate.workerType = 'contractor';
@@ -574,7 +567,7 @@ router.post('/submit/:applicationId', publicFormLimiter, async (req, res) => {
             });
             log.info(`[Onboarding] Queued tenant doc for signing: ${doc.fileName} → ${application.email}`);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn('[Onboarding] Tenant doc queue failed (non-fatal):', err?.message);
         }
       });
@@ -594,10 +587,9 @@ router.post('/submit/:applicationId', publicFormLimiter, async (req, res) => {
         title: 'New Employee Ready for Review',
         message: `${application.firstName} ${application.lastName} has completed onboarding and is awaiting your approval.`,
         actionUrl: '/employees',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         priority: 'high',
         idempotencyKey: `approval_required-${Date.now()}-${managerId}`
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     log.info(`[PublicOnboarding] Application ${applicationId} submitted — ${application.firstName} ${application.lastName} pending review`);
@@ -754,7 +746,7 @@ router.post('/workspace-invite/register', async (req, res) => {
         lastName: resolvedLastName,
         email: normalizedEmail,
         phone: resolvedPhone || undefined,
-        workspaceRole: role as any,
+        workspaceRole: role as unknown,
         organizationalTitle: invite.organizationalTitle || undefined,
         isActive: true,
         hireDate: new Date(),
@@ -849,7 +841,7 @@ router.post('/workspace-invite/register', async (req, res) => {
             }).catch(() => {});
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[CrossTenantScore] Hire lookup failed (non-fatal):', err?.message);
       }
     });
@@ -880,11 +872,10 @@ router.post('/workspace-invite/register', async (req, res) => {
             inviteId: invite.id,
             method: 'workspace_invite_new_user',
           },
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       } catch (_) { /* non-blocking */ }
       try {
         const { auditLogs } = await import('@shared/schema');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(auditLogs).values({
           workspaceId: invite.workspaceId,
           entityType: 'employee',
@@ -911,10 +902,10 @@ router.post('/workspace-invite/register', async (req, res) => {
               title: 'New Team Member Joined',
               message: `${resolvedFirstName} ${resolvedLastName} accepted their invitation and joined as ${role}. Complete their onboarding in the Employee Portal.`,
             },
-          }).catch(() => null);
+          }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         }
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     res.json({
       success: true,
@@ -977,7 +968,7 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
         firstName: user.firstName || 'New',
         lastName: user.lastName || 'Member',
         email: user.email || '',
-        workspaceRole: role as any,
+        workspaceRole: role as unknown,
         isActive: true,
         hireDate: new Date(),
         payType: 'hourly',
@@ -1022,7 +1013,6 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
       } catch (_) { /* non-blocking */ }
       try {
         const { auditLogs } = await import('@shared/schema');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(auditLogs).values({
           workspaceId: invite.workspaceId,
           entityType: 'employee',
@@ -1049,10 +1039,10 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
               title: 'Team Member Joined',
               message: `${joinedFirst} ${joinedLast} accepted their invitation and joined as ${role}.`,
             },
-          }).catch(() => null);
+          }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         }
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[publicOnboardingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     res.json({
       success: true,
@@ -1091,7 +1081,7 @@ router.post('/plaid/link-token', publicFormLimiter, async (req, res) => {
 
     const result = await createLinkToken({ userId: applicationId, workspaceId, purpose: 'employee_dd' });
     res.json(result);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[PublicOnboarding] plaid link-token error:', err?.message);
     res.status(500).json({ error: sanitizeError(err) || 'Failed to create Plaid link token' });
   }
@@ -1121,10 +1111,10 @@ router.post('/plaid/exchange', publicFormLimiter, async (req, res) => {
     await storage.updateOnboardingApplication(applicationId, workspaceId, {
       bankName: details.institutionName || '',
       accountType: details.accountType || 'checking',
-    } as any);
+    } as unknown);
 
     res.json({ success: true, institutionName: details.institutionName, mask: details.mask });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[PublicOnboarding] plaid exchange error:', err?.message);
     res.status(500).json({ error: sanitizeError(err) || 'Failed to exchange Plaid token' });
   }

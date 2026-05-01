@@ -8,6 +8,8 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { typedCount, typedExec, typedQuery } from '../lib/typedSql';
+import { createLogger } from '../lib/logger';
+const log = createLogger('developmentSeedOperational');
 import {
   automationExecutions, managerAssignments, employeePayrollInfo, complianceScores,
   guardTours, guardTourScans, gpsLocations, loneWorkerSessions,
@@ -49,7 +51,7 @@ async function seedTable(name: string, fn: () => Promise<void>): Promise<void> {
   try {
     await fn();
   } catch (err) {
-    console.error(`[AcmeOps] ERROR seeding ${name}:`, (err as Error).message);
+    log.error(`[AcmeOps] ERROR seeding ${name}:`, (err as Error).message);
   }
 }
 
@@ -66,7 +68,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
     return { success: true, message: "Acme operational data already seeded — skipped" };
   }
 
-  console.log("[AcmeOps] Seeding Acme operational data...");
+  log.info("[AcmeOps] Seeding Acme operational data...");
 
   // ============================================================
   // 1. MANAGER ASSIGNMENTS
@@ -95,7 +97,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Manager assignments: 10");
+    log.info("[AcmeOps] Manager assignments: 10");
   });
 
   // ============================================================
@@ -132,7 +134,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Employee payroll info: 13");
+    log.info("[AcmeOps] Employee payroll info: 13");
   });
 
   // ============================================================
@@ -174,7 +176,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Compliance scores: 10");
+    log.info("[AcmeOps] Compliance scores: 10");
   });
 
   // ============================================================
@@ -217,7 +219,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Guard tours: 5");
+    log.info("[AcmeOps] Guard tours: 5");
   });
 
   // ============================================================
@@ -252,7 +254,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         ON CONFLICT (id) DO NOTHING
       `);
     }
-    console.log("[AcmeOps] Guard tour checkpoints: 17");
+    log.info("[AcmeOps] Guard tour checkpoints: 17");
   });
 
   // ============================================================
@@ -291,7 +293,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         scanMethod: 'qr_code',
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Guard tour scans: 13");
+    log.info("[AcmeOps] Guard tour scans: 13");
   });
 
   // ============================================================
@@ -319,7 +321,6 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
       ts.setTime(ts.getTime() - g.hAgo * 3600000);
       // Converted to Drizzle ORM: ON CONFLICT
       await db.insert(gpsLocations).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id: g.id,
         workspaceId: WS,
         employeeId: g.eId,
@@ -330,7 +331,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] GPS locations: 13");
+    log.info("[AcmeOps] GPS locations: 13");
   });
 
   // ============================================================
@@ -360,7 +361,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
         createdAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Lone worker sessions: 5");
+    log.info("[AcmeOps] Lone worker sessions: 5");
   });
 
   // ============================================================
@@ -421,7 +422,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
     for (const r of reports) {
       const createdAt = new Date();
       createdAt.setDate(createdAt.getDate() - r.daysAgo);
-      const darStatus = (r as any).status ?? 'verified';
+      const darStatus = (r as Record<string, unknown>).status ?? 'verified';
       // CATEGORY C — Genuine schema mismatch: SQL omits shiftStartTime and shiftEndTime which are NOT NULL in darReports Drizzle schema
       await typedExec(sql`
         INSERT INTO dar_reports
@@ -524,7 +525,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       createdAt: sql`now()`,
       updatedAt: sql`now()`,
     }).onConflictDoNothing();
-    console.log("[AcmeOps] DAR reports: 8 (7 historical + Marcus Phase 0)");
+    log.info("[AcmeOps] DAR reports: 8 (7 historical + Marcus Phase 0)");
   });
 
   // ============================================================
@@ -574,7 +575,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] BOLO alerts: 3");
+    log.info("[AcmeOps] BOLO alerts: 3");
   });
 
   // ============================================================
@@ -612,7 +613,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         ON CONFLICT (id) DO NOTHING
       `);
     }
-    console.log("[AcmeOps] Security incidents: 5");
+    log.info("[AcmeOps] Security incidents: 5");
   });
 
   // ============================================================
@@ -654,7 +655,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] RMS cases: 5");
+    log.info("[AcmeOps] RMS cases: 5");
   });
 
   // ============================================================
@@ -695,7 +696,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         updatedAt: sql`now()`,
       }).onConflictDoNothing();
     }
-    console.log("[AcmeOps] Post order templates: 5");
+    log.info("[AcmeOps] Post order templates: 5");
   });
 
   // ============================================================
@@ -728,7 +729,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       notifiedManagerIds: ['dev-acme-emp-002'],
       status: 'resolved',
     }).onConflictDoNothing();
-    console.log("[AcmeOps] Escalation chains: 2");
+    log.info("[AcmeOps] Escalation chains: 2");
   });
 
   // ============================================================
@@ -741,7 +742,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       SELECT COUNT(*) as count FROM automation_executions WHERE workspace_id = ${WS}
     `);
     if (existCount >= 15) {
-      console.log("[AcmeOps] Automation executions (Acme): already seeded — skipped");
+      log.info("[AcmeOps] Automation executions (Acme): already seeded — skipped");
       return;
     }
     const runs = [
@@ -766,7 +767,6 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       runAt.setDate(runAt.getDate() - ae.dAgo);
       runAt.setHours(runAt.getHours() - ae.hAgo);
       await db.insert(automationExecutions).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: WS,
         actionType: ae.type,
         actionName: ae.name,
@@ -778,7 +778,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         completedAt: ae.status === 'failed' ? null : runAt.toISOString(),
       });
     }
-    console.log("[AcmeOps] Automation executions (Acme): 15");
+    log.info("[AcmeOps] Automation executions (Acme): 15");
   });
 
   // ============================================================
@@ -791,9 +791,9 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       WHERE workspace_id = ${WS} AND (status = 'open' OR employee_id IS NULL)
       ORDER BY start_time ASC LIMIT 4
     `);
-    const openIds = (openResult as any[]).map(r => r.id);
+    const openIds = (openResult as unknown[]).map(r => r.id);
     if (openIds.length === 0) {
-      console.log("[AcmeOps] Shift offers: 0 (no open shifts found)");
+      log.info("[AcmeOps] Shift offers: 0 (no open shifts found)");
       return;
     }
     const offerEmps = ["dev-acme-emp-004", "dev-acme-emp-005", "dev-acme-emp-009", "dev-acme-emp-010"];
@@ -814,10 +814,10 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
         expiresAt: new Date(fromNow(24)),
       }).onConflictDoNothing();
     }
-    console.log(`[AcmeOps] Shift offers: ${openIds.length}`);
+    log.info(`[AcmeOps] Shift offers: ${openIds.length}`);
   });
 
-  console.log("[AcmeOps] Acme operational data seed complete!");
+  log.info("[AcmeOps] Acme operational data seed complete!");
   return {
     success: true,
     message: "Acme operational data seeded: guard tours + checkpoints + scans, GPS, DAR reports, BOLOs, incidents, compliance scores, payroll info, RMS cases, post orders, lone worker sessions, escalation chains, automation executions"
@@ -847,13 +847,13 @@ export async function ensureFutureOpenShifts(): Promise<void> {
         AND start_time >= NOW()
     `);
     if (count >= 10) {
-      console.log(`[AcmeOps] Future open shifts: ${count} — pool healthy`);
+      log.info(`[AcmeOps] Future open shifts: ${count} — pool healthy`);
     } else {
-      console.log(`[AcmeOps] Future open shifts: ${count} — Trinity scheduling daemon will generate more as needed`);
+      log.info(`[AcmeOps] Future open shifts: ${count} — Trinity scheduling daemon will generate more as needed`);
     }
     // No mutations: shift start_time/end_time are never altered by this function.
     // Seeded data and Trinity-created data persist exactly as written to the DB.
   } catch (err) {
-    console.error("[AcmeOps] ensureFutureOpenShifts error:", (err as Error).message);
+    log.error("[AcmeOps] ensureFutureOpenShifts error:", (err as Error).message);
   }
 }

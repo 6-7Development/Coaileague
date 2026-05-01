@@ -131,7 +131,7 @@ type WebSocketBroadcaster = (event: {
   conversationId?: string;
   workspaceId?: string;
   userId?: string;
-  payload: any;
+  payload: Record<string, unknown>;
 }) => void;
 
 // ============================================================================
@@ -170,7 +170,7 @@ interface BatchedEvent {
     conversationId?: string;
     workspaceId?: string;
     userId?: string;
-    payload: any;
+    payload: Record<string, unknown>;
   };
   count: number;
   firstAt: number;
@@ -322,7 +322,7 @@ class ChatServerHubClass {
     conversationId?: string;
     workspaceId?: string;
     userId?: string;
-    payload: any;
+    payload: Record<string, unknown>;
   }): void {
     const key = `${event.type}:${event.conversationId || ''}:${event.userId || ''}`;
     const now = Date.now();
@@ -1026,7 +1026,7 @@ class ChatServerHubClass {
           )
         );
       return result[0]?.count || 0;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn(`[ChatServerHub] Error getting participant count (non-fatal):`, error?.message || 'unknown');
       return 0;
     }
@@ -1282,7 +1282,7 @@ class ChatServerHubClass {
       switch (event.type) {
         case 'message_posted':
           // Extract sentiment if available in metadata
-          const sentiment = (event as any).metadata.sentiment || 'neutral';
+          const sentiment = (event as Record<string,unknown>).metadata.sentiment || 'neutral';
           await roomAnalyticsService.trackMessagePosted(workspaceId, conversationId, sentiment);
           break;
 
@@ -1302,7 +1302,7 @@ class ChatServerHubClass {
 
         case 'ticket_resolved':
           // Calculate resolution time in hours
-          const createdAt = (event as any).metadata.createdAt || new Date();
+          const createdAt = (event as Record<string,unknown>).metadata.createdAt || new Date();
           const resolvedAt = new Date();
           const resolutionTimeHours = (resolvedAt.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
           await roomAnalyticsService.trackTicketResolved(workspaceId, conversationId, resolutionTimeHours);
@@ -1647,10 +1647,10 @@ class ChatServerHubClass {
                 });
               }
             }
-          } catch (routeErr: any) {
+          } catch (routeErr: unknown) {
             log.warn('[ChatServerHub] Voice transcript routing failed (non-fatal):', routeErr?.message);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn('[ChatServerHub] Voice transcription failed (non-fatal):', err?.message);
         }
       });

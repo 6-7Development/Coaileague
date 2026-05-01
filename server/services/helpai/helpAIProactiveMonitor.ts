@@ -96,7 +96,7 @@ class HelpAIProactiveMonitor {
       await Promise.allSettled(
         workspaceIds.map(wsId => this.monitorWorkspace(wsId))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       // OBSERVABILITY (Phase 1 Domain 1 — 2026-04-08): previously this
       // logged `err` as a single opaque argument, which some logger
       // shims render as `[object Object]` and drop the message entirely.
@@ -166,7 +166,7 @@ class HelpAIProactiveMonitor {
       for (const alert of unresolved) {
         await this.fireAlert(alert);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // OBSERVABILITY: surface full PG error context (see cycle-error block above).
       log.error(`[HelpAIProactiveMonitor] Workspace ${workspaceId} error`, {
         message: err instanceof Error ? err.message : String(err),
@@ -190,13 +190,11 @@ class HelpAIProactiveMonitor {
         .where(and(
           eq(shifts.workspaceId, workspaceId),
           between(shifts.startTime, sql`NOW()`, sql`NOW() + INTERVAL '30 minutes'`),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           notInArray(shifts.status, ['filled', 'completed', 'cancelled']),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           isNull(shifts.assignedEmployeeId)
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'uncovered_shift_imminent');
@@ -223,22 +221,20 @@ class HelpAIProactiveMonitor {
           eq(shifts.workspaceId, workspaceId),
           lt(shifts.startTime, sql`NOW() - INTERVAL '20 minutes'`),
           gt(shifts.startTime, sql`NOW() - INTERVAL '4 hours'`),
-          sql`${(shifts as any).assignedEmployeeId} IS NOT NULL`,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
+          sql`${(shifts as Record<string,unknown>).assignedEmployeeId} IS NOT NULL`,
           eq(shifts.status, 'assigned'),
           notExists(
             db.select({ one: sql`1` })
               .from(timeEntries)
               .where(and(
-                eq(timeEntries.employeeId, (shifts as any).assignedEmployeeId),
+                eq(timeEntries.employeeId, (shifts as Record<string,unknown>).assignedEmployeeId),
                 eq(timeEntries.workspaceId, shifts.workspaceId),
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 gte(timeEntries.clockInTime, sql`${shifts.startTime} - INTERVAL '30 minutes'`)
               ))
           )
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'officer_late_clock_in');
@@ -264,11 +260,10 @@ class HelpAIProactiveMonitor {
         .where(and(
           eq(complianceDocuments.workspaceId, workspaceId),
           between(complianceDocuments.expirationDate, sql`NOW()`, sql`NOW() + INTERVAL '30 days'`),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           notInArray(complianceDocuments.status, ['expired', 'revoked'])
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'license_expiring_soon');
@@ -291,17 +286,16 @@ class HelpAIProactiveMonitor {
       // Converted to Drizzle ORM: JOIN
       const result = await db.select({ count: sql`COUNT(*)` })
         .from(chatMessages)
-        .innerJoin(organizationChatRooms, eq(organizationChatRooms.id, (chatMessages as any).roomId))
+        .innerJoin(organizationChatRooms, eq(organizationChatRooms.id, (chatMessages as Record<string,unknown>).roomId))
         .where(and(
           eq(organizationChatRooms.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(organizationChatRooms.channelType, 'client_portal'),
           lt(chatMessages.createdAt, sql`NOW() - INTERVAL '60 minutes'`),
           isNull(chatMessages.readAt),
           eq(chatMessages.senderType, 'client')
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'client_message_unread');
@@ -330,7 +324,7 @@ class HelpAIProactiveMonitor {
           lt(sql`COALESCE(${incidentReports.occurredAt}, ${incidentReports.updatedAt})`, sql`NOW() - INTERVAL '2 hours'`)
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'incident_report_incomplete');
@@ -427,7 +421,7 @@ class HelpAIProactiveMonitor {
         message: alert.description,
         severity: alert.priority === 'critical' ? 'critical' : alert.priority === 'high' ? 'warning' : 'info',
         source: 'helpai_proactive_monitor',
-      } as any);
+      } as unknown);
 
       if (alert.priority === 'critical' || alert.priority === 'high') {
         await trinityHelpaiCommandBus.sendAlert({

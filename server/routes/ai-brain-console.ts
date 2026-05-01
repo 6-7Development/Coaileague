@@ -53,7 +53,7 @@ interface ConversationMessage {
   actionExecuted?: {
     actionId: string;
     success: boolean;
-    result?: any;
+    result?: unknown;
   };
 }
 
@@ -121,7 +121,7 @@ To execute an action, respond with JSON in format:
     const systemPrompt = `${conv[0].content}\n\n${actionContext}`;
 
     try {
-      const response = await (aiBrain as any).chat(message, {
+      const response = await (aiBrain as Record<string,unknown>).chat(message, {
         contextMessages,
         systemPrompt,
         temperature: 0.7,
@@ -135,7 +135,7 @@ To execute an action, respond with JSON in format:
         const actionMatch = response.match(/\{"action":\s*"([^"]+)",\s*"params":\s*(\{[^}]*\})\}/);
         if (actionMatch) {
           const actionId = actionMatch[1];
-          const params = JSON.parse(actionMatch[2]);
+          const params: unknown = JSON.parse(actionMatch[2]);
           
           try {
             const result = await aiBrainMasterOrchestrator.executeActionWithNotification(
@@ -143,7 +143,6 @@ To execute an action, respond with JSON in format:
               params,
               userId,
               userRole,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               req.user?.currentWorkspaceId
             );
             
@@ -209,7 +208,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
     const workflows = aiBrainWorkflowExecutor.listWorkflows();
     const tests = aiBrainTestRunner.listTests();
     
-    const categories = actions.reduce((acc: Record<string, number>, action: any) => {
+    const categories = actions.reduce((acc: Record<string, number>, action: unknown) => {
       const category = action.category || 'other';
       acc[category] = (acc[category] || 0) + 1;
       return acc;
@@ -219,7 +218,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
       actions: {
         total: actions.length,
         byCategory: categories,
-        list: actions.map((a: any) => ({
+        list: actions.map((a: unknown) => ({
           id: a.actionId,
           name: a.name,
           category: a.category,
@@ -238,11 +237,11 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
       },
       tests: {
         total: tests.length,
-        byCategory: tests.reduce((acc: Record<string, number>, t: any) => {
+        byCategory: tests.reduce((acc: Record<string, number>, t: unknown) => {
           acc[t.category] = (acc[t.category] || 0) + 1;
           return acc;
         }, {}),
-        list: tests.map((t: any) => ({
+        list: tests.map((t: unknown) => ({
           id: t.id,
           name: t.name,
           category: t.category,
@@ -278,7 +277,6 @@ aiBrainConsoleRouter.post('/execute', requireSupportRole, async (req: Authentica
       params || {},
       userId,
       userRole,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       req.user?.currentWorkspaceId
     );
 
@@ -574,7 +572,7 @@ aiBrainConsoleRouter.get('/files', requireSupportRole, async (req: Authenticated
     const dirPath = (req.query.path as string) || (req.query['0'] as string) || '.';
     const userId = req.user?.id || 'support';
     const result = await aiBrainFileSystemTools.listDirectory(dirPath, {}, userId);
-    res.json({ files: (result as any).data?.files || result.data?.entries || [], path: dirPath });
+    res.json({ files: (result as Record<string, unknown>).data?.files || result.data?.entries || [], path: dirPath });
   } catch (error: unknown) {
     log.error('[AIBrainConsole] Files list error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -587,7 +585,7 @@ aiBrainConsoleRouter.post('/files/read', requireSupportRole, async (req: Authent
     const userId = req.user?.id || 'support';
     if (!filePath) return res.status(400).json({ error: 'filePath is required' });
     const result = await aiBrainFileSystemTools.readFile(filePath, {}, userId);
-    res.json({ content: (result as any).data?.content || '', path: filePath });
+    res.json({ content: (result as Record<string, unknown>).data?.content || '', path: filePath });
   } catch (error: unknown) {
     log.error('[AIBrainConsole] File read error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -614,7 +612,7 @@ aiBrainConsoleRouter.post('/files/search', requireSupportRole, async (req: Authe
     const userId = req.user?.id || 'support';
     if (!pattern) return res.status(400).json({ error: 'pattern is required' });
     const result = await aiBrainFileSystemTools.searchFiles(searchPath || '.', { pattern }, userId);
-    res.json({ matches: (result as any).data?.matches || [], pattern });
+    res.json({ matches: (result as Record<string, unknown>).data?.matches || [], pattern });
   } catch (error: unknown) {
     log.error('[AIBrainConsole] File search error:', error);
     res.status(500).json({ error: sanitizeError(error) });
@@ -658,8 +656,8 @@ aiBrainConsoleRouter.get('/history', requireSupportRole, async (req: Authenticat
     const actions = logs.map(log => ({
       actionId: log.action?.replace('ai_brain_console:', '') || '',
       category: log.targetType || 'console',
-      success: (log as any).metadata?.success ?? true,
-      message: (log as any).metadata?.message || '',
+      success: (log as Record<string,unknown>).metadata?.success ?? true,
+      message: (log as Record<string,unknown>).metadata?.message || '',
       timestamp: log.createdAt?.toISOString() || new Date().toISOString(),
     }));
     
@@ -673,7 +671,7 @@ aiBrainConsoleRouter.get('/history', requireSupportRole, async (req: Authenticat
 async function logConsoleAction(
   userId: string,
   action: string,
-  details: Record<string, any>
+  details: Record<string, unknown>
 ): Promise<void> {
   try {
     await db.insert(auditLogs).values({

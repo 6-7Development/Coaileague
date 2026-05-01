@@ -82,7 +82,7 @@ interface ChatMessage {
   attachment_type: string | null;
   created_at: string;
   user_id: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }
 
 interface VisitorRecord {
@@ -145,27 +145,27 @@ interface HourBucket {
 
 // ─── DB helper ───────────────────────────────────────────────────────────────
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
-function safeFormat(val: any, fmt: string, fallback = 'N/A'): string {
+function safeFormat(val: unknown, fmt: string, fallback = 'N/A'): string {
   if (!val) return fallback;
   try { return format(new Date(val), fmt); } catch { return fallback; }
 }
 
-function safeTime(val: any): string {
+function safeTime(val: unknown): string {
   return safeFormat(val, 'hh:mm a');
 }
 
-function safeFullDate(val: any): string {
+function safeFullDate(val: unknown): string {
   return safeFormat(val, 'MMMM dd, yyyy');
 }
 
-function safeDateTime(val: any): string {
+function safeDateTime(val: unknown): string {
   return safeFormat(val, 'MMM dd, yyyy hh:mm a');
 }
 
@@ -204,7 +204,7 @@ async function fetchPhotoBuffer(url: string): Promise<Buffer | null> {
     const objectPath = url.startsWith('/') ? url.slice(1) : url;
     const [buffer] = await bucket.file(objectPath).download();
     return buffer;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn(`[DarPDF] Photo fetch skipped (${url.slice(0, 60)}): ${(err instanceof Error ? err.message : String(err))}`);
     return null;
   }
@@ -594,7 +594,7 @@ async function renderPhotoEvidence(doc: PDFKit.PDFDocument, photos: PhotoManifes
     // Caption
     if (photo.caption) {
       doc.moveDown(0.2);
-      doc.fontSize(9).fillColor(C.dark).text(`"${photo.caption}"`, 62, doc.y, { width: 490, oblique: true } as any);
+      doc.fontSize(9).fillColor(C.dark).text(`"${photo.caption}"`, 62, doc.y, { width: 490, oblique: true } as unknown);
       doc.moveDown(0.3);
     }
 
@@ -831,7 +831,7 @@ async function uploadPdfBuffer(buffer: Buffer, darId: string, workspaceId: strin
     const { recordStorageUsage } = await import('./storage/storageQuotaService');
     recordStorageUsage(workspaceId, 'documents', buffer.length).catch(() => null);
     return objectPath;
-  } catch (uploadErr: any) {
+  } catch (uploadErr: unknown) {
     log.error('[DarPDF] Object storage upload failed:', uploadErr.message);
     return null;
   }
@@ -847,7 +847,7 @@ async function resolveSupervisor(workspaceId: string, shiftId?: string | null): 
       [workspaceId]
     );
     if (rows.length) {
-      const r = rows[0] as any;
+      const r = rows[0] as Record<string, unknown>;
       return `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'On-Duty Supervisor';
     }
   } catch (err) { 
@@ -862,14 +862,14 @@ async function resolveClientName(workspaceId: string, clientId?: string | null, 
   try {
     if (clientId) {
       const rows = await q(`SELECT COALESCE(company_name, first_name || ' ' || last_name, 'Client') AS name FROM clients WHERE id=$1 AND workspace_id=$2`, [clientId, workspaceId]);
-      if (rows.length) return (rows[0] as any).name;
+      if (rows.length) return (rows[0] as Record<string, unknown>).name;
     }
     if (siteId) {
       const rows = await q(`SELECT client_id FROM sites WHERE id=$1 AND workspace_id=$2`, [siteId, workspaceId]);
-      const cid = (rows[0] as any)?.client_id;
+      const cid = (rows[0] as Record<string, unknown>)?.client_id;
       if (cid) {
         const crows = await q(`SELECT COALESCE(company_name, first_name || ' ' || last_name, 'Client') AS name FROM clients WHERE id=$1`, [cid]);
-        if (crows.length) return (crows[0] as any).name;
+        if (crows.length) return (crows[0] as unknown).name;
       }
     }
   } catch (err) {
@@ -886,10 +886,10 @@ export async function generateDarPdf(darId: string, workspaceId: string): Promis
   const dar = darRows[0] as unknown as DarData;
 
   const wsRows = await q(`SELECT name FROM workspaces WHERE id=$1`, [workspaceId]);
-  const orgName = (wsRows[0] as any)?.name || 'Security Organization';
+  const orgName = (wsRows[0] as unknown)?.name || 'Security Organization';
 
   const clientName = await resolveClientName(workspaceId, null, dar.site_id);
-  const supervisorName = await resolveSupervisor(workspaceId, (dar as any).shift_id);
+  const supervisorName = await resolveSupervisor(workspaceId, (dar as Record<string, unknown>).shift_id);
 
   // Build officer list (could be multiple co-assigned but DAR typically single)
   const officerNames = dar.employee_name ? [dar.employee_name] : ['On-Duty Officer'];
@@ -1052,7 +1052,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
   const dar = darRows[0] as unknown as ShiftDarData;
 
   const wsRows = await q(`SELECT name FROM workspaces WHERE id=$1`, [workspaceId]);
-  const orgName = (wsRows[0] as any)?.name || 'Security Organization';
+  const orgName = (wsRows[0] as unknown)?.name || 'Security Organization';
 
   const clientName = await resolveClientName(workspaceId, dar.client_id, null);
   const supervisorName = await resolveSupervisor(workspaceId, dar.shift_id);
@@ -1070,8 +1070,8 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
         [dar.shift_id]
       );
       if (shiftRows.length) {
-        siteIdForLookup = (shiftRows[0] as any).site_id || null;
-        if ((shiftRows[0] as any).site_name) siteName = (shiftRows[0] as any).site_name;
+        siteIdForLookup = (shiftRows[0] as unknown).site_id || null;
+        if ((shiftRows[0] as unknown).site_name) siteName = (shiftRows[0] as unknown).site_name;
       }
     } catch (err) {
       log.error('[DarPDF] siteName fetch failed:', err);
@@ -1103,7 +1103,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
        ORDER BY created_at ASC`,
       [dar.chatroom_id]
     );
-    photos = photoRows.map((r: any) => {
+    photos = photoRows.map((r: unknown) => {
       const gps = r.metadata?.gps;
       return {
         timestamp: new Date(r.created_at).toISOString(),
@@ -1122,7 +1122,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
   }
 
   // Enrich manifest entries with GPS from message metadata where not already present
-  const messageMetaMap: Record<string, any> = {};
+  const messageMetaMap: Record<string, unknown> = {};
   chatMessages.forEach(m => { if (m.id) messageMetaMap[m.id] = m.metadata; });
   photos = photos.map(p => {
     if (p.messageId && messageMetaMap[p.messageId] && !p.gpsLat) {
@@ -1313,7 +1313,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
       try {
         const shiftDate = dar.shift_start_time
           ? safeFullDate(dar.shift_start_time)
-          : safeFullDate((dar as any).created_at ?? new Date());
+          : safeFullDate((dar as Record<string, unknown>).created_at ?? new Date());
 
         const shiftTimeLabel =
           dar.shift_start_time && dar.shift_end_time
@@ -1331,7 +1331,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
           orgName,
           reportType: 'SHIFT TRANSPARENCY REPORT',
           reportId: dar.id,
-          reportDate: (dar as any).created_at ?? '',
+          reportDate: (dar as Record<string, unknown>).created_at ?? '',
           shiftDate,
           shiftTime: clockLabel,
           siteName,
@@ -1395,7 +1395,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
         // Visitor log
         renderVisitorTable(doc, visitors);
         renderKeyControlLostFoundSection(doc, keyControlLogs, lostFoundItems);
-        renderAuditFooterSection(doc, dar.id, (dar as any).content_hash || null);
+        renderAuditFooterSection(doc, dar.id, (dar as Record<string, unknown>).content_hash || null);
 
         // Signature block
         renderSignatureBlock(doc, dar.employee_name || 'Officer', supervisorName);

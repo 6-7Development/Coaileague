@@ -98,7 +98,7 @@ export interface SchedulingProgressStep {
     name: string;
     score: number;
   };
-  shift?: any;
+  shift?: unknown;
   businessMetrics?: {
     totalRevenue: number;
     totalCost: number;
@@ -172,7 +172,7 @@ export function useTrinitySchedulingProgress(workspaceId?: string) {
       'shift_deleted',
     ];
 
-    unsubs.push(bus.subscribeAll((message: any) => {
+    unsubs.push(bus.subscribeAll((message) => {
       if (!schedulingTypes.includes(message.type)) return;
 
       if (message.type === 'trinity_scheduling_started') {

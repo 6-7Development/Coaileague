@@ -112,7 +112,7 @@ class AIDynamicPricingService {
       });
       this.initialized = true;
       log.info('[AIDynamicPricing] Service initialized');
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AIDynamicPricing] Initialization failed:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -188,7 +188,7 @@ class AIDynamicPricingService {
         profitability,
         suggestion
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AIDynamicPricing] Client analysis error:', (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -309,14 +309,14 @@ Provide a refined recommendation in JSON:
         if (result.success) {
           const jsonMatch = result.text.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
+            const parsed: unknown = JSON.parse(jsonMatch[0]);
             if (parsed.adjustedRate) suggestedRate = parsed.adjustedRate;
             if (parsed.reasoning) reasoning = parsed.reasoning;
             if (parsed.confidence) confidence = parsed.confidence;
             if (parsed.riskLevel) riskLevel = parsed.riskLevel;
           }
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.info('[AIDynamicPricing] AI enhancement skipped:', (error instanceof Error ? error.message : String(error)));
       }
     }

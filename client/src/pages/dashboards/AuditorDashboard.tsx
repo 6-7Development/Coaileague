@@ -24,12 +24,12 @@ export default function AuditorDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: docsRes, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
 
-  const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
+  const docs: unknown[] = Array.isArray(docsRes) ? docsRes : (docsRes as Record<string,unknown>)?.data ?? [];
   const orgName = workspace?.name ?? "Your Organization";
 
   if (workspaceIsError || docsIsError) {
@@ -83,7 +83,7 @@ export default function AuditorDashboard() {
               </div>
             </div>
             <div className="space-y-2 mb-3">
-              {docs.slice(0, 4).map((doc: any) => (
+              {docs.slice(0, 4).map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between text-sm">
                   <span className="text-foreground truncate max-w-[160px]">{doc.name || doc.title || "Document"}</span>
                   <Badge variant="secondary" className="text-xs capitalize">{doc.status ?? "active"}</Badge>

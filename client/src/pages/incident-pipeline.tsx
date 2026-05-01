@@ -41,7 +41,7 @@ interface Activity {
   action: string;
   performed_by: string;
   performed_by_role: string;
-  details: any;
+  details: Record<string, unknown>;
   created_at: string;
 }
 
@@ -135,7 +135,7 @@ export default function IncidentPipeline() {
       toast({ title: "Status Updated", description: "Incident status has been updated." });
       setManagerNotes("");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to update status", variant: "destructive" });
     },
   });
@@ -149,7 +149,7 @@ export default function IncidentPipeline() {
       qc.invalidateQueries({ queryKey: ["/api/incident-reports"] });
       toast({ title: "Trinity Analysis Complete", description: "The report has been polished by Trinity AI." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to process with Trinity", variant: "destructive" });
     },
   });
@@ -312,13 +312,13 @@ function DetailView({
   const sevCfg = SEVERITY_CONFIG[incident.severity];
   const StatusIcon = statusCfg.icon;
 
-  const photos = Array.isArray(incident.photos) ? incident.photos : (() => { try { return JSON.parse(incident.photos as any) || []; } catch { return []; } })();
-  const legalFlags = Array.isArray(incident.trinity_legal_flags) ? incident.trinity_legal_flags : (() => { try { return JSON.parse(incident.trinity_legal_flags as any) || []; } catch { return []; } })();
+  const photos = Array.isArray(incident.photos) ? incident.photos : (() => { try { return JSON.parse(incident.photos as unknown) || []; } catch { return []; } })();
+  const legalFlags = Array.isArray(incident.trinity_legal_flags) ? incident.trinity_legal_flags : (() => { try { return JSON.parse(incident.trinity_legal_flags as unknown) || []; } catch { return []; } })();
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+        <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack} data-testid="button-back">
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -402,7 +402,7 @@ function DetailView({
                 Photos ({photos.length})
               </h3>
               <div className="grid grid-cols-3 gap-2">
-                {photos.map((photo: any, idx: number) => (
+                {photos.map((photo: unknown, idx: number) => (
                   <div key={idx} className="aspect-square rounded-md bg-muted overflow-hidden" data-testid={`photo-thumbnail-${idx}`}>
                     <img src={photo.url} alt={photo.caption || `Photo ${idx + 1}`} width={300} height={300} className="w-full h-full object-cover" loading="lazy" />
                   </div>
@@ -418,7 +418,7 @@ function DetailView({
                 Trinity Legal Flags ({legalFlags.length})
               </h3>
               <div className="space-y-2">
-                {legalFlags.map((flag: any, idx: number) => (
+                {legalFlags.map((flag: unknown, idx: number) => (
                   <div key={idx} className="p-3 rounded-md bg-muted" data-testid={`legal-flag-${idx}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <AlertCircle className="w-3 h-3" />

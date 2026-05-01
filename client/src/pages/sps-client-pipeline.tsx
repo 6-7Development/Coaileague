@@ -168,7 +168,7 @@ function NewProposalSheet({ onClose }: { onClose: () => void }) {
   });
 
   const createProposalMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       // First create the document (proposal type)
       const docRes = await apiRequest("POST", "/api/sps/documents", {
         documentType: 'proposal',
@@ -571,9 +571,9 @@ function NegotiationsTab({ negotiations, isLoading, onContractCreated }: { negot
                     >
                       {msg.messageRaw}
                     </div>
-                    {(msg as any).proposedTerms && Object.keys(msg.proposedTerms as any).length > 0 && (
+                    {(msg as Record<string, unknown>).proposedTerms && Object.keys(msg.proposedTerms as unknown).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {Object.entries(msg.proposedTerms as any).map(([key, val]) => {
+                        {Object.entries(msg.proposedTerms as unknown).map(([key, val]) => {
                            if (!val) return null;
                            return <Badge key={key} variant="secondary" className="text-[9px] h-4 bg-blue-50 text-blue-700 border-blue-100">{key}: {String(val)}</Badge>
                         })}
@@ -603,19 +603,19 @@ function NegotiationsTab({ negotiations, isLoading, onContractCreated }: { negot
               <Label className="text-[10px] text-muted-foreground">Current Rate</Label>
               <div className="p-2 bg-background border rounded text-sm font-mono flex justify-between">
                 <span className="text-muted-foreground">$</span>
-                <span>{(threadData.thread.proposalData as any)?.ratePrimary || '--'}</span>
+                <span>{(threadData.thread.proposalData as unknown)?.ratePrimary || '--'}</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Service Type</Label>
               <div className="p-2 bg-background border rounded text-xs font-medium">
-                {(threadData.thread.proposalData as any)?.serviceType || '--'}
+                {(threadData.thread.proposalData as unknown)?.serviceType || '--'}
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Term</Label>
               <div className="p-2 bg-background border rounded text-xs font-medium">
-                {(threadData.thread.proposalData as any)?.contractTerm || '--'}
+                {(threadData.thread.proposalData as unknown)?.contractTerm || '--'}
               </div>
             </div>
             <Separator />
@@ -623,7 +623,7 @@ function NegotiationsTab({ negotiations, isLoading, onContractCreated }: { negot
               <h5 className="text-[10px] font-bold text-muted-foreground uppercase">Schedule</h5>
               <div className="grid grid-cols-4 gap-1">
                 {DAYS.map(day => (
-                  <div key={day} className={['text-[9px] text-center py-1 rounded border', (threadData.thread.proposalData as any)?.schedule?.[day] ? 'bg-primary/10 border-primary/20 text-primary font-bold' : 'text-muted-foreground/40'].join(' ')}>
+                  <div key={day} className={['text-[9px] text-center py-1 rounded border', (threadData.thread.proposalData as unknown)?.schedule?.[day] ? 'bg-primary/10 border-primary/20 text-primary font-bold' : 'text-muted-foreground/40'].join(' ')}>
                     {day}
                   </div>
                 ))}
@@ -644,7 +644,7 @@ function NegotiationComposer({ threadId }: { threadId: string }) {
   const [polishResult, setPolishResult] = useState<{ original: string, polished: string } | null>(null);
 
   const sendMessageMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/sps/negotiations/${threadId}/messages`, data),
+    mutationFn: (data) => apiRequest("POST", `/api/sps/negotiations/${threadId}/messages`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sps/negotiations", threadId] });
       setMessage("");
@@ -847,7 +847,7 @@ function ContractDialog({ contract }: { contract: SpsDocument }) {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" data-testid={`button-view-contract-${contract.id}`}>View</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="border-b pb-4 mb-4">
           <div className="flex justify-between items-center pr-8">
             <DialogTitle>Client Service Contract: {contract.documentNumber}</DialogTitle>
@@ -931,8 +931,8 @@ function ContractDialog({ contract }: { contract: SpsDocument }) {
           {/* Section 6: Schedule */}
           <section className="space-y-2">
             <h2 className="font-bold border-b pb-1">6. SCHEDULE</h2>
-            <p>Service Days: <strong>{Object.entries((contract.formData as any)?.proposalData?.schedule || {}).filter(([_,v]) => v).map(([k]) => k).join(', ') || 'As requested'}</strong></p>
-            <p>Shift Times: <strong>{(contract.formData as any)?.proposalData?.shiftStartTime} - {(contract.formData as any)?.proposalData?.shiftEndTime}</strong></p>
+            <p>Service Days: <strong>{Object.entries((contract.formData as unknown)?.proposalData?.schedule || {}).filter(([_,v]) => v).map(([k]) => k).join(', ') || 'As requested'}</strong></p>
+            <p>Shift Times: <strong>{(contract.formData as unknown)?.proposalData?.shiftStartTime} - {(contract.formData as unknown)?.proposalData?.shiftEndTime}</strong></p>
           </section>
 
           {/* standard legal sections 7-19 */}

@@ -96,7 +96,7 @@ router.post("/save-draft", requireAuth, async (req: AuthenticatedRequest, res) =
       updatedAt: new Date(),
     };
 
-    let result: any;
+    let result: unknown;
     if (existing) {
       const [updated] = await db
         .update(customFormSubmissions)
@@ -168,7 +168,7 @@ router.post("/submit", requireAuth, async (req: AuthenticatedRequest, res) => {
       userAgent: req.get("user-agent") || null,
     };
 
-    let result: any;
+    let result: unknown;
     if (existing) {
       const [updated] = await db
         .update(customFormSubmissions)
@@ -186,7 +186,7 @@ router.post("/submit", requireAuth, async (req: AuthenticatedRequest, res) => {
 
     // ── Persist guard card and compliance data to employee record ────────────
     if (employee?.id && uploadedDocs) {
-      const docs = uploadedDocs as Record<string, any>;
+      const docs = uploadedDocs as Record<string, unknown>;
       // CATEGORY C — Raw SQL retained: ::date | Tables: employees | Verified: 2026-03-23
       await typedExec(sql`
         UPDATE employees SET
@@ -255,7 +255,7 @@ router.post("/submit", requireAuth, async (req: AuthenticatedRequest, res) => {
         });
         if (pdfUrl) {
           await db.update(customFormSubmissions)
-            .set({ generatedDocumentUrl: pdfUrl } as any)
+            .set({ generatedDocumentUrl: pdfUrl } as Record<string, unknown>)
             .where(eqDrizzle(customFormSubmissions.id, result.id));
           log.info(`[OnboardingForms] PDF generated for submission ${result.id}: ${pdfUrl}`);
         }
@@ -297,7 +297,7 @@ router.get("/status", requireAuth, async (req: AuthenticatedRequest, res) => {
       success: true,
       status: submission?.status || "not_started",
       submittedAt: submission?.submittedAt || null,
-      currentStep: (submission?.formData as any)?.currentStep ?? 0,
+      currentStep: (submission?.formData as Record<string, unknown>)?.currentStep ?? 0,
     });
   } catch (err: unknown) {
     return res.status(500).json({ message: "Failed to fetch status" });

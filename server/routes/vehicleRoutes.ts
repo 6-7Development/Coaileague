@@ -51,7 +51,7 @@ router.post("/", async (req, res) => {
     const wss = req.app?.get?.("wss");
     if (wss) {
       const msg = JSON.stringify({ type: "vehicle_created", payload: item });
-      wss.clients?.forEach?.((c: any) => { if (c.readyState === 1) c.send(msg); });
+      wss.clients?.forEach?.((c: Record<string,unknown>) => { if (c.readyState === 1) c.send(msg); });
     }
 
     res.status(201).json(item);
@@ -82,7 +82,7 @@ router.patch("/:id", async (req, res) => {
     const wss = req.app?.get?.("wss");
     if (wss) {
       const msg = JSON.stringify({ type: "vehicle_updated", payload: updated });
-      wss.clients?.forEach?.((c: any) => { if (c.readyState === 1) c.send(msg); });
+      wss.clients?.forEach?.((c: Record<string,unknown>) => { if (c.readyState === 1) c.send(msg); });
     }
 
     res.json(updated);

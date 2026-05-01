@@ -293,7 +293,7 @@ class TrinityCodeOpsService {
         truncated: lines.length > maxResults
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityCodeOps] Search error:', (error instanceof Error ? error.message : String(error)));
       return {
         success: false,
@@ -353,12 +353,11 @@ class TrinityCodeOpsService {
 
           // Emit event for approval notification
           platformEventBus.publish({
-            type: 'automation_completed' as any,
+            type: 'automation_completed',
             category: 'ai_brain',
             title: 'Code Change Approval Required',
             description: `${patches.length} patches require approval (Risk: ${riskLevel})`,
             metadata: { approvalId: approval.id, operationId, workspaceId, riskLevel, patchCount: patches.length },
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: riskLevel === 'critical' ? 'error' : 'warning',
             isNew: true
           }).catch((err) => log.warn('[trinityCodeOps] Fire-and-forget failed:', err));
@@ -380,7 +379,7 @@ class TrinityCodeOpsService {
         try {
           await this.applySinglePatch(patch, originalContent);
           appliedPatches++;
-        } catch (err: any) {
+        } catch (err: unknown) {
           errors.push(`Failed to apply patch to ${patch.file}: ${(err instanceof Error ? err.message : String(err))}`);
           failedPatches++;
         }
@@ -412,12 +411,11 @@ class TrinityCodeOpsService {
 
       // Emit success event
       platformEventBus.publish({
-        type: 'automation_completed' as any,
+        type: 'automation_completed',
         category: 'ai_brain',
         title: 'Code Patches Applied',
         description: `Applied ${appliedPatches} patches successfully`,
         metadata: { operationId, workspaceId, appliedPatches, commitHash },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         severity: 'info',
         isNew: true
       }).catch((err) => log.warn('[trinityCodeOps] Fire-and-forget failed:', err));
@@ -433,7 +431,7 @@ class TrinityCodeOpsService {
         rollbackAvailable: true
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityCodeOps] Patch application error:', error);
       
       // Attempt rollback on catastrophic failure
@@ -560,7 +558,7 @@ class TrinityCodeOpsService {
         deletions
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityCodeOps] Git commit error:', error);
       return {
         success: false,
@@ -580,7 +578,7 @@ class TrinityCodeOpsService {
         { cwd: this.projectRoot, maxBuffer: 5 * 1024 * 1024 }
       );
       return stdout;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityCodeOps] Git diff error:', error);
       return '';
     }
@@ -639,18 +637,17 @@ class TrinityCodeOpsService {
       await this.logOperation('rollback', { operationId });
 
       platformEventBus.publish({
-        type: 'automation_completed' as any,
+        type: 'automation_completed',
         category: 'ai_brain',
         title: 'Rollback Completed',
         description: `Operation ${operationId} rolled back successfully`,
         metadata: { operationId },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         severity: 'info',
         isNew: true
       }).catch((err) => log.warn('[trinityCodeOps] Fire-and-forget failed:', err));
 
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityCodeOps] Rollback error:', error);
       return false;
     }
@@ -787,7 +784,7 @@ class TrinityCodeOpsService {
     return diffs.join('\n\n');
   }
 
-  private async logOperation(type: string, data: Record<string, any>): Promise<void> {
+  private async logOperation(type: string, data: Record<string, unknown>): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({
         workspaceId: 'system',
@@ -806,7 +803,7 @@ class TrinityCodeOpsService {
   // FAST MODE - PARALLEL EXECUTION
   // ---------------------------------------------------------------------------
 
-  async executeFastMode(operations: Array<{ type: 'search' | 'patch' | 'read'; params: any }>): Promise<any[]> {
+  async executeFastMode(operations: Array<{ type: 'search' | 'patch' | 'read'; params: Record<string, unknown> }>): Promise<Record<string,unknown>[]> {
     log.info(`[TrinityCodeOps] FAST MODE: Executing ${operations.length} operations in parallel`);
     const startTime = Date.now();
 
@@ -822,7 +819,7 @@ class TrinityCodeOpsService {
     ]);
 
     // Patches must be sequential to avoid conflicts
-    const patchResults: any[] = [];
+    const patchResults: (string | number | boolean | null)[] = [];
     for (const op of patchOps) {
       const result = await this.applyPatch(op.params);
       patchResults.push(result);
@@ -839,7 +836,7 @@ class TrinityCodeOpsService {
       const fullPath = path.resolve(this.projectRoot, filePath);
       const content = fs.readFileSync(fullPath, 'utf-8');
       return { success: true, content };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return { success: false, error: (error instanceof Error ? error.message : String(error)) };
     }
   }

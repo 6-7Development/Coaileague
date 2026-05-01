@@ -30,7 +30,7 @@ export interface AuditLogEntry {
     | 'error';
   apiName?: string;
   status: 'success' | 'error' | 'pending';
-  requestPayload?: Record<string, any>;
+  requestPayload?: Record<string, unknown>;
   responseStatus?: number;
   responseMessage?: string;
   durationMs?: number;
@@ -38,7 +38,7 @@ export interface AuditLogEntry {
   ipAddress?: string;
   userAgent?: string;
   requestId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export class HelpaiAuditService {
@@ -64,7 +64,7 @@ export class HelpaiAuditService {
       action: entry.action,
       apiName: entry.apiName,
       status: entry.status,
-      requestPayload: (entry.requestPayload || {}) as any,
+      requestPayload: (entry.requestPayload || {}) as unknown,
       responseStatus: entry.responseStatus,
       responseMessage: entry.responseMessage,
       durationMs: entry.durationMs,
@@ -73,7 +73,7 @@ export class HelpaiAuditService {
       userAgent: entry.userAgent,
       requestId: entry.requestId,
       actionHash,
-      metadata: (entry.metadata || {}) as any,
+      metadata: (entry.metadata || {}) as unknown,
     };
 
     const [logged] = await db.insert(helpaiAuditLog).values(auditEntry).returning();
@@ -116,10 +116,10 @@ export class HelpaiAuditService {
 
     // Add optional filters
     if (options?.action) {
-      query = (query as any).where(eq(helpaiAuditLog.action, options.action as any));
+      query = (query as Record<string,unknown>).where(eq(helpaiAuditLog.action, options.action as unknown));
     }
     if (options?.status) {
-      query = (query as any).where(eq(helpaiAuditLog.status, options.status));
+      query = (query as Record<string,unknown>).where(eq(helpaiAuditLog.status, options.status));
     }
 
     // Execute query
@@ -131,9 +131,7 @@ export class HelpaiAuditService {
     // Filter by date range in-memory if needed
     if (options?.startDate || options?.endDate) {
       return results.filter(log => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (options.startDate && log.createdAt < options.startDate) return false;
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (options.endDate && log.createdAt > options.endDate) return false;
         return true;
       });
@@ -256,7 +254,7 @@ export class HelpaiAuditService {
     const recalculatedHash = this.generateActionHash({
       action: log.action,
       apiName: log.apiName || undefined,
-      requestPayload: log.requestPayload as Record<string, any>,
+      requestPayload: log.requestPayload as Record<string, unknown>,
       integrationId: log.integrationId || undefined,
     });
 
@@ -295,7 +293,6 @@ export class HelpaiAuditService {
     // CSV rows
     const rows = logs.map(log => [
       log.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.createdAt.toISOString(),
       log.userId || 'N/A',
       log.action,
@@ -325,7 +322,7 @@ export class HelpaiAuditService {
   private generateActionHash(data: {
     action: string;
     apiName?: string;
-    requestPayload: Record<string, any>;
+    requestPayload: Record<string, unknown>;
     integrationId?: string;
   }): string {
     // Sort keys deterministically
@@ -343,7 +340,7 @@ export class HelpaiAuditService {
   /**
    * Sort object keys recursively for consistent hashing
    */
-  private sortObjectKeys(obj: any): any {
+  private sortObjectKeys(obj: unknown): any {
     if (obj === null || typeof obj !== 'object') {
       return obj;
     }
@@ -352,7 +349,7 @@ export class HelpaiAuditService {
     }
     return Object.keys(obj)
       .sort()
-      .reduce((sorted: any, key) => {
+      .reduce((sorted: unknown, key) => {
         sorted[key] = this.sortObjectKeys(obj[key]);
         return sorted;
       }, {});

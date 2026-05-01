@@ -179,7 +179,7 @@ export function HelpDeskCommandBar({
                   </label>
                   <select
                     value={userStatus}
-                    onChange={(e) => onStatusChange?.(e.target.value as any)}
+                    onChange={(e) => onStatusChange?.(e.target.value as string)}
                     className="h-9 px-3 border border-primary rounded-md text-xs font-semibold bg-white text-foreground focus:ring-2 focus:ring-primary focus:border-primary"
                     data-testid="select-status"
                   >

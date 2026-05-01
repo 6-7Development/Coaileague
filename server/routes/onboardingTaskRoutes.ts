@@ -31,7 +31,7 @@ router.get('/templates', requireAuth, async (req: AuthenticatedRequest, res) => 
       WHERE is_active = true
         AND (workspace_id IS NULL OR workspace_id = $1)
     `;
-    const params: any[] = [workspaceId || null];
+    const params: Record<string, unknown>[] = [workspaceId || null];
 
     if (category && (category === 'officer' || category === 'client')) {
       query += ` AND category = $2`;
@@ -70,27 +70,27 @@ router.get('/employee/:employeeId', requireAuth, async (req: AuthenticatedReques
       [employeeId, workspaceId]
     );
 
-    const completionMap = new Map(completions.map((c: any) => [c.task_template_id, c]));
+    const completionMap = new Map(completions.map((c: unknown) => [c.task_template_id, c]));
 
-    const tasks = templates.map((t: any) => ({
+    const tasks = templates.map((t: unknown) => ({
       ...t,
       completion: completionMap.get(t.id) || null,
       status: completionMap.get(t.id)?.status || 'pending',
     }));
 
-    const tier1Tasks = tasks.filter((t: any) => t.tier === 1 && t.is_required);
-    const tier1Complete = tier1Tasks.every((t: any) =>
+    const tier1Tasks = tasks.filter((t: unknown) => t.tier === 1 && t.is_required);
+    const tier1Complete = tier1Tasks.every((t: unknown) =>
       t.status === 'completed' || t.status === 'waived'
     );
 
     const byTier = {
-      tier1: tasks.filter((t: any) => t.tier === 1),
-      tier2: tasks.filter((t: any) => t.tier === 2),
-      tier3: tasks.filter((t: any) => t.tier === 3),
+      tier1: tasks.filter((t: unknown) => t.tier === 1),
+      tier2: tasks.filter((t: unknown) => t.tier === 2),
+      tier3: tasks.filter((t: unknown) => t.tier === 3),
     };
 
-    const totalRequired = tasks.filter((t: any) => t.is_required).length;
-    const totalCompleted = tasks.filter((t: any) =>
+    const totalRequired = tasks.filter((t: unknown) => t.is_required).length;
+    const totalCompleted = tasks.filter((t: unknown) =>
       t.is_required && (t.status === 'completed' || t.status === 'waived')
     ).length;
 
@@ -124,7 +124,7 @@ router.post('/employee/:employeeId/complete/:taskId', requireAuth, async (req: A
     );
 
     return res.json({ success: true, message: 'Task marked as complete' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Handle missing unique constraint gracefully
     if (err?.code === '42P10' || err?.message?.includes('ON CONFLICT')) {
       // No unique constraint — use upsert via select+insert/update
@@ -312,7 +312,7 @@ router.get('/tier1-blocked/:employeeId', requireAuth, async (req: AuthenticatedR
       return res.json({ blocked: false, reason: null });
     }
 
-    const templateIds = tier1Templates.map((t: any) => t.id);
+    const templateIds = tier1Templates.map((t: unknown) => t.id);
     const { rows: completions } = await pool.query(
       `SELECT task_template_id FROM employee_onboarding_completions
        WHERE employee_id = $1 AND status IN ('completed','waived')
@@ -320,13 +320,13 @@ router.get('/tier1-blocked/:employeeId', requireAuth, async (req: AuthenticatedR
       [employeeId, templateIds]
     );
 
-    const completedIds = new Set(completions.map((c: any) => c.task_template_id));
-    const blocked = tier1Templates.some((t: any) => !completedIds.has(t.id));
+    const completedIds = new Set(completions.map((c: unknown) => c.task_template_id));
+    const blocked = tier1Templates.some((t: unknown) => !completedIds.has(t.id));
 
     return res.json({
       blocked,
       reason: blocked ? 'Tier 1 onboarding tasks must be completed before clocking in' : null,
-      pendingCount: tier1Templates.filter((t: any) => !completedIds.has(t.id)).length,
+      pendingCount: tier1Templates.filter((t: unknown) => !completedIds.has(t.id)).length,
     });
   } catch (err) {
     log.error('[OnboardingTasks] GET /tier1-blocked error:', err);

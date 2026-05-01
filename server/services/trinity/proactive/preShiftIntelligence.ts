@@ -61,7 +61,7 @@ export interface PreShiftFlag {
   code: FlagCode;
   severity: FlagSeverity;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface PreShiftSweepResult {
@@ -88,7 +88,7 @@ export async function runPreShiftIntelligenceSweep(): Promise<PreShiftSweepResul
   let upcoming: Array<UpcomingShift>;
   try {
     upcoming = await findUpcomingShifts();
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.errors.push(`scan:${err?.message}`);
     return result;
   }
@@ -115,7 +115,7 @@ export async function runPreShiftIntelligenceSweep(): Promise<PreShiftSweepResul
 
         await recordNotified(flag);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`${shift.shiftId}:${err?.message}`);
       log.warn(`[preShiftIntel] shift ${shift.shiftId} failed:`, err?.message);
     }
@@ -229,7 +229,9 @@ async function notify(flag: PreShiftFlag, shift: UpcomingShift): Promise<boolean
         workspaceId: shift.workspaceId,
         recipientUserId,
         channel: 'in_app',
-        subject: `Pre-shift flag: ${flag.code.replace(/_/g, ' ')}`,
+        subject: `Pre-shift flag: ${flag.code.replace(/_/g, ' ')
+       
+      }`,
         body: {
           summary,
           shiftId: shift.shiftId,
@@ -278,7 +280,7 @@ async function notify(flag: PreShiftFlag, shift: UpcomingShift): Promise<boolean
         details: flag.details ?? null,
       },
     } as any);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[preShiftIntel] event publish failed (non-fatal):', err?.message);
   }
 
@@ -315,7 +317,7 @@ async function findUpcomingShifts(): Promise<UpcomingShift[]> {
         AND s.start_time <= NOW() + INTERVAL '${WINDOW_END_MIN} minutes'
       LIMIT 200`,
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     shiftId: row.shift_id,
     workspaceId: row.workspace_id,
     employeeId: row.employee_id,
@@ -390,13 +392,13 @@ async function findExpiringCerts(shift: UpcomingShift): Promise<CertFlag[]> {
           AND expiry_date <= NOW() + INTERVAL '${LICENSE_EXPIRY_WARN_DAYS} days'`,
       [shift.workspaceId, shift.employeeId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       name: row.name,
       expiryDate: row.expiry_date ? new Date(row.expiry_date).toISOString().slice(0, 10) : '',
       daysUntilExpiry: Number(row.days_until_expiry ?? 0),
       expired: Number(row.days_until_expiry ?? 0) < 0,
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[preShiftIntel] cert lookup failed:', err?.message);
     return [];
   }
@@ -464,7 +466,7 @@ async function recordNotified(flag: PreShiftFlag): Promise<void> {
         flag.severity,
       ],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[preShiftIntel] audit write failed (non-fatal):', err?.message);
   }
 }
@@ -484,7 +486,7 @@ async function fetchSupervisors(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -502,7 +504,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -522,8 +524,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

@@ -30,7 +30,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     const offset = Number.parseInt(getQueryString(req.query.offset) || "0", 10);
 
     const conditions = ["workspace_id = $1"];
-    const params: any[] = [wid];
+    const params: Record<string, unknown>[] = [wid];
     let p = 2;
     if (status) { conditions.push(`status = $${p++}`); params.push(status); }
     if (clientId) { conditions.push(`client_id = $${p++}`); params.push(clientId); }
@@ -43,7 +43,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     );
     const countRes = await pool.query(`SELECT COUNT(*) FROM work_orders WHERE ${where}`, params);
     res.json({ workOrders: rows, total: parseInt(countRes.rows[0].count) });
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── GET ONE ─────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
       [req.params.id]
     );
     res.json({ ...rows[0], evidence });
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── CREATE ──────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ router.post("/", requireManager, async (req: AuthenticatedRequest, res) => {
        assignedOfficerIds || [], scheduledStart || null, scheduledEnd || null, req.user?.id]
     );
     res.status(201).json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── UPDATE ──────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ router.patch("/:id", requireManager, async (req: AuthenticatedRequest, res) => {
     };
 
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let p = 1;
     for (const [jsKey, col] of Object.entries(colMap)) {
       if (req.body[jsKey] !== undefined) {
@@ -148,7 +148,7 @@ router.patch("/:id", requireManager, async (req: AuthenticatedRequest, res) => {
     );
 
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ router.post("/:id/activate", requireManager, async (req: AuthenticatedRequest, r
     );
     if (!rows[0]) return res.status(404).json({ error: "Work order not found or not activatable" });
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/:id/complete", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -182,7 +182,7 @@ router.post("/:id/complete", requireAuth, async (req: AuthenticatedRequest, res)
     );
     if (!rows[0]) return res.status(404).json({ error: "Work order not found or not active" });
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── EVIDENCE ────────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ router.get("/:id/evidence", requireAuth, async (req: AuthenticatedRequest, res) 
       [req.params.id, wid]
     );
     res.json(rows);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/:id/evidence", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -211,7 +211,7 @@ router.post("/:id/evidence", requireAuth, async (req: AuthenticatedRequest, res)
       [req.params.id, wid, evidenceType || "note", fileUrl || null, notes || null, req.user?.id]
     );
     res.status(201).json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── ASSIGN OFFICERS ─────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ router.post("/:id/assign", requireManager, async (req: AuthenticatedRequest, res
     );
     if (!rows[0]) return res.status(404).json({ error: "Work order not found" });
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── ANALYTICS ───────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ router.get("/analytics/summary", requireManager, async (req: AuthenticatedReques
        FROM work_orders WHERE workspace_id=$1`, [wid]
     );
     res.json({ breakdown: rows, ...totalRes.rows[0] });
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── TRINITY ACTIONS ─────────────────────────────────────────────────────────

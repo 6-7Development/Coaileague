@@ -126,7 +126,7 @@ class TrinityHypothesisEngine {
       atRiskEmployees?: number;
       overdueInvoices?: number;
       topConcerns?: string[];
-      siteMargins?: any[];
+      siteMargins?: unknown[];
       recentIncidents?: number;
     } = {},
   ): Promise<HypothesisResult> {
@@ -191,7 +191,7 @@ class TrinityHypothesisEngine {
 
   private applyWorkspaceEvidence(
     hypotheses: Hypothesis[],
-    data: any,
+    data: Record<string, unknown>,
     domain: string,
     queries: string[],
   ): void {
@@ -223,7 +223,7 @@ class TrinityHypothesisEngine {
         queries.push('overtime_rate_workspace');
       }
       if (data.siteMargins) {
-        const criticalSites = data.siteMargins.filter((s: any) => s.status === 'critical').length;
+        const criticalSites = data.siteMargins.filter((s: unknown) => s.status === 'critical').length;
         if (criticalSites > 0) {
           hypotheses[1].posteriorProbability += 15;
           hypotheses[1].supportingEvidence.push(`${criticalSites} site(s) with critical margin indicate bill rate issues.`);
@@ -244,7 +244,7 @@ class TrinityHypothesisEngine {
     top: Hypothesis,
     runnerUp: Hypothesis | null,
     converged: boolean,
-    data: any,
+    data: Record<string, unknown>,
   ): string {
     const lines: string[] = [];
 

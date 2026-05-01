@@ -38,11 +38,11 @@ export interface RoutingRequest {
   // Task details
   intent: string;
   taskType: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   
   // Context
   previousActions?: string[];
-  sessionContext?: Record<string, any>;
+  sessionContext?: Record<string, unknown>;
   
   // Preferences
   preferredSubagent?: string;
@@ -99,15 +99,15 @@ export interface HandoffRequest {
   targetSubagent: string;
   
   // Data to transfer
-  context: Record<string, any>;
-  request: Record<string, any>;
+  context: Record<string, unknown>;
+  request: Record<string, unknown>;
   
   // Handoff type
   type: 'sync' | 'async' | 'callback';
   
   // Return expectations
   expectsResponse: boolean;
-  responseSchema?: Record<string, any>;
+  responseSchema?: Record<string, unknown>;
   
   // Metadata
   workspaceId: string;
@@ -120,7 +120,7 @@ export interface HandoffResult {
   success: boolean;
   
   // Response
-  response?: any;
+  response?: unknown;
   error?: string;
   
   // Metrics
@@ -265,7 +265,6 @@ class AdaptiveSupervisionRouter {
     await this.logRoutingDecision(request, decision);
 
     // Publish event
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformEventBus.publish('ai_brain_action', {
       action: 'adaptive_routing',
       requestId,
@@ -304,7 +303,7 @@ class AdaptiveSupervisionRouter {
         status: 'active',
         createdAt: new Date(),
       });
-    } catch (persistErr: any) {
+    } catch (persistErr : unknown) {
       log.warn('[Handoff] Persist start failed (non-fatal):', persistErr?.message);
     }
 
@@ -316,7 +315,7 @@ class AdaptiveSupervisionRouter {
       }
 
       // Execute handoff based on type
-      let response: any;
+      let response: unknown;
       let targetProcessingTimeMs: number | undefined;
 
       switch (request.type) {
@@ -349,7 +348,7 @@ class AdaptiveSupervisionRouter {
 
       return result;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       const result: HandoffResult = {
         handoffId,
         success: false,
@@ -369,7 +368,7 @@ class AdaptiveSupervisionRouter {
         await db.update(supervisorHandoffs)
           .set({ status: 'resolved', resolvedAt: new Date() })
           .where(eq(supervisorHandoffs.id, handoffId));
-      } catch (persistErr: any) {
+      } catch (persistErr : unknown) {
         log.warn('[Handoff] Persist resolve failed (non-fatal):', persistErr?.message);
       }
     }
@@ -554,19 +553,14 @@ class AdaptiveSupervisionRouter {
   } {
     switch (complexity.level) {
       case 'simple':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { selectedTier: 'LITE', fallbackTier: 'FLASH' };
       case 'moderate':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { selectedTier: 'FLASH', fallbackTier: 'PRO' };
       case 'complex':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { selectedTier: 'PRO', fallbackTier: 'BRAIN' };
       case 'expert':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { selectedTier: 'BRAIN', fallbackTier: 'PRO' };
       default:
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { selectedTier: 'FLASH', fallbackTier: 'PRO' };
     }
   }
@@ -700,7 +694,7 @@ class AdaptiveSupervisionRouter {
    * Execute synchronous handoff
    */
   private async executeSyncHandoff(request: HandoffRequest): Promise<{
-    response: any;
+    response: unknown;
     processingTimeMs: number;
   }> {
     const startTime = Date.now();

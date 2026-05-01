@@ -34,16 +34,16 @@ export interface ReflectionContext {
   userId: string;
   originalIntent: string;
   executedSteps: ExecutedStep[];
-  currentOutput: any;
-  expectedSchema?: Record<string, any>;
+  currentOutput: unknown;
+  expectedSchema?: Record<string, unknown>;
   goal?: string;
 }
 
 export interface ExecutedStep {
   stepId: string;
   action: string;
-  input: Record<string, any>;
-  output: any;
+  input: Record<string, unknown>;
+  output: unknown;
   durationMs: number;
   timestamp: Date;
 }
@@ -85,7 +85,7 @@ export interface SuggestedRevision {
   targetStep: string;
   revisionType: 'retry' | 'modify_input' | 'add_step' | 'remove_step' | 'reorder';
   description: string;
-  newParameters?: Record<string, any>;
+  newParameters?: Record<string, unknown>;
   confidenceScore: number;
   estimatedImpact: 'low' | 'medium' | 'high';
 }
@@ -220,7 +220,6 @@ class SelfReflectionEngine {
       await this.logReflection(context, result);
 
       // Publish event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'self_reflection',
         executionId: context.executionId,
@@ -244,7 +243,7 @@ class SelfReflectionEngine {
   async autoCorrect(
     context: ReflectionContext,
     reflection: ReflectionResult
-  ): Promise<{ success: boolean; corrections: AppliedCorrection[]; newOutput: any }> {
+  ): Promise<{ success: boolean; corrections: AppliedCorrection[]; newOutput: unknown }> {
     if (!reflection.autoCorrectible) {
       throw new Error('Reflection result is not auto-correctible');
     }
@@ -273,7 +272,6 @@ class SelfReflectionEngine {
     await trinityMemoryService.shareInsight({
       workspaceId: context.workspaceId,
       userId: context.userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       insightType: 'auto_correction',
       content: JSON.stringify({
         executionId: context.executionId,
@@ -322,7 +320,7 @@ Provide a JSON response with:
 }`;
 
     try {
-      const response = await (aiBrainService as any).query({
+      const response = await (aiBrainService as Record<string,unknown>).query({
         prompt,
         systemPrompt: 'You are an expert code reviewer and quality analyst. Be thorough but fair.',
         featureId: 'self_reflection',
@@ -331,7 +329,7 @@ Provide a JSON response with:
         responseFormat: 'json',
       });
 
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       return {
         summary: parsed.summary || 'Unable to generate critique',
         details: parsed.details || [],
@@ -416,7 +414,7 @@ Provide a JSON response with:
    */
   private checkSchemaCompliance(
     output: any,
-    schema: Record<string, any>
+    schema: Record<string, unknown>
   ): ReflectionIssue[] {
     const issues: ReflectionIssue[] = [];
     
@@ -634,7 +632,6 @@ Provide a JSON response with:
 
       if (revision.revisionType === 'retry' && targetStep) {
         const { helpaiOrchestrator } = await import('../helpai/platformActionHub');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const actionResult = await helpaiOrchestrator.executeAction({
           actionId: targetStep.action,
           userId: context.userId,
@@ -660,7 +657,6 @@ Provide a JSON response with:
       if (revision.revisionType === 'modify_input' && targetStep && revision.newParameters) {
         const { helpaiOrchestrator } = await import('../helpai/platformActionHub');
         const mergedParams = { ...targetStep.input, ...revision.newParameters };
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const actionResult = await helpaiOrchestrator.executeAction({
           actionId: targetStep.action,
           userId: context.userId,
@@ -689,7 +685,7 @@ Provide a JSON response with:
         description: `Acknowledged revision (${revision.revisionType}): ${revision.description}`,
         timestamp: new Date(),
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[SelfReflectionEngine] Revision ${revision.revisionId} failed:`, (error instanceof Error ? error.message : String(error)));
       return {
         correctionId,
@@ -745,7 +741,7 @@ interface AppliedCorrection {
   revisionId: string;
   success: boolean;
   description: string;
-  newOutput?: any;
+  newOutput?: unknown;
   error?: string;
   timestamp: Date;
 }
@@ -867,7 +863,6 @@ class ReflectionFeedbackLoop {
       log.info(`[ReflectionFeedbackLoop] Feedback processed: ${metricsUpdated.length} metrics updated, ${recommendations.length} recommendations`);
 
       // Publish learning event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'feedback_loop_completed',
         loopId,
@@ -1018,7 +1013,6 @@ class ReflectionFeedbackLoop {
       await trinityMemoryService.shareInsight({
         workspaceId: context.workspaceId,
         userId: context.userId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         insightType: 'learning',
         content: JSON.stringify(learningEntry),
         confidenceScore: reflection.confidenceScore,

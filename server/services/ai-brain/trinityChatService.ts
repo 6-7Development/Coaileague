@@ -86,6 +86,7 @@ import { trinityPrefrontalCortex, type OrgSurvivalState, type OrgMode } from './
 import { trinityLimbicSystem, type EmotionalSignal } from './trinityLimbicSystem';
 import { trinitySocialGraphEngine } from './trinitySocialGraphEngine';
 import { trinityGlobalWorkspace } from './trinityGlobalWorkspace';
+import type { EmployeeComplianceRecord } from '@shared/types/domainExtensions';
 const log = createLogger('TrinityChatService');
 
 // === MODULE-SCOPE CONSTANTS ===
@@ -228,7 +229,7 @@ export interface ConversationHistory {
 // TRINITY_MASTER_SYSTEM_PROMPT — this block is CONTEXT ONLY, not re-declaration.
 // (Formerly "buildBusinessModePrompt" — mode concept retired. Trinity knows how
 //  to operate across business, personal, and technical domains internally.)
-const buildWorkspaceContextBlock = (workspaceContext: any, userName: string = 'there') => {
+const buildWorkspaceContextBlock = (workspaceContext: unknown, userName: string = 'there') => {
   const ctx = workspaceContext || {};
   const formatCurrency = (val: number) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   const formatHours = (val: number) => `${val.toFixed(1)}`;
@@ -499,15 +500,15 @@ class TrinityChatService {
    * Send a message to Trinity and get a response
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    const { userId, workspaceId, message, sessionId, images } = request;
+    const { userId, workspaceId, message, sessionId, images, mode = 'business' as const } = request as ChatRequest & { mode?: string };
     // Trinity has no mode toggle — her biological brain decides how to respond
 
     // THALAMUS — Universal Sensory Gateway (first organ every signal passes through)
     // Non-blocking for LOW priority; async-logged for background processing
-    let thalamicSignal: any = null;
+    let thalamicSignal: unknown = null;
     try {
       // Determine trust tier from request context
-      const trustTier = (request as any).trustTier || 'officer';
+      const trustTier = (request as Record<string,unknown>).trustTier || 'officer';
       thalamicSignal = await trinityThalamus.processChat(message, userId, workspaceId, trustTier);
       if (thalamicSignal?.signalId) {
         trinityGlobalWorkspace.broadcast({
@@ -553,7 +554,7 @@ class TrinityChatService {
             timestamp: new Date(),
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] PFC org state lookup failed (non-fatal):', err?.message);
       }
     }
@@ -591,7 +592,7 @@ class TrinityChatService {
           trinityLimbicSystem.storeEmotionalMemory(userId, 'ticket', emotionalSignal, workspaceId)
             .catch((err) => log.warn('[Limbic] Emotional memory persist failed (non-fatal):', err?.message ?? err));
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Limbic detection failed (non-fatal):', err?.message);
       }
     }
@@ -642,7 +643,7 @@ class TrinityChatService {
             trustTier: request.trustTier || 'owner',
           }),
         ]);
-      } catch (auditErr: any) {
+      } catch (auditErr: unknown) {
         // Non-fatal — audit failure must never block the support agent
         log.warn('[TrinityChat] Support mode audit write failed:', auditErr?.message);
       }
@@ -658,7 +659,7 @@ class TrinityChatService {
         actionType: 'chat',
         dataClassification: 'internal',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Privacy check failed, defaulting to allow:', err?.message);
     }
 
@@ -710,7 +711,7 @@ class TrinityChatService {
         log.info('[TrinityChatService] Creating new session for user:', userId, 'workspace:', workspaceId, 'mode:', mode);
         session = await this.getOrCreateSession(userId, workspaceId, mode);
       }
-    } catch (sessionError: any) {
+    } catch (sessionError: unknown) {
       log.error('[TrinityChatService] Session operation failed:', sessionError?.message || sessionError);
       log.error('[TrinityChatService] Session error stack:', sessionError?.stack);
       throw new Error('Failed to create or retrieve conversation session: ' + (sessionError?.message || 'Unknown error'));
@@ -737,7 +738,7 @@ class TrinityChatService {
     ]);
 
     const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'there';
-    const workspaceRole = (workspaceMembership as any[])[0]?.role || null;
+    const workspaceRole = (workspaceMembership as unknown[])[0]?.role || null;
     const isManagerLevel = hasManagerAccess(workspaceRole);
     // Phase E: Supervisor role = level 3 (below manager at 4). They need site-scoped access,
     // not the full EMPLOYEE DATA ISOLATION block applied to officers.
@@ -765,7 +766,7 @@ class TrinityChatService {
             totalCredits: 25,
             balanceRemaining,
             unlimitedCredits: false,
-            tier: (workspaceContext as any)?.subscriptionTier || 'starter',
+            tier: (workspaceContext as Record<string,unknown>)?.subscriptionTier || 'starter',
             monthlyAllowance: 0,
             actions: [{ model: 'gemini-3-pro-preview', tokens: 0, credits: 25 }],
           },
@@ -775,12 +776,12 @@ class TrinityChatService {
             recommendations: scan.recommendations.length,
           },
         };
-      } catch (insightError: any) {
+      } catch (insightError: unknown) {
         log.warn('[TrinityChatService] Business insight scan failed, falling back to regular chat:', insightError.message);
       }
     }
 
-    const resolvedWsId = workspaceId || (workspaceContext as any)?.id || '';
+    const resolvedWsId = workspaceId || (workspaceContext as Record<string,unknown>)?.id || '';
     if (resolvedWsId && !trinityOrgIntelligenceService.getCachedHierarchyContext(resolvedWsId)) {
       try {
         const hCtx = await trinityOrgIntelligenceService.getOrgHierarchyContext(resolvedWsId);
@@ -792,7 +793,7 @@ class TrinityChatService {
     let systemPrompt: string;
     try {
       systemPrompt = this.buildSystemPrompt(mode, workspaceContext, buddySettings, userName, recentInsights, memoryProfile, supportHistory, workspaceId, isSupportMode, isManagerLevel, isSupervisorLevel, workspaceRole);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] System prompt build failed, using fallback:', err?.message);
       systemPrompt = 'You are Trinity, an AI co-pilot for CoAIleague. Be helpful and concise.';
     }
@@ -892,7 +893,7 @@ class TrinityChatService {
         if (liveStatus.length > 0) {
           systemPrompt += `\n\nLIVE OPERATIONS STATUS:\n${liveStatus.join('\n')}`;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Live ops status enrichment failed (non-fatal):', err?.message);
       }
     }
@@ -902,7 +903,7 @@ class TrinityChatService {
       try {
         const personalCtx = await this.getOfficerPersonalContext(userId, workspaceId);
         if (personalCtx) systemPrompt += `\n\n${personalCtx}`;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Officer personal context fetch failed (non-fatal):', err?.message);
       }
 
@@ -961,7 +962,7 @@ class TrinityChatService {
         if (selfAwareBlock) {
           systemPrompt += `\n\n${selfAwareBlock}`;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Self-model injection failed (non-fatal):', err?.message);
       }
       // CONNECTOME SELF-MODEL — workspace-specific live state from trinity_self_awareness table
@@ -972,7 +973,7 @@ class TrinityChatService {
         if (connectomeSelfModel) {
           systemPrompt += `\n\n${connectomeSelfModel}`;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Connectome self-model injection failed (non-fatal):', err?.message);
       }
     }
@@ -1107,7 +1108,7 @@ DO NOT:
             });
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Social graph lookup failed (non-fatal):', err?.message);
       }
     }
@@ -1205,7 +1206,7 @@ DO NOT:
       if (eqSignal.shouldFlag && eqSignal.flagReason) {
         log.warn(`[EQ Engine] Distress flag — ${eqSignal.distressContext}`);
       }
-    } catch (eqErr: any) {
+    } catch (eqErr: unknown) {
       // EQ analysis is non-fatal — never block a response
       log.warn('[EQ Engine] Signal analysis failed (non-fatal):', eqErr?.message);
     }
@@ -1244,7 +1245,7 @@ DO NOT:
         if (meetingContext) {
           systemPrompt += `\n\n${meetingContext}`;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Proactive intelligence scan failed:', (err instanceof Error ? err.message : String(err)));
       }
     }
@@ -1279,7 +1280,7 @@ DO NOT:
         const { trinityWorkforceProtocol } = await import('../trinity/trinityWorkforceProtocolService');
         systemPrompt += `\n\n${trinityWorkforceProtocol.buildWorkerTypePromptInjection('employee')}`;
         systemPrompt += `\n\n${trinityWorkforceProtocol.buildWorkerTypePromptInjection('contractor')}`;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] State-aware context injection failed (non-fatal):', err?.message);
       }
     }
@@ -1303,13 +1304,13 @@ DO NOT:
             }
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Autonomous task queue injection failed (non-fatal):', err?.message);
       }
     }
 
     // Record user turn (non-fatal — history recording must not block chat)
-    await this.recordTurn(session.id, 'user', message).catch((err: any) => {
+    await this.recordTurn(session.id, 'user', message).catch((err: unknown) => {
       log.warn('[TrinityChatService] Failed to record user turn (non-fatal):', err?.message);
     });
 
@@ -1322,7 +1323,7 @@ DO NOT:
         `User "${userName}" in ${mode} mode: "${message.substring(0, 200)}"${message.length > 200 ? '...' : ''}`,
         thoughtCtx
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Thought perception failed (non-fatal):', err?.message);
     }
 
@@ -1345,7 +1346,7 @@ DO NOT:
         deliberationConfidence,
         { ...thoughtCtx, parentThoughtId: perceptionResult?.thoughtId }
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Thought deliberation failed (non-fatal):', err?.message);
     }
 
@@ -1363,7 +1364,7 @@ DO NOT:
         deliberationConfidence,
         { ...thoughtCtx, parentThoughtId: perceptionResult?.thoughtId }
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Thought decision failed (non-fatal):', err?.message);
     }
 
@@ -1444,7 +1445,7 @@ DO NOT:
           // Inject the plan into the system prompt so Trinity's AI response is informed by real state
           systemPrompt += `\n\nEXECUTIVE FUNCTION PRE-PLAN:\nThe following multi-step execution plan was generated by checking real workspace state. Present this plan to the user, explain each step's current status, and ask for confirmation before executing any financial or irreversible steps. Do NOT execute any steps without explicit user confirmation.\n\n${executivePlanResponse}`;
           log.info(`[ExecutivePlanner] Plan injected: ${plan.steps.length} steps, readiness=${plan.overallReadiness}, confidence=${plan.confidence}`);
-        } catch (planErr: any) {
+        } catch (planErr: unknown) {
           log.warn('[ExecutivePlanner] Plan generation failed (non-fatal):', planErr?.message);
         }
       }
@@ -1486,11 +1487,11 @@ Do NOT skip steps — decompose fully before concluding.`;
     if (trinityHypothesisEngine.isDiagnosticQuestion(message)) {
       try {
         const workspaceDataForHypothesis = {
-          overtimeRate: (workspaceContext as any)?.overtimeHoursThisMonth && (workspaceContext as any)?.totalHoursThisMonth
-            ? (workspaceContext as any).overtimeHoursThisMonth / (workspaceContext as any).totalHoursThisMonth : undefined,
-          avgReliabilityScore: (workspaceContext as any)?.avgReliabilityScore,
-          atRiskEmployees: (workspaceContext as any)?.atRiskCount,
-          overdueInvoices: (workspaceContext as any)?.overdueInvoiceCount,
+          overtimeRate: (workspaceContext as Record<string,unknown>)?.overtimeHoursThisMonth && (workspaceContext as Record<string,unknown>)?.totalHoursThisMonth
+            ? (workspaceContext as Record<string,unknown>).overtimeHoursThisMonth / (workspaceContext as Record<string,unknown>).totalHoursThisMonth : undefined,
+          avgReliabilityScore: (workspaceContext as Record<string,unknown>)?.avgReliabilityScore,
+          atRiskEmployees: (workspaceContext as Record<string,unknown>)?.atRiskCount,
+          overdueInvoices: (workspaceContext as Record<string,unknown>)?.overdueInvoiceCount,
         };
         const hypothesisResult = await trinityHypothesisEngine.runHypothesisLoop(
           message, workspaceId, session.id, workspaceDataForHypothesis,
@@ -1536,7 +1537,7 @@ Do NOT skip steps — decompose fully before concluding.`;
             systemPrompt += `\n\nMORNING BRIEF — Deliver this before addressing the user's question:\n${morningBrief}\nThen answer the user's actual message.`;
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[TrinityChatService] Morning brief failed (non-fatal):', err?.message);
       }
     }
@@ -1584,7 +1585,7 @@ Do NOT skip steps — decompose fully before concluding.`;
           if (corrected?.text && corrected.text.length > 0) {
             finalResponseText = corrected.text;
           }
-        } catch (regenErr: any) {
+        } catch (regenErr: unknown) {
           log.warn('[PersonaAnchor] Drift regeneration failed (keeping original):', regenErr?.message);
         }
       }
@@ -1602,7 +1603,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     `, [workspaceId, userId, session.id, aiResponse.model || 'gemini', aiResponse.tokensUsed || 0, timeMs]).catch(() => null);
 
     // Record assistant turn (non-fatal — must not block returning the AI response)
-    await this.recordTurn(session.id, 'assistant', aiResponse.text, undefined, aiResponse.toolCalls).catch((err: any) => {
+    await this.recordTurn(session.id, 'assistant', aiResponse.text, undefined, aiResponse.toolCalls).catch((err: unknown) => {
       log.warn('[TrinityChatService] Failed to record assistant turn (non-fatal):', err?.message);
     });
 
@@ -1663,9 +1664,9 @@ Do NOT skip steps — decompose fully before concluding.`;
       `Approach: "${chosenApproach}". Response length: ${aiResponse.text.length} chars.`,
       { success: timeMs < 10000, score: timeMs < 3000 ? 0.95 : timeMs < 5000 ? 0.85 : timeMs < 10000 ? 0.7 : 0.5 },
       workspaceId
-    ).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
+    ).catch((e: unknown) => log.error(e instanceof Error ? e.message : String(e)));
 
-    this.analyzeForInsights(userId, workspaceId, session.id, message, aiResponse.text, mode).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
+    this.analyzeForInsights(userId, workspaceId, session.id, message, aiResponse.text, mode).catch((e: unknown) => log.error(e instanceof Error ? e.message : String(e)));
 
     // === REINFORCEMENT LEARNING — BASAL GANGLIA FEEDBACK LOOP ===
     // Record this chat interaction as an experience in the RL loop.
@@ -1699,9 +1700,8 @@ Do NOT skip steps — decompose fully before concluding.`;
     // Get tier-based credit allocation — non-fatal, fallback to defaults on error
     let tierInfo = { tier: 'starter', monthlyAllowance: 500, isPlatformStaff: false };
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       tierInfo = await getWorkspaceTierAllowance(workspaceId, userId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Tier lookup failed (non-fatal):', err?.message);
     }
     let balanceRemaining = 0;
@@ -1712,7 +1712,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     // Just fetch the updated balance for display (non-fatal)
     try {
       balanceRemaining = await tokenManager.getBalance(workspaceId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Balance lookup failed (non-fatal):', err?.message);
     }
     log.info(`[TrinityChatService] Credits handled by geminiClient universal enforcer. Tier: ${tierInfo.tier}. Balance: ${balanceRemaining}/${tierInfo.monthlyAllowance}`);
@@ -1735,7 +1735,7 @@ Do NOT skip steps — decompose fully before concluding.`;
 
     // ACC — Anterior Cingulate Cortex: conflict check before delivering to caller
     // Catches values violations, trust violations, and anomalies before they reach the user
-    let accConflict: any = null;
+    let accConflict: unknown = null;
     try {
       const executionId = `chat_${session?.id || 'unknown'}_${Date.now()}`;
       const accClearance = await trinityACC.check({
@@ -1743,7 +1743,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         actionType: 'chat_response',
         workspaceId,
         userId,
-        trustTier: (request as any).trustTier || 'officer',
+        trustTier: (request as Record<string,unknown>).trustTier || 'officer',
         intendedOutput: aiResponse.text,
         expectedDurationMs: 5000,
         actualDurationMs: timeMs,
@@ -1781,7 +1781,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     // ── Trinity Action Dispatcher — execute or queue detected actions ─────────
     // Non-blocking: if dispatcher fails, Trinity's text response still returns.
     let dispatchAppend = '';
-    let dispatchMeta: any = null;
+    let dispatchMeta: unknown = null;
     try {
       const { dispatchFromChat } = await import('../trinity/trinityActionDispatcher');
       const dispatchResult = await dispatchFromChat(
@@ -1790,9 +1790,9 @@ Do NOT skip steps — decompose fully before concluding.`;
         {
           workspaceId: workspaceId || '',
           userId: userId || '',
-          userRole: (request as any).workspaceRole || workspaceRole || 'org_owner',
+          userRole: request.workspaceRole || workspaceRole || 'org_owner',
           sessionId: session.id,
-          platformRole: (request as any).platformRole,
+          platformRole: request.platformRole,
         }
       );
       if (dispatchResult.appendToResponse) {
@@ -1806,7 +1806,7 @@ Do NOT skip steps — decompose fully before concluding.`;
           approvalId: dispatchResult.approvalId,
         };
       }
-    } catch (dispatchErr: any) {
+    } catch (dispatchErr: unknown) {
       log.warn('[TrinityChat] Dispatcher non-fatal error:', dispatchErr?.message);
     }
 
@@ -1829,7 +1829,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         ...(dispatchMeta ? { dispatch: dispatchMeta } : {}),
         thalamicSignalId: thalamicSignal?.signalId,
         thalamicPriority: thalamicSignal?.priorityScore,
-      } as any,
+      } as unknown,
     };
   }
 
@@ -1869,7 +1869,7 @@ Do NOT skip steps — decompose fully before concluding.`;
 
       log.info('[TrinityChatService] Created session:', session?.id);
       return (session as TrinityConversationSession) || null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[TrinityChatService] Session creation error:', error?.message || error);
       log.error('[TrinityChatService] Session creation stack:', error?.stack);
       return null;
@@ -2027,20 +2027,20 @@ Do NOT skip steps — decompose fully before concluding.`;
 
       db
         .select({
-          guardCardNumber: (employeeComplianceRecords as any).guardCardNumber,
-          guardCardExpirationDate: (employeeComplianceRecords as any).guardCardExpirationDate,
-          guardCardStatus: (employeeComplianceRecords as any).guardCardStatus,
-          isArmed: (employeeComplianceRecords as any).isArmed,
-          armedLicenseNumber: (employeeComplianceRecords as any).armedLicenseNumber,
-          armedLicenseExpiration: (employeeComplianceRecords as any).armedLicenseExpiration,
-          overallStatus: (employeeComplianceRecords as any).overallStatus,
-          complianceScore: (employeeComplianceRecords as any).complianceScore,
+          guardCardNumber: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardNumber,
+          guardCardExpirationDate: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardExpirationDate,
+          guardCardStatus: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardStatus,
+          isArmed: (employeeComplianceRecords as EmployeeComplianceRecord).isArmed,
+          armedLicenseNumber: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseNumber,
+          armedLicenseExpiration: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseExpiration,
+          overallStatus: (employeeComplianceRecords as EmployeeComplianceRecord).overallStatus,
+          complianceScore: (employeeComplianceRecords as EmployeeComplianceRecord).complianceScore,
         })
         .from(employeeComplianceRecords)
         .where(
           and(
-            eq((employeeComplianceRecords as any).workspaceId, workspaceId),
-            eq((employeeComplianceRecords as any).employeeId, emp.id)
+            eq((employeeComplianceRecords as EmployeeComplianceRecord).workspaceId, workspaceId),
+            eq((employeeComplianceRecords as EmployeeComplianceRecord).employeeId, emp.id)
           )
         )
         .limit(1),
@@ -2067,7 +2067,6 @@ Do NOT skip steps — decompose fully before concluding.`;
     if (upcomingShifts.length > 0) {
       lines.push(`\nUpcoming Shifts (next 7 days):`);
       for (const s of upcomingShifts) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const dateStr = s.shiftDate instanceof Date
           ? s.shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
           : String(s.shiftDate);
@@ -2158,9 +2157,9 @@ Do NOT skip steps — decompose fully before concluding.`;
         ),
       ]);
 
-      const latest = (latestRun as any).rows?.[0] || null;
-      const pendingApproval = parseInt((pendingCount as any).rows?.[0]?.c || '0', 10);
-      const drafts = parseInt((draftCount as any).rows?.[0]?.c || '0', 10);
+      const latest = (latestRun as Record<string,unknown>).rows?.[0] || null;
+      const pendingApproval = parseInt((pendingCount as Record<string,unknown>).rows?.[0]?.c || '0', 10);
+      const drafts = parseInt((draftCount as Record<string,unknown>).rows?.[0]?.c || '0', 10);
 
       return {
         payrollLatestStatus: latest?.status || null,
@@ -2284,7 +2283,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     mask: string | null;
   } | null> {
     try {
-      const result: any = await db.execute(sql`
+      const result: unknown = await db.execute(sql`
         SELECT plaid_item_id, plaid_access_token_encrypted
         FROM workspaces
         WHERE id = ${workspaceId}
@@ -2368,9 +2367,7 @@ Do NOT skip steps — decompose fully before concluding.`;
    */
   private async buildProactiveInsights(
     workspaceId: string,
-    orgPatterns: any[],
-    workspaceContext: any
-  ): Promise<string | null> {
+    orgPatterns: unknown[], workspaceContext: unknown): Promise<string | null> {
     const alerts: string[] = [];
     const ctx = workspaceContext || {};
 
@@ -2457,11 +2454,11 @@ Do NOT skip steps — decompose fully before concluding.`;
         if (financialAlerts.length === 0) {
           alerts.push('[INFO] Financial Intelligence: All site margins and contract health scores tracking within acceptable ranges. No proactive alerts.');
         }
-      } catch (fiErr: any) {
+      } catch (fiErr: unknown) {
         log.warn('[TrinityChatService] Financial intelligence alerts failed (non-fatal):', fiErr?.message);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Proactive insight generation partial failure:', (err instanceof Error ? err.message : String(err)));
     }
 
@@ -2606,9 +2603,9 @@ Do NOT skip steps — decompose fully before concluding.`;
     workspaceContext: any,
     buddySettings: TrinityBuddySettings | null,
     userName: string,
-    recentInsights: any[],
+    recentInsights: unknown[],
     memoryProfile: any,
-    supportHistory?: any,
+    supportHistory?: unknown,
     workspaceId?: string,
     isSupportMode?: boolean,
     isManagerLevel?: boolean,
@@ -2706,19 +2703,19 @@ Do NOT skip steps — decompose fully before concluding.`;
     // Add metacognition context
     if (recentInsights?.length > 0) {
       // FIX 4: Contradiction enforcement — surface detected contradictions BEFORE executing any action
-      const contradictionInsights = recentInsights.filter((ins: any) => ins.insightType === 'contradiction');
+      const contradictionInsights = recentInsights.filter((ins: unknown) => ins.insightType === 'contradiction');
       if (contradictionInsights.length > 0) {
         basePrompt += `\n\nCRITICAL — DETECTED CONTRADICTIONS IN THIS CONVERSATION:\n`;
-        contradictionInsights.forEach((ins: any, i: number) => {
+        contradictionInsights.forEach((ins: unknown, i: number) => {
           basePrompt += `${i + 1}. ${ins.insightContent}\n`;
         });
         basePrompt += `\nIMPORTANT RULE: Before executing ANY action or making ANY change, you MUST explicitly surface these contradictions to the user and ask them to clarify before proceeding. Do not silently resolve contradictions — always ask.\n`;
       }
 
-      const nonContradictionInsights = recentInsights.filter((ins: any) => ins.insightType !== 'contradiction');
+      const nonContradictionInsights = recentInsights.filter((ins: unknown) => ins.insightType !== 'contradiction');
       if (nonContradictionInsights.length > 0) {
         basePrompt += `\n\nRECENT INSIGHTS YOU'VE NOTICED ABOUT THIS USER:\n`;
-        nonContradictionInsights.forEach((insight: any, i: number) => {
+        nonContradictionInsights.forEach((insight: unknown, i: number) => {
           basePrompt += `${i + 1}. [${insight.insightType}] ${insight.insightContent}\n`;
         });
         basePrompt += `\nBring these up naturally if relevant to the conversation.\n`;
@@ -2728,7 +2725,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     if (memoryProfile) {
       basePrompt += `\n\nMEMORY PROFILE:\n`;
       if (memoryProfile.frequentTopics?.length > 0) {
-        basePrompt += `- Frequently discusses: ${memoryProfile.frequentTopics.map((t: any) => t.topic).join(', ')}\n`;
+        basePrompt += `- Frequently discusses: ${memoryProfile.frequentTopics.map((t: unknown) => t.topic).join(', ')}\n`;
       }
       if (memoryProfile.preferences?.communicationStyle) {
         basePrompt += `- Prefers ${memoryProfile.preferences.communicationStyle} communication\n`;
@@ -2868,7 +2865,7 @@ Do NOT skip steps — decompose fully before concluding.`;
   /**
    * Record a conversation turn
    */
-  private async recordTurn(sessionId: string, role: string, content: string, entityRefs?: { clientId?: string; employeeId?: string }, toolCalls?: any[]): Promise<void> {
+  private async recordTurn(sessionId: string, role: string, content: string, entityRefs?: { clientId?: string; employeeId?: string }, toolCalls?: unknown[]): Promise<void> {
     const [session] = await db
       .select()
       .from(trinityConversationSessions)
@@ -2876,7 +2873,7 @@ Do NOT skip steps — decompose fully before concluding.`;
 
     const turnNumber = (session?.turnCount || 0) + 1;
 
-    const turnData: any = {
+    const turnData: Record<string, unknown> = {
       sessionId,
       turnNumber,
       role,
@@ -2889,7 +2886,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     }
 
     if (toolCalls && toolCalls.length > 0) {
-      turnData.toolCalls = toolCalls.map((tc: any) => ({
+      turnData.toolCalls = toolCalls.map((tc: unknown) => ({
         name: tc.name,
         args: tc.args,
         success: tc.result?.success ?? true,
@@ -2939,7 +2936,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         .limit(500);
 
       const entityTurns = turns.filter(t => {
-        const refs = (t as any).toolResults?.entityRefs;
+        const refs = (t as Record<string, unknown>).toolResults?.entityRefs;
         return refs && refs[entityKey] === entityId;
       });
 
@@ -2949,7 +2946,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         role: t.role,
         createdAt: t.createdAt,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[TrinityChatService] Entity conversation lookup failed:`, (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -2978,7 +2975,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     images?: string[],
     userId?: string,
     sessionId?: string,
-  ): Promise<{ text: string; tokensUsed: number; model: string; toolCalls?: any[] }> {
+  ): Promise<{ text: string; tokensUsed: number; model: string; toolCalls?: unknown[] }> {
     try {
       // Vision path: Gemini is the only provider supporting multimodal today
       if (images && images.length > 0) {
@@ -3131,7 +3128,7 @@ If no significant insight, respond with:
       if (fenceMatch) rawText = fenceMatch[1].trim();
       // Also strip leading/trailing ` if present
       rawText = rawText.replace(/^`+|`+$/g, '').trim();
-      const parsed = JSON.parse(rawText || '{"detected": false}');
+      const parsed: unknown = JSON.parse(rawText || '{"detected": false}');
 
       if (parsed.detected && parsed.type && parsed.content) {
         await db.insert(trinityMetacognitionLog).values({
@@ -3292,7 +3289,7 @@ If no significant insight, respond with:
         if (matches.length >= 5) break;
       }
       return matches;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Employee resolution failed (non-fatal):', err?.message);
       return [];
     }
@@ -3352,7 +3349,7 @@ If no significant insight, respond with:
             AND tea.trinity_attention_level IN ('concerned', 'active')
           ORDER BY tea.last_assessed_at DESC
           LIMIT 3
-        `).catch(() => ({ rows: [] as any[] })),
+        `).catch(() => ({ rows: [] })),
         db.execute(sql`
           SELECT
             (SELECT COUNT(*) FROM shifts
@@ -3370,7 +3367,7 @@ If no significant insight, respond with:
 
       const lines: string[] = [];
 
-      const officerRows = (watchedOfficers as any).rows as any[];
+      const officerRows = (watchedOfficers as Record<string,unknown>).rows as unknown[][];
       for (const row of officerRows) {
         const name = `${row.first_name} ${row.last_name}`.trim();
         if (row.narrative_summary) {
@@ -3386,7 +3383,7 @@ If no significant insight, respond with:
         }
       }
 
-      const vitalsRow = ((vitals as any).rows || [])[0] || {};
+      const vitalsRow = ((vitals as Record<string,unknown>).rows || [])[0] || {};
       const uncovered = parseInt(String(vitalsRow.uncovered_soon ?? 0), 10);
       const overdue = parseInt(String(vitalsRow.overdue_invoices ?? 0), 10);
       if (uncovered > 0) lines.push(`${uncovered} shift(s) uncovered in the next 24 hours.`);
@@ -3403,7 +3400,7 @@ If no significant insight, respond with:
 
       const greeting = `Good morning, ${userName}. Overnight I noticed:\n${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
       return greeting;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityChatService] Morning brief build failed:', err?.message);
       return null;
     }

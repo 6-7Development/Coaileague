@@ -125,7 +125,7 @@ export default function AuditorPortal() {
   });
 
   // Export functions
-  const exportToCSV = (data: any[], filename: string) => {
+  const exportToCSV = (data: unknown[], filename: string) => {
     if (data.length === 0) return;
 
     const headers = Object.keys(data[0]).join(',');

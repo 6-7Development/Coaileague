@@ -73,7 +73,7 @@ interface ReportSubmission {
   title: string;
   reportType: ReportType;
   status: ReportStatus;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   location?: { lat: number; lng: number };
   clientId?: string;
   clientName?: string;
@@ -141,7 +141,7 @@ export default function FieldReports() {
   const [activeTab, setActiveTab] = useState<'create' | 'history' | 'review'>('create');
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const { locationData, setLocationData, captureLocation } = useLocationCapture();
   const [aiAnalysis, setAiAnalysis] = useState<{ recommendations: string[]; riskLevel: string; suggestedActions: string[]; summary: string } | null>(null);
   const [aiAnalyzed, setAiAnalyzed] = useState(false);
@@ -198,7 +198,7 @@ export default function FieldReports() {
 
 
   const submitReportMutation = useMutation({
-    mutationFn: async (data: { reportType: ReportType; title: string; data: Record<string, any> }) => {
+    mutationFn: async (data: { reportType: ReportType; title: string; data: Record<string, unknown> }) => {
       return apiRequest('POST', '/api/report-submissions', {
         ...data,
         location: locationData,
@@ -215,7 +215,7 @@ export default function FieldReports() {
       setAiAnalysis(null);
       setAiAnalyzed(false);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Failed to submit report', description: error.message, variant: 'destructive' });
     },
   });
@@ -265,12 +265,12 @@ export default function FieldReports() {
       });
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setAiAnalysis(data);
       setAiAnalyzed(true);
       toast({ title: 'AI Analysis Complete', description: 'Review the recommendations below before submitting.' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setAiAnalyzed(true);
       setAiAnalysis({
         recommendations: ['Unable to perform AI analysis. You can still submit the report manually.'],

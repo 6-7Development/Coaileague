@@ -78,7 +78,7 @@ inviteRouter.post('/', requireManager, async (req: AuthenticatedRequest, res) =>
       expiresAt,
       status: 'sent',
       sentBy: userId,
-    } as any).returning();
+    }).returning();
 
     const workspace = await storage.getWorkspace(workspaceId);
     const inviter = await storage.getUser(userId);
@@ -97,7 +97,7 @@ inviteRouter.post('/', requireManager, async (req: AuthenticatedRequest, res) =>
       });
       emailSent = true;
     } catch (emailErr: unknown) {
-      log.warn('[InviteRoutes] Invite email failed (non-blocking):', (emailErr as any)?.message);
+      log.warn('[InviteRoutes] Invite email failed (non-blocking):', (emailErr as Record<string,unknown>)?.message);
     }
 
     await storage.createAuditLog({
@@ -236,7 +236,7 @@ publicInviteRouter.post('/accept-invite', async (req, res) => {
           acceptedAt: new Date(),
           isUsed: true,
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(onboardingInvites.id, invite.id));
     });
 

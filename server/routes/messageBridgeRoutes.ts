@@ -17,7 +17,7 @@ const log = createLogger("MessageBridgeRoutes");
 
 const MANAGER_ROLES = ["org_owner", "co_owner", "manager", "department_manager", "supervisor", "root_admin", "sysop"];
 
-function hasManagerRole(req: any): boolean {
+function hasManagerRole(req: AuthenticatedRequest): boolean {
   const role = req.workspaceRole || req.session?.workspaceRole || req.user?.platformRole;
   if (MANAGER_ROLES.includes(role)) return true;
   if (process.env.NODE_ENV !== 'production' && req.user?.id?.startsWith("dev-owner")) return true;
@@ -223,7 +223,7 @@ router.patch("/channels/:id", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value !== undefined) updateData[key] = value;
     }

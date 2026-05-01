@@ -1271,8 +1271,7 @@ export const TEMPLATE_REGISTRY: Record<string, DocumentTemplate> = {
         requiresSignature: true,
         fields: [
           signatureField('managementSignature', 'Management Signature'),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          signatureField('employeeSignature', 'Employee Signature (Receipt Acknowledged)', false as any),
+          signatureField('employeeSignature', 'Employee Signature (Receipt Acknowledged)', false),
           dateField('signatureDate', 'Date'),
         ],
       },

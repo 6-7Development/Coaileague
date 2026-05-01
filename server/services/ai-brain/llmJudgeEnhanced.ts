@@ -29,8 +29,8 @@ const log = createLogger('llmJudgeEnhanced');
 export interface RiskEvaluationRequest {
   subjectId: string;
   subjectType: 'action' | 'hotpatch' | 'response' | 'output' | 'workflow';
-  content: any;
-  context: Record<string, any>;
+  content: unknown;
+  context: Record<string, unknown>;
   workspaceId?: string;
   userId?: string;
   
@@ -104,7 +104,7 @@ export interface PolicyRule {
 export interface PolicyCondition {
   field: string;
   operator: 'equals' | 'contains' | 'gt' | 'lt' | 'matches' | 'in';
-  value: any;
+  value: unknown;
 }
 
 export interface RegressionPattern {
@@ -291,7 +291,7 @@ class EnhancedLLMJudge {
 
       return result;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[EnhancedLLMJudge] Risk evaluation failed:', error);
       
       return {
@@ -366,7 +366,7 @@ Respond with JSON:
 `;
 
     try {
-      const response = await (aiBrainService as any).query({
+      const response = await (aiBrainService as Record<string,unknown>).query({
         prompt,
         systemPrompt: 'You are a security and risk assessment expert. Provide accurate, conservative risk evaluations. When in doubt, err on the side of caution.',
         featureId: 'risk_evaluation',
@@ -375,13 +375,13 @@ Respond with JSON:
         responseFormat: 'json',
       });
 
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       
       return {
         riskScore: parsed.overallRiskScore || 50,
         confidence: parsed.confidence || 0.7,
         reasoning: parsed.reasoning || 'Evaluation completed',
-        criteria: (parsed.criteria || []).map((c: any) => ({
+        criteria: (parsed.criteria || []).map((c: unknown) => ({
           name: c.name,
           score: c.score || 50,
           weight: RISK_CRITERIA.find(rc => rc.name === c.name)?.weight || 0.1,
@@ -525,7 +525,6 @@ Respond with JSON:
       } else {
         // Insert new pattern
         await db.insert(llmJudgeRegressions).values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: 'system',
           patternHash,
           actionType: request.actionType || 'unknown',
@@ -656,7 +655,7 @@ Respond with JSON:
     return { violations, action: highestAction, triggeredPolicies };
   }
 
-  private evaluatePolicyConditions(conditions: PolicyCondition[], context: any): boolean {
+  private evaluatePolicyConditions(conditions: PolicyCondition[], context: Record<string, unknown>): boolean {
     return conditions.every(condition => {
       const fieldValue = this.getNestedValue(context, condition.field);
       
@@ -679,7 +678,7 @@ Respond with JSON:
     });
   }
 
-  private getNestedValue(obj: any, path: string): any {
+  private getNestedValue(obj: unknown, path: string): any {
     return path.split('.').reduce((current, key) => current?.[key], obj);
   }
 
@@ -875,7 +874,7 @@ Respond with JSON:
     return RISK_POLICIES.filter(p => p.isActive);
   }
 
-  async getRecentEvaluations(workspaceId: string, limit: number = 50): Promise<any[]> {
+  async getRecentEvaluations(workspaceId: string, limit: number = 50): Promise<Record<string,unknown>[]> {
     try {
       return await db
         .select()

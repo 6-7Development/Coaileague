@@ -409,7 +409,7 @@ function buildEmergencySummary(
     firstResponderId: event.firstAcknowledgedBy ?? null,
     escalationCount: event.escalationCount,
     smsAttempts: attempts.length,
-    smsSuccessful: attempts.filter((a: any) => a.sent).length,
+    smsSuccessful: attempts.filter((a: unknown) => a.sent).length,
     status: 'resolved',
     resolutionNotes: notes,
     generatedAt: resolvedAt.toISOString(),
@@ -441,7 +441,7 @@ export async function getEventById(eventId: string, workspaceId: string) {
 // migration to the functional API is completed.
 
 class PanicProtocolServiceCompat {
-  async triggerPanic(params: any) {
+  async triggerPanic(params: Record<string, unknown>) {
     const eventId = await triggerPanic(params);
     return { id: eventId, status: 'active' };
   }

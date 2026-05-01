@@ -12,7 +12,7 @@ interface TestResult {
   passed: boolean;
   message: string;
   durationMs: number;
-  details?: any;
+  details?: unknown;
 }
 
 interface AutomationTestReport {
@@ -25,7 +25,7 @@ interface AutomationTestReport {
   failed: number;
   skipped: number;
   tests: TestResult[];
-  quickbooksSyncResults?: any;
+  quickbooksSyncResults?: unknown;
   summary: string;
 }
 
@@ -119,7 +119,7 @@ export class TrinityAutomationTestRunner {
         durationMs: Date.now() - start,
         details: status.stats,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -169,7 +169,7 @@ export class TrinityAutomationTestRunner {
           assignmentRate: `${assignmentRate}%`,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -221,7 +221,7 @@ export class TrinityAutomationTestRunner {
           validationRate: `${validationRate}%`,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -266,7 +266,7 @@ export class TrinityAutomationTestRunner {
           totalPaid: `$${totalPaid.toFixed(2)}`,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -296,7 +296,6 @@ export class TrinityAutomationTestRunner {
       const completedRuns = runs.filter(r => r.status === 'completed');
       const totalGross = runs.reduce((sum, r) => sum + parseFloat(r.totalGrossPay || '0'), 0);
       const totalNet = runs.reduce((sum, r) => sum + parseFloat(r.totalNetPay || '0'), 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const totalEmployees = runs.reduce((sum, r) => sum + (r.employeeCount || 0), 0);
 
       return {
@@ -312,7 +311,7 @@ export class TrinityAutomationTestRunner {
           employeesProcessed: totalEmployees,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -365,7 +364,7 @@ export class TrinityAutomationTestRunner {
           tokenValid: isTokenValid,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         testName,
         passed: false,
@@ -375,7 +374,7 @@ export class TrinityAutomationTestRunner {
     }
   }
 
-  private async testQuickBooksSync(): Promise<{ test: TestResult; syncDetails?: any }> {
+  private async testQuickBooksSync(): Promise<{ test: TestResult; syncDetails?: unknown }> {
     const start = Date.now();
     const testName = 'QuickBooks Sync';
 
@@ -420,11 +419,11 @@ export class TrinityAutomationTestRunner {
         },
         syncDetails: {
           connectionId: connection.id,
-          realmId: (connection as any).partnerCompanyId,
+          realmId: (connection as Record<string, unknown>).partnerCompanyId,
           readyForSync: true,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         test: {
           testName,

@@ -285,7 +285,7 @@ export async function initializeHolidays(): Promise<void> {
     }
     
     log.info(`[HolidayService] Holiday initialization complete for ${currentYear} and ${nextYear}`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // OBSERVABILITY (Phase 1 Domain 1): the previous `err.message`-only
     // log hid the root cause of "Initialization failed (non-fatal)".
     // Surface the full PG error context so we can diagnose it without
@@ -366,9 +366,9 @@ export function stopDecemberHolidayCron(): void {
 export async function getWorkspaceHolidays(
   workspaceId: string,
   year?: number
-): Promise<any[]> {
+): Promise<Record<string,unknown>[]> {
   let query = `SELECT * FROM workspace_holidays WHERE workspace_id = $1`;
-  const params: any[] = [workspaceId];
+  const params: Record<string, unknown>[] = [workspaceId];
   
   if (year) {
     query += ` AND EXTRACT(YEAR FROM date) = $2`;
@@ -392,7 +392,7 @@ export async function createWorkspaceHoliday(params: {
   stateCode?: string;
   appliesToDifferential: boolean;
   createdBy: string;
-}): Promise<any> {
+}): Promise<unknown> {
   const { rows } = await pool.query(
     `INSERT INTO workspace_holidays (id, workspace_id, name, date, holiday_type, state_code, applies_to_differential, created_by)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
@@ -422,12 +422,12 @@ export async function updateWorkspaceHoliday(
     stateCode: string;
     appliesToDifferential: boolean;
   }>
-): Promise<any> {
+): Promise<unknown> {
   // Only update future holidays (date >= today)
   const today = new Date().toISOString().split('T')[0];
   
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
   let paramIdx = 1;
 
   if (updates.name !== undefined) { fields.push(`name = $${paramIdx++}`); values.push(updates.name); }

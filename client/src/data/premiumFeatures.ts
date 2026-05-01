@@ -4,7 +4,7 @@ export interface PremiumFeature {
   id: string;
   name: string;
   description: string;
-  icon: any;
+  icon: string | React.ReactNode;
   tier: 'professional' | 'enterprise';
   price: number; // Monthly price
   savings: {

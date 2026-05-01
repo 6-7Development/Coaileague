@@ -76,7 +76,7 @@ async function trinityReason(
 /**
  * Register Core Subagent actions with Platform Action Hub
  */
-export function registerCoreSubagentActions(orchestrator: any): void {
+export function registerCoreSubagentActions(orchestrator: unknown): void {
   // ============================================================================
   // SCHEDULING SUBAGENT ACTIONS
   // ============================================================================
@@ -721,7 +721,6 @@ export function registerCoreSubagentActions(orchestrator: any): void {
         return { success: false, actionId: request.actionId, message: 'Missing required field: workspaceId', executionTimeMs: Date.now() - startTime };
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const gate = await trinityReason(request, 'workforce_analytics',
         `Mileage log analysis — ${lookbackDays} day lookback${employeeId ? ` for employee ${employeeId}` : ' for all employees'}`, startTime);
       if (gate.blocked) return gate.blocked;
@@ -732,9 +731,7 @@ export function registerCoreSubagentActions(orchestrator: any): void {
         startDate: cutoff,
       });
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const employees = await storage.getEmployee(workspaceId);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const employeeMap = Object.fromEntries(employees.map(e => [e.id, `${e.firstName} ${e.lastName}`]));
 
       const IRS_RATE = 0.70;
@@ -793,18 +790,17 @@ Generate a JSON response with this exact structure:
 
 Focus on: pending approvals that need attention, unsubmitted drafts reminders, rate vs IRS standard gaps, duplicate or unusual trips, high-mileage employees who may need a company vehicle, patterns worth noting.`;
 
-      let recommendations: any[] = [];
-      let aiSummary: any = {};
+      let recommendations: (string | number | boolean | null)[] = [];
+      let aiSummary: Record<string, unknown> = {};
       try {
         const aiResponse = await generateWithOpenAI({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           model: 'gpt-4o',
           prompt,
           systemPrompt: 'You are Trinity AI analyst. Return only valid JSON matching the requested structure.',
           maxTokens: 1500,
           temperature: 0.3,
         });
-        const parsed = JSON.parse(aiResponse.content);
+        const parsed: unknown = JSON.parse(aiResponse.content);
         recommendations = parsed.recommendations || [];
         aiSummary = parsed.summary || {};
       } catch {

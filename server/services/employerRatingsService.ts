@@ -23,7 +23,7 @@ export interface RatingStats {
     negative: number;
   };
   topIssues: Array<{ issue: string; count: number }>;
-  latestRatings: any[];
+  latestRatings: unknown[];
   recommendationScore: number; // Would recommend (0-100)
 }
 
@@ -67,43 +67,37 @@ export async function calculateEmployerRatingStats(
   }
 
   // Calculate average rating
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const avgRating = ratings.reduce((sum, r) => sum + (parseFloat(r.overallRating?.toString() || '0')), 0) / ratings.length;
 
   // Calculate rating distribution
   const distribution = {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     excellent: ratings.filter(r => parseFloat(r.overallRating?.toString() || '0') >= 4.5).length,
     good: ratings.filter(r => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const rating = parseFloat(r.overallRating?.toString() || '0');
       return rating >= 3.5 && rating < 4.5;
     }).length,
     neutral: ratings.filter(r => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const rating = parseFloat(r.overallRating?.toString() || '0');
       return rating >= 2.5 && rating < 3.5;
     }).length,
     poor: ratings.filter(r => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const rating = parseFloat(r.overallRating?.toString() || '0');
       return rating >= 1.5 && rating < 2.5;
     }).length,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     veryPoor: ratings.filter(r => parseFloat(r.overallRating?.toString() || '0') < 1.5).length,
   };
 
   // Calculate sentiment breakdown
   const sentimentBreakdown = {
-    positive: ratings.filter(r => (r as any).sentiment === 'positive').length,
-    neutral: ratings.filter(r => (r as any).sentiment === 'neutral').length,
-    negative: ratings.filter(r => (r as any).sentiment === 'negative').length,
+    positive: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'positive').length,
+    neutral: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'neutral').length,
+    negative: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'negative').length,
   };
 
   // Extract top issues from comments
   const allComments = ratings
-    .filter(r => (r as any).comment)
-    .map(r => (r as any).comment?.toLowerCase() || '');
+    .filter(r => (r as Record<string, unknown>).comment)
+    .map(r => (r as Record<string, unknown>).comment?.toLowerCase() || '');
   
   const issueKeywords = [
     'communication', 'management', 'support', 'feedback', 'growth', 'benefits',
@@ -122,7 +116,6 @@ export async function calculateEmployerRatingStats(
 
   // Calculate recommendation score (how many would recommend)
   // Based on overall rating: 4.0+ = would recommend
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const recommendCount = ratings.filter(r => parseFloat(r.overallRating?.toString() || '0') >= 4.0).length;
   const recommendationScore = Math.round((recommendCount / ratings.length) * 100);
 
@@ -130,11 +123,10 @@ export async function calculateEmployerRatingStats(
   const latestRatings = ratings.slice(0, 5).map(r => ({
     ...r,
     ratingDisplay: {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       rating: parseFloat(r.overallRating?.toString() || '0').toFixed(1),
-      sentiment: (r as any).sentiment,
+      sentiment: (r as Record<string, unknown>).sentiment,
       submittedAt: r.submittedAt,
-      comment: (r as any).comment,
+      comment: (r as Record<string, unknown>).comment,
     }
   }));
 
@@ -163,7 +155,7 @@ export async function getRatingTrends(
   let query = db
     .select({
       period: sql`DATE_TRUNC('${sql.raw(granularity)}', ${employerRatings.submittedAt})`,
-      avgRating: sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT))`,
+      avgRating: sql`AVG(CAST(${(employerRatings as Record<string,unknown>).overallRating} AS FLOAT))`,
       count: sql`COUNT(*)`,
     })
     .from(employerRatings)
@@ -205,14 +197,14 @@ export async function identifyAtRiskManagers(
   const managerRatings = await db
     .select({
       managerId: employerRatings.targetId,
-      avgRating: sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT))`,
+      avgRating: sql`AVG(CAST(${(employerRatings as Record<string,unknown>).overallRating} AS FLOAT))`,
       count: sql`COUNT(*)`,
     })
     .from(employerRatings)
     .where(eq(employerRatings.workspaceId, workspaceId))
     .groupBy(employerRatings.targetId)
-    .having(sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT)) < ${threshold}`)
-    .orderBy(sql`AVG(CAST(${(employerRatings as any).overallRating} AS FLOAT)) ASC`);
+    .having(sql`AVG(CAST(${(employerRatings as Record<string,unknown>).overallRating} AS FLOAT)) < ${threshold}`)
+    .orderBy(sql`AVG(CAST(${(employerRatings).overallRating} AS FLOAT)) ASC`);
 
   return managerRatings.map(r => ({
     managerId: r.managerId,

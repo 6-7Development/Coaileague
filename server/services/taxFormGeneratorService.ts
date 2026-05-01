@@ -14,6 +14,7 @@ import { getTaxRules } from './tax/taxRulesRegistry';
 import { createLogger } from '../lib/logger';
 import { employeeTaxForms } from '@shared/schema';
 import { saveToVault } from './documents/businessFormsVaultService';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('taxFormGeneratorService');
 
 
@@ -254,12 +255,12 @@ export class TaxFormGeneratorService {
         .filter(entry => entry.code !== '' && entry.amount > 0);
 
       const w2Data: W2Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
-        employeeSSN: maskSSN(payrollInfo?.ssn || (employee as any).ssn || ''),
-        employeeName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
-        employeeAddress: (employee as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
+        employeeSSN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
+        employeeName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
+        employeeAddress: (employee as EmployeeWithStatus).address || '',
         taxYear,
         wages: aggregated.totalWages,
         federalTaxWithheld: aggregated.federalTaxWithheld,
@@ -269,7 +270,7 @@ export class TaxFormGeneratorService {
         medicareTaxWithheld: aggregated.medicareTaxWithheld,
         stateTaxWithheld: aggregated.stateTaxWithheld,
         stateWages: aggregated.totalWages,
-        state: payrollInfo?.stateOfResidence || (employee as any).state || '',
+        state: payrollInfo?.stateOfResidence || (employee as EmployeeWithStatus).state || '',
         box12Entries,
       };
 
@@ -294,7 +295,7 @@ export class TaxFormGeneratorService {
       // Stamp branded header/footer and save to document vault
       const vaultResult = await saveToVault({
         workspaceId,
-        workspaceName: (workspace as any)?.name || workspaceId,
+        workspaceName: (workspace as Record<string,unknown>)?.name || workspaceId,
         documentTitle: `W-2 Wage and Tax Statement`,
         category: 'tax',
         formNumber: 'W-2',
@@ -347,12 +348,12 @@ export class TaxFormGeneratorService {
       }
 
       const form1099Data: Form1099Data = {
-        payerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        payerName: (workspace as any).companyName || workspace.name || 'Payer',
-        payerAddress: (workspace as any).address || '',
-        recipientTIN: maskSSN(payrollInfo?.ssn || (employee as any).ssn || ''),
-        recipientName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
-        recipientAddress: (employee as any).address || '',
+        payerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        payerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Payer',
+        payerAddress: (workspace as Record<string, unknown>).address || '',
+        recipientTIN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
+        recipientName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
+        recipientAddress: (employee as EmployeeWithStatus).address || '',
         taxYear,
         nonemployeeCompensation: aggregated.totalWages,
         federalTaxWithheld: aggregated.federalTaxWithheld,
@@ -374,7 +375,7 @@ export class TaxFormGeneratorService {
       // Stamp + save to vault
       const vaultResult1099 = await saveToVault({
         workspaceId,
-        workspaceName: (workspace as any)?.name || workspaceId,
+        workspaceName: (workspace as Record<string,unknown>)?.name || workspaceId,
         documentTitle: '1099-NEC Nonemployee Compensation',
         category: 'tax',
         formNumber: '1099-NEC',
@@ -578,9 +579,9 @@ export class TaxFormGeneratorService {
       }
 
       const form940Data: Form940Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
         taxYear: year,
         totalPayments,
         exemptPayments,
@@ -599,10 +600,10 @@ export class TaxFormGeneratorService {
       const pdfBuffer = await this.generate940PDF(form940Data);
 
       // Stamp + save to vault
-      const workspace940 = await db.query.workspaces?.findFirst?.({ where: (w: any, { eq: e }: any) => e(w.id, workspaceId) });
+      const workspace940 = await db.query.workspaces?.findFirst?.({ where: (w: unknown, { eq: e }: any) => e(w.id, workspaceId) });
       const vaultResult940 = await saveToVault({
         workspaceId,
-        workspaceName: (workspace940 as any)?.name || workspaceId,
+        workspaceName: (workspace940 as Record<string,unknown>)?.name || workspaceId,
         documentTitle: 'Form 940 Employer Annual FUTA Tax Return',
         category: 'tax',
         formNumber: '940',
@@ -850,9 +851,9 @@ export class TaxFormGeneratorService {
       const balanceDue = totalTaxesAfterAdjustments;
 
       const form941Data: Form941Data = {
-        employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
-        employerName: (workspace as any).companyName || workspace.name || 'Employer',
-        employerAddress: (workspace as any).address || '',
+        employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
+        employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
+        employerAddress: (workspace as Record<string, unknown>).address || '',
         quarter,
         taxYear: year,
         line1_numberOfEmployees: numberOfEmployees,
@@ -908,10 +909,10 @@ export class TaxFormGeneratorService {
       }
 
       // Stamp + save to vault
-      const workspace941 = await db.query.workspaces?.findFirst?.({ where: (w: any, { eq: e }: any) => e(w.id, workspaceId) });
+      const workspace941 = await db.query.workspaces?.findFirst?.({ where: (w: unknown, { eq: e }: any) => e(w.id, workspaceId) });
       const vaultResult941 = await saveToVault({
         workspaceId,
-        workspaceName: (workspace941 as any)?.name || workspaceId,
+        workspaceName: (workspace941 as Record<string,unknown>)?.name || workspaceId,
         documentTitle: `Form 941 Employer Quarterly Federal Tax Return — Q${quarter} ${year}`,
         category: 'tax',
         formNumber: '941',

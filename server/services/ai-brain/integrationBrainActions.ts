@@ -52,10 +52,10 @@ export function registerIntegrationBrainActions(): void {
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -68,7 +68,7 @@ export function registerIntegrationBrainActions(): void {
           message: `Found ${integrations.length} available integrations`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -95,10 +95,10 @@ export function registerIntegrationBrainActions(): void {
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -111,7 +111,7 @@ export function registerIntegrationBrainActions(): void {
           message: `Found ${connections.length} active connections`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -148,10 +148,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -167,11 +167,10 @@ export function registerIntegrationBrainActions(): void {
           success: result.success,
           actionId: request.actionId,
           data: result.connection,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Integration connected successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -208,10 +207,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -220,11 +219,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Integration disconnected successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -261,10 +259,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -273,11 +271,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Credentials updated successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -314,10 +311,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -332,11 +329,10 @@ export function registerIntegrationBrainActions(): void {
           success: result.success,
           actionId: request.actionId,
           data: result.success ? { keyId: result.keyId, apiKey: result.apiKey } : undefined,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'API key created successfully. Save this key securely - it will only be shown once.' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -365,10 +361,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -382,7 +378,7 @@ export function registerIntegrationBrainActions(): void {
           message: `Found ${keys.length} API keys`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -419,10 +415,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -431,11 +427,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'API key revoked successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -464,10 +459,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -481,7 +476,7 @@ export function registerIntegrationBrainActions(): void {
           message: `${health.length - unhealthyCount}/${health.length} services healthy`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -518,10 +513,10 @@ export function registerIntegrationBrainActions(): void {
           userId: request.userId,
           workspaceId: request.workspaceId!,
           platformRole: request.platformRole || '',
-          workspaceRole: (request as any).workspaceRole || '',
+          workspaceRole: request.workspaceRole || '',
           accessLevel: integrationManagementService.determineAccessLevel(
             request.platformRole || '',
-            (request as any).workspaceRole || ''
+            request.workspaceRole || ''
           )
         };
         
@@ -534,7 +529,7 @@ export function registerIntegrationBrainActions(): void {
           message: analysis.diagnosis,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -581,7 +576,7 @@ export function registerIntegrationBrainActions(): void {
           message: `Found ${result.total} integration partners`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -629,7 +624,7 @@ export function registerIntegrationBrainActions(): void {
           message: details ? `Partner: ${details.name}` : 'Partner not found',
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -674,11 +669,10 @@ export function registerIntegrationBrainActions(): void {
           success: result.success,
           actionId: request.actionId,
           data: result.partner,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? `Partner "${partner.name}" created successfully` : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -722,11 +716,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Partner updated successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -771,13 +764,12 @@ export function registerIntegrationBrainActions(): void {
           success: result.success,
           actionId: request.actionId,
           data: { affectedWorkspaces: result.affectedWorkspaces },
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success 
             ? `Partner suspended. ${result.affectedWorkspaces} workspace(s) affected.` 
             : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -821,11 +813,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Partner reactivated successfully' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -869,11 +860,10 @@ export function registerIntegrationBrainActions(): void {
         return {
           success: result.success,
           actionId: request.actionId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.success ? 'Partner deleted permanently' : result.error,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -912,7 +902,7 @@ export function registerIntegrationBrainActions(): void {
           message: `${stats.totalPartners} partners, ${stats.totalConnections} connections`,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,

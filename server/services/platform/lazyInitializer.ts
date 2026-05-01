@@ -33,7 +33,7 @@ interface InitMetrics {
 
 class LazyInitializer {
   private services: Map<string, LazyService<any>> = new Map();
-  private initPromises: Map<string, Promise<any>> = new Map();
+  private initPromises: Map<string, Promise<unknown>> = new Map();
   private metrics: InitMetrics = {
     totalServices: 0,
     initializedCount: 0,

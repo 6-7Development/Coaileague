@@ -44,19 +44,18 @@ export type StepAction =
   | { type: 'file_move'; source: string; dest: string }
   | { type: 'search'; path: string; pattern: string; filePattern?: string }
   | { type: 'shell'; command: string; cwd?: string }
-  | { type: 'http_request'; url: string; method: string; body?: any; headers?: Record<string, string> }
-  | { type: 'db_query'; query: string; params?: any[] }
-  // @ts-expect-error — TS migration: fix in refactoring sprint
+  | { type: 'http_request'; url: string; method: string; body?: unknown; headers?: Record<string, string> }
+  | { type: 'db_query'; query: string; params?: unknown[] }
   | { type: 'notify'; title: string; message: string; type: 'info' | 'success' | 'warning' | 'error' }
   | { type: 'wait'; duration: number }
-  | { type: 'custom'; handler: string; params?: Record<string, any> };
+  | { type: 'custom'; handler: string; params?: Record<string, unknown> };
 
 export interface StepCondition {
   type: 'file_exists' | 'file_not_exists' | 'env_set' | 'previous_result' | 'custom';
   path?: string;
   envVar?: string;
   stepId?: string;
-  expectedValue?: any;
+  expectedValue?: unknown;
   handler?: string;
 }
 
@@ -66,9 +65,9 @@ export interface StepResult {
   startedAt: Date;
   completedAt?: Date;
   duration?: number;
-  output?: any;
+  output?: unknown;
   error?: string;
-  rollbackData?: any;
+  rollbackData?: unknown;
 }
 
 export interface WorkflowDefinition {
@@ -79,7 +78,7 @@ export interface WorkflowDefinition {
   steps: WorkflowStep[];
   onComplete?: { type: 'notify'; title: string; message: string };
   onFailure?: { type: 'notify'; title: string; message: string };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface WorkflowExecution {
@@ -90,7 +89,7 @@ export interface WorkflowExecution {
   completedAt?: Date;
   stepResults: StepResult[];
   currentStep?: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   requestedBy: string;
 }
 
@@ -98,7 +97,7 @@ class AIBrainWorkflowExecutor {
   private static instance: AIBrainWorkflowExecutor;
   private workflows: Map<string, WorkflowDefinition> = new Map();
   private executions: Map<string, WorkflowExecution> = new Map();
-  private customHandlers: Map<string, (params: any, context: any) => Promise<any>> = new Map();
+  private customHandlers: Map<string, (params: Record<string, unknown>, context: Record<string, unknown>) => Promise<unknown>> = new Map();
 
   static getInstance(): AIBrainWorkflowExecutor {
     if (!this.instance) {
@@ -121,7 +120,7 @@ class AIBrainWorkflowExecutor {
       try {
         JSON.parse(params.content);
         return { valid: true };
-      } catch (e: any) {
+      } catch (e: unknown) {
         return { valid: false, error: e.message };
       }
     });
@@ -137,7 +136,7 @@ class AIBrainWorkflowExecutor {
 
   registerCustomHandler(
     name: string, 
-    handler: (params: any, context: any) => Promise<any>
+    handler: (params: Record<string, unknown>, context: Record<string, unknown>) => Promise<unknown>
   ): void {
     this.customHandlers.set(name, handler);
     log.info(`[WorkflowExecutor] Registered custom handler: ${name}`);
@@ -169,7 +168,6 @@ class AIBrainWorkflowExecutor {
     return `exec-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`;
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   private async broadcastProgress(execution: WorkflowExecution, step?: WorkflowStep): void {
     broadcastToAllClients({
       type: 'workflow:progress',
@@ -183,7 +181,7 @@ class AIBrainWorkflowExecutor {
     });
   }
 
-  private async checkCondition(condition: StepCondition, context: Record<string, any>): Promise<boolean> {
+  private async checkCondition(condition: StepCondition, context: Record<string, unknown>): Promise<boolean> {
     switch (condition.type) {
       case 'file_exists':
         return await aiBrainFileSystemTools.exists(condition.path!);
@@ -213,7 +211,7 @@ class AIBrainWorkflowExecutor {
     }
   }
 
-  private async executeStepAction(action: StepAction, context: Record<string, any>): Promise<any> {
+  private async executeStepAction(action: StepAction, context: Record<string, unknown>): Promise<unknown> {
     switch (action.type) {
       case 'file_read':
         const readResult = await aiBrainFileSystemTools.readFile(
@@ -320,14 +318,14 @@ class AIBrainWorkflowExecutor {
         return await customHandler(action.params || {}, context);
 
       default:
-        throw new Error(`Unknown action type: ${(action as any).type}`);
+        throw new Error(`Unknown action type: ${(action as Record<string,unknown>).type}`);
     }
   }
 
   async executeWorkflow(
     workflowId: string,
     requestedBy: string,
-    initialContext: Record<string, any> = {}
+    initialContext: Record<string, unknown> = {}
   ): Promise<WorkflowExecution> {
     const workflow = this.workflows.get(workflowId);
     if (!workflow) {
@@ -413,7 +411,7 @@ class AIBrainWorkflowExecutor {
 
           completedSteps.add(step.id);
           break;
-        } catch (error: any) {
+        } catch (error: unknown) {
           retryCount++;
           if (retryCount > maxRetries) {
             stepResult.status = 'failed';
@@ -499,7 +497,7 @@ class AIBrainWorkflowExecutor {
   private async logExecution(
     execution: WorkflowExecution,
     action: string,
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({

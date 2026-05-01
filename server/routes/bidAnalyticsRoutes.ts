@@ -32,7 +32,7 @@ router.get("/proposals", requireAuth, async (req: AuthenticatedRequest, res) => 
                   END AS overdue_flag,
                   (EXTRACT(DAY FROM COALESCE(actual_close_date, NOW()) - created_at))::int AS days_open
                  FROM pipeline_deals WHERE workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (stage) { query += ` AND stage = $${i++}`; vals.push(stage); }
     if (proposal_type) { query += ` AND proposal_type = $${i++}`; vals.push(proposal_type); }
@@ -71,7 +71,7 @@ router.patch("/proposals/:id", requireAuth, async (req: AuthenticatedRequest, re
       'actual_close_date', 'converted_to_client_id', 'prospect_name',
       'contact_name', 'contact_email', 'contact_phone', 'notes'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -91,11 +91,11 @@ router.patch("/proposals/:id", requireAuth, async (req: AuthenticatedRequest, re
 
     // Publish events on stage changes
     if (req.body.stage === 'won') {
-      platformEventBus.publish({ type: 'proposal_won', category: 'automation', title: 'Proposal Won', description: `Deal ${req.params.id} marked as won.`, workspaceId: wid, metadata: { dealId: req.params.id } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'proposal_won', category: 'automation', title: 'Proposal Won', description: `Deal ${req.params.id} marked as won.`, workspaceId: wid, metadata: { dealId: req.params.id } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     } else if (req.body.stage === 'lost') {
-      platformEventBus.publish({ type: 'proposal_lost', category: 'automation', title: 'Proposal Lost', description: `Deal ${req.params.id} marked as lost. Reason: ${req.body.loss_reason || 'Not specified'}`, workspaceId: wid, metadata: { dealId: req.params.id, reason: req.body.loss_reason } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'proposal_lost', category: 'automation', title: 'Proposal Lost', description: `Deal ${req.params.id} marked as lost. Reason: ${req.body.loss_reason || 'Not specified'}`, workspaceId: wid, metadata: { dealId: req.params.id, reason: req.body.loss_reason } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     } else if (req.body.stage === 'proposal' || req.body.stage === 'rfp') {
-      platformEventBus.publish({ type: 'bid_submitted', category: 'automation', title: 'Bid/Proposal Submitted', description: `Deal ${req.params.id} moved to ${req.body.stage} stage.`, workspaceId: wid, metadata: { dealId: req.params.id } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'bid_submitted', category: 'automation', title: 'Bid/Proposal Submitted', description: `Deal ${req.params.id} moved to ${req.body.stage} stage.`, workspaceId: wid, metadata: { dealId: req.params.id } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     const r = await db.$client.query(`SELECT * FROM pipeline_deals WHERE id = $1`, [req.params.id]);
@@ -119,20 +119,20 @@ router.post("/analytics/generate", requireAuth, mutationLimiter, async (req: Aut
       [wid, periodStart, periodEnd]
     )).rows;
 
-    const won = deals.filter((d: any) => d.stage === 'won');
-    const lost = deals.filter((d: any) => d.stage === 'lost');
-    const noResp = deals.filter((d: any) => !['won','lost'].includes(d.stage) && new Date(d.created_at) < new Date(Date.now() - 14 * 86400000));
+    const won = deals.filter((d: unknown) => d.stage === 'won');
+    const lost = deals.filter((d: unknown) => d.stage === 'lost');
+    const noResp = deals.filter((d: unknown) => !['won','lost'].includes(d.stage) && new Date(d.created_at) < new Date(Date.now() - 14 * 86400000));
 
     const closedCount = won.length + lost.length;
     const winRate = closedCount > 0 ? Math.round((won.length / closedCount) * 1000) / 10 : 0;
 
-    const allValues = deals.map((d: any) => parseFloat(d.estimated_monthly_value || d.estimated_annual_value || 0));
+    const allValues = deals.map((d: unknown) => parseFloat(d.estimated_monthly_value || d.estimated_annual_value || 0));
     const avgValue = allValues.length ? allValues.reduce((a: number, b: number) => a + b, 0) / allValues.length : 0;
-    const totalPipeline = deals.filter((d: any) => !['won','lost'].includes(d.stage)).reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
-    const totalWon = won.reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
+    const totalPipeline = deals.filter((d: unknown) => !['won','lost'].includes(d.stage)).reduce((s: number, d: unknown) => s + parseFloat(d.estimated_monthly_value || 0), 0);
+    const totalWon = won.reduce((s: number, d: unknown) => s + parseFloat(d.estimated_monthly_value || 0), 0);
 
     // Average days to close
-    const closeTimes = won.concat(lost).filter((d: any) => d.actual_close_date && d.created_at).map((d: any) =>
+    const closeTimes = won.concat(lost).filter((d: unknown) => d.actual_close_date && d.created_at).map((d: unknown) =>
       (new Date(d.actual_close_date).getTime() - new Date(d.created_at).getTime()) / 86400000
     );
     const avgDays = closeTimes.length ? closeTimes.reduce((a: number, b: number) => a + b, 0) / closeTimes.length : 0;

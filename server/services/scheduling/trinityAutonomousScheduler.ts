@@ -31,8 +31,9 @@ import {
   recurringShiftPatterns,
 } from '@shared/schema';
 import { createNotification } from '../notificationService';
+import { evaluateTexasGatekeeper, type GatekeeperOutcome } from '../compliance/texasGatekeeper';
 
-function safeParseFloat(value: any, fallback: number = 0): number {
+function safeParseFloat(value: unknown, fallback: number = 0): number {
   if (value === null || value === undefined || value === '') return fallback;
   const parsed = parseFloat(String(value));
   return isNaN(parsed) ? fallback : parsed;
@@ -56,11 +57,14 @@ interface SchedulingConfig {
   useContractorFallback: boolean;
   maxShiftsPerEmployee: number;
   respectAvailability: boolean;
+  // Optional — when present, Texas Regulatory Gatekeeper rules (OC Ch. 1702) are enforced
+  // during candidate scoring. Resolved from workspaces.stateCode upstream.
+  stateCode?: string;
 }
 
 interface ShiftPriority {
   shiftId: string;
-  shift: any;
+  shift: unknown;
   priorityScore: number;
   urgencyLevel: 'critical' | 'high' | 'medium' | 'low';
   factors: {
@@ -74,7 +78,7 @@ interface ShiftPriority {
 
 interface EmployeeScore {
   employeeId: string;
-  employee: any;
+  employee: unknown;
   score: number;
   breakdown: {
     reliabilityScore: number;
@@ -234,7 +238,7 @@ function getMaxShiftsPerWeekCap(tier: string): number {
 class TrinityAutonomousSchedulerService {
   private static instance: TrinityAutonomousSchedulerService;
   private activeSessions: Map<string, SchedulingSession> = new Map();
-  private historicalPatterns: Map<string, any> = new Map();
+  private historicalPatterns: Map<string, unknown> = new Map();
   private lastBroadcastTime: Map<string, number> = new Map();
 
   static getInstance(): TrinityAutonomousSchedulerService {
@@ -327,7 +331,7 @@ class TrinityAutonomousSchedulerService {
 
         if (preRunReasoning.decision === 'block') {
           session.status = 'completed';
-          (session as any).endTime = new Date();
+          (session as unknown).endTime = new Date();
           this.activeSessions.delete(sessionId);
           broadcastToWorkspace(config.workspaceId, {
             type: 'trinity_scheduling_blocked',
@@ -381,10 +385,10 @@ class TrinityAutonomousSchedulerService {
         this.loadHistoricalPatterns(config.workspaceId),
         db.select({ tier: workspaces.subscriptionTier }).from(workspaces).where(eq(workspaces.id, config.workspaceId)).limit(1),
         // FIX 6: Load org patterns so learned client/employee preferences inform decisions
-        trinityOrgIntelligenceService.learnOrgPatterns(config.workspaceId).catch(() => [] as any[]),
+        trinityOrgIntelligenceService.learnOrgPatterns(config.workspaceId).catch(() => [] as unknown[]),
       ]);
       const workspaceTier = workspaceRow[0]?.tier || 'professional';
-      const orgPatterns: any[] = loadedOrgPatterns ?? [];
+      const orgPatterns: unknown[] = loadedOrgPatterns ?? [];
       // Build client-specific staffing overrides from learned patterns
       const clientMinStaffOverrides = new Map<string, Map<number, number>>();
       const employeeAvoidDays = new Map<string, Set<number>>();
@@ -616,61 +620,20 @@ class TrinityAutonomousSchedulerService {
       }
 
       // Broadcast completion
-      // Build Trinity's plain-English explanation of WHY shifts weren't filled
-      const unfilledCount = session.progress.failedShifts;
-      const filledCount = session.progress.assignedShifts;
-      const totalCount = session.progress.totalShifts;
-      const fillRate = totalCount > 0 ? Math.round((filledCount / totalCount) * 100) : 0;
-
-      const whyParts: string[] = [];
-      // Extract unique disqualification reasons from thought log
-      const reasonCounts = new Map<string, number>();
-      for (const thought of session.thoughtLog) {
-        const isDisqual = thought.includes('BLOCKED') || thought.includes('blocked') ||
-          thought.includes('would exceed') || thought.includes('rest') ||
-          thought.includes('guard card') || thought.includes('Compliance hard-block') ||
-          thought.includes('Schedule conflict');
-        if (isDisqual) {
-          const key = thought.includes('guard card') ? 'expired guard cards' :
-            thought.includes('weekly cap') || thought.includes('OT') ? 'overtime limits' :
-            thought.includes('rest') || thought.includes('fatigue') ? 'fatigue/rest rules' :
-            thought.includes('conflict') || thought.includes('overlap') ? 'schedule conflicts' :
-            thought.includes('Compliance') ? 'compliance blocks' : 'other constraints';
-          reasonCounts.set(key, (reasonCounts.get(key) || 0) + 1);
-        }
-      }
-      const topReasons = [...reasonCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([reason, count]) => `${count} blocked by ${reason}`);
-
-      let aiSummary = `I filled ${filledCount} of ${totalCount} shifts (${fillRate}% fill rate).`;
-      if (unfilledCount > 0 && topReasons.length > 0) {
-        aiSummary += ` ${unfilledCount} shifts couldn't be filled: ${topReasons.join('; ')}.`;
-      } else if (unfilledCount > 0) {
-        aiSummary += ` ${unfilledCount} shifts remain open — insufficient qualified staff for those slots.`;
-      } else {
-        aiSummary += ` Full coverage achieved.`;
-      }
-
       broadcastToWorkspace(config.workspaceId, {
         type: 'trinity_scheduling_completed',
         sessionId,
-        totalAssigned: filledCount,
-        totalFailed: unfilledCount,
-        totalSkipped: session.progress.skippedShifts || unfilledCount,
-        totalShifts: totalCount,
-        openShiftsRemaining: unfilledCount,
+        totalAssigned: session.progress.assignedShifts,
+        totalFailed: session.progress.failedShifts,
+        totalSkipped: session.progress.skippedShifts || session.progress.failedShifts,
+        totalShifts: session.progress.totalShifts,
+        openShiftsRemaining: session.progress.failedShifts,
         duration: Date.now() - session.startTime.getTime(),
-        aiSummary,
-        whyReasons: Object.fromEntries(reasonCounts),
         summary: {
-          openShiftsFilled: filledCount,
-          openShiftsSkipped: session.progress.skippedShifts || unfilledCount,
-          openShiftsRemaining: unfilledCount,
+          openShiftsFilled: session.progress.assignedShifts,
+          openShiftsSkipped: session.progress.skippedShifts || session.progress.failedShifts,
+          openShiftsRemaining: session.progress.failedShifts,
           avgConfidence: Math.round(avgConfidence * 100),
-          fillRate,
-          whyUnfilled: topReasons,
         },
       });
 
@@ -708,7 +671,7 @@ class TrinityAutonomousSchedulerService {
         },
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       session.status = 'failed';
       session.thoughtLog.push(`[Trinity] ERROR: ${(error instanceof Error ? error.message : String(error))}`);
       
@@ -779,7 +742,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Load all employees for workspace
    */
-  private async loadEmployees(workspaceId: string): Promise<any[]> {
+  private async loadEmployees(workspaceId: string): Promise<Record<string,unknown>[]> {
     return db.select()
       .from(employees)
       .where(and(
@@ -791,7 +754,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Load all clients for workspace
    */
-  private async loadClients(workspaceId: string): Promise<any[]> {
+  private async loadClients(workspaceId: string): Promise<Record<string,unknown>[]> {
     return db.select()
       .from(clients)
       .where(eq(clients.workspaceId, workspaceId));
@@ -800,7 +763,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Load historical scheduling patterns
    */
-  private async loadHistoricalPatterns(workspaceId: string): Promise<any> {
+  private async loadHistoricalPatterns(workspaceId: string): Promise<unknown> {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
@@ -821,8 +784,8 @@ class TrinityAutonomousSchedulerService {
   /**
    * Analyze historical patterns for learning
    */
-  private analyzePatterns(historicalShifts: any[]): any {
-    const patterns: any = {
+  private analyzePatterns(historicalShifts: unknown[]): any {
+    const patterns: Record<string, unknown> = {
       dayOfWeek: new Map<number, number>(),
       hourOfDay: new Map<number, number>(),
       clientFrequency: new Map<string, number>(),
@@ -857,14 +820,12 @@ class TrinityAutonomousSchedulerService {
     workspaceId: string,
     startDate: Date,
     endDate: Date
-  ): Promise<any[]> {
+  ): Promise<Record<string,unknown>[]> {
     return db.select()
       .from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         isNull(shifts.employeeId),
-        // Only include fillable statuses — exclude cancelled/completed
-        inArray(shifts.status as any, ['draft', 'open', 'published'] as any),
         gte(shifts.startTime, startDate),
         lte(shifts.startTime, endDate),
         or(
@@ -899,7 +860,7 @@ class TrinityAutonomousSchedulerService {
     }
   }
 
-  private isShiftWithinCoverageWindow(shift: any, client: any): boolean {
+  private isShiftWithinCoverageWindow(shift: unknown, client: unknown): boolean {
     if (!client) return true;
     if (!client.coverageType || client.coverageType === '24_7') return true;
 
@@ -921,8 +882,8 @@ class TrinityAutonomousSchedulerService {
   }
 
   private prioritizeShifts(
-    openShifts: any[],
-    allClients: any[],
+    openShifts: unknown[],
+    allClients: unknown[],
     prioritizeBy: string
   ): ShiftPriority[] {
     const now = new Date();
@@ -1006,8 +967,8 @@ class TrinityAutonomousSchedulerService {
    */
   private async assignShift(
     priorityShift: ShiftPriority,
-    allEmployees: any[],
-    allClients: any[],
+    allEmployees: unknown[],
+    allClients: unknown[],
     config: SchedulingConfig,
     session: SchedulingSession,
     runTracker: RunAssignmentTracker
@@ -1222,8 +1183,8 @@ class TrinityAutonomousSchedulerService {
     // Previously this was omitted causing 0-rate payroll rows for every AI-assigned shift.
     const assignedPayRate = (
       bestEmployee.employee.hourlyRate ||
-      (bestEmployee as any).employee.payRate ||
-      (bestEmployee as any).employee.currentHourlyRate ||
+      (bestEmployee as unknown).employee.payRate ||
+      (bestEmployee as unknown).employee.currentHourlyRate ||
       '0'
     ).toString();
 
@@ -1344,7 +1305,7 @@ class TrinityAutonomousSchedulerService {
    * For runs >20 shifts, only broadcasts every WS_THROTTLE_INTERVAL_MS (200ms).
    * Always broadcasts the final shift and assignment results.
    */
-  private throttledBroadcast(workspaceId: string, sessionId: string, payload: any, isHighVolume: boolean): void {
+  private throttledBroadcast(workspaceId: string, sessionId: string, payload: Record<string, unknown>, isHighVolume: boolean): void {
     if (!isHighVolume) {
       broadcastToWorkspace(workspaceId, payload);
       return;
@@ -1361,7 +1322,7 @@ class TrinityAutonomousSchedulerService {
     }
   }
 
-  private scoringCache = new Map<string, { data: any; expiry: number }>();
+  private scoringCache = new Map<string, { data: Record<string, unknown>; expiry: number }>();
 
   private getCachedOrFetch<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
     const cached = this.scoringCache.get(key);
@@ -1383,9 +1344,9 @@ class TrinityAutonomousSchedulerService {
    * Uses caching for DB lookups to avoid redundant queries during bulk scheduling
    */
   private async scoreEmployeesForShift(
-    shift: any,
-    allEmployees: any[],
-    client: any,
+    shift: unknown,
+    allEmployees: unknown[],
+    client: unknown,
     config: SchedulingConfig,
     runTracker: RunAssignmentTracker,
     overtimeFallback: boolean = false
@@ -1530,6 +1491,18 @@ class TrinityAutonomousSchedulerService {
       const empComplianceScore = safeParseFloat(employee.complianceScore, 100);
       if (empComplianceScore < 60) {
         disqualifyReasons.push(`Compliance hard-block: score ${empComplianceScore.toFixed(0)}/100 (minimum 60 required for auto-assignment)`);
+      }
+
+      // 0.b Texas Regulatory Gatekeeper (OC Ch. 1702 — §1702.161 / §1702.163 / §1702.201 / §1702.323)
+      // Only runs when the workspace is in Texas. Each outcome carries the OC § citation so the
+      // disqualifyReason matches the canonical regulatoryReference written to trinity_decision_log.
+      const gatekeeperOutcomes: GatekeeperOutcome[] = config.stateCode
+        ? evaluateTexasGatekeeper(shift, employee, config.stateCode)
+        : [];
+      for (const outcome of gatekeeperOutcomes) {
+        if (outcome.kind === 'block' || outcome.kind === 'downgrade') {
+          disqualifyReasons.push(outcome.reason);
+        }
       }
 
       // 1. Check for overlapping shift conflicts (DB-loaded + in-run assignments)
@@ -1697,25 +1670,6 @@ class TrinityAutonomousSchedulerService {
         }
       }
 
-      // 6a. HARD BLOCK: Guard card expiry check at the employee record level
-      // This is a HARD disqualification — an officer with an expired guard card cannot
-      // legally work in Texas (OC 1702). Trinity enforces this before any other check.
-      // Expiring within 30 days = scoring penalty only (officer can still work).
-      if (disqualifyReasons.length === 0) {
-        const guardCardExpiry = employee.guardCardExpiryDate ? new Date(employee.guardCardExpiryDate) : null;
-        const guardCardStatus = employee.guardCardStatus;
-        const now = new Date();
-        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-        if (guardCardStatus === 'expired' || guardCardStatus === 'suspended') {
-          disqualifyReasons.push(`Guard card ${guardCardStatus} — cannot be auto-assigned (Texas OC 1702)`);
-        } else if (guardCardExpiry && guardCardExpiry < now) {
-          disqualifyReasons.push(`Guard card expired ${guardCardExpiry.toLocaleDateString()} — hard block (Texas OC 1702)`);
-        }
-        // Expiring within 30 days is a soft penalty only — officer can still work
-        // Trinity will note this in the assignment but not block it
-      }
-
       // 6b. Check certification status — ADVISORY ONLY, not a scheduling blocker
       // Officers can legally work while certs are pending renewal (registered with regulatory body).
       // Expired/missing certs produce warnings for managers but DO NOT prevent assignment.
@@ -1729,7 +1683,7 @@ class TrinityAutonomousSchedulerService {
           if (!certCheck.eligible) {
             certWarnings = certCheck.reasons.slice(0, 2);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn(`[Trinity] certCheck failed for ${employee.id}: ${(err instanceof Error ? err.message : String(err))}`);
         }
       }
@@ -1854,7 +1808,7 @@ class TrinityAutonomousSchedulerService {
    * Legacy field names (compositeScore, attendanceRate, behaviorScore) are also checked for
    * any joined data from employeeMetrics.
    */
-  private calculateReliabilityScore(employee: any): number {
+  private calculateReliabilityScore(employee: unknown): number {
     // Primary: employees.performance_score (0-100 int)
     if (employee.performanceScore != null && employee.performanceScore !== '') {
       const val = safeParseFloat(employee.performanceScore, -1);
@@ -1882,7 +1836,7 @@ class TrinityAutonomousSchedulerService {
    * Calculate proximity score using haversine distance when coordinates available
    * Falls back to zip code matching or address city matching
    */
-  private calculateProximityScore(employee: any, client: any): number {
+  private calculateProximityScore(employee: unknown, client: unknown): number {
     const empLatRaw = employee.homeLatitude ?? employee.latitude ?? null;
     const empLngRaw = employee.homeLongitude ?? employee.longitude ?? null;
     const clientLatRaw = client?.latitude ?? client?.serviceAreaLat ?? null;
@@ -1925,7 +1879,7 @@ class TrinityAutonomousSchedulerService {
    * Primary: employees.performance_score (0-100 int) → employees.rating (0.0-5.0)
    * Legacy: performanceRating > lastReviewScore > qualityScore (for joined data)
    */
-  private calculatePerformanceScore(employee: any): number {
+  private calculatePerformanceScore(employee: unknown): number {
     // Primary: employees.performance_score (0-100 int, DB: performance_score)
     if (employee.performanceScore != null && employee.performanceScore !== '') {
       const val = safeParseFloat(employee.performanceScore, -1);
@@ -1956,7 +1910,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Calculate seniority score based on real hire date
    */
-  private calculateSeniorityScore(employee: any): number {
+  private calculateSeniorityScore(employee: unknown): number {
     const dateField = employee.hireDate || employee.startDate || employee.createdAt;
     if (!dateField) return 0.3;
     
@@ -1979,7 +1933,7 @@ class TrinityAutonomousSchedulerService {
    * Try contractor pool fallback — sends outreach emails to eligible contractors
    */
   private async tryContractorFallback(
-    shift: any,
+    shift: unknown,
     workspaceId: string
   ): Promise<AssignmentResult> {
     const contractors = await db.select()
@@ -2035,7 +1989,7 @@ class TrinityAutonomousSchedulerService {
           workspaceId,
         });
         outreachSent++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         outreachErrors.push(`${contractor.email}: ${(err instanceof Error ? err.message : String(err))}`);
       }
     }
@@ -2048,7 +2002,7 @@ class TrinityAutonomousSchedulerService {
       await db.insert(notifications).values({
         userId: 'system',
         workspaceId,
-        type: 'coverage_requested' as any,
+        type: 'coverage_requested' as unknown,
         title: 'Contractor Outreach Sent',
         message: `Trinity sent shift coverage requests to ${outreachSent} contractor(s) for ${clientName} on ${shiftDate} (${startTime}-${endTime}). ${eligible.length - outreachSent} failed.`,
         metadata: { shiftId: shift.id, outreachSent, totalEligible: eligible.length, errors: outreachErrors.length },
@@ -2158,8 +2112,8 @@ class TrinityAutonomousSchedulerService {
     config: SchedulingConfig,
     session: SchedulingSession,
     dateRanges: Array<{ label: string; start: Date; end: Date }>,
-    allEmployees: any[],
-    allClients: any[],
+    allEmployees: unknown[],
+    allClients: unknown[],
   ): Promise<void> {
     if (dateRanges.length === 0) return;
 
@@ -2187,26 +2141,7 @@ class TrinityAutonomousSchedulerService {
       return;
     }
 
-    // === WHY DID SHIFTS GO UNFILLED? ===
-    // Categorize disqualification reasons from the session for honest reporting
-    const whyReasons = {
-      expiredGuardCard: 0,
-      overtimeCap: 0,
-      fatigueRest: 0,
-      scheduleConflict: 0,
-      complianceBlock: 0,
-      noCandidates: 0,
-    };
-    for (const thought of session.thoughtLog) {
-      if (thought.includes('guard card expired') || thought.includes('hard block')) whyReasons.expiredGuardCard++;
-      else if (thought.includes('weekly cap') || thought.includes('daily cap') || thought.includes('OT')) whyReasons.overtimeCap++;
-      else if (thought.includes('rest') || thought.includes('fatigue') || thought.includes('turnaround')) whyReasons.fatigueRest++;
-      else if (thought.includes('Schedule conflict') || thought.includes('overlap')) whyReasons.scheduleConflict++;
-      else if (thought.includes('Compliance hard-block')) whyReasons.complianceBlock++;
-      else if (thought.includes('No qualified employees') || thought.includes('no candidates')) whyReasons.noCandidates++;
-    }
-
-    const clientMap = new Map(allClients.map((c: any) => [c.id, c]));
+    const clientMap = new Map(allClients.map((c: unknown) => [c.id, c]));
 
     const gapsByClient = new Map<string, {
       clientName: string;
@@ -2502,21 +2437,21 @@ class TrinityAutonomousSchedulerService {
   }
 
   async evaluateShiftForTraining(
-    shift: any,
-    allEmployees: any[],
-    allClients: any[],
+    shift: unknown,
+    allEmployees: unknown[],
+    allClients: unknown[],
     workspaceId: string,
     runTracker: RunAssignmentTracker
   ): Promise<{
     success: boolean;
     employeeId: string | null;
-    employee: any | null;
+    employee: unknown | null;
     confidence: number;
     reasoning: string;
     candidatesEvaluated: number;
     candidatesRejected: number;
     rejectionReasons: string[];
-    scoreBreakdown: any | null;
+    scoreBreakdown: unknown | null;
   }> {
     const client = allClients.find(c => c.id === shift.clientId);
 
@@ -2698,7 +2633,7 @@ export class SchedulingComplianceService {
     splitShiftPremium: boolean;
   } {
     // State-specific labor law rules (simplified for key states)
-    const stateRules: Record<string, any> = {
+    const stateRules: Record<string, unknown> = {
       CA: { weeklyOvertimeThreshold: 40, maxWeeklyHours: 72, dailyOvertimeThreshold: 8, minRestBetweenShifts: 8, splitShiftPremium: true },
       NY: { weeklyOvertimeThreshold: 40, maxWeeklyHours: 60, dailyOvertimeThreshold: null, minRestBetweenShifts: 8, splitShiftPremium: false },
       TX: { weeklyOvertimeThreshold: 40, maxWeeklyHours: 60, dailyOvertimeThreshold: null, minRestBetweenShifts: 8, splitShiftPremium: false },
@@ -2834,9 +2769,9 @@ export class TrinitySchedulingAI {
    * Get AI recommendation for complex scheduling decisions
    */
   async getAISchedulingRecommendation(context: {
-    shift: any;
-    topCandidates: { employee: any; score: number; reasoning: string }[];
-    clientPreferences: any;
+    shift: unknown;
+    topCandidates: { employee: unknown; score: number; reasoning: string }[];
+    clientPreferences: unknown;
     complianceIssues: string[];
     urgencyLevel: string;
     workspaceId: string;
@@ -2855,7 +2790,7 @@ export class TrinitySchedulingAI {
         const { workspaceContextService } = await import('../ai-brain/workspaceContextService');
         const wsCtx = await workspaceContextService.getFullContext(context.workspaceId);
         orgContext = `\nORGANIZATION CONTEXT:\n${wsCtx.summary}\n`;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(`[TrinityScheduler] Failed to load org context for workspace ${context.workspaceId}:`, err?.message);
       }
 
@@ -2897,16 +2832,15 @@ Respond in JSON format:
 
       const response = await unifiedGeminiClient.generateContent(prompt, { // withGemini
         temperature: 0.3,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         maxOutputTokens: 500,
         workspaceId: context.workspaceId,
         featureKey: 'trinity_shift_placement',
       });
       
       // Parse AI response
-      const jsonMatch = (response as any).match(/\{[\s\S]*\}/);
+      const jsonMatch = (response as Record<string, unknown>).match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         const recommendedIndex = parsed.recommendedIndex - 1;
         
         return {
@@ -2975,13 +2909,12 @@ Provide scheduling insights in JSON:
 
       const response = await unifiedGeminiClient.generateContent(prompt, { // withGemini
         temperature: 0.4,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         maxOutputTokens: 400,
         workspaceId,
         featureKey: 'trinity_schedule_insights',
       });
       
-      const jsonMatch = (response as any).match(/\{[\s\S]*\}/);
+      const jsonMatch = (response as Record<string, unknown>).match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
@@ -3011,7 +2944,7 @@ export class SchedulerEscalationChainService {
    * Execute escalation chain when internal employees unavailable
    */
   async executeEscalation(
-    shift: any,
+    shift: unknown,
     workspaceId: string,
     tier: 1 | 2 | 3 | 4 | 5
   ): Promise<{
@@ -3104,7 +3037,7 @@ export class SchedulerEscalationChainService {
     };
   }
   
-  private async getOvertimeWillingEmployees(workspaceId: string): Promise<any[]> {
+  private async getOvertimeWillingEmployees(workspaceId: string): Promise<Record<string,unknown>[]> {
     return db.select().from(employees)
       .where(and(
         eq(employees.workspaceId, workspaceId),
@@ -3113,7 +3046,7 @@ export class SchedulerEscalationChainService {
       .limit(SCHEDULING.escalationPoolSize);
   }
   
-  private async getOnCallEmployees(workspaceId: string): Promise<any[]> {
+  private async getOnCallEmployees(workspaceId: string): Promise<Record<string,unknown>[]> {
     return db.select().from(employees)
       .where(and(
         eq(employees.workspaceId, workspaceId),
@@ -3163,7 +3096,6 @@ export class HumanOverrideController {
     log.info(`[HumanOverride] Scheduling paused for workspace ${workspaceId} by ${userId}: ${reason}`);
     
     // Emit event for real-time UI update
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformEventBus.emit('scheduling_paused', {
       workspaceId,
       userId,
@@ -3179,7 +3111,6 @@ export class HumanOverrideController {
     this.pausedWorkspaces.delete(workspaceId);
     log.info(`[HumanOverride] Scheduling resumed for workspace ${workspaceId} by ${userId}`);
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformEventBus.emit('scheduling_resumed', {
       workspaceId,
       userId,
@@ -3212,7 +3143,6 @@ export class HumanOverrideController {
     
     log.info(`[HumanOverride] Override queued for shift ${override.shiftId}: ${override.action}`);
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformEventBus.emit('scheduling_override_queued', override);
   }
   

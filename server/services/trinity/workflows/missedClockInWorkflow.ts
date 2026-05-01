@@ -80,7 +80,7 @@ export async function runMissedClockInSweep(): Promise<MissedClockInSweepResult>
 
   try {
     missing = await findMissedClockIns();
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.errors.push(`scan:${err?.message}`);
     return result;
   }
@@ -101,7 +101,7 @@ export async function runMissedClockInSweep(): Promise<MissedClockInSweepResult>
         continue;
       }
 
-      const meta = (existing.metadata ?? {}) as Record<string, any>;
+      const meta = (existing.metadata ?? {}) as Record<string, unknown>;
       const stage: string = meta.stage ?? 'sms_sent';
       const lastTransition = meta.lastTransitionAt
         ? new Date(meta.lastTransitionAt)
@@ -123,7 +123,7 @@ export async function runMissedClockInSweep(): Promise<MissedClockInSweepResult>
         const advanced = await advanceToEscalation(existing.id, meta, miss);
         if (advanced) result.escalated++;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`${miss.shiftId}:${err?.message}`);
     }
   }
@@ -201,10 +201,10 @@ async function startMissedClockInWorkflow(miss: {
                 detail: smsResult.error ?? 'SMS check-in sent',
               },
             ],
-          } as any,
+          } as unknown,
         })
         .where(eq(auditLogs.id, record.id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[missed-clockin] start metadata write failed:', err?.message);
     }
   }
@@ -214,7 +214,7 @@ async function startMissedClockInWorkflow(miss: {
 
 async function advanceToCall(
   auditId: string,
-  meta: Record<string, any>,
+  meta: Record<string, unknown>,
   miss: { shiftId: string; workspaceId: string; employeeId: string },
 ): Promise<boolean> {
   const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || '';
@@ -251,12 +251,12 @@ async function advanceToCall(
                 : `call failed: ${callResult.error}`,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
 
     return callResult.success;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[missed-clockin] welfare call failed, escalating:', err?.message);
     await advanceToEscalation(auditId, meta, miss);
     return false;
@@ -265,7 +265,7 @@ async function advanceToCall(
 
 async function advanceToEscalation(
   auditId: string,
-  meta: Record<string, any>,
+  meta: Record<string, unknown>,
   miss: { shiftId: string; workspaceId: string; employeeId: string },
 ): Promise<boolean> {
   try {
@@ -287,10 +287,10 @@ async function advanceToEscalation(
     await Promise.allSettled([
       ...supervisorIds.map((recipientUserId) =>
         NotificationDeliveryService.send({
-          type: 'missed_clockin.escalation' as any,
+          type: 'missed_clockin.escalation',
           workspaceId: miss.workspaceId,
           recipientUserId,
-          channel: 'in_app' as any,
+          channel: 'in_app',
           subject: 'Missed clock-in — unresponsive',
           body: {
             summary,
@@ -319,8 +319,8 @@ async function advanceToEscalation(
         title: 'Missed clock-in escalation',
         description: summary,
         metadata: { shiftId: miss.shiftId, employeeId: miss.employeeId },
-      } as any);
-    } catch (err: any) {
+      } as unknown);
+    } catch (err: unknown) {
       log.warn('[missed-clockin] event publish failed:', err?.message);
     }
 
@@ -341,11 +341,11 @@ async function advanceToEscalation(
               detail: summary,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[missed-clockin] escalation failed:', err?.message);
     return false;
   }
@@ -353,7 +353,7 @@ async function advanceToEscalation(
 
 async function markResolved(
   auditId: string,
-  meta: Record<string, any>,
+  meta: Record<string, unknown>,
   detail: string,
 ): Promise<void> {
   try {
@@ -375,10 +375,10 @@ async function markResolved(
               detail,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[missed-clockin] resolve update failed:', err?.message);
   }
 }
@@ -416,7 +416,7 @@ async function findMissedClockIns(): Promise<Array<{
         )
       LIMIT 100`,
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     shiftId: row.shift_id,
     workspaceId: row.workspace_id,
     employeeId: row.employee_id,
@@ -430,7 +430,7 @@ async function findExistingWorkflow(
   shiftId: string,
 ): Promise<{
   id: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   createdAt: Date;
 } | null> {
   try {
@@ -453,10 +453,10 @@ async function findExistingWorkflow(
     if (!row) return null;
     return {
       id: row.id,
-      metadata: row.metadata as Record<string, any> | null,
+      metadata: row.metadata as Record<string, unknown> | null,
       createdAt: row.createdAt,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[missed-clockin] existing-workflow lookup failed:', err?.message);
     return null;
   }
@@ -514,7 +514,7 @@ async function fetchSupervisors(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -534,8 +534,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

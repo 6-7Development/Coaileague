@@ -69,7 +69,7 @@ export interface PlatformIntent {
   
   // Results
   status: 'pending' | 'routing' | 'executing' | 'completed' | 'failed' | 'timeout' | 'cancelled';
-  result?: any;
+  result?: unknown;
   error?: string;
   
   // Telemetry
@@ -371,8 +371,7 @@ class PlatformIntentRouter {
       } else if (intent.category === 'automation') {
         handler = 'subagent';
         // Find appropriate subagent
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        const subagents = await subagentSupervisor.getSubagentsByDomain(intent as any).domain;
+        const subagents = await subagentSupervisor.getSubagentsByDomain(intent as Record<string,unknown>).domain;
         handlerId = subagents.length > 0 ? subagents[0].id : undefined;
       }
       

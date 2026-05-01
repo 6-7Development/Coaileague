@@ -135,7 +135,7 @@ export interface OrchestratorResponse {
   shouldDisconnect: boolean;
   queuePosition?: number;
   requiresRating?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BotSummonRequest {
@@ -347,7 +347,7 @@ class HelpAIOrchestrator {
           message: `You're connected to a support queue. A real agent will be with you shortly. Ticket **${session.ticketNumber}** is active.`,
         });
 
-      case (HelpAIState as any).ESCALATING:
+      case (HelpAIState as Record<string,unknown>).ESCALATING:
         return this.handleEscalation(session, msg, params);
 
       case HelpAIState.RESOLVED:
@@ -529,7 +529,7 @@ class HelpAIOrchestrator {
 
     if (botResponse.shouldEscalate) {
       await this.updateSession(session.id, {
-        state: (HelpAIState as any).ESCALATING,
+        state: (HelpAIState as Record<string,unknown>).ESCALATING,
         wasEscalated: true,
       });
       return this.initiateEscalation(session, message, 'ai_low_confidence');
@@ -587,7 +587,7 @@ class HelpAIOrchestrator {
     } else if (isNotResolved) {
       // Escalate to real agent
       await this.updateSession(session.id, {
-        state: (HelpAIState as any).ESCALATING,
+        state: (HelpAIState as Record<string,unknown>).ESCALATING,
         wasEscalated: true,
         wasResolved: false,
       });
@@ -1012,7 +1012,7 @@ class HelpAIOrchestrator {
         durationMs: Date.now() - startTime,
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[HelpAI] Bot execution error for ${request.botName}:`, (err instanceof Error ? err.message : String(err)));
       executionResult = {
         success: false,
@@ -1218,7 +1218,7 @@ class HelpAIOrchestrator {
   // --------------------------------------------------------------------------
 
   async getSessionHistory(workspaceId?: string, limit = 50) {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(helpaiSessions.workspaceId, workspaceId));
 
     return db
@@ -1324,7 +1324,7 @@ class HelpAIOrchestrator {
     try {
       await db
         .update(helpaiSessions)
-        .set({ ...values, updatedAt: new Date() } as any)
+        .set({ ...values, updatedAt: new Date() } as Record<string, unknown>)
         .where(eq(helpaiSessions.id, sessionId));
     } catch (e) {
       log.error('[HelpAI Orchestrator] Session update failed:', e);
@@ -1339,8 +1339,8 @@ class HelpAIOrchestrator {
       toolUsed?: string;
       botSummoned?: string;
       commandUsed?: string;
-      inputPayload?: Record<string, any>;
-      outputPayload?: Record<string, any>;
+      inputPayload?: Record<string, unknown>;
+      outputPayload?: Record<string, unknown>;
       faqId?: string;
       success?: boolean;
       errorMessage?: string;
@@ -1537,7 +1537,7 @@ Return ONLY valid JSON:
       .replace(/\s*```\s*$/, '')
       .trim();
 
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
     if (parsed.verdict && ['approve', 'deny', 'escalate_to_management'].includes(parsed.verdict)) {
       verdict = parsed.verdict as HelpAIEvaluation['verdict'];
       reasoning = parsed.reasoning || reasoning;

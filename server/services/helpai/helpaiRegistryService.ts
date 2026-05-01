@@ -21,13 +21,13 @@ export interface APIRegistryPayload {
   apiEndpoint: string;
   apiCategory: string;
   description?: string;
-  requestSchema?: Record<string, any>;
-  responseSchema?: Record<string, any>;
+  requestSchema?: Record<string, unknown>;
+  responseSchema?: Record<string, unknown>;
   requiredScopes?: string[];
   rateLimitPerMinute?: number;
   rateLimitPerDay?: number;
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RegistryValidationResult {
@@ -59,13 +59,13 @@ export class HelpaiRegistryService {
         apiEndpoint: sanitized.apiEndpoint,
         apiCategory: sanitized.apiCategory,
         description: sanitized.description,
-        requestSchema: sanitized.requestSchema as any,
-        responseSchema: sanitized.responseSchema as any,
+        requestSchema: sanitized.requestSchema as unknown,
+        responseSchema: sanitized.responseSchema as unknown,
         requiredScopes: sanitized.requiredScopes,
         rateLimitPerMinute: sanitized.rateLimitPerMinute,
         rateLimitPerDay: sanitized.rateLimitPerDay,
         tags: sanitized.tags,
-        metadata: sanitized.metadata as any,
+        metadata: sanitized.metadata as unknown,
         isActive: true,
         isPublic: true,
         createdBy,
@@ -79,7 +79,7 @@ export class HelpaiRegistryService {
   /**
    * Validate API payload against schema
    */
-  validateAPIPayload(payload: any): RegistryValidationResult {
+  validateAPIPayload(payload: unknown): RegistryValidationResult {
     const errors: string[] = [];
 
     // Required fields

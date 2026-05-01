@@ -95,7 +95,7 @@ export class QuickBooksIntegration {
       quickbooksRateLimiter.completeRequest(realmId, environment, true);
       await quotaEnforcementService.recordQBApiUsage(workspaceId, realmId, 1);
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error : unknown) {
       quickbooksRateLimiter.completeRequest(realmId, environment, false);
       
       if (error.status === 429) {
@@ -116,8 +116,8 @@ export class QuickBooksIntegration {
 
   async executeBatch(
     credentials: QuickBooksCredentials,
-    batchItems: Array<{ bId: string; operation: 'create' | 'update' | 'delete' | 'query'; entity: string; payload?: any }>
-  ): Promise<{ success: boolean; responses: Array<{ bId: string; success: boolean; data?: any; error?: string }> }> {
+    batchItems: Array<{ bId: string; operation: 'create' | 'update' | 'delete' | 'query'; entity: string; payload?: unknown }>
+  ): Promise<{ success: boolean; responses: Array<{ bId: string; success: boolean; data?: unknown; error?: string }> }> {
     if (batchItems.length > 30) {
       return { success: false, responses: batchItems.map(b => ({ bId: b.bId, success: false, error: 'Max 30 items per batch' })) };
     }
@@ -152,7 +152,7 @@ export class QuickBooksIntegration {
       }
 
       const result = await response.json();
-      const responses: Array<{ bId: string; success: boolean; data?: any; error?: string }> = [];
+      const responses: Array<{ bId: string; success: boolean; data?: unknown; error?: string }> = [];
 
       for (const item of result.BatchItemResponse || []) {
         if (item.Fault) {
@@ -174,7 +174,7 @@ export class QuickBooksIntegration {
       log.info(`[QuickBooks] Batch completed: ${responses.filter(r => r.success).length}/${responses.length} succeeded`);
       
       return { success: allSuccess, responses };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[QuickBooks] Batch execution error:', error);
       return { success: false, responses: batchItems.map(b => ({ bId: b.bId, success: false, error: (error instanceof Error ? error.message : String(error)) })) };
     }
@@ -269,7 +269,7 @@ export class QuickBooksIntegration {
     return { success: errors.length === 0, synced, errors };
   }
   
-  async syncInvoicesToQuickBooks(credentials: QuickBooksCredentials, invoices: any[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
+  async syncInvoicesToQuickBooks(credentials: QuickBooksCredentials, invoices: unknown[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
     if (!editionConfig.syncCapabilities.invoices) {
       return { success: false, synced: 0, errors: [`Invoice sync not supported for ${editionConfig.displayName}`] };
@@ -310,7 +310,7 @@ export class QuickBooksIntegration {
     return { success: errors.length === 0, synced, errors };
   }
   
-  private mapInvoiceToQuickBooks(invoice: any): any {
+  private mapInvoiceToQuickBooks(invoice: unknown): any {
     return {
       Line: [{
         Amount: parseFloat(invoice.total),
@@ -384,7 +384,7 @@ export class QuickBooksIntegration {
     return QB_API_VERSION;
   }
 
-  async syncTimeActivities(credentials: QuickBooksCredentials, timeEntries: any[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
+  async syncTimeActivities(credentials: QuickBooksCredentials, timeEntries: unknown[]): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
     if (!editionConfig.syncCapabilities.timeActivities) {
       return { success: false, synced: 0, errors: [`Time Activities sync not supported for ${editionConfig.displayName}. Upgrade to Essentials or higher.`] };
@@ -425,7 +425,7 @@ export class QuickBooksIntegration {
     return { success: errors.length === 0, synced, errors };
   }
 
-  private mapTimeEntryToQuickBooks(entry: any): any {
+  private mapTimeEntryToQuickBooks(entry: unknown): any {
     return {
       NameOf: 'Employee',
       EmployeeRef: { value: entry.employeeQbId },
@@ -441,7 +441,7 @@ export class QuickBooksIntegration {
 
   async syncCustomers(
     credentials: QuickBooksCredentials, 
-    customers: any[],
+    customers: unknown[],
     onProgress?: (processed: number, total: number, errors: string[]) => void
   ): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
@@ -473,7 +473,7 @@ export class QuickBooksIntegration {
 
   async syncEmployees(
     credentials: QuickBooksCredentials, 
-    employees: any[],
+    employees: unknown[],
     onProgress?: (processed: number, total: number, errors: string[]) => void
   ): Promise<{ success: boolean; synced: number; errors: string[] }> {
     const editionConfig = credentials.editionConfig || QB_EDITIONS[credentials.edition || 'unknown'];
@@ -546,10 +546,10 @@ export class QuickBooksIntegration {
       email: c.email,
       phone: c.phone,
       address: c.address ? {
-        line1: (c as any).address.street || (c as any).address.line1,
-        city: (c as any).address.city,
-        state: (c as any).address.state,
-        postalCode: (c as any).address.zip || (c as any).address.postalCode,
+        line1: (c as Record<string, unknown>).address.street || (c as Record<string, unknown>).address.line1,
+        city: (c as Record<string, unknown>).address.city,
+        state: (c as Record<string, unknown>).address.state,
+        postalCode: (c as Record<string, unknown>).address.zip || (c as Record<string, unknown>).address.postalCode,
       } : undefined,
     })));
 
@@ -616,9 +616,9 @@ export class QuickBooksIntegration {
     const credentials: QuickBooksCredentials = {
       workspaceId,
       accessToken,
-      refreshToken: (conn as any).refreshToken || '',
+      refreshToken: (conn as Record<string,unknown>).refreshToken || '',
       realmId: conn.realmId,
-      expiresAt: (conn as any).expiresAt || new Date(),
+      expiresAt: (conn as Record<string,unknown>).expiresAt || new Date(),
     };
 
     const result = await this.syncInvoicesToQuickBooks(credentials, [{
@@ -627,8 +627,8 @@ export class QuickBooksIntegration {
       clientId: invoice.clientId,
       clientName: 'Client',
       total: invoice.total,
-      issueDate: (invoice as any).issueDate,
-      dueDate: (invoice as any).dueDate,
+      issueDate: (invoice as Record<string, unknown>).issueDate,
+      dueDate: (invoice as Record<string, unknown>).dueDate,
     }]);
 
     if (!result.success) {

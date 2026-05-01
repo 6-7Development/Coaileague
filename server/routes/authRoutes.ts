@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 import { Router, Request } from "express";
 import crypto from 'crypto';
 import { storage } from "../storage";
@@ -182,24 +184,22 @@ router.get('/magic-link/verify', async (req: Request, res) => {
           claims: {
             sub: result.user.id,
             email: result.user.email,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             first_name: result.user.firstName,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             last_name: result.user.lastName,
           },
           expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
         },
       };
       const { resolveAndCacheWorkspaceContext, saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
-      if ((result as any).user.currentWorkspaceId) {
-        await resolveAndCacheWorkspaceContext(req, result.user.id, (result as any).user.currentWorkspaceId);
+      if ((result as Record<string, unknown>).user.currentWorkspaceId) {
+        await resolveAndCacheWorkspaceContext(req, result.user.id, (result as Record<string, unknown>).user.currentWorkspaceId);
       }
       await saveSessionAsync(req);
     }
 
     log.info('[Security] Magic link verified and session established', {
       userId: result.user?.id,
-      workspaceId: (result as any).user?.currentWorkspaceId,
+      workspaceId: (result as Record<string, unknown>).user?.currentWorkspaceId,
       ip: req.ip || req.socket?.remoteAddress,
       userAgent: req.get('user-agent'),
       event: 'magic_link_verified',
@@ -273,7 +273,7 @@ router.post('/register-simple', authLimiter, async (req: Request, res) => {
   }
 });
 
-router.get('/user', async (req: any, res) => {
+router.get('/user', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.session?.userId;
     if (!userId) {
@@ -291,7 +291,7 @@ router.get('/user', async (req: any, res) => {
   }
 });
 
-router.patch('/profile', mutationLimiter, async (req: any, res) => {
+router.patch('/profile', mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     let userId: string | null = null;
     
@@ -317,7 +317,7 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
       }
     }
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       updatedAt: new Date(),
@@ -337,7 +337,7 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
 
     if (updatedUser) {
       try {
-        const employeeSync: Record<string, any> = {
+        const employeeSync: Record<string, unknown> = {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           updatedAt: new Date(),
@@ -352,7 +352,7 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
           .set(employeeSync)
           .where(eq(employees.userId, userId));
       } catch (syncError) {
-        log.warn('[Auth] Name sync to employee records failed (non-fatal):', (syncError as any).message);
+        log.warn('[Auth] Name sync to employee records failed (non-fatal):', (syncError as Record<string,unknown>).message);
       }
     }
 
@@ -371,7 +371,7 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
 // Email Change Flow (Verified)
 // ============================================================
 
-router.post('/request-email-change', mutationLimiter, async (req: any, res) => {
+router.post('/request-email-change', mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.session?.userId;
     if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -400,7 +400,7 @@ router.post('/request-email-change', mutationLimiter, async (req: any, res) => {
   }
 });
 
-router.post('/cancel-email-change', async (req: any, res) => {
+router.post('/cancel-email-change', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.session?.userId;
     if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -416,7 +416,7 @@ router.post('/cancel-email-change', async (req: any, res) => {
 });
 
 // GET endpoint: invoked from the verification link in the email
-router.get('/confirm-email-change', async (req: any, res) => {
+router.get('/confirm-email-change', async (req: AuthenticatedRequest, res) => {
   const token = req.query.token as string | undefined;
   const baseUrl = `${req.protocol}://${req.get('host')}`;
 
@@ -463,7 +463,6 @@ router.post('/mfa/setup', async (req: AuthenticatedRequest, res) => {
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const userEmail = req.user?.email || '';
 
     if (!userEmail) {
@@ -514,7 +513,7 @@ router.post('/mfa/enable', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post('/mfa/verify', async (req: any, res) => {
+router.post('/mfa/verify', async (req: AuthenticatedRequest, res) => {
   try {
     const { userId, token } = req.body;
 
@@ -609,7 +608,7 @@ router.post('/mfa/regenerate-backup-codes', async (req: AuthenticatedRequest, re
 
 // WS Auth Token — issues a 60-second one-time token for WebSocket authentication
 // Needed when session cookie lookup fails at WS connection time (DB hiccup, Replit env edge cases)
-async function issueWsToken(req: any, res: any) {
+async function issueWsToken(req: AuthenticatedRequest, res: Response) {
   const userId = req.user?.id || req.session?.userId;
   const workspaceId = req.user?.workspaceId || req.session?.workspaceId || req.session?.currentWorkspaceId;
   const role = req.user?.role || req.session?.workspaceRole;

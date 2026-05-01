@@ -4,6 +4,7 @@
  * terms extraction, and agreement detection.
  */
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import { db } from '../db';
 import {
   spsNegotiationThreads, spsNegotiationMessages, spsDocuments, workspaces,
@@ -44,7 +45,7 @@ function detectAgreementSignal(message: string): boolean {
 }
 
 // Extract proposed terms from client message via SPS AI
-async function extractProposedTerms(message: string): Promise<Record<string, any>> {
+async function extractProposedTerms(message: string): Promise<Record<string, unknown>> {
   try {
     const prompt = `You are a terms extraction assistant for a security services company proposal.
 Analyze this client message and extract any specific terms they are proposing or questioning.
@@ -71,7 +72,7 @@ Client message: "${message.replace(/"/g, "'")}"`;
 }
 
 // POST /api/sps/negotiations — Create negotiation thread (from proposal)
-spsNegotiationRouter.post('/', async (req: any, res) => {
+spsNegotiationRouter.post('/', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -100,7 +101,7 @@ spsNegotiationRouter.post('/', async (req: any, res) => {
       clientPhone: input.clientPhone || null,
       clientCompanyName: input.clientCompanyName || null,
       serviceLocation: input.serviceLocation || null,
-      proposalData: (input.proposalData || {}) as any,
+      proposalData: (input.proposalData || {}) as unknown,
       status: 'active',
       clientAccessToken,
     }).returning();
@@ -110,14 +111,13 @@ spsNegotiationRouter.post('/', async (req: any, res) => {
       proposalPortalUrl: `/sps-proposal/${clientAccessToken}`,
     });
   } catch (err: unknown) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
     res.status(500).json({ error: 'Failed to create negotiation thread' });
   }
 });
 
 // GET /api/sps/negotiations — List threads for workspace
-spsNegotiationRouter.get('/', async (req: any, res) => {
+spsNegotiationRouter.get('/', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -133,7 +133,7 @@ spsNegotiationRouter.get('/', async (req: any, res) => {
 });
 
 // GET /api/sps/negotiations/:id — Thread + messages
-spsNegotiationRouter.get('/:id', async (req: any, res) => {
+spsNegotiationRouter.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -152,7 +152,7 @@ spsNegotiationRouter.get('/:id', async (req: any, res) => {
 });
 
 // POST /api/sps/negotiations/:id/messages — Send org message (with Trinity option)
-spsNegotiationRouter.post('/:id/messages', async (req: any, res) => {
+spsNegotiationRouter.post('/:id/messages', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -188,7 +188,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
     }
 
     // Extract proposed terms from client messages
-    let proposedTerms: Record<string, any> = {};
+    let proposedTerms: Record<string, unknown> = {};
     if (input.senderType === 'client') {
       proposedTerms = await extractProposedTerms(input.messageRaw);
     }
@@ -208,7 +208,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
         messageRaw: input.messageRaw,
         messageAiEnhanced,
         aiSuggestionUsed: input.aiSuggestionUsed,
-        proposedTerms: proposedTerms as any,
+        proposedTerms: proposedTerms as unknown,
         agreementSignalDetected: agreementDetected,
       }).returning();
 
@@ -218,7 +218,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
           .set({
             agreementDetected: true,
             agreementDetectedAt: new Date(),
-            agreedTerms: proposedTerms as any,
+            agreedTerms: proposedTerms as unknown,
             updatedAt: new Date(),
           })
           .where(eq(spsNegotiationThreads.id, req.params.id));
@@ -238,7 +238,6 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
       aiEnhancedVersion: messageAiEnhanced,
     });
   } catch (err: unknown) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
     log.error('[spsNegotiationRoutes] POST message error:', err);
     res.status(500).json({ error: 'Failed to send message' });
@@ -246,7 +245,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
 });
 
 // POST /api/sps/negotiations/:id/polish — Get Trinity polish suggestion (without sending)
-spsNegotiationRouter.post('/:id/polish', async (req: any, res) => {
+spsNegotiationRouter.post('/:id/polish', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
     const [thread] = await db.select().from(spsNegotiationThreads)
@@ -279,7 +278,7 @@ Original: "${messageRaw.replace(/"/g, "'")}"`,
 });
 
 // POST /api/sps/negotiations/:id/convert-to-contract — Generate contract from agreed terms
-spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
+spsNegotiationRouter.post('/:id/convert-to-contract', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -293,8 +292,8 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 14);
 
-    const agreedTerms = (thread as any).agreedTerms || {};
-    const proposalData = (thread as any).proposalData || {};
+    const agreedTerms = (thread as Record<string,unknown>).agreedTerms || {};
+    const proposalData = (thread as Record<string,unknown>).proposalData || {};
 
     const [doc] = await db.transaction(async (tx) => {
       const [newDoc] = await tx.insert(spsDocuments).values({
@@ -316,11 +315,11 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
         clientCompanyName: thread.clientCompanyName || null,
         clientContactName: thread.clientName,
         serviceLocation: thread.serviceLocation || null,
-        ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as any,
-        rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as any,
-        serviceType: (proposalData.serviceType || null) as any,
-        contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as any,
-        officersRequired: (proposalData.officersRequired || 1) as any,
+        ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as unknown,
+        rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as unknown,
+        serviceType: (proposalData.serviceType || null) as unknown,
+        contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as unknown,
+        officersRequired: (proposalData.officersRequired || 1) as unknown,
         negotiationThreadId: thread.id,
         stateCode: 'TX',
         formData: {
@@ -328,8 +327,8 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
           agreedTerms,
           proposalData,
           sourceNegotiationId: thread.id,
-        } as any,
-        auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as any,
+        } as unknown,
+        auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as unknown,
       }).returning();
 
       // Conditional update prevents duplicate conversion on concurrent requests.

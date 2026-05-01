@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { Button } from "@/components/ui/button";
 import { CONTACTS } from "@shared/platformConfig";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -166,12 +167,12 @@ This is a legally binding agreement. Your acceptance creates enforceable obligat
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-slate-800 border border-primary/40 rounded-md shadow-sm w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-slate-800 border border-primary/40 rounded-md shadow-sm w-full max-w-lg max-h-[80dvh] sm:max-h-[95vh] sm:max-h-[80dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header - Compact for mobile */}
         <div className="p-3 sm:p-4 border-b border-primary/30 bg-slate-900 shrink-0">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-primary rounded-md">
-              <TrinityLogo size={24} />
+              <TrinityAnimatedLogo size={24} />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base sm:text-lg font-bold text-white truncate">Terms & Conditions</h2>

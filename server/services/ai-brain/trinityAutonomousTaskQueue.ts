@@ -133,7 +133,7 @@ class TrinityAutonomousTaskQueue {
       return { success: false, escalated: false };
     }
 
-    const task = taskResult[0] as any;
+    const task = taskResult[0] as unknown;
     const attemptLog: AttemptRecord[] = JSON.parse(
       typeof task.attempt_log === 'string' ? task.attempt_log : JSON.stringify(task.attempt_log || [])
     );
@@ -185,7 +185,7 @@ class TrinityAutonomousTaskQueue {
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         lastError = err?.message || String(err);
         lastFailureClass = this.classifyFailure(lastError);
         attemptRecord.failureClass = lastFailureClass;
@@ -207,7 +207,7 @@ class TrinityAutonomousTaskQueue {
       escalationReason: escalationReason,
     }).where(eq(trinityAutonomousTasks.id, taskId));
 
-    const taskData = taskResult[0] as any;
+    const taskData = taskResult[0] as unknown;
     const report = this.buildEscalationReport(taskId, taskData, attemptLog, lastFailureClass);
 
     return { success: false, escalated: true, report };
@@ -300,7 +300,7 @@ class TrinityAutonomousTaskQueue {
         ${shifts.workspaceId} = ${workspaceId}
         AND ${shifts.startTime} >= NOW()
         AND ${shifts.startTime} <= NOW() + INTERVAL '48 hours'
-        AND ${(shifts as any).assignedEmployeeId} IS NULL
+        AND ${(shifts as Record<string,unknown>).assignedEmployeeId} IS NULL
         AND ${shifts.status} != 'cancelled'
       `)
       .catch(() => [{ count: '0' }]);
@@ -340,19 +340,18 @@ class TrinityAutonomousTaskQueue {
       weekHours: sql`SUM(EXTRACT(EPOCH FROM (${shifts.endTime} - ${shifts.startTime})) / 3600.0)`
     })
     .from(shifts)
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     .join(employees, eq(shifts.assignedEmployeeId, employees.id))
     .where(sql`
       ${shifts.workspaceId} = ${workspaceId}
       AND ${shifts.startTime} >= date_trunc('week', NOW())
       AND ${shifts.endTime} IS NOT NULL
-      AND ${(shifts as any).assignedEmployeeId} IS NOT NULL
+      AND ${(shifts as Record<string,unknown>).assignedEmployeeId} IS NOT NULL
     `)
     .groupBy(employees.id, employees.firstName, employees.lastName)
     .having(sql`SUM(EXTRACT(EPOCH FROM (${shifts.endTime} - ${shifts.startTime})) / 3600.0) >= 32`)
     .catch(() => []);
 
-    for (const officer of (approachingOTResult as any[])) {
+    for (const officer of (approachingOTResult as unknown[])) {
       const weekHours = parseFloat(String(officer.weekHours || '0'));
       const name = `${officer.firstName} ${officer.lastName}`;
 
@@ -468,7 +467,6 @@ class TrinityAutonomousTaskQueue {
             'autonomous_task',
             undefined,
             workspaceId,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             'PLATFORM',
           ).catch(() => null);
         }
@@ -497,7 +495,7 @@ class TrinityAutonomousTaskQueue {
       LIMIT 20
     `).catch(() => ([]));
 
-    const tasks: AutonomousTask[] = (result as any[]).map(r => ({
+    const tasks: AutonomousTask[] = (result as unknown[]).map(r => ({
       id: r.id,
       workspaceId: r.workspace_id,
       taskType: r.task_type,
@@ -555,7 +553,7 @@ class TrinityAutonomousTaskQueue {
       LIMIT ${limit}
     `).catch(() => ([]));
 
-    return (result as any[]).map(r => ({
+    return (result as unknown[]).map(r => ({
       id: r.id,
       workspaceId: r.workspace_id,
       taskType: r.task_type,

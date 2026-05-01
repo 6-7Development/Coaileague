@@ -38,7 +38,7 @@ interface StoredCredentials {
   expiresAt: Date | null;
   refreshTokenExpiresAt: Date | null;
   status: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface RefreshResult {
@@ -128,7 +128,7 @@ class QuickBooksTokenRefreshDaemon {
       
       // Filter out connections that have exceeded max retry attempts
       return results.filter(cred => {
-        const failedAttempts = (cred as any).metadata?.failedRefreshAttempts || 0;
+        const failedAttempts = (cred as Record<string,unknown>).metadata?.failedRefreshAttempts || 0;
         return failedAttempts < this.MAX_RETRY_ATTEMPTS;
       }) as StoredCredentials[];
     } catch (error) {
@@ -141,7 +141,7 @@ class QuickBooksTokenRefreshDaemon {
     let orchestrationId: string | null = null;
     
     try {
-      const failedAttempts = (creds as any).metadata?.failedRefreshAttempts || 0;
+      const failedAttempts = (creds as Record<string,unknown>).metadata?.failedRefreshAttempts || 0;
       if (failedAttempts >= this.MAX_RETRY_ATTEMPTS) {
         log.warn(`[QB TokenRefresh] Connection ${creds.id} exceeded max retry attempts (${failedAttempts}/${this.MAX_RETRY_ATTEMPTS}), marking expired`);
         await this.markConnectionExpired(creds.id);
@@ -209,7 +209,7 @@ class QuickBooksTokenRefreshDaemon {
         try {
           await quickbooksOAuthService.refreshAccessToken(creds.id);
           return { success: true, data: { refreshed: true } };
-        } catch (err: any) {
+        } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           // refreshAccessToken() throws with 'must reconnect' on invalid_grant or expired token
           const isPermanent = msg.includes('must reconnect') || msg.includes('expired');
@@ -241,7 +241,7 @@ class QuickBooksTokenRefreshDaemon {
           return { success: false, error: processResult.error || 'Invalid grant - reconnection required' };
         }
 
-        const failedAttempts = ((creds as any).metadata?.failedRefreshAttempts || 0) + 1;
+        const failedAttempts = ((creds as Record<string,unknown>).metadata?.failedRefreshAttempts || 0) + 1;
         const retryDelay = this.BASE_RETRY_DELAY_MS * Math.pow(2, failedAttempts - 1);
         await this.incrementFailedAttempts(creds.id, failedAttempts, creds.metadata);
 
@@ -297,10 +297,10 @@ class QuickBooksTokenRefreshDaemon {
       this.credentialsCache.delete(creds.workspaceId);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[QB TokenRefresh] Error refreshing token for workspace ${creds.workspaceId}:`, error);
       
-      const failedAttempts = ((creds as any).metadata?.failedRefreshAttempts || 0) + 1;
+      const failedAttempts = ((creds as Record<string,unknown>).metadata?.failedRefreshAttempts || 0) + 1;
       await this.incrementFailedAttempts(creds.id, failedAttempts, creds.metadata);
       
       return {
@@ -310,7 +310,7 @@ class QuickBooksTokenRefreshDaemon {
     }
   }
   
-  private async incrementFailedAttempts(id: string, attempts: number, passedMetadata: Record<string, any> | null): Promise<void> {
+  private async incrementFailedAttempts(id: string, attempts: number, passedMetadata: Record<string, unknown> | null): Promise<void> {
     try {
       // First fetch current metadata to perform deep merge
       const [current] = await db.select({ metadata: partnerConnections.metadata })
@@ -319,7 +319,7 @@ class QuickBooksTokenRefreshDaemon {
         .limit(1);
       
       // Deep merge: preserve existing keys, update failure tracking fields
-      const existingMetadata = (current?.metadata as Record<string, any>) || {};
+      const existingMetadata = (current?.metadata as Record<string, unknown>) || {};
       const newMetadata = {
         ...existingMetadata,
         ...(passedMetadata || {}),
@@ -386,7 +386,7 @@ class QuickBooksTokenRefreshDaemon {
       }
       
       return this.refreshCredentials(connection as StoredCredentials);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: (error instanceof Error ? error.message : String(error)),
@@ -570,7 +570,7 @@ class QuickBooksTokenRefreshDaemon {
           continue;
         }
         
-        const failedAttempts = (conn as any).metadata?.failedRefreshAttempts || 0;
+        const failedAttempts = (conn as Record<string,unknown>).metadata?.failedRefreshAttempts || 0;
         if (failedAttempts >= this.MAX_RETRY_ATTEMPTS) {
           log.warn(`[QB TokenRefresh] Skipping workspace ${conn.workspaceId} - exceeded max retry attempts (${failedAttempts}/${this.MAX_RETRY_ATTEMPTS}). Reconnection required.`);
           skipped++;

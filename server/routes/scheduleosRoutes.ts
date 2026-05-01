@@ -23,6 +23,7 @@ import { stripe } from "../routes";
 import { isStripeConfigured } from "../services/billing/stripeClient";
 import * as notificationHelpers from "../notifications";
 import { createLogger } from '../lib/logger';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('ScheduleosRoutes');
 
 const router = Router();
@@ -87,7 +88,7 @@ router.post('/ai/toggle', requireManager, async (req: AuthenticatedRequest, res)
     }
   });
 
-router.get('/ai/status', requireAuth, async (req: any, res) => {
+router.get('/ai/status', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId } = req.query;
       if (!workspaceId) return res.status(400).json({ message: "workspaceId query parameter is required" });
@@ -109,7 +110,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-  router.post('/smart-generate', requireManager, requireStarter, async (req: any, res) => {
+  router.post('/smart-generate', requireManager, requireStarter, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
@@ -123,7 +124,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
       const hasSmartScheduleAccess = 
         workspace.subscriptionTier === 'professional' || 
         workspace.subscriptionTier === 'enterprise' ||
-        (workspace as any).enabledAddons?.includes('smart_schedule_ai');
+        (workspace as WorkspaceWithExtras).enabledAddons?.includes('smart_schedule_ai');
 
       if (!hasSmartScheduleAccess) {
         return res.status(402).json({ 
@@ -190,7 +191,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
           const [proposal] = await tx.insert(scheduleProposals).values({
             workspaceId: workspace.id,
             createdBy: userId,
-            aiResponse: aiResponse as any,
+            aiResponse: aiResponse as unknown,
             confidence: aiResponse.overallConfidence,
             status: 'auto_approved',
             approvedBy: userId,
@@ -213,7 +214,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
         const [proposal] = await db.insert(scheduleProposals).values({
           workspaceId: workspace.id,
           createdBy: userId,
-          aiResponse: aiResponse as any,
+          aiResponse: aiResponse as unknown,
           confidence: aiResponse.overallConfidence,
           status: 'pending',
         }).returning();
@@ -236,7 +237,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-  router.get('/proposals', requireManager, async (req: any, res) => {
+  router.get('/proposals', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
@@ -255,7 +256,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
         .offset(offset);
       
       const proposals = rawProposals.map(p => {
-        const aiResp = p.aiResponse as any;
+        const aiResp = p.aiResponse as unknown;
         
         let weekStart: Date | null = null;
         let weekEnd: Date | null = null;
@@ -291,7 +292,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-  router.get('/proposals/:id', requireAuth, async (req: any, res) => {
+  router.get('/proposals/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -316,7 +317,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-  router.patch('/proposals/:id/approve', requireManager, async (req: any, res) => {
+  router.patch('/proposals/:id/approve', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const { disclaimerAcknowledged } = req.body;
@@ -341,7 +342,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
         return res.status(400).json({ message: "Legal disclaimer must be acknowledged for proposals with <100% confidence" });
       }
       
-      const aiResponse = proposal.aiResponse as any;
+      const aiResponse = proposal.aiResponse as unknown;
       const shiftIdsCreated: string[] = [];
       
       await db.transaction(async (tx) => {
@@ -379,7 +380,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-  router.patch('/proposals/:id/reject', requireManager, async (req: any, res) => {
+  router.patch('/proposals/:id/reject', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -419,7 +420,7 @@ router.get('/ai/status', requireAuth, async (req: any, res) => {
     }
   });
   
-router.post('/import-migrated-shifts', requireManager, async (req: any, res) => {
+router.post('/import-migrated-shifts', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { extractedShifts, sourceApp } = req.body;
 
@@ -475,7 +476,6 @@ router.post('/import-migrated-shifts', requireManager, async (req: any, res) => 
             aiGenerated: false,
           });
         } catch (validationError: unknown) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           errors.push(`Shift ${i + 1}: ${validationError.message}`);
         }
       }
@@ -502,7 +502,7 @@ router.post('/import-migrated-shifts', requireManager, async (req: any, res) => 
     }
   });
   
-router.post('/start-trial', requireAuth, async (req: any, res) => {
+router.post('/start-trial', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
@@ -543,7 +543,7 @@ router.post('/start-trial', requireAuth, async (req: any, res) => {
     }
   });
 
-router.post('/activate', requireManager, async (req: any, res) => {
+router.post('/activate', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       
@@ -694,7 +694,6 @@ router.post('/activate', requireManager, async (req: any, res) => {
           log.error('[Stripe] Error verifying payment:', stripeError);
           return res.status(400).json({
             success: false,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             error: `Payment verification failed: ${stripeError.message}`,
           });
         }
@@ -710,10 +709,10 @@ router.post('/activate', requireManager, async (req: any, res) => {
     }
   });
 
-router.get('/status', async (req: any, res) => {
+router.get('/status', async (req: AuthenticatedRequest, res) => {
     try {
       let userId: string;
-      let user: any;
+      let user: Record<string, unknown>;
       
       if (req.requireAuth && req.requireAuth() && req.user?.claims) {
         userId = req.user?.id;
@@ -736,7 +735,7 @@ router.get('/status', async (req: any, res) => {
         const allWorkspaces = await db.select().from(workspaces).limit(1);
         if (allWorkspaces.length > 0) {
           const workspace = allWorkspaces[0];
-          const response: any = {
+          const response: Record<string, unknown> = {
             isActivated: !!workspace.scheduleosActivatedAt,
             activatedAt: workspace.scheduleosActivatedAt,
             activatedBy: workspace.scheduleosActivatedBy,
@@ -764,7 +763,7 @@ router.get('/status', async (req: any, res) => {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const response: any = {
+      const response: Record<string, unknown> = {
         isActivated: !!workspace.scheduleosActivatedAt,
         activatedAt: workspace.scheduleosActivatedAt,
         activatedBy: workspace.scheduleosActivatedBy,
@@ -791,7 +790,7 @@ router.get('/status', async (req: any, res) => {
     }
   });
 
-router.post('/acknowledge/:shiftId', requireAuth, async (req: any, res) => {
+router.post('/acknowledge/:shiftId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { shiftId } = req.params;

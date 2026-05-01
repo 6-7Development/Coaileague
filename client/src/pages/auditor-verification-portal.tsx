@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-function CureCountdown({ cureStatus }: { cureStatus: any }) {
+function CureCountdown({ cureStatus }: { cureStatus: Record<string, unknown> }) {
   if (!cureStatus) return null;
 
   const { daysRemaining, hoursRemaining, isExpired, status, conditionsText, cureDays, deadlineAt } = cureStatus;
@@ -99,7 +99,7 @@ export default function AuditorVerificationPortal() {
   const { user }     = useAuth();
   const { toast }    = useToast();
   const queryClient  = useQueryClient();
-  const workspaceId  = (user as any)?.workspaceId;
+  const workspaceId  = (user as Record<string,unknown>)?.workspaceId;
 
   const [paperworkFile, setPaperworkFile] = useState<File | null>(null);
 
@@ -135,7 +135,7 @@ export default function AuditorVerificationPortal() {
         toast({ title: 'Verification failed', description: data.reasoning ?? 'Trinity could not verify this document. Please re-submit.', variant: 'destructive', duration: 8000 });
       }
     },
-    onError: (err: any) => toast({ title: 'Submission failed', description: err?.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Submission failed', description: err?.message, variant: 'destructive' }),
   });
 
   const isUnlocked = safeStatus?.unlocked;

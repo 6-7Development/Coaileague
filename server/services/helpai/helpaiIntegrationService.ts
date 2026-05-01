@@ -29,7 +29,7 @@ export interface IntegrationConfig {
   workspaceId: string;
   isEnabled?: boolean;
   customEndpoint?: string;
-  customConfig?: Record<string, any>;
+  customConfig?: Record<string, unknown>;
   autoSyncEnabled?: boolean;
   syncIntervalMinutes?: number;
 }
@@ -110,7 +110,7 @@ export class HelpaiIntegrationService {
         isEnabled: config.isEnabled,
         customEndpoint: config.customEndpoint,
         customConfig: config.customConfig
-          ? (config as any).customConfig
+          ? (config as Record<string,unknown>).customConfig
           : undefined,
         autoSyncEnabled: config.autoSyncEnabled,
         syncIntervalMinutes: config.syncIntervalMinutes,

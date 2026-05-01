@@ -15,6 +15,8 @@ import { users, platformRoles, workspaces, employees, invoices, payrollEntries, 
 import { eq, sql, and, notInArray, ne, inArray } from "drizzle-orm";
 import { typedCount, typedExec, typedQuery } from '../lib/typedSql';
 import { PLATFORM_WORKSPACE_ID } from './billing/billingConstants';
+import { createLogger } from '../lib/logger';
+const log = createLogger('productionSeed');
 
 const SENTINEL_USER_ID = 'root-user-00000000';
 const SENTINEL_EMAIL = process.env.ROOT_ADMIN_EMAIL || 'root@coaileague.local';
@@ -28,7 +30,7 @@ export async function runDataCorrections(): Promise<void> {
   const { isProduction } = await import('../lib/isProduction');
   if (!isProduction()) return;
 
-  console.log('🔧 Data Corrections Service: Starting...');
+  log.info('🔧 Data Corrections Service: Starting...');
 
   try {
     // CATEGORY C — Raw SQL retained: Production seed data correction | Tables: users | Verified: 2026-03-23
@@ -40,18 +42,18 @@ export async function runDataCorrections(): Promise<void> {
           email_verified = TRUE
       WHERE id = 'root-user-00000000'
     `);
-    console.log(`🔧 Data Correction: root admin email set to ${SENTINEL_EMAIL}`);
+    log.info(`🔧 Data Correction: root admin email set to ${SENTINEL_EMAIL}`);
   } catch (err) {
-    console.log('🔧 Data Correction: root admin email fix skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: root admin email fix skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Add personal_forward_email columns (safe migration — idempotent)
   try {
     await typedExec(sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_forward_email VARCHAR(255)`);
     await typedExec(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS personal_forward_email VARCHAR(255)`);
-    console.log('🔧 Data Correction: personal_forward_email columns ensured');
+    log.info('🔧 Data Correction: personal_forward_email columns ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: personal_forward_email migration skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: personal_forward_email migration skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Safe migration: create privacy/legal tables if they don't exist
@@ -109,9 +111,9 @@ export async function runDataCorrections(): Promise<void> {
         UNIQUE (user_id, agreement_type, version_accepted)
       )
     `);
-    console.log('🔧 Data Correction: privacy/legal tables ensured');
+    log.info('🔧 Data Correction: privacy/legal tables ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: privacy/legal table migration skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: privacy/legal table migration skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Ensure the Statewide Protective Services workspace and its owner exist
@@ -127,9 +129,9 @@ export async function runDataCorrections(): Promise<void> {
         calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    console.log('🔧 Data Correction: workspace_compliance_scores ensured');
+    log.info('🔧 Data Correction: workspace_compliance_scores ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: workspace_compliance_scores skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: workspace_compliance_scores skipped:', (err as Record<string,unknown>)?.message);
   }
 
   try {
@@ -157,9 +159,9 @@ export async function runDataCorrections(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_guest_session_sid
         ON guest_session_log (session_id)
     `);
-    console.log('🔧 Data Correction: guest_session_log ensured');
+    log.info('🔧 Data Correction: guest_session_log ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: guest_session_log skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: guest_session_log skipped:', (err as Record<string,unknown>)?.message);
   }
 
   try {
@@ -179,9 +181,9 @@ export async function runDataCorrections(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_psvc_workspace
         ON platform_service_charges (workspace_id, charged_at DESC)
     `);
-    console.log('🔧 Data Correction: platform_service_charges ensured');
+    log.info('🔧 Data Correction: platform_service_charges ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: platform_service_charges skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: platform_service_charges skipped:', (err as Record<string,unknown>)?.message);
   }
 
   try {
@@ -195,9 +197,9 @@ export async function runDataCorrections(): Promise<void> {
         updated_at                      TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    console.log('🔧 Data Correction: workspace_verification_settings ensured');
+    log.info('🔧 Data Correction: workspace_verification_settings ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: workspace_verification_settings skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: workspace_verification_settings skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // governance_approvals — Trinity Phase 2 idempotency + execution lock columns.
@@ -228,9 +230,9 @@ export async function runDataCorrections(): Promise<void> {
         ON governance_approvals (workspace_id, status, created_at DESC)
         WHERE status = 'pending'
     `);
-    console.log('🔧 Data Correction: governance_approvals idempotency columns ensured');
+    log.info('🔧 Data Correction: governance_approvals idempotency columns ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: governance_approvals constraints skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: governance_approvals constraints skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // ── sms_outbox — mass-SMS queue for rate-limited Twilio delivery ────────────
@@ -266,9 +268,9 @@ export async function runDataCorrections(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_sms_outbox_workspace
         ON sms_outbox (workspace_id, created_at DESC)
     `);
-    console.log('🔧 Data Correction: sms_outbox ensured');
+    log.info('🔧 Data Correction: sms_outbox ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: sms_outbox skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: sms_outbox skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Trinity Scoring Engine — applicant dimension columns
@@ -283,9 +285,9 @@ export async function runDataCorrections(): Promise<void> {
         ADD COLUMN IF NOT EXISTS cross_tenant_flag BOOLEAN NOT NULL DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS cross_tenant_flag_reason TEXT
     `);
-    console.log('🔧 Data Correction: applicants trinity dimension columns ensured');
+    log.info('🔧 Data Correction: applicants trinity dimension columns ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: applicants trinity columns skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: applicants trinity columns skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Trinity Scoring Engine — job posting targeting columns for industry-specific prompts
@@ -298,9 +300,9 @@ export async function runDataCorrections(): Promise<void> {
         ADD COLUMN IF NOT EXISTS bilingual_required BOOLEAN NOT NULL DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS sponsorship_available BOOLEAN NOT NULL DEFAULT FALSE
     `);
-    console.log('🔧 Data Correction: job_postings trinity targeting columns ensured');
+    log.info('🔧 Data Correction: job_postings trinity targeting columns ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: job_postings trinity columns skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: job_postings trinity columns skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Trinity Scoring Engine — per-workspace hiring settings
@@ -318,9 +320,9 @@ export async function runDataCorrections(): Promise<void> {
         updated_at                        TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    console.log('🔧 Data Correction: workspace_hiring_settings ensured');
+    log.info('🔧 Data Correction: workspace_hiring_settings ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: workspace_hiring_settings skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: workspace_hiring_settings skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Phase 4 — SOP index + employee acknowledgment tracking
@@ -342,9 +344,9 @@ export async function runDataCorrections(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_sop_index_workspace
         ON workspace_sop_index (workspace_id, is_current)
     `);
-    console.log('🔧 Data Correction: workspace_sop_index ensured');
+    log.info('🔧 Data Correction: workspace_sop_index ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: workspace_sop_index skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: workspace_sop_index skipped:', (err as Record<string,unknown>)?.message);
   }
 
   try {
@@ -370,12 +372,12 @@ export async function runDataCorrections(): Promise<void> {
         ON sop_acknowledgments (workspace_id, employee_id)
         WHERE signed_at IS NULL
     `);
-    console.log('🔧 Data Correction: sop_acknowledgments ensured');
+    log.info('🔧 Data Correction: sop_acknowledgments ensured');
   } catch (err) {
-    console.log('🔧 Data Correction: sop_acknowledgments skipped:', (err as any)?.message);
+    log.info('🔧 Data Correction: sop_acknowledgments skipped:', (err as Record<string,unknown>)?.message);
   }
 
-  console.log('🔧 Data Corrections Service: Complete');
+  log.info('🔧 Data Corrections Service: Complete');
 }
 
 /**
@@ -420,7 +422,7 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
   // production and the owner has changed their password.
   const STALE_PW_HASH = '$2b$10$r3GT8OdoCwxosnHVWfQmFeMRnvv1BOhJIKA5BjWQ3g2eG3LQ4ko0K';
 
-  console.log(`🏢 [StatewideBootstrap] Starting — workspace=${WS_ID}, owner=${USER_ID}`);
+  log.info(`🏢 [StatewideBootstrap] Starting — workspace=${WS_ID}, owner=${USER_ID}`);
 
   // ── 1. Workspace ─────────────────────────────────────────────────────────
   try {
@@ -454,9 +456,9 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
            OR workspaces.founder_exemption    IS NOT TRUE
            OR workspaces.inbound_email_forward_to IS DISTINCT FROM ${process.env.ROOT_EMAIL_FORWARD_TO || 'txpsinvestigations@gmail.com'}
     `);
-    console.log('🏢 [StatewideBootstrap] Workspace upserted (enterprise/active/billing_exempt, forward→env:ROOT_EMAIL_FORWARD_TO)');
+    log.info('🏢 [StatewideBootstrap] Workspace upserted (enterprise/active/billing_exempt, forward→env:ROOT_EMAIL_FORWARD_TO)');
   } catch (err) {
-    console.error('🏢 [StatewideBootstrap] Workspace upsert failed:', (err as any)?.message);
+    log.error('🏢 [StatewideBootstrap] Workspace upsert failed:', (err as Record<string,unknown>)?.message);
   }
 
   // ── 2. Owner user ─────────────────────────────────────────────────────────
@@ -496,9 +498,9 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
            OR users.locked_until     IS NOT NULL
            OR users.password_hash    = ${STALE_PW_HASH}
     `);
-    console.log(`🏢 [StatewideBootstrap] Owner user upserted (email_verified=TRUE)`);
+    log.info(`🏢 [StatewideBootstrap] Owner user upserted (email_verified=TRUE)`);
   } catch (err) {
-    console.error('🏢 [StatewideBootstrap] Owner user upsert failed:', (err as any)?.message);
+    log.error('🏢 [StatewideBootstrap] Owner user upsert failed:', (err as Record<string,unknown>)?.message);
   }
 
   // ── 3. Workspace member ───────────────────────────────────────────────────
@@ -509,7 +511,7 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
       VALUES (${USER_ID}, ${WS_ID}, 'org_owner', 'active', NOW(), NOW(), NOW())
       ON CONFLICT (user_id, workspace_id) DO NOTHING
     `);
-    console.log('🏢 [StatewideBootstrap] Workspace member record verified');
+    log.info('🏢 [StatewideBootstrap] Workspace member record verified');
   } catch (err) {
     // Constraint may not be (user_id, workspace_id) — fall back to a SELECT guard
     try {
@@ -522,9 +524,9 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
           WHERE user_id = ${USER_ID} AND workspace_id = ${WS_ID}
         )
       `);
-      console.log('🏢 [StatewideBootstrap] Workspace member record verified (via SELECT guard)');
+      log.info('🏢 [StatewideBootstrap] Workspace member record verified (via SELECT guard)');
     } catch (err2) {
-      console.error('🏢 [StatewideBootstrap] Workspace member upsert failed:', (err2 as any)?.message);
+      log.error('🏢 [StatewideBootstrap] Workspace member upsert failed:', (err2 as Record<string,unknown>)?.message);
     }
   }
 
@@ -546,9 +548,9 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
       )
       ON CONFLICT (id) DO NOTHING
     `);
-    console.log('🏢 [StatewideBootstrap] Employee record verified');
+    log.info('🏢 [StatewideBootstrap] Employee record verified');
   } catch (err) {
-    console.error('🏢 [StatewideBootstrap] Employee record upsert failed:', (err as any)?.message);
+    log.error('🏢 [StatewideBootstrap] Employee record upsert failed:', (err as Record<string,unknown>)?.message);
   }
 
   // ── 5. Org code + email slug ──────────────────────────────────────────────
@@ -563,7 +565,7 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
       WHERE id = ${WS_ID}
         AND (org_code IS DISTINCT FROM 'sps' OR org_code_status IS DISTINCT FROM 'active')
     `);
-    console.log('🏢 [StatewideBootstrap] Org code set to "sps" (active)');
+    log.info('🏢 [StatewideBootstrap] Org code set to "sps" (active)');
 
     // Provision all workspace email addresses under the "sps" slug.
     // Non-blocking so a transient email-service error never blocks startup.
@@ -571,12 +573,12 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
       .then(({ emailProvisioningService }) =>
         emailProvisioningService.provisionWorkspaceAddresses(WS_ID, 'sps')
       )
-      .catch(err => console.warn('🏢 [StatewideBootstrap] Email provisioning warning:', (err as any)?.message));
+      .catch(err => log.warn('🏢 [StatewideBootstrap] Email provisioning warning:', (err as Record<string,unknown>)?.message));
   } catch (err) {
-    console.error('🏢 [StatewideBootstrap] Org code update failed:', (err as any)?.message);
+    log.error('🏢 [StatewideBootstrap] Org code update failed:', (err as Record<string,unknown>)?.message);
   }
 
-  console.log('🏢 [StatewideBootstrap] Complete — Statewide Protective Services is ready');
+  log.info('🏢 [StatewideBootstrap] Complete — Statewide Protective Services is ready');
 }
 
 /**
@@ -590,7 +592,7 @@ export async function runProductionDataCleanup(): Promise<void> {
   const { isProduction } = await import('../lib/isProduction');
   if (!isProduction()) return;
 
-  console.log('🧹 Production Data Cleanup: Starting...');
+  log.info('🧹 Production Data Cleanup: Starting...');
 
   const GRANDFATHERED_WS = process.env.GRANDFATHERED_TENANT_ID || process.env.STATEWIDE_WORKSPACE_ID;
   const GRANDFATHERED_OWNER = process.env.GRANDFATHERED_TENANT_OWNER_ID;
@@ -607,16 +609,16 @@ export async function runProductionDataCleanup(): Promise<void> {
       db.select({ count: sql`COUNT(*)` }).from(orgLedger).where(eq(orgLedger.workspaceId, protectedWs)),
     ]);
 
-    const sentInvoicesCount = parseInt(String((sentInvoices[0] as any)?.count || '0'));
-    const payrollCount = parseInt(String((payrollEntriesCount[0] as any)?.count || '0'));
-    const ledgerCount = parseInt(String((ledgerEntries[0] as any)?.count || '0'));
+    const sentInvoicesCount = parseInt(String((sentInvoices[0] as unknown)?.count || '0'));
+    const payrollCount = parseInt(String((payrollEntriesCount[0] as unknown)?.count || '0'));
+    const ledgerCount = parseInt(String((ledgerEntries[0] as unknown)?.count || '0'));
 
     if (sentInvoicesCount > 0 || payrollCount > 0 || ledgerCount > 0) {
-      console.error(`[BLOCKED] runProductionDataCleanup REFUSED — financial records exist in protected workspace:`);
-      console.error(`  Sent invoices: ${sentInvoicesCount}`);
-      console.error(`  Payroll entries: ${payrollCount}`);
-      console.error(`  Ledger entries: ${ledgerCount}`);
-      console.error(`  These records are PROTECTED. Cannot bulk-delete workspace data when financial pipeline has processed records.`);
+      log.error(`[BLOCKED] runProductionDataCleanup REFUSED — financial records exist in protected workspace:`);
+      log.error(`  Sent invoices: ${sentInvoicesCount}`);
+      log.error(`  Payroll entries: ${payrollCount}`);
+      log.error(`  Ledger entries: ${ledgerCount}`);
+      log.error(`  These records are PROTECTED. Cannot bulk-delete workspace data when financial pipeline has processed records.`);
       return;
     }
   }
@@ -645,9 +647,9 @@ export async function runProductionDataCleanup(): Promise<void> {
       ORDER BY c.table_name
     `);
     allWorkspaceScopedTables = tableRows.map(r => r.table_name);
-    console.log(`🧹 Discovered ${allWorkspaceScopedTables.length} workspace-scoped tables`);
+    log.info(`🧹 Discovered ${allWorkspaceScopedTables.length} workspace-scoped tables`);
   } catch (err) {
-    console.error('🧹 Failed to discover workspace-scoped tables — falling back to static list');
+    log.error('🧹 Failed to discover workspace-scoped tables — falling back to static list');
     // Fallback: the original static list (covers most critical tables)
     allWorkspaceScopedTables = [
       'employees', 'clients', 'shifts', 'time_entries', 'schedules',
@@ -674,7 +676,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         eq(employees.workspaceId, protectedWs),
         ...(GRANDFATHERED_OWNER ? [ne(employees.userId, GRANDFATHERED_OWNER)] : [])
       )) : [{ count: '0' }];
-    const sandboxEmpCount = parseInt(String((protectedEmp[0] as any)?.count || '0'));
+    const sandboxEmpCount = parseInt(String((protectedEmp[0] as unknown)?.count || '0'));
 
     // Count phantom users
     const phantomUserRows = await typedQuery<{ cnt: string }>(sql`
@@ -692,17 +694,17 @@ export async function runProductionDataCleanup(): Promise<void> {
     `);
     const testEmailCount = parseInt(testEmailRows[0]?.cnt || '0');
 
-    console.log('🧹 ── Pre-cleanup snapshot ──────────────────');
-    console.log(`🧹   Total workspaces: ${allWorkspaces.length}`);
-    console.log(`🧹   Contaminated workspaces: ${devWorkspaces.length}`);
-    console.log(`🧹   Sandbox employees in protected ws: ${sandboxEmpCount}`);
-    console.log(`🧹   Phantom users (dev/test IDs): ${phantomUserCount}`);
-    console.log(`🧹   Users with test emails: ${testEmailCount}`);
-    console.log(`🧹   Tables to scan: ${allWorkspaceScopedTables.length}`);
-    console.log('🧹 ────────────────────────────────────────────');
+    log.info('🧹 ── Pre-cleanup snapshot ──────────────────');
+    log.info(`🧹   Total workspaces: ${allWorkspaces.length}`);
+    log.info(`🧹   Contaminated workspaces: ${devWorkspaces.length}`);
+    log.info(`🧹   Sandbox employees in protected ws: ${sandboxEmpCount}`);
+    log.info(`🧹   Phantom users (dev/test IDs): ${phantomUserCount}`);
+    log.info(`🧹   Users with test emails: ${testEmailCount}`);
+    log.info(`🧹   Tables to scan: ${allWorkspaceScopedTables.length}`);
+    log.info('🧹 ────────────────────────────────────────────');
 
     if (devWorkspaces.length === 0 && sandboxEmpCount === 0 && phantomUserCount === 0 && testEmailCount === 0) {
-      console.log('🧹 Production Data Cleanup: Already clean — nothing to do');
+      log.info('🧹 Production Data Cleanup: Already clean — nothing to do');
       return;
     }
 
@@ -710,25 +712,25 @@ export async function runProductionDataCleanup(): Promise<void> {
     // (a Drizzle nested transaction). When any statement fails, only that
     // savepoint is rolled back — the outer transaction stays alive and
     // subsequent statements can still run.
-    const savepoint = async (label: string, fn: (sp: any) => Promise<void>): Promise<void> => {
+    const savepoint = async (label: string, fn: (sp: unknown) => Promise<void>): Promise<void> => {
       try {
         await db.transaction(async (sp) => {
           await fn(sp);
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Don't log the entire txn abort cascade — just the original failure.
         // 25P02 = aborted transaction state, 42P01 = missing table — both expected.
         if (err?.code !== '25P02' && err?.code !== '42P01') {
-          console.log(`🧹 [${label}] failed (non-fatal): ${err?.message}`);
+          log.info(`🧹 [${label}] failed (non-fatal): ${err?.message}`);
         }
       }
     };
 
     // ── Step 1: Remove ALL contaminated workspaces and their data ────────
     if (devWorkspaces.length > 0) {
-      console.log(`🧹 Step 1: Removing ${devWorkspaces.length} non-production workspaces:`);
+      log.info(`🧹 Step 1: Removing ${devWorkspaces.length} non-production workspaces:`);
       for (const ws of devWorkspaces) {
-        console.log(`   - ${ws.id} (${ws.name})`);
+        log.info(`   - ${ws.id} (${ws.name})`);
       }
 
       for (const ws of devWorkspaces) {
@@ -752,13 +754,13 @@ export async function runProductionDataCleanup(): Promise<void> {
         await savepoint(`step1.workspace.${ws.id}`, async (sp) => {
           await sp.execute(sql.raw(`DELETE FROM workspaces WHERE id = '${ws.id.replace(/'/g, "''")}'`));
         });
-        console.log(`🧹   Cleaned workspace ${ws.id} (${ws.name}) — touched ${tablesDeleted} tables`);
+        log.info(`🧹   Cleaned workspace ${ws.id} (${ws.name}) — touched ${tablesDeleted} tables`);
       }
-      console.log('🧹 Step 1: Complete');
+      log.info('🧹 Step 1: Complete');
     }
 
     // ── Step 2: Clean grandfathered workspace of seeded sandbox data ─────
-    console.log('🧹 Step 2: Cleaning grandfathered workspace of sandbox contamination...');
+    log.info('🧹 Step 2: Cleaning grandfathered workspace of sandbox contamination...');
     if (protectedWs && GRANDFATHERED_OWNER) {
       // Remove sandbox employees (keep only the real owner)
       await savepoint('step2.employees', async (sp) => {
@@ -767,7 +769,7 @@ export async function runProductionDataCleanup(): Promise<void> {
           WHERE workspace_id = ${protectedWs}
           AND user_id IS DISTINCT FROM ${GRANDFATHERED_OWNER}
         `);
-        console.log(`🧹   Removed ${deleted.rowCount || 0} sandbox employees from protected workspace`);
+        log.info(`🧹   Removed ${deleted.rowCount || 0} sandbox employees from protected workspace`);
       });
 
       // Remove all other workspace-scoped data (clients, shifts, invoices, etc.)
@@ -782,14 +784,14 @@ export async function runProductionDataCleanup(): Promise<void> {
           if (result.rowCount > 0) protectedTablesDeleted++;
         });
       }
-      console.log(`🧹   Cleaned ${protectedTablesDeleted} tables in protected workspace`);
+      log.info(`🧹   Cleaned ${protectedTablesDeleted} tables in protected workspace`);
     } else {
-      console.log('🧹   Skipped — protected workspace or owner ID not configured');
+      log.info('🧹   Skipped — protected workspace or owner ID not configured');
     }
-    console.log('🧹 Step 2: Complete');
+    log.info('🧹 Step 2: Complete');
 
     // ── Step 3: Remove phantom users (dev/test/tenant/demo IDs) ─────────
-    console.log('🧹 Step 3: Removing phantom users...');
+    log.info('🧹 Step 3: Removing phantom users...');
     // Delete from dependent tables first (platform_roles, employees, workspace_members)
     await savepoint('step3.platform_roles', async (sp) => {
       await sp.execute(sql`
@@ -827,7 +829,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         WHERE id LIKE 'dev-%' OR id LIKE 'tenant-%' OR id LIKE 'txps-%'
         OR id LIKE 'demo-%' OR id LIKE 'anvil-%' OR id = 'root-admin-workfos'
       `);
-      console.log(`🧹   Removed ${deleted.rowCount || 0} phantom users`);
+      log.info(`🧹   Removed ${deleted.rowCount || 0} phantom users`);
     });
 
     // Also remove users with test email domains that slipped through
@@ -849,24 +851,24 @@ export async function runProductionDataCleanup(): Promise<void> {
            OR email LIKE '%@frostbank%' OR email LIKE '%@anvilsecurity%'
            OR email LIKE '%@lonestar-security%'
       `);
-      console.log(`🧹   Removed ${deleted.rowCount || 0} users with test email domains`);
+      log.info(`🧹   Removed ${deleted.rowCount || 0} users with test email domains`);
     });
-    console.log('🧹 Step 3: Complete');
+    log.info('🧹 Step 3: Complete');
 
     // ── Step 4: Clean platform workspace of non-system employees ─────────
-    console.log('🧹 Step 4: Cleaning platform workspace...');
+    log.info('🧹 Step 4: Cleaning platform workspace...');
     await savepoint('step4.platform_employees', async (sp) => {
       const deleted = await sp.execute(sql`
         DELETE FROM employees
         WHERE workspace_id = ${PLATFORM_WS}
         AND id NOT IN ('8d31a497-e9fe-48d9-b819-9c6869948c39', 'helpai-employee', 'trinity-employee')
       `);
-      console.log(`🧹   Removed ${deleted.rowCount || 0} non-system employees from platform workspace`);
+      log.info(`🧹   Removed ${deleted.rowCount || 0} non-system employees from platform workspace`);
     });
-    console.log('🧹 Step 4: Complete');
+    log.info('🧹 Step 4: Complete');
 
     // ── Step 5: Clean platform-level test data (emails, notifications) ───
-    console.log('🧹 Step 5: Cleaning platform-level test data...');
+    log.info('🧹 Step 5: Cleaning platform-level test data...');
     // Remove platform emails with test domains
     await savepoint('step5.platform_emails', async (sp) => {
       const deleted = await sp.execute(sql`
@@ -876,7 +878,7 @@ export async function runProductionDataCleanup(): Promise<void> {
            OR to_addr LIKE '%@metroplex%'
            OR from_addr LIKE '%.test' OR from_addr LIKE '%@frostbank%'
       `);
-      console.log(`🧹   Removed ${deleted.rowCount || 0} test platform emails`);
+      log.info(`🧹   Removed ${deleted.rowCount || 0} test platform emails`);
     });
     // Remove SMS attempts to test numbers
     await savepoint('step5.sms_attempt_log', async (sp) => {
@@ -884,7 +886,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         DELETE FROM sms_attempt_log
         WHERE to_number LIKE '555-%' OR to_number LIKE '%555-0%'
       `);
-      console.log(`🧹   Removed ${deleted.rowCount || 0} test SMS attempts`);
+      log.info(`🧹   Removed ${deleted.rowCount || 0} test SMS attempts`);
     });
     // Remove seed sentinel markers from key-value style tables
     await savepoint('step5.seed_sentinels', async (sp) => {
@@ -893,7 +895,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         WHERE key LIKE 'dev-%' OR key LIKE 'seed-%' OR key LIKE 'demo-%'
       `);
     });
-    console.log('🧹 Step 5: Complete');
+    log.info('🧹 Step 5: Complete');
 
     // ── Post-cleanup verification ────────────────────────────────────────
     const remainingWorkspaces = await db.select({ id: workspaces.id, name: workspaces.name })
@@ -911,21 +913,21 @@ export async function runProductionDataCleanup(): Promise<void> {
          OR email LIKE '%@anvilsecurity%' OR email LIKE '%@lonestar-security%'
     `);
 
-    console.log('🧹 ═══════════════════════════════════════════');
-    console.log('🧹 Production Data Cleanup: COMPLETE');
-    console.log('🧹 ── Post-cleanup verification ─────────────');
-    console.log(`🧹   Workspaces remaining: ${remainingWorkspaces.length}`);
+    log.info('🧹 ═══════════════════════════════════════════');
+    log.info('🧹 Production Data Cleanup: COMPLETE');
+    log.info('🧹 ── Post-cleanup verification ─────────────');
+    log.info(`🧹   Workspaces remaining: ${remainingWorkspaces.length}`);
     for (const ws of remainingWorkspaces) {
-      console.log(`🧹     - ${ws.id} (${ws.name})`);
+      log.info(`🧹     - ${ws.id} (${ws.name})`);
     }
-    console.log(`🧹   Total users: ${remainingUsers[0]?.cnt || 0}`);
-    console.log(`🧹   Total employees: ${remainingEmployees[0]?.cnt || 0}`);
-    console.log(`🧹   Phantom users remaining: ${remainingPhantoms[0]?.cnt || 0}`);
-    console.log(`🧹   Test email users remaining: ${remainingTestEmails[0]?.cnt || 0}`);
-    console.log('🧹 ═══════════════════════════════════════════');
+    log.info(`🧹   Total users: ${remainingUsers[0]?.cnt || 0}`);
+    log.info(`🧹   Total employees: ${remainingEmployees[0]?.cnt || 0}`);
+    log.info(`🧹   Phantom users remaining: ${remainingPhantoms[0]?.cnt || 0}`);
+    log.info(`🧹   Test email users remaining: ${remainingTestEmails[0]?.cnt || 0}`);
+    log.info('🧹 ═══════════════════════════════════════════');
   } catch (err) {
-    console.error('🧹 Production Data Cleanup: ERROR', (err as any)?.message);
-    console.error('🧹 Full error:', err);
+    log.error('🧹 Production Data Cleanup: ERROR', (err as Record<string,unknown>)?.message);
+    log.error('🧹 Full error:', err);
   }
 }
 
@@ -935,12 +937,12 @@ export async function runProductionDataCleanup(): Promise<void> {
  * EXPORTED so it can be called independently in server/index.ts
  */
 export async function runPasswordMigrations(): Promise<void> {
-  console.log('🔑 Password Migration Service: Starting...');
+  log.info('🔑 Password Migration Service: Starting...');
   
   const { isProduction } = await import('../lib/isProduction');
   if (isProduction()) {
-    console.log('🔑 Password Migration: SKIPPED in production (passwords must be changed via user flow)');
-    console.log('🔑 Password Migration Service: Complete');
+    log.info('🔑 Password Migration: SKIPPED in production (passwords must be changed via user flow)');
+    log.info('🔑 Password Migration Service: Complete');
     return;
   }
   
@@ -958,8 +960,8 @@ export async function runPasswordMigrations(): Promise<void> {
   ];
   
   if (migrations.length === 0) {
-    console.log('🔑 Password Migration: No pending migrations');
-    console.log('🔑 Password Migration Service: Complete');
+    log.info('🔑 Password Migration: No pending migrations');
+    log.info('🔑 Password Migration Service: Complete');
     return;
   }
   
@@ -971,13 +973,13 @@ export async function runPasswordMigrations(): Promise<void> {
         SET password_hash = ${migration.newHash}, login_attempts = 0
         WHERE email = ${migration.email}
       `);
-      console.log(`🔑 Password Migration: SUCCESS - Updated ${migration.email}`);
+      log.info(`🔑 Password Migration: SUCCESS - Updated ${migration.email}`);
     } catch (err) {
-      console.log(`🔑 Password Migration: SKIPPED - ${migration.email} (user may not exist in this database)`);
+      log.info(`🔑 Password Migration: SKIPPED - ${migration.email} (user may not exist in this database)`);
     }
   }
   
-  console.log('🔑 Password Migration Service: Complete');
+  log.info('🔑 Password Migration Service: Complete');
 }
 
 /**
@@ -986,7 +988,7 @@ export async function runPasswordMigrations(): Promise<void> {
  * Only updates workspaces that are genuinely suspended/cancelled — leaves active ones alone.
  */
 export async function runWorkspaceHealthCorrections(): Promise<void> {
-  console.log('🏢 Workspace Health: Starting corrections...');
+  log.info('🏢 Workspace Health: Starting corrections...');
 
   // Restore the TXPS org owner's workspace to enterprise/active.
   // The daily trial-expiry cron may have suspended it — override that here.
@@ -1005,9 +1007,9 @@ export async function runWorkspaceHealthCorrections(): Promise<void> {
       ),
       inArray(workspaces.subscriptionStatus, ['suspended', 'cancelled', 'trial'])
     ));
-    console.log('🏢 Workspace Health: TXPS workspace restored to enterprise/active (if it was suspended)');
+    log.info('🏢 Workspace Health: TXPS workspace restored to enterprise/active (if it was suspended)');
   } catch (err) {
-    console.log('🏢 Workspace Health: TXPS workspace fix skipped:', (err as any)?.message);
+    log.info('🏢 Workspace Health: TXPS workspace fix skipped:', (err as Record<string,unknown>)?.message);
   }
 
   // Same for the root admin platform workspace
@@ -1021,7 +1023,7 @@ export async function runWorkspaceHealthCorrections(): Promise<void> {
     // Non-fatal
   }
 
-  console.log('🏢 Workspace Health: Complete');
+  log.info('🏢 Workspace Health: Complete');
 }
 
 /**
@@ -1048,9 +1050,9 @@ export async function ensureSystemEntities(): Promise<void> {
       subscriptionTier: 'enterprise',
       subscriptionStatus: 'active',
     }).onConflictDoNothing();
-    console.log('[SystemSeed] System automation user and workspace verified');
+    log.info('[SystemSeed] System automation user and workspace verified');
   } catch (err) {
-    console.error('[SystemSeed] Failed to ensure system entities (non-fatal):', (err as any)?.message);
+    log.error('[SystemSeed] Failed to ensure system entities (non-fatal):', (err as Record<string,unknown>)?.message);
   }
 }
 
@@ -1058,15 +1060,15 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
   const { isProduction } = await import('../lib/isProduction');
   const isProd = isProduction();
 
-  console.log(`🌱 Production Seed: Environment check - production=${isProd}`);
+  log.info(`🌱 Production Seed: Environment check - production=${isProd}`);
 
   if (!isProd) {
-    console.log('🌱 Production Seed: Skipping (not in production deployment)');
+    log.info('🌱 Production Seed: Skipping (not in production deployment)');
     return { success: true, message: 'Skipped - not in production' };
   }
   
   // Always run password migrations first (for existing users)
-  console.log('🔑 Running password migrations...');
+  log.info('🔑 Running password migrations...');
   await runPasswordMigrations();
   
   try {
@@ -1077,18 +1079,18 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       .limit(1);
     
     if (existingUser.length > 0) {
-      console.log(`🌱 Production Seed: Sentinel user (${SENTINEL_EMAIL}) already exists. Skipping migration.`);
+      log.info(`🌱 Production Seed: Sentinel user (${SENTINEL_EMAIL}) already exists. Skipping migration.`);
       return { success: true, message: 'Already seeded' };
     }
     
-    console.log('🌱 Production Seed: Starting database migration...');
+    log.info('🌱 Production Seed: Starting database migration...');
     
     // Run all inserts in a transaction
     await db.transaction(async (tx) => {
       // =========================================================================
       // 1. USERS TABLE - Core authentication data
       // =========================================================================
-      console.log('🌱 Seeding users...');
+      log.info('🌱 Seeding users...');
       
       const usersData = [
         { id: 'root-user-00000000', email: SENTINEL_EMAIL, firstName: 'Root', lastName: 'Administrator', passwordHash: '$2b$10$wN0UMmTiGuG0wEi/04xywOqwnLUILRxQmFTjuTfgovPv1kBS.T3ei', role: 'root_admin', emailVerified: false, currentWorkspaceId: PLATFORM_WORKSPACE_ID },
@@ -1098,7 +1100,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       for (const user of usersData) {
         await tx.execute(sql`
           INSERT INTO users (id, email, first_name, last_name, password_hash, role, email_verified, current_workspace_id, created_at, updated_at, login_attempts, mfa_enabled)
-          VALUES (${user.id}, ${user.email}, ${user.firstName}, ${user.lastName}, ${user.passwordHash}, ${user.role}, ${user.emailVerified}, ${(user as any).currentWorkspaceId || null}, NOW(), NOW(), 0, FALSE)
+          VALUES (${user.id}, ${user.email}, ${user.firstName}, ${user.lastName}, ${user.passwordHash}, ${user.role}, ${user.emailVerified}, ${req.user?.currentWorkspaceId || null}, NOW(), NOW(), 0, FALSE)
           ON CONFLICT (id) DO NOTHING
         `);
       }
@@ -1106,7 +1108,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       // =========================================================================
       // 2. PLATFORM_ROLES TABLE - Admin and system roles
       // =========================================================================
-      console.log('🌱 Seeding platform roles...');
+      log.info('🌱 Seeding platform roles...');
       
       const rolesData = [
         { id: 'e2d402f8-fb44-4129-a0f2-703f0dc91aaa', userId: 'root-user-00000000', role: 'root_admin' },
@@ -1123,7 +1125,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       // =========================================================================
       // 3. WORKSPACES TABLE - Organization/tenant data
       // =========================================================================
-      console.log('🌱 Seeding workspaces...');
+      log.info('🌱 Seeding workspaces...');
       
       for (const ws of [
         { id: PLATFORM_WORKSPACE_ID, name: 'CoAIleague Support', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
@@ -1142,7 +1144,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       // =========================================================================
       // 4. EMPLOYEES TABLE - Employee records
       // =========================================================================
-      console.log('🌱 Seeding employees...');
+      log.info('🌱 Seeding employees...');
       
       const employeesData = [
         { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-00000000', workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Root', lastName: 'Administrator', email: SENTINEL_EMAIL, hourlyRate: '0.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-COAI-00001' },
@@ -1153,22 +1155,22 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       for (const emp of employeesData) {
         await tx.execute(sql`
           INSERT INTO employees (id, user_id, workspace_id, first_name, last_name, email, hourly_rate, role, workspace_role, employee_number, created_at, updated_at)
-          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as any).role || null}, ${emp.workspaceRole}, ${emp.employeeNumber}, NOW(), NOW())
+          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as EmployeeWithStatus).role || null}, ${emp.workspaceRole}, ${emp.employeeNumber}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }
     });
     
-    console.log('✅ Production Seed: Database migration completed successfully!');
-    console.log('   - Users: 2 (root admin + helpai bot)');
-    console.log('   - Platform Roles: 1 (root_admin)');
-    console.log('   - Workspaces: 1 (CoAIleague Support)');
-    console.log('   - Employees: 3 (root admin + 2 AI bots)');
+    log.info('✅ Production Seed: Database migration completed successfully!');
+    log.info('   - Users: 2 (root admin + helpai bot)');
+    log.info('   - Platform Roles: 1 (root_admin)');
+    log.info('   - Workspaces: 1 (CoAIleague Support)');
+    log.info('   - Employees: 3 (root admin + 2 AI bots)');
     
     return { success: true, message: 'Production database seeded successfully' };
     
   } catch (error) {
-    console.error('❌ Production Seed: Migration failed:', error);
+    log.error('❌ Production Seed: Migration failed:', error);
     return { success: false, message: `Seed failed: ${error}` };
   }
 }
@@ -1202,8 +1204,8 @@ export async function resetDemoAccountLocks(): Promise<void> {
       )
       AND (login_attempts > 0 OR locked_until IS NOT NULL)
     `);
-    console.log('[DemoReset] Dev demo account locks cleared');
-  } catch (err: any) {
-    console.log('[DemoReset] Could not reset demo locks (non-fatal):', err?.message);
+    log.info('[DemoReset] Dev demo account locks cleared');
+  } catch (err: unknown) {
+    log.info('[DemoReset] Could not reset demo locks (non-fatal):', err?.message);
   }
 }

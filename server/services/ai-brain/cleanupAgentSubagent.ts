@@ -72,7 +72,7 @@ class CleanupAgentSubagent {
 
   private loadSpecIndex(): void {
     try {
-      const components = (specIndex as any).components || {};
+      const components = (specIndex as Record<string,unknown>).components || {};
       for (const componentId of Object.keys(components)) {
         const component = components[componentId];
         if (component.files) {
@@ -307,14 +307,14 @@ class CleanupAgentSubagent {
     }
   }
 
-  async getComponentBySpecId(specId: string): Promise<any> {
-    const components = (specIndex as any).components || {};
+  async getComponentBySpecId(specId: string): Promise<unknown> {
+    const components = (specIndex as Record<string,unknown>).components || {};
     return components[specId] || null;
   }
 
   async findComponentByName(searchTerm: string): Promise<any[]> {
-    const components = (specIndex as any).components || {};
-    const matches: any[] = [];
+    const components = (specIndex as Record<string,unknown>).components || {};
+    const matches: (string | number | boolean | null)[] = [];
 
     for (const [id, component] of Object.entries(components)) {
       const comp = component as any;
@@ -330,11 +330,11 @@ class CleanupAgentSubagent {
     return matches;
   }
 
-  async getEditingRulesForComponent(specId: string): Promise<any> {
+  async getEditingRulesForComponent(specId: string): Promise<unknown> {
     const component = await this.getComponentBySpecId(specId);
     if (!component) return null;
 
-    const rules = (specIndex as any).aiEditingRules || {};
+    const rules = (specIndex as Record<string,unknown>).aiEditingRules || {};
     return {
       component,
       editingRules: rules[component.tier] || rules.tier2
@@ -342,7 +342,7 @@ class CleanupAgentSubagent {
   }
 
   getStats(): { totalComponents: number; byTier: Record<string, number>; totalFiles: number } {
-    const components = (specIndex as any).components || {};
+    const components = (specIndex as Record<string,unknown>).components || {};
     const byTier: Record<string, number> = { tier0: 0, tier1: 0, tier2: 0, tier3: 0 };
     let totalFiles = 0;
 

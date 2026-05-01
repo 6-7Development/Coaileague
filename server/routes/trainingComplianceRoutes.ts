@@ -83,7 +83,7 @@ router.get("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN employees e ON e.id = etr.employee_id AND e.workspace_id = $1
                  LEFT JOIN training_requirements tr ON tr.id = etr.requirement_id
                  WHERE etr.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (employee_id) { query += ` AND etr.employee_id = $${i++}`; vals.push(employee_id); }
     if (status) { query += ` AND etr.status = $${i++}`; vals.push(status); }
@@ -138,7 +138,7 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
           description: `Expires in ${days} days. Action required.`,
           workspaceId: wid,
           metadata: { employeeId: employee_id, trainingName: training_name, daysLeft: days }
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       } else if (days < 0) {
         platformEventBus.publish({
           type: 'training_expired',
@@ -147,7 +147,7 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
           description: `Expired ${Math.abs(days)} days ago. Immediate action required.`,
           workspaceId: wid,
           metadata: { employeeId: employee_id, trainingName: training_name }
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
     }
 
@@ -165,7 +165,7 @@ router.patch("/records/:id", requireAuth, async (req: AuthenticatedRequest, res)
     const allowed = ['training_name','completion_date','expiration_date','hours_completed',
       'provider_name','certificate_number','status','notes','verified'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }
@@ -207,7 +207,7 @@ router.get("/compliance-grid", requireAuth, async (req: AuthenticatedRequest, re
       [wid]
     )).rows;
 
-    const recordMap: Record<string, Record<string, any>> = {};
+    const recordMap: Record<string, Record<string, unknown>> = {};
     for (const rec of records) {
       if (!recordMap[rec.employee_id]) recordMap[rec.employee_id] = {};
       if (rec.requirement_id) {
@@ -218,9 +218,9 @@ router.get("/compliance-grid", requireAuth, async (req: AuthenticatedRequest, re
       }
     }
 
-    const grid = officers.map((officer: any) => ({
+    const grid = officers.map((officer: unknown) => ({
       officer,
-      certifications: requirements.map((req: any) => {
+      certifications: requirements.map((req: AuthenticatedRequest) => {
         const rec = recordMap[officer.id]?.[req.id];
         if (!rec) return { requirementId: req.id, status: 'not_on_file', days_left: null };
         const days = rec.days_left;
@@ -329,7 +329,7 @@ router.get("/compliance-matrix", requireAuth, async (req: AuthenticatedRequest, 
       [wid]
     )).rows;
 
-    const byEmployee: Record<string, any> = {};
+    const byEmployee: Record<string, unknown> = {};
     for (const off of officers) {
       byEmployee[off.id] = {
         employee_id: off.id,
@@ -353,7 +353,7 @@ router.get("/compliance-matrix", requireAuth, async (req: AuthenticatedRequest, 
       else if (rec.status === 'expired') emp.expired_count++;
     }
 
-    for (const emp of Object.values(byEmployee) as any[]) {
+    for (const emp of Object.values(byEmployee) as Record<string,unknown>[]) {
       if (emp.expired_count > 0 || emp.missing_count > 0) emp.overall_status = 'non_compliant';
       else if (emp.expiring_soon_count > 0) emp.overall_status = 'expiring_soon';
       else emp.overall_status = 'compliant';
@@ -405,7 +405,7 @@ router.get("/tcole-compliance", requireAuth, async (req: AuthenticatedRequest, r
     const endOfYear = new Date(now.getFullYear(), 11, 31);
     const daysUntilDeadline = Math.ceil((endOfYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    const compliance = r.rows.map((row: any) => {
+    const compliance = r.rows.map((row: unknown) => {
       const hoursAccumulated = parseFloat(row.hours_completed);
       const hoursRemaining = requiredHours - hoursAccumulated;
       const urgency =
@@ -478,7 +478,7 @@ router.post("/tcole-alerts", requireAuth, async (req: AuthenticatedRequest, res)
     if (count > 0) {
       // Batch into one notification per workspace — not one per officer
       const officerLines = belowRequired.rows
-        .map((o: any) => {
+        .map((o: unknown) => {
           const completed = parseFloat(o.hours_completed);
           const remaining = requiredHours - completed;
           return `${o.first_name} ${o.last_name} — ${completed}/${requiredHours} hrs (${remaining.toFixed(1)} remaining)`;
@@ -502,13 +502,13 @@ router.post("/tcole-alerts", requireAuth, async (req: AuthenticatedRequest, res)
         idempotencyKey: `tcole-compliance-${wid}-${activeThreshold}-${today}`,
         metadata: {
           officerCount: count,
-          officerIds: belowRequired.rows.map((o: any) => o.id),
+          officerIds: belowRequired.rows.map((o: unknown) => o.id),
           requiredHours,
           daysUntilYearEnd: diffDays,
           threshold: activeThreshold,
           year,
         }
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
     res.json({ 
       message: `TCOLE ${activeThreshold}-day compliance alerts sent`,

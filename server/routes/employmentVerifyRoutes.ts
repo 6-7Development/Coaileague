@@ -64,7 +64,7 @@ interface TicketPayload {
 function parseTicketDescription(description: string | null | undefined): TicketPayload {
   if (!description) return {};
   try {
-    const parsed = JSON.parse(description);
+    const parsed: unknown = JSON.parse(description);
     return typeof parsed === 'object' && parsed !== null ? (parsed as TicketPayload) : {};
   } catch {
     return {};
@@ -255,7 +255,7 @@ employmentVerifyRouter.get(
               WHERE workspace_id = $1 LIMIT 1`,
             [workspaceId],
           );
-          const row = settingRows.rows[0] as any;
+          const row = settingRows.rows[0] as Record<string, unknown>;
           const feeCents: number = row?.verification_fee_cents ?? 100;
           const enabled: boolean = row?.verification_enabled ?? true;
 
@@ -292,7 +292,7 @@ employmentVerifyRouter.get(
           );
 
           log.info(`[EmploymentVerify] Billed ${feeCents} cents to ${workspaceId} for ${refNum}`);
-        } catch (billingErr: any) {
+        } catch (billingErr: unknown) {
           log.warn('[EmploymentVerify] Billing failed (non-blocking):', billingErr?.message);
         }
       });
@@ -331,7 +331,7 @@ employmentVerifyRouter.get(
         refNum,
         employeeNumber: emp.employee_number,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[EmploymentVerify] approve error: ${err?.message}`);
       await logActionAudit({
         actionId: 'employment_verification.approve',
@@ -428,7 +428,7 @@ employmentVerifyRouter.get(
         message: 'Request denied; requester notified.',
         refNum,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[EmploymentVerify] deny error: ${err?.message}`);
       await logActionAudit({
         actionId: 'employment_verification.deny',

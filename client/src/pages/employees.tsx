@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,8 +44,7 @@ import {
   Calendar,
   Loader2,
   Download,
-  X,
-} from "lucide-react";
+  X, ChevronRight} from "lucide-react";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SwipeToDelete } from "@/components/swipe-to-delete";
@@ -179,46 +178,77 @@ function getRoleDot(workspaceRole: string | null | undefined, isArmed: boolean |
     onToggleSelect: (id: string) => void;
   }) => {
     return (
-      <Card className={['hover-elevate transition-colors', isSelected ? 'border-primary bg-primary/5' : ''].join(' ')} data-testid={`card-employee-${employee.id}`}>
-        <CardContent className="p-3">
-          <div className="flex items-start gap-3">
-            <div className="pt-1">
-              <Checkbox 
-                checked={isSelected} 
-                onCheckedChange={() => onToggleSelect(employee.id)}
-                data-testid={`checkbox-select-employee-${employee.id}`}
-              />
-            </div>
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback style={{ backgroundColor: employee.color || '#3b82f6' }} className="text-sm font-semibold text-white">
-                {getInitials(employee.firstName, employee.lastName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0" data-testid={`text-employee-name-${employee.id}`}>
-                  <div className="text-sm max-sm:![font-size:14px] font-medium truncate text-foreground">
-                    <div className="flex items-center gap-1.5 truncate max-w-[180px] min-w-0" title={`${employee.firstName} ${employee.lastName}`}>
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${getRoleDot(employee.workspaceRole, (employee as any).isArmed)}`}
-                        title={(employee as any).isArmed ? 'Armed' : 'Unarmed'}
-                        data-testid={`dot-role-${employee.id}`}
-                      />
-                      {employee.firstName} {employee.lastName}
-                    </div>
-                    {employee.email && (
-                      <div className="text-[10px] text-muted-foreground truncate max-w-[180px]" title={employee.email}>
-                        {employee.email}
-                      </div>
-                    )}
-                  </div>
+      <Card className={['transition-colors', isSelected ? 'border-primary bg-primary/5' : 'border-transparent'].join(' ')} data-testid={`card-employee-${employee.id}`}
+        style={{ borderRadius: 0, boxShadow: 'none', borderBottom: '1px solid var(--border)' }}
+      >
+        <CardContent className="p-0">
+          <div className="flex items-center gap-0">
+            {/* Select checkbox — only visible when in bulk-select mode */}
+            {isSelected !== undefined && (
+              <div className={["flex items-center justify-center shrink-0 transition-all",
+                isSelected ? "w-10 opacity-100" : "w-0 overflow-hidden opacity-0 pointer-events-none"
+              ].join(' ')}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(employee.id)}
+                  data-testid={`checkbox-select-employee-${employee.id}`}
+                />
+              </div>
+            )}
+            {/* Row content */}
+            <div className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3">
+              {/* Avatar — large, with photo support */}
+              <Avatar className="h-11 w-11 shrink-0 ring-2 ring-background">
+                {(employee as Record<string,unknown>).profileImageUrl && (
+                  <AvatarImage src={(employee as Record<string,unknown>).profileImageUrl} alt={`${employee.firstName} ${employee.lastName}`} />
+                )}
+                <AvatarFallback
+                  className="text-sm font-bold text-white"
+                  style={{ backgroundColor: employee.color || '#7c3aed' }}
+                >
+                  {getInitials(employee.firstName, employee.lastName)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Name + details */}
+              <div className="flex-1 min-w-0" data-testid={`text-employee-name-${employee.id}`}>
+                {/* Name row */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${getRoleDot(employee.workspaceRole, (employee as Record<string,unknown>).isArmed)}`}
+                    title={(employee as Record<string,unknown>).isArmed ? 'Armed' : 'Unarmed'}
+                    data-testid={`dot-role-${employee.id}`}
+                  />
+                  <span className="font-semibold text-[15px] text-foreground truncate">
+                    {employee.firstName} {employee.lastName}
+                  </span>
                   {employee.employeeNumber && (
-                    <CanonicalIdBadge
-                      id={employee.employeeNumber}
-                      size="sm"
-                    />
+                    <span className="text-xs text-muted-foreground font-mono shrink-0">#{employee.employeeNumber}</span>
                   )}
                 </div>
+                {/* Role + onboarding */}
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className="text-xs text-muted-foreground">
+                    {employee.role || 'Officer'}
+                  </span>
+                  {employee.workspaceRole && employee.workspaceRole !== 'staff' && employee.workspaceRole !== 'employee' && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] h-4 px-1 ${getRoleBadgeColor(employee.workspaceRole)}`}
+                    >
+                      {ROLE_LABELS[normalizeRole(employee.workspaceRole)] || employee.workspaceRole}
+                    </Badge>
+                  )}
+                  {getOnboardingStatusBadge(employee.onboardingStatus ?? undefined)}
+                </div>
+                {/* Email sub-line */}
+                {employee.email && (
+                  <div className="text-[11px] text-muted-foreground truncate mt-0.5" title={employee.email}>
+                    {employee.email}
+                  </div>
+                )}
+              </div>
+              {/* Actions: menu + chevron */}
+              <div className="flex items-center gap-1 shrink-0">
                 {canManage && <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -312,76 +342,11 @@ function getRoleDot(workspaceRole: string | null | undefined, isArmed: boolean |
                     </AlertDialog>
                   </DropdownMenuContent>
                 </DropdownMenu>}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                  <div className="truncate max-w-[120px] min-w-0">
-                    {employee.role || "Employee"}
-                  </div>
-                </Badge>
-                {employee.workspaceRole && employee.workspaceRole !== 'staff' && employee.workspaceRole !== 'employee' && (
-                  <Badge 
-                    variant="outline" 
-                    className={`text-[10px] h-5 px-1.5 ${getRoleBadgeColor(employee.workspaceRole)}`}
-                  >
-                    {ROLE_LABELS[normalizeRole(employee.workspaceRole)] || employee.workspaceRole}
-                  </Badge>
-                )}
-                {getOnboardingStatusBadge(employee.onboardingStatus ?? undefined)}
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground pt-1">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  <div className="truncate max-w-[200px] min-w-0">
-                    <span className="truncate max-w-[120px]">{employee.email || "—"}</span>
-                  </div>
-                </span>
-                <span className="flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" />
-                  ${employee.hourlyRate || "0"}/hr
-                </span>
-                {managerMap[employee.id] && (
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`text-reports-to-${employee.id}`}>
-                    <Users className="h-3 w-3 shrink-0" />
-                    Reports to: <div className="truncate max-w-[180px] min-w-0 inline-block align-bottom"><span className="font-medium truncate max-w-[90px]">{managerMap[employee.id]}</span></div>
-                  </span>
-                )}
+                {/* Chevron — navigation indicator */}
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
               </div>
             </div>
           </div>
-          {/* Desktop only: Show action buttons (mobile uses 3-dot menu) */}
-          {!isMobile && employee.onboardingStatus === 'pending_review' && (
-            <Button
-              className="w-full mt-2 bg-orange-600 hover:bg-orange-700"
-              size="sm"
-              onClick={() => {
-                setSelectedEmployee(employee);
-                setApprovalPayRate(employee.hourlyRate || "");
-                setIsApprovalDialogOpen(true);
-              }}
-              disabled={isAnyMutationPending}
-              data-testid={`button-approve-${employee.id}`}
-            >
-              {approveMutation.isPending ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-2" />}
-              Approve & Set Pay Rate
-            </Button>
-          )}
-          {canManage && !isMobile && employee.onboardingStatus !== 'completed' && employee.onboardingStatus !== 'pending_review' && employee.id !== user?.employeeId && !employee.userId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={() => {
-                setSelectedEmployee(employee);
-                setIsInviteDialogOpen(true);
-              }}
-              disabled={isAnyMutationPending}
-              data-testid={`button-invite-${employee.id}`}
-            >
-              {inviteMutation.isPending ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Send className="h-3 w-3 mr-2" />}
-              Send Onboarding Invite
-            </Button>
-          )}
         </CardContent>
       </Card>
     );
@@ -411,7 +376,6 @@ export default function Employees() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(() => {
     const employeeId = new URLSearchParams(window.location.search).get('employee');
     if (employeeId && employees.length > 0) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return employees.find(e => e.id === employeeId) || null;
     }
     return null;
@@ -454,7 +418,6 @@ export default function Employees() {
     payType: "hourly", // hourly, salary, commission, contractor
     payFrequency: "biweekly", // weekly, biweekly, semimonthly, monthly
     workspaceRole: "staff", // Default to staff role
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformRole: "", // Empty = no platform role
     isArmed: false,
     workerType: "employee" as "employee" | "contractor",
@@ -529,7 +492,7 @@ export default function Employees() {
   }, [isError, error, toast, refetch]);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiPost('employees.create', { ...data, workspaceId }),
+    mutationFn: (data) => apiPost('employees.create', { ...data, workspaceId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/employees', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/stats'] });
@@ -551,7 +514,6 @@ export default function Employees() {
         payType: "hourly",
         payFrequency: "biweekly",
         workspaceRole: "staff",
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformRole: "",
         isArmed: false,
         workerType: "employee" as "employee" | "contractor",
@@ -598,7 +560,6 @@ export default function Employees() {
 
   const handleSubmit = () => {
     // Validate email requirement for platform roles
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (formData.platformRole && !formData.email) {
       toast({
         title: "Email Required",
@@ -611,7 +572,6 @@ export default function Employees() {
     const validatedData = insertEmployeeSchema.parse({
       ...formData,
       hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate as string).toString() : undefined,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformRole: formData.platformRole || undefined,
       workspaceId: workspaceId!,
       isActive: true,
@@ -718,9 +678,7 @@ export default function Employees() {
   };
 
   const employeeFilterConfigs: FilterConfig[] = useMemo(() => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const roles = [...new Set((employees || []).map(e => e.role).filter(Boolean))] as string[];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const wsRoles = [...new Set((employees || []).map(e => e.workspaceRole).filter(Boolean))] as string[];
     return [
       {
@@ -765,7 +723,6 @@ export default function Employees() {
   ];
 
   const filteredEmployees = useMemo(() => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return (employees || []).filter(emp => {
       const matchesSearch = !searchQuery || `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesRole = !empFilterValues.role || empFilterValues.role === "__all__" || emp.role === empFilterValues.role;
@@ -805,7 +762,6 @@ export default function Employees() {
     });
   }, [paginatedEmployees, empGroupBy]);
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const pendingApprovals = employees?.filter(emp => emp.onboardingStatus === 'pending_review') || [];
 
   const handleRefresh = async () => {
@@ -886,7 +842,7 @@ export default function Employees() {
     });
   };
 
-  const selectAll = () => setSelectedIds(new Set(employees.map((e: any) => e.id)));
+  const selectAll = () => setSelectedIds(new Set(employees.map((e) => e.id)));
   const deselectAll = () => setSelectedIds(new Set());
 
   const bulkNotifyMutation = useMutation({
@@ -921,11 +877,11 @@ export default function Employees() {
   };
 
   const handleExportCSV = () => {
-    const selectedEmployees = employees.filter((e: any) => selectedIds.has(e.id));
+    const selectedEmployees = employees.filter((e) => selectedIds.has(e.id));
     const headers = ["First Name", "Last Name", "Email", "Phone", "Role", "Hourly Rate"];
     const csvRows = [
       headers.join(","),
-      ...selectedEmployees.map((e: any) => [
+      ...selectedEmployees.map((e) => [
         e.firstName,
         e.lastName,
         e.email,
@@ -1090,7 +1046,6 @@ export default function Employees() {
                         id="email" 
                         type="email"
                         placeholder="john.doe@example.com" 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         data-testid="input-employee-email"
@@ -1114,7 +1069,6 @@ export default function Employees() {
                       <Input 
                         id="role" 
                         placeholder="e.g. Developer" 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                         data-testid="input-employee-role"
@@ -1124,9 +1078,7 @@ export default function Employees() {
                     <div className="space-y-1.5">
                       <Label htmlFor="workspaceRole" className="text-xs">Organization Role <span className="text-destructive" aria-hidden="true">*</span></Label>
                       <Select 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         value={formData.workspaceRole} 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         onValueChange={(val) => setFormData({ ...formData, workspaceRole: val })}
                       >
                         <SelectTrigger id="workspaceRole" className="h-9 text-sm" data-testid="select-workspace-role">
@@ -1147,7 +1099,6 @@ export default function Employees() {
                         id="hourlyRate" 
                         type="number"
                         placeholder="0.00" 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         value={formData.hourlyRate}
                         onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
                         data-testid="input-employee-rate"
@@ -1157,7 +1108,6 @@ export default function Employees() {
                     <div className="space-y-1.5">
                       <Label htmlFor="payFrequency" className="text-xs">Pay Frequency</Label>
                       <Select 
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         value={formData.payFrequency} 
                         onValueChange={(val) => setFormData({ ...formData, payFrequency: val })}
                       >
@@ -1293,7 +1243,16 @@ export default function Employees() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-0 md:space-y-6">
+            {/* Mobile contact-list count header */}
+            {isMobile && (
+              <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+                <span className="text-sm font-semibold text-foreground">
+                  {filteredEmployees.length} Employee{filteredEmployees.length !== 1 ? 's' : ''}
+                </span>
+                <span className="text-xs text-muted-foreground">All employees</span>
+              </div>
+            )}
             {/* Header with Sorting */}
             {!isSimpleMode && !isMobile && (
               <div className="grid grid-cols-[1fr_200px_150px_100px_120px_48px] gap-4 px-6 py-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
@@ -1321,7 +1280,7 @@ export default function Employees() {
                 <div className="text-right flex items-center justify-end">Actions</div>
               </div>
             )}
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mobile-cols-1 overflow-x-auto">
+            <div className="flex flex-col md:grid md:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
               {employeesToDisplay.map((employee: Employee) => {
                 const employeeCard = (
                   <EmployeeCard

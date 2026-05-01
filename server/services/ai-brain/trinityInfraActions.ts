@@ -9,11 +9,11 @@ import { quickbooksSyncReceipts } from '@shared/schema/domains/billing/index';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityInfraActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity action: ${actionId}`,
     requiredRoles: [],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -27,7 +27,7 @@ function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHa
           data,
           executionTimeMs: Date.now() - start,
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return {
           success: false,
           actionId,
@@ -86,7 +86,7 @@ export function registerInfraActions() {
     const { quickbooksSyncService } = await import('../partners/quickbooksSyncService');
     const queue = await quickbooksSyncService.getManualReviewQueue(workspaceId, status);
     return {
-      conflicts: queue.map((item: any) => ({
+      conflicts: queue.map((item: unknown) => ({
         id: item.id,
         type: item.entityType,
         description: item.reason,
@@ -178,7 +178,7 @@ export function registerInfraActions() {
         );
         qbEntityId = result.invoiceId;
         syncSuccess = true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         syncError = err?.message || 'QB push failed';
       }
     } else {
@@ -237,7 +237,7 @@ export function registerInfraActions() {
       : await db.select().from(payrollRuns)
           .where(and(
             eq(payrollRuns.workspaceId, workspaceId),
-            inArray(payrollRuns.status as any, ['approved', 'completed', 'paid'])
+            inArray(payrollRuns.status, ['approved', 'completed', 'paid'])
           ))
           .orderBy(desc(payrollRuns.createdAt))
           .limit(1)
@@ -281,7 +281,7 @@ export function registerInfraActions() {
         const receipt = await quickbooksReceiptService.createPayrollReceipt({
           workspaceId,
           payrollRunId: run.id,
-          entries: lines.map((line: any) => ({
+          entries: lines.map((line: unknown) => ({
             id: line.id,
             employeeName: line.employeeName || `Employee ${line.employeeId}`,
             hours: parseFloat(line.regularHours || '0') + parseFloat(line.overtimeHours || '0'),
@@ -292,7 +292,7 @@ export function registerInfraActions() {
         });
         qbEntityId = receipt.receiptId;
         syncSuccess = true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         syncError = err?.message || 'QB payroll sync failed';
       }
     } else {
@@ -350,7 +350,6 @@ export function registerInfraActions() {
       FROM invoices
       WHERE workspace_id = $1
     `, [workspaceId]);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const balance = balanceQuery[0];
 
     // Recent QB sync receipts
@@ -368,7 +367,6 @@ export function registerInfraActions() {
       `SELECT status, updated_at FROM partner_connections WHERE workspace_id=$1 AND partner_type='quickbooks' ORDER BY updated_at DESC LIMIT 1`,
       [workspaceId]
     );
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const qbStatus = connCheck[0]?.status || 'not_connected';
 
     return {

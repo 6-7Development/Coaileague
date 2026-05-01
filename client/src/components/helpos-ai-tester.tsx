@@ -47,7 +47,7 @@ export function CoAIleagueAiTester() {
         description: "Trinity is ready",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "❌ Failed to Switch Workspace",
         description: error.message || "Please try again",
@@ -67,7 +67,6 @@ export function CoAIleagueAiTester() {
       !switchWorkspaceMutation.isPending
     ) {
       const soleWorkspace = workspaces[0];
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       switchWorkspaceMutation.mutate(soleWorkspace.id);
     }
   }, [open, user?.currentWorkspaceId, workspaces]);
@@ -89,14 +88,14 @@ export function CoAIleagueAiTester() {
       });
       return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setAiResponse(data.message || "No response from AI");
       toast({
         title: "Trinity Active",
         description: "Intelligent automation system responding",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "❌ Trinity™ Error",
         description: error.message || "Failed to get AI response",
@@ -116,7 +115,7 @@ export function CoAIleagueAiTester() {
       <UniversalModal open={open} onOpenChange={setOpen}>
         <UniversalModalTrigger asChild>
           <Button
-            size="icon"
+            size="icon" aria-label="Test Helpos Ai"
             className="fixed bottom-20 right-6 z-50 h-14 w-14 rounded-full shadow-sm"
             style={{
               background: "linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)",
@@ -156,7 +155,7 @@ export function CoAIleagueAiTester() {
                       <SelectValue placeholder="Choose a workspace..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {workspaces.map((ws: any) => (
+                      {workspaces.map((ws) => (
                         <SelectItem key={ws.id} value={ws.id}>
                           {ws.name || ws.id}
                         </SelectItem>
@@ -220,7 +219,7 @@ export function CoAIleagueAiTester() {
                 !message.trim() || 
                 testAiMutation.isPending || 
                 switchWorkspaceMutation.isPending ||
-                (!user?.currentWorkspaceId && (workspaces as any[]).length > 1)
+                (!user?.currentWorkspaceId && (workspaces as unknown[]).length > 1)
               }
               style={{
                 background: "linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)",

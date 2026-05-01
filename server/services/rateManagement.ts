@@ -176,7 +176,7 @@ export async function verifyRateCompleteness(workspaceId: string) {
       (SELECT default_billable_rate FROM workspaces WHERE id = ${workspaceId}) as workspace_default_billable
   `);
 
-  const rows = result as any;
+  const rows = result as unknown;
   const stats = Array.isArray(rows) ? rows[0] : (rows?.rows ? rows.rows[0] : rows);
 
   const totalEmployees = Number(stats.total_employees);
@@ -221,7 +221,7 @@ export async function updateEmployeeRate(employeeId: string, hourlyRate: number,
       workspaceId: workspaceId || employee.workspaceId || 'system',
       userId: changedBy || 'system',
       userEmail: changedBy || 'system',
-      action: 'employee_pay_rate_changed' as any,
+      action: 'employee_pay_rate_changed',
       entityType: 'employee',
       entityId: employeeId,
       changes: {

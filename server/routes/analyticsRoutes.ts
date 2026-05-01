@@ -39,14 +39,14 @@ const ANALYTICS_TIER_OVERRIDES: Record<string, SubscriptionTier> = {
 };
 const DEFAULT_ANALYTICS_TIER: SubscriptionTier = 'professional';
 
-router.use((req: any, res: any, next: any) => {
+router.use((req: AuthenticatedRequest, res: unknown, next: unknown) => {
   const path = req.path;
   const requiredTier: SubscriptionTier = ANALYTICS_TIER_OVERRIDES[path] ?? DEFAULT_ANALYTICS_TIER;
   return requirePlan(requiredTier)(req, res, next);
 });
 
 // GET /api/analytics/stats — dashboard summary stats
-router.get("/stats", async (req: any, res) => {
+router.get("/stats", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId as string | undefined;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -181,18 +181,18 @@ router.get("/stats", async (req: any, res) => {
         ZERO_AUTOMATION),
     ]);
 
-    const totalWorkspaces = parseInt(String((workspacesResult as any)?.[0]?.count ?? "0"));
-    const activeEmployees = parseInt(String((employeesResult as any)?.[0]?.count ?? "0"));
-    const activeClients = parseInt(String((clientsResult as any)?.[0]?.count ?? "0"));
-    const upcomingShifts = parseInt(String((shiftsResult as any)?.[0]?.count ?? (shiftsResult as any)?.rows?.[0]?.count ?? "0"));
-    const openTickets = parseInt((ticketsResult as any)?.rows?.[0]?.open_tickets ?? "0");
-    const unresolvedEscalations = parseInt((ticketsResult as any)?.rows?.[0]?.escalations ?? (ticketsResult as any)?.[0]?.escalations ?? "0");
-    const currentRevenue = parseFloat((revenueResult as any)?.rows?.[0]?.current_month ?? (revenueResult as any)?.[0]?.currentMonth ?? "0");
-    const prevRevenue = parseFloat((revenueResult as any)?.rows?.[0]?.prev_month ?? (revenueResult as any)?.[0]?.prevMonth ?? "0");
+    const totalWorkspaces = parseInt(String((workspacesResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const activeEmployees = parseInt(String((employeesResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const activeClients = parseInt(String((clientsResult as {count?: string}[] | undefined)?.[0]?.count ?? "0"));
+    const upcomingShifts = parseInt(String((shiftsResult as Record<string,string>[] | undefined)?.[0]?.[count] ?? (shiftsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[count] ?? "0"));
+    const openTickets = parseInt((ticketsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[open_tickets] ?? "0");
+    const unresolvedEscalations = parseInt((ticketsResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[escalations] ?? (ticketsResult as Record<string,string>[] | undefined)?.[0]?.[escalations] ?? "0");
+    const currentRevenue = parseFloat((revenueResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[current_month] ?? (revenueResult as Record<string,string>[] | undefined)?.[0]?.[currentMonth] ?? "0");
+    const prevRevenue = parseFloat((revenueResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[prev_month] ?? (revenueResult as Record<string,string>[] | undefined)?.[0]?.[prevMonth] ?? "0");
     const revenueDelta = currentRevenue - prevRevenue;
 
-    const totalRuns = parseInt((automationResult as any)?.rows?.[0]?.total_runs ?? "0");
-    const successes = parseInt((automationResult as any)?.rows?.[0]?.successes ?? "0");
+    const totalRuns = parseInt((automationResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[total_runs] ?? "0");
+    const successes = parseInt((automationResult as {rows?: Record<string,string>[]} | undefined)?.rows?.[0]?.[successes] ?? "0");
     const successRate = totalRuns > 0 ? Math.round((successes / totalRuns) * 100) : 0;
     // Rough estimation: each automation run saves ~2 minutes of manual work
     const hoursSaved = Math.round((totalRuns * 2) / 60);
@@ -229,7 +229,7 @@ router.get("/stats", async (req: any, res) => {
       }
     }
 
-    const statsPayload: Record<string, any> = {
+    const statsPayload: Record<string, unknown> = {
       summary: {
         totalWorkspaces,
         totalCustomers: activeClients,
@@ -297,7 +297,7 @@ router.get("/stats", async (req: any, res) => {
 
     res.json(statsPayload);
   } catch (error: unknown) {
-    const err = error as any;
+    const err = error as unknown;
     log.error("[analytics/stats] error:", {
       message: err?.message,
       code: err?.code,
@@ -321,7 +321,6 @@ router.get("/incident-heatmap", async (req, res) => {
     // In our schema, incident_reports doesn't have lat/lng, so we might need to derive it from site_id
     // For now, let's assume we want a heatmap of incidents by site location
     // Converted to Drizzle ORM: GROUP BY with multiple tables → select({ ... }) + from().join().groupBy()
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { rows } = await db.select({
       latitude: sql<string>`${sites.geofenceLat}`,
       longitude: sql<string>`${sites.geofenceLng}`,
@@ -339,7 +338,6 @@ router.get("/incident-heatmap", async (req, res) => {
     .groupBy(sites.geofenceLat, sites.geofenceLng, incidentReports.incidentType, incidentReports.severity);
 
     // Format for heatmap layer: [[lat, lng, weight], ...]
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const heatmapData = rows.map(r => [
       parseFloat(r.latitude || "0"),
       parseFloat(r.longitude || "0"),
@@ -356,7 +354,7 @@ router.get("/incident-heatmap", async (req, res) => {
   }
 });
 
-router.get("/client-profitability", async (req: any, res) => {
+router.get("/client-profitability", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = (req.workspaceId || req.user?.workspaceId) as string | undefined;
     if (!workspaceId) {
@@ -367,7 +365,7 @@ router.get("/client-profitability", async (req: any, res) => {
     const dateTo = req.query.dateTo as string | undefined;
 
     let dateFilter = "";
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let paramIdx = 2;
 
     if (dateFrom) {
@@ -410,7 +408,7 @@ router.get("/client-profitability", async (req: any, res) => {
     .orderBy(sql`COALESCE(SUM(${timeEntries.billableAmount}), 0) DESC`);
 
     let invoiceDateFilter = "";
-    const invoiceParams: any[] = [workspaceId];
+    const invoiceParams: unknown[] = [workspaceId];
     let invIdx = 2;
     if (dateFrom) {
       invoiceDateFilter += ` AND i.issue_date >= $${invIdx}::timestamp`;
@@ -433,9 +431,7 @@ router.get("/client-profitability", async (req: any, res) => {
     .from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       dateFrom ? gte(invoices.issueDate, dateFrom) : undefined,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       dateTo ? lte(invoices.issueDate, dateTo) : undefined
     ))
     .groupBy(invoices.clientId);
@@ -504,7 +500,7 @@ router.get("/client-profitability", async (req: any, res) => {
   }
 });
 
-router.get("/turnover", async (req: any, res) => {
+router.get("/turnover", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = (req.workspaceId || req.user?.workspaceId) as string | undefined;
     if (!workspaceId) {
@@ -549,7 +545,6 @@ router.get("/turnover", async (req: any, res) => {
         eq(employees.workspaceId, workspaceId),
         eq(employees.isActive, false),
         sql`${employees.terminationDate} IS NOT NULL`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(employees.terminationDate, cutoff.toISOString())
       ))
       .orderBy(sql`${employees.terminationDate} DESC`)
@@ -594,38 +589,31 @@ router.get("/turnover", async (req: any, res) => {
         eq(employees.workspaceId, workspaceId),
         eq(employees.isActive, false),
         sql`${employees.terminationDate} IS NOT NULL`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(employees.terminationDate, cutoff.toISOString())
       ))
       .groupBy(sql`TO_CHAR(${employees.terminationDate}, 'YYYY-MM')`)
       .orderBy(sql`month ASC`)
     ]);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const activeCount = parseInt(summaryResult.rows[0]?.active_count ?? "0");
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const terminatedCount = parseInt(summaryResult.rows[0]?.terminated_count ?? "0");
     const avgHeadcount = activeCount + (terminatedCount / 2);
     const annualizedRate = avgHeadcount > 0
       ? Math.round(((terminatedCount / (months / 12)) / avgHeadcount) * 100 * 10) / 10
       : 0;
 
-    const avgActiveTenureDays = parseFloat(String((tenureResult as any)[0]?.avgActiveTenureDays ?? "0"));
-    const avgTermedTenureDays = parseFloat(String((tenureResult as any)[0]?.avgTermedTenureDays ?? "0"));
-    const medianTenureDays = parseFloat(String((tenureResult as any)[0]?.medianTenureDays ?? "0"));
+    const avgActiveTenureDays = parseFloat(String((tenureResult as unknown)[0]?.avgActiveTenureDays ?? "0"));
+    const avgTermedTenureDays = parseFloat(String((tenureResult as unknown)[0]?.avgTermedTenureDays ?? "0"));
+    const medianTenureDays = parseFloat(String((tenureResult as unknown)[0]?.medianTenureDays ?? "0"));
 
     const costPerHireEstimate = 4500;
     const estimatedTurnoverCost = terminatedCount * costPerHireEstimate;
 
     const byRole = byRoleResult.rows.map(r => ({
       role: r.role,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       active: parseInt(r.active || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       terminated: parseInt(r.terminated || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       rate: (parseInt(r.active || "0") + parseInt(r.terminated || "0")) > 0
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? Math.round((parseInt(r.terminated || "0") / (parseInt(r.active || "0") + parseInt(r.terminated || "0") / 2)) * 100 * 10) / 10
         : 0,
     }));
@@ -680,7 +668,7 @@ router.get("/turnover", async (req: any, res) => {
 });
 
 // GET /api/analytics/workforce — workforce metrics summary
-router.get("/workforce", async (req: any, res) => {
+router.get("/workforce", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -717,7 +705,7 @@ router.get("/workforce", async (req: any, res) => {
 });
 
 // GET /api/analytics/financial — financial summary metrics
-router.get("/financial", async (req: any, res) => {
+router.get("/financial", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -733,19 +721,12 @@ router.get("/financial", async (req: any, res) => {
       [workspaceId]
     )).rows;
     res.json({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       totalInvoices: parseInt(invRow?.total_invoices || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       grossRevenue:  parseFloat(invRow?.gross_revenue || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       collected:     parseFloat(invRow?.collected     || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       outstanding:   parseFloat(invRow?.outstanding   || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       overdue:       parseFloat(invRow?.overdue       || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       collectionRate: invRow?.gross_revenue > 0
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? Math.round((parseFloat(invRow.collected) / parseFloat(invRow.gross_revenue)) * 100)
         : 0,
     });
@@ -756,7 +737,7 @@ router.get("/financial", async (req: any, res) => {
 });
 
 // GET /api/analytics/predictive — predictive risk and trend signals
-router.get("/predictive", async (req: any, res) => {
+router.get("/predictive", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -784,11 +765,8 @@ router.get("/predictive", async (req: any, res) => {
          AND occurred_at >= NOW() - INTERVAL '30 days'`,
       [workspaceId]
     )).rows;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const noShows      = parseInt(noShowRow?.no_shows        || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const overdues     = parseInt(overdueRow?.overdue_count  || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const incidents    = parseInt(incidentRow?.recent_incidents || '0');
     const riskScore    = Math.min(100, (noShows * 5) + (overdues * 10) + (incidents * 3));
     res.json({
@@ -810,7 +788,7 @@ router.get("/predictive", async (req: any, res) => {
 });
 
 // GET /api/analytics/forecast — 6-month historical + 3-month projected revenue and payroll
-router.get("/forecast", async (req: any, res) => {
+router.get("/forecast", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -846,11 +824,9 @@ router.get("/forecast", async (req: any, res) => {
     )).rows;
 
     const revenueByMonth: Record<string, number> = {};
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     for (const r of revenueRows) revenueByMonth[r.month] = parseFloat(r.revenue || '0');
 
     const laborByMonth: Record<string, number> = {};
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     for (const r of payrollRows) laborByMonth[r.month] = parseFloat(r.labor_cost || '0');
 
     const allMonths = Array.from(new Set([...Object.keys(revenueByMonth), ...Object.keys(laborByMonth)])).sort();
@@ -918,7 +894,7 @@ function getPeriodDates(period: string): { start: Date; end: Date } {
 }
 
 // GET /api/analytics/dashboard — comprehensive dashboard metrics
-router.get("/dashboard", async (req: any, res) => {
+router.get("/dashboard", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -959,11 +935,8 @@ router.get("/dashboard", async (req: any, res) => {
         [workspaceId, s, e]),
     ]);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const totalHours = parseFloat(hoursRow.rows[0]?.total_hours || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const totalRevenue = parseFloat(revenueRow.rows[0]?.invoiced || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const laborCost = parseFloat(laborRow.rows[0]?.labor_cost || '0');
     const revenuePerHour = totalHours > 0 ? parseFloat((totalRevenue / totalHours).toFixed(2)) : 0;
 
@@ -973,16 +946,12 @@ router.get("/dashboard", async (req: any, res) => {
       laborCost: parseFloat(laborCost.toFixed(2)),
       revenuePerHour,
       utilizationRate: 0,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       activeEmployees: parseInt(activeEmp.rows[0]?.cnt || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       activeClients: parseInt(activeClients.rows[0]?.cnt || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       pendingInvoices: parseInt(invoiceRow.rows[0]?.pending_cnt || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       paidInvoices: parseInt(invoiceRow.rows[0]?.paid_cnt || '0'),
       comparison: { hoursChange: 0, revenueChange: 0, laborCostChange: 0 },
-      trends: trendsRows.rows.map((r: any) => ({
+      trends: trendsRows.rows.map((r: unknown) => ({
         period: new Date(r.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         hours: parseFloat(parseFloat(r.hours).toFixed(1)),
         revenue: 0,
@@ -996,7 +965,7 @@ router.get("/dashboard", async (req: any, res) => {
 });
 
 // GET /api/analytics/time-usage — time usage breakdown
-router.get("/time-usage", async (req: any, res) => {
+router.get("/time-usage", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1034,28 +1003,26 @@ router.get("/time-usage", async (req: any, res) => {
         [workspaceId, s, e]),
     ]);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const totalHours = parseFloat(totalRow.rows[0]?.total_hours || '0');
     const dayCount = byDayRows.rows.length || 1;
     res.json({ data: {
       totalHours: parseFloat(totalHours.toFixed(1)),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       overtimeHours: parseFloat(parseFloat(totalRow.rows[0]?.ot_hours || '0').toFixed(1)),
       averageHoursPerDay: parseFloat((totalHours / dayCount).toFixed(1)),
-      byEmployee: byEmpRows.rows.map((r: any) => ({
+      byEmployee: byEmpRows.rows.map((r: unknown) => ({
         employeeId: r.employee_id,
         name: r.name,
         totalHours: parseFloat(parseFloat(r.total_hours).toFixed(1)),
         regularHours: parseFloat(parseFloat(r.regular_hours).toFixed(1)),
         overtimeHours: parseFloat(parseFloat(r.ot_hours).toFixed(1)),
       })),
-      byClient: byClientRows.rows.map((r: any) => ({
+      byClient: byClientRows.rows.map((r: unknown) => ({
         clientId: r.client_id,
         name: r.name,
         totalHours: parseFloat(parseFloat(r.total_hours).toFixed(1)),
         revenue: 0,
       })),
-      byDay: byDayRows.rows.map((r: any) => ({
+      byDay: byDayRows.rows.map((r: unknown) => ({
         date: new Date(r.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         hours: parseFloat(parseFloat(r.hours).toFixed(1)),
         employeeCount: parseInt(r.emp_count),
@@ -1068,7 +1035,7 @@ router.get("/time-usage", async (req: any, res) => {
 });
 
 // GET /api/analytics/scheduling — scheduling metrics
-router.get("/scheduling", async (req: any, res) => {
+router.get("/scheduling", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1101,25 +1068,19 @@ router.get("/scheduling", async (req: any, res) => {
     ]);
 
     const summary = summaryRow.rows[0] || {};
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const total = parseInt(summary.total || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const filled = parseInt(summary.filled || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const completed = parseInt(summary.completed || '0');
     res.json({ data: {
       totalShifts: total,
       completedShifts: completed,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       cancelledShifts: parseInt(summary.cancelled || '0'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       noShows: parseInt(summary.no_shows || '0'),
       fillRate: total > 0 ? parseFloat(((filled / total) * 100).toFixed(1)) : 0,
       coverageRate: total > 0 ? parseFloat(((completed / total) * 100).toFixed(1)) : 0,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       averageShiftDuration: parseFloat(parseFloat(summary.avg_duration || '0').toFixed(1)),
-      byStatus: byStatusRows.rows.map((r: any) => ({ status: r.status, count: parseInt(r.cnt) })),
-      byDay: byDayRows.rows.map((r: any) => ({ day: r.day, scheduled: parseInt(r.scheduled), completed: parseInt(r.completed) })),
+      byStatus: byStatusRows.rows.map((r: unknown) => ({ status: r.status, count: parseInt(r.cnt) })),
+      byDay: byDayRows.rows.map((r: unknown) => ({ day: r.day, scheduled: parseInt(r.scheduled), completed: parseInt(r.completed) })),
     }});
   } catch (err: unknown) {
     log.error('[analytics/scheduling]', (err instanceof Error ? err.message : String(err)));
@@ -1128,7 +1089,7 @@ router.get("/scheduling", async (req: any, res) => {
 });
 
 // GET /api/analytics/revenue — revenue and billing metrics
-router.get("/revenue", async (req: any, res) => {
+router.get("/revenue", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1147,9 +1108,7 @@ router.get("/revenue", async (req: any, res) => {
       .from(invoices)
       .where(and(
         eq(invoices.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(invoices.createdAt, s),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(invoices.createdAt, e)
       )),
       // Converted to Drizzle ORM: GROUP BY with multiple tables → select({ ... }).from().join().groupBy()
@@ -1163,9 +1122,7 @@ router.get("/revenue", async (req: any, res) => {
       .leftJoin(clients, eq(clients.id, invoices.clientId))
       .where(and(
         eq(invoices.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(invoices.createdAt, s),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(invoices.createdAt, e),
         sql`${invoices.clientId} IS NOT NULL`
       ))
@@ -1181,16 +1138,14 @@ router.get("/revenue", async (req: any, res) => {
       .from(invoices)
       .where(and(
         eq(invoices.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(invoices.createdAt, s),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(invoices.createdAt, e)
       ))
       .groupBy(sql`date_trunc('month',${invoices.createdAt})`)
       .orderBy(sql`date_trunc('month',${invoices.createdAt})`),
     ]);
 
-    const s2 = (summaryRow as any)[0] || {};
+    const s2 = (summaryRow as unknown)[0] || {};
     const invoiced = parseFloat(String(s2.invoiced || '0'));
     const paid = parseFloat(String(s2.paid || '0'));
     const cnt = parseInt(String(s2.cnt || '0'));
@@ -1203,13 +1158,13 @@ router.get("/revenue", async (req: any, res) => {
       collectionRate: invoiced > 0 ? parseFloat(((paid / invoiced) * 100).toFixed(1)) : 0,
       platformFees: 0,
       netRevenue: parseFloat(paid.toFixed(2)),
-      byClient: byClientRows.map((r: any) => ({
+      byClient: byClientRows.map((r: unknown) => ({
         clientId: r.clientId,
         name: r.name,
         invoiced: parseFloat(parseFloat(String(r.invoiced)).toFixed(2)),
         paid: parseFloat(parseFloat(String(r.paid)).toFixed(2)),
       })),
-      byMonth: byMonthRows.map((r: any) => ({
+      byMonth: byMonthRows.map((r: unknown) => ({
         month: r.month,
         invoiced: parseFloat(parseFloat(String(r.invoiced)).toFixed(2)),
         paid: parseFloat(parseFloat(String(r.paid)).toFixed(2)),
@@ -1222,7 +1177,7 @@ router.get("/revenue", async (req: any, res) => {
 });
 
 // GET /api/analytics/employee-performance — employee performance metrics
-router.get("/employee-performance", async (req: any, res) => {
+router.get("/employee-performance", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1261,7 +1216,7 @@ router.get("/employee-performance", async (req: any, res) => {
     .orderBy(sql`completed_shifts DESC`)
     .limit(50);
 
-    const employeeStats = performanceRows.map((r: any) => {
+    const employeeStats = performanceRows.map((r: unknown) => {
       const total = parseInt(r.totalShifts);
       const completed = parseInt(r.completedShifts);
       const noShows = parseInt(r.noShows);
@@ -1280,7 +1235,7 @@ router.get("/employee-performance", async (req: any, res) => {
     });
 
     const avgAttendance = employeeStats.length > 0
-      ? parseFloat((employeeStats.reduce((a: number, e: any) => a + e.attendanceRate, 0) / employeeStats.length).toFixed(1))
+      ? parseFloat((employeeStats.reduce((a: number, e: unknown) => a + e.attendanceRate, 0) / employeeStats.length).toFixed(1))
       : 0;
 
     res.json({ data: {
@@ -1296,7 +1251,7 @@ router.get("/employee-performance", async (req: any, res) => {
 });
 
 // GET /api/analytics/insights — AI-generated insights and anomalies
-router.get("/insights", async (req: any, res) => {
+router.get("/insights", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1312,9 +1267,7 @@ router.get("/insights", async (req: any, res) => {
       .from(timeEntries)
       .where(and(
         eq(timeEntries.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(timeEntries.clockIn, s),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(timeEntries.clockIn, e),
         sql`${timeEntries.clockIn} IS NOT NULL`
       )),
@@ -1331,9 +1284,7 @@ router.get("/insights", async (req: any, res) => {
       .from(invoices)
       .where(and(
         eq(invoices.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(invoices.createdAt, s),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(invoices.createdAt, e)
       )),
       // CATEGORY C — Raw SQL retained: COUNT( | Tables: employees | Verified: 2026-03-23
@@ -1342,20 +1293,17 @@ router.get("/insights", async (req: any, res) => {
 
     const insights: string[] = [];
     const recommendations: string[] = [];
-    const anomalies: any[] = [];
-    const forecasts: any[] = [];
+    const anomalies: (string | number | boolean | null)[] = [];
+    const forecasts: (string | number | boolean | null)[] = [];
 
-    const totalHours = parseFloat(String(((hoursRow as any)[0]?.total ?? (hoursRow as any).rows?.[0]?.total) || '0'));
-    const otHours = parseFloat(String(((hoursRow as any)[0]?.ot ?? (hoursRow as any).rows?.[0]?.ot) || '0'));
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const totalHours = parseFloat(String(((hoursRow as unknown)[0]?.total ?? (hoursRow as unknown).rows?.[0]?.total) || '0'));
+    const otHours = parseFloat(String(((hoursRow as unknown)[0]?.ot ?? (hoursRow as unknown).rows?.[0]?.ot) || '0'));
     const totalShifts = parseInt(shiftsRow.rows[0]?.total || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const noShows = parseInt(shiftsRow.rows[0]?.no_shows || '0');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const cancelled = parseInt(shiftsRow.rows[0]?.cancelled || '0');
-    const overdue = parseFloat(String(((invoiceRow as any)[0]?.overdue ?? (invoiceRow as any).rows?.[0]?.overdue) || '0'));
-    const totalInvoiced = parseFloat(String(((invoiceRow as any)[0]?.total ?? (invoiceRow as any).rows?.[0]?.total) || '0'));
-    const employeesCount = parseInt(String((empRow as any)[0]?.count ?? (empRow as any).rows?.[0]?.count ?? "0"));
+    const overdue = parseFloat(String(((invoiceRow as unknown)[0]?.overdue ?? (invoiceRow as unknown).rows?.[0]?.overdue) || '0'));
+    const totalInvoiced = parseFloat(String(((invoiceRow as unknown)[0]?.total ?? (invoiceRow as unknown).rows?.[0]?.total) || '0'));
+    const employeesCount = parseInt(String((empRow as unknown)[0]?.count ?? (empRow as unknown).rows?.[0]?.count ?? "0"));
 
     if (otHours > 0) {
       const otPct = totalHours > 0 ? (otHours / totalHours) * 100 : 0;
@@ -1400,7 +1348,7 @@ router.get("/insights", async (req: any, res) => {
 });
 
 // GET /api/analytics/platform/credit-report — cross-workspace AI credit report for platform staff
-router.get("/platform/credit-report", requirePlatformStaff, async (req: any, res) => {
+router.get("/platform/credit-report", requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const platformRole = req.user?.platformRole as string | undefined;
     const allowedRoles = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'compliance_officer'];
@@ -1471,10 +1419,10 @@ router.get("/platform/credit-report", requirePlatformStaff, async (req: any, res
       success: true,
       data: {
         platformTotals: {
-          totalTokensUsed: parseInt(String((totalsRes as any).rows?.[0]?.total_tokens_used || '0')),
-          totalTransactions: parseInt(String((totalsRes as any).rows?.[0]?.total_transactions || '0')),
-          activeWorkspaces: parseInt(String((totalsRes as any).rows?.[0]?.active_workspaces || '0')),
-          totalWorkspaces: parseInt(String((totalsRes as any).rows?.[0]?.total_workspaces || '0')),
+          totalTokensUsed: parseInt(String((totalsRes as unknown).rows?.[0]?.total_tokens_used || '0')),
+          totalTransactions: parseInt(String((totalsRes as unknown).rows?.[0]?.total_transactions || '0')),
+          activeWorkspaces: parseInt(String((totalsRes as unknown).rows?.[0]?.active_workspaces || '0')),
+          totalWorkspaces: parseInt(String((totalsRes as unknown).rows?.[0]?.total_workspaces || '0')),
         },
         usageByWorkspace: byWorkspaceRes.map(r => ({
           workspaceId: r.workspaceId,
@@ -1502,7 +1450,7 @@ router.get("/platform/credit-report", requirePlatformStaff, async (req: any, res
 });
 
 // GET /api/analytics/heatmap — staffing intensity grid (7 days × 24 hours)
-router.get("/heatmap", async (req: any, res) => {
+router.get("/heatmap", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId as string | undefined;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1534,17 +1482,17 @@ router.get("/heatmap", async (req: any, res) => {
     .groupBy(sql`day_of_week`, sql`hour_of_day`);
 
     // Build lookup map
-    const map: Record<string, any> = {};
+    const map: Record<string, unknown> = {};
     for (const r of heatmapRows) map[`${r.dayOfWeek}_${r.hourOfDay}`] = r;
 
     // Build 7×24 grid
-    const grid: any[][] = [];
+    const grid: unknown[][] = [];
     let maxValue = 0;
     let minValue = Infinity;
     let totalShifts = 0;
 
     for (let d = 0; d < 7; d++) {
-      const dayRow: any[] = [];
+      const dayRow: (string | number | boolean | null)[] = [];
       for (let h = 0; h < 24; h++) {
         const key = `${d}_${h}`;
         const r = map[key];
@@ -1591,7 +1539,7 @@ router.get("/heatmap", async (req: any, res) => {
 });
 
 // GET /api/analytics/heatmap/ai-analysis — Trinity AI heatmap insight analysis
-router.get("/heatmap/ai-analysis", async (req: any, res) => {
+router.get("/heatmap/ai-analysis", async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId as string | undefined;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
@@ -1624,7 +1572,7 @@ router.get("/heatmap/ai-analysis", async (req: any, res) => {
       const rows = shiftsRes.rows;
       const peakDay = rows[0] ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseInt(rows[0].day_of_week)] : 'N/A';
       const peakHour = rows[0] ? `${rows[0].hour_of_day}:00` : 'N/A';
-      const totalShifts = rows.reduce((s: number, r: any) => s + parseInt(r.shift_count || '0'), 0);
+      const totalShifts = rows.reduce((s: number, r: unknown) => s + parseInt(r.shift_count || '0'), 0);
 
       res.json({
         success: true,

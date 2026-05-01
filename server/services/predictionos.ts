@@ -208,7 +208,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
 
       log.info(`[PredictionOS] Billed ${result.tokensUsed} tokens to workspace ${wsId}`);
       
-      const aiResponse = JSON.parse(result.content || "{}");
+      const aiResponse: unknown = JSON.parse(result.content || "{}");
       
       return {
         riskScore: aiResponse.riskScore || 0,
@@ -218,7 +218,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
         recommendations: aiResponse.recommendations || "No recommendations available",
         confidenceScore: aiResponse.confidenceScore || 0,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Handle specific OpenAI errors
       if (error.code === 'insufficient_quota') {
         log.error("PredictionOS™: OpenAI quota exceeded. Using fallback analysis.");
@@ -247,7 +247,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   static async analyzeCostVariance(
     workspaceId: string,
     scheduleDate: Date,
-    proposedShifts: any[],
+    proposedShifts: unknown[],
     userId?: string
   ): Promise<{
     budgetedCost: number;
@@ -261,7 +261,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   }> {
     // Calculate budgeted cost (based on regular rates)
     let budgetedCost = 0;
-    const shiftAnalysis: any[] = [];
+    const shiftAnalysis: (string | number | boolean | null)[] = [];
     
     for (const shift of proposedShifts) {
       const employee = await db
@@ -374,7 +374,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
 
       log.info(`[PredictionOS] Billed ${costResult.tokensUsed} tokens to workspace ${wsId}`);
       
-      const aiResponse = JSON.parse(costResult.content || "{}");
+      const aiResponse: unknown = JSON.parse(costResult.content || "{}");
       
       const predictedCost = aiResponse.predictedCost || budgetedCost;
       const variancePercentage = aiResponse.variancePercentage || 0;
@@ -557,7 +557,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
   
   private static fallbackCostVarianceAnalysis(
     budgetedCost: number,
-    proposedShifts: any[]
+    proposedShifts: unknown[]
   ): {
     budgetedCost: number;
     predictedCost: number;

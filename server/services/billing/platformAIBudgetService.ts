@@ -237,7 +237,7 @@ class PlatformAIBudgetService {
       });
 
       return summaries;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('Failed to get provider spend summary', { error: (error instanceof Error ? error.message : String(error)) });
       return [];
     }
@@ -273,7 +273,7 @@ class PlatformAIBudgetService {
 
       log.info(`[PlatformAIBudget] Top-off recorded for ${params.provider}: $${(params.amountCents / 100).toFixed(2)} by ${params.performedBy}`);
       return { success: true };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('Failed to record provider top-off', { error: (error instanceof Error ? error.message : String(error)) });
       return { success: false, error: (error instanceof Error ? error.message : String(error)) };
     }
@@ -290,7 +290,7 @@ class PlatformAIBudgetService {
   }): Promise<{ success: boolean; error?: string }> {
     try {
       const updates: string[] = ['updated_at = NOW()'];
-      const values: any[] = [params.provider];
+      const values: unknown[] = [params.provider];
       let paramIdx = 2;
 
       if (params.monthlyBudgetCents !== undefined) {
@@ -313,7 +313,7 @@ class PlatformAIBudgetService {
       );
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return { success: false, error: (error instanceof Error ? error.message : String(error)) };
     }
   }
@@ -369,7 +369,7 @@ class PlatformAIBudgetService {
       WHERE created_at >= NOW() - INTERVAL '7 days'
         AND event_type IN ('workspace_billing_processed', 'middleware_fee_charged', 'seat_overage_charged', 'ai_credit_overage_charged')
       GROUP BY event_type
-    `).catch(() => ({ rows: [] as any[] }));
+    `).catch(() => ({ rows: [] }));
 
     const billingEventMap: Record<string, typeof billingLayerResult.rows[0]> = {};
     for (const row of billingLayerResult.rows) {
@@ -423,7 +423,7 @@ class PlatformAIBudgetService {
           category: 'billing',
           message: `Billing Layer ${layer.layer} (${layer.name}) has ${layer.recentFailureCount} recent failures`,
         });
-        layer.status = 'critical' as any;
+        layer.status = 'critical';
       } else if (layer.recentFailureCount > 0) {
         layer.status = 'warning';
       }

@@ -72,14 +72,14 @@ export interface CreateExecutionParams {
   actionId?: string;
   triggeredBy?: string;
   triggerSource?: 'button_click' | 'scheduled' | 'api' | 'event' | 'ai_brain';
-  inputPayload?: Record<string, any>;
+  inputPayload?: Record<string, unknown>;
   externalSystem?: string;
   requiresVerification?: boolean;
 }
 
 export interface UpdateExecutionParams {
   status?: ExecutionStatus;
-  outputPayload?: Record<string, any>;
+  outputPayload?: Record<string, unknown>;
   workBreakdown?: WorkBreakdown;
   aiSummary?: string;
   externalSyncStatus?: 'pending' | 'synced' | 'failed';
@@ -215,7 +215,6 @@ class AutomationExecutionTrackerService {
           description: isPendingVerification
             ? `Automation action '${execution.actionType}' processed ${params.itemsProcessed ?? 0} items — pending human verification`
             : `Automation action '${execution.actionType}' completed — ${params.itemsProcessed ?? 0} items processed`,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: execution.workspaceId,
           metadata: {
             executionId,
@@ -364,7 +363,6 @@ class AutomationExecutionTrackerService {
         category: 'automation',
         title: 'Automation Output Verified',
         description: `Automation action '${execution.actionType}' verified by ${params.verifiedBy}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: execution.workspaceId,
         metadata: {
           executionId,
@@ -405,7 +403,6 @@ class AutomationExecutionTrackerService {
         category: 'automation',
         title: 'Automation Output Rejected',
         description: `Automation action '${execution.actionType}' rejected by ${params.rejectedBy} — ${params.rejectionReason}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: execution.workspaceId,
         metadata: {
           executionId,
@@ -555,7 +552,7 @@ Return as JSON array: [{ "step": 1, "description": "..." }]`;
         maxOutputTokens: 200,
       });
 
-      const parsed = JSON.parse(result.text || '[]');
+      const parsed: unknown = JSON.parse(result.text || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       log.warn('[AutomationExecutionTracker] Remediation steps generation failed:', error);

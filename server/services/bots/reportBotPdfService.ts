@@ -55,7 +55,7 @@ interface ShiftMessage {
   attachmentUrl: string | null;
   isBot: boolean;
   createdAt: Date;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 interface HourBlock {
@@ -120,12 +120,12 @@ class ReportBotPdfService {
             ? `${emp.firstName} ${emp.lastName}`
             : (emp.firstName || 'Officer');
           officerEmployeeId = emp.id;
-          officerLicenseNumber = (emp as any).licenseNumber || (emp as any).badgeNumber || '';
+          officerLicenseNumber = (emp as EmployeeWithStatus).licenseNumber || (emp as EmployeeWithStatus).badgeNumber || '';
         }
       }
 
-      const siteName = (shift as any).siteName || (shift as any).jobSiteName || (shift as any).title || 'Site';
-      const siteAddress = (shift as any).siteAddress || '';
+      const siteName = (shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).jobSiteName || (shift as Record<string,unknown>).title || 'Site';
+      const siteAddress = (shift as Record<string,unknown>).siteAddress || '';
       const shiftStart = new Date(shift.startTime);
       const shiftEnd = new Date(shift.endTime);
 
@@ -146,7 +146,7 @@ class ReportBotPdfService {
         attachmentUrl: m.attachmentUrl,
         isBot: m.senderType === 'bot' || m.isSystemMessage || false,
         createdAt: new Date(m.createdAt || Date.now()),
-        metadata: (m as any).metadata,
+        metadata: (m as Record<string, unknown>).metadata,
       }));
 
       // ── Quality scan on officer messages ─────────────────────────────────
@@ -243,7 +243,6 @@ class ReportBotPdfService {
           `File: ${fileName}\n\n` +
           `Your supervisor has been notified and can review or send the report to the client.`,
         messageType: 'text',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: { botEvent: 'report_saved', docId, reportId },
       });
 
@@ -251,13 +250,12 @@ class ReportBotPdfService {
       await db.update(chatConversations)
         .set({
           status: 'closed',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ roomStatus: 'completed', reportId, docId })}::jsonb`,
         })
         .where(eq(chatConversations.id, conversationId));
 
       return { success: true, documentId: docId };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[ReportBotPDF] Generation failed:', err);
       return { success: false, error: (err instanceof Error ? err.message : String(err)) };
     }
@@ -268,8 +266,8 @@ class ReportBotPdfService {
     workspaceId: string;
     officerId?: string | null;
     completedAt: Date;
-    scans: Array<any>;
-    checkpoints: Array<any>;
+    scans: Array<unknown>;
+    checkpoints: Array<unknown>;
   }): Promise<string | null> {
     try {
       const [workspace, officer] = await Promise.all([
@@ -301,7 +299,7 @@ class ReportBotPdfService {
       doc.font('Helvetica-Bold').text('Checkpoint Activity');
       doc.moveDown(0.3);
       for (const checkpoint of params.checkpoints) {
-        const scan = params.scans.find((s: any) => s.checkpointId === checkpoint.id);
+        const scan = params.scans.find((s: unknown) => s.checkpointId === checkpoint.id);
         const status = scan ? `Scanned at ${format(new Date(scan.scannedAt), 'HH:mm:ss')}` : 'Not scanned';
         doc.font('Helvetica').fontSize(9).text(`• ${checkpoint.name || checkpoint.id} — ${status}`);
       }
@@ -654,7 +652,6 @@ class ReportBotPdfService {
             userId: mgr.userId,
             type: 'system',
             scope: 'workspace',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             category: 'schedule',
             title: `Shift Report Ready — ${siteName}`,
             idempotencyKey: `system-${Date.now()}-${mgr.userId}`,

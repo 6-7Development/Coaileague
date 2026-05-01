@@ -189,13 +189,12 @@ export class IntelligentSchedulerSkill extends BaseSkill {
           workspaceId: context.workspaceId,
           userId: context.userId || 'ai-brain',
           featureKey: 'ai_shift_matching',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           featureName: 'Intelligent Shift Matching',
           description: `AI shift matching for shift ${params.shiftId.substring(0, 8)} — ${candidates.length} candidates scored`,
           quantity: 1,
         });
         logs.push(`[IntelligentScheduler] Billed 1 × ai_shift_matching credit`);
-      } catch (creditErr: any) {
+      } catch (creditErr : unknown) {
         logs.push(`[IntelligentScheduler] Credit billing failed (non-blocking): ${creditErr.message}`);
       }
 
@@ -218,7 +217,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
           processingTimeMs: Date.now() - startTime,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       logs.push(`[IntelligentScheduler] Error: ${(error instanceof Error ? error.message : String(error))}`);
       return {
         success: false,
@@ -430,24 +429,24 @@ export class IntelligentSchedulerSkill extends BaseSkill {
         const shiftCount = shiftCountByEmployee[emp.id] || 0;
         
         const homeLocation = {
-          lat: parseFloat((emp as any).homeLatitude || (emp as any).latitude || '0') || params.shiftLocation.lat,
-          lng: parseFloat((emp as any).homeLongitude || (emp as any).longitude || '0') || params.shiftLocation.lng,
+          lat: parseFloat((emp as EmployeeWithStatus).homeLatitude || (emp as EmployeeWithStatus).latitude || '0') || params.shiftLocation.lat,
+          lng: parseFloat((emp as EmployeeWithStatus).homeLongitude || (emp as EmployeeWithStatus).longitude || '0') || params.shiftLocation.lng,
         };
 
-        const compositeScore = parseFloat((emp as any).compositeScore || '0');
-        const attendanceVal = parseFloat((emp as any).attendanceRate || '0');
-        const perfRating = parseFloat((emp as any).performanceRating || '0');
+        const compositeScore = parseFloat((emp as EmployeeWithStatus).compositeScore || '0');
+        const attendanceVal = parseFloat((emp as EmployeeWithStatus).attendanceRate || '0');
+        const perfRating = parseFloat((emp as EmployeeWithStatus).performanceRating || '0');
 
         candidates.push({
           employeeId: emp.id,
           employeeName: `${emp.firstName} ${emp.lastName}`,
           reliabilityRating: compositeScore > 0 ? Math.min(1, compositeScore / 100) : (attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : 0.6),
           skills: empSkills,
-          attendanceRate: attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : ((emp as any).status === 'active' ? 0.7 : 0.5),
-          performanceRating: perfRating > 0 ? Math.min(1, perfRating / 5) : ((emp as any).status === 'active' ? 0.6 : 0.4),
+          attendanceRate: attendanceVal > 0 ? Math.min(1, attendanceVal / 100) : ((emp as EmployeeWithStatus).status === 'active' ? 0.7 : 0.5),
+          performanceRating: perfRating > 0 ? Math.min(1, perfRating / 5) : ((emp as EmployeeWithStatus).status === 'active' ? 0.6 : 0.4),
           homeLocation,
           previousShiftsWithClient: shiftCount,
-          avgClientRating: parseFloat((emp as any).qualityScore || '0') > 0 ? Math.min(5, parseFloat((emp as any).qualityScore) / 20) : 3.5,
+          avgClientRating: parseFloat((emp as EmployeeWithStatus).qualityScore || '0') > 0 ? Math.min(5, parseFloat((emp as EmployeeWithStatus).qualityScore) / 20) : 3.5,
           isContractor: false,
         });
       }
@@ -517,7 +516,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
           lng: contractor.homeLongitude ? parseFloat(contractor.homeLongitude) : params.shiftLocation.lng,
         };
 
-        const cRating = parseFloat((contractor as any).reliabilityScore || (contractor as any).rating || '0');
+        const cRating = parseFloat((contractor as Record<string,unknown>).reliabilityScore || (contractor as Record<string,unknown>).rating || '0');
         const normalizedRating = cRating > 10 ? Math.min(1, cRating / 100) : (cRating > 0 ? Math.min(1, cRating / 5) : 0);
 
         candidates.push({
@@ -525,7 +524,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
           employeeName: `${contractor.firstName} ${contractor.lastName}`,
           reliabilityRating: normalizedRating > 0 ? normalizedRating : 0.55,
           skills: contractorSkillSet,
-          attendanceRate: (contractor as any).isActive ? 0.65 : 0.4,
+          attendanceRate: (contractor as Record<string,unknown>).isActive ? 0.65 : 0.4,
           performanceRating: normalizedRating > 0 ? normalizedRating : 0.5,
           homeLocation,
           previousShiftsWithClient: 0,
@@ -541,7 +540,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
     }
   }
 
-  async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
+  async healthCheck(): Promise<{ healthy: boolean; details?: unknown }> {
     return {
       healthy: this.config.enabled,
       details: {
@@ -556,7 +555,7 @@ export class IntelligentSchedulerSkill extends BaseSkill {
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'weighted-scoring',

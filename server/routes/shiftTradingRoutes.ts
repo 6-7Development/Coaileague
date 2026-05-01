@@ -36,7 +36,7 @@ router.get("/availability", requireAuth, async (req: AuthenticatedRequest, res) 
     const targetOfficerId = officerId || (emp[0]?.id ?? null);
 
     let q = `SELECT * FROM officer_availability WHERE workspace_id=$1`;
-    const params: any[] = [wid];
+    const params: Record<string, unknown>[] = [wid];
     let p = 2;
     if (!isManagerOrAbove && emp[0]) {
       q += ` AND officer_id=$${p++}`; params.push(emp[0].id);
@@ -46,7 +46,7 @@ router.get("/availability", requireAuth, async (req: AuthenticatedRequest, res) 
     q += ` ORDER BY officer_id, day_of_week, start_time`;
     const { rows } = await pool.query(q, params);
     res.json(rows);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/availability", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -78,7 +78,7 @@ router.post("/availability", requireAuth, async (req: AuthenticatedRequest, res)
        effectiveFrom || null, effectiveUntil || null]
     );
     res.status(201).json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.put("/availability/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -88,7 +88,7 @@ router.put("/availability/:id", requireAuth, async (req: AuthenticatedRequest, r
     const { dayOfWeek, startTime, endTime, isAvailable, effectiveFrom, effectiveUntil } = req.body;
 
     const setClauses: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let p = 1;
     if (dayOfWeek !== undefined) { setClauses.push(`day_of_week=$${p++}`); params.push(dayOfWeek); }
     if (startTime) { setClauses.push(`start_time=$${p++}`); params.push(startTime); }
@@ -106,7 +106,7 @@ router.put("/availability/:id", requireAuth, async (req: AuthenticatedRequest, r
     );
     if (!rows[0]) return res.status(404).json({ error: "Availability record not found" });
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.delete("/availability/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -118,7 +118,7 @@ router.delete("/availability/:id", requireAuth, async (req: AuthenticatedRequest
     );
     if (!rowCount) return res.status(404).json({ error: "Availability record not found" });
     res.json({ success: true });
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── SHIFT TRADE REQUESTS ────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ router.get("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
      LEFT JOIN employees req_emp ON req_emp.id = t.requesting_officer_id
      LEFT JOIN employees tgt_emp ON tgt_emp.id = t.target_officer_id
      WHERE t.workspace_id=$1`;
-    const params: any[] = [wid];
+    const params: Record<string, unknown>[] = [wid];
     let p = 2;
     if (status) { q += ` AND t.status=$${p++}`; params.push(status); }
     if (mine === "true" || !isManagerOrAbove) {
@@ -148,7 +148,7 @@ router.get("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
     q += ` ORDER BY t.created_at DESC LIMIT 100`;
     const { rows } = await pool.query(q, params);
     res.json(rows);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -196,7 +196,7 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           type: "shift_trade",
           actionUrl: `/shift-trading?tab=received`,
           idempotencyKey: `shift_trade-${Date.now()}-${targetUser.rows[0].user_id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         // NDS: deliver through the canonical sender (TRINITY.md §B) so
         // delivery is logged and push/in-app channels are respected.
         try {
@@ -218,7 +218,7 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
               ],
             },
           });
-        } catch (ndsErr: any) {
+        } catch (ndsErr: unknown) {
           console.warn('[ShiftTrade] NDS shift_trade_request failed (non-fatal):', ndsErr?.message);
         }
       }
@@ -235,7 +235,7 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           message: `An officer posted a shift for trading on the marketplace.`,
           type: "shift_trade", actionUrl: `/shift-trading`,
           idempotencyKey: `shift_trade-${Date.now()}-${m.id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         try {
           await NotificationDeliveryService.send({
             idempotencyKey: `notif-${Date.now()}`,
@@ -251,13 +251,13 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
               tradeId,
             },
           });
-        } catch (ndsErr: any) {
+        } catch (ndsErr: unknown) {
           console.warn('[ShiftTrade] NDS manager notify failed (non-fatal):', ndsErr?.message);
         }
       }
     }
     res.status(201).json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -286,7 +286,7 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
         message: "Your shift trade request has been accepted. Awaiting manager approval.",
         type: "shift_trade", actionUrl: `/shift-trading`,
         idempotencyKey: `shift_trade-${Date.now()}-${requester.rows[0].user_id}`
-      }).catch(() => null);
+      }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       try {
         const acceptorName = (await pool.query(
           `SELECT first_name FROM employees WHERE id=$1 AND workspace_id=$2`,
@@ -311,12 +311,12 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
             tradeId: rows[0].id,
           },
         });
-      } catch (ndsErr: any) {
+      } catch (ndsErr: unknown) {
         console.warn('[ShiftTrade] NDS shift_trade_accepted failed (non-fatal):', ndsErr?.message);
       }
     }
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/trades/:id/reject", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -357,11 +357,11 @@ router.post("/trades/:id/reject", requireAuth, async (req: AuthenticatedRequest,
           },
         });
       }
-    } catch (ndsErr: any) {
+    } catch (ndsErr: unknown) {
       console.warn('[ShiftTrade] NDS shift_trade_declined failed (non-fatal):', ndsErr?.message);
     }
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 router.post("/trades/:id/manager-approve", requireManager, async (req: AuthenticatedRequest, res) => {
@@ -472,7 +472,7 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
           reason: 'trade_approval'
         });
       }
-    } catch (webhookErr: any) {
+    } catch (webhookErr: unknown) {
       log.warn('[ShiftTrading] Failed to log webhook error to audit log', { error: webhookErr.message });
     }
 
@@ -486,7 +486,7 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
           message: "Your shift trade has been approved. Check your updated schedule.",
           type: "shift_trade", actionUrl: `/schedule`,
           idempotencyKey: `shift_trade-${Date.now()}-${userRes.rows[0].user_id}`
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[shiftTradingRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
         await NotificationDeliveryService.send({
           idempotencyKey: `notif-${Date.now()}`,
@@ -505,7 +505,7 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
       }
     }
     res.json(rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: sanitizeError(err) });
   } finally {
@@ -527,7 +527,7 @@ router.post("/trades/:id/manager-reject", requireManager, async (req: Authentica
     );
     if (!rows[0]) return res.status(404).json({ error: "Trade request not found" });
     res.json(rows[0]);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── MARKETPLACE ─────────────────────────────────────────────────────────────
@@ -550,7 +550,7 @@ router.get("/marketplace", requireAuth, async (req: AuthenticatedRequest, res) =
       [wid]
     );
     res.json(rows);
-  } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
+  } catch (err: unknown) { res.status(500).json({ error: sanitizeError(err) }); }
 });
 
 // ── TRINITY ACTIONS ─────────────────────────────────────────────────────────

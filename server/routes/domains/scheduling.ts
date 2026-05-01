@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 // Domain Scheduling — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api/scheduler, /api/schedules, /api/scheduling, /api/shifts,
@@ -5,6 +6,7 @@
 //   /api/trinity/scheduling, /api/trinity-staffing, /api/public/trinity-staffing,
 //   /api/staffing (staffing broadcast — public accept + per-route auth)
 import crypto from 'crypto';
+import { AuthenticatedRequest } from '../../rbac';
 import { sanitizeError } from '../../middleware/errorHandler';
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
@@ -33,7 +35,7 @@ const log = createLogger('SchedulingDomain');
 
 export function mountSchedulingRoutes(app: Express): void {
   // Internal-only auto-fill endpoint (localhost IP + service key required)
-  app.post("/api/trinity/scheduling/auto-fill-internal", async (req: any, res: any) => {
+  app.post("/api/trinity/scheduling/auto-fill-internal", async (req: AuthenticatedRequest, res: Response) => {
     const ip = req.ip || req.connection?.remoteAddress || "";
     const isLocal = ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
     if (!isLocal) return res.status(403).json({ message: "Internal only" });
@@ -93,7 +95,7 @@ export function mountSchedulingRoutes(app: Express): void {
   app.use("/api/trinity-staffing", requireAuth, ensureWorkspaceAccess, trinityStaffingRouter);
   app.use("/api/public/trinity-staffing", trinityStaffingPublicRouter);
   app.use("/api/trinity/scheduling", requireAuth, ensureWorkspaceAccess, trinitySchedulingRouter);
-  app.get("/api/shift-handoff/pending", requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+  app.get("/api/shift-handoff/pending", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -103,7 +105,7 @@ export function mountSchedulingRoutes(app: Express): void {
 
       const handoffs = await shiftHandoffService.getPendingForOfficer(employee.id);
       return res.json(handoffs[0] ?? null);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[ShiftHandoff] Failed to fetch pending handoff:", error?.message || String(error));
       return res.status(500).json({ message: "Failed to fetch pending handoff" });
     }

@@ -291,7 +291,6 @@ export function WorkspaceTabsNav() {
   // Get sidebar families with RBAC filtering (includes position-derived capabilities)
   const rawFamilies = isLoading 
     ? [] 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     : selectSidebarFamilies(workspaceRole, subscriptionTier, isPlatformStaff, positionCapabilities);
   
   // Filter out mobileOnly routes on desktop
@@ -432,7 +431,7 @@ export function WorkspaceTabsNav() {
                         )} />
                       </Button>
                     </UniversalModalTrigger>
-                    <UniversalModalContent side="bottom" className="h-[70vh] overflow-y-auto sm:max-w-3xl" showHomeButton={false}>
+                    <UniversalModalContent side="bottom" className="max-h-[calc(70dvh-56px)] sm:max-h-[70dvh] overflow-y-auto overflow-y-auto sm:max-w-3xl" showHomeButton={false}>
                       {isPlatformFamily ? (
                         <PlatformGroupedMobile
                           routes={family.routes}

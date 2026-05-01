@@ -92,7 +92,7 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function buildInboundBodyFallback(inboundEmail: any): { html: string; text: string } {
+function buildInboundBodyFallback(inboundEmail: unknown): { html: string; text: string } {
   const rawHtml = String(inboundEmail?.html || '').trim();
   const rawText = String(inboundEmail?.text || '').trim();
   const textFromHtml = rawHtml ? stripHtml(rawHtml) : '';
@@ -546,7 +546,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
     switch (event.type) {
       case "email.delivered": {
         // Extract invoiceId from Resend tags set at send time
-        const tags: Array<{ name: string; value: string }> = (event as any).data.tags || [];
+        const tags: Array<{ name: string; value: string }> = (event as Record<string,unknown>).data.tags || [];
         const invoiceTag = tags.find((t) => t.name === 'invoiceId');
         if (invoiceTag?.value) {
           const invoiceId = invoiceTag.value;
@@ -568,7 +568,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
               // Write immutable audit trail entry
               await universalAudit.log({
                 workspaceId: inv.workspaceId,
-                action: 'invoice.delivery_confirmed' as any,
+                action: 'invoice.delivery_confirmed',
                 actorType: 'system',
                 actorId: 'resend-webhook',
                 changeType: 'action',
@@ -578,7 +578,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 metadata: {
                   invoiceNumber: inv.invoiceNumber,
                   deliveredTo: event.data.to?.join(', '),
-                  resendEventAt: (event as any).data.created_at || new Date().toISOString(),
+                  resendEventAt: (event as Record<string,unknown>).data.created_at || new Date().toISOString(),
                   source: 'resend_email.delivered_webhook',
                 },
               });
@@ -599,7 +599,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
       case "email.bounced": {
         // Hard bounces signal invalid/dead addresses. Auto-suppress to protect sender reputation.
         const bouncedAddresses: string[] = event.data.to ?? [];
-        const bounceResendId: string = (event as any).data.id || '';
+        const bounceResendId: string = (event as Record<string,unknown>).data.id || '';
         log.error(`[Resend] Hard bounce for ${bouncedAddresses.join(", ")}`);
         // Batch insert all bounces in one query (N+1 fix)
         if (bouncedAddresses.length > 0) {
@@ -611,7 +611,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 unsubscribeAll: true,
                 unsubscribeToken: crypto.randomBytes(32).toString('hex'),
                 unsubscribeSource: 'bounce' as const,
-                unsubscribeReason: `Hard bounce reported by Resend — email ID: ${(event as any).data?.id || 'unknown'}`,
+                unsubscribeReason: `Hard bounce reported by Resend — email ID: ${(event as Record<string,unknown>).data?.id || 'unknown'}`,
               })))
               .onConflictDoNothing();
           } catch (err: unknown) {
@@ -676,14 +676,14 @@ router.post("/api/webhooks/resend", async (req, res) => {
           }
         }
         // Fire-and-forget rate check — logs CRITICAL alert if 24h bounce rate > threshold
-        checkDeliverabilityRates().catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        checkDeliverabilityRates().catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
         break;
       }
         
       case "email.complained": {
         // Spam complaints damage sender reputation. Auto-suppress immediately.
         const complainedAddresses: string[] = event.data.to ?? [];
-        const complaintResendId: string = (event as any).data.id || '';
+        const complaintResendId: string = (event as Record<string,unknown>).data.id || '';
         log.error(`[Resend] Spam complaint from ${complainedAddresses.join(", ")}`);
         for (const email of complainedAddresses) {
           try {
@@ -694,7 +694,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                 unsubscribeAll: true,
                 unsubscribeToken: crypto.randomBytes(32).toString('hex'),
                 unsubscribeSource: 'complaint',
-                unsubscribeReason: `Spam complaint reported by Resend — email ID: ${(event as any).data.id}`,
+                unsubscribeReason: `Spam complaint reported by Resend — email ID: ${(event as Record<string,unknown>).data.id}`,
               })
               .onConflictDoNothing();
           } catch (err: unknown) {
@@ -748,7 +748,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
           }
         }
         // Fire-and-forget rate check — logs CRITICAL alert if 24h complaint rate > threshold
-        checkDeliverabilityRates().catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        checkDeliverabilityRates().catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
         break;
       }
         
@@ -887,7 +887,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
               skipUnsubscribeCheck: true,
             });
             log.info(`[Resend Inbound] Forwarded root@ email to ${rootForwardTo}`);
-          } catch (err: any) {
+          } catch (err: unknown) {
             log.warn(`[Resend Inbound] root@ forward failed: ${err?.message}`);
           }
         });
@@ -915,14 +915,14 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
           ) VALUES ($1,$2,'inbound',$3,$4,$5,$6,$7,$8,$9,'inbox',false,false,NOW())
           ON CONFLICT (resend_email_id) DO NOTHING
         `, [
-          (inboundEmail as any).id || msgId,
+          ((inboundEmail as {id?: string}).id) || msgId,
           msgId, fromEmail, fromName || null,
           [platformAddr], subject,
           emailBody.slice(0, 50000),
           inboundEmail.html?.slice(0, 50000) || null,
           emailBody.slice(0, 200),
         ]);
-      } catch (storeErr: any) {
+      } catch (storeErr: unknown) {
         log.warn('[Resend Inbound] Failed to store platform email:', storeErr.message);
       }
 
@@ -943,10 +943,10 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
             status: 'open',
             submissionMethod: 'email',
             emailCategory: routeType,
-            inboundEmailLogId: (inboundEmail as any).id || null,
+            inboundEmailLogId: ((inboundEmail as {id?: string}).id) || null,
           });
           log.info(`[Email→Ticket] Created ticket ${ticketNumber} from ${fromEmail} to ${platformAddr}`);
-        } catch (ticketErr: any) {
+        } catch (ticketErr: unknown) {
           log.error('[Email→Ticket] Failed to create support ticket (non-fatal):', ticketErr?.message);
         }
       }
@@ -982,7 +982,6 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
                 workspaceId: 'PLATFORM',
                 feature: 'platform_support',
                 prompt,
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 billedTo: 'platform',
               });
 
@@ -999,7 +998,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
                 log.info(`[Platform Support] Replied to ${fromEmail} re: "${subject}"`);
               }
             }
-          } catch (trinityErr: any) {
+          } catch (trinityErr: unknown) {
             log.warn('[Trinity Platform] Processing failed (non-blocking):', trinityErr.message);
           }
         });
@@ -1106,7 +1105,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
           '../services/trinity/employmentVerificationService'
         );
         await handleEmploymentVerificationEmail(inboundEmail as any, slug, workspaceId);
-      } catch (verifyErr: any) {
+      } catch (verifyErr: unknown) {
         log.warn('[Resend Inbound] Employment verification handler failed (non-fatal):', verifyErr?.message);
       }
       return res.status(200).json({ received: true, routed: 'employment_verification' });
@@ -1187,7 +1186,6 @@ Keep your response concise (3-5 sentences), professional, and warm. Do NOT make 
             workspaceId,
             feature: 'trinity_staffing',
             prompt,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             billedTo: 'org',
           });
           if (aiResp?.text && aiResp.text.length > 30) {
@@ -1291,7 +1289,6 @@ Keep your response concise (3-5 sentences), professional, and warm. Do NOT make 
           // Find any open shift offer in this workspace — most recent pending
           const { stagedShifts } = await import('@shared/schema');
           const [openShift] = await db.select()
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .where(and(
               eq(stagedShifts.workspaceId, workspaceId),
               eq(stagedShifts.status, 'offers_sent')
@@ -1392,7 +1389,6 @@ Client email:
 """
 ${rawBody.substring(0, 2000)}
 """`,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           billedTo: 'system',
         });
         if (geminiResp?.text && geminiResp.text.length > 20) {
@@ -1507,7 +1503,7 @@ ${rawBody.substring(0, 2000)}
             subject: inboundEmail.subject || '(no subject)',
             bodyText: emailBody,
             bodyHtml: inboundEmail.html || undefined,
-            attachments: (inboundEmail.attachments || []).map((a: any) => ({
+            attachments: (inboundEmail.attachments || []).map((a: unknown) => ({
               filename: a.filename || a.name || 'attachment',
               contentType: a.contentType || a.content_type || 'application/octet-stream',
               size: a.size,
@@ -1537,7 +1533,6 @@ ${rawBody.substring(0, 2000)}
       processed: true,
       workspaceId,
       workspaceName,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       orgCode: orgCode || undefined,
       isNewProspect,
       prospectTempCode: prospectTempCode || undefined,
@@ -1573,7 +1568,6 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
     const senderEmail = testEmail.from?.match(/<([^>]+)>/)?.[1] || testEmail.from;
     const senderName = testEmail.from?.split('<')[0]?.trim();
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const orgCode = extractOrgCodeFromEmail(testEmail);
     let workspaceId: string | null = null;
     let workspaceName: string | undefined;
@@ -1595,7 +1589,7 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
     }
 
     const hasAttachments = (testEmail.attachments?.length || 0) > 0;
-    const attachmentNames = testEmail.attachments?.map((a: any) => a.filename || a.name || 'unnamed') || [];
+    const attachmentNames = testEmail.attachments?.map((a: unknown) => a.filename || a.name || 'unnamed') || [];
     const hasContractAttachment = attachmentNames.some((name: string) => 
       /contract|agreement|sow|terms|proposal/i.test(name)
     );
@@ -1614,7 +1608,7 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
       hasContractAttachment,
     });
 
-    const pipelineTrace: any[] = [{ stage: 'A', name: 'Email Ingestion', result: stageAResult }];
+    const pipelineTrace: unknown[] = [{ stage: 'A', name: 'Email Ingestion', result: stageAResult }];
 
     let stageBResult = null;
     if (stageAResult.success && stageAResult.data?.isShiftRequest && stageAResult.data?.extractedShifts?.length > 0) {

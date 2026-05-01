@@ -145,7 +145,7 @@ export async function getBillableHoursReport(filters: ReportFilters) {
   });
 
   // Group by employee and calculate totals
-  const grouped = entries.reduce((acc: Record<string, BillableEntrySummary>, entry: any) => {
+  const grouped = entries.reduce((acc: Record<string, BillableEntrySummary>, entry: unknown) => {
     const key = entry.employeeId;
     if (!acc[key]) {
       acc[key] = {
@@ -240,7 +240,7 @@ export async function getPayrollReport(filters: ReportFilters) {
   });
 
   // Group by employee and calculate earnings
-  const grouped = entries.reduce((acc: Record<string, PayrollSummary>, entry: any) => {
+  const grouped = entries.reduce((acc: Record<string, PayrollSummary>, entry: unknown) => {
     const key = entry.employeeId;
     if (!acc[key]) {
       acc[key] = {
@@ -321,7 +321,7 @@ export async function getClientSummaryReport(filters: ReportFilters) {
   });
 
   // Group by client
-  const grouped = invoiceData.reduce((acc: Record<string, ClientSummary>, invoice: any) => {
+  const grouped = invoiceData.reduce((acc: Record<string, ClientSummary>, invoice: unknown) => {
     const key = invoice.clientId;
     if (!acc[key]) {
       acc[key] = {
@@ -402,7 +402,7 @@ export async function getEmployeeActivityReport(filters: ReportFilters) {
   });
 
   // Group by employee and calculate metrics
-  const grouped = entries.reduce((acc: Record<string, ActivitySummary>, entry: any) => {
+  const grouped = entries.reduce((acc: Record<string, ActivitySummary>, entry: unknown) => {
     const key = entry.employeeId;
     if (!acc[key]) {
       acc[key] = {
@@ -466,7 +466,7 @@ export async function getAuditLogsReport(filters: ReportFilters & { action?: str
     offset: filters.offset || 0,
   });
 
-  const logUserIds = [...new Set(rawLogs.map((l: any) => l.userId).filter(Boolean))];
+  const logUserIds = [...new Set(rawLogs.map((l: unknown) => l.userId).filter(Boolean))];
   const logUsers = logUserIds.length > 0
     ? await db.query.users.findMany({
         where: inArray(users.id, logUserIds),
@@ -474,16 +474,16 @@ export async function getAuditLogsReport(filters: ReportFilters & { action?: str
       })
     : [];
   const logUserMap = new Map(logUsers.map(u => [u.id, u]));
-  const logs = rawLogs.map((l: any) => ({ ...l, user: logUserMap.get(l.userId) || null }));
+  const logs = rawLogs.map((l: unknown) => ({ ...l, user: logUserMap.get(l.userId) || null }));
 
   // Group by action type
-  const actionCounts = logs.reduce((acc: Record<string, number>, log: any) => {
+  const actionCounts = logs.reduce((acc: Record<string, number>, log: unknown) => {
     acc[log.action] = (acc[log.action] || 0) + 1;
     return acc;
   }, {});
 
   return {
-    logs: logs.map((log: any) => ({
+    logs: logs.map((log: unknown) => ({
       id: log.id,
       timestamp: log.createdAt,
       action: log.action,

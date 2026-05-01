@@ -40,7 +40,7 @@ export const alternativeStrategyService = {
         LIMIT 3
       `, [workspaceId, shiftId]);
 
-      overtimeCandidates.forEach((c: any) => {
+      overtimeCandidates.forEach((c: unknown) => {
         strategies.push({
           type: 'overtime',
           description: `${c.first_name} ${c.last_name} — ${Number(c.hours_this_week).toFixed(1)}h this week, can absorb OT`,
@@ -60,7 +60,7 @@ export const alternativeStrategyService = {
 
       log.debug(`[AlternativeStrategy] Generated ${strategies.length} strategies for shift ${shiftId}`);
       return strategies;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[AlternativeStrategy] Failed: ${err?.message}`);
       return [];
     }

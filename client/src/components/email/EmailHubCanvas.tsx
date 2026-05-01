@@ -439,7 +439,7 @@ function EmailListItem({
           {(email.aiCategory === 'action_required' || email.category === 'action_required') && (
             <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">Action needed</span>
           )}
-          {(email.attachments && email.attachments.length > 0 && email.attachments.some((a: any) => a.type?.includes('pdf') || a.name?.endsWith('.pdf'))) && (
+          {(email.attachments && email.attachments.length > 0 && email.attachments.some((a) => a.type?.includes('pdf') || a.name?.endsWith('.pdf'))) && (
             <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">PDF</span>
           )}
           {email.folderType === 'calloffs' && (
@@ -675,19 +675,19 @@ function BulkActionBar({
 }
 
 function SupportInboxPanel({ onBack }: { onBack: () => void }) {
-  const { data: ticketData, isLoading } = useQuery<{ tickets?: any[] }>({
+  const { data: ticketData, isLoading } = useQuery<{ tickets?: unknown[] }>({
     queryKey: ['/api/admin/support/tickets'],
     retry: false,
     staleTime: 1000 * 60,
   });
 
   const tickets = ticketData?.tickets || [];
-  const openTickets = tickets.filter((t: any) => t.status === 'open' || t.status === 'pending');
+  const openTickets = tickets.filter((t) => t.status === 'open' || t.status === 'pending');
 
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center gap-2 p-3 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-support-back">
+        <Button variant="ghost" size="icon" aria-label="Support Back" onClick={onBack} data-testid="button-support-back">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex items-center gap-2 flex-1">
@@ -699,7 +699,7 @@ function SupportInboxPanel({ onBack }: { onBack: () => void }) {
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="icon" data-testid="button-support-refresh">
+        <Button variant="ghost" size="icon" aria-label="Support Refresh" data-testid="button-support-refresh">
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
@@ -708,8 +708,8 @@ function SupportInboxPanel({ onBack }: { onBack: () => void }) {
         {[
           { label: 'All', icon: Layers, count: tickets.length },
           { label: 'Open', icon: AlertCircle, count: openTickets.length },
-          { label: 'Bug Reports', icon: Bug, count: tickets.filter((t: any) => t.type === 'bug').length },
-          { label: 'Resolved', icon: CheckCircle, count: tickets.filter((t: any) => t.status === 'resolved').length },
+          { label: 'Bug Reports', icon: Bug, count: tickets.filter((t) => t.type === 'bug').length },
+          { label: 'Resolved', icon: CheckCircle, count: tickets.filter((t) => t.status === 'resolved').length },
         ].map(({ label, icon: Icon, count }) => (
           <Button key={label} variant="outline" size="sm" className="shrink-0 gap-1.5 text-xs rounded-full" data-testid={`button-support-filter-${label.toLowerCase()}`}>
             <Icon className="w-3 h-3" />
@@ -743,7 +743,7 @@ function SupportInboxPanel({ onBack }: { onBack: () => void }) {
           </div>
         ) : (
           <div className="divide-y">
-            {tickets.map((ticket: any) => (
+            {tickets.map((ticket) => (
               <div
                 key={ticket.id}
                 className="flex items-start gap-3 p-3 hover-elevate cursor-pointer"
@@ -842,7 +842,7 @@ function TrinityInboxPanel({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center gap-2 p-3 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-trinity-back">
+        <Button variant="ghost" size="icon" aria-label="Trinity Back" onClick={onBack} data-testid="button-trinity-back">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex items-center gap-2 flex-1">
@@ -898,7 +898,7 @@ function TrinityInboxPanel({ onBack }: { onBack: () => void }) {
           </div>
         ) : (
           <div className="divide-y">
-            {emails.map((email: any) => (
+            {emails.map((email) => (
               <div
                 key={email.id}
                 className="flex items-start gap-3 p-3 hover-elevate cursor-pointer"
@@ -1009,7 +1009,6 @@ function EmailHub({
 
   const unreadCount = emails.filter(e => !e.isRead).length;
   const hasBulkSelection = (selectedIds?.size ?? 0) > 0;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const folderCfg = FOLDER_CONFIG[selectedFolder] || FOLDER_CONFIG.unread;
   const FolderIcon = folderCfg.icon;
 
@@ -1028,7 +1027,7 @@ function EmailHub({
                   <Badge variant="default" className="text-[10px] shrink-0" data-testid="badge-unread-count">{unreadCount}</Badge>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={onRefresh} data-testid="button-refresh">
+              <Button variant="ghost" size="icon" aria-label="Refresh" onClick={onRefresh} data-testid="button-refresh">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
@@ -1080,7 +1079,7 @@ function EmailHub({
                   <Badge variant="secondary" className="text-[11px]" data-testid="badge-unread-count">{unreadCount}</Badge>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={onRefresh} data-testid="button-refresh">
+              <Button variant="ghost" size="icon" aria-label="Refresh" onClick={onRefresh} data-testid="button-refresh">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
@@ -1193,7 +1192,7 @@ function EmailHub({
       {isMobile && (
         <Button
           onClick={onCompose}
-          size="icon"
+          size="icon" aria-label="Compose Fab"
           className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full shadow-lg shadow-primary/30"
           data-testid="button-compose-fab"
         >
@@ -1479,7 +1478,7 @@ function EmailCanvas({
         isMobile ? "px-2 py-1.5" : "p-3"
       )}>
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+          <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack} data-testid="button-back">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         )}
@@ -1511,17 +1510,17 @@ function EmailCanvas({
           )}
           {!isMobile && (
             <>
-              <Button variant="ghost" size="icon" onClick={onReply} data-testid="button-reply">
+              <Button variant="ghost" size="icon" aria-label="Reply" onClick={onReply} data-testid="button-reply">
                 <Reply className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onForward} data-testid="button-forward">
+              <Button variant="ghost" size="icon" aria-label="Forward" onClick={onForward} data-testid="button-forward">
                 <Forward className="w-4 h-4" />
               </Button>
             </>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid="button-email-actions">
+              <Button variant="ghost" size="icon" aria-label="Email Actions" data-testid="button-email-actions">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -2488,7 +2487,7 @@ function ComposeCanvas({
   isMobile,
 }: {
   onClose: () => void;
-  onSend: (data: any) => void;
+  onSend: (data) => void;
   replyTo?: UnifiedEmail | null;
   forwardFrom?: UnifiedEmail | null;
   isSending?: boolean;
@@ -2594,7 +2593,7 @@ function ComposeCanvas({
         setAttachments(prev => [...prev, ...data.attachments]);
         toast({ title: `Attached ${data.attachments.length} file${data.attachments.length === 1 ? '' : 's'}` });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ title: 'Attachment upload failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsUploading(false);
@@ -2626,7 +2625,7 @@ function ComposeCanvas({
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden">
       <div className={cn("flex items-center gap-2 border-b", isMobile ? "px-2 py-2" : "p-3")}>
-        <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-compose">
+        <Button variant="ghost" size="icon" aria-label="Close Compose" onClick={onClose} data-testid="button-close-compose">
           <X className={cn(isMobile ? "w-4 h-4" : "w-5 h-5")} />
         </Button>
         <h2 className={cn("font-semibold", isMobile && "text-sm")}>
@@ -2745,7 +2744,7 @@ function ComposeCanvas({
               <div className="w-px h-5 bg-border mx-1" />
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Format List"
                 type="button"
                 title="Bullet List"
                 className="h-8 w-8 text-muted-foreground"
@@ -2756,7 +2755,7 @@ function ComposeCanvas({
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Format Link"
                 type="button"
                 title="Insert Link"
                 className="h-8 w-8 text-muted-foreground"
@@ -2768,7 +2767,7 @@ function ComposeCanvas({
               <div className="w-px h-5 bg-border mx-1" />
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Attach File"
                 type="button"
                 title="Attach File"
                 disabled={isUploading}
@@ -2782,7 +2781,7 @@ function ComposeCanvas({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Templates"
                     type="button"
                     title="Templates"
                     className="h-8 w-8 text-muted-foreground"
@@ -3082,7 +3081,7 @@ function EmailAnalyticsDashboard({
   return (
     <div className="flex-1 flex flex-col bg-background">
       <div className="flex items-center gap-2 p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-analytics-back">
+        <Button variant="ghost" size="icon" aria-label="Analytics Back" onClick={onBack} data-testid="button-analytics-back">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
@@ -3356,7 +3355,6 @@ function WorkflowPipeline({
   };
 
   const toggleWorkflowStatus = (id: string) => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     setWorkflows(prev => prev.map(w => w.id === id ? { ...w, status: w.status === 'active' ? 'pending' as const : 'active' as const } : w));
   };
 
@@ -3585,14 +3583,13 @@ export function EmailHubCanvas() {
   
   const [viewState, setViewState] = useState<ViewState>('hub');
   const [selectedEmail, setSelectedEmail] = useState<UnifiedEmail | null>(null);
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const [selectedFolder, setSelectedFolder] = useState<FolderType>('inbox');
   const [searchQuery, setSearchQuery] = useState('');
   const [replyTo, setReplyTo] = useState<UnifiedEmail | null>(null);
   const [forwardFrom, setForwardFrom] = useState<UnifiedEmail | null>(null);
   const [selectedEmailIds, setSelectedEmailIds] = useState<Set<string>>(new Set());
 
-  const { data: mailboxData } = useQuery<{ mailbox?: any }>({
+  const { data: mailboxData } = useQuery<{ mailbox?: unknown }>({
     queryKey: ['/api/internal-email/mailbox/auto-create'],
   });
 
@@ -3602,26 +3599,25 @@ export function EmailHubCanvas() {
     staleTime: 1000 * 30,
   });
 
-  const { data: internalEmailsData, isLoading: internalLoading, refetch: refetchInternal } = useQuery<{ emails?: any[] }>({
+  const { data: internalEmailsData, isLoading: internalLoading, refetch: refetchInternal } = useQuery<{ emails?: unknown[] }>({
     queryKey: ['/api/internal-email/inbox', selectedFolder],
     queryFn: () => fetch(`/api/internal-email/inbox?folder=${selectedFolder}`, { credentials: 'include' }).then(r => r.json()),
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     enabled: !!mailboxData?.mailbox && selectedFolder !== 'support' && selectedFolder !== 'trinity',
   });
 
-  const { data: externalEmailsData, isLoading: externalLoading, refetch: refetchExternal } = useQuery<{ data?: any[] }>({
+  const { data: externalEmailsData, isLoading: externalLoading, refetch: refetchExternal } = useQuery<{ data?: unknown[] }>({
     queryKey: ['/api/external-emails'],
     retry: false,
     staleTime: 1000 * 60 * 5,
   });
 
   const allEmails: UnifiedEmail[] = useMemo(() => {
-    const internal = (internalEmailsData?.emails || []).map((e: any) => ({
+    const internal = (internalEmailsData?.emails || []).map((e) => ({
       ...e,
       type: 'internal' as const,
     }));
     
-    const external = (externalEmailsData?.data || []).map((item: any) => ({
+    const external = (externalEmailsData?.data || []).map((item) => ({
       id: item.email?.id || item.id,
       type: 'external' as const,
       fromAddress: item.email?.fromEmail || 'you@company.com',
@@ -3696,7 +3692,6 @@ export function EmailHubCanvas() {
     setSelectedEmail(null);
     if (folder === 'support') {
       setViewState('support');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } else if (folder === 'trinity') {
       setViewState('trinity');
     } else {
@@ -3942,7 +3937,6 @@ export function EmailHubCanvas() {
 
   if (isMobile) {
     const mobileFolderTabs: { folder: FolderType; icon: typeof Inbox; label: string; badge?: number }[] = [
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       { folder: 'inbox', icon: Inbox, label: 'All' },
       { folder: 'calloffs', icon: PhoneOff, label: 'Calloffs', badge: folders.find(f => f.folderType === 'calloffs')?.unreadCount },
       { folder: 'incidents', icon: AlertOctagon, label: 'Incidents', badge: folders.find(f => f.folderType === 'incidents')?.unreadCount },
@@ -3989,12 +3983,10 @@ export function EmailHubCanvas() {
         )}
 
         {viewState === 'support' && (
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           <SupportInboxPanel onBack={() => { setSelectedFolder('inbox'); setViewState('hub'); }} />
         )}
 
         {viewState === 'trinity' && (
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           <TrinityInboxPanel onBack={() => { setSelectedFolder('inbox'); setViewState('hub'); }} />
         )}
         
@@ -4095,10 +4087,8 @@ export function EmailHubCanvas() {
             onBack={() => setViewState('hub')}
           />
         ) : viewState === 'support' ? (
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           <SupportInboxPanel onBack={() => { setSelectedFolder('inbox'); setViewState('hub'); }} />
         ) : viewState === 'trinity' ? (
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           <TrinityInboxPanel onBack={() => { setSelectedFolder('inbox'); setViewState('hub'); }} />
         ) : (
           <EmailCanvas

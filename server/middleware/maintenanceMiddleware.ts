@@ -101,7 +101,7 @@ function validateBypassToken(req: Request): { valid: boolean; reason?: string } 
   return { valid: false, reason: 'Invalid or missing bypass token' };
 }
 
-function logBypassAccess(req: Request, user: any): void {
+function logBypassAccess(req: Request, user: unknown): void {
   const timestamp = new Date().toISOString();
   const userId = user?.id || 'anonymous';
   const userEmail = user?.email || 'unknown';

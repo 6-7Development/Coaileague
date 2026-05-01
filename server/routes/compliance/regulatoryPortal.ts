@@ -1,4 +1,5 @@
 import { clients, shifts, sites, timeEntries } from '@shared/schema';
+import { AuthenticatedRequest } from '../../rbac';
 /**
  * Regulatory Auditor Portal Routes
  * ==================================
@@ -98,7 +99,7 @@ router.use(readLimiter);
 // ── Phase 30 Tier Enforcement ──────────────────────────────────────────────────
 // Auditor dashboard routes verify the *audited workspace* is on Business+ tier.
 // This prevents orgs on lower tiers from inadvertently exposing auditor portals.
-router.use('/dashboard', async (req: any, res: any, next: any) => {
+router.use('/dashboard', async (req: AuthenticatedRequest, res: Response, next: unknown) => {
   try {
     // Extract workspaceId from path: /dashboard/:workspaceId/...
     const workspaceId = req.path.split('/').filter(Boolean)[0];
@@ -169,7 +170,7 @@ async function logAuditorSectionAccess(req: Request, workspaceId: string, sectio
       actorIp: ip,
     });
   } catch (err) {
-    log.warn('[AuditorPortal] Audit log write failed (non-fatal):', (err as any)?.message);
+    log.warn('[AuditorPortal] Audit log write failed (non-fatal):', (err as Record<string,unknown>)?.message);
   }
 }
 
@@ -301,7 +302,7 @@ router.post('/request', async (req: Request, res: Response) => {
         auditPurpose,
         stateCode,
       }).catch ((err: unknown) => {
-        log.warn('[RegulatoryPortal] Owner notification email failed (non-fatal):', (err as any)?.message);
+        log.warn('[RegulatoryPortal] Owner notification email failed (non-fatal):', (err as Record<string,unknown>)?.message);
       });
 
       await db.update(auditorVerificationRequests)
@@ -354,7 +355,7 @@ router.post('/request/:id/dispute', requireAuth, async (req: Request, res: Respo
   try {
     const { reason } = req.body;
     const actor = req.user;
-    const actorWorkspaceId = req.workspaceId || (actor as any)?.workspaceId || actor?.currentWorkspaceId;
+    const actorWorkspaceId = req.workspaceId || (actor as Record<string, unknown>)?.workspaceId || actor?.currentWorkspaceId;
     if (!actorWorkspaceId) return res.status(400).json({ success: false, error: 'Workspace context required' });
 
     const [request] = await db.select().from(auditorVerificationRequests)
@@ -453,7 +454,7 @@ router.post('/request/:id/grant', requireAuth, async (req: Request, res: Respons
     await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
             type: 'regulatory_notification', workspaceId: request.workspaceId, recipientUserId: request.auditorEmail!, channel: 'email', body: { to: request.auditorEmail!, subject: `${PLATFORM.name} Regulatory Portal — Audit Access Granted`, html: _auditGrantHtml } })
       .catch((err: unknown) => {
-        log.warn('[RegulatoryPortal] Credentials email to auditor failed:', (err as any)?.message);
+        log.warn('[RegulatoryPortal] Credentials email to auditor failed:', (err as Record<string,unknown>)?.message);
       });
 
     return res.json({ success: true, message: 'Access granted and credentials sent', accessToken });
@@ -506,9 +507,9 @@ router.get('/dashboard/:workspaceId/overview', requireAuditorPortalAuth, async (
         stateLicenseState: ws.stateLicenseState,
         stateLicenseExpiry: ws.stateLicenseExpiry,
         registeredOn: ws.createdAt,
-        employeeBreakdown: ((activeEmpCount as any).rows || (activeEmpCount as any)) ?? [],
-        activeClients: Number(((clientCount as any).rows || (clientCount as any))?.[0]?.count ?? 0),
-        activeSites: Number(((siteCount as any).rows || (siteCount as any))?.[0]?.count ?? 0),
+        employeeBreakdown: ((activeEmpCount as Record<string,unknown>).rows || (activeEmpCount as Record<string,unknown>)) ?? [],
+        activeClients: Number(((clientCount as Record<string,unknown>).rows || (clientCount as Record<string,unknown>))?.[0]?.count ?? 0),
+        activeSites: Number(((siteCount as Record<string,unknown>).rows || (siteCount as Record<string,unknown>))?.[0]?.count ?? 0),
         auditReadinessScore: readinessData?.score ?? 0,
         overallComplianceScore: readinessData?.score ?? 0,
       },
@@ -828,9 +829,9 @@ router.get('/dashboard/:workspaceId/documents', requireAuditorPortalAuth, async 
     const documents = await db.select({
       id: complianceDocuments.id,
       documentType: complianceDocuments.documentTypeId,
-      documentTitle: (complianceDocuments as any).documentTitle,
+      documentTitle: (complianceDocuments as Record<string,unknown>).documentTitle,
       status: complianceDocuments.status,
-      fileUrl: (complianceDocuments as any).fileUrl,
+      fileUrl: (complianceDocuments as Record<string,unknown>).fileUrl,
       employeeId: complianceDocuments.employeeId,
       createdAt: complianceDocuments.createdAt,
       expirationDate: complianceDocuments.expirationDate,
@@ -876,7 +877,7 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
       WHERE wu.workspace_id = ${workspaceId} AND wu.role = 'org_owner'
       LIMIT 1
     `);
-    const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
+    const owner = ((ownerResult as Record<string,unknown>).rows || (ownerResult as Record<string,unknown>))?.[0];
 
     if (owner) {
       await createNotification({
@@ -888,7 +889,7 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
         metadata: { reportUrl, auditOutcome, requestId },
         idempotencyKey: `audit_report_uploaded-${Date.now()}-${owner.id}`
       }).catch ((err: unknown) => {
-        log.warn('[RegulatoryPortal] In-app audit report notification failed (non-fatal):', (err as any)?.message);
+        log.warn('[RegulatoryPortal] In-app audit report notification failed (non-fatal):', (err as Record<string,unknown>)?.message);
       });
     }
 
@@ -906,7 +907,6 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
 router.get('/audit-readiness', requireAuth, requirePlan('business'), async (req: Request, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await calculateAuditReadinessScore(workspaceId);
     return res.json({ success: true, data: result });
   } catch (err: unknown) {
@@ -943,7 +943,6 @@ router.post(
 
       // STORAGE QUOTA CHECK: Enforce documents quota before writing (audit_reserve is always allowed)
       const { checkCategoryQuota, recordStorageUsage } = await import('../../services/storage/storageQuotaService');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const quotaCheck = await checkCategoryQuota(workspaceId, 'documents', req.file.buffer.length);
       if (!quotaCheck.allowed) {
         return res.status(507).json({
@@ -960,14 +959,12 @@ router.post(
       });
 
       // Record usage AFTER successful upload — never skipped
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       recordStorageUsage(workspaceId, 'documents', req.file.buffer.length).catch(() => null);
 
       const existing = await db
         .select({ id: employeeDocuments.id })
         .from(employeeDocuments)
         .where(and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(employeeDocuments.workspaceId, workspaceId),
           eq(employeeDocuments.employeeId, 'company'),
           eq(employeeDocuments.documentType, docKey as any),
@@ -991,7 +988,6 @@ router.post(
           })
           .where(eq(employeeDocuments.id, existing[0].id));
       } else {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(employeeDocuments).values({
           id: crypto.randomUUID(),
           workspaceId,
@@ -1022,7 +1018,6 @@ router.post(
 router.get('/violations', requireAuth, requireManagerRole, async (req: Request, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const violations = await listRegulatoryViolations(workspaceId);
     return res.json({ success: true, data: violations });
   } catch (err: unknown) {
@@ -1033,7 +1028,6 @@ router.get('/violations', requireAuth, requireManagerRole, async (req: Request, 
 router.get('/officer-score/:employeeId', requireAuth, requireManagerRole, async (req: Request, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const score = await calculateOfficerComplianceScore(req.params.employeeId, workspaceId);
     return res.json({ success: true, data: score });
   } catch (err: unknown) {
@@ -1047,8 +1041,8 @@ router.get('/states', async (_req: Request, res: Response) => {
       stateCode: complianceStates.stateCode,
       stateName: complianceStates.stateName,
       regulatoryBody: complianceStates.regulatoryBody,
-      auditorEmailDomain: (complianceStates as any).auditorEmailDomain,
-      fallbackToManualVerification: (complianceStates as any).fallbackToManualVerification,
+      auditorEmailDomain: (complianceStates as Record<string,unknown>).auditorEmailDomain,
+      fallbackToManualVerification: (complianceStates as Record<string,unknown>).fallbackToManualVerification,
     }).from(complianceStates).where(eq(complianceStates.status, 'active'));
 
     return res.json({ success: true, data: states });
@@ -1098,7 +1092,7 @@ async function notifyOrgOwnerOfAuditRequest(
     WHERE wu.workspace_id = ${workspaceId} AND wu.role = 'org_owner'
     LIMIT 1
   `);
-  const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
+  const owner = ((ownerResult as Record<string,unknown>).rows || (ownerResult as Record<string,unknown>))?.[0];
   if (!owner) return;
 
   await createNotification({
@@ -1129,9 +1123,9 @@ async function notifyOrgOwnerOfAuditRequest(
         </div>
       </div>`;
   await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
-            type: 'regulatory_notification', workspaceId: (info as any).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
+            type: 'regulatory_notification', workspaceId: (info as Record<string,unknown>).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
     .catch((err: unknown) => {
-      log.warn('[RegulatoryPortal] Org owner audit notification email failed (non-fatal):', (err as any)?.message);
+      log.warn('[RegulatoryPortal] Org owner audit notification email failed (non-fatal):', (err as Record<string,unknown>)?.message);
     });
 }
 
@@ -1166,7 +1160,7 @@ router.post('/complete-report', requireAuditorPortalAuth, async (req: Request, r
     }
 
     // Verify auditor token workspace matches the request workspace
-    const tokenWorkspaceId = (req as any).auditorWorkspaceId;
+    const tokenWorkspaceId = (req as Record<string, unknown>).auditorWorkspaceId;
     if (tokenWorkspaceId && tokenWorkspaceId !== request.workspaceId) {
       return res.status(403).json({ success: false, error: 'Workspace mismatch — token does not authorize this request' });
     }
@@ -1191,7 +1185,7 @@ router.post('/complete-report', requireAuditorPortalAuth, async (req: Request, r
       WHERE wu.workspace_id = ${request.workspaceId} AND wu.role = 'org_owner'
       LIMIT 1
     `);
-    const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
+    const owner = ((ownerResult as Record<string,unknown>).rows || (ownerResult as Record<string,unknown>))?.[0];
 
     if (owner) {
       await createNotification({
@@ -1203,7 +1197,7 @@ router.post('/complete-report', requireAuditorPortalAuth, async (req: Request, r
         metadata: { requestId, reportUrl, auditOutcome },
         idempotencyKey: `audit_report_uploaded-${Date.now()}-${owner.id}`
       }).catch ((err: unknown) => {
-        log.warn('[RegulatoryPortal] In-app audit submitted notification failed (non-fatal):', (err as any)?.message);
+        log.warn('[RegulatoryPortal] In-app audit submitted notification failed (non-fatal):', (err as Record<string,unknown>)?.message);
       });
     }
 
@@ -1227,7 +1221,7 @@ router.get('/tax-compliance/audit', async (_req, res) => {
   try {
     const report = runTaxComplianceAudit();
     return res.json({ success: true, report });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[RegulatoryPortal] Tax compliance audit error:', err);
     return res.status(500).json({ success: false, error: 'Tax compliance audit failed' });
   }
@@ -1251,7 +1245,7 @@ router.get('/tax-compliance/registry', async (_req, res) => {
         sutaCount: rules.sutaDefaults.length,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[RegulatoryPortal] Registry status error:', err);
     return res.status(500).json({ success: false, error: 'Failed to get registry status' });
   }
@@ -1279,7 +1273,7 @@ router.get('/tax-compliance/states/:stateCode', async (req, res) => {
       reciprocity,
       localTaxes,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[RegulatoryPortal] State tax details error:', err);
     return res.status(500).json({ success: false, error: 'Failed to get state tax details' });
   }

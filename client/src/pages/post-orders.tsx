@@ -41,15 +41,15 @@ const pageConfig: CanvasPageConfig = {
   category: "operations",
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+const PRIORITY_CONFIG: Record<string, { label: string; className: string; icon: string | React.ReactNode }> = {
   normal: { label: "Normal", className: "bg-muted text-muted-foreground border-border", icon: Minus },
   high: { label: "High", className: "bg-orange-500/10 text-orange-700 border-orange-200", icon: ArrowUp },
   urgent: { label: "Urgent", className: "bg-red-500/10 text-red-700 border-red-200", icon: AlertTriangle },
 };
 
-function PostOrderForm({ order, onClose }: { order?: any; onClose: () => void }) {
+function PostOrderForm({ order, onClose }: { order?: unknown; onClose: () => void }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [form, setForm] = useState({
     title: order?.title ?? "",
@@ -64,7 +64,7 @@ function PostOrderForm({ order, onClose }: { order?: any; onClose: () => void })
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       order
         ? apiRequest("PATCH", `/api/post-orders/templates/${order.id}`, data)
         : apiRequest("POST", "/api/post-orders/templates", { ...data, workspaceId }),
@@ -178,7 +178,7 @@ function PostOrderForm({ order, onClose }: { order?: any; onClose: () => void })
   );
 }
 
-function PostOrderCard({ order, onEdit, onViewAcks, onAcknowledge }: { order: any; onEdit: (o: any) => void; onViewAcks: (o: any) => void; onAcknowledge?: (o: any) => void }) {
+function PostOrderCard({ order, onEdit, onViewAcks, onAcknowledge }: { order: any; onEdit: (o) => void; onViewAcks: (o) => void; onAcknowledge?: (o) => void }) {
   const cfg = PRIORITY_CONFIG[order.priority] || PRIORITY_CONFIG.normal;
   const PriIcon = cfg.icon;
   const requirements: string[] = [];
@@ -262,12 +262,12 @@ function AcknowledgmentDialog({ order, onClose }: { order: any; onClose: () => v
   const [signature, setSignature] = useState({ agreed: false, signatureName: "", signedAt: "" });
   const [notes, setNotes] = useState("");
 
-  const employeeId = (user as any)?.employeeId || (user as any)?.id;
+  const employeeId = (user as Record<string,unknown>)?.employeeId || (user as Record<string,unknown>)?.id;
 
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
 
   const mutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/post-orders/acknowledge", data),
+    mutationFn: (data) => apiRequest("POST", "/api/post-orders/acknowledge", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/post-orders", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["/api/post-orders/tracking", workspaceId] });
@@ -275,7 +275,7 @@ function AcknowledgmentDialog({ order, onClose }: { order: any; onClose: () => v
       toast({ title: "Post order acknowledged successfully" });
       onClose();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       const msg = err?.message?.includes("409") ? "Already acknowledged" : "Failed to acknowledge";
       toast({ title: msg, variant: "destructive" });
     },
@@ -407,7 +407,7 @@ function AcknowledgmentTrackingPanel({ order, onClose }: { order: any; onClose: 
           </Card>
         ) : (
           <div className="space-y-2">
-            {acks.map((ack: any) => (
+            {acks.map((ack) => (
               <Card key={ack.id} data-testid={`card-ack-${ack.id}`}>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -450,8 +450,8 @@ function AcknowledgmentTrackingPanel({ order, onClose }: { order: any; onClose: 
 
 function TrackingTab() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
+  const [selectedOrder, setSelectedOrder] = useState<null>(null);
 
   const { data: trackingData = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/post-orders/tracking", workspaceId],
@@ -459,8 +459,8 @@ function TrackingTab() {
   });
 
   const totalOrders = trackingData.length;
-  const totalAcks = trackingData.reduce((sum: number, o: any) => sum + (Number(o.ackCount) || 0), 0);
-  const pendingOrders = trackingData.filter((o: any) => Number(o.ackCount) === 0).length;
+  const totalAcks = trackingData.reduce((sum: number, o: unknown) => sum + (Number(o.ackCount) || 0), 0);
+  const pendingOrders = trackingData.filter((o) => Number(o.ackCount) === 0).length;
 
   return (
     <div className="space-y-6">
@@ -500,7 +500,7 @@ function TrackingTab() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {trackingData.map((order: any) => {
+          {trackingData.map((order) => {
             const ackCount = Number(order.ackCount) || 0;
             const cfg = PRIORITY_CONFIG[order.priority] || PRIORITY_CONFIG.normal;
             const PriIcon = cfg.icon;
@@ -563,12 +563,12 @@ function TrackingTab() {
 
 export default function PostOrdersPage() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [showForm, setShowForm] = useState(false);
-  const [editOrder, setEditOrder] = useState<any>(null);
+  const [editOrder, setEditOrder] = useState<null>(null);
   const [filterPriority, setFilterPriority] = useState("all");
-  const [ackOrder, setAckOrder] = useState<any>(null);
-  const [viewAcksOrder, setViewAcksOrder] = useState<any>(null);
+  const [ackOrder, setAckOrder] = useState<null>(null);
+  const [viewAcksOrder, setViewAcksOrder] = useState<null>(null);
 
   const { data: templates = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/post-orders", workspaceId],

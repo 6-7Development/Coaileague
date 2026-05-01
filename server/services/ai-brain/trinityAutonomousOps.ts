@@ -64,7 +64,7 @@ export interface AutonomousAction {
   completedAt?: Date;
   success: boolean;
   result?: string;
-  metrics?: Record<string, any>;
+  metrics?: Record<string, unknown>;
   escalatedTo?: string[];
   requiresHumanReview: boolean;
 }
@@ -142,14 +142,14 @@ async function getSupportRoleTargets(
         .where(
           and(
             eq(workspaceMembers.workspaceId, workspaceId),
-            inArray(workspaceMembers.role, workspaceRoles as any)
+            inArray(workspaceMembers.role, workspaceRoles as unknown)
           )
         );
 
       for (const member of members) {
         const [u] = await db.select({ email: users.email }).from(users).where(eq(users.id, member.userId)).limit(1);
         targets.push({
-          role: member.role as any,
+          role: member.role as unknown,
           userId: member.userId,
           workspaceId,
           email: u?.email || undefined,
@@ -167,7 +167,7 @@ async function getSupportRoleTargets(
         .from(platformRoles)
         .where(
           and(
-            inArray(platformRoles.role, platformAdminRoles as any),
+            inArray(platformRoles.role, platformAdminRoles as unknown),
             isNull(platformRoles.revokedAt),
             eq(platformRoles.isSuspended, false)
           )
@@ -179,7 +179,7 @@ async function getSupportRoleTargets(
         const userWorkspaceId = u?.workspaceId || PLATFORM_WORKSPACE_ID;
         if (userWorkspaceId) {
           targets.push({
-            role: row.role as any,
+            role: row.role as unknown,
             userId: row.userId,
             workspaceId: userWorkspaceId,
             email: u?.email || undefined,
@@ -421,11 +421,11 @@ class TrinityAutonomousOps {
     // Trinity's Security Brain — listens to real-time intrusion detection events
     // emitted by trinityGuardMiddleware via the lightweight internal event bus.
     // These are NOT persisted DB events — they fire on every detected threat immediately.
-    platformEventBus.on('security_threat_detected', (payload: any) => {
+    platformEventBus.on('security_threat_detected', (payload: unknown) => {
       this.handleSecurityThreat(payload);
     });
 
-    platformEventBus.on('security_blocked_ip_access', (payload: any) => {
+    platformEventBus.on('security_blocked_ip_access', (payload: unknown) => {
       log.warn(`[TrinityAutonomousOps] BLOCKED IP attempted access: ${payload.ip} → ${payload.method} ${payload.path}`);
     });
 
@@ -475,7 +475,7 @@ class TrinityAutonomousOps {
     }
   }
 
-  private async handleCriticalEvent(event: any): Promise<void> {
+  private async handleCriticalEvent(event: unknown): Promise<void> {
     const anomaly: AnomalyReport = {
       id: crypto.randomUUID(),
       type: 'error_spike',
@@ -506,7 +506,7 @@ class TrinityAutonomousOps {
     this.scanInterval = setInterval(async () => {
       try {
         await this.runHealthScan();
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.warn('[TrinityAutonomousOps] Health scan failed (will retry):', error?.message || 'unknown');
       }
     }, this.HEALTH_SCAN_INTERVAL);
@@ -700,7 +700,6 @@ class TrinityAutonomousOps {
     if (criticalAlerts.length > 0 || healthSummary?.overallStatus === 'critical') {
       return 'critical';
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (errorAlerts.length >= 3 || healthSummary?.overallStatus === 'critical') {
       return 'degraded';
     }
@@ -710,7 +709,7 @@ class TrinityAutonomousOps {
   private calculateHealthScore(
     healthSummary: PlatformHealthSummary | null,
     alerts: SentinelAlert[],
-    connectorDiagnostics: Record<string, any>
+    connectorDiagnostics: Record<string, unknown>
   ): number {
     let score = 100;
 
@@ -738,7 +737,7 @@ class TrinityAutonomousOps {
     this.maintenanceInterval = setInterval(async () => {
       try {
         await this.runMaintenanceCycle();
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.warn('[TrinityAutonomousOps] Maintenance cycle failed (will retry):', error?.message || 'unknown');
       }
     }, this.MAINTENANCE_INTERVAL);
@@ -932,7 +931,7 @@ class TrinityAutonomousOps {
           managementPatternsLearned += patterns.filter(p => p.patternType === 'management_preference').length;
           reportInsightsLearned += patterns.filter(p => p.patternType === 'report_insight').length;
           conversationLearningsFound += patterns.filter(p => p.patternType === 'conversation_learning').length;
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn(`[TrinityAutonomousOps] Org learning failed for workspace ${ws.id}:`, err?.message);
         }
       }
@@ -984,7 +983,7 @@ class TrinityAutonomousOps {
         try {
           const decayed = trinityOrgIntelligenceService.applyPatternDecay(ws.id);
           totalDecayed += decayed;
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn(`[TrinityAutonomousOps] Pattern decay failed for workspace ${ws.id}:`, err?.message);
         }
       }
@@ -1028,7 +1027,7 @@ class TrinityAutonomousOps {
         try {
           const suggestions = trinityOrgIntelligenceService.generateImprovementSuggestions(ws.id);
           totalSuggestions += suggestions.length;
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn(`[TrinityAutonomousOps] Proactive suggestions failed for workspace ${ws.id}:`, err?.message);
         }
       }
@@ -1140,7 +1139,7 @@ class TrinityAutonomousOps {
 
   private async logAuditEvent(
     action: string,
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({
@@ -1202,7 +1201,7 @@ class TrinityAutonomousOps {
     return this.recentAnomalies.slice(0, limit);
   }
 
-  getDiagnostics(): Record<string, any> {
+  getDiagnostics(): Record<string, unknown> {
     const status = this.getStatus();
     return {
       ...status,

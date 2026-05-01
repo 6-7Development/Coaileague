@@ -91,8 +91,8 @@ interface PricingTier {
 
 interface PricingData {
   tiers: PricingTier[];
-  creditPacks: any[];
-  overages: any;
+  creditPacks: unknown[];
+  overages: Record<string, unknown>;
 }
 
 interface SubscriptionDetails {
@@ -284,7 +284,7 @@ export default function Billing() {
     queryKey: ["/api/billing/upsell/addon-plans"],
     enabled: !!user,
     queryFn: () => apiFetch('/api/billing/upsell/addon-plans', AddonPlanListResponse),
-    select: (data: any) => data?.plans ?? data ?? [],
+    select: (data) => data?.plans ?? data ?? [],
   });
 
   // Fetch active workspace add-ons
@@ -292,7 +292,7 @@ export default function Billing() {
     queryKey: ["/api/billing/upsell/addons"],
     enabled: !!user,
     queryFn: () => apiFetch('/api/billing/upsell/addons', AddonPlanListResponse),
-    select: (data: any) => data?.addons ?? data ?? [],
+    select: (data) => data?.addons ?? data ?? [],
   });
 
 
@@ -319,7 +319,7 @@ export default function Billing() {
   });
 
   // ── Payroll cycle settings ─────────────────────────────────────────────────
-  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{ settings: Record<string, any> | null }>({
+  const { data: workspaceBillingSettings, isLoading: workspaceBillingSettingsLoading, refetch: refetchWorkspaceBillingSettings } = useQuery<{ settings: Record<string, unknown> | null }>({
     queryKey: ["/api/billing-settings/workspace"],
     enabled: !!user,
   });
@@ -347,7 +347,7 @@ export default function Billing() {
   }, [workspaceBillingSettings]);
 
   const savePayrollMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) =>
+    mutationFn: async (data: Record<string, unknown>) =>
       apiRequest("PATCH", "/api/billing-settings/workspace", data),
     onSuccess: () => {
       refetchWorkspaceBillingSettings();
@@ -364,7 +364,7 @@ export default function Billing() {
       toast({ title: "Select a cycle", description: "Choose weekly, bi-weekly, or another frequency first.", variant: "destructive" });
       return;
     }
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       payrollCycle,
       payrollCutoffDays: parseInt(payrollCutoffDays) || 3,
     };
@@ -451,11 +451,11 @@ export default function Billing() {
     enabled: !!user && selectedTab === "client-terms",
   });
   const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const { data: clientTermsData, isLoading: clientTermsLoading, refetch: refetchClientTerms } = useQuery<{ settings: Record<string, any> | null }>({
+  const { data: clientTermsData, isLoading: clientTermsLoading, refetch: refetchClientTerms } = useQuery<{ settings: Record<string, unknown> | null }>({
     queryKey: ["/api/billing-settings/clients", selectedClientId],
     enabled: !!selectedClientId,
   });
-  const clientTerms = clientTermsData?.settings || {} as Record<string, any>;
+  const clientTerms = clientTermsData?.settings || {} as Record<string, unknown>;
 
   const [ctBillingCycle, setCtBillingCycle] = useState<string>("monthly");
   const [ctPaymentTerms, setCtPaymentTerms] = useState<string>("net_30");
@@ -478,7 +478,7 @@ export default function Billing() {
   }, [clientTermsData, selectedClientId]);
 
   const saveClientTermsMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await secureFetch(`/api/billing-settings/clients/${selectedClientId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -501,7 +501,7 @@ export default function Billing() {
       toast({ title: "Select a client first", variant: "destructive" });
       return;
     }
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       billingCycle: ctBillingCycle,
       paymentTerms: ctPaymentTerms,
     };
@@ -823,11 +823,11 @@ export default function Billing() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-next-invoice-date">
-                  {(workspace as any)?.nextBillingDate ? format(new Date((workspace as any).nextBillingDate), "MMM d, yyyy") : "Not scheduled"}
+                  {(workspace as Record<string,unknown>)?.nextBillingDate ? format(new Date((workspace as Record<string,unknown>).nextBillingDate), "MMM d, yyyy") : "Not scheduled"}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Billing cycle: {(subscriptionDetails as any)?.billingInterval
-                    ? (subscriptionDetails as any).billingInterval.charAt(0).toUpperCase() + (subscriptionDetails as any).billingInterval.slice(1)
+                  Billing cycle: {(subscriptionDetails as Record<string,unknown>)?.billingInterval
+                    ? (subscriptionDetails as Record<string,unknown>).billingInterval.charAt(0).toUpperCase() + (subscriptionDetails as Record<string,unknown>).billingInterval.slice(1)
                     : "Monthly"}
                 </p>
               </CardContent>
@@ -849,7 +849,7 @@ export default function Billing() {
                 </div>
               ) : Array.isArray(activeAddons) && activeAddons.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mobile-cols-1">
-                  {activeAddons.map((addon: any) => (
+                  {activeAddons.map((addon) => (
                     <div key={addon.id} className="flex items-center gap-3 p-3 rounded-md border mobile-compact-p" data-testid={`addon-active-${addon.id}`}>
                       <Zap className="h-5 w-5 text-primary" />
                       <div className="flex-1 min-w-0">
@@ -930,7 +930,7 @@ export default function Billing() {
 
           {/* Seat Hard Cap Setting — org_owner only */}
           {canManageBilling && (
-            <HardCapToggleCard workspaceId={(workspace as any)?.id} />
+            <HardCapToggleCard workspaceId={(workspace as Record<string,unknown>)?.id} />
           )}
 
           {/* Billing Cycle Toggle */}
@@ -1073,7 +1073,7 @@ export default function Billing() {
                 </div>
               ) : Array.isArray(invoices) && invoices.length > 0 ? (
                 <div className="space-y-3">
-                  {invoices.map((invoice: any) => (
+                  {invoices.map((invoice) => (
                     <div 
                       key={invoice.id} 
                       className="flex items-center justify-between p-4 rounded-md border hover-elevate mobile-flex-col mobile-gap-3 cursor-pointer"
@@ -1144,7 +1144,7 @@ export default function Billing() {
                   {(() => {
                     const seatCount = subscriptionDetails?.limits?.maxEmployees || 5;
                     const planLimit = seatCount * 20000;
-                    const totalUsed = (usageData as any)?.totalTokens || 0;
+                    const totalUsed = (usageData as Record<string,unknown>)?.totalTokens || 0;
                     const usagePercent = Math.min(100, (totalUsed / planLimit) * 100);
                     const isOverage = totalUsed > planLimit;
                     const overageAmount = Math.max(0, totalUsed - planLimit);
@@ -1234,7 +1234,7 @@ export default function Billing() {
                         <Brain className="h-4 w-4" />
                         AI Records™
                       </div>
-                      <div className="text-2xl font-bold">{formatNumber((usageData as any)?.recordOSTokens || 0)}</div>
+                      <div className="text-2xl font-bold">{formatNumber((usageData as Record<string,unknown>)?.recordOSTokens || 0)}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
                     </div>
                     <div className="p-4 rounded-md border mobile-compact-p">
@@ -1242,7 +1242,7 @@ export default function Billing() {
                         <TrendingUp className="h-4 w-4" />
                         AI Analytics™
                       </div>
-                      <div className="text-2xl font-bold">{formatNumber((usageData as any)?.insightOSTokens || 0)}</div>
+                      <div className="text-2xl font-bold">{formatNumber((usageData as Record<string,unknown>)?.insightOSTokens || 0)}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
                     </div>
                     <div className="p-4 rounded-md border mobile-compact-p">
@@ -1250,7 +1250,7 @@ export default function Billing() {
                         <Calendar className="h-4 w-4" />
                         Trinity Schedule
                       </div>
-                      <div className="text-2xl font-bold">{formatNumber((usageData as any)?.scheduleOSTokens || 0)}</div>
+                      <div className="text-2xl font-bold">{formatNumber((usageData as Record<string,unknown>)?.scheduleOSTokens || 0)}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
                     </div>
                     <div className="p-4 rounded-md border mobile-compact-p">
@@ -1258,7 +1258,7 @@ export default function Billing() {
                         <Zap className="h-4 w-4" />
                         Total
                       </div>
-                      <div className="text-2xl font-bold text-primary">{formatNumber((usageData as any)?.totalTokens || 0)}</div>
+                      <div className="text-2xl font-bold text-primary">{formatNumber((usageData as Record<string,unknown>)?.totalTokens || 0)}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
                     </div>
                   </div>
@@ -1382,8 +1382,8 @@ export default function Billing() {
                 </div>
               ) : Array.isArray(addons) && addons.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mobile-cols-1">
-                  {addons.map((addon: any) => {
-                    const isActive = Array.isArray(activeAddons) && activeAddons.some((a: any) => a.addonId === addon.id);
+                  {addons.map((addon) => {
+                    const isActive = Array.isArray(activeAddons) && activeAddons.some((a) => a.addonId === addon.id);
                     return (
                       <Card key={addon.id} className={isActive ? "border-primary bg-muted/5" : ""} data-testid={`addon-${addon.id}`}>
                         <CardHeader>

@@ -97,7 +97,6 @@ import { SWUpdateBanner } from "@/components/ui/sw-update-notice";
 import { ServiceWorkerMessageListener } from "@/components/sw-notification-listener";
 import { listenForTabEvents } from "@/lib/tabSync";
 import { SessionTimeoutWarning } from "@/components/session-timeout-warning";
-import { SplashScreen } from "@/components/SplashScreen";
 
 // Lazy-loaded seasonal effects (heavy component)
 // Retry wrapper for lazy imports — handles transient chunk load failures (503/network errors)
@@ -490,7 +489,7 @@ function MailHeaderButton({ onClick }: { onClick: () => void }) {
     refetchInterval: 60000,
   });
   
-  const unreadCount = ((mailboxData as any)?.mailbox as any)?.unreadCount || 0;
+  const unreadCount = ((mailboxData as Record<string,unknown>)?.mailbox as unknown)?.unreadCount || 0;
   
   return (
     <Tooltip>
@@ -551,16 +550,30 @@ function AppUtilityCluster({ setLocation }: any) {
 function LanguageSync() {
   const { user } = useAuth();
   useEffect(() => {
-    const lang = (user as any)?.preferredLanguage;
+    const lang = (user as Record<string,unknown>)?.preferredLanguage;
     if (lang === 'en' || lang === 'es') {
       setLanguage(lang);
     }
-  }, [(user as any)?.preferredLanguage]);
+  }, [(user as Record<string,unknown>)?.preferredLanguage]);
   return null;
 }
 
 function AppContent() {
-  const { isAuthenticated, isLoading, user, orgInactive, isOwner, paymentRequired } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user, orgInactive, isOwner, paymentRequired } = useAuth();
+
+  // Watchdog: if auth loading takes > 6s, force-resolve to prevent eternal spinner.
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (!authLoading) { setLoadingTimedOut(false); return; }
+    const t = setTimeout(() => setLoadingTimedOut(true), 6000);
+    return () => clearTimeout(t);
+  }, [authLoading]);
+  useEffect(() => {
+    const handler = () => setLoadingTimedOut(true);
+    window.addEventListener("coaileague:force-ready", handler);
+    return () => window.removeEventListener("coaileague:force-ready", handler);
+  }, []);
+  const isLoading = authLoading && !loadingTimedOut;
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
@@ -590,7 +603,7 @@ function AppContent() {
   useTrinityNotificationRouting({
     enabled: !!user,
     userId: user?.id,
-    workspaceId: (user as any)?.workspaceId,
+    workspaceId: (user as Record<string,unknown>)?.workspaceId,
   });
 
   // Query onboarding status for authenticated users
@@ -602,7 +615,7 @@ function AppContent() {
 
   // Automatically show onboarding wizard for new users with pending status
   useEffect(() => {
-    if ((onboardingStatus as any)?.status === 'pending') {
+    if ((onboardingStatus as Record<string,unknown>)?.status === 'pending') {
       setShowOnboarding(true);
     }
   }, [onboardingStatus]);
@@ -637,7 +650,7 @@ function AppContent() {
       setLocation('/org-management');
     }
     // Client users must land in the client portal, not the main app dashboard
-    if (!isLoading && user && (user as any).role === 'client' && location !== '/client/portal' && !location.startsWith('/client/')) {
+    if (!isLoading && user && (user as Record<string,unknown>).role === 'client' && location !== '/client/portal' && !location.startsWith('/client/')) {
       setLocation('/client/portal');
     }
   }, [orgInactive, paymentRequired, isOwner, isLoading, location, setLocation, user]);
@@ -803,7 +816,6 @@ function AppContent() {
               <Route path="/templates/:templateId" component={TemplatesPage} />
               <Route path="/contact" component={Contact} />
               <Route path="/support" component={Support} />
-              {/* @ts-ignore */}
               <Route path="/client-status-lookup" component={ClientStatusLookup} />
               <Route path="/features-showcase" component={FeaturesShowcase} />
               <Route path="/universal-marketing" component={UniversalMarketing} />
@@ -860,14 +872,17 @@ function AppContent() {
   }
 
   // Check if user is Root Admin (platform-level access)
-  const isRootAdmin = (user as any)?.platformRole === 'root_admin' || (user as any)?.platformRole === 'sysop';
+  const isRootAdmin = (user as Record<string,unknown>)?.platformRole === 'root_admin' || (user as Record<string,unknown>)?.platformRole === 'sysop';
 
-  if (isLoading && !isPublicRoute) {
+  // If the HTML pre-React splash already ran this session, suppress the
+  // React LoadingScreen — the splash covered the loading state visually.
+  const htmlSplashRan = (() => { try { return !!sessionStorage.getItem('coai_html_splash_done'); } catch { return false; } })();
+  if (authLoading && !loadingTimedOut && !isPublicRoute && !htmlSplashRan) {
     return <LoadingScreen />;
   }
 
   // Expose tutorial function globally for sidebar access
-  (window as any).setShowOnboarding = setShowOnboarding;
+  (window as Record<string,unknown>).setShowOnboarding = setShowOnboarding;
 
   // Sidebar width configuration
   const sidebarStyle = {
@@ -930,7 +945,7 @@ function AppContent() {
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
-                <Route path="/shifts/offers/:offerId">{(params: any) => <ErrorBoundary><ShiftOfferPage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/shifts/offers/:offerId">{(params) => <ErrorBoundary><ShiftOfferPage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/workflow-approvals"><ErrorBoundary><WorkflowApprovals /></ErrorBoundary></Route>
                 <Route path="/shift-approvals"><ErrorBoundary><ShiftApprovals /></ErrorBoundary></Route>
                 <Route path="/sales"><ErrorBoundary><WorkspaceSales /></ErrorBoundary></Route>
@@ -1049,7 +1064,7 @@ function AppContent() {
                 <Route path="/i9-compliance"><ErrorBoundary><I9Compliance /></ErrorBoundary></Route>
                 <Route path="/compliance-reports"><ErrorBoundary><ComplianceReports /></ErrorBoundary></Route>
                 <Route path="/security-compliance"><ErrorBoundary><SecurityComplianceVault /></ErrorBoundary></Route>
-                <Route path="/security-compliance/employee/:employeeId">{(params: any) => <ErrorBoundary><EmployeeComplianceDetail {...params} /></ErrorBoundary>}</Route>
+                <Route path="/security-compliance/employee/:employeeId">{(params) => <ErrorBoundary><EmployeeComplianceDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/security-compliance/approvals"><ErrorBoundary><ComplianceApprovals /></ErrorBoundary></Route>
                 <Route path="/security-compliance/expiration-alerts"><ErrorBoundary><ExpirationAlerts /></ErrorBoundary></Route>
                 <Route path="/security-compliance/regulator-access"><ErrorBoundary><RegulatorAccess /></ErrorBoundary></Route>
@@ -1058,7 +1073,7 @@ function AppContent() {
                 <Route path="/security-compliance/audit-readiness"><ErrorBoundary><AuditReadiness /></ErrorBoundary></Route>
                 <Route path="/compliance/regulatory-enrollment"><ErrorBoundary><RegulatoryEnrollment /></ErrorBoundary></Route>
                 <Route path="/policies"><ErrorBoundary><Policies /></ErrorBoundary></Route>
-                <Route path="/payroll/pay-stubs/:id">{(params: any) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
+                <Route path="/payroll/pay-stubs/:id">{(params) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/payroll/timesheets"><ErrorBoundary componentName="Payroll Timesheets"><PayrollTimesheets /></ErrorBoundary></Route>
                 <Route path="/payroll/tax-center"><ErrorBoundary componentName="Tax Center"><TaxCenter /></ErrorBoundary></Route>
                 <Route path="/payroll"><ErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard /></ErrorBoundary></Route>
@@ -1089,7 +1104,7 @@ function AppContent() {
                 <Route path="/private-messages"><ErrorBoundary><PrivateMessages /></ErrorBoundary></Route>
                 <Route path="/training-os"><ErrorBoundary><Training /></ErrorBoundary></Route>
                 <Route path="/training"><ErrorBoundary><TrainingPage /></ErrorBoundary></Route>
-                <Route path="/training-certification/modules/:id">{(params: any) => <ErrorBoundary><TrainingModuleLearning {...params} /></ErrorBoundary>}</Route>
+                <Route path="/training-certification/modules/:id">{(params) => <ErrorBoundary><TrainingModuleLearning {...params} /></ErrorBoundary>}</Route>
                 <Route path="/training-certification"><ErrorBoundary><TrainingCertification /></ErrorBoundary></Route>
                 <Route path="/recognition"><ErrorBoundary><RecognitionPage /></ErrorBoundary></Route>
                 <Route path="/budgeting"><ErrorBoundary><Budgeting /></ErrorBoundary></Route>
@@ -1123,7 +1138,7 @@ function AppContent() {
                 <Route path="/applicant-tracking"><ErrorBoundary><ApplicantTrackingPage /></ErrorBoundary></Route>
                 <Route path="/hiring"><ErrorBoundary componentName="Hiring Pipeline"><HiringPipelinePage /></ErrorBoundary></Route>
                 <Route path="/recruitment"><ErrorBoundary componentName="Interview Pipeline"><RecruitmentPage /></ErrorBoundary></Route>
-                <Route path="/recruitment/candidates/:id">{(params: any) => <ErrorBoundary componentName="Candidate Profile"><CandidateProfilePage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/recruitment/candidates/:id">{(params) => <ErrorBoundary componentName="Candidate Profile"><CandidateProfilePage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/onboarding-tasks"><ErrorBoundary componentName="Onboarding Tasks"><OnboardingTasksPage /></ErrorBoundary></Route>
                 <Route path="/training-compliance"><ErrorBoundary><TrainingCompliancePage /></ErrorBoundary></Route>
                 <Route path="/subcontractor-management"><ErrorBoundary><SubcontractorManagementPage /></ErrorBoundary></Route>
@@ -1150,7 +1165,7 @@ function AppContent() {
                 <Route path="/coverage-marketplace"><Redirect to="/shift-marketplace" /></Route>
                 <Route path="/incident-pipeline"><ErrorBoundary><IncidentPipeline /></ErrorBoundary></Route>
                 <Route path="/document-templates"><ErrorBoundary><DocumentTemplates /></ErrorBoundary></Route>
-                <Route path="/document-form/:templateId">{(params: any) => <ErrorBoundary><DocumentFormPage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/document-form/:templateId">{(params) => <ErrorBoundary><DocumentFormPage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/document-vault"><ErrorBoundary><DocumentVault /></ErrorBoundary></Route>
                 <Route path="/hr-documents"><ErrorBoundary><HrDocuments /></ErrorBoundary></Route>
                 <Route path="/hr-document-requests"><ErrorBoundary><HrDocumentRequests /></ErrorBoundary></Route>
@@ -1241,8 +1256,8 @@ function AppContent() {
                   </RBACRoute>
                 </Route>
                 <Route path="/owner/hireos/workflow-builder"><ErrorBoundary><HiringWorkflowBuilder /></ErrorBoundary></Route>
-                <Route path="/employees/:employeeId/file-cabinet">{(params: any) => <ErrorBoundary><EmployeeFileCabinet {...params} /></ErrorBoundary>}</Route>
-                <Route path="/employees/:employeeId/hr-record">{(params: any) => <ErrorBoundary><OfficerHrRecord {...params} /></ErrorBoundary>}</Route>
+                <Route path="/employees/:employeeId/file-cabinet">{(params) => <ErrorBoundary><EmployeeFileCabinet {...params} /></ErrorBoundary>}</Route>
+                <Route path="/employees/:employeeId/hr-record">{(params) => <ErrorBoundary><OfficerHrRecord {...params} /></ErrorBoundary>}</Route>
                 <Route path="/service-requests"><ErrorBoundary><ServiceRequests /></ErrorBoundary></Route>
                 <Route path="/company-reports"><ErrorBoundary><CompanyReports /></ErrorBoundary></Route>
                 <Route path="/platform/sales"><ErrorBoundary><WorkspaceSales /></ErrorBoundary></Route>
@@ -1256,8 +1271,8 @@ function AppContent() {
                 <Route path="/employee/profile"><ErrorBoundary componentName="Employee Profile"><EmployeeProfile /></ErrorBoundary></Route>
                 {/* Org-isolated chat rooms (internal communication) - Master-detail pattern */}
                 <Route path="/chatrooms"><ErrorBoundary><Chatrooms /></ErrorBoundary></Route>
-                <Route path="/chatrooms/:roomId">{(params: any) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
-                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as any)} /></ErrorBoundary>}</Route>
+                <Route path="/chatrooms/:roomId">{(params) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
+                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as unknown)} /></ErrorBoundary>}</Route>
                 <Route path="/broadcasts"><ErrorBoundary><Broadcasts /></ErrorBoundary></Route>
                 <Route path="/briefing-channel"><ErrorBoundary><BriefingChannel /></ErrorBoundary></Route>
                 {/* HelpDesk IRC/MSN-style chat interface with WebSocket */}
@@ -1469,7 +1484,7 @@ function AppContent() {
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
-                <Route path="/shifts/offers/:offerId">{(params: any) => <ErrorBoundary><ShiftOfferPage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/shifts/offers/:offerId">{(params) => <ErrorBoundary><ShiftOfferPage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/workflow-approvals"><ErrorBoundary><WorkflowApprovals /></ErrorBoundary></Route>
                 <Route path="/shift-approvals"><ErrorBoundary><ShiftApprovals /></ErrorBoundary></Route>
                 <Route path="/sales"><ErrorBoundary><WorkspaceSales /></ErrorBoundary></Route>
@@ -1640,7 +1655,7 @@ function AppContent() {
                 <Route path="/i9-compliance"><ErrorBoundary><I9Compliance /></ErrorBoundary></Route>
                 <Route path="/compliance-reports"><ErrorBoundary><ComplianceReports /></ErrorBoundary></Route>
                 <Route path="/security-compliance"><ErrorBoundary><SecurityComplianceVault /></ErrorBoundary></Route>
-                <Route path="/security-compliance/employee/:employeeId">{(params: any) => <ErrorBoundary><EmployeeComplianceDetail {...params} /></ErrorBoundary>}</Route>
+                <Route path="/security-compliance/employee/:employeeId">{(params) => <ErrorBoundary><EmployeeComplianceDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/security-compliance/approvals"><ErrorBoundary><ComplianceApprovals /></ErrorBoundary></Route>
                 <Route path="/security-compliance/expiration-alerts"><ErrorBoundary><ExpirationAlerts /></ErrorBoundary></Route>
                 <Route path="/security-compliance/regulator-access"><ErrorBoundary><RegulatorAccess /></ErrorBoundary></Route>
@@ -1649,7 +1664,7 @@ function AppContent() {
                 <Route path="/security-compliance/audit-readiness"><ErrorBoundary><AuditReadiness /></ErrorBoundary></Route>
                 <Route path="/compliance/regulatory-enrollment"><ErrorBoundary><RegulatoryEnrollment /></ErrorBoundary></Route>
                 <Route path="/policies"><ErrorBoundary><Policies /></ErrorBoundary></Route>
-                <Route path="/payroll/pay-stubs/:id">{(params: any) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
+                <Route path="/payroll/pay-stubs/:id">{(params) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/payroll/timesheets"><ErrorBoundary componentName="Payroll Timesheets"><PayrollTimesheets /></ErrorBoundary></Route>
                 <Route path="/payroll/tax-center"><ErrorBoundary componentName="Tax Center"><TaxCenter /></ErrorBoundary></Route>
                 <Route path="/payroll"><ErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard /></ErrorBoundary></Route>
@@ -1672,8 +1687,8 @@ function AppContent() {
                 <Route path="/payroll/garnishments"><ErrorBoundary><PayrollGarnishments /></ErrorBoundary></Route>
                 <Route path="/communications/onboarding"><ErrorBoundary><CommunicationsOnboarding /></ErrorBoundary></Route>
                 <Route path="/chatrooms"><ErrorBoundary><Chatrooms /></ErrorBoundary></Route>
-                <Route path="/chatrooms/:roomId">{(params: any) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
-                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as any)} /></ErrorBoundary>}</Route>
+                <Route path="/chatrooms/:roomId">{(params) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
+                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as unknown)} /></ErrorBoundary>}</Route>
                 <Route path="/broadcasts"><ErrorBoundary><Broadcasts /></ErrorBoundary></Route>
                 <Route path="/briefing-channel"><ErrorBoundary><BriefingChannel /></ErrorBoundary></Route>
                 <Route path="/chat/:roomId">{(params: { roomId: string }) => <ErrorBoundary><HelpDesk roomId={params.roomId} /></ErrorBoundary>}</Route>
@@ -1687,7 +1702,7 @@ function AppContent() {
                 <Route path="/private-messages"><ErrorBoundary><PrivateMessages /></ErrorBoundary></Route>
                 <Route path="/training-os"><ErrorBoundary><Training /></ErrorBoundary></Route>
                 <Route path="/training"><ErrorBoundary><TrainingPage /></ErrorBoundary></Route>
-                <Route path="/training-certification/modules/:id">{(params: any) => <ErrorBoundary><TrainingModuleLearning {...params} /></ErrorBoundary>}</Route>
+                <Route path="/training-certification/modules/:id">{(params) => <ErrorBoundary><TrainingModuleLearning {...params} /></ErrorBoundary>}</Route>
                 <Route path="/training-certification"><ErrorBoundary><TrainingCertification /></ErrorBoundary></Route>
                 <Route path="/recognition"><ErrorBoundary><RecognitionPage /></ErrorBoundary></Route>
                 <Route path="/budgeting"><ErrorBoundary><Budgeting /></ErrorBoundary></Route>
@@ -1782,8 +1797,8 @@ function AppContent() {
                   </PlatformAdminRoute>
                 </Route>
                 <Route path="/owner/hireos/workflow-builder"><ErrorBoundary><HiringWorkflowBuilder /></ErrorBoundary></Route>
-                <Route path="/employees/:employeeId/file-cabinet">{(params: any) => <ErrorBoundary><EmployeeFileCabinet {...params} /></ErrorBoundary>}</Route>
-                <Route path="/employees/:employeeId/hr-record">{(params: any) => <ErrorBoundary><OfficerHrRecord {...params} /></ErrorBoundary>}</Route>
+                <Route path="/employees/:employeeId/file-cabinet">{(params) => <ErrorBoundary><EmployeeFileCabinet {...params} /></ErrorBoundary>}</Route>
+                <Route path="/employees/:employeeId/hr-record">{(params) => <ErrorBoundary><OfficerHrRecord {...params} /></ErrorBoundary>}</Route>
                 <Route path="/service-requests"><ErrorBoundary><ServiceRequests /></ErrorBoundary></Route>
                 <Route path="/company-reports"><ErrorBoundary><CompanyReports /></ErrorBoundary></Route>
                 <Route path="/platform/sales"><ErrorBoundary><WorkspaceSales /></ErrorBoundary></Route>
@@ -1823,7 +1838,7 @@ function AppContent() {
                 <Route path="/applicant-tracking"><ErrorBoundary componentName="Applicant Tracking"><ApplicantTrackingPage /></ErrorBoundary></Route>
                 <Route path="/hiring"><ErrorBoundary componentName="Hiring Pipeline"><HiringPipelinePage /></ErrorBoundary></Route>
                 <Route path="/recruitment"><ErrorBoundary componentName="Interview Pipeline"><RecruitmentPage /></ErrorBoundary></Route>
-                <Route path="/recruitment/candidates/:id">{(params: any) => <ErrorBoundary componentName="Candidate Profile"><CandidateProfilePage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/recruitment/candidates/:id">{(params) => <ErrorBoundary componentName="Candidate Profile"><CandidateProfilePage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/onboarding-tasks"><ErrorBoundary componentName="Onboarding Tasks"><OnboardingTasksPage /></ErrorBoundary></Route>
                 <Route path="/training-compliance"><ErrorBoundary componentName="Training Compliance"><TrainingCompliancePage /></ErrorBoundary></Route>
                 <Route path="/subcontractor-management"><ErrorBoundary componentName="Subcontractor Management"><SubcontractorManagementPage /></ErrorBoundary></Route>
@@ -1858,7 +1873,7 @@ function AppContent() {
                 <Route path="/bridge-channels"><ErrorBoundary><BridgeChannels /></ErrorBoundary></Route>
                 <Route path="/cad"><ErrorBoundary><CadConsole /></ErrorBoundary></Route>
                 <Route path="/coverage-marketplace"><Redirect to="/shift-marketplace" /></Route>
-                <Route path="/document-form/:templateId">{(params: any) => <ErrorBoundary><DocumentFormPage {...params} /></ErrorBoundary>}</Route>
+                <Route path="/document-form/:templateId">{(params) => <ErrorBoundary><DocumentFormPage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/document-templates"><ErrorBoundary><DocumentTemplates /></ErrorBoundary></Route>
                 <Route path="/document-vault"><ErrorBoundary><DocumentVault /></ErrorBoundary></Route>
                 <Route path="/equipment"><ErrorBoundary><EquipmentPage /></ErrorBoundary></Route>
@@ -1900,42 +1915,7 @@ function AppContent() {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    // Never show the splash screen on public/marketing routes —
-    // it covers everything (fixed inset-0 z-99999) and would blank the page.
-    const publicPaths = [
-      '/', '/login', '/register', '/pricing', '/contact', '/support',
-      '/terms', '/privacy', '/forgot-password', '/reset-password',
-      '/trinity-features', '/compare', '/roi-calculator', '/templates',
-      '/auditor/login', '/shift-accept', '/org-unavailable',
-    ];
-    const currentPath = window.location.pathname;
-    const isPublicPath = publicPaths.includes(currentPath) ||
-      currentPath.startsWith('/regulatory') ||
-      currentPath.startsWith('/onboarding/') ||
-      currentPath.startsWith('/pay-invoice/');
-    if (isPublicPath) return false;
-
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                  (window.navigator as any).standalone === true ||
-                  document.referrer.includes('android-app://');
-    try {
-      if (isPWA) return !localStorage.getItem('coaileague_pwa_splash_seen');
-      return !localStorage.getItem('coaileague_splash_seen');
-    } catch { return false; }
-  });
-
-  const handleSplashComplete = useCallback(() => {
-    setShowSplash(false);
-    try {
-      localStorage.setItem('coaileague_splash_seen', 'true');
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          (window.navigator as any).standalone === true ||
-          document.referrer.includes('android-app://')) {
-        localStorage.setItem('coaileague_pwa_splash_seen', 'true');
-      }
-    } catch { /* ignore storage errors */ }
-  }, []);
+  // Splash handled by HTML pre-React loader (index.html)
 
   useEffect(() => {
     window.dispatchEvent(new Event("coaileague:mounted"));
@@ -1964,7 +1944,7 @@ export default function App() {
                         <TrinitySessionProvider>
                         <ChatDockProvider>
                         <ResponsiveAppFrame>
-                          {showSplash && <SplashScreen onComplete={handleSplashComplete} minDisplayTime={3000} />}
+                          {/* Single splash: HTML pre-React loader handles it */}
                           <ConnectionStatusBanner />
                           <OfflineIndicator />
                           <SWUpdateBanner />

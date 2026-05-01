@@ -32,7 +32,7 @@ async function test(name: string, fn: () => Promise<void>) {
   try {
     await fn();
     results.push({ name, passed: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     results.push({ name, passed: false, error: err.message });
   }
 }
@@ -322,7 +322,7 @@ async function suiteAutoFreeze() {
       entityType: 'organization', entityId, workspaceId: DEV_WORKSPACE,
     });
     // Mark as compliant first
-    await db.update(complianceWindows).set({ isCompliant: true } as any).where(eq(complianceWindows.id, window.id));
+    await db.update(complianceWindows).set({ isCompliant: true } as Record<string, unknown>).where(eq(complianceWindows.id, window.id));
     const result = await complianceEnforcementService.autoFreezeAccount('organization', entityId, window.id);
     assert(result.success === false, 'Should not freeze compliant entity');
     await cleanupTestEntity(entityId);
@@ -447,7 +447,7 @@ async function suiteAppealLogic() {
       workspaceId: DEV_WORKSPACE,
     });
     // Force re-freeze for testing
-    await db.update(complianceWindows).set({ isFrozen: true } as any)
+    await db.update(complianceWindows).set({ isFrozen: true } as Record<string, unknown>)
       .where(and(
         eq(complianceWindows.entityType, 'organization'),
         eq(complianceWindows.entityId, entityId),
@@ -479,7 +479,7 @@ async function suiteAppealLogic() {
       workspaceId: DEV_WORKSPACE,
     });
     // Force re-freeze to simulate extension expiry
-    await db.update(complianceWindows).set({ isFrozen: true } as any)
+    await db.update(complianceWindows).set({ isFrozen: true } as Record<string, unknown>)
       .where(and(
         eq(complianceWindows.entityType, 'organization'),
         eq(complianceWindows.entityId, entityId),
@@ -518,7 +518,7 @@ async function suiteFreezeLift() {
     await complianceEnforcementService.autoFreezeAccount('organization', entityId, window.id);
     // First freeze manually
     await db.update(accountFreezes)
-      .set({ status: 'active' } as any)
+      .set({ status: 'active' } as Record<string, unknown>)
       .where(and(
         eq(accountFreezes.entityType, 'organization'),
         eq(accountFreezes.entityId, entityId),
@@ -568,7 +568,7 @@ async function suiteAuditorPortal() {
       agencyName: 'State Bureau of Security',
       stateCode: 'TX',
       isActive: true,
-    } as any).returning();
+    }).returning();
     assert(!!acct.id, 'Should have an ID');
     assert(acct.stateCode === 'TX', 'State code should match');
     await cleanupTestAuditor(testEmail);
@@ -581,14 +581,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Test Audit Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     assert(!!session.id, 'Session should have ID');
     assert(session.stateCode === 'TX', 'State code should match');
     await cleanupTestAuditor(testEmail);
@@ -601,14 +601,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Findings Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const [finding] = await db.insert(auditFindings).values({
       auditSessionId: session.id,
       auditorId: acct.id,
@@ -618,7 +618,7 @@ async function suiteAuditorPortal() {
       description: 'Certificate of Insurance not provided within the required timeframe',
       severity: 'high',
       fineAmount: 50000, // $500.00
-    } as any).returning();
+    }).returning();
     assert(!!finding.id, 'Finding should have ID');
     assert(finding.findingType === 'violation', 'Finding type should match');
     assert(finding.fineAmount === 50000, 'Fine amount should match');
@@ -632,14 +632,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Doc Request Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const [req] = await db.insert(auditorDocumentRequests).values({
       auditSessionId: session.id,
       auditorId: acct.id,
@@ -647,7 +647,7 @@ async function suiteAuditorPortal() {
       requestedDocType: 'coi',
       requestNotes: 'Please provide current COI from 2026',
       status: 'requested',
-    } as any).returning();
+    }).returning();
     assert(!!req.id, 'Request should have ID');
     assert(req.requestedDocType === 'coi', 'Doc type should match');
     assert(req.status === 'requested', 'Status should be requested');
@@ -661,14 +661,14 @@ async function suiteAuditorPortal() {
       email: testEmail,
       agencyName: 'TX Regulatory Bureau',
       stateCode: 'TX',
-    } as any).returning();
+    }).returning();
     const [session] = await db.insert(auditSessions).values({
       auditorId: acct.id,
       workspaceId: DEV_WORKSPACE,
       sessionLabel: 'Followup Test Session',
       stateCode: 'TX',
       overallOutcome: 'in_progress',
-    } as any).returning();
+    }).returning();
     const scheduledFor = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 1 week from now
     const [followup] = await db.insert(auditorFollowups).values({
       auditSessionId: session.id,
@@ -680,12 +680,12 @@ async function suiteAuditorPortal() {
       contactPhone: '713-555-9999',
       notes: 'Follow up on missing COI submission',
       isCompleted: false,
-    } as any).returning();
+    }).returning();
     assert(!!followup.id, 'Followup should have ID');
     assert(followup.isCompleted === false, 'Followup should not be completed yet');
     // Mark completed
     const [completed] = await db.update(auditorFollowups)
-      .set({ isCompleted: true, completedAt: new Date(), outcome: 'COI received and verified' } as any)
+      .set({ isCompleted: true, completedAt: new Date(), outcome: 'COI received and verified' } as Record<string, unknown>)
       .where(eq(auditorFollowups.id, followup.id))
       .returning();
     assert(completed.isCompleted === true, 'Followup should be completed');
@@ -715,7 +715,7 @@ async function suiteAuditorPortal() {
     // complianceRoutes deleted in refactor — test disabled
     // const mod = await import('../routes/complianceRoutes');
     assert(!!mod.default, 'Should export default router');
-    assert(typeof mod.default === 'function' || typeof (mod as any).default.use === 'function',
+    assert(typeof mod.default === 'function' || typeof (mod as Record<string, unknown>).default.use === 'function',
       'Should be an express Router');
   });
 }

@@ -277,26 +277,24 @@ class SchedulingSubagentService {
       // Check maximum daily hours
       for (const shift of empShifts) {
         const hours = this.calculateShiftHours(shift.startTime, shift.endTime);
-        const maxDaily = laborLaws.find(l => (l as any).ruleType === 'max_daily_hours');
+        const maxDaily = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'max_daily_hours');
         
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (maxDaily && hours > parseFloat(maxDaily.ruleValue)) {
           violations.push({
             ruleId: maxDaily.id,
             ruleName: 'Maximum Daily Hours',
             severity: 'critical',
-            description: `Shift exceeds ${(maxDaily as any).ruleValue}h maximum daily limit`,
+            description: `Shift exceeds ${(maxDaily as Record<string,unknown>).ruleValue}h maximum daily limit`,
             affectedEmployees: [employeeId],
-            suggestedFix: `Split shift or reduce to ${(maxDaily as any).ruleValue}h maximum`,
+            suggestedFix: `Split shift or reduce to ${(maxDaily as Record<string,unknown>).ruleValue}h maximum`,
           });
           appliedRules.push('max_daily_hours');
         }
 
         // Check required breaks
-        const breakRule = laborLaws.find(l => (l as any).ruleType === 'required_break');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+        const breakRule = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'required_break');
         if (breakRule && hours >= parseFloat(breakRule.threshold || '6')) {
-          warnings.push(`Employee ${employeeId}: ${hours}h shift requires ${(breakRule as any).ruleValue}min break`);
+          warnings.push(`Employee ${employeeId}: ${hours}h shift requires ${(breakRule as Record<string,unknown>).ruleValue}min break`);
           appliedRules.push('required_break');
         }
       }
@@ -306,14 +304,13 @@ class SchedulingSubagentService {
         sum + this.calculateShiftHours(s.startTime, s.endTime), 0
       );
       
-      const maxWeekly = laborLaws.find(l => (l as any).ruleType === 'max_weekly_hours');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const maxWeekly = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'max_weekly_hours');
       if (maxWeekly && weeklyHours > parseFloat(maxWeekly.ruleValue)) {
         violations.push({
           ruleId: maxWeekly.id,
           ruleName: 'Maximum Weekly Hours',
           severity: weeklyHours > 60 ? 'critical' : 'warning',
-          description: `${weeklyHours}h exceeds ${(maxWeekly as any).ruleValue}h weekly limit`,
+          description: `${weeklyHours}h exceeds ${(maxWeekly as Record<string,unknown>).ruleValue}h weekly limit`,
           affectedEmployees: [employeeId],
           suggestedFix: 'Reduce scheduled hours or split across multiple employees',
         });
@@ -321,7 +318,7 @@ class SchedulingSubagentService {
       }
 
       // Check rest period between shifts
-      const restRule = laborLaws.find(l => (l as any).ruleType === 'min_rest_period');
+      const restRule = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'min_rest_period');
       if (restRule) {
         const sortedShifts = [...empShifts].sort((a, b) => 
           new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -332,13 +329,12 @@ class SchedulingSubagentService {
           const currStart = this.parseShiftStartTime(sortedShifts[i]);
           const restHours = (currStart.getTime() - prevEnd.getTime()) / (1000 * 60 * 60);
           
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           if (restHours < parseFloat(restRule.ruleValue)) {
             violations.push({
               ruleId: restRule.id,
               ruleName: 'Minimum Rest Period',
               severity: 'warning',
-              description: `Only ${restHours.toFixed(1)}h rest between shifts (min: ${(restRule as any).ruleValue}h)`,
+              description: `Only ${restHours.toFixed(1)}h rest between shifts (min: ${(restRule as Record<string,unknown>).ruleValue}h)`,
               affectedEmployees: [employeeId],
               suggestedFix: 'Adjust shift times to ensure adequate rest period',
             });
@@ -489,11 +485,11 @@ Generate a JSON schedule with format:
       // Parse AI response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         
         // Calculate metrics
         const schedule = parsed.schedule || [];
-        const totalHours = schedule.reduce((sum: number, s: any) => {
+        const totalHours = schedule.reduce((sum: number, s: unknown) => {
           const hours = this.calculateShiftHours(s.startTime, s.endTime);
           return sum + hours;
         }, 0);
@@ -576,7 +572,7 @@ Generate a JSON schedule with format:
           } else if (riskEvaluation.verdict === 'needs_review') {
             llmJudgeWarning = riskEvaluation.reasoning;
           }
-        } catch (judgeError: any) {
+        } catch (judgeError : unknown) {
           log.error('[SchedulingSubagent] LLM Judge evaluation failed, proceeding:', judgeError.message);
         }
 
@@ -595,7 +591,7 @@ Generate a JSON schedule with format:
         }
 
         return {
-          schedule: schedule.map((s: any) => ({
+          schedule: schedule.map((s: unknown) => ({
             ...s,
             employeeName: employeeData.find(e => e.id === s.employeeId)?.firstName || 'Unknown',
             date: new Date(s.date),
@@ -641,7 +637,6 @@ Generate a JSON schedule with format:
       .from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(shifts.date, startDate)
       ))
       .orderBy(desc(shifts.date));
@@ -703,9 +698,7 @@ Generate a JSON schedule with format:
       .from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(shifts.date, minDate),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(shifts.date, maxDate)
       ));
   }
@@ -717,14 +710,14 @@ Generate a JSON schedule with format:
       .where(eq(employees.workspaceId, workspaceId))
       .limit(1);
     
-    const jurisdiction = (workspace as any)?.[0]?.laborLawJurisdiction || 'US-FEDERAL';
+    const jurisdiction = (workspace as Record<string,unknown>[])?.[0]?.laborLawJurisdiction || 'US-FEDERAL';
     
     return await db.select()
       .from(laborLawRules)
       .where(eq(laborLawRules.jurisdiction, jurisdiction));
   }
 
-  private async fetchAvailableEmployeesForShift(workspaceId: string, shiftData: any) {
+  private async fetchAvailableEmployeesForShift(workspaceId: string, shiftData: unknown) {
     return await db.select()
       .from(employees)
       .where(and(
@@ -739,7 +732,7 @@ Generate a JSON schedule with format:
       .where(eq(employeeSkills.workspaceId, workspaceId));
   }
 
-  private calculateHistoricalAverage(historicalShifts: any[], targetDate: Date): number {
+  private calculateHistoricalAverage(historicalShifts: unknown[], targetDate: Date): number {
     if (historicalShifts.length === 0) return 8; // Default 8 employees per day
     
     const dayOfWeek = targetDate.getDay();
@@ -760,7 +753,7 @@ Generate a JSON schedule with format:
     return 1.0;
   }
 
-  private calculateTimeOffImpact(timeOff: any[], weekStart: Date, weekEnd: Date): number {
+  private calculateTimeOffImpact(timeOff: unknown[], weekStart: Date, weekEnd: Date): number {
     const overlapping = timeOff.filter(to => {
       const toStart = new Date(to.startDate);
       const toEnd = new Date(to.endDate);
@@ -770,7 +763,7 @@ Generate a JSON schedule with format:
     return Math.min(0.3, overlapping.length * 0.05); // Max 30% impact
   }
 
-  private calculateTrendModifier(historicalShifts: any[]): number {
+  private calculateTrendModifier(historicalShifts: unknown[]): number {
     if (historicalShifts.length < 14) return 1.0;
     
     const recentCount = historicalShifts.slice(0, 7).length;
@@ -817,7 +810,7 @@ Generate a JSON schedule with format:
     return recommendations;
   }
 
-  private detectShiftOverlaps(proposed: any, existingShifts: any[]): any[] {
+  private detectShiftOverlaps(proposed: unknown, existingShifts: unknown[]): unknown[] {
     return existingShifts.filter(existing => {
       if (existing.employeeId !== proposed.employeeId) return false;
       
@@ -831,8 +824,8 @@ Generate a JSON schedule with format:
   private async findAlternativeEmployee(
     workspaceId: string,
     proposed: any,
-    employeeData: any[],
-    existingShifts: any[]
+    employeeData: unknown[],
+    existingShifts: unknown[]
   ): Promise<{ employeeId: string; reason: string; confidence: number } | null> {
     // Find employees without shifts on that day
     const busyEmployees = new Set(
@@ -866,9 +859,7 @@ Generate a JSON schedule with format:
   private calculateWeeklyHours(
     employeeId: string,
     date: Date,
-    existingShifts: any[],
-    proposed: any
-  ): number {
+    existingShifts: unknown[], proposed: unknown): number {
     const weekStart = new Date(date);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     
@@ -899,21 +890,21 @@ Generate a JSON schedule with format:
     return hours;
   }
 
-  private parseShiftEndTime(shift: any): Date {
+  private parseShiftEndTime(shift: unknown): Date {
     const date = new Date(shift.date);
     const [h, m] = shift.endTime.split(':').map(Number);
     date.setHours(h, m, 0, 0);
     return date;
   }
 
-  private parseShiftStartTime(shift: any): Date {
+  private parseShiftStartTime(shift: unknown): Date {
     const date = new Date(shift.date);
     const [h, m] = shift.startTime.split(':').map(Number);
     date.setHours(h, m, 0, 0);
     return date;
   }
 
-  private async calculateSwapScore(employee: any, shiftData: any): Promise<{
+  private async calculateSwapScore(employee: Record<string, unknown>, shiftData: unknown): Promise<{
     total: number;
     matchedSkills: string[];
     availability: string;
@@ -936,7 +927,7 @@ Generate a JSON schedule with format:
 
   private async generateSwapRecommendation(
     shiftData: any,
-    topCandidates: any[]
+    topCandidates: unknown[]
   ): Promise<string> {
     if (topCandidates.length === 0) {
       return 'No suitable replacements found. Consider posting to contractor pool.';
@@ -1021,7 +1012,7 @@ Generate a JSON schedule with format:
     const responseText = aiResult.text;
     
     // Parse JSON response from Gemini
-    let parsedResponse: any;
+    let parsedResponse: unknown;
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -1036,7 +1027,7 @@ Generate a JSON schedule with format:
     }
 
     // Validate through LLM Judge
-    const judgeResult = await (enhancedLLMJudge as any).evaluateAction({
+    const judgeResult = await (enhancedLLMJudge as Record<string,unknown>).evaluateAction({
       actionType: 'schedule_shifts',
       actionDetails: {
         description: `Strategic profit-first schedule: ${parsedResponse.schedule?.length || 0} assignments`,
@@ -1061,7 +1052,7 @@ Generate a JSON schedule with format:
     }
 
     // Log strategic decision for audit
-    await (auditLogger as any).log({
+    await (auditLogger as Record<string,unknown>).log({
       action: 'strategic_schedule_generated',
       resourceType: 'schedule',
       resourceId: workspaceId,
@@ -1103,9 +1094,7 @@ Generate a JSON schedule with format:
   private buildStrategicSchedulingPrompt(
     employees: EmployeeBusinessMetrics[],
     clients: ClientBusinessMetrics[],
-    openShifts: any[],
-    summary: any
-  ): string {
+    openShifts: unknown[], summary: unknown): string {
     return `You are Trinity, an AI business strategist optimizing workforce scheduling for maximum profitability and client retention.
 
 🎯 PRIMARY OBJECTIVES (in priority order):
@@ -1246,7 +1235,7 @@ ${openShifts.map(s => {
    * Generate fallback schedule if Gemini parsing fails
    */
   private generateFallbackStrategicSchedule(
-    openShifts: any[],
+    openShifts: unknown[],
     employees: EmployeeBusinessMetrics[],
     clients: ClientBusinessMetrics[]
   ): any {

@@ -1,4 +1,5 @@
 import { useState, Suspense, lazy } from "react";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,13 +49,13 @@ export default function DisputesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Fetch all employees to determine current user's role
-  const { data: allEmployees, isLoading: loadingEmployees, isError: employeesError } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: allEmployees, isLoading: loadingEmployees, isError: employeesError } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
     enabled: !!user,
   });
   
-  const currentEmployee = allEmployees?.find((emp: any) => emp.userId === user?.id);
+  const currentEmployee = allEmployees?.find((emp) => emp.userId === user?.id);
   const isHROrManager = currentEmployee && isManagerOrAbove(currentEmployee?.workspaceRole);
 
   const { data: myDisputes, isLoading: loadingMyDisputes } = useQuery<Dispute[]>({
@@ -92,14 +93,14 @@ export default function DisputesPage() {
 
   // Watch disputeType to auto-update targetType
   const handleDisputeTypeChange = (value: string) => {
-    form.setValue("disputeType", value as any);
+    form.setValue("disputeType", value as unknown);
     const targetTypeMap: Record<string, string> = {
       "performance_review": "performance_reviews",
       "employer_rating": "employer_ratings",
       "report_submission": "report_submissions",
       "composite_score": "composite_scores",
     };
-    form.setValue("targetType", targetTypeMap[value] as any);
+    form.setValue("targetType", targetTypeMap[value] as unknown);
   };
 
   const createMutation = useMutation({
@@ -116,7 +117,7 @@ export default function DisputesPage() {
       setCreateDialogOpen(false);
       form.reset();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -145,7 +146,7 @@ export default function DisputesPage() {
       <DsPageWrapper className="flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Suspense fallback={<div className="w-16 h-16" />}>
-            <TrinityArrowMark size={64} />
+            <TrinityAnimatedLogo size={64} />
           </Suspense>
           <p className="text-ds-text-secondary">Loading disputes...</p>
         </div>
@@ -510,7 +511,7 @@ function DisputeDetailDialog({
                 ) : (
                   <div className="flex space-x-2">
                     <Button 
-                      onClick={() => assignMutation.mutate((user as any)?.id)}
+                      onClick={() => assignMutation.mutate((user as Record<string,unknown>)?.id)}
                       disabled={assignMutation.isPending}
                       data-testid="button-assign-to-me"
                     >

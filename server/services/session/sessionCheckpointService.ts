@@ -20,10 +20,10 @@ const log = createLogger('sessionCheckpointService');
 
 
 export interface CheckpointPayload {
-  formData?: Record<string, any>;
-  pageState?: Record<string, any>;
-  userInputs?: Record<string, any>;
-  customData?: Record<string, any>;
+  formData?: Record<string, unknown>;
+  pageState?: Record<string, unknown>;
+  userInputs?: Record<string, unknown>;
+  customData?: Record<string, unknown>;
 }
 
 export interface CreateCheckpointParams {
@@ -34,7 +34,7 @@ export interface CreateCheckpointParams {
   payload: CheckpointPayload;
   pageRoute?: string;
   contextSummary?: string;
-  actionHistory?: any[];
+  actionHistory?: unknown[];
 }
 
 export interface UpdateCheckpointParams {
@@ -42,7 +42,7 @@ export interface UpdateCheckpointParams {
   payload?: CheckpointPayload;
   phaseKey?: string;
   contextSummary?: string;
-  actionHistory?: any[];
+  actionHistory?: unknown[];
 }
 
 class SessionCheckpointService {
@@ -62,7 +62,7 @@ class SessionCheckpointService {
   /**
    * Generate checksum for payload integrity verification
    */
-  private generateChecksum(payload: any): string {
+  private generateChecksum(payload: unknown): string {
     return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   }
   
@@ -304,7 +304,7 @@ class SessionCheckpointService {
     checkpointId: string, 
     eventType: string, 
     eventSource: string,
-    metadata: any
+    metadata: Record<string, unknown>
   ): Promise<void> {
     const entry = JSON.stringify([{ eventType, eventSource, metadata, createdAt: new Date().toISOString() }]);
     await db.update(sessionCheckpoints)

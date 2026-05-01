@@ -163,7 +163,7 @@ export async function extractScheduleFromFile(
     const text = response.text();
 
     // Parse and validate response
-    let jsonData: any;
+    let jsonData: unknown;
     try {
       // Strip markdown code blocks if present
       const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim();
@@ -180,7 +180,7 @@ export async function extractScheduleFromFile(
     const totalTokens = (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
 
     await aiTokenGateway.finalizeBilling(
-      (authResult as any).effectiveWorkspaceId,
+      (authResult as Record<string,unknown>).effectiveWorkspaceId,
       request.userId,
       'ai_migration',
       totalTokens,
@@ -218,7 +218,7 @@ export async function extractScheduleFromFile(
     }
 
     return validatedResponse;
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error("Schedule migration error:", error);
     throw new Error(`Failed to extract schedule: ${(error instanceof Error ? error.message : String(error))}`);
   }

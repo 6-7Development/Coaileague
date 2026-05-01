@@ -215,7 +215,7 @@ export default function ModuleLearningPage() {
         employeeId,
         attemptType: 'annual',
       }),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setAttemptId(data.id);
     },
     onError: () => toast({ title: 'Failed to start attempt', variant: 'destructive' }),
@@ -236,7 +236,7 @@ export default function ModuleLearningPage() {
         answers,
         timeSpentSeconds: Math.floor((Date.now() - sectionStartTime) / 1000),
       }),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setFinalResult(data);
       setStep('result');
       queryClient.invalidateQueries({ queryKey: ['/api/training/certification/my-certificates'] });
@@ -247,8 +247,8 @@ export default function ModuleLearningPage() {
 
   // Auto-start attempt when employee is known
   useEffect(() => {
-    if (employee && !attemptId && !startAttempt.isPending && (employee as any)?.id) {
-      startAttempt.mutate((employee as any).id);
+    if (employee && !attemptId && !startAttempt.isPending && (employee as Record<string,unknown>)?.id) {
+      startAttempt.mutate((employee as Record<string,unknown>).id);
     }
   }, [employee]);
 
@@ -373,8 +373,8 @@ export default function ModuleLearningPage() {
                     setShowExamResult(false);
                     setFinalResult(null);
                     setAttemptId(null);
-                    if (employee && (employee as any)?.id) {
-                      startAttempt.mutate((employee as any).id);
+                    if (employee && (employee as Record<string,unknown>)?.id) {
+                      startAttempt.mutate((employee as Record<string,unknown>).id);
                     }
                   }}
                 >
@@ -458,7 +458,6 @@ export default function ModuleLearningPage() {
   // ── SECTION VIEW ──────────────────────────────────────────────────────────
   if (!currentSection) {
     // All sections done — go to final exam
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (step !== 'final_exam' && finalExamQuestions.length > 0) {
       setStep('final_exam');
     }

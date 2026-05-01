@@ -44,7 +44,7 @@ export interface IntegrationCredentials {
   expiresAt?: Date;
   scopes: string[];
   companyId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface IntegrationConnection {
@@ -93,7 +93,7 @@ export interface ExtractedEmployeeData {
     state?: string;
     zip?: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ExtractedPayrollData {
@@ -380,7 +380,7 @@ class CognitiveOnboardingService {
 
     try {
       // Decode and validate state
-      const statePayload = JSON.parse(Buffer.from(state, 'base64url').toString());
+      const statePayload: unknown = JSON.parse(Buffer.from(state, 'base64url').toString());
       const workspaceId = statePayload.workspaceId;
 
       // Exchange code for token
@@ -476,7 +476,7 @@ class CognitiveOnboardingService {
 
       return { success: true, connection };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[CognitiveOnboarding] OAuth callback failed:`, error);
       return { success: false, error: (error instanceof Error ? error.message : String(error)) };
     }
@@ -561,7 +561,7 @@ class CognitiveOnboardingService {
 
       result.success = true;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[CognitiveOnboarding] Data extraction failed:`, error);
       result.errors.push((error instanceof Error ? error.message : String(error)));
     }
@@ -609,7 +609,7 @@ class CognitiveOnboardingService {
     provider: IntegrationProvider,
     dataType: DataSyncType,
     options: { since?: Date; limit?: number }
-  ): Promise<any[]> {
+  ): Promise<Record<string,unknown>[]> {
     const config = PROVIDER_CONFIGS[provider];
     let endpoint = config.dataEndpoints[dataType];
 
@@ -654,9 +654,9 @@ class CognitiveOnboardingService {
   private async aiFieldMapping(
     provider: IntegrationProvider,
     dataType: DataSyncType,
-    rawData: any[],
+    rawData: unknown[],
     workspaceId: string
-  ): Promise<{ data: any[]; confidence: number }> {
+  ): Promise<{ data: unknown[]; confidence: number }> {
     const sampleRecord = rawData[0];
     const fields = Object.keys(sampleRecord);
 
@@ -684,7 +684,7 @@ Return JSON with:
 }`;
 
     try {
-      const response = await (aiBrainService as any).processRequest({
+      const response = await (aiBrainService as Record<string,unknown>).processRequest({
         type: 'field_mapping',
         userId: 'system',
         workspaceId, // Billed to org doing the onboarding
@@ -720,7 +720,7 @@ Return JSON with:
         data: mappedData,
         confidence: mapping.confidence || 0.8,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.warn('[CognitiveOnboarding] AI mapping failed, using default mapping:', (error instanceof Error ? error.message : String(error)));
       return {
         data: rawData.map(r => this.defaultMapping(r, dataType)),
@@ -771,8 +771,8 @@ Return JSON with:
     return schemas[dataType] || '{}';
   }
 
-  private applyMapping(record: any, mapping: Record<string, string>): any {
-    const result: any = {};
+  private applyMapping(record: unknown, mapping: Record<string, string>): any {
+    const result: Record<string, unknown> = {};
     for (const [source, target] of Object.entries(mapping)) {
       if (record[source] !== undefined) {
         result[target] = record[source];
@@ -783,9 +783,9 @@ Return JSON with:
     return result;
   }
 
-  private defaultMapping(record: any, dataType: DataSyncType): any {
+  private defaultMapping(record: unknown, dataType: DataSyncType): any {
     // Basic field name normalization
-    const normalized: any = { externalId: record.Id || record.id };
+    const normalized: Record<string, unknown> = { externalId: record.Id || record.id };
     
     for (const [key, value] of Object.entries(record)) {
       const normalizedKey = key.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
@@ -1019,7 +1019,7 @@ Return JSON with:
     provider: IntegrationProvider;
     action: string;
     success: boolean;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   }): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({

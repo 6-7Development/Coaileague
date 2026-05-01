@@ -198,8 +198,8 @@ export interface NetworkLogEntry {
   duration: number;
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: unknown;
+  responseBody?: unknown;
   error?: string;
 }
 
@@ -534,7 +534,7 @@ export interface TrinityLearningTest {
   description: string;
   
   // Test execution
-  inputProvided: any;
+  inputProvided: unknown;
   expectedLearning: string;
   actualLearning?: string;
   
@@ -558,7 +558,7 @@ export interface TrinityScoringTest {
   
   // Test execution
   scenarioType: 'confidence' | 'accuracy' | 'self_assessment';
-  inputContext: any;
+  inputContext: unknown;
   expectedScoreRange?: { min: number; max: number };
   actualScore?: number;
   
@@ -610,7 +610,7 @@ export interface TrinityActionTest {
   
   // Execution details
   executionTime?: number;
-  resultReturned?: any;
+  resultReturned?: unknown;
   sideEffectsObserved?: string[];
   
   // Results

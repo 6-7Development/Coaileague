@@ -106,7 +106,7 @@ export function ScheduleFilters({
     const counts: Record<string, number> = {};
     POSITION_CATEGORIES.forEach(cat => {
       counts[cat.id] = employees.filter(emp => {
-        const pos = (emp as any).position ? getPositionById((emp as any).position) : undefined;
+        const pos = (emp as Record<string, unknown>).position ? getPositionById((emp as Record<string, unknown>).position) : undefined;
         return pos?.category === cat.id;
       }).length;
     });
@@ -116,7 +116,7 @@ export function ScheduleFilters({
   const armedCounts = useMemo(() => {
     let armed = 0, unarmed = 0;
     employees.forEach(emp => {
-      const pos = (emp as any).position ? getPositionById((emp as any).position) : undefined;
+      const pos = (emp as Record<string, unknown>).position ? getPositionById((emp as Record<string, unknown>).position) : undefined;
       if (pos?.armedStatus === 'armed') armed++;
       else if (pos?.armedStatus === 'unarmed') unarmed++;
     });
@@ -247,7 +247,7 @@ export function ScheduleFilters({
                 <Target className="w-4 h-4" />
                 Position Category
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${(expandedSections as any).positionCategories ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 transition-transform ${(expandedSections as Record<string,unknown>).positionCategories ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2 pt-2">
               {POSITION_CATEGORIES.map(cat => (
@@ -287,7 +287,7 @@ export function ScheduleFilters({
                 <Shield className="w-4 h-4" />
                 Armed Status
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${(expandedSections as any).armedStatus ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 transition-transform ${(expandedSections as Record<string,unknown>).armedStatus ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2 pt-2">
               <div className="flex items-center space-x-2">

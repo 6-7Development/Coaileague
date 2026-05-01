@@ -30,5 +30,5 @@ export const SYSTEM_ACTOR_IDS = [
  */
 export function isPlatformSentinelUser(userId: string | null | undefined): boolean {
   if (!userId) return false;
-  return SYSTEM_ACTOR_IDS.includes(userId as any);
+  return SYSTEM_ACTOR_IDS.includes(userId as string);
 }

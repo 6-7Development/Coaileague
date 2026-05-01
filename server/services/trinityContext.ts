@@ -556,13 +556,13 @@ export async function resolveTrinityContext(userId: string, workspaceId?: string
   
   const [orgIntelResult, platformDiagResult] = await Promise.all([
     shouldGatherOrgIntel
-      ? gatherOrgIntelligence(effectiveWorkspaceId, userId).catch((err: any) => {
+      ? gatherOrgIntelligence(effectiveWorkspaceId, userId).catch((err: unknown) => {
           log.warn('[TrinityContext] gatherOrgIntelligence failed:', err?.message);
           return undefined;
         })
       : Promise.resolve(undefined),
     trinityMode === 'guru'
-      ? gatherPlatformDiagnostics().catch((err: any) => {
+      ? gatherPlatformDiagnostics().catch((err: unknown) => {
           log.warn('[TrinityContext] gatherPlatformDiagnostics failed:', err?.message);
           return undefined;
         })
@@ -1069,7 +1069,6 @@ export async function generateContextualThought(context: TrinityContext): Promis
       context: contextParts.join('\n'),
       displayName: name,
       workspaceId: context.workspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       mode,
     });
     

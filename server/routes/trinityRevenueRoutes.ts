@@ -364,7 +364,6 @@ router.post('/dev/simulate-week', async (req: Request, res: Response) => {
           createdEntryIds.push(inserted.id);
         }
       } catch (entryErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error(`[TrinityRevenue] Failed to create entry for shift ${shift.id}:`, entryErr.message);
         entriesSkipped++;
       }
@@ -373,18 +372,16 @@ router.post('/dev/simulate-week', async (req: Request, res: Response) => {
     log.info(`[TrinityRevenue] Created ${createdEntryIds.length} time entries, skipped ${entriesSkipped}`);
 
     // Run billing for the week period
-    let billingResult: any = null;
+    let billingResult: unknown = null;
     try {
       billingResult = await generateWeeklyInvoices(workspaceId, weekEnd, 7);
     } catch (billErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error('[TrinityRevenue] Billing failed after simulation:', billErr.message);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       billingResult = { error: billErr.message };
     }
 
     // Run payroll for the week period
-    let payrollResult: any = null;
+    let payrollResult: unknown = null;
     try {
       payrollResult = await PayrollAutomationEngine.processAutomatedPayroll(
         workspaceId,
@@ -393,9 +390,7 @@ router.post('/dev/simulate-week', async (req: Request, res: Response) => {
         weekEnd,
       );
     } catch (prErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error('[TrinityRevenue] Payroll failed after simulation:', prErr.message);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       payrollResult = { error: prErr.message };
     }
 
@@ -441,7 +436,6 @@ router.post('/dev/simulate-week', async (req: Request, res: Response) => {
 router.get('/dev/pipeline-status', async (req: Request, res: Response) => {
   if (isDevOnly(req, res)) return;
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const workspaceId: string = (req.query?.workspaceId as string) || DEV_WS;
 
   try {
@@ -462,7 +456,7 @@ router.get('/dev/pipeline-status', async (req: Request, res: Response) => {
         (SELECT COUNT(*) FROM payroll_runs WHERE workspace_id = ${workspaceId} AND status = 'completed') AS completed_payroll_runs,
         (SELECT COALESCE(SUM(total_gross_pay::numeric), 0) FROM payroll_runs WHERE workspace_id = ${workspaceId} AND status = 'pending') AS pending_payroll_total
     `);
-    const status = ((statusResult as any).rows ?? [])[0];
+    const status = ((statusResult as Record<string,unknown>).rows ?? [])[0];
 
     res.json({ success: true, workspaceId, pipeline: status });
   } catch (err: unknown) {

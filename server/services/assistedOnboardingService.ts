@@ -66,7 +66,7 @@ export interface HandoffCompleteResult {
 export interface ExtractionResult {
   success: boolean;
   status: 'pending' | 'processing' | 'complete' | 'failed';
-  extractedData?: Record<string, any>;
+  extractedData?: Record<string, unknown>;
   error?: string;
 }
 
@@ -157,9 +157,9 @@ class AssistedOnboardingService {
 
       try {
         const { provisionWorkspace } = await import('./workspaceProvisioningService');
-        await provisionWorkspace({ workspaceId: workspace.id, ownerId: supportUserId, workspaceName: (workspace as any).name });
+        await provisionWorkspace({ workspaceId: workspace.id, ownerId: supportUserId, workspaceName: (workspace as Record<string, unknown>).name });
       } catch (provError: unknown) {
-        log.warn('[AssistedOnboarding] Workspace provisioning failed (non-blocking):', (provError as any)?.message);
+        log.warn('[AssistedOnboarding] Workspace provisioning failed (non-blocking):', (provError as Record<string,unknown>)?.message);
       }
 
       // Auto-initialize onboarding pipeline for the new workspace
@@ -175,7 +175,7 @@ class AssistedOnboardingService {
       // Provision email addresses for the workspace
       try {
         const { emailProvisioningService } = await import('./email/emailProvisioningService');
-        const emailSlug = (workspace as any).emailSlug || workspace.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
+        const emailSlug = (workspace as Record<string, unknown>).emailSlug || workspace.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
         await emailProvisioningService.provisionWorkspaceAddresses(workspace.id, emailSlug);
         log.info(`[AssistedOnboarding] Email addresses provisioned for workspace ${workspace.id}`);
       } catch (emailError) {
@@ -186,7 +186,7 @@ class AssistedOnboardingService {
         success: true,
         workspaceId: workspace.id,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AssistedOnboarding] Failed to create workspace:', error);
       return {
         success: false,
@@ -236,7 +236,7 @@ class AssistedOnboardingService {
         success: true,
         status: 'processing',
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         success: false,
         status: 'failed',
@@ -250,7 +250,7 @@ class AssistedOnboardingService {
    */
   async storeExtractedData(
     workspaceId: string, 
-    extractedData: Record<string, any>,
+    extractedData: Record<string, unknown>,
     processedCount: number = 1
   ): Promise<ExtractionResult> {
     try {
@@ -263,7 +263,7 @@ class AssistedOnboardingService {
       }
 
       // Merge with existing extracted data
-      const existingData = (workspace.assistedDataExtracted as Record<string, any>) || {};
+      const existingData = (workspace.assistedDataExtracted as Record<string, unknown>) || {};
       const mergedData = { ...existingData, ...extractedData };
 
       await db.update(workspaces)
@@ -280,7 +280,7 @@ class AssistedOnboardingService {
         status: 'complete',
         extractedData: mergedData,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       await db.update(workspaces)
         .set({ assistedExtractionStatus: 'failed' })
         .where(eq(workspaces.id, workspaceId));
@@ -353,7 +353,7 @@ class AssistedOnboardingService {
           handoffToken: token,
           expiresAt,
         });
-      } catch (emailError: any) {
+      } catch (emailError : unknown) {
         log.error('[AssistedOnboarding] Failed to send handoff email:', emailError);
         // Rollback status if email fails
         await db.update(workspaces)
@@ -378,7 +378,7 @@ class AssistedOnboardingService {
         token,
         expiresAt,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AssistedOnboarding] Failed to initiate handoff:', error);
       return {
         success: false,
@@ -498,7 +498,6 @@ class AssistedOnboardingService {
         try {
           const { db: database } = await import('../db');
           const { auditLogs } = await import('@shared/schema');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await database.insert(auditLogs).values({
             workspaceId: workspace.id,
             entityType: 'workspace',
@@ -516,7 +515,7 @@ class AssistedOnboardingService {
         workspaceId: workspace.id,
         workspaceName: workspace.name,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[AssistedOnboarding] Failed to complete handoff:', error);
       return {
         success: false,
@@ -571,7 +570,7 @@ class AssistedOnboardingService {
           expired,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return { valid: false, error: (error instanceof Error ? error.message : String(error)) };
     }
   }

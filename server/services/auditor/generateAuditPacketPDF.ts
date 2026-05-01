@@ -22,7 +22,7 @@ const log = createLogger('GenerateAuditPacketPDF');
 
 // ─── Data loaders ─────────────────────────────────────────────────────────────
 
-async function loadWorkspaceInfo(workspaceId: string): Promise<any> {
+async function loadWorkspaceInfo(workspaceId: string): Promise<unknown> {
   const { pool } = await import('../../db');
   const r = await pool.query(
     `SELECT company_name, phone, email, address, city, state, zip,
@@ -97,10 +97,10 @@ interface AuditPacketOptions {
 
 async function applyModifyInstructions(
   data: {
-    workspace: any;
-    guards: any[];
-    schedule: any[];
-    artifacts: any[];
+    workspace: unknown;
+    guards: unknown[];
+    schedule: unknown[];
+    artifacts: unknown[];
   },
   instructions: string,
 ): Promise<typeof data> {
@@ -139,11 +139,11 @@ Rules:
     });
 
     if (!response.ok) return data;
-    const res = await response.json() as any;
+    const res = await response.json() as unknown;
     const text: string = res?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return data;
-    const modified = JSON.parse(match[0]);
+    const modified: unknown = JSON.parse(match[0]);
     return {
       workspace:  modified.workspace  ?? data.workspace,
       guards:     modified.guards     ?? data.guards,
@@ -156,7 +156,7 @@ Rules:
 }
 
 function buildPdf(
-  data: { workspace: any; guards: any[]; schedule: any[]; artifacts: any[] },
+  data: { workspace: unknown; guards: unknown[]; schedule: unknown[]; artifacts: unknown[] },
   auditId: string,
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {

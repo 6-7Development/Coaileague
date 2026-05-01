@@ -216,7 +216,6 @@ function QRDialog({ credential, open, onClose }: { credential: Credential | null
 const pageConfig: CanvasPageConfig = {
   title: "Credential Wallet",
   subtitle: "Your digital licenses, certifications, and guard credentials",
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   icon: Wallet,
 };
 
@@ -227,7 +226,7 @@ export default function CredentialWalletPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", issuingOrganization: "", certificationNumber: "", issuedDate: "", expiryDate: "", certificateUrl: "" });
 
-  const { data: walletData, isLoading: walletLoading } = useQuery<{ credentials: Credential[]; employee: any }>({
+  const { data: walletData, isLoading: walletLoading } = useQuery<{ credentials: Credential[]; employee: unknown }>({
     queryKey: ["/api/credentials/wallet"],
   });
 
@@ -256,7 +255,7 @@ export default function CredentialWalletPage() {
       setAddForm({ name: "", issuingOrganization: "", certificationNumber: "", issuedDate: "", expiryDate: "", certificateUrl: "" });
       toast({ title: 'Credential added', description: 'Saved to your wallet.' });
     },
-    onError: (err: any) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
   });
 
   const renewMutation = useMutation({
@@ -268,7 +267,7 @@ export default function CredentialWalletPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/credentials/expiring'] });
       toast({ title: 'Credential updated', description: 'Changes saved.' });
     },
-    onError: (err: any) => toast({ title: 'Update failed', description: err.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Update failed', description: err.message, variant: 'destructive' }),
   });
 
   const removeMutation = useMutation({
@@ -278,7 +277,7 @@ export default function CredentialWalletPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/credentials/summary'] });
       toast({ title: 'Credential removed' });
     },
-    onError: (err: any) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Failed', description: err.message, variant: 'destructive' }),
   });
 
   const credentials = walletData?.credentials || [];

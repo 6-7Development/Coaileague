@@ -23,6 +23,8 @@ import { randomUUID } from 'crypto';
 import { broadcastToWorkspace } from '../../websocket';
 import { automationExecutionTracker } from '../orchestration/automationExecutionTracker';
 import { trinityAutonomousScheduler, RunAssignmentTracker } from '../scheduling/trinityAutonomousScheduler';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('scenarioSeeder');
 
 export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'meta' | 'extreme' | 'org';
 
@@ -255,7 +257,6 @@ export class ScenarioSeederService {
     startDate.setHours(0, 0, 0, 0);
 
     // Create scenario record
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [scenario] = await db.insert(trainingScenarios).values({
       workspaceId,
       name: config.name,
@@ -276,7 +277,7 @@ export class ScenarioSeederService {
     }).returning();
 
     // Generate shifts mirroring real Acme staffing patterns
-    const shiftsData: any[] = [];
+    const shiftsData: (string | number | boolean | null)[] = [];
     const employeeIds = activeEmployees.map(e => e.id);
     let shiftIndex = 0;
 
@@ -334,7 +335,6 @@ export class ScenarioSeederService {
     }
 
     // Create training run
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [run] = await db.insert(trainingRuns).values({
       workspaceId,
       scenarioId: scenario.id,
@@ -352,7 +352,7 @@ export class ScenarioSeederService {
       await db.insert(shifts).values(shiftsData.slice(i, i + BATCH_SIZE));
     }
 
-    console.log(`[ScenarioSeeder] Org mode: created ${shiftsData.length} training shifts from ${activeClients.length} real Acme clients (${clientRatesMap.size} with real rates)`);
+    log.info(`[ScenarioSeeder] Org mode: created ${shiftsData.length} training shifts from ${activeClients.length} real Acme clients (${clientRatesMap.size} with real rates)`);
 
     return {
       scenarioId: scenario.id,
@@ -412,11 +412,10 @@ export class ScenarioSeederService {
       const shiftsPerEmployee = Math.floor(maxWeeklyHoursPerEmployee / avgShiftHours);
       const workforceCapacity = existingEmployees.length * shiftsPerEmployee;
       config.shiftsToCreate = Math.max(20, Math.round(workforceCapacity * 0.85));
-      console.log(`[ScenarioSeeder] Extreme mode: ${existingEmployees.length} employees × ${shiftsPerEmployee} shifts/emp × 0.85 = ${config.shiftsToCreate} shifts`);
+      log.info(`[ScenarioSeeder] Extreme mode: ${existingEmployees.length} employees × ${shiftsPerEmployee} shifts/emp × 0.85 = ${config.shiftsToCreate} shifts`);
     }
     
     // Create training scenario record
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [scenario] = await db.insert(trainingScenarios).values({
       workspaceId,
       name: config.name,
@@ -437,7 +436,6 @@ export class ScenarioSeederService {
     }).returning();
     
     // Create training run record
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [run] = await db.insert(trainingRuns).values({
       workspaceId,
       scenarioId: scenario.id,
@@ -462,7 +460,7 @@ export class ScenarioSeederService {
     // Insert all shifts
     await db.insert(shifts).values(shiftsToInsert);
     
-    console.log(`[ScenarioSeeder] Created ${shiftsToInsert.length} training shifts for ${difficulty} difficulty`);
+    log.info(`[ScenarioSeeder] Created ${shiftsToInsert.length} training shifts for ${difficulty} difficulty`);
     
     return {
       scenarioId: scenario.id,
@@ -481,11 +479,11 @@ export class ScenarioSeederService {
     workspaceId: string,
     scenarioId: string,
     config: ScenarioConfig,
-    employees: any[],
-    clients: any[],
+    employees: unknown[],
+    clients: unknown[],
     clientRatesMap: Map<string, number> = new Map()
   ) {
-    const shiftsData: any[] = [];
+    const shiftsData: (string | number | boolean | null)[] = [];
     const startDate = new Date();
     startDate.setHours(6, 0, 0, 0);
     
@@ -556,7 +554,7 @@ export class ScenarioSeederService {
    */
   private generateConstraints(
     config: ScenarioConfig,
-    employees: any[],
+    employees: unknown[],
     shiftIndex: number
   ) {
     const cc = config.constraintConfig;
@@ -649,7 +647,7 @@ export class ScenarioSeederService {
       })
       .where(eq(trainingRuns.scenarioId, activeScenario.id));
     
-    console.log(`[ScenarioSeeder] Cleared ${clearedShifts.length} shift assignments for next training run`);
+    log.info(`[ScenarioSeeder] Cleared ${clearedShifts.length} shift assignments for next training run`);
     
     return {
       shiftsCleared: clearedShifts.length,
@@ -683,7 +681,7 @@ export class ScenarioSeederService {
       .where(eq(trainingScenarios.workspaceId, workspaceId))
       .returning();
     
-    console.log(`[ScenarioSeeder] Full reset: ${deletedShifts.length} shifts, ${deletedScenarios.length} scenarios, ${deletedRuns.length} runs deleted`);
+    log.info(`[ScenarioSeeder] Full reset: ${deletedShifts.length} shifts, ${deletedScenarios.length} scenarios, ${deletedRuns.length} runs deleted`);
     
     return {
       shiftsDeleted: deletedShifts.length,
@@ -697,8 +695,8 @@ export class ScenarioSeederService {
    */
   async getTrainingStatus(workspaceId: string): Promise<{
     hasActiveScenario: boolean;
-    currentScenario: any | null;
-    currentRun: any | null;
+    currentScenario: unknown | null;
+    currentRun: unknown | null;
     shiftsRemaining: number;
     shiftsAssigned: number;
   }> {
@@ -762,7 +760,7 @@ export class ScenarioSeederService {
 
     // Start async processing (don't await - let it run in background)
     this.processTrainingShifts(workspaceId, runId).catch(err => {
-      console.error('[ScenarioSeeder] Training processing error:', err);
+      log.error('[ScenarioSeeder] Training processing error:', err);
     });
   }
 
@@ -770,12 +768,12 @@ export class ScenarioSeederService {
    * Process training shifts with AI-powered assignment and thinking patterns
    */
   private async processTrainingShifts(workspaceId: string, runId: string): Promise<void> {
-    console.log(`[ScenarioSeeder] Starting training run ${runId}`);
+    log.info(`[ScenarioSeeder] Starting training run ${runId}`);
     const startTime = Date.now();
     
     const [run] = await db.select().from(trainingRuns).where(eq(trainingRuns.id, runId)).limit(1);
     if (!run) {
-      console.error('[ScenarioSeeder] Run not found:', runId);
+      log.error('[ScenarioSeeder] Run not found:', runId);
       return;
     }
 
@@ -784,12 +782,11 @@ export class ScenarioSeederService {
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         eq(shifts.isTrainingShift, true),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(shifts.scenarioId, run.scenarioId)
       ));
 
     const shiftsToProcess = unassignedShifts.filter(s => !s.employeeId);
-    console.log(`[ScenarioSeeder] Found ${shiftsToProcess.length} shifts to process`);
+    log.info(`[ScenarioSeeder] Found ${shiftsToProcess.length} shifts to process`);
 
     let executionId: string | undefined;
     try {
@@ -804,9 +801,9 @@ export class ScenarioSeederService {
         requiresVerification: true,
       });
       await automationExecutionTracker.startExecution(executionId);
-      console.log(`[ScenarioSeeder] Registered execution ${executionId} for training run ${runId}`);
-    } catch (err: any) {
-      console.error(`[ScenarioSeeder] Failed to register execution tracker:`, (err instanceof Error ? err.message : String(err)));
+      log.info(`[ScenarioSeeder] Registered execution ${executionId} for training run ${runId}`);
+    } catch (err: unknown) {
+      log.error(`[ScenarioSeeder] Failed to register execution tracker:`, (err instanceof Error ? err.message : String(err)));
     }
     
     broadcastToWorkspace(workspaceId, {
@@ -816,12 +813,12 @@ export class ScenarioSeederService {
       totalShifts: shiftsToProcess.length,
       timestamp: Date.now(),
     });
-    console.log(`[ScenarioSeeder] Broadcast trinity_scheduling_started to workspace ${workspaceId}`);
+    log.info(`[ScenarioSeeder] Broadcast trinity_scheduling_started to workspace ${workspaceId}`);
 
     const availableEmployees = await db.select().from(employees).where(eq(employees.workspaceId, workspaceId));
     
     if (availableEmployees.length === 0) {
-      console.error('[ScenarioSeeder] No employees available');
+      log.error('[ScenarioSeeder] No employees available');
       await this.completeTrainingRun(runId, {
         assignedShifts: 0,
         failedShifts: shiftsToProcess.length,
@@ -834,7 +831,7 @@ export class ScenarioSeederService {
     }
 
     const allClients = await db.select().from(clients).where(eq(clients.workspaceId, workspaceId));
-    console.log(`[ScenarioSeeder] Loaded ${availableEmployees.length} employees, ${allClients.length} clients`);
+    log.info(`[ScenarioSeeder] Loaded ${availableEmployees.length} employees, ${allClients.length} clients`);
 
     const runTracker = new RunAssignmentTracker();
 
@@ -845,7 +842,7 @@ export class ScenarioSeederService {
     const lessonsLearned: string[] = [];
     
     const shiftsToAutoAssign = shiftsToProcess.length;
-    console.log(`[ScenarioSeeder] Will process ${shiftsToAutoAssign} shifts using real Trinity scheduling engine (rapid-fire mode)`);
+    log.info(`[ScenarioSeeder] Will process ${shiftsToAutoAssign} shifts using real Trinity scheduling engine (rapid-fire mode)`);
 
     const BATCH_SIZE = 5;
     const BATCH_PAUSE_MS = 80;
@@ -949,10 +946,10 @@ export class ScenarioSeederService {
           await new Promise<void>(resolve => setTimeout(resolve, BATCH_PAUSE_MS));
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         failedCount++;
         thoughtLog.push(`[${i + 1}] ERROR ${shift.id}: ${(error instanceof Error ? error.message : String(error))}`);
-        console.error(`[ScenarioSeeder] Error processing shift:`, (error instanceof Error ? error.message : String(error)));
+        log.error(`[ScenarioSeeder] Error processing shift:`, (error instanceof Error ? error.message : String(error)));
 
         broadcastToWorkspace(workspaceId, {
           type: 'trinity_scheduling_progress',
@@ -1002,9 +999,9 @@ export class ScenarioSeederService {
           requiresVerification: true,
           aiSummary: `Trinity evaluated ${availableEmployees.length} employees across ${shiftsToProcess.length} shifts. ${assignedCount} assigned, ${failedCount} skipped due to conflicts.`,
         });
-        console.log(`[ScenarioSeeder] Completed execution ${executionId} with pending_verification`);
-      } catch (err: any) {
-        console.error(`[ScenarioSeeder] Failed to complete execution tracker:`, (err instanceof Error ? err.message : String(err)));
+        log.info(`[ScenarioSeeder] Completed execution ${executionId} with pending_verification`);
+      } catch (err: unknown) {
+        log.error(`[ScenarioSeeder] Failed to complete execution tracker:`, (err instanceof Error ? err.message : String(err)));
       }
     }
     
@@ -1028,7 +1025,7 @@ export class ScenarioSeederService {
         shiftsDeleted: 0,
       },
     });
-    console.log(`[ScenarioSeeder] Training run completed: ${assignedCount} assigned, ${failedCount} failed`);
+    log.info(`[ScenarioSeeder] Training run completed: ${assignedCount} assigned, ${failedCount} failed`);
   }
 
   

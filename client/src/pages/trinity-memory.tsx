@@ -25,7 +25,7 @@ const pageConfig: CanvasPageConfig = {
 
 export default function TrinityMemoryPage() {
   const { toast } = useToast();
-  const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
+  const [diagnosticResults, setDiagnosticResults] = useState<null>(null);
 
   const memoryQuery = useQuery({
     queryKey: ["/api/trinity/memory-health"],
@@ -63,7 +63,6 @@ export default function TrinityMemoryPage() {
   const summaryCards = [
     {
       label: "Memory Usage",
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       value: health?.memoryUsagePercent ? `${Math.round(health.memoryUsagePercent)}%` : "--",
       icon: Cpu,
       color: "text-blue-500",
@@ -76,16 +75,13 @@ export default function TrinityMemoryPage() {
     },
     {
       label: "Confidence",
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       value: health?.avgConfidence ? `${Math.round(health.avgConfidence * 100)}%` : "--",
       icon: Activity,
       color: "text-green-500",
     },
     {
       label: "Last Optimization",
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       value: health?.lastOptimized
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? new Date(health.lastOptimized).toLocaleDateString()
         : "Never",
       icon: Clock,
@@ -156,11 +152,8 @@ export default function TrinityMemoryPage() {
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       {[
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Heap Usage", value: health.heapUsedPercent, id: "heap-usage" },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Cache Utilization", value: health.cacheUtilization, id: "cache-usage" },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Context Window", value: health.contextWindowUsage, id: "context-window" },
                       ].map(metric => (
                         <div key={metric.id} className="flex items-center gap-3" data-testid={`metric-${metric.id}`}>
@@ -183,13 +176,9 @@ export default function TrinityMemoryPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Active Sessions", value: health.activeSessions || 0 },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Cached Entries", value: health.cachedEntries || 0 },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Avg Latency", value: `${health.avgLatencyMs || 0}ms` },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Uptime", value: health.uptimeHours ? `${health.uptimeHours}h` : "--" },
                       ].map(item => (
                         <div key={item.label} className="text-center">
@@ -232,15 +221,13 @@ export default function TrinityMemoryPage() {
                         { label: "Total Entities", value: knowledge.totalEntities || 0 },
                         { label: "Relationships", value: knowledge.totalRelationships || 0 },
                         { label: "Categories", value: knowledge.categories || 0 },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Avg Confidence", value: knowledge.avgConfidence ? `${Math.round(knowledge.avgConfidence * 100)}%` : "--" },
                         { label: "Stale Entries", value: knowledge.staleEntries || 0 },
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         { label: "Last Updated", value: knowledge.lastUpdated ? new Date(knowledge.lastUpdated).toLocaleDateString() : "--" },
                       ].map(item => (
                         <div key={item.label} className="text-center p-3 rounded-md border">
-                          // @ts-ignore — TS migration: fix in refactoring sprint
-                          <p className="text-xl font-bold" data-testid={`text-knowledge-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as any).value}</p>
+                          // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                          <p className="text-xl font-bold" data-testid={`text-knowledge-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as Record<string,unknown>).value}</p>
                           <p className="text-xs text-muted-foreground">{item.label}</p>
                         </div>
                       ))}
@@ -248,20 +235,20 @@ export default function TrinityMemoryPage() {
                   </CardContent>
                 </Card>
 
-                // @ts-ignore — TS migration: fix in refactoring sprint
-                {(knowledge as any).topCategories && (knowledge as any).topCategories.length > 0 && (
+                // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                {(knowledge as Record<string,unknown>).topCategories && (knowledge as Record<string,unknown>).topCategories.length > 0 && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">Top Categories</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      // @ts-ignore — TS migration: fix in refactoring sprint
-                      {(knowledge as any).topCategories.map((cat: any, idx: number) => (
+                      // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                      {(knowledge as Record<string,unknown>).topCategories.map((cat: unknown, idx: number) => (
                         <div key={idx} className="flex items-center justify-between gap-3" data-testid={`row-category-${idx}`}>
                           <span className="text-sm truncate min-w-0">{cat.name}</span>
                           <div className="flex items-center gap-2 shrink-0">
-                            // @ts-ignore — TS migration: fix in refactoring sprint
-                            <Progress value={(cat.count / ((knowledge as any).totalEntities || 1)) * 100} className="w-24 sm:w-32" />
+                            // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                            <Progress value={(cat.count / ((knowledge as Record<string,unknown>).totalEntities || 1)) * 100} className="w-24 sm:w-32" />
                             <Badge variant="secondary">{cat.count}</Badge>
                           </div>
                         </div>
@@ -304,7 +291,7 @@ export default function TrinityMemoryPage() {
                 ) : (
                   <div className="space-y-3">
                     {diagnosticResults.checks && Array.isArray(diagnosticResults.checks) ? (
-                      diagnosticResults.checks.map((check: any, idx: number) => (
+                      diagnosticResults.checks.map((check: unknown, idx: number) => (
                         <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`diagnostic-check-${idx}`}>
                           <div className="flex items-center gap-2 min-w-0">
                             {check.status === "pass" || check.status === "ok" ? (
@@ -358,8 +345,8 @@ export default function TrinityMemoryPage() {
                       { label: "Status", value: chatDiagQuery.data.status || "unknown" },
                     ].map(item => (
                       <div key={item.label} className="text-center">
-                        // @ts-ignore — TS migration: fix in refactoring sprint
-                        <p className="text-xl font-bold" data-testid={`text-chat-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as any).value}</p>
+                        // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                        <p className="text-xl font-bold" data-testid={`text-chat-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>{(item as Record<string,unknown>).value}</p>
                         <p className="text-xs text-muted-foreground">{item.label}</p>
                       </div>
                     ))}

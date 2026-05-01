@@ -16,6 +16,7 @@ import { platformEventBus } from './platformEventBus';
 import { INTEGRATIONS } from '@shared/platformConfig';
 import { ensureQuickBooksRecord } from './integrations/quickbooksLazySync';
 import { createLogger } from '../lib/logger';
+import type { EmployeeWithStatus, ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('quickbooksClientBillingSync');
 
 
@@ -50,7 +51,6 @@ async function getQuickBooksClient(workspaceId: string): Promise<any | null> {
   const credentials = await db.query.integrationConnections.findFirst({
     where: and(
       eq(integrationConnections.workspaceId, workspaceId),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       eq(integrationConnections.provider, 'quickbooks')
     ),
   });
@@ -63,8 +63,8 @@ async function getQuickBooksClient(workspaceId: string): Promise<any | null> {
   return {
     accessToken: credentials.accessToken,
     refreshToken: credentials.refreshToken,
-    realmId: (credentials as any).realmId || (credentials as any).companyId,
-    expiresAt: (credentials as any).expiresAt,
+    realmId: (credentials as Record<string,unknown>).realmId || (credentials as Record<string,unknown>).companyId,
+    expiresAt: (credentials as Record<string,unknown>).expiresAt,
   };
 }
 
@@ -75,8 +75,8 @@ async function qbRequest(
   client: any,
   method: string,
   endpoint: string,
-  body?: any
-): Promise<any> {
+  body?: unknown
+): Promise<unknown> {
   const baseUrl = `${INTEGRATIONS.quickbooks.getCompanyApiBase()}/${client.realmId}`;
   
   const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -125,7 +125,7 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
     return { success: false, error: 'Client not found' };
   }
 
-  let qbCustomerId = (client as any).quickbooksClientId || (client as any).qbCustomerId;
+  let qbCustomerId = (client as ClientWithExtras).quickbooksClientId || (client as ClientWithExtras).qbCustomerId;
 
   if (!qbCustomerId) {
     log.info(`[QBSync] Client ${client.id} has no QB ID - attempting lazy sync...`);
@@ -138,8 +138,6 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
       return { success: false, error: `Lazy sync failed: ${lazySyncResult.error}`, retryable: true };
     }
   }
-
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const lineItems = (invoice.lineItems as any[]) || [];
   
   const qbInvoice: QuickBooksInvoice = {
@@ -168,7 +166,7 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
           ItemRef: { value: '1' },
           Qty: 1,
           UnitPrice: Number(invoice.total) || 0,
-          Description: `Security services - ${(invoice as any).periodStart || 'Current period'}`,
+          Description: `Security services - ${(invoice as Record<string, unknown>).periodStart || 'Current period'}`,
         },
       },
     ];
@@ -206,7 +204,7 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
 
     return { success: true, qbInvoiceId };
 
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error(`[QBSync] Failed to sync invoice ${invoiceId}:`, (error instanceof Error ? error.message : String(error)));
 
     await db.update(invoices)
@@ -233,7 +231,7 @@ export async function syncPendingInvoices(workspaceId: string): Promise<{ synced
   });
 
   const unsyncedInvoices = pendingInvoices.filter(
-    (inv) => !(inv as any).quickbooksInvoiceId && (inv as any).quickbooksSyncStatus !== 'synced'
+    (inv) => !(inv as Record<string, unknown>).quickbooksInvoiceId && (inv as Record<string, unknown>).quickbooksSyncStatus !== 'synced'
   );
 
   let synced = 0;
@@ -265,7 +263,6 @@ export async function runWeeklyBillingCycle(workspaceId: string): Promise<void> 
     where: eq(workspaces.id, workspaceId),
   });
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (workspace?.ownerEmail) {
     await platformEventBus.publish({
       type: 'automation_completed',
@@ -329,13 +326,13 @@ export async function syncPayrollToQuickBooks(payrollRunId: string): Promise<Syn
         continue;
       }
 
-      let qbEmployeeId = (employee as any).quickbooksEmployeeId;
+      let qbEmployeeId = (employee as EmployeeWithStatus).quickbooksEmployeeId;
 
       if (!qbEmployeeId) {
         log.info(`[QBPayrollSync] Employee ${employee.id} has no QB ID - attempting lazy sync...`);
-        const workerType = (employee as any).workerType;
+        const workerType = (employee as EmployeeWithStatus).workerType;
         const entityType = workerType === 'contractor' ? 'vendor' : 'employee';
-        const lazySyncResult = await ensureQuickBooksRecord(entityType as any, employee.id, payrollRun.workspaceId);
+        const lazySyncResult = await ensureQuickBooksRecord(entityType as unknown, employee.id, payrollRun.workspaceId);
         if (lazySyncResult.success && lazySyncResult.qbId) {
           qbEmployeeId = lazySyncResult.qbId;
           log.info(`[QBPayrollSync] Lazy sync provisioned ${entityType} → QB ${entityType} ${qbEmployeeId}`);
@@ -361,7 +358,7 @@ export async function syncPayrollToQuickBooks(payrollRunId: string): Promise<Syn
       await qbRequest(qbClient, 'POST', '/timeactivity', { TimeActivity: timeActivity });
 
       syncedCount++;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[QBPayrollSync] Failed to sync entry for employee ${entry.employeeId}:`, (error instanceof Error ? error.message : String(error)));
       errors.push(`Entry ${entry.id}: ${(error instanceof Error ? error.message : String(error))}`);
       failedCount++;
@@ -374,7 +371,6 @@ export async function syncPayrollToQuickBooks(payrollRunId: string): Promise<Syn
   try {
     await db.update(payrollRuns)
       .set({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         status: syncStatus === 'synced' ? 'completed' : 'processing',
       })
       .where(eq(payrollRuns.id, payrollRunId));

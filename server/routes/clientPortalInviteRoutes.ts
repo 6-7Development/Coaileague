@@ -136,9 +136,9 @@ router.post('/portal/setup/:token', async (req, res) => {
     if (existingUser) return res.status(409).json({ message: 'An account with this email already exists.' });
 
     // Load org code from workspace for session context
-    const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
+    const [ws] = await db.select({ orgCode: (workspaces as Record<string,unknown>).orgCode })
       .from(workspaces)
-      .where(eq((workspaces as any).id, invite.workspaceId))
+      .where(eq(((workspaces as {id?: string}).id), invite.workspaceId))
       .limit(1);
     const orgCode = ws?.orgCode || 'ORG';
 
@@ -163,10 +163,8 @@ router.post('/portal/setup/:token', async (req, res) => {
           userId,
           // Persist verified POC data if provided on verification screen
           ...(pocEmail ? { pocEmail } : {}),
-          // @ts-expect-error — TS migration
           ...(address ? { address } : {}),
           ...(billRate ? { contractRate: billRate } : {}),
-          // @ts-expect-error — TS migration
           clientOnboardingStatus: 'active',
           updatedAt: new Date(),
         })
@@ -180,13 +178,13 @@ router.post('/portal/setup/:token', async (req, res) => {
         workspaceId: invite.workspaceId,
         userId,
         userEmail: normalizedEmail,
-        action: 'portal_account_created' as any,
+        action: 'portal_account_created',
         entityType: 'client_portal',
         entityId: invite.clientId,
         changes: { firstName, lastName, email: normalizedEmail, pocEmail, address, billRate, serviceHours, statusFlip: 'invited → active' },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
     // ── END ATOMIC ───────────────────────────────────────────────────────────
 
@@ -197,9 +195,9 @@ router.post('/portal/setup/:token', async (req, res) => {
       });
       // Spec: session widget must hold { userId, clientId, tenantId, orgCode }
       req.session.userId = userId;
-      (req.session as any).clientId = invite.clientId;
-      (req.session as any).tenantId = invite.workspaceId; // tenantId = workspaceId
-      (req.session as any).orgCode = orgCode;
+      (req.session as unknown).clientId = invite.clientId;
+      (req.session as unknown).tenantId = invite.workspaceId; // tenantId = workspaceId
+      (req.session as unknown).orgCode = orgCode;
     }
 
     res.json({
@@ -258,7 +256,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
 
     // Step 2: Logic Gate — three branches
     if (existingInvite) {
-      const isExpired = new Date(existingInvite.expiresAt as any) < new Date();
+      const isExpired = new Date(existingInvite.expiresAt as unknown) < new Date();
 
       // Gate A: ACTIVE — block entirely ("User already active")
       if (existingInvite.isUsed) {
@@ -299,7 +297,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
           workspaceId,
           userId: req.user?.id || 'system',
           userEmail: req.user?.email || 'system',
-          action: 'client_portal_invite_reactivated' as any,
+          action: 'client_portal_invite_reactivated',
           entityType: 'client',
           entityId: clientId,
           changes: {
@@ -312,10 +310,10 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
           },
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'] || null,
-        } as any);
+        } as unknown);
       });
 
-      const [wsRec] = await db.select({ orgCode: (workspaces as any).orgCode }).from(workspaces).where(eq((workspaces as any).id, workspaceId)).limit(1);
+      const [wsRec] = await db.select({ orgCode: (workspaces as Record<string,unknown>).orgCode }).from(workspaces).where(eq(((workspaces as {id?: string}).id), workspaceId)).limit(1);
       const reactivateOrgCode = wsRec?.orgCode || 'ORG';
       const reactivateUrl = `${req.protocol}://${req.get('host')}/client-portal/setup?token=${token}&workspace=${workspaceId}&org=${reactivateOrgCode}`;
 
@@ -345,27 +343,27 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
         token,
         expiresAt,
         // Step 3: Persist — status is canonical DB truth, not calculated in UI
-        ...(({ inviteStatus: 'invited' }) as any),
+        ...(({ inviteStatus: 'invited' }) as unknown),
       });
 
       await tx.insert(auditLogs).values({
         workspaceId,
         userId: req.user?.id || 'system',
         userEmail: req.user?.email || 'system',
-        action: 'client_portal_invite_sent' as any,
+        action: 'client_portal_invite_sent',
         entityType: 'client',
         entityId: clientId,
         changes: { email, expiresAt: expiresAt.toISOString(), ttlDays: 7 },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
     // ── END ATOMIC ───────────────────────────────────────────────────────────
 
     // Load org code for the invite URL (spec §4: link maps to /{org_code}/login)
-    const [ws] = await db.select({ orgCode: (workspaces as any).orgCode })
+    const [ws] = await db.select({ orgCode: (workspaces as Record<string,unknown>).orgCode })
       .from(workspaces)
-      .where(eq((workspaces as any).id, workspaceId))
+      .where(eq(((workspaces as {id?: string}).id), workspaceId))
       .limit(1);
     const orgCode = ws?.orgCode || 'ORG';
 
@@ -432,13 +430,13 @@ router.delete('/portal/invite/:inviteId/revoke', requireManagerOrPlatformStaff, 
         workspaceId,
         userId: req.user?.id || 'system',
         userEmail: req.user?.email || 'system',
-        action: 'client_portal_invite_revoked' as any,
+        action: 'client_portal_invite_revoked',
         entityType: 'client_portal',
         entityId: invite.clientId,
         changes: { revokedInviteId: invite.id, email: invite.email },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
 
     res.json({ success: true, message: 'Invitation revoked.', visualStatus: 'expired' });

@@ -13,7 +13,7 @@ const log = createLogger('trinityExtendedActions');
 
 const taxFormGeneratorService = new TaxFormGeneratorService();
 
-function createResult(actionId: string, success: boolean, message: string, data?: any, startTime?: number): ActionResult {
+function createResult(actionId: string, success: boolean, message: string, data?: unknown, startTime?: number): ActionResult {
   return {
     success,
     actionId,
@@ -57,7 +57,7 @@ export function registerExtendedActions() {
           3: { wages: 0, fica: 0 },
           4: { wages: 0, fica: 0 },
         };
-        for (const row of (rows as any[])) {
+        for (const row of (rows as unknown[][])) {
           const q = Number(row.quarter);
           quarterMap[q] = { wages: Number(row.total_wages), fica: Number(row.total_fica) };
         }
@@ -200,7 +200,7 @@ export function registerExtendedActions() {
         let ytdEmployeeFICA = 0;
         let ytdFUTA = 0;
 
-        for (const row of (rows as any[])) {
+        for (const row of (rows as unknown[][])) {
           const gross = Number(row.ytd_gross);
           ytdGrossWages += gross;
           ytdEmployeeFICA += Number(row.employee_ss) + Number(row.employee_medicare);
@@ -342,7 +342,6 @@ export function registerExtendedActions() {
       description: 'Generate formatted alert text for missed clock-ins',
       handler: async (request: ActionRequest) => {
         const start = Date.now();
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { missedClockIns } = (await helpaiOrchestrator.executeAction({
           actionId: 'time_tracking.watch_clock_ins',
           workspaceId: request.workspaceId,
@@ -354,7 +353,7 @@ export function registerExtendedActions() {
           ? `ALARM: ${missedClockIns.length} missed clock-ins detected!\n` 
           : "All employees have clocked in correctly.";
         
-        missedClockIns.forEach((m: any) => {
+        missedClockIns.forEach((m: unknown) => {
           alertText += `- ${m.name} missed shift at ${m.site} (Started: ${new Date(m.shiftStart).toLocaleTimeString()})\n`;
         });
 

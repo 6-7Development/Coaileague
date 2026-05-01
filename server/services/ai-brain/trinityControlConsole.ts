@@ -40,7 +40,7 @@ export interface ThoughtSignaturePayload {
   runId?: string;
   thoughtType: ThoughtType;
   content: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   confidence?: number;
   timestamp: string;
 }
@@ -54,8 +54,8 @@ export interface ActionLogPayload {
   thoughtId?: string;
   actionType: ActionType;
   actionName: string;
-  parameters?: Record<string, any>;
-  result?: Record<string, any>;
+  parameters?: Record<string, unknown>;
+  result?: Record<string, unknown>;
   status: ActionStatus;
   durationMs?: number;
   errorMessage?: string;
@@ -84,7 +84,7 @@ export interface PlatformAwarenessEvent {
   resourceId?: string;
   operation: 'create' | 'update' | 'delete' | 'read';
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   routedThroughTrinity: boolean;
 }
 
@@ -95,7 +95,7 @@ interface StreamSubscription {
 }
 
 // Utility to sanitize any value for XSS prevention (deep recursive)
-function sanitizeValue(value: any): any {
+function sanitizeValue(value: unknown): any {
   if (value === null || value === undefined) {
     return value;
   }
@@ -111,7 +111,7 @@ function sanitizeValue(value: any): any {
     return value.map(item => sanitizeValue(item));
   }
   if (typeof value === 'object') {
-    const result: Record<string, any> = {};
+    const result: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       result[key] = sanitizeValue(val);
     }
@@ -167,7 +167,7 @@ class TrinityControlConsoleService {
     });
 
     // Listen for database events posted to AI Brain
-    aiBrainEvents.on('database_event', (data: any) => {
+    aiBrainEvents.on('database_event', (data: Record<string, unknown>) => {
       this.captureAwareness({
         eventType: 'database_operation',
         source: data.source || 'api',
@@ -213,7 +213,7 @@ class TrinityControlConsoleService {
         runId: thought.runId || undefined,
         thoughtType: thought.thoughtType as ThoughtType,
         content: thought.content,
-        context: thought.context as Record<string, any> | undefined,
+        context: thought.context as Record<string, unknown> | undefined,
         confidence: thought.confidence || undefined,
         timestamp: new Date().toISOString(),
       };
@@ -241,7 +241,7 @@ class TrinityControlConsoleService {
       workspaceId?: string;
       userId?: string;
       runId?: string;
-      context?: Record<string, any>;
+      context?: Record<string, unknown>;
       confidence?: number;
     }
   ): Promise<string> {
@@ -274,8 +274,8 @@ class TrinityControlConsoleService {
         thoughtId: action.thoughtId || undefined,
         actionType: action.actionType as ActionType,
         actionName: action.actionName,
-        parameters: action.parameters as Record<string, any> | undefined,
-        result: action.result as Record<string, any> | undefined,
+        parameters: action.parameters as Record<string, unknown> | undefined,
+        result: action.result as Record<string, unknown> | undefined,
         status: action.status as ActionStatus,
         durationMs: action.durationMs || undefined,
         errorMessage: action.errorMessage || undefined,
@@ -304,7 +304,7 @@ class TrinityControlConsoleService {
       userId?: string;
       runId?: string;
       thoughtId?: string;
-      parameters?: Record<string, any>;
+      parameters?: Record<string, unknown>;
     }
   ): Promise<T> {
     const startTime = Date.now();
@@ -466,7 +466,7 @@ class TrinityControlConsoleService {
     operation: 'create' | 'update' | 'delete',
     recordId: string,
     source: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     setImmediate(() => {
       try {
@@ -582,7 +582,7 @@ class TrinityControlConsoleService {
     // Sanitize payload before broadcasting
     const safePayload = sanitizePayload(payload);
     const payloadWorkspaceId = 'workspaceId' in payload.data 
-      ? (payload as any).data.workspaceId 
+      ? (payload as Record<string,unknown>).data.workspaceId 
       : undefined;
     
     this.activeStreams.forEach((subscribers) => {
@@ -616,7 +616,7 @@ class TrinityControlConsoleService {
     runId?: string;
     limit?: number;
     since?: Date;
-  }): Promise<any[]> {
+  }): Promise<Record<string,unknown>[]> {
     const conditions = [];
     
     if (options?.sessionId) {
@@ -649,7 +649,7 @@ class TrinityControlConsoleService {
     runId?: string;
     limit?: number;
     since?: Date;
-  }): Promise<any[]> {
+  }): Promise<Record<string,unknown>[]> {
     const conditions = [];
     
     if (options?.sessionId) {
@@ -679,7 +679,7 @@ class TrinityControlConsoleService {
   async getSessionTimeline(sessionId: string, workspaceId: string): Promise<Array<{
     type: 'thought' | 'action';
     timestamp: Date;
-    data: any;
+    data: Record<string, unknown>;
   }>> {
     const [thoughts, actions] = await Promise.all([
       this.getRecentThoughts({ sessionId, workspaceId, limit: 100 }),

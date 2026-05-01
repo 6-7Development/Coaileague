@@ -1,3 +1,4 @@
+import type { Response, Request } from 'express';
 /**
  * Concurrency Guard — Per-workspace mutex for critical operations
  * Prevents race conditions on payroll runs, invoice generation, credit purchases.
@@ -11,7 +12,7 @@ const log = createLogger('ConcurrencyGuard');
 const locks = new Map<string, Promise<void>>();
 
 // Idempotency cache: key → { result, expiresAt }
-const idempotencyCache = new Map<string, { result: any; expiresAt: number }>();
+const idempotencyCache = new Map<string, { result: unknown; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class WorkspaceLockError extends Error {
@@ -80,9 +81,7 @@ export function checkIdempotency<T>(
 
 export function storeIdempotencyResult(
   workspaceId: string,
-  idempotencyKey: string,
-  result: any
-): void {
+  idempotencyKey: string, result: unknown): void {
   const cacheKey = `${workspaceId}:${idempotencyKey}`;
   idempotencyCache.set(cacheKey, {
     result,
@@ -94,8 +93,8 @@ export function storeIdempotencyResult(
  * Express middleware factory: enforces idempotency key on mutation routes.
  * If X-Idempotency-Key header present and matches a cached result, return 200 immediately.
  */
-export function idempotencyMiddleware(workspaceIdExtractor?: (req: any) => string | undefined) {
-  return (req: any, res: any, next: any) => {
+export function idempotencyMiddleware(workspaceIdExtractor?: (req: unknown) => string | undefined) {
+  return (req: Request, res: Response, next: unknown) => {
     const idempotencyKey = req.headers['x-idempotency-key'] as string | undefined;
     if (!idempotencyKey) { next(); return; }
 
@@ -114,7 +113,7 @@ export function idempotencyMiddleware(workspaceIdExtractor?: (req: any) => strin
 
     // Wrap res.json to cache the result
     const originalJson = res.json.bind(res);
-    res.json = (body: any) => {
+    res.json = (body: Record<string, unknown>) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         storeIdempotencyResult(workspaceId, idempotencyKey, body);
       }

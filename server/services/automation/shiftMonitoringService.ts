@@ -38,7 +38,7 @@ export interface ShiftAlert {
   severity: 'warning' | 'critical';
   message: string;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface MonitoringResult {
@@ -92,7 +92,7 @@ class ShiftMonitoringService {
     this.intervalId = setInterval(async () => {
       try {
         await this.runMonitoringCycle();
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.cycleRunning = false; // G10 FIX: release lock if orchestration threw
         log.warn('[ShiftMonitor] Monitoring cycle failed (will retry):', error?.message || 'unknown');
       }
@@ -110,7 +110,6 @@ class ShiftMonitoringService {
     log.info('[ShiftMonitor] Stopped');
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   getStatus(): { running: boolean; lastRun: Date | null; stats: typeof this.stats } {
     return {
       running: this.isRunning,
@@ -123,7 +122,6 @@ class ShiftMonitoringService {
     // G10 FIX: prevent concurrent cycles if previous cycle is still running (slow DB)
     if (this.cycleRunning) {
       log.warn('[ShiftMonitor] Previous cycle still running — skipping this tick to prevent overlap');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return { shiftsChecked: 0, lateAlerts: 0, ncnsAlerts: 0, replacementsTriggered: 0 };
     }
     this.cycleRunning = true;
@@ -232,7 +230,7 @@ class ShiftMonitoringService {
                 // Seed cache regardless — prevents repeated DB queries in future cycles
                 this.reminderSentCache.set(ncnsKey, now.getTime() + 4 * 60 * 60 * 1000);
 
-                const ncnsAlreadySent = (ncnsExisting as any[]).length > 0;
+                const ncnsAlreadySent = (ncnsExisting as unknown[]).length > 0;
                 if (!ncnsAlreadySent) {
                   result.ncnsAlerts++;
                   await this.handleNoCallNoShow(shift, employee, minutesSinceStart);
@@ -264,7 +262,7 @@ class ShiftMonitoringService {
                 );
                 this.reminderSentCache.set(lateKey, now.getTime() + 90 * 60 * 1000);
 
-                if ((lateExisting as any[]).length === 0) {
+                if ((lateExisting as unknown[]).length === 0) {
                   result.lateAlerts++;
                   await this.handleLateClockIn(shift, employee, minutesSinceStart);
                 }
@@ -323,7 +321,7 @@ class ShiftMonitoringService {
                 severity: 'info',
                 metadata: { shiftId: upShift.id, startTime: upShift.startTime, reminderType: 'pre_shift_30min' },
               });
-            } catch (notifyErr: any) {
+            } catch (notifyErr: unknown) {
               log.warn(`[ShiftMonitor] Pre-shift reminder failed for employee ${upEmployee.id}:`, notifyErr.message);
             }
           }
@@ -331,7 +329,7 @@ class ShiftMonitoringService {
           if (upcomingShifts.length > 0) {
             log.info(`[ShiftMonitor] Pre-shift reminders sent: ${upcomingShifts.length} upcoming shifts`);
           }
-        } catch (reminderErr: any) {
+        } catch (reminderErr: unknown) {
           log.error('[ShiftMonitor] Pre-shift reminder block failed (non-blocking):', reminderErr.message);
         }
 
@@ -381,7 +379,7 @@ class ShiftMonitoringService {
           if (overdueVisitorsResult.length > 0) {
             log.info(`[ShiftMonitor] Visitor alerts: ${overdueVisitorsResult.length} visitors never left`);
           }
-        } catch (visitorErr: any) {
+        } catch (visitorErr: unknown) {
           log.error('[ShiftMonitor] Visitor monitoring error (non-blocking):', visitorErr.message);
         }
 
@@ -435,7 +433,7 @@ class ShiftMonitoringService {
     };
   }
 
-  private async handleLateClockIn(shift: any, employee: any, minutesLate: number): Promise<void> {
+  private async handleLateClockIn(shift: unknown, employee: Record<string, unknown>, minutesLate: number): Promise<void> {
     const alert: ShiftAlert = {
       type: 'late_clock_in',
       shiftId: shift.id,
@@ -453,7 +451,7 @@ class ShiftMonitoringService {
     await this.notifyFieldManagers(shift.workspaceId, alert);
   }
 
-  private async handleNoCallNoShow(shift: any, employee: any, minutesLate: number): Promise<void> {
+  private async handleNoCallNoShow(shift: unknown, employee: Record<string, unknown>, minutesLate: number): Promise<void> {
     const alert: ShiftAlert = {
       type: 'no_call_no_show',
       shiftId: shift.id,
@@ -475,7 +473,6 @@ class ShiftMonitoringService {
         shift.workspaceId,
         employee.id,
         'shift_no_show',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         { shiftId: shift.id }
       );
     } catch (err) {
@@ -483,7 +480,7 @@ class ShiftMonitoringService {
     }
   }
 
-  async triggerAutoReplacement(shift: any, reason: 'ncns' | 'call_off'): Promise<{ success: boolean; replacementId?: string; error?: string }> {
+  async triggerAutoReplacement(shift: unknown, reason: 'ncns' | 'call_off'): Promise<{ success: boolean; replacementId?: string; error?: string }> {
     log.info(`[ShiftMonitor] Triggering coverage pipeline for shift ${shift.id} (reason: ${reason})`);
 
     // ─── STAY-LATE FIRST CHECK ───────────────────────────────────────────────
@@ -521,7 +518,7 @@ class ShiftMonitoringService {
             eq(employees.isActive, true)
           ),
         });
-        if (!officer || (officer as any).overtimeEligible === false) continue;
+        if (!officer || (officer as Record<string,unknown>).overtimeEligible === false) continue;
 
         const gapHours = (shiftStart.getTime() - new Date(onSite.endTime).getTime()) / (1000 * 60 * 60);
         const stayLateNote = gapHours <= 0
@@ -552,7 +549,7 @@ class ShiftMonitoringService {
         log.info(`[ShiftMonitor] Stay-late notification sent to ${officer.firstName} ${officer.lastName} via UNE`);
         break; // Notify the single most relevant on-site officer — general pool follows below
       }
-    } catch (stayLateErr: any) {
+    } catch (stayLateErr: unknown) {
       log.warn(`[ShiftMonitor] Stay-late check failed (non-blocking): ${stayLateErr.message}`);
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -598,7 +595,7 @@ class ShiftMonitoringService {
       await this.handleReplacementFailed(shift, reason, result.error || 'Coverage pipeline failed');
       return { success: false, error: result.error };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[ShiftMonitor] Coverage pipeline failed:', error);
       await this.searchPlatformPool(shift).catch((err) => log.warn('[shiftMonitoringService] Fire-and-forget failed:', err));
       await this.handleReplacementFailed(shift, reason, (error instanceof Error ? error.message : String(error)));
@@ -606,7 +603,7 @@ class ShiftMonitoringService {
     }
   }
 
-  private async searchPlatformPool(shift: any): Promise<void> {
+  private async searchPlatformPool(shift: unknown): Promise<void> {
     try {
       const poolResult = await pool.query<{
         id: string; first_name: string; last_name: string;
@@ -682,12 +679,12 @@ class ShiftMonitoringService {
       }
 
       log.info(`[ShiftMonitor] Platform pool: notified ${available.length} workers for shift ${shift.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[ShiftMonitor] Platform pool search failed (non-blocking):', (err instanceof Error ? err.message : String(err)));
     }
   }
 
-  private async handleReplacementFailed(shift: any, reason: string, errorMessage: string): Promise<void> {
+  private async handleReplacementFailed(shift: unknown, reason: string, errorMessage: string): Promise<void> {
     const alert: ShiftAlert = {
       type: 'replacement_failed',
       shiftId: shift.id,
@@ -722,10 +719,10 @@ class ShiftMonitoringService {
           and(
             eq(employees.workspaceId, workspaceId),
             or(
-              eq(employees.workspaceRole as any, 'manager'),
-              eq(employees.workspaceRole as any, 'supervisor'),
-              eq(employees.workspaceRole as any, 'department_manager'),
-              eq(employees.workspaceRole as any, 'field_supervisor')
+              eq(employees.workspaceRole, 'manager'),
+              eq(employees.workspaceRole, 'supervisor'),
+              eq(employees.workspaceRole, 'department_manager'),
+              eq(employees.workspaceRole, 'field_supervisor')
             )
           )
         );
@@ -768,8 +765,8 @@ class ShiftMonitoringService {
           and(
             eq(employees.workspaceId, workspaceId),
             or(
-              eq(employees.workspaceRole as any, 'org_owner'),
-              eq(employees.workspaceRole as any, 'co_owner')
+              eq(employees.workspaceRole, 'org_owner'),
+              eq(employees.workspaceRole, 'co_owner')
             )
           )
         );

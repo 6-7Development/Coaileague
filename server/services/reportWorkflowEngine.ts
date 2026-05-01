@@ -248,9 +248,7 @@ async function finalizeWorkflow(
  */
 async function lockReportRecord(
   submissionId: string,
-  workspaceId: string,
-  submission: any
-): Promise<void> {
+  workspaceId: string, submission: unknown): Promise<void> {
   // Get full submission data with all related records
   const employee = submission.employeeId 
     ? await storage.getEmployeeById(submission.employeeId) 
@@ -302,9 +300,7 @@ async function lockReportRecord(
  */
 async function sendReportToClient(
   submissionId: string,
-  workspaceId: string,
-  workflow: any
-): Promise<void> {
+  workspaceId: string, workflow: unknown): Promise<void> {
   const submission = await storage.getReportSubmissionById(submissionId);
   if (!submission || !submission.clientId) {
     throw new Error('No client associated with this report');
@@ -437,7 +433,7 @@ export async function getReportAnalytics(
     endDate?: Date;
     templateId?: string;
   }
-): Promise<any> {
+): Promise<unknown> {
   // Query locked reports with cross-references
   const lockedReports = await storage.getLockedReportRecords(workspaceId, filters);
 
@@ -453,7 +449,7 @@ export async function getReportAnalytics(
   return analytics;
 }
 
-function groupBy(array: any[], key: string): Record<string, number> {
+function groupBy(array: unknown[], key: string): Record<string, number> {
   return array.reduce((acc, item) => {
     const value = item[key] || 'unknown';
     acc[value] = (acc[value] || 0) + 1;
@@ -461,7 +457,7 @@ function groupBy(array: any[], key: string): Record<string, number> {
   }, {});
 }
 
-function groupReportsByMonth(reports: any[]): Record<string, number> {
+function groupReportsByMonth(reports: unknown[]): Record<string, number> {
   return reports.reduce((acc, report) => {
     const month = new Date(report.lockedAt).toISOString().substring(0, 7); // YYYY-MM
     acc[month] = (acc[month] || 0) + 1;

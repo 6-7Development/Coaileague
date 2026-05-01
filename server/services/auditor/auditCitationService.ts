@@ -150,7 +150,7 @@ export async function recordVerdict(params: RecordVerdictParams): Promise<Record
         params.workspaceId, params.auditId,
         params.violationPdfBuffer, params.violationPdfMime,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[Citation] Violation PDF upload failed (non-fatal):', err?.message);
     }
   }
@@ -238,7 +238,7 @@ async function notifyOwnerVerdict(
         subject:         `Audit Result: ${verdictLabels[verdict]}`,
         body,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[Citation] ${channel} notification failed (non-fatal):`, err?.message);
     }
   }
@@ -295,7 +295,7 @@ export async function submitPaymentProof(
         params.moneyOrderBuffer, params.moneyOrderMime,
         Number(citation.fine_amount),
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[Citation] Money order upload failed (non-fatal):', err?.message);
     }
   }
@@ -383,11 +383,11 @@ async function trinityVerifyPaymentAmount(
     });
 
     if (!response.ok) return false;
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const text = data?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return false;
-    const parsed = JSON.parse(match[0]);
+    const parsed: unknown = JSON.parse(match[0]);
     return Boolean(parsed.verified);
   } catch {
     return false;

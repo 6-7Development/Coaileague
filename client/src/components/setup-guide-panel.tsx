@@ -101,7 +101,7 @@ export function SetupGuidePanel({
     return false;
   });
   const { user } = useAuth();
-  const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.activeWorkspaceId || (user as Record<string,unknown>)?.workspaceId;
   // Derive Trinity mode locally to avoid /api/trinity/context fetch on every nav.
 
   const { data: guideData, isLoading } = useQuery<SetupGuideData>({
@@ -166,7 +166,7 @@ export function SetupGuidePanel({
         <span className="text-sm font-semibold">Setup complete</span>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Dismiss Complete"
           className="h-7 w-7"
           onClick={handleDismissComplete}
           data-testid="button-dismiss-complete"
@@ -209,7 +209,7 @@ export function SetupGuidePanel({
           {onClose && (
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Close Guide"
               className="h-7 w-7"
               onClick={onClose}
               data-testid="button-close-guide"
@@ -351,7 +351,7 @@ export function SetupGuidePanel({
               </Badge>
             </Button>
           </UniversalModalTrigger>
-          <UniversalModalContent side="bottom" className="h-[85vh] p-0 rounded-t-xl sm:max-w-3xl" showHomeButton={false}>
+          <UniversalModalContent side="bottom" className="max-h-[calc(85dvh-56px)] sm:max-h-[85dvh] overflow-y-auto p-0 rounded-t-xl sm:max-w-3xl" showHomeButton={false}>
             <UniversalModalHeader className="sr-only">
               <UniversalModalTitle>Setup Guide</UniversalModalTitle>
             </UniversalModalHeader>

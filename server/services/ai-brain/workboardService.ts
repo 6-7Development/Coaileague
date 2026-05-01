@@ -28,7 +28,7 @@ export interface WorkboardSubmission {
   userId: string;
   requestType: 'voice_command' | 'chat' | 'direct_api' | 'automation' | 'escalation' | 'system';
   requestContent: string;
-  requestMetadata?: Record<string, any>;
+  requestMetadata?: Record<string, unknown>;
   priority?: 'critical' | 'high' | 'normal' | 'low' | 'scheduled';
   notifyVia?: string[];
   parentTaskId?: string;
@@ -46,7 +46,7 @@ const FAST_MODE_CONFIG = {
 
 export interface WorkboardTaskResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   summary?: string;
   error?: string;
 }
@@ -160,7 +160,6 @@ class WorkboardService {
     };
 
     const [task] = await db.insert(aiWorkboardTasks)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(taskData)
       .returning();
 
@@ -229,17 +228,16 @@ class WorkboardService {
 
       // Use SubagentSupervisor with parallel dispatch
       const analysisResult = await subagentSupervisor.analyzeRequest({
-        content: (task as any).requestContent,
-        type: (task as any).requestType,
+        content: (task as Record<string, unknown>).requestContent,
+        type: (task as Record<string, unknown>).requestType,
         workspaceId: task.workspaceId,
-        userId: (task as any).userId,
+        userId: (task as Record<string, unknown>).userId,
         executionMode: 'trinity_fast'
       });
 
       // Update task with analysis
       await db.update(aiWorkboardTasks)
         .set({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           intent: analysisResult.intent,
           category: analysisResult.category,
           confidence: String(analysisResult.confidence),
@@ -247,7 +245,7 @@ class WorkboardService {
           assignedAgentName: analysisResult.agentName,
           estimatedTokens: analysisResult.estimatedTokens,
           status: 'assigned',
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'assigned',
             timestamp: new Date().toISOString(),
             actor: 'system',
@@ -261,7 +259,7 @@ class WorkboardService {
         .where(eq(aiWorkboardTasks.id, taskId));
 
       // Get credit reservation ID from task metadata
-      const metadata = (task as any).requestMetadata as Record<string, any> || {};
+      const metadata = (task as Record<string, unknown>).requestMetadata as Record<string, unknown> || {};
       const reservationId = metadata.creditReservationId;
       const estimatedCredits = metadata.estimatedCredits || Math.ceil((analysisResult.estimatedTokens || 10) * FAST_MODE_CONFIG.creditMultiplier);
 
@@ -272,9 +270,9 @@ class WorkboardService {
       const result = await subagentSupervisor.executeFastModeParallel({
         agentId: analysisResult.agentId,
         taskId,
-        content: (task as any).requestContent,
+        content: (task as Record<string, unknown>).requestContent,
         workspaceId: task.workspaceId,
-        userId: (task as any).userId,
+        userId: (task as Record<string, unknown>).userId,
         context: metadata
       });
 
@@ -301,7 +299,7 @@ class WorkboardService {
         // Legacy tasks without reservation - use directDeduct with proper refund on failure
         const deductResult = await subagentBanker.directDeduct({
           workspaceId: task.workspaceId,
-          userId: (task as any).userId,
+          userId: (task as Record<string, unknown>).userId,
           credits: estimatedCredits,
           actionType: 'fast_mode_task',
           actionId: taskId,
@@ -315,7 +313,7 @@ class WorkboardService {
           if (!result.success) {
             await subagentBanker.refillCredits({
               workspaceId: task.workspaceId,
-              userId: (task as any).userId,
+              userId: (task as Record<string, unknown>).userId,
               credits: estimatedCredits,
               source: 'refund',
               description: `Refund for failed fast mode task: ${taskId.substring(0, 8)}`
@@ -328,7 +326,6 @@ class WorkboardService {
 
       // Update fast mode credits on task
       await db.update(aiWorkboardTasks)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .set({ fastModeCredits: creditsDeducted, creditsDeducted: creditsDeducted > 0 })
         .where(eq(aiWorkboardTasks.id, taskId));
 
@@ -337,12 +334,11 @@ class WorkboardService {
         .set({
           status: result.success ? 'completed' : 'failed',
           result: result.data || {},
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           resultSummary: result.summary,
           errorMessage: result.error || null,
           actualTokens: estimatedCredits,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: analysisResult.agentId,
@@ -369,7 +365,7 @@ class WorkboardService {
         .limit(1);
       
       if (task) {
-        const metadata = (task as any).requestMetadata as Record<string, any> || {};
+        const metadata = (task as Record<string, unknown>).requestMetadata as Record<string, unknown> || {};
         const reservationId = metadata.creditReservationId;
         if (reservationId) {
           await subagentBanker.consumeReservation({
@@ -422,13 +418,13 @@ class WorkboardService {
 
       // Step 2: Analyze and route via SubagentSupervisor
       const routingResult = await subagentSupervisor.routeVoiceCommand({
-        transcript: (task as any).requestContent,
-        userId: (task as any).userId,
+        transcript: (task as Record<string, unknown>).requestContent,
+        userId: (task as Record<string, unknown>).userId,
         workspaceId: task.workspaceId,
         context: {
-          source: (task as any).requestType,
+          source: (task as Record<string, unknown>).requestType,
           timestamp: task.createdAt?.toISOString() || new Date().toISOString(),
-          platform: (task as any).requestMetadata?.platform || 'web'
+          platform: (task as Record<string, unknown>).requestMetadata?.platform || 'web'
         }
       });
 
@@ -436,14 +432,13 @@ class WorkboardService {
       await db.update(aiWorkboardTasks)
         .set({
           status: 'assigned',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           intent: routingResult.assignedAgent,
           category: this.getAgentCategory(routingResult.assignedAgent),
           confidence: String(routingResult.confidence),
           assignedAgentId: routingResult.assignedAgent,
           assignedAgentName: routingResult.assignedAgent,
           estimatedTokens: routingResult.estimatedTokens,
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'assigned',
             timestamp: new Date().toISOString(),
             actor: 'SubagentSupervisor',
@@ -454,7 +449,7 @@ class WorkboardService {
         .where(eq(aiWorkboardTasks.id, taskId));
 
       // Step 4: Deduct credits
-      await this.recordUsage(task.workspaceId, (task as any).userId, routingResult.estimatedTokens, taskId);
+      await this.recordUsage(task.workspaceId, (task as Record<string, unknown>).userId, routingResult.estimatedTokens, taskId);
 
       // Step 5: Update to in_progress
       await this.updateTaskStatus(taskId, 'in_progress', routingResult.assignedAgent);
@@ -467,12 +462,11 @@ class WorkboardService {
         .set({
           status: result.success ? 'completed' : 'failed',
           result: result.data || {},
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           resultSummary: result.summary,
           errorMessage: result.error,
           actualTokens: routingResult.estimatedTokens,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: routingResult.assignedAgent
@@ -486,15 +480,14 @@ class WorkboardService {
 
       log.info('[WorkboardService] Task completed:', taskId, result.success ? 'SUCCESS' : 'FAILED');
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[WorkboardService] Error processing task:', taskId, error);
       
       await db.update(aiWorkboardTasks)
         .set({
           status: 'failed',
           errorMessage: (error instanceof Error ? error.message : String(error)) || 'Unknown error',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'failed',
             timestamp: new Date().toISOString(),
             actor: 'system',
@@ -561,10 +554,10 @@ class WorkboardService {
         featureKey: 'workboard_ai_response',
       });
 
-      if (!(response as any).success || !response.text) {
+      if (!(response as Record<string, unknown>).success || !response.text) {
         return {
           success: false,
-          error: (response as any).error || 'Failed to generate AI response',
+          error: (response as Record<string, unknown>).error || 'Failed to generate AI response',
           data: {
             agentId: routing.assignedAgent,
             processedAt: new Date().toISOString()
@@ -588,7 +581,7 @@ class WorkboardService {
         summary: `Task processed by ${routing.assignedAgent} with ${Math.round(routing.confidence * 100)}% confidence.`
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[WorkboardService] AI execution error:', error);
       
       // Fallback to basic response on error
@@ -613,9 +606,9 @@ class WorkboardService {
     status: TaskStatus, 
     actor: string
   ): Promise<void> {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       status,
-      statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+      statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
         status,
         timestamp: new Date().toISOString(),
         actor
@@ -648,7 +641,6 @@ class WorkboardService {
         workspaceId,
         userId,
         featureKey: 'ai_general',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         featureName: 'Workboard Task',
         amountOverride: tokens,
         relatedEntityType: 'workboard_task',
@@ -663,7 +655,6 @@ class WorkboardService {
 
       // Mark credits deducted on task
       await db.update(aiWorkboardTasks)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .set({ creditsDeducted: true })
         .where(eq(aiWorkboardTasks.id, taskId));
 
@@ -685,14 +676,14 @@ class WorkboardService {
 
     if (!task) return;
 
-    const notifyChannels = (task as any).notifyVia || ['trinity'];
+    const notifyChannels = (task as Record<string, unknown>).notifyVia || ['trinity'];
 
     for (const channel of notifyChannels) {
       switch (channel) {
         case 'trinity':
           // Trinity mascot notification - log for now, integrate later
           log.info('[WorkboardService] Trinity notification:', {
-            userId: (task as any).userId,
+            userId: (task as Record<string, unknown>).userId,
             type: result.success ? 'task_completed' : 'task_failed',
             message: result.summary
           });
@@ -714,7 +705,7 @@ class WorkboardService {
             title: result.success ? 'Task Completed' : 'Task Failed',
             description: result.summary || 'Your AI workboard task has been processed.',
             workspaceId: task.workspaceId,
-            userId: (task as any).userId,
+            userId: (task as Record<string, unknown>).userId,
             metadata: { taskId: task.id }
           });
           break;
@@ -728,7 +719,6 @@ class WorkboardService {
     // Mark notification as sent
     await db.update(aiWorkboardTasks)
       .set({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         notificationSent: true,
         notifiedAt: new Date()
       })
@@ -764,7 +754,6 @@ class WorkboardService {
 
     if (!task) return false;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if ((task.retryCount || 0) >= (task.maxRetries || 3)) {
       log.info('[WorkboardService] Max retries exceeded:', taskId);
       await this.escalateTask(taskId, 'Max retries exceeded');
@@ -774,14 +763,12 @@ class WorkboardService {
     await db.update(aiWorkboardTasks)
       .set({
         status: 'pending',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         retryCount: (task.retryCount || 0) + 1,
         errorMessage: null,
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'pending',
           timestamp: new Date().toISOString(),
           actor: 'system',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           details: { retry: (task.retryCount || 0) + 1 }
         }])}::jsonb`,
         updatedAt: new Date()
@@ -800,8 +787,7 @@ class WorkboardService {
       .set({
         status: 'escalated',
         errorMessage: reason,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'escalated',
           timestamp: new Date().toISOString(),
           actor: 'system',
@@ -860,12 +846,10 @@ class WorkboardService {
         userId,
         workspaceId,
         executionMode,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         context: { source: 'voice_sync', platform: 'mobile' }
       });
 
       // Step 2: Create task in database with proper agent assignment
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(aiWorkboardTasks).values({
         id: taskId,
         workspaceId,
@@ -882,7 +866,7 @@ class WorkboardService {
           source: 'voice_sync', 
           platform: 'mobile', 
           inputMethod: 'voice',
-          routedCategory: (routingResult as any).category
+          routedCategory: (routingResult as Record<string,unknown>).category
         },
         statusHistory: [{ status: 'in_progress', timestamp: new Date().toISOString(), actor: 'voice_command_sync' }],
         notifyVia: ['websocket'],
@@ -905,8 +889,7 @@ class WorkboardService {
           .set({
             status: 'failed',
             errorMessage: 'Insufficient credits for this action',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
-            statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+            statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
               status: 'failed',
               timestamp: new Date().toISOString(),
               actor: 'credit_check',
@@ -938,7 +921,7 @@ class WorkboardService {
           assignedAgent: routingResult.assignedAgent,
           estimatedTokens: routingResult.estimatedTokens,
           confidenceScore: routingResult.confidence
-        } as any, 
+        } as unknown, 
         routingResult
       );
 
@@ -947,12 +930,11 @@ class WorkboardService {
         .set({
           status: result.success ? 'completed' : 'failed',
           result: result.data || {},
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           resultSummary: result.summary,
           errorMessage: result.success ? null : result.error,
           actualTokens: result.data?.tokensUsed || routingResult.estimatedTokens,
           completedAt: new Date(),
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: result.success ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
             actor: routingResult.assignedAgent
@@ -976,12 +958,12 @@ class WorkboardService {
         taskId,
         response: responseMessage,
         assignedAgent: routingResult.assignedAgent,
-        actionExecuted: (routingResult as any).category,
+        actionExecuted: (routingResult as Record<string,unknown>).category,
         tokensUsed: result.data?.tokensUsed || routingResult.estimatedTokens,
         error: result.success ? undefined : result.error
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[WorkboardService] Trinity voice command error:', error);
       
       // Update task to failed if it was created
@@ -991,8 +973,7 @@ class WorkboardService {
             .set({
               status: 'failed',
               errorMessage: (error instanceof Error ? error.message : String(error)),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
-              statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+              statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
                 status: 'failed',
                 timestamp: new Date().toISOString(),
                 actor: 'voice_command_sync',
@@ -1042,7 +1023,6 @@ class WorkboardService {
     } else if (scope === 'manager') {
       conditions.push(eq(aiWorkboardTasks.workspaceId, workspaceId));
     } else {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       conditions.push(eq(aiWorkboardTasks.userId, userId));
       conditions.push(eq(aiWorkboardTasks.workspaceId, workspaceId));
     }
@@ -1052,7 +1032,7 @@ class WorkboardService {
     }
     
     if (options?.priority) {
-      conditions.push(eq(aiWorkboardTasks.priority, options.priority as any));
+      conditions.push(eq(aiWorkboardTasks.priority, options.priority as unknown));
     }
     
     let query = db.select()
@@ -1061,11 +1041,11 @@ class WorkboardService {
       .orderBy(desc(aiWorkboardTasks.createdAt));
 
     if (options?.limit) {
-      query = query.limit(options.limit) as any;
+      query = query.limit(options.limit) as unknown;
     }
 
     if (options?.offset) {
-      query = query.offset(options.offset) as any;
+      query = query.offset(options.offset) as unknown;
     }
 
     return await query;
@@ -1102,8 +1082,7 @@ class WorkboardService {
     await db.update(aiWorkboardTasks)
       .set({
         status: 'cancelled',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+        statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
           status: 'cancelled',
           timestamp: new Date().toISOString(),
           actor: userId
@@ -1148,7 +1127,7 @@ class WorkboardService {
       } else if (task.status === 'failed' || task.status === 'escalated') {
         stats.failed++;
       }
-      stats.totalTokens += (task as any).actualTokens || (task as any).estimatedTokens || 0;
+      stats.totalTokens += (task as Record<string, unknown>).actualTokens || (task as Record<string, unknown>).estimatedTokens || 0;
     }
 
     return stats;
@@ -1179,8 +1158,8 @@ export interface DatabaseEvent {
   userId: string;
   entityType: string;
   entityId: string;
-  changes?: Record<string, any>;
-  metadata?: Record<string, any>;
+  changes?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

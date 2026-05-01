@@ -630,14 +630,14 @@ class TrinitySelfEditGovernanceService {
         actionCategory: 'trinity_self_edit',
         actionName: 'self_edit_proposal',
         actionId: proposal.id,
-        executionStatus: proposal.status === 'pending' ? 'pending_approval' : proposal.status as any,
+        executionStatus: proposal.status === 'pending' ? 'pending_approval' : proposal.status as unknown,
         workspaceId: proposal.workspaceId || null,
         executedBy: null,
         executedByBot: true,
         executorType: 'trinity_ai',
         confidenceScore: proposal.confidenceScore ? Math.round(proposal.confidenceScore * 100) : 0,
-        computedLevel: 'autonomous' as any,
-        policyLevel: 'autonomous' as any,
+        computedLevel: 'autonomous',
+        policyLevel: 'autonomous',
         inputPayload: {
           type: 'self_edit_proposal',
           trinitySessionId: proposal.trinitySessionId,
@@ -665,7 +665,7 @@ class TrinitySelfEditGovernanceService {
     }
   }
   
-  private async updateProposalStatus(proposalId: string, status: string, additionalMeta?: Record<string, any>): Promise<void> {
+  private async updateProposalStatus(proposalId: string, status: string, additionalMeta?: Record<string, unknown>): Promise<void> {
     try {
       // First get existing record to merge metadata safely
       const existing = await db.select()
@@ -678,14 +678,14 @@ class TrinitySelfEditGovernanceService {
         return;
       }
       
-      const existingMeta = (existing[0].inputPayload || {}) as Record<string, any>;
+      const existingMeta = (existing[0].inputPayload || {}) as Record<string, unknown>;
       const mergedMeta = additionalMeta 
         ? { ...existingMeta, ...additionalMeta, lastUpdated: new Date().toISOString() }
         : { ...existingMeta, lastUpdated: new Date().toISOString() };
       
       await db.update(automationActionLedger)
         .set({
-          executionStatus: status as any,
+          executionStatus: status as unknown,
           updatedAt: new Date(),
           inputPayload: mergedMeta,
         })
@@ -709,7 +709,7 @@ class TrinitySelfEditGovernanceService {
         ));
       
       for (const p of proposals) {
-        const meta = p.inputPayload as any;
+        const meta = p.inputPayload as unknown;
         if (meta?.type === 'self_edit_proposal') {
           // Map database status to proposal status - preserve original approval type
           const dbStatus = p.executionStatus as string;
@@ -737,7 +737,7 @@ class TrinitySelfEditGovernanceService {
             workspaceId: p.workspaceId || undefined,
             userId: meta.userId || undefined,
             // Hydrate full ProposedChange objects including code content
-            proposedChanges: (meta.proposedChanges || []).map((c: any) => ({
+            proposedChanges: (meta.proposedChanges || []).map((c: unknown) => ({
               file: c.file,
               operation: c.operation,
               oldContent: c.oldContent,
@@ -906,7 +906,7 @@ class TrinitySelfEditGovernanceService {
           // For deletes, file not existing is fine (idempotent)
           // No validation needed
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         errors.push(`Preflight check failed for ${change.file}: ${(err instanceof Error ? err.message : String(err))}`);
       }
     }
@@ -978,7 +978,7 @@ class TrinitySelfEditGovernanceService {
         execution.logs.push('Sandbox rollback complete');
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       execution.status = 'failed';
       execution.errors.push((error instanceof Error ? error.message : String(error)));
       proposal.sandboxStatus = 'failed';
@@ -1065,7 +1065,7 @@ class TrinitySelfEditGovernanceService {
         passed: true,
         duration: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         testName: 'Syntax Validation',
         passed: false,
@@ -1086,7 +1086,7 @@ class TrinitySelfEditGovernanceService {
         passed: true,
         duration: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         testName: 'Type Check',
         passed: false,
@@ -1107,7 +1107,7 @@ class TrinitySelfEditGovernanceService {
         passed: true,
         duration: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         testName: 'Unit Tests',
         passed: false,
@@ -1342,7 +1342,7 @@ class TrinitySelfEditGovernanceService {
       
       return { success: true };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.updateChangeHistory(false);
       this.circuitBreakerState.lastError = (error instanceof Error ? error.message : String(error));
       
@@ -1454,7 +1454,7 @@ ${proposal.reasoning}`;
       
       const { stdout } = await execAsync('git rev-parse HEAD');
       return { hash: stdout.trim() };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('[Trinity Self-Edit] Git commit skipped:', (error instanceof Error ? error.message : String(error)));
       return { hash: 'no-commit' };
     }
@@ -1496,7 +1496,7 @@ ${proposal.reasoning}`;
         commitHash: proposal.rollbackHash,
         filesReverted: proposal.proposedChanges.map(c => c.file),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         commitHash: proposal.rollbackHash,
@@ -1509,7 +1509,7 @@ ${proposal.reasoning}`;
   private async rollbackToCommit(commitHash: string): Promise<void> {
     try {
       await execAsync(`git checkout ${commitHash} -- .`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[Trinity Self-Edit] Rollback failed:', error);
       throw error;
     }
@@ -1531,7 +1531,7 @@ ${proposal.reasoning}`;
       {
         name: 'trinity.self_edit.create_proposal',
         description: 'Create a change proposal for Trinity self-editing',
-        handler: async (params: any) => {
+        handler: async (params: Record<string, unknown>) => {
           return this.createChangeProposal(params);
         },
       },

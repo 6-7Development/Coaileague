@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 
 import { createLogger } from '../../../lib/logger';
 import { PLATFORM } from '../../../config/platformConfig';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('documentGeneratorSkill');
 
 interface DocumentGenerationParams {
@@ -27,7 +28,7 @@ interface DocumentSection {
   title: string;
   content: string;
   type: 'text' | 'table' | 'chart_data' | 'key_value' | 'list';
-  data?: any;
+  data?: unknown;
 }
 
 interface GeneratedDocument {
@@ -100,7 +101,7 @@ class DocumentGeneratorSkill extends BaseSkill {
           generationTimeMs: Date.now() - startTime,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logs.push(`Document generation failed: ${(error instanceof Error ? error.message : String(error))}`);
       return {
         success: false,
@@ -110,8 +111,8 @@ class DocumentGeneratorSkill extends BaseSkill {
     }
   }
 
-  private async gatherData(params: DocumentGenerationParams, logs: string[]): Promise<Record<string, any>> {
-    const data: Record<string, any> = {};
+  private async gatherData(params: DocumentGenerationParams, logs: string[]): Promise<Record<string, unknown>> {
+    const data: Record<string, unknown> = {};
     const wsId = params.workspaceId;
 
     try {
@@ -152,7 +153,7 @@ class DocumentGeneratorSkill extends BaseSkill {
           firstName: employees.firstName,
           lastName: employees.lastName,
           position: employees.position,
-          payRate: (employees as any).payRate,
+          payRate: (employees as EmployeeWithStatus).payRate,
           isActive: employees.isActive,
         }).from(employees).where(eq(employees.workspaceId, wsId)).limit(200);
         data.employees = empList;
@@ -173,8 +174,8 @@ class DocumentGeneratorSkill extends BaseSkill {
         const siteList = await db.select({
           id: sites.id,
           name: sites.name,
-          address: (sites as any).address,
-          isActive: (sites as any).isActive,
+          address: (sites as Record<string,unknown>).address,
+          isActive: (sites as Record<string,unknown>).isActive,
         }).from(sites).where(eq(sites.workspaceId, wsId)).limit(100);
         data.sites = siteList;
         logs.push(`Gathered ${siteList.length} sites for workspace`);
@@ -186,7 +187,7 @@ class DocumentGeneratorSkill extends BaseSkill {
 
   private async buildSections(
     params: DocumentGenerationParams,
-    rawData: Record<string, any>,
+    rawData: Record<string, unknown>,
     logs: string[]
   ): Promise<DocumentSection[]> {
     const sections: DocumentSection[] = [];
@@ -199,8 +200,8 @@ class DocumentGeneratorSkill extends BaseSkill {
 
     if (params.documentType === 'report' || params.documentType === 'analysis') {
       if (rawData.employees?.length > 0) {
-        const activeCount = rawData.employees.filter((e: any) => e.isActive).length;
-        const avgPayRate = rawData.employees.reduce((sum: number, e: any) => sum + (parseFloat(e.payRate) || 0), 0) / (rawData.employees.length || 1);
+        const activeCount = rawData.employees.filter((e: unknown) => e.isActive).length;
+        const avgPayRate = rawData.employees.reduce((sum: number, e: unknown) => sum + (parseFloat(e.payRate) || 0), 0) / (rawData.employees.length || 1);
 
         sections.push({
           title: 'Workforce Overview',
@@ -224,7 +225,7 @@ class DocumentGeneratorSkill extends BaseSkill {
           data: {
             totalClients: rawData.clients.length,
             byStatus: this.groupBy(rawData.clients, 'isActive'),
-            clients: rawData.clients.map((c: any) => ({
+            clients: rawData.clients.map((c: unknown) => ({
               name: c.companyName,
               isActive: c.isActive,
             })),
@@ -233,7 +234,7 @@ class DocumentGeneratorSkill extends BaseSkill {
       }
 
       if (rawData.sites?.length > 0) {
-        const activeSites = rawData.sites.filter((s: any) => s.isActive).length;
+        const activeSites = rawData.sites.filter((s: unknown) => s.isActive).length;
         sections.push({
           title: 'Site Operations',
           type: 'key_value',
@@ -290,7 +291,7 @@ class DocumentGeneratorSkill extends BaseSkill {
   private async generateSectionContent(
     sectionTitle: string,
     documentType: string,
-    context: Record<string, any>,
+    context: Record<string, unknown>,
     workspaceId: string,
   ): Promise<string> {
     try {
@@ -319,13 +320,13 @@ Requirements:
       });
 
       return result.text || `${sectionTitle}: Please edit this section with your specific content.`;
-    } catch (e: any) {
+    } catch (e: unknown) {
       log.warn(`[DocumentGenerator] Section generation failed for "${sectionTitle}": ${e?.message}`);
       return `${sectionTitle}: Please edit this section with your specific content.`;
     }
   }
 
-  private buildExecutiveSummary(params: DocumentGenerationParams, data: Record<string, any>): string {
+  private buildExecutiveSummary(params: DocumentGenerationParams, data: Record<string, unknown>): string {
     const parts: string[] = [];
     parts.push(`${params.documentType.charAt(0).toUpperCase() + params.documentType.slice(1)}: ${params.title}`);
 
@@ -334,7 +335,7 @@ Requirements:
     }
 
     if (data.employees) {
-      const active = data.employees.filter((e: any) => e.isActive).length;
+      const active = data.employees.filter((e: unknown) => e.isActive).length;
       parts.push(`Workforce: ${data.employees.length} total employees, ${active} active`);
     }
 
@@ -343,7 +344,7 @@ Requirements:
     }
 
     if (data.sites) {
-      const active = data.sites.filter((s: any) => s.isActive).length;
+      const active = data.sites.filter((s: unknown) => s.isActive).length;
       parts.push(`Operations: ${data.sites.length} sites, ${active} active`);
     }
 
@@ -352,7 +353,7 @@ Requirements:
     return parts.join('\n');
   }
 
-  private groupBy(items: any[], key: string): Record<string, number> {
+  private groupBy(items: unknown[], key: string): Record<string, number> {
     const groups: Record<string, number> = {};
     for (const item of items) {
       const val = item[key] || 'unspecified';
@@ -361,7 +362,7 @@ Requirements:
     return groups;
   }
 
-  private countDataPoints(data: Record<string, any>): number {
+  private countDataPoints(data: Record<string, unknown>): number {
     let count = 0;
     for (const value of Object.values(data)) {
       if (Array.isArray(value)) count += value.length;

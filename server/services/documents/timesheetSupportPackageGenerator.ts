@@ -59,7 +59,7 @@ function numberValue(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function getEntryHours(entry: any): number {
+function getEntryHours(entry: unknown): number {
   if (entry.totalHours != null) return numberValue(entry.totalHours);
   if (entry.totalMinutes != null) return numberValue(entry.totalMinutes) / 60;
   if (entry.clockIn && entry.clockOut) {
@@ -68,7 +68,7 @@ function getEntryHours(entry: any): number {
   return 0;
 }
 
-function getBillableAmountValue(entry: any): string {
+function getBillableAmountValue(entry: unknown): string {
   if (entry.billableAmount != null) {
     return toFinancialString(entry.billableAmount);
   }
@@ -78,17 +78,17 @@ function getBillableAmountValue(entry: any): string {
   return multiplyFinancialValues(hours, rate);
 }
 
-function getBillableAmountLabel(entry: any): string {
+function getBillableAmountLabel(entry: unknown): string {
   return formatCurrency(getBillableAmountValue(entry));
 }
 
-function employeeName(employee: any, fallbackId: string): string {
+function employeeName(employee: Record<string, unknown>, fallbackId: string): string {
   if (!employee) return fallbackId;
   const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
   return name || fallbackId;
 }
 
-function clientName(client: any, fallbackId?: string | null): string {
+function clientName(client: unknown, fallbackId?: string | null): string {
   if (!client) return fallbackId || 'Unassigned';
   return client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim() || fallbackId || 'Client';
 }
@@ -132,7 +132,7 @@ function drawEntryTable(doc: PDFKit.PDFDocument, rows: JoinedTimesheetRow[]): vo
       doc.fontSize(7).font('Helvetica').fillColor('#374151');
     }
 
-    const entry = row.timeEntry as any;
+    const entry = row.timeEntry as unknown;
     const y = doc.y;
     const hours = getEntryHours(entry).toFixed(2);
     const values = [
@@ -180,7 +180,7 @@ export async function generateTimesheetSupportPackage(
       gte(timeEntries.clockIn, periodStart),
       lte(timeEntries.clockIn, periodEnd),
       ...(clientId ? [eq(timeEntries.clientId, clientId)] : []),
-      ...(status ? [eq(timeEntries.status, status as any)] : []),
+      ...(status ? [eq(timeEntries.status, status as unknown)] : []),
     ];
 
     const rows = await db.select({
@@ -196,9 +196,9 @@ export async function generateTimesheetSupportPackage(
       .where(and(...conditions))
       .orderBy(timeEntries.clockIn);
 
-    const totalHours = rows.reduce((sum, row) => sum + getEntryHours(row.timeEntry as any), 0);
-    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmountValue(row.timeEntry as any))));
-    const workspaceName = (workspace as any)?.companyName || (workspace as any)?.name || workspaceId;
+    const totalHours = rows.reduce((sum, row) => sum + getEntryHours(row.timeEntry as unknown), 0);
+    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmountValue(row.timeEntry as unknown))));
+    const workspaceName = (workspace as Record<string,unknown>)?.companyName || (workspace as Record<string,unknown>)?.name || workspaceId;
     const periodLabel = `${formatDate(periodStart)} – ${formatDate(periodEnd)}`;
 
     const rawBuffer = await buildPdf((doc) => {
@@ -261,7 +261,7 @@ export async function generateTimesheetSupportPackage(
       entryCount: rows.length,
       totalHours: Number(totalHours.toFixed(2)),
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[TimesheetSupportPackage] Generation failed:', error?.message);
     return { success: false, error: error?.message || 'Failed to generate timesheet support package' };
   }

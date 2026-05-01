@@ -35,7 +35,7 @@ export interface ReflectionContext {
   attemptNumber: number;
   maxAttempts: number;
   affectedFiles: string[];
-  previousPatches: any[];
+  previousPatches: unknown[];
   lspErrors: LspError[];
   tsErrors: string[];
   fileContents?: Map<string, string>;
@@ -54,7 +54,7 @@ export interface ReflectionResult {
   confidence: number;
   diagnosis: string;
   suggestedApproach: string;
-  revisedPatches?: any[];
+  revisedPatches?: unknown[];
   escalateToHuman: boolean;
   reasoningTrace: string[];
 }
@@ -140,7 +140,7 @@ class TrinityReflectionEngineService {
       }
       
       return { clean: errors.length === 0, errors };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // tsc returns non-zero exit code on errors
       const output = (error.stdout || '') + (error.stderr || '');
       const errorLines = output.split('\n').filter((line: string) => 
@@ -202,7 +202,7 @@ class TrinityReflectionEngineService {
       const prompt = this.buildReflectionPrompt(context);
       // Platform-level reflection - billed to PLATFORM_COST_CENTER
       const result = await meteredGemini.generate({
-        workspaceId: undefined as any,
+        workspaceId: undefined,
         featureKey: 'trinity_reflection_analysis',
         prompt,
         model: 'gemini-2.5-pro',
@@ -222,7 +222,7 @@ class TrinityReflectionEngineService {
       }
 
       return this.parseReflectionResponse(result.text, context);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[TrinityReflection] Error during reflection:', (error instanceof Error ? error.message : String(error)));
       return {
         shouldRetry: context.attemptNumber < context.maxAttempts,
@@ -321,18 +321,18 @@ Respond ONLY with this JSON (no markdown, no explanation):
         throw new Error('No JSON found in response');
       }
       
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       
       // Validate and normalize revisedPatches
-      let revisedPatches: any[] | undefined;
+      let revisedPatches: unknown[] | undefined;
       if (Array.isArray(parsed.revisedPatches) && parsed.revisedPatches.length > 0) {
-        const normalized = parsed.revisedPatches.map((patch: any) => ({
+        const normalized = parsed.revisedPatches.map((patch: unknown) => ({
           file: patch.file || '',
           operation: patch.operation || 'replace',
           search: patch.search || '',
           replace: patch.replace || '',
           line: patch.line,
-        })).filter((p: any) => p.file && (p.search || p.line));
+        })).filter((p: unknown) => p.file && (p.search || p.line));
         
         if (normalized.length > 0) {
           revisedPatches = normalized;
@@ -376,11 +376,11 @@ Respond ONLY with this JSON (no markdown, no explanation):
     findingId: string,
     originalError: string,
     affectedFiles: string[],
-    executeFix: (attempt: number, suggestedApproach?: string, revisedPatches?: any[]) => Promise<{ success: boolean; patches: any[] }>,
+    executeFix: (attempt: number, suggestedApproach?: string, revisedPatches?: unknown[]) => Promise<{ success: boolean; patches: unknown[] }>,
     readFileContents?: () => Promise<Map<string, string>>,
   ): Promise<{ success: boolean; attempts: IterationResult[]; finalResult?: ReflectionResult }> {
     const attempts: IterationResult[] = [];
-    let lastPatches: any[] = [];
+    let lastPatches: (string | number | boolean | null)[] = [];
     
     log.info(`[TrinityReflection] Starting iterative fix loop for finding ${findingId}`);
 
@@ -546,10 +546,10 @@ Respond ONLY with this JSON (no markdown, no explanation):
   // HELPERS
   // ==========================================================================
 
-  private async emitReflectionEvent(eventType: string, data: any): Promise<void> {
+  private async emitReflectionEvent(eventType: string, data: Record<string, unknown>): Promise<void> {
     const event: PlatformEvent = {
-      type: eventType as any,
-      category: 'automation' as any,
+      type: eventType as string,
+      category: 'automation',
       title: `Reflection: ${eventType}`,
       description: data.diagnosis || `Reflection event for finding ${data.findingId}`,
       metadata: {

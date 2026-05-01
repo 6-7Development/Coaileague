@@ -25,7 +25,7 @@ interface ThreatEvent {
   target: string; // endpoint or resource
   description: string;
   blocked: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface BlockedEntity {
@@ -109,7 +109,7 @@ class SecurityHardeningService {
   analyzeRequest(
     source: string,
     target: string,
-    payload: string | Record<string, any>
+    payload: string | Record<string, unknown>
   ): {
     safe: boolean;
     threats: ThreatEvent[];
@@ -163,7 +163,7 @@ class SecurityHardeningService {
     source: string,
     target: string,
     description: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): ThreatEvent {
     const threat: ThreatEvent = {
       id: `threat-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`,
@@ -271,7 +271,7 @@ class SecurityHardeningService {
       // Calculate score
       scan.score = this.calculateSecurityScore(scan.findings);
       scan.status = 'completed';
-    } catch (error: any) {
+    } catch (error : unknown) {
       scan.status = 'failed';
       log.error('[SecurityHardening] Vulnerability scan failed:', error);
     }

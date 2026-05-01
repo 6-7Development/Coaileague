@@ -29,10 +29,10 @@ interface CreateNotificationParams {
   actionUrl?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdBy?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   category?: string;
   targetRole?: string;
 }
@@ -156,7 +156,7 @@ export async function createNotification(params: CreateNotificationParams) {
       .values({
         workspaceId: params.workspaceId,
         userId: params.userId,
-        type: safeType as any,
+        type: safeType as unknown,
         title: params.title,
         message: params.message,
         actionUrl: params.actionUrl,
@@ -499,7 +499,7 @@ export async function sendWelcomeOrgNotification(workspaceId: string, ownerId: s
     results.push(await createNotification({
       workspaceId,
       userId: ownerId,
-      type: notif.type as any,
+      type: notif.type as unknown,
       title: notif.title,
       message: notif.message,
       actionUrl: notif.actionUrl,
@@ -532,7 +532,7 @@ export async function sendWelcomeEmployeeNotification(
     results.push(await createNotification({
       workspaceId,
       userId,
-      type: notif.type as any,
+      type: notif.type as unknown,
       title: notif.title,
       message: notif.message,
       actionUrl: notif.actionUrl,

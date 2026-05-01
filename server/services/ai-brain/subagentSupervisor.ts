@@ -98,7 +98,7 @@ export interface SubagentExecutionContext {
   userId: string;
   workspaceId: string;
   platformRole: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   startedAt: Date;
 }
 
@@ -106,7 +106,7 @@ export interface SubagentExecutionResult {
   success: boolean;
   phase: SubagentPhase;
   status: SubagentStatus;
-  result?: any;
+  result?: unknown;
   error?: {
     code: string;
     message: string;
@@ -131,7 +131,7 @@ export interface DiagnosticResult {
   diagnosis: string;
   fixAttempted: boolean;
   fixSucceeded?: boolean;
-  fixDetails?: any;
+  fixDetails?: unknown;
   recommendations: string[];
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
 }
@@ -144,8 +144,8 @@ export interface EscalationRequest {
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   diagnosticSummary: string;
-  proposedFix: any;
-  alternativeFixes: any[];
+  proposedFix: unknown;
+  alternativeFixes: unknown[];
   affectedUserId?: string;
   affectedFeature?: string;
 }
@@ -1234,7 +1234,6 @@ export const MAILING_INSTRUCTIONS: Record<string, MailingInstruction> = {
   // Normal priority notifications
   platform_update: {
     category: 'system',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     priority: 'medium',
     requiredFields: ['email', 'title', 'description'],
     optionalFields: ['actionUrl', 'releaseNotes'],
@@ -1258,7 +1257,6 @@ export const MAILING_INSTRUCTIONS: Record<string, MailingInstruction> = {
 
   support_ticket_confirmation: {
     category: 'support',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     priority: 'medium',
     requiredFields: ['email', 'name', 'ticketNumber', 'subject'],
     optionalFields: ['ticketUrl'],
@@ -1282,7 +1280,6 @@ export const MAILING_INSTRUCTIONS: Record<string, MailingInstruction> = {
 
   employee_invitation: {
     category: 'onboarding',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     priority: 'medium',
     requiredFields: ['email', 'inviterName', 'workspaceName', 'joinUrl'],
     optionalFields: ['firstName', 'roleName', 'expiresInDays'],
@@ -1342,7 +1339,7 @@ export function getMailingInstruction(category: string): MailingInstruction | nu
  */
 export function validateEmailData(
   category: string, 
-  data: Record<string, any>
+  data: Record<string, unknown>
 ): { valid: boolean; errors: string[] } {
   const instruction = getMailingInstruction(category);
   if (!instruction) {
@@ -1482,13 +1479,13 @@ export interface WorkOrderItem {
   id: string;
   subagentDomain: SubagentDomain;
   actionId: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   status: WorkOrderStatus;
   priority: WorkOrderPriority;
   dependencies: string[];  // IDs of work orders this depends on
   startedAt?: number;
   completedAt?: number;
-  result?: any;
+  result?: unknown;
   error?: string;
   retryCount: number;
   assignedSubagentId?: string;
@@ -1515,7 +1512,7 @@ export interface WorkOrderBatch {
 export interface CoordinationCheckpoint {
   workOrderId: string;
   phase: SubagentPhase;
-  artifact?: any;
+  artifact?: unknown;
   validationResult?: { valid: boolean; errors: string[] };
   timestamp: number;
 }
@@ -1546,7 +1543,7 @@ class ParallelWorkOrderDispatcher {
     workboardJobId: string,
     workspaceId: string,
     userId: string,
-    tasks: Array<{ domain: SubagentDomain; actionId: string; parameters: Record<string, any>; priority?: WorkOrderPriority; dependencies?: string[] }>,
+    tasks: Array<{ domain: SubagentDomain; actionId: string; parameters: Record<string, unknown>; priority?: WorkOrderPriority; dependencies?: string[] }>,
     options: { slaTimeoutMs?: number; parallelLimit?: number; modelPolicy?: Partial<SupervisorModelPolicy> } = {}
   ): WorkOrderBatch {
     const batchId = `batch-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`;
@@ -1808,8 +1805,8 @@ class SubagentCoordinationManager {
   /**
    * Get aggregated results from all subagents
    */
-  getAggregatedResults(batch: WorkOrderBatch): Map<string, any> {
-    const results = new Map<string, any>();
+  getAggregatedResults(batch: WorkOrderBatch): Map<string, unknown> {
+    const results = new Map<string, unknown>();
     
     for (const item of batch.items) {
       if (item.status === 'completed' && item.result) {
@@ -1835,7 +1832,7 @@ export interface WorkboardJobUpdate {
   status: 'scheduled' | 'in_progress' | 'validating' | 'completed' | 'failed';
   progress?: number;
   message?: string;
-  result?: any;
+  result?: unknown;
 }
 
 class WorkboardJobLifecycle {
@@ -1893,7 +1890,7 @@ class WorkboardJobLifecycle {
   /**
    * Mark job as completed
    */
-  async completeJob(jobId: string, result: any): Promise<void> {
+  async completeJob(jobId: string, result: unknown): Promise<void> {
     await this.updateJobStatus({
       jobId,
       status: 'completed',
@@ -2061,7 +2058,7 @@ class SubagentSupervisor {
         await this.seedDefaultSubagents();
         await this.refreshSubagentCache();
         log.info(`[SubagentSupervisor] Seeded and cached ${this.subagentCache.size} subagents`);
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[SubagentSupervisor] Deferred init failed (non-fatal):', error?.message || 'unknown');
       }
     }, 60000);
@@ -2080,11 +2077,11 @@ class SubagentSupervisor {
           .where(eq(aiSubagentDefinitions.name, subagent.name))
           .limit(1);
         if (existing.length === 0) {
-          await db.insert(aiSubagentDefinitions).values({ ...(subagent as any), workspaceId: PLATFORM_WORKSPACE_ID });
+          await db.insert(aiSubagentDefinitions).values({ ...(subagent as Record<string, unknown>), workspaceId: PLATFORM_WORKSPACE_ID });
           log.info(`[SubagentSupervisor] Created subagent: ${subagent.name}`);
         }
         consecutiveFailures = 0;
-      } catch (error: any) {
+      } catch (error : unknown) {
         consecutiveFailures++;
         log.warn(`[SubagentSupervisor] Skipping subagent ${subagent.name} (failure ${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}):`, error?.message);
       }
@@ -2106,7 +2103,7 @@ class SubagentSupervisor {
   private setupHealthMonitoring(): void {
     platformEventBus.subscribe('ai_brain_action', {
       name: 'SubagentSupervisor',
-      handler: async (event: any) => {
+      handler: async (event: unknown) => {
         // Runtime validation - guard against malformed events
         if (!event || typeof event !== 'object') return;
         if (typeof event.type !== 'string') return;
@@ -2136,11 +2133,11 @@ class SubagentSupervisor {
   async executeAction(
     domain: SubagentDomain,
     actionId: string,
-    parameters: Record<string, any>,
+    parameters: Record<string, unknown>,
     userId: string,
     workspaceId: string,
     platformRole: string,
-    actionHandler: (params: Record<string, any>) => Promise<any>
+    actionHandler: (params: Record<string, unknown>) => Promise<unknown>
   ): Promise<SubagentExecutionResult> {
     const executionId = `exec-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`;
     const startTime = Date.now();
@@ -2198,15 +2195,15 @@ class SubagentSupervisor {
 
       // PHASE 2: EXECUTE
       await this.updateTelemetryPhase(telemetryId, 'executing', 'execute');
-      let executeResult: any;
-      let executeError: any;
+      let executeResult: unknown;
+      let executeError: unknown;
       
       try {
         executeResult = await Promise.race([
           actionHandler(parameters),
           this.createTimeout(subagent.timeoutMs || 30000),
         ]);
-      } catch (error: any) {
+      } catch (error : unknown) {
         executeError = error;
       }
 
@@ -2328,11 +2325,10 @@ class SubagentSupervisor {
         retriesUsed: retryCount,
         creditsUsed,
         creditBalance: finalBalance,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         creditDeductionFailed: !deductionResult.success,  // Flag for observability
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[SubagentSupervisor] Unexpected error in ${subagent.name}:`, error);
       const failureDurationMs = Date.now() - startTime;
       await this.completeTelemetry(telemetryId, 'failed', null, failureDurationMs, (error instanceof Error ? error.message : String(error)));
@@ -2366,8 +2362,8 @@ class SubagentSupervisor {
     actions: Array<{
       domain: SubagentDomain;
       actionId: string;
-      parameters: Record<string, any>;
-      actionHandler: (params: Record<string, any>) => Promise<any>;
+      parameters: Record<string, unknown>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -2422,7 +2418,7 @@ class SubagentSupervisor {
         
         try {
           return await Promise.race([executionPromise, timeoutPromise]);
-        } catch (error: any) {
+        } catch (error : unknown) {
           return {
             success: false,
             phase: 'execute' as const,
@@ -2481,7 +2477,6 @@ class SubagentSupervisor {
         .from(aiWorkboardTasks)
         .where(and(
           eq(aiWorkboardTasks.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(aiWorkboardTasks.executionMode, 'trinity_fast'),
           gte(aiWorkboardTasks.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
         ))
@@ -2507,7 +2502,7 @@ class SubagentSupervisor {
       // Count by category to get domain popularity
       const domainCounts: Record<string, number> = {};
       recentTasks.forEach(t => {
-        const domain = (t as any).category || 'general';
+        const domain = (t as Record<string, unknown>).category || 'general';
         domainCounts[domain] = (domainCounts[domain] || 0) + 1;
       });
       
@@ -2547,8 +2542,8 @@ class SubagentSupervisor {
     actions: Array<{
       domain: SubagentDomain;
       actionId: string;
-      parameters: Record<string, any>;
-      actionHandler: (params: Record<string, any>) => Promise<any>;
+      parameters: Record<string, unknown>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -2680,8 +2675,8 @@ class SubagentSupervisor {
     actions: Array<{
       domain: SubagentDomain;
       actionId: string;
-      parameters: Record<string, any>;
-      actionHandler: (params: Record<string, any>) => Promise<any>;
+      parameters: Record<string, unknown>;
+      actionHandler: (params: Record<string, unknown>) => Promise<unknown>;
     }>,
     userId: string,
     workspaceId: string,
@@ -2716,7 +2711,7 @@ class SubagentSupervisor {
 
         try {
           return await Promise.race([executionPromise, timeoutPromise]);
-        } catch (error: any) {
+        } catch (error : unknown) {
           return {
             success: false,
             phase: 'execute' as const,
@@ -2927,7 +2922,7 @@ class SubagentSupervisor {
     return { success: true };
   }
 
-  private async validatePhase(context: SubagentExecutionContext, subagent: AiSubagentDefinition, result: any): Promise<{ success: boolean; error?: string }> {
+  private async validatePhase(context: SubagentExecutionContext, subagent: AiSubagentDefinition, result: unknown): Promise<{ success: boolean; error?: string }> {
     // Basic validation - subagents can override with specific validation logic
     if (result === undefined || result === null) {
       return { success: false, error: 'Action returned no result' };
@@ -2944,7 +2939,7 @@ class SubagentSupervisor {
   // DR. HOLMES DIAGNOSTICS
   // ============================================================================
 
-  private async runDiagnostics(context: SubagentExecutionContext, subagent: AiSubagentDefinition, error: any): Promise<DiagnosticResult> {
+  private async runDiagnostics(context: SubagentExecutionContext, subagent: AiSubagentDefinition, error: unknown): Promise<DiagnosticResult> {
     log.info(`[DrHolmes] Running diagnostics for ${subagent.name} error:`, error.message);
     
     const knownPatterns = (subagent.knownPatterns as string[]) || [];
@@ -2980,7 +2975,7 @@ class SubagentSupervisor {
     // Attempt fix if we have a strategy
     let fixAttempted = false;
     let fixSucceeded = false;
-    let fixDetails: any = null;
+    let fixDetails: unknown = null;
 
     if (matchedPattern && fixStrategies[matchedPattern]) {
       fixAttempted = true;
@@ -3055,7 +3050,7 @@ class SubagentSupervisor {
     pattern: string,
     context: SubagentExecutionContext,
     error: { code: string; message: string }
-  ): Promise<{ success: boolean; action: string; result: any; reason?: string }> {
+  ): Promise<{ success: boolean; action: string; result: unknown; reason?: string }> {
     const { domain, workspaceId, userId, parameters } = context;
 
     // Strategy execution based on domain and pattern
@@ -3153,7 +3148,7 @@ class SubagentSupervisor {
   }
 
   // Strategy implementation helpers
-  private async handleSchedulingReassign(workspaceId: string, params: any) {
+  private async handleSchedulingReassign(workspaceId: string, params: Record<string, unknown>) {
     // Publish event for scheduling service to handle reassignment
     await platformEventBus.publish({
       type: 'ai_brain_action',
@@ -3166,7 +3161,7 @@ class SubagentSupervisor {
     return { success: true, action: 'reassignment_initiated', result: { workspaceId, params } };
   }
 
-  private async handleOvertimeRedistribution(workspaceId: string, params: any) {
+  private async handleOvertimeRedistribution(workspaceId: string, params: Record<string, unknown>) {
     await platformEventBus.publish({
       type: 'ai_brain_action',
       category: 'ai_brain',
@@ -3178,27 +3173,27 @@ class SubagentSupervisor {
     return { success: true, action: 'hours_redistributed', result: { workspaceId } };
   }
 
-  private async handlePayrollRecalculation(workspaceId: string, params: any) {
+  private async handlePayrollRecalculation(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'payroll_recalculation_queued', result: { workspaceId, params } };
   }
 
-  private async handleDeductionReapply(workspaceId: string, params: any) {
+  private async handleDeductionReapply(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'deductions_reapplied', result: { workspaceId } };
   }
 
-  private async handleInvoiceRateCorrection(workspaceId: string, params: any) {
+  private async handleInvoiceRateCorrection(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'invoice_rate_corrected', result: { workspaceId, params } };
   }
 
-  private async handleMissingTimeEntries(workspaceId: string, params: any) {
+  private async handleMissingTimeEntries(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'missing_entries_flagged', result: { workspaceId } };
   }
 
-  private async handleComplianceRestriction(workspaceId: string, userId: string, params: any) {
+  private async handleComplianceRestriction(workspaceId: string, userId: string, params: Record<string, unknown>) {
     return { success: true, action: 'compliance_restriction_applied', result: { workspaceId, userId } };
   }
 
-  private async handleComplianceFlag(workspaceId: string, params: any) {
+  private async handleComplianceFlag(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'flagged_for_compliance_review', result: { workspaceId } };
   }
 
@@ -3214,19 +3209,19 @@ class SubagentSupervisor {
     return { success: true, action: 'session_restore_initiated', result: { workspaceId, userId } };
   }
 
-  private async handleDataReconciliation(workspaceId: string, params: any) {
+  private async handleDataReconciliation(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'data_reconciliation_started', result: { workspaceId } };
   }
 
-  private async handlePerformanceOptimization(workspaceId: string, params: any) {
+  private async handlePerformanceOptimization(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'optimization_analysis_started', result: { workspaceId } };
   }
 
-  private async handleServiceRestart(workspaceId: string, params: any) {
+  private async handleServiceRestart(workspaceId: string, params: Record<string, unknown>) {
     return { success: true, action: 'service_restart_scheduled', result: { workspaceId, params } };
   }
 
-  private async handleSecurityRevocation(workspaceId: string, userId: string, params: any) {
+  private async handleSecurityRevocation(workspaceId: string, userId: string, params: Record<string, unknown>) {
     await platformEventBus.publish({
       type: 'ai_brain_action',
       category: 'security',
@@ -3530,12 +3525,12 @@ class SubagentSupervisor {
     }
   }
 
-  private async handleHeartbeat(event: any): Promise<void> {
+  private async handleHeartbeat(event: unknown): Promise<void> {
     // Record heartbeat for health monitoring
     log.info(`[SubagentSupervisor] Heartbeat received from ${event.subagentId}`);
   }
 
-  private async handleHealthCheck(event: any): Promise<void> {
+  private async handleHealthCheck(event: unknown): Promise<void> {
     // Perform health check on requested subagent
     log.info(`[SubagentSupervisor] Health check for ${event.subagentId}`);
   }
@@ -3552,7 +3547,6 @@ class SubagentSupervisor {
     // Query database
     const [subagent] = await db.select().from(aiSubagentDefinitions)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiSubagentDefinitions.domain, domain),
         eq(aiSubagentDefinitions.isActive, true)
       ))
@@ -3598,7 +3592,7 @@ class SubagentSupervisor {
   private async handlePhaseFailure(
     telemetryId: string,
     phase: SubagentPhase,
-    error: any,
+    error: unknown,
     context: SubagentExecutionContext,
     subagent: AiSubagentDefinition,
     startTime: number,
@@ -3645,7 +3639,6 @@ class SubagentSupervisor {
   async getSubagentsByDomain(domain: SubagentDomain): Promise<AiSubagentDefinition[]> {
     return db.select().from(aiSubagentDefinitions)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiSubagentDefinitions.domain, domain),
         eq(aiSubagentDefinitions.isActive, true)
       ));
@@ -3910,10 +3903,10 @@ class SubagentSupervisor {
     content: string;
     workspaceId: string;
     userId: string;
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
   }): Promise<{
     success: boolean;
-    data?: any;
+    data?: unknown;
     summary?: string;
     error?: string;
   }> {
@@ -3953,7 +3946,7 @@ class SubagentSupervisor {
         data: result,
         summary: `Task completed in ${duration}ms using ${subagent.name}`
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[SubagentSupervisor] Fast mode execution error:', error);
       return {
         success: false,
@@ -4186,7 +4179,7 @@ class SubagentSupervisor {
   private async preExecutionValidation(
     domain: SubagentDomain, 
     workspaceId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, unknown>
   ): Promise<{ valid: boolean; issues: string[]; recommendations: string[] }> {
     const isFinancialDomain = ['payroll', 'invoicing', 'scheduling'].includes(domain);
     
@@ -4239,8 +4232,8 @@ class SubagentSupervisor {
     content: string,
     workspaceId: string,
     userId: string,
-    context?: Record<string, any>
-  ): Promise<any> {
+    context?: Record<string, unknown>
+  ): Promise<unknown> {
     const startTime = Date.now();
     const domain = subagent.domain as SubagentDomain;
     
@@ -4323,7 +4316,7 @@ class SubagentSupervisor {
     
     try {
       // Build input based on skill type for proper schema compatibility
-      let input: any;
+      let input: Record<string, unknown>;
       
       // Map domains to valid insight types (business_insight accepts: sales, finance, operations, automation, growth)
       const insightTypeMapping: Record<string, string> = {
@@ -4389,13 +4382,13 @@ class SubagentSupervisor {
         aiBrainJobId: result.jobId,
         status: result.status,
         output: result.output,
-        tokensUsed: (result as any).tokensUsed || 0,
+        tokensUsed: (result as Record<string, unknown>).tokensUsed || 0,
         modelTier: modelConfig.preferredTier,
         contextBudget: modelConfig.contextBudget,
         executionTimeMs: executionTime,
         timestamp: new Date().toISOString()
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       const executionTime = Date.now() - startTime;
       log.error(`[SubagentSupervisor] AI Brain execution failed (${executionTime}ms, tier: ${modelConfig.preferredTier}):`, (error instanceof Error ? error.message : String(error)));
       
@@ -4436,7 +4429,7 @@ class SubagentSupervisor {
     tasks: Array<{
       domain: SubagentDomain;
       actionId: string;
-      parameters: Record<string, any>;
+      parameters: Record<string, unknown>;
       priority?: WorkOrderPriority;
       dependencies?: string[];
     }>;
@@ -4520,7 +4513,7 @@ class SubagentSupervisor {
 
       return report;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[SubagentSupervisor] Parallel execution failed:`, error);
       
       // Mark job as failed

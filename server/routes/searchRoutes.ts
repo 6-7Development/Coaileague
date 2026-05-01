@@ -15,7 +15,6 @@ import '../services/searchBootstrap';
 const log = createLogger('SearchRoutes');
 
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -140,7 +139,7 @@ async function searchOfficers(workspaceId: string, q: string, limit: number): Pr
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'officer',
     entity_id: r.id,
     display_name: `${r.first_name} ${r.last_name}`,
@@ -166,7 +165,7 @@ async function searchClients(workspaceId: string, q: string, limit: number): Pro
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'client',
     entity_id: r.id,
     display_name: r.company_name || `${r.first_name} ${r.last_name}`,
@@ -195,7 +194,7 @@ async function searchShifts(workspaceId: string, q: string, limit: number): Prom
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'shift',
     entity_id: r.id,
     display_name: r.title || r.shift_number || 'Shift',
@@ -221,7 +220,7 @@ async function searchInvoices(workspaceId: string, q: string, limit: number): Pr
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'invoice',
     entity_id: r.id,
     display_name: r.invoice_number || `Invoice`,
@@ -245,7 +244,7 @@ async function searchIncidents(workspaceId: string, q: string, limit: number): P
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'incident',
     entity_id: r.id,
     display_name: r.title || r.incident_number || 'Incident',
@@ -268,7 +267,7 @@ async function searchSupportTickets(workspaceId: string, q: string, limit: numbe
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'support_ticket',
     entity_id: r.id,
     display_name: r.subject || r.ticket_number || 'Ticket',
@@ -292,7 +291,7 @@ async function searchDocuments(workspaceId: string, q: string, limit: number): P
      LIMIT $4`,
     [workspaceId, q, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'document',
     entity_id: r.id,
     display_name: r.title || 'Document',
@@ -314,7 +313,7 @@ async function searchAuditLog(workspaceId: string, q: string, limit: number): Pr
      LIMIT $3`,
     [workspaceId, `%${q}%`, limit]
   );
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     entity_type: 'audit_log',
     entity_id: r.id,
     display_name: `${r.action_type} — ${r.resource_type}`,
@@ -344,7 +343,7 @@ const ENTITY_SEARCHERS: Array<{
 
 // ── Route registration ────────────────────────────────────────────────────────
 
-export function registerSearchRoutes(app: Express, requireAuth: any) {
+export function registerSearchRoutes(app: Express, requireAuth: unknown) {
   const searchRouter = express.Router();
 
   // GET /api/search?q=&types=officer,client&limit=20&offset=0
@@ -421,7 +420,6 @@ export function registerSearchRoutes(app: Express, requireAuth: any) {
               const result: SearchResult = {
                 entity_type: TYPE_MAP[entity.type] || entity.type,
                 entity_id: entity.id,
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 display_name: entity.displayName,
                 subtitle: entity.humanId,
                 canonical_id: entity.humanId,
@@ -506,7 +504,7 @@ export function registerSearchRoutes(app: Express, requireAuth: any) {
          ORDER BY query_text LIMIT 8`,
         [workspaceId, `${q}%`]
       );
-      return res.json({ success: true, data: { query: q, suggestions: rows.map((r: any) => r.query_text) } });
+      return res.json({ success: true, data: { query: q, suggestions: rows.map((r: unknown) => r.query_text) } });
     } catch {
       return res.json({ success: true, data: { query: '', suggestions: [] } });
     }

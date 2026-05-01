@@ -197,7 +197,6 @@ class HelpAIBotService {
           message: `Generate a warm, professional greeting for ${userName} (${userType}). ${context || ''}`,
           maxWords: 30,
         },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         priority: 'medium',
       });
 
@@ -418,7 +417,7 @@ class HelpAIBotService {
             includeCrossChannel: true,
           }).catch(() => ''),
         ]);
-      } catch (histErr: any) { log.warn('[HelpAI] Failed to load context:', histErr.message); }
+      } catch (histErr: unknown) { log.warn('[HelpAI] Failed to load context:', histErr.message); }
 
       const historyBlock = userHistory ? buildUserHistoryBlock(userHistory.recentSessions) : '';
       const emotion = detectEmotionalContext(message);
@@ -492,13 +491,11 @@ WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel 
         : `User's message: ${message}\n\n[Think through the problem step by step before responding]`;
 
       const result = await meteredGemini.generate({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: context.workspaceId,
         userId: context.userId,
         featureKey: 'helpai_complex_trinity',
         prompt,
         systemInstruction,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         model: 'gemini-3-pro-preview',
         temperature: 0.3,
         maxOutputTokens: 1024,
@@ -509,7 +506,7 @@ WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel 
         log.info(`[HelpAI] Trinity brain (Gemini 3) resolved complex issue — ${result.tokensUsed.total} tokens`);
         return { response: result.text, confidence: 0.88 };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[HelpAI] Trinity brain (Gemini 3) unavailable, falling back:', (err instanceof Error ? err.message : String(err)));
     }
     // Fallback to standard response
@@ -540,7 +537,6 @@ WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel 
         .join('\n');
 
       const result = await meteredGemini.generate({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: workspaceId,
         featureKey: 'helpai_escalation_summary',
         model: 'gemini-2.5-flash',
@@ -565,7 +561,7 @@ Format as plain text, no headers.`,
       if (result.success && result.text) {
         return result.text.trim();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[HelpAI] Escalation summary generation failed:', (err instanceof Error ? err.message : String(err)));
     }
 
@@ -660,7 +656,7 @@ Format as plain text, no headers.`,
             includeCrossChannel: true,
           }).catch(() => ''),
         ]);
-      } catch (histErr: any) { log.warn('[HelpAI] History fetch failed:', histErr.message); }
+      } catch (histErr: unknown) { log.warn('[HelpAI] History fetch failed:', histErr.message); }
       const emotion = detectEmotionalContext(message);
       const toneGuidance = buildToneGuidance(emotion);
       const memorySummary = userHistory ? buildMemorySummary(userHistory) : '';
@@ -900,13 +896,12 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
       const [agentResult] = await db
         .select({ total: count() })
         .from(chatParticipants)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .innerJoin(platformRoles, eq(chatParticipants.userId, platformRoles.userId))
         .where(
           and(
             eq(chatParticipants.isActive, true),
             gt(chatParticipants.updatedAt, tenMinutesAgo),
-            inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'] as any),
+            inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'] as unknown),
             isNull(platformRoles.revokedAt),
             eq(platformRoles.isSuspended, false)
           )
@@ -1018,7 +1013,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
               state: HelpAIState.ASSISTING,
             };
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn('[HelpAI] Staffing intent detection failed (non-fatal):', err?.message);
         }
 
@@ -1051,7 +1046,6 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     await this.updateSessionState(sessionId, HelpAIState.ESCALATED);
     
     // 2. Create support ticket via existing system
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [ticket] = await db.insert(supportTickets).values({
       workspaceId: session.workspaceId!,
       requestedBy: session.userId!,
@@ -1118,7 +1112,6 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     // First check employee table for permanent safety code
     const [employee] = await db.select().from(employees).where(eq(employees.userId, userId)).limit(1);
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (employee?.safetyCode === code) {
       await this.logAction(sessionId, 'safety_code_verify', 'Permanent safety code verified', { success: true });
       return true;
@@ -1190,7 +1183,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
           [workspaceId],
         );
         if (rows[0]?.slug) orgSlug = rows[0].slug;
-      } catch (slugErr: any) {
+      } catch (slugErr: unknown) {
         log.warn(`[HelpAI] Staffing slug lookup failed (non-fatal): ${slugErr?.message}`);
       }
 
@@ -1229,7 +1222,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
         shouldClose: false,
         state: HelpAIState.ASSISTING,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[HelpAI] Staffing intake creation failed (non-fatal): ${err?.message}`);
       return null;
     }
@@ -1250,7 +1243,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     });
   }
 
-  private async logAction(sessionId: string, type: string, name: string, payload?: any): Promise<void> {
+  private async logAction(sessionId: string, type: string, name: string, payload?: unknown): Promise<void> {
     try {
       const [session] = await db.select().from(helpaiSessions).where(eq(helpaiSessions.id, sessionId)).limit(1);
       await db.insert(helpaiActionLog).values({
@@ -1722,7 +1715,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     roomId: string,
     executorId: string,
     params?: { reason?: string; message?: string },
-  ): Promise<{ success: boolean; message: string; data?: any }> {
+  ): Promise<{ success: boolean; message: string; data?: unknown }> {
     log.info(`[${HELPAI.name}] Chatroom command: ${command} room=${roomId} executor=${executorId}`);
 
     try {
@@ -1770,8 +1763,8 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
    */
   async executeCapability(
     capability: string,
-    params: { employeeId: string; workspaceId: string; [key: string]: any },
-  ): Promise<{ success: boolean; message: string; data?: any }> {
+    params: { employeeId: string; workspaceId: string; [key: string]: unknown },
+  ): Promise<{ success: boolean; message: string; data?: unknown }> {
     const { pool } = await import('../../db');
     const { employeeId, workspaceId } = params;
 
@@ -1791,7 +1784,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
               AND s.status NOT IN ('cancelled','completed')
             ORDER BY s.start_time ASC LIMIT 1`,
           [employeeId, workspaceId],
-        ).catch(() => ({ rows: [] as any[] }));
+        ).catch(() => ({ rows: [] }));
 
         if (!shifts.length) {
           return { success: false, message: "You don't have any upcoming shifts to call off from." };
@@ -1826,7 +1819,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: `An officer called off their shift at ${shift.site_name || 'Unknown Site'} starting ${shiftTime}. Open shift needs coverage.`,
             workspaceId,
             metadata: { shiftId: shift.id, employeeId, siteId: shift.site_id },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
 
         return {
@@ -1854,7 +1847,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
               AND COALESCE(e.guard_card_status, '') NOT IN ('expired_hard_block')
             ORDER BY s.start_time ASC LIMIT 5`,
           [employeeId, workspaceId],
-        ).catch(() => ({ rows: [] as any[] }));
+        ).catch(() => ({ rows: [] }));
 
         if (!openShifts.length) {
           return {
@@ -1873,7 +1866,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
           `UPDATE shifts SET employee_id = $1, status = 'scheduled', updated_at = NOW()
             WHERE id = $2 AND workspace_id = $3 AND employee_id IS NULL`,
           [employeeId, shift.id, workspaceId],
-        ).catch(() => ({ rowCount: 0 } as any));
+        ).catch(() => ({ rowCount: 0 } as unknown));
 
         if (!rowCount) {
           return { success: false, message: 'That shift was just claimed by someone else. Try again for the next available shift.' };
@@ -1893,7 +1886,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
               AND start_time > NOW() AND status NOT IN ('cancelled','completed')
             ORDER BY start_time ASC LIMIT 1`,
           [employeeId, workspaceId],
-        ).catch(() => ({ rows: [] as any[] }));
+        ).catch(() => ({ rows: [] }));
 
         if (!rows.length) {
           return { success: false, message: "You don't have any upcoming shifts to confirm." };
@@ -1926,7 +1919,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
               AND pe.workspace_id = $2
             ORDER BY pr.period_end DESC LIMIT 1`,
           [employeeId, workspaceId],
-        ).catch(() => ({ rows: [] as any[] }));
+        ).catch(() => ({ rows: [] }));
 
         if (!rows.length) {
           return { success: true, message: 'No payroll records found yet. Check back after your first payroll run.' };
@@ -1994,7 +1987,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: (params.rawCommand || params.message || '').slice(0, 400),
             workspaceId,
             metadata: { employeeId },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
         return { success: true, message: "Message delivered — your supervisor has been notified." };
       }
@@ -2018,7 +2011,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: narrative.slice(0, 200),
             workspaceId,
             metadata: { incidentId, employeeId },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
         return {
           success: true,

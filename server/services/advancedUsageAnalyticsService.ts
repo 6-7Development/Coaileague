@@ -177,7 +177,7 @@ class AdvancedUsageAnalyticsService {
       projectedDaysRemaining,
       lowBalanceWarning: creditRecord.currentBalance < Math.max(50, Math.floor((creditRecord.monthlyAllocation || 0) * 0.1)),
       lastPurchaseDate: null,
-      lastUsageDate: (creditRecord as any).lastUsedAt?.toISOString() || null
+      lastUsageDate: (creditRecord as Record<string,unknown>).lastUsedAt?.toISOString() || null
     };
   }
 
@@ -224,9 +224,9 @@ class AdvancedUsageAnalyticsService {
       totalTasks: count(),
       completedTasks: sql<number>`SUM(CASE WHEN ${aiWorkboardTasks.status} = 'completed' THEN 1 ELSE 0 END)`,
       failedTasks: sql<number>`SUM(CASE WHEN ${aiWorkboardTasks.status} = 'failed' THEN 1 ELSE 0 END)`,
-      fastModeTasks: sql<number>`SUM(CASE WHEN ${(aiWorkboardTasks as any).executionMode} = 'trinity_fast' THEN 1 ELSE 0 END)`,
-      normalModeTasks: sql<number>`SUM(CASE WHEN ${(aiWorkboardTasks as any).executionMode} = 'normal' OR ${(aiWorkboardTasks as any).executionMode} IS NULL THEN 1 ELSE 0 END)`,
-      totalCreditsUsed: sql<number>`COALESCE(SUM(${(aiWorkboardTasks as any).fastModeCredits}), 0)`
+      fastModeTasks: sql<number>`SUM(CASE WHEN ${(aiWorkboardTasks as Record<string,unknown>).executionMode} = 'trinity_fast' THEN 1 ELSE 0 END)`,
+      normalModeTasks: sql<number>`SUM(CASE WHEN ${(aiWorkboardTasks as Record<string,unknown>).executionMode} = 'normal' OR ${(aiWorkboardTasks as Record<string,unknown>).executionMode} IS NULL THEN 1 ELSE 0 END)`,
+      totalCreditsUsed: sql<number>`COALESCE(SUM(${(aiWorkboardTasks as Record<string,unknown>).fastModeCredits}), 0)`
     })
       .from(aiWorkboardTasks)
       .where(and(
@@ -238,7 +238,7 @@ class AdvancedUsageAnalyticsService {
     const topAgents = await db.select({
       agentName: aiWorkboardTasks.assignedAgentId,
       taskCount: count(),
-      creditsUsed: sql<number>`COALESCE(SUM(${(aiWorkboardTasks as any).fastModeCredits}), 0)`
+      creditsUsed: sql<number>`COALESCE(SUM(${(aiWorkboardTasks as Record<string,unknown>).fastModeCredits}), 0)`
     })
       .from(aiWorkboardTasks)
       .where(and(
@@ -322,11 +322,11 @@ class AdvancedUsageAnalyticsService {
     const history = await tokenManager.getUsageHistory(workspaceId, limit);
     return history.map(t => ({
       id: t.id,
-      type: (t as any).transactionType || 'deduction',
-      credits: (t as any).amount ?? 0,
-      balanceAfter: (t as any).balanceAfter ?? 0,
-      description: (t as any).description || '',
-      actionType: (t as any).featureKey,
+      type: (t as Record<string, unknown>).transactionType || 'deduction',
+      credits: (t as Record<string, unknown>).amount ?? 0,
+      balanceAfter: (t as Record<string, unknown>).balanceAfter ?? 0,
+      description: (t as Record<string, unknown>).description || '',
+      actionType: (t as Record<string, unknown>).featureKey,
       createdAt: t.createdAt?.toISOString?.() || new Date().toISOString(),
     }));
   }

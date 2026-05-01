@@ -55,7 +55,7 @@ export interface LifecycleEvent {
   sessionId?: string;
   executionId?: string;
   context: LifecycleContext;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LifecycleContext {
@@ -71,10 +71,10 @@ export interface LifecycleContext {
 export interface MemorySnapshot {
   id: string;
   createdAt: Date;
-  userProfile?: any;
-  conversationContext?: any;
-  toolUsageStats?: any;
-  learningInsights?: any;
+  userProfile?: unknown;
+  conversationContext?: unknown;
+  toolUsageStats?: unknown;
+  learningInsights?: unknown;
 }
 
 export interface EscalationInfo {
@@ -246,7 +246,7 @@ class UnifiedLifecycleManager {
     workspaceId: string,
     userId: string,
     context: LifecycleContext,
-    options: { sessionId?: string; executionId?: string; metadata?: Record<string, any> } = {}
+    options: { sessionId?: string; executionId?: string; metadata?: Record<string, unknown> } = {}
   ): Promise<LifecycleEvent> {
     const event: LifecycleEvent = {
       id: `lfe-${crypto.randomUUID()}`,
@@ -288,7 +288,7 @@ class UnifiedLifecycleManager {
     for (const hook of combinedHooks) {
       try {
         await hook.handler(event);
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.error(`[UnifiedLifecycleManager] Hook '${hook.name}' failed:`, (error instanceof Error ? error.message : String(error)));
       }
     }
@@ -438,7 +438,7 @@ class UnifiedLifecycleManager {
       );
 
       log.info(`[UnifiedLifecycleManager] Memory context restored for user ${session.userId}`);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[UnifiedLifecycleManager] Failed to restore memory context:`, (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -468,7 +468,7 @@ class UnifiedLifecycleManager {
 
       log.info(`[UnifiedLifecycleManager] Memory checkpoint ${checkpointId} saved`);
       return checkpointId;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[UnifiedLifecycleManager] Failed to save memory checkpoint:`, (error instanceof Error ? error.message : String(error)));
       throw error;
     }
@@ -544,7 +544,7 @@ class UnifiedLifecycleManager {
     workspaceId: string;
     userId: string;
     executionId: string;
-    result?: any;
+    result?: unknown;
     confidenceScore?: number;
     sessionId?: string;
   }): Promise<LifecycleEvent> {
@@ -668,7 +668,7 @@ class UnifiedLifecycleManager {
           confidence: event.context.confidenceScore,
           applicableScenarios: [event.context.domain || 'general'],
         });
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.error(`[UnifiedLifecycleManager] Failed to share task insight:`, (error instanceof Error ? error.message : String(error)));
       }
     }
@@ -716,7 +716,7 @@ class UnifiedLifecycleManager {
   /**
    * Get lifecycle manager diagnostics
    */
-  getDiagnostics(): Record<string, any> {
+  getDiagnostics(): Record<string, unknown> {
     const hookCounts: Record<string, number> = {};
     for (const [key, hooks] of this.hooks.entries()) {
       hookCounts[key] = hooks.length;

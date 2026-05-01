@@ -13,11 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 
 interface SearchResult {
-  employees: any[];
-  clients: any[];
-  invoices: any[];
-  timeEntries: any[];
-  shifts: any[];
+  employees: unknown[];
+  clients: unknown[];
+  invoices: unknown[];
+  timeEntries: unknown[];
+  shifts: unknown[];
 }
 
 interface SearchMetadata {
@@ -61,7 +61,7 @@ export default function Records() {
       const response = await apiRequest('POST', '/api/search', { query, searchType });
       return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       setResults(data.results);
       setMetadata(data.metadata);
       queryClient.invalidateQueries({ queryKey: ['/api/search/history'] });
@@ -243,7 +243,7 @@ export default function Records() {
         <Card className="p-6 space-y-4">
           <h2 className="text-xl font-semibold">Recent Searches</h2>
           <div className="space-y-2">
-            {searchHistory.slice(0, 5).map((item: any) => (
+            {searchHistory.slice(0, 5).map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/50 hover-elevate cursor-pointer"

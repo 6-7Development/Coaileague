@@ -1,7 +1,8 @@
+import { type Response } from 'express';
 import { Router } from "express";
 import { db } from "../db";
 import { requireAuth } from "../auth";
-import { requireManager } from "../rbac";
+import { requireManager, AuthenticatedRequest} from "../rbac";
 import { ensureWorkspaceAccess } from "../middleware/workspaceScope";
 import { sanitizeError } from "../middleware/errorHandler";
 import { randomUUID } from "crypto";
@@ -38,18 +39,18 @@ function genCallNum() {
   return `CAD-${y}${m}${d}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
-function wid(req: any) {
+function wid(req: AuthenticatedRequest) {
   return req.workspaceId || req.session?.workspaceId;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
 
 // CAD CALLS
 
-cadRouter.get("/calls", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+cadRouter.get("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { status, priority, siteId, limit = 50, offset = 0 } = req.query;
@@ -57,7 +58,7 @@ cadRouter.get("/calls", requireAuth as any, ensureWorkspaceAccess as any, async 
       FROM cad_calls cc
       LEFT JOIN cad_units cu ON cu.id = cc.primary_unit_id
       WHERE cc.workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (status) { query += ` AND cc.status=$${i++}`; params.push(status); }
     if (priority) { query += ` AND cc.priority=$${i++}`; params.push(priority); }
@@ -67,7 +68,7 @@ cadRouter.get("/calls", requireAuth as any, ensureWorkspaceAccess as any, async 
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-cadRouter.post("/calls", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+cadRouter.post("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { callType, priority = 2, siteId, siteName, locationDescription, callerName, callerPhone, callerType, incidentDescription, createdBy, latitude, longitude } = req.body;
@@ -91,7 +92,7 @@ cadRouter.post("/calls", requireAuth as any, ensureWorkspaceAccess as any, async
         siteId: siteId||null, siteName: siteName||null, locationDescription, incidentDescription,
         createdBy, latitude, longitude,
       }
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.status(201).json(rows[0]);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
@@ -100,7 +101,7 @@ cadRouter.post("/calls", requireAuth as any, ensureWorkspaceAccess as any, async
 
 // GEOFENCE DEPARTURES
 
-cadRouter.get("/geofence-departures", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+cadRouter.get("/geofence-departures", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`
@@ -115,7 +116,7 @@ cadRouter.get("/geofence-departures", requireAuth as any, ensureWorkspaceAccess 
 
 // STATS
 
-cadRouter.get("/stats", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+cadRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const [active, today, byStatus, departures] = await Promise.all([

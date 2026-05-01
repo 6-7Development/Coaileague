@@ -66,7 +66,7 @@ export default function ApplicantVisualCompliance() {
   const queryClient = useQueryClient();
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
 
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
 
   const { data: slotsData } = useQuery({
     queryKey: ['/api/audit-suite/visual-compliance/slots'],
@@ -108,7 +108,7 @@ export default function ApplicantVisualCompliance() {
         toast({ title: 'Photo flagged', description: data.artifact.reasoningText ?? 'Trinity flagged this photo. Please review and re-upload.', variant: 'destructive', duration: 6000 });
       }
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: 'Upload failed', description: err?.message ?? 'Please try again.', variant: 'destructive' });
     },
     onSettled: () => setUploadingSlot(null),
@@ -126,7 +126,7 @@ export default function ApplicantVisualCompliance() {
     e.target.value = ''; // Reset input for re-upload
   };
 
-  const slots: Slot[] = (slotsData?.slots ?? []).map((s: any) => ({
+  const slots: Slot[] = (slotsData?.slots ?? []).map((s) => ({
     type:  s.type,
     label: s.label,
     icon:  SLOT_ICONS[s.type] ?? <Camera className="h-5 w-5" />,
@@ -134,10 +134,10 @@ export default function ApplicantVisualCompliance() {
   }));
 
   const summary = summaryData?.summary;
-  const artifacts: any[] = artifactsData?.artifacts ?? [];
+  const artifacts: unknown[] = artifactsData?.artifacts ?? [];
 
   // Get the latest artifact for each slot type
-  const latestByType: Record<string, any> = {};
+  const latestByType: Record<string, unknown> = {};
   for (const a of artifacts) {
     if (!latestByType[a.artifact_type]) latestByType[a.artifact_type] = a;
   }

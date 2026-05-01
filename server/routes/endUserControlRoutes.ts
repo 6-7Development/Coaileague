@@ -32,7 +32,7 @@ function requireSupportRole(req: AuthenticatedRequest, res: Response, next: Next
   next();
 }
 
-async function logAdminAction(actorId: string, action: string, details: any, tx?: any) {
+async function logAdminAction(actorId: string, action: string, details: Record<string, unknown>, tx?: unknown) {
   const client = tx ?? db;
   await client.insert(systemAuditLogs).values({
     userId: actorId,
@@ -281,7 +281,7 @@ endUserControlRouter.patch('/access-config', requireSupportRole, async (req: Aut
     }
 
     const allowedFields: Record<string, boolean> = { role: true, isActive: true, loginAttempts: true, lockedUntil: true };
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(config)) {
       if (allowedFields[key]) {
         updateData[key] = value;

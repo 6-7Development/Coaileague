@@ -41,11 +41,10 @@ import {
 const pageConfig: CanvasPageConfig = {
   title: "Guard Tours",
   subtitle: "Patrol routes, QR checkpoint scanning, and completion tracking",
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   icon: Route,
 };
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; className: string; icon: string | React.ReactNode }> = {
   active: { label: "Active", className: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800", icon: CheckCircle },
   paused: { label: "Paused", className: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", icon: Pause },
   archived: { label: "Archived", className: "bg-muted text-muted-foreground border-border", icon: Archive },
@@ -64,9 +63,9 @@ function generateQrCode(): string {
   return `QR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 }
 
-function TourForm({ tour, onClose }: { tour?: any; onClose: () => void }) {
+function TourForm({ tour, onClose }: { tour?: unknown; onClose: () => void }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [form, setForm] = useState({
     name: tour?.name ?? "",
@@ -89,7 +88,7 @@ function TourForm({ tour, onClose }: { tour?: any; onClose: () => void }) {
   };
 
   const mutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       tour
         ? apiRequest("PATCH", `/api/guard-tours/tours/${tour.id}`, data)
         : apiRequest("POST", "/api/guard-tours/tours", { ...data, workspaceId }),
@@ -174,9 +173,9 @@ function TourForm({ tour, onClose }: { tour?: any; onClose: () => void }) {
   );
 }
 
-function CheckpointForm({ tourId, checkpoint, onClose }: { tourId: string; checkpoint?: any; onClose: () => void }) {
+function CheckpointForm({ tourId, checkpoint, onClose }: { tourId: string; checkpoint?: unknown; onClose: () => void }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [form, setForm] = useState({
     name: checkpoint?.name ?? "",
@@ -189,7 +188,7 @@ function CheckpointForm({ tourId, checkpoint, onClose }: { tourId: string; check
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       checkpoint
         ? apiRequest("PATCH", `/api/guard-tours/checkpoints/${checkpoint.id}`, data)
         : apiRequest("POST", `/api/guard-tours/tours/${tourId}/checkpoints`, { ...data, workspaceId }),
@@ -256,14 +255,14 @@ function CheckpointForm({ tourId, checkpoint, onClose }: { tourId: string; check
   );
 }
 
-function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: any[] }) {
+function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: unknown[] }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [scanInput, setScanInput] = useState("");
 
   const scanMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/guard-tours/scans", data),
+    mutationFn: (data) => apiRequest("POST", "/api/guard-tours/scans", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guard-tours/tours", tourId, "scans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/guard-tours", workspaceId] });
@@ -276,7 +275,7 @@ function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: a
   const handleScan = (qrCode?: string) => {
     const code = qrCode || scanInput.trim();
     if (!code) return;
-    const match = checkpoints.find((cp: any) => cp.qrCode === code);
+    const match = checkpoints.find((cp) => cp.qrCode === code);
     if (!match) {
       toast({ title: "Unknown QR code", description: "No matching checkpoint found for this code.", variant: "destructive" });
       return;
@@ -285,7 +284,7 @@ function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: a
       tourId,
       checkpointId: match.id,
       workspaceId,
-      employeeId: (user as any)?.employeeId || (user as any)?.id,
+      employeeId: (user as Record<string,unknown>)?.employeeId || (user as Record<string,unknown>)?.id,
       scannedAt: new Date().toISOString(),
       status: "completed",
       notes: "",
@@ -331,7 +330,7 @@ function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: a
       <div>
         <h4 className="text-sm font-medium text-muted-foreground mb-2">Quick Scan Buttons</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {checkpoints.map((cp: any) => (
+          {checkpoints.map((cp) => (
             <Button
               key={cp.id}
               variant="outline"
@@ -353,10 +352,10 @@ function ScanSimulator({ tourId, checkpoints }: { tourId: string; checkpoints: a
 
 function CheckpointList({ tourId }: { tourId: string }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [showCpForm, setShowCpForm] = useState(false);
-  const [editCp, setEditCp] = useState<any>(null);
+  const [editCp, setEditCp] = useState<null>(null);
 
   const { data: checkpoints = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/guard-tours/tours", tourId, "checkpoints"],
@@ -401,7 +400,7 @@ function CheckpointList({ tourId }: { tourId: string }) {
         </Card>
       ) : (
         <div className="space-y-2">
-          {checkpoints.map((cp: any, idx: number) => (
+          {checkpoints.map((cp: unknown, idx: number) => (
             <Card key={cp.id} data-testid={`card-checkpoint-${cp.id}`}>
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
@@ -461,7 +460,7 @@ function ScanHistory({ tourId }: { tourId: string }) {
 
   const cpMap = useMemo(() => {
     const m: Record<string, string> = {};
-    checkpoints.forEach((cp: any) => { m[cp.id] = cp.name; });
+    checkpoints.forEach((cp) => { m[cp.id] = cp.name; });
     return m;
   }, [checkpoints]);
 
@@ -481,7 +480,7 @@ function ScanHistory({ tourId }: { tourId: string }) {
 
   return (
     <div className="space-y-2">
-      {scans.map((scan: any) => {
+      {scans.map((scan) => {
         const cfg = SCAN_STATUS_CONFIG[scan.status] || SCAN_STATUS_CONFIG.completed;
         return (
           <Card key={scan.id} data-testid={`card-scan-${scan.id}`}>
@@ -525,26 +524,26 @@ function PatrolReport({ tourId }: { tourId: string }) {
 
   const report = useMemo(() => {
     const totalCheckpoints = checkpoints.length;
-    const requiredCheckpoints = checkpoints.filter((cp: any) => cp.isRequired).length;
+    const requiredCheckpoints = checkpoints.filter((cp) => cp.isRequired).length;
     const totalScans = scans.length;
-    const completedScans = scans.filter((s: any) => s.status === "completed").length;
-    const lateScans = scans.filter((s: any) => s.status === "late").length;
-    const missedScans = scans.filter((s: any) => s.status === "missed").length;
+    const completedScans = scans.filter((s) => s.status === "completed").length;
+    const lateScans = scans.filter((s) => s.status === "late").length;
+    const missedScans = scans.filter((s) => s.status === "missed").length;
 
-    const uniqueCheckpointsScanned = new Set(scans.map((s: any) => s.checkpointId)).size;
+    const uniqueCheckpointsScanned = new Set(scans.map((s) => s.checkpointId)).size;
     const completionRate = totalCheckpoints > 0 ? Math.round((uniqueCheckpointsScanned / totalCheckpoints) * 100) : 0;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayScans = scans.filter((s: any) => new Date(s.scannedAt) >= today);
+    const todayScans = scans.filter((s) => new Date(s.scannedAt) >= today);
 
     const cpScanCounts: Record<string, number> = {};
-    scans.forEach((s: any) => { cpScanCounts[s.checkpointId] = (cpScanCounts[s.checkpointId] || 0) + 1; });
+    scans.forEach((s) => { cpScanCounts[s.checkpointId] = (cpScanCounts[s.checkpointId] || 0) + 1; });
 
-    const checkpointDetails = checkpoints.map((cp: any) => ({
+    const checkpointDetails = checkpoints.map((cp) => ({
       ...cp,
       scanCount: cpScanCounts[cp.id] || 0,
-      lastScan: scans.filter((s: any) => s.checkpointId === cp.id).sort((a: any, b: any) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime())[0],
+      lastScan: scans.filter((s) => s.checkpointId === cp.id).sort((a: unknown, b: unknown) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime())[0],
     }));
 
     return {
@@ -620,7 +619,7 @@ function PatrolReport({ tourId }: { tourId: string }) {
       <div>
         <h3 className="text-sm font-medium mb-2">Checkpoint Status</h3>
         <div className="space-y-2">
-          {report.checkpointDetails.map((cp: any) => (
+          {report.checkpointDetails.map((cp) => (
             <Card key={cp.id}>
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
@@ -646,7 +645,7 @@ function PatrolReport({ tourId }: { tourId: string }) {
 
 function TourDetail({ tour, onBack }: { tour: any; onBack: () => void }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [activeTab, setActiveTab] = useState("checkpoints");
 
   const { data: checkpoints = [] } = useQuery<any[]>({
@@ -664,7 +663,7 @@ function TourDetail({ tour, onBack }: { tour: any; onBack: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-to-tours">
+        <Button variant="ghost" size="icon" aria-label="Back To Tours" onClick={onBack} data-testid="button-back-to-tours">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -724,7 +723,7 @@ function TourDetail({ tour, onBack }: { tour: any; onBack: () => void }) {
   );
 }
 
-function TourCard({ tour, onEdit, onView }: { tour: any; onEdit: (t: any) => void; onView: (t: any) => void }) {
+function TourCard({ tour, onEdit, onView }: { tour: any; onEdit: (t) => void; onView: (t) => void }) {
   const cfg = STATUS_CONFIG[tour.status] || STATUS_CONFIG.active;
   const StatusIcon = cfg.icon;
   return (
@@ -793,10 +792,10 @@ function TourCard({ tour, onEdit, onView }: { tour: any; onEdit: (t: any) => voi
 
 export default function GuardTourPage() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [showForm, setShowForm] = useState(false);
-  const [editTour, setEditTour] = useState<any>(null);
-  const [selectedTour, setSelectedTour] = useState<any>(null);
+  const [editTour, setEditTour] = useState<null>(null);
+  const [selectedTour, setSelectedTour] = useState<null>(null);
 
   const { data: tours = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/guard-tours", workspaceId],
@@ -809,8 +808,8 @@ export default function GuardTourPage() {
 
   const stats = {
     total: tours.length,
-    active: tours.filter((t: any) => t.status === "active").length,
-    paused: tours.filter((t: any) => t.status === "paused").length,
+    active: tours.filter((t) => t.status === "active").length,
+    paused: tours.filter((t) => t.status === "paused").length,
   };
 
   if (selectedTour) {
@@ -866,7 +865,7 @@ export default function GuardTourPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {tours.map((tour: any) => (
+            {tours.map((tour) => (
               <TourCard
                 key={tour.id}
                 tour={tour}

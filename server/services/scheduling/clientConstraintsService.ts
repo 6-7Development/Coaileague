@@ -1,6 +1,7 @@
 import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { clients, shifts } from '@shared/schema';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 export async function getClientConstraints(params: {
   workspaceId: string;
@@ -37,12 +38,12 @@ export async function getClientConstraints(params: {
   }
 
   return {
-    numberOfGuards: (client as any).numberOfGuards ?? null,
-    armedGuards: (client as any).armedGuards ?? null,
-    unarmedGuards: (client as any).unarmedGuards ?? null,
-    daysOfService: (client as any).daysOfService ?? null,
-    hoursPerDay: (client as any).hoursPerDay ?? null,
-    minimumHours: (client as any).minimumHoursPerDay ?? null,
+    numberOfGuards: (client as ClientWithExtras).numberOfGuards ?? null,
+    armedGuards: (client as ClientWithExtras).armedGuards ?? null,
+    unarmedGuards: (client as ClientWithExtras).unarmedGuards ?? null,
+    daysOfService: (client as ClientWithExtras).daysOfService ?? null,
+    hoursPerDay: (client as ClientWithExtras).hoursPerDay ?? null,
+    minimumHours: (client as ClientWithExtras).minimumHoursPerDay ?? null,
     currentlyScheduledGuards,
   };
 }

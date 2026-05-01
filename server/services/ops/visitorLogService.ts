@@ -75,7 +75,7 @@ class VisitorLogService {
     checkedInBy?: string | null;
     expectedDeparture?: Date | null;
     notes?: string | null;
-  }): Promise<{ visitor: VisitorLog; boloMatches: any[] }> {
+  }): Promise<{ visitor: VisitorLog; boloMatches: unknown[] }> {
     const id = randomUUID();
 
     // Converted to Drizzle ORM
@@ -100,7 +100,7 @@ class VisitorLogService {
     });
 
     const rows = await db.select().from(visitorLogs).where(eq(visitorLogs.id, id));
-    const visitor = (rows as any).rows[0] as VisitorLog;
+    const visitor = (rows as Record<string,unknown>).rows[0] as VisitorLog;
 
     // Cross-reference against active BOLOs
     const boloMatches = await boloService.checkVisitorAgainstBOLOs(data.workspaceId, data.visitorName);
@@ -142,7 +142,7 @@ class VisitorLogService {
       checkedOutBy: checkedOutBy || null,
     }).where(and(eq(visitorLogs.id, visitorLogId), eq(visitorLogs.workspaceId, workspaceId)));
     const rows = await db.select().from(visitorLogs).where(eq(visitorLogs.id, visitorLogId));
-    const visitor = (rows as any).rows[0] as VisitorLog;
+    const visitor = (rows as Record<string,unknown>).rows[0] as VisitorLog;
 
     await platformEventBus.publish({
       type: 'visitor_checked_out',
@@ -158,12 +158,11 @@ class VisitorLogService {
 
   async listVisitors(workspaceId: string, siteId?: string, onsite = false, limit = 50): Promise<VisitorLog[]> {
     let query = `SELECT * FROM visitor_logs WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     if (siteId) { query += ` AND site_id=$2`; params.push(siteId); }
     if (onsite) query += ` AND checked_out_at IS NULL`;
     query += ` ORDER BY checked_in_at DESC LIMIT ${limit}`;
     const rows = await typedPool(query, params);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return rows.rows;
   }
 
@@ -178,7 +177,6 @@ class VisitorLogService {
          AND expected_departure IS NOT NULL AND expected_departure < NOW() AND alert_sent=false`,
       [workspaceId]
     );
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return rows.rows;
   }
 

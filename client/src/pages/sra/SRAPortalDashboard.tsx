@@ -35,8 +35,8 @@ export default function SRAPortalDashboard() {
   const hasError = isErrorWorkspace || isErrorOfficers || isErrorFindings;
 
   const workspace = workspaceData?.data;
-  const officers: any[] = officersData?.data || [];
-  const findings: any[] = findingsData?.data || [];
+  const officers: unknown[] = officersData?.data || [];
+  const findings: unknown[] = findingsData?.data || [];
 
   const expiredCards = officers.filter(o => {
     if (!o.guardCardExpiryDate) return false;
@@ -178,7 +178,7 @@ export default function SRAPortalDashboard() {
                 <p className="text-muted-foreground text-sm text-center py-4">No findings recorded yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {findings.slice(0, 4).map((f: any) => (
+                  {findings.slice(0, 4).map((f) => (
                     <div key={f.id} data-testid={`finding-row-${f.id}`} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
                       <span className="text-sm text-foreground truncate">{f.description?.slice(0, 45)}...</span>
                       <Badge

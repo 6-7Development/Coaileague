@@ -140,7 +140,7 @@ export const API_ENDPOINTS = {
   ai: {
     brain: "/api/ai-brain",
     schedule: "/api/ai-brain/schedule",
-    predict: "/api/ai-brain/predict",
+    predict: "/api/analytics/bi/predictive",
     sentiment: "/api/ai-brain/sentiment"
   },
 
@@ -311,7 +311,7 @@ export function getEndpoint(
   params?: Record<string, string>
 ): string {
   const parts = path.split(".");
-  let endpoint: any = API_ENDPOINTS;
+  let endpoint: unknown = API_ENDPOINTS;
 
   for (const part of parts) {
     endpoint = endpoint[part];
@@ -337,7 +337,7 @@ export function getEndpoint(
  */
 export function buildApiUrl(
   endpoint: string,
-  params?: Record<string, any>
+  params?: Record<string, unknown>
 ): string {
   if (!params || Object.keys(params).length === 0) {
     return endpoint;
@@ -355,5 +355,5 @@ export function buildApiUrl(
  * Get endpoint group by category
  */
 export function getEndpointGroup(category: string): any {
-  return (API_ENDPOINTS as any)[category] || null;
+  return (API_ENDPOINTS as unknown)[category] || null;
 }

@@ -24,7 +24,7 @@ import { aiWorkboardTasks } from '@shared/schema';
 const log = createLogger('fastModeService');
 
 // WebSocket broadcaster type
-type WebSocketBroadcaster = (event: string, data: any) => void;
+type WebSocketBroadcaster = (event: string, data: Record<string, unknown>) => void;
 let wsBroadcaster: WebSocketBroadcaster | null = null;
 
 export function registerFastModeBroadcaster(broadcaster: WebSocketBroadcaster) {
@@ -220,11 +220,11 @@ export interface FastModeResult {
   agentResults: Array<{
     agentId: string;
     agentName: string;
-    result: any;
+    result: unknown;
     success: boolean;
     tokensUsed: number;
   }>;
-  aggregatedResult: any;
+  aggregatedResult: unknown;
   summary: string;
   proactiveInsights: string[];
   creditsUsed: number;
@@ -233,7 +233,7 @@ export interface FastModeResult {
 
 // Cache entry for repeated queries
 interface CacheEntry {
-  result: any;
+  result: unknown;
   timestamp: number;
   queryHash: string;
   creditsOriginal: number;
@@ -313,7 +313,7 @@ class FastModeService {
     userId: string;
     content: string;
     requestType: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<FastModeResult> {
     const { taskId, workspaceId, userId, content, requestType, metadata } = params;
     const startTime = Date.now();
@@ -401,7 +401,6 @@ class FastModeService {
         this.updateAgentStatus(taskId, agentId, 'running', 0);
         
         try {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const result = await subagentSupervisor.executeParallel({
             agentId,
             taskId,
@@ -416,7 +415,7 @@ class FastModeService {
           return {
             agentId,
             agentName: this.getAgentDisplayName(agentId),
-            result: (result as any).data,
+            result: (result as Record<string, unknown>).data,
             success: result.success,
             tokensUsed: analysisResult.estimatedTokens
           };
@@ -586,7 +585,6 @@ class FastModeService {
       .from(aiWorkboardTasks)
       .where(and(
         eq(aiWorkboardTasks.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiWorkboardTasks.executionMode, 'trinity_fast'),
         eq(aiWorkboardTasks.status, 'completed')
       ))
@@ -744,9 +742,9 @@ class FastModeService {
     taskId: string,
     workspaceId: string
   ): () => void {
-    const listeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+    const listeners: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
 
-    const addListener = (event: string, handler: (...args: any[]) => void) => {
+    const addListener = (event: string, handler: (...args: unknown[]) => void) => {
       velocityEngine.on(event, handler);
       listeners.push({ event, handler });
     };
@@ -784,7 +782,7 @@ class FastModeService {
     });
 
     // Orchestration updates
-    addListener('orchestration_completed', (data: any) => {
+    addListener('orchestration_completed', (data: Record<string, unknown>) => {
       if (wsBroadcaster) {
         wsBroadcaster('velocity_completed', { taskId, workspaceId, ...data });
       }
@@ -907,7 +905,7 @@ class FastModeService {
     return entry;
   }
   
-  private addToCache(key: string, result: any, creditsOriginal: number): void {
+  private addToCache(key: string, result: unknown, creditsOriginal: number): void {
     this.resultCache.set(key, {
       result,
       timestamp: Date.now(),
@@ -927,7 +925,7 @@ class FastModeService {
     }
   }
   
-  private determineComplexity(content: string, analysis: any): 'simple' | 'standard' | 'complex' {
+  private determineComplexity(content: string, analysis: unknown): 'simple' | 'standard' | 'complex' {
     const wordCount = content.split(/\s+/).length;
     
     if (wordCount < 10 && analysis.confidence > 0.8) return 'simple';
@@ -966,7 +964,7 @@ class FastModeService {
     return displayNames[agentId] || agentId;
   }
   
-  private aggregateResults(results: Array<{ agentId: string; result: any; success: boolean }>): any {
+  private aggregateResults(results: Array<{ agentId: string; result: unknown; success: boolean }>): any {
     if (results.length === 0) return null;
     if (results.length === 1) return results[0].result;
     
@@ -980,7 +978,7 @@ class FastModeService {
     };
   }
   
-  private generateSummary(agentResults: Array<{ agentId: string; agentName: string; success: boolean }>, aggregatedResult: any): string {
+  private generateSummary(agentResults: Array<{ agentId: string; agentName: string; success: boolean }>, aggregatedResult: unknown): string {
     const successCount = agentResults.filter(r => r.success).length;
     const totalAgents = agentResults.length;
     
@@ -992,7 +990,7 @@ class FastModeService {
     return `Fast mode completed with ${successCount}/${totalAgents} agents (${agentNames}). Results aggregated and ready.`;
   }
   
-  private async generateProactiveInsights(content: string, result: any, workspaceId: string): Promise<string[]> {
+  private async generateProactiveInsights(content: string, result: unknown, workspaceId: string): Promise<string[]> {
     const insights: string[] = [];
     const contentLower = content.toLowerCase();
     
@@ -1103,17 +1101,15 @@ class FastModeService {
         gte(aiWorkboardTasks.createdAt, periodStart)
       ));
     
-    const fastModeTasks = tasks.filter(t => (t as any).executionMode === 'trinity_fast');
-    const normalModeTasks = tasks.filter(t => (t as any).executionMode !== 'trinity_fast');
+    const fastModeTasks = tasks.filter(t => (t as Record<string, unknown>).executionMode === 'trinity_fast');
+    const normalModeTasks = tasks.filter(t => (t as Record<string, unknown>).executionMode !== 'trinity_fast');
     
     // Calculate execution times
     const fastModeAvgTime = this.calculateAvgExecutionTime(fastModeTasks);
     const normalModeAvgTime = this.calculateAvgExecutionTime(normalModeTasks);
     
     // Calculate credits spent
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const totalCreditsSpent = tasks.reduce((sum, t) => sum + (t.creditsDeducted ? 1 : 0), 0);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const fastModeCredits = fastModeTasks.reduce((sum, t) => sum + (t.creditsDeducted ? 1 : 0), 0);
     
     // Calculate time saved (assuming normal mode takes 25s avg)
@@ -1149,9 +1145,8 @@ class FastModeService {
     // Tasks by category
     const categoryCounts: Record<string, number> = {};
     fastModeTasks.forEach(t => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (t.category) {
-        categoryCounts[(t as any).category] = (categoryCounts[(t as any).category] || 0) + 1;
+        categoryCounts[(t as Record<string, unknown>).category] = (categoryCounts[(t as Record<string, unknown>).category] || 0) + 1;
       }
     });
     const tasksByCategory = Object.entries(categoryCounts)

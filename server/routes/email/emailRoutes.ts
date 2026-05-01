@@ -37,6 +37,7 @@
  */
 
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../../rbac';
 import { pool } from '../../db';
 import { requireAuth, getUserPlatformRole } from '../../rbac';
 import { getUncachableResendClient } from '../../services/emailCore';
@@ -54,7 +55,7 @@ emailRouter.use(requireAuth);
 // Tenants (non platform_staff) cannot create, activate, or send from
 // addresses on the coaileague.com root domain (e.g. trinity@, support@, info@).
 // All tenant addresses must be on {slug}.coaileague.com subdomains.
-emailRouter.use((req: any, res, next) => {
+emailRouter.use((req: AuthenticatedRequest, res, next) => {
   const isWrite = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
   if (!isWrite) return next();
 
@@ -81,7 +82,7 @@ emailRouter.use((req: any, res, next) => {
 type AuthReq = Express.Request & { user: { id: string; workspaceId: string; role: string } };
 
 // ─── GET /api/email/inbox ─────────────────────────────────────────────────────
-emailRouter.get('/inbox', async (req: any, res) => {
+emailRouter.get('/inbox', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const folder = (req.query.folder as string) || 'inbox';
@@ -117,14 +118,14 @@ emailRouter.get('/inbox', async (req: any, res) => {
       page,
       limit,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] inbox error:', err);
     return res.status(500).json({ error: 'Failed to fetch inbox' });
   }
 });
 
 // ─── GET /api/email/:emailId ──────────────────────────────────────────────────
-emailRouter.get('/:emailId', async (req: any, res) => {
+emailRouter.get('/:emailId', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { emailId } = req.params;
@@ -147,14 +148,14 @@ emailRouter.get('/:emailId', async (req: any, res) => {
     );
 
     return res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] get email error:', err);
     return res.status(500).json({ error: 'Failed to fetch email' });
   }
 });
 
 // ─── GET /api/email/thread/:messageId ────────────────────────────────────────
-emailRouter.get('/thread/:messageId', async (req: any, res) => {
+emailRouter.get('/thread/:messageId', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { messageId } = req.params;
@@ -169,13 +170,13 @@ emailRouter.get('/thread/:messageId', async (req: any, res) => {
     `, [workspaceId, messageId, `%${messageId}%`]);
 
     return res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to fetch thread' });
   }
 });
 
 // ─── POST /api/email/send ─────────────────────────────────────────────────────
-emailRouter.post('/send', async (req: any, res) => {
+emailRouter.post('/send', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { from, to, cc, subject, bodyHtml, bodyText, replyToEmailId } = req.body;
@@ -234,7 +235,7 @@ emailRouter.post('/send', async (req: any, res) => {
     const { client, fromEmail } = await getUncachableResendClient();
     const sentFrom = addr.display_name ? `${addr.display_name} <${from}>` : from;
 
-    let resendResult: any;
+    let resendResult: unknown;
     try {
       resendResult = await client.emails.send({
         from: sentFrom,
@@ -245,7 +246,7 @@ emailRouter.post('/send', async (req: any, res) => {
         text: finalBodyText || undefined,
         ...(inReplyTo && { replyTo: inReplyTo }),
       });
-    } catch (sendErr: any) {
+    } catch (sendErr: unknown) {
       log.error('[EmailRoutes] Resend send error:', sendErr);
       // Store as draft/failed even if Resend fails — don't lose user's email
     }
@@ -280,18 +281,18 @@ emailRouter.post('/send', async (req: any, res) => {
     await pool.query(`
       UPDATE platform_email_addresses
       SET emails_sent_this_period = emails_sent_this_period + 1
-      WHERE id = $1
-    `, [addr.id]);
+      WHERE id = $1 AND workspace_id = $2
+    `, [addr.id, workspaceId]);
 
     return res.json({ success: true, emailId: emailResult.rows[0].id });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] send error:', err);
     return res.status(500).json({ error: 'Failed to send email' });
   }
 });
 
 // ─── POST /api/email/:emailId/reply ──────────────────────────────────────────
-emailRouter.post('/:emailId/reply', async (req: any, res) => {
+emailRouter.post('/:emailId/reply', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { emailId } = req.params;
@@ -310,20 +311,20 @@ emailRouter.post('/:emailId/reply', async (req: any, res) => {
       inReplyTo: p.message_id,
       trinityDraftReply: p.trinity_draft_reply || '',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to prepare reply' });
   }
 });
 
 // ─── PATCH /api/email/:emailId ────────────────────────────────────────────────
-emailRouter.patch('/:emailId', async (req: any, res) => {
+emailRouter.patch('/:emailId', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { emailId } = req.params;
     const { is_read, is_starred, is_archived, folder } = req.body;
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (is_read !== undefined)     { updates.push(`is_read = $${idx++}`);     values.push(is_read); }
@@ -340,13 +341,13 @@ emailRouter.patch('/:emailId', async (req: any, res) => {
     );
 
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to update email' });
   }
 });
 
 // ─── DELETE /api/email/:emailId (soft delete) ─────────────────────────────────
-emailRouter.delete('/:emailId', async (req: any, res) => {
+emailRouter.delete('/:emailId', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { emailId } = req.params;
@@ -357,7 +358,7 @@ emailRouter.delete('/:emailId', async (req: any, res) => {
     );
 
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to delete email' });
   }
 });
@@ -367,7 +368,7 @@ emailRouter.delete('/:emailId', async (req: any, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─── GET /api/email/management ────────────────────────────────────────────────
-emailRouter.get('/management', async (req: any, res) => {
+emailRouter.get('/management', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
 
@@ -396,14 +397,14 @@ emailRouter.get('/management', async (req: any, res) => {
         fairUseEmailsPerSeat: EMAIL_PRICING.fairUseEmailsPerSeatMonthly,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] management error:', err);
     return res.status(500).json({ error: 'Failed to fetch email management data' });
   }
 });
 
 // ─── GET /api/email/management/stats ─────────────────────────────────────────
-emailRouter.get('/management/stats', async (req: any, res) => {
+emailRouter.get('/management/stats', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
 
@@ -433,13 +434,13 @@ emailRouter.get('/management/stats', async (req: any, res) => {
       monthlyCostCents: billedSeats * EMAIL_PRICING.perSeatMonthlyCents,
       approachingLimit: parseInt(s.approaching_limit) || 0,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
 // ─── POST /api/email/addresses/:id/activate ───────────────────────────────────
-emailRouter.post('/addresses/:id/activate', async (req: any, res) => {
+emailRouter.post('/addresses/:id/activate', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { id: emailAddressId } = req.params;
@@ -458,14 +459,14 @@ emailRouter.post('/addresses/:id/activate', async (req: any, res) => {
     await emailProvisioningService.activateEmailAddress(emailAddressId, userId, stripeItemId);
 
     return res.json({ success: true, address: check.rows[0].address });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] activate error:', err);
     return res.status(500).json({ error: 'Failed to activate email address' });
   }
 });
 
 // ─── POST /api/email/addresses/:id/deactivate ─────────────────────────────────
-emailRouter.post('/addresses/:id/deactivate', async (req: any, res) => {
+emailRouter.post('/addresses/:id/deactivate', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { id: emailAddressId } = req.params;
@@ -482,13 +483,13 @@ emailRouter.post('/addresses/:id/deactivate', async (req: any, res) => {
     await emailProvisioningService.deactivateEmailAddress(emailAddressId, userId);
 
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to deactivate email address' });
   }
 });
 
 // ─── POST /api/email/activate-all ────────────────────────────────────────────
-emailRouter.post('/activate-all', async (req: any, res) => {
+emailRouter.post('/activate-all', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
 
@@ -510,7 +511,7 @@ emailRouter.post('/activate-all', async (req: any, res) => {
     }
 
     return res.json({ success: true, activated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to bulk activate' });
   }
 });
@@ -520,7 +521,7 @@ emailRouter.post('/activate-all', async (req: any, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─── GET /api/email/addresses/:id/settings ────────────────────────────────────
-emailRouter.get('/addresses/:id/settings', async (req: any, res) => {
+emailRouter.get('/addresses/:id/settings', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { id } = req.params;
@@ -537,14 +538,14 @@ emailRouter.get('/addresses/:id/settings', async (req: any, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Address not found' });
 
     return res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] get settings error:', err);
     return res.status(500).json({ error: 'Failed to fetch address settings' });
   }
 });
 
 // ─── PUT /api/email/addresses/:id/settings ────────────────────────────────────
-emailRouter.put('/addresses/:id/settings', async (req: any, res) => {
+emailRouter.put('/addresses/:id/settings', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const { id } = req.params;
@@ -564,7 +565,7 @@ emailRouter.put('/addresses/:id/settings', async (req: any, res) => {
     if (!check.rows[0]) return res.status(404).json({ error: 'Address not found' });
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (forwarding_address !== undefined) { updates.push(`forwarding_address = $${idx++}`); values.push(forwarding_address || null); }
@@ -589,7 +590,7 @@ emailRouter.put('/addresses/:id/settings', async (req: any, res) => {
     `, [workspaceId, id, userId, JSON.stringify({ forwarding_enabled, has_signature: !!(signature_text || signature_html) })]);
 
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] put settings error:', err);
     return res.status(500).json({ error: 'Failed to update address settings' });
   }
@@ -599,7 +600,7 @@ emailRouter.put('/addresses/:id/settings', async (req: any, res) => {
 // Returns the platform_email_addresses rows assigned to the calling user within
 // their current workspace.  Used to populate the "From:" dropdown in compose.
 // Never returns the user's login email (users.email) — that is never a sender.
-emailRouter.get('/addresses/mine', async (req: any, res) => {
+emailRouter.get('/addresses/mine', async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, id: userId } = req.user;
     const result = await pool.query(`
@@ -615,7 +616,7 @@ emailRouter.get('/addresses/mine', async (req: any, res) => {
     `, [userId, workspaceId]);
 
     return res.json({ addresses: result.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] addresses/mine error:', err);
     return res.status(500).json({ error: 'Failed to fetch your email addresses' });
   }
@@ -636,7 +637,7 @@ const SUPPORT_INBOX_ROLES = new Set([
 const SUPPORT_EMAIL_ADDRESS = 'support@coaileague.com';
 
 // GET /api/email/support-inbox
-emailRouter.get('/support-inbox', async (req: any, res) => {
+emailRouter.get('/support-inbox', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id ?? '';
     const platformRole = await getUserPlatformRole(userId);
@@ -678,7 +679,7 @@ emailRouter.get('/support-inbox', async (req: any, res) => {
       limit,
       agentPlatformRole: platformRole,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[EmailRoutes] support-inbox GET error:', err);
     return res.status(500).json({ error: 'Failed to fetch support inbox' });
   }
@@ -688,7 +689,7 @@ emailRouter.get('/support-inbox', async (req: any, res) => {
 // Sends a reply FROM support@coaileague.com.
 // The individual agent's personal signature is appended so replies are
 // attributable even though the From: address is shared.
-emailRouter.post('/support-inbox/:emailId/reply', async (req: any, res) => {
+emailRouter.post('/support-inbox/:emailId/reply', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id ?? '';
     const platformRole = await getUserPlatformRole(userId);
@@ -778,8 +779,8 @@ emailRouter.post('/support-inbox/:emailId/reply', async (req: any, res) => {
       userId,
     ]);
 
-    return res.json({ success: true, resendId: (sent as any).data?.id });
-  } catch (err: any) {
+    return res.json({ success: true, resendId: (sent as Record<string,unknown>).data?.id });
+  } catch (err: unknown) {
     log.error('[EmailRoutes] support-inbox reply error:', err);
     return res.status(500).json({ error: 'Failed to send support reply' });
   }

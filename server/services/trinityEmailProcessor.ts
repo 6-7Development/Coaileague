@@ -14,7 +14,7 @@ export interface InboundEmailData {
   subject: string;
   body: string;
   htmlBody?: string;
-  attachments?: any[];
+  attachments?: unknown[];
   messageId: string;
   inReplyTo?: string;
   threadId?: string;
@@ -65,12 +65,12 @@ export class TrinityEmailProcessor {
         default:
           await this.handleMainInboxEmail(storedEmail, workspace, sender);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('Error processing inbound email:', err?.message);
     }
   }
 
-  getAddressType(toAddress: string, workspace: any): AddressType {
+  getAddressType(toAddress: string, workspace: unknown): AddressType {
     const to = (toAddress || '').toLowerCase();
     if (workspace.careers_email && to === workspace.careers_email.toLowerCase()) return 'careers';
     if (workspace.verify_email && to === workspace.verify_email.toLowerCase()) return 'verify';
@@ -164,7 +164,7 @@ export class TrinityEmailProcessor {
     return result.rows[0] || null;
   }
 
-  async storeInboundEmail(emailData: InboundEmailData, workspaceId: string, sender: any): Promise<any> {
+  async storeInboundEmail(emailData: InboundEmailData, workspaceId: string, sender: unknown): Promise<unknown> {
     const result = await pool.query(
       `INSERT INTO inbound_emails
        (workspace_id, from_email, from_name, to_email, subject, body_text, body_html,
@@ -203,12 +203,12 @@ export class TrinityEmailProcessor {
         originalMessageId: params.originalMessageId,
       });
       log.info(`Trinity replied to ${params.toAddress} from ${params.fromAddress}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[TrinityEmailProcessor] replyToEmail via NDS failed:', err?.message);
     }
   }
 
-  private async handleCareersEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleCareersEmail(email: unknown, workspace: Record<string, unknown>, sender: unknown): Promise<void> {
     log.info(`[careers] New career inquiry from ${email.from_email} to ${workspace.company_name}`);
     try {
       await pool.query(
@@ -223,27 +223,27 @@ export class TrinityEmailProcessor {
     }
   }
 
-  private async handleVerificationEmail(email: any, workspace: any, _sender: any): Promise<void> {
+  private async handleVerificationEmail(email: unknown, workspace: Record<string, unknown>, _sender: unknown): Promise<void> {
     log.info(`[verify] Employment verification request from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleSupportEmail(email: any, workspace: any, _sender: any): Promise<void> {
+  private async handleSupportEmail(email: unknown, workspace: Record<string, unknown>, _sender: unknown): Promise<void> {
     log.info(`[support] Support request from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleCalloffEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleCalloffEmail(email: unknown, workspace: Record<string, unknown>, sender: unknown): Promise<void> {
     log.info(`[calloffs] Calloff email from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleTrinityDirectEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleTrinityDirectEmail(email: unknown, workspace: Record<string, unknown>, sender: unknown): Promise<void> {
     log.info(`[trinity-direct] Direct Trinity message from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
 
-  private async handleMainInboxEmail(email: any, workspace: any, sender: any): Promise<void> {
+  private async handleMainInboxEmail(email: unknown, workspace: Record<string, unknown>, sender: unknown): Promise<void> {
     log.info(`[main] Main inbox email from ${email.from_email} to ${workspace.company_name}`);
     await this._delegateToFullPipeline(email);
   }
@@ -253,7 +253,7 @@ export class TrinityEmailProcessor {
    * to the full Trinity inbound pipeline (trinityInboundEmailProcessor.ts).
    * This ensures all stub handlers produce real DB records and acknowledgments.
    */
-  private async _delegateToFullPipeline(email: any): Promise<void> {
+  private async _delegateToFullPipeline(email: unknown): Promise<void> {
     try {
       const parsed: ParsedInboundEmail = {
         messageId: email.message_id || undefined,
@@ -268,7 +268,7 @@ export class TrinityEmailProcessor {
         rawPayload: {},
       };
       await processInboundEmail(parsed);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[trinityEmailProcessor] _delegateToFullPipeline failed (non-fatal):', err?.message);
     }
   }
@@ -297,7 +297,7 @@ export class TrinityEmailProcessor {
             data.position || 'Security Officer',
           ]
         );
-      } catch (e: any) {
+      } catch (e: unknown) {
         log.warn('create_candidate insert failed:', e.message);
       }
     }

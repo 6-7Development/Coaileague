@@ -62,7 +62,7 @@ export function TOSAgreementStep({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const result = await apiRequest("POST", "/api/tos/sign", {
+      const result = await apiRequest("POST", "/api/legal/accept-agreements", {
         email,
         fullName: fullName.trim(),
         initials: initials.trim().toUpperCase(),
@@ -75,7 +75,7 @@ export function TOSAgreementStep({
       setAgreementId(data.agreementId);
       setSigned(true);
       onComplete(data.agreementId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Signature failed",
         description: "Unable to record your agreement. Please try again.",

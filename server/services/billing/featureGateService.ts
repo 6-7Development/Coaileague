@@ -345,7 +345,7 @@ class FeatureGateService {
           // NOTE: We do NOT return allowed: false here. Overages are billed as line-items.
           // The platform flags the workspace for billing review but does not block requests.
         }
-      } catch (usageErr: any) {
+      } catch (usageErr : unknown) {
         // Usage check failure is non-fatal — allow the request, log the error
         log.warn('[FeatureGate] Usage check failed (non-fatal):', usageErr?.message);
       }
@@ -406,7 +406,7 @@ class FeatureGateService {
           lastUpdated: sql`now()`
         }
       });
-    } catch (trackErr: any) {
+    } catch (trackErr : unknown) {
       // Non-fatal — usage tracking failure must never deny service
       log.warn('[FeatureGate] Usage recording failed (non-fatal):', trackErr?.message);
     }
@@ -421,7 +421,7 @@ class FeatureGateService {
 
     if (!user) return false;
 
-    const platformRole = (user as any).platformRole;
+    const platformRole = req.user?.platformRole;
     if (platformRole && SUPPORT_ROLES.includes(platformRole)) {
       return true;
     }
@@ -436,7 +436,6 @@ class FeatureGateService {
         ))
         .limit(1);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (elevation && SUPPORT_ROLES.includes(elevation.platformRole)) {
         return true;
       }
@@ -538,16 +537,13 @@ class FeatureGateService {
       return { allowed: true };
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const access = featureAccess[tier];
 
     if (access === true) {
       return { allowed: true };
     } else if (access === false) {
       // Find the minimum tier that allows this feature
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const tierHierarchy: TierKey[] = ['free', 'trial', 'starter', 'professional', 'business', 'enterprise', 'strategic' as TierKey];
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const requiredTier = tierHierarchy.find(t => featureAccess[t] === true);
       return { allowed: false, requiredTier: requiredTier || 'professional' };
     } else if (access === 'addon') {
@@ -574,7 +570,7 @@ class FeatureGateService {
     if (!workspace) return false;
 
     // Check if addons are stored in workspace metadata
-    const metadata = (workspace as any).metadata as any;
+    const metadata = (workspace as Record<string, unknown>).metadata as any;
     if (metadata?.activeAddons?.includes(addonKey)) {
       return true;
     }
@@ -747,7 +743,7 @@ class FeatureGateService {
       const featureDef = FEATURE_DEFINITIONS[featureKey];
       const [ws] = await db.select({ blob: workspaces.featureStatesBlob })
         .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-      const states = ((ws?.blob || {}) as Record<string, any>);
+      const states = ((ws?.blob || {}) as Record<string, unknown>);
       states[featureKey] = {
         ...(states[featureKey] || {}),
         isUnlocked: true,
@@ -792,7 +788,7 @@ class FeatureGateService {
         // Re-read directly from DB to get fresh data for the write (bypass cache for write path)
         const [ws] = await db.select({ blob: workspaces.featureStatesBlob })
           .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-        const states = ((ws?.blob || {}) as Record<string, any>);
+        const states = ((ws?.blob || {}) as Record<string, unknown>);
         states[featureKey] = { ...(states[featureKey] || {}), isUnlocked: false, showLockIcon: true, lockMessage: reason };
         await db.update(workspaces).set({ featureStatesBlob: states }).where(eq(workspaces.id, workspaceId));
         // Phase 39 — invalidate feature blob cache after lock

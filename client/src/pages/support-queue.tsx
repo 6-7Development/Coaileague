@@ -53,7 +53,7 @@ interface ActiveSession {
   messageCount: number;
   lastMessage?: string;
   updatedAt: string;
-  messages?: any[];
+  messages?: unknown[];
 }
 
 const pageConfig: CanvasPageConfig = {
@@ -396,7 +396,7 @@ export default function SupportQueue() {
                   </CardHeader>
                   <ScrollArea className="flex-1 p-3">
                     <div className="space-y-3">
-                      {selectedSession.messages?.map((msg: any) => (
+                      {selectedSession.messages?.map((msg) => (
                         <div 
                           key={msg.id}
                           className={cn(

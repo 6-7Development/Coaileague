@@ -109,7 +109,7 @@ function selectDocumentType(
 
 // ── Subject lookup ──────────────────────────────────────────────────────────
 
-async function getSubjectInfo(intake: DisciplinaryIntake): Promise<Record<string, any>> {
+async function getSubjectInfo(intake: DisciplinaryIntake): Promise<Record<string, unknown>> {
   if (intake.subjectType === 'employee') {
     const { rows } = await pool.query(
       `SELECT e.first_name, e.last_name, e.email, e.employee_number,
@@ -223,7 +223,7 @@ interface DraftCore {
 
 async function generateDraft(
   intake: DisciplinaryIntake,
-  subjectInfo: Record<string, any>,
+  subjectInfo: Record<string, unknown>,
   sopContext: string,
   priorRecordCount: number,
   regulatoryContext: string,
@@ -290,7 +290,7 @@ Generate the appropriate ${isContractor ? 'Letter of Dissatisfaction' : 'discipl
       maxTokens: 4000,
     });
     raw = response?.text || '';
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[TrinityDisciplinary] Gemini call failed, falling back to template:', err?.message);
   }
 
@@ -308,7 +308,7 @@ function parseDraftJSON(text: string): DraftCore | null {
   const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace < 0 || lastBrace <= firstBrace) return null;
   try {
-    const obj = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    const obj: unknown = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
     if (!obj.documentContent || !obj.severityLevel) return null;
     return {
       documentTitle: String(obj.documentTitle || 'Disciplinary Document'),
@@ -326,7 +326,7 @@ function parseDraftJSON(text: string): DraftCore | null {
   }
 }
 
-function normalizeSeverity(value: any): DisciplinarySeverity {
+function normalizeSeverity(value: unknown): DisciplinarySeverity {
   const s = String(value || '').toLowerCase();
   if (s === 'severe' || s === 'serious' || s === 'moderate' || s === 'minor') return s;
   return 'moderate';
@@ -334,7 +334,7 @@ function normalizeSeverity(value: any): DisciplinarySeverity {
 
 function buildFallbackDraft(
   intake: DisciplinaryIntake,
-  subjectInfo: Record<string, any>,
+  subjectInfo: Record<string, unknown>,
   priorRecordCount: number,
 ): DraftCore {
   const name = `${subjectInfo.first_name || 'Subject'} ${subjectInfo.last_name || ''}`.trim();
@@ -394,7 +394,7 @@ Manager:               ______________________  Date: __________
 
 async function buildSigningSequence(
   intake: DisciplinaryIntake,
-  subjectInfo: Record<string, any>,
+  subjectInfo: Record<string, unknown>,
   docType: DisciplinaryDocType,
 ): Promise<DisciplinarySigningStep[]> {
   let managerEmail = '';

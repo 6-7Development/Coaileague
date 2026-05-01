@@ -22,7 +22,7 @@ export interface Employee {
 }
 
 export function useEmployees() {
-  const { data, isLoading, error, refetch } = useQuery<{ data: Employee[]; pagination: any }>({
+  const { data, isLoading, error, refetch } = useQuery<{ data: Employee[]; pagination: Record<string, unknown> }>({
     queryKey: queryKeys.employees.all,
     queryFn: () => apiGet('employees.list'),
     staleTime: 2 * 60 * 1000,

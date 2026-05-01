@@ -212,10 +212,9 @@ RECOMMENDATION LOGIC:
   0-49:   reject — does not meet minimum requirements
   ANY critical flag: override to hold or reject regardless of score`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const response = await ai.generateContent(prompt, { temperature: 0.1, maxOutputTokens: 1200 });
-    const text = (response as any).trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
-    const parsed = JSON.parse(text);
+    const text = (response as Record<string, unknown>).trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+    const parsed: unknown = JSON.parse(text);
 
     const totalScore = Math.min(100, Math.max(0, Number(parsed.total_score) || 0));
 
@@ -228,7 +227,7 @@ RECOMMENDATION LOGIC:
       recommendation: parsed.recommendation || (totalScore >= 70 ? 'advance' : totalScore >= 50 ? 'hold' : 'reject'),
       liabilityIndicators: Array.isArray(parsed.liability_indicators) ? parsed.liability_indicators : [],
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[TrinityScreening] Screening error:', err.message);
     return {
       score: 0,
@@ -340,10 +339,9 @@ Return ONLY valid JSON:
   "notes": "<one sentence explanation of score>"
 }`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const response = await ai.generateContent(prompt, { temperature: 0.1, maxOutputTokens: 200 }); // withGemini
-    const text = (response as any).trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
-    const parsed = JSON.parse(text);
+    const text = (response as Record<string, unknown>).trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+    const parsed: unknown = JSON.parse(text);
 
     return {
       score: Math.min(maxScore, Math.max(0, Number(parsed.score) || 0)),

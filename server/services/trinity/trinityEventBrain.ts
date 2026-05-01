@@ -37,7 +37,7 @@ interface EventHandlerConfig {
 async function autoExecute(
   workspaceId: string,
   actionId: string,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   note: string,
 ): Promise<void> {
   try {
@@ -57,7 +57,7 @@ async function autoExecute(
         result.success ? 'OK' : (result.error || result.message)
       }`,
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn(`[EventBrain] Auto-execute failed ${actionId}:`, err?.message);
   }
 }
@@ -66,7 +66,7 @@ async function autoExecute(
 async function queueWithEscalation(
   workspaceId: string,
   actionId: string,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   reason: string,
   risk: RiskLevel,
 ): Promise<void> {
@@ -78,7 +78,7 @@ async function queueWithEscalation(
       reason,
       risk,
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn(`[EventBrain] queueForApproval failed ${actionId}:`, err?.message);
   }
 }
@@ -496,7 +496,7 @@ const EVENT_HANDLERS: Record<string, EventHandlerConfig> = {
             title: `Welcome to ${metadata.workspaceName || 'CoAIleague'}!`,
             message: `Hi ${metadata.firstName || 'there'}! I'm Trinity, your AI operations supervisor. I'm already monitoring your organization and I'm here to help. Ask me anything — scheduling, compliance, payroll, or anything else you need.`,
           },
-        } as any).catch(() => {});
+        }).catch(() => {});
 
         const { rows: owners } = await pool.query(
           `SELECT user_id FROM employees
@@ -517,9 +517,9 @@ const EVENT_HANDLERS: Record<string, EventHandlerConfig> = {
               title: 'New Team Member Joined',
               message: `${metadata.firstName || ''} ${metadata.lastName || ''} (${metadata.role || 'team member'}) has joined and is ready to use the platform. Trinity has been briefed.`,
             },
-          } as any).catch(() => {});
+          }).catch(() => {});
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[EventBrain] member_joined welcome failed (non-fatal):', err?.message);
       }
     },
@@ -541,7 +541,7 @@ export const trinityEventBrain = {
     scheduleNonBlocking(`event-brain.${event.type}`, async () => {
       try {
         await handler.handler(event);
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(`[EventBrain] Handler failed for ${event.type}:`, err?.message);
       }
     });

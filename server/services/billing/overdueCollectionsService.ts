@@ -54,7 +54,7 @@ async function alreadyEscalated(invoiceId: string, tier: number): Promise<boolea
     .from(universalAuditTrail)
     .where(and(
       eq(universalAuditTrail.entityId, invoiceId),
-      eq(universalAuditTrail.action as any, action),
+      eq(universalAuditTrail.action, action),
       gte(universalAuditTrail.createdAt, cutoff)
     ))
     .limit(1);
@@ -69,7 +69,6 @@ async function logEscalation(
   recipient: string
 ) {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await universalAudit({
       workspaceId,
       action: `invoice.collections_tier${tier}` as any,
@@ -126,7 +125,7 @@ async function resolvePortalUrl(inv: OverdueInvoice, clientEmail: string): Promi
     const domain = (process.env.APP_BASE_URL || '');
     const base = domain ? `https://${domain}` : '';
     return `${base}/portal/client/${portal.accessToken}`;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[OverdueCollections] resolvePortalUrl failed — falling back to ID-based URL:', (err instanceof Error ? err.message : String(err)));
     const fallbackDomain = (process.env.APP_BASE_URL || '');
     const fallbackBase = fallbackDomain ? `https://${fallbackDomain}` : '';
@@ -163,7 +162,7 @@ async function runTier2(inv: OverdueInvoice, clientEmail: string, clientName: st
     await createNotification({
       workspaceId: inv.workspaceId,
       userId: owner.userId,
-      type: 'system' as any,
+      type: 'system',
       title: `Invoice ${inv.invoiceNumber} — 7-Day Overdue Alert`,
       idempotencyKey: `system-${Date.now()}-${owner.userId}`,
       message: `${clientName} has not paid invoice ${inv.invoiceNumber} ($${Number(inv.total).toFixed(2)}). Now ${inv.daysOverdue} days overdue. Escalation email sent to client.`,
@@ -215,7 +214,7 @@ ${workspaceName}`;
     await createNotification({
       workspaceId: inv.workspaceId,
       userId: owner.userId,
-      type: 'system' as any,
+      type: 'system',
       title: `URGENT: Invoice ${inv.invoiceNumber} — 30-Day Collections Flag`,
       idempotencyKey: `system-${Date.now()}-${owner.userId}`,
       message: `${clientName} is ${inv.daysOverdue} days overdue on invoice ${inv.invoiceNumber} ($${Number(inv.total).toFixed(2)}). Trinity recommends: (1) Call the AP contact today, (2) Review draft demand letter, (3) Consider collections agency referral if unpaid within 10 days.`,
@@ -279,7 +278,7 @@ export async function runOverdueCollectionsSweep(): Promise<CollectionsResult> {
     })
     .from(invoices)
     .where(and(
-      eq(invoices.status as any, 'sent'),
+      eq(invoices.status, 'sent'),
       lt(invoices.dueDate, now)
     ));
 
@@ -330,8 +329,8 @@ export async function runOverdueCollectionsSweep(): Promise<CollectionsResult> {
     try {
       await db
         .update(invoices)
-        .set({ status: 'overdue' as any })
-        .where(and(eq(invoices.id, inv.id), eq(invoices.status as any, 'sent')));
+        .set({ status: 'overdue' })
+        .where(and(eq(invoices.id, inv.id), eq(invoices.status, 'sent')));
 
       if (days >= 30) {
         if (await alreadyEscalated(inv.id, 3)) continue;
@@ -346,7 +345,7 @@ export async function runOverdueCollectionsSweep(): Promise<CollectionsResult> {
         if (clientEmail) await runTier1(invWithDays, clientEmail, clientName, wsName);
         result.tier1Sent++;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`Invoice ${inv.invoiceNumber}: ${(err instanceof Error ? err.message : String(err))}`);
     }
   }

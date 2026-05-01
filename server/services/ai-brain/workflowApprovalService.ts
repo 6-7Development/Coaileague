@@ -103,7 +103,7 @@ class WorkflowApprovalService {
     finding: GapFinding & { id?: number },
     proposedFix: {
       affectedFiles: string[];
-      changes: any;
+      changes: unknown;
       rollbackPlan?: string;
     }
   ): Promise<AiWorkflowApproval | null> {
@@ -117,7 +117,6 @@ class WorkflowApprovalService {
 
       const [approval] = await db
         .insert(aiWorkflowApprovals)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values({
           workspaceId: 'system',
           gapFindingId: finding.id?.toString(),
@@ -170,7 +169,7 @@ class WorkflowApprovalService {
     title: string;
     description: string;
     affectedFiles: string[];
-    proposedChanges: any;
+    proposedChanges: unknown;
     rollbackPlan?: string;
     riskLevel?: string;
     workOrderId?: string;
@@ -183,7 +182,6 @@ class WorkflowApprovalService {
 
       const [approval] = await db
         .insert(aiWorkflowApprovals)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values({
           workspaceId: 'system',
           workOrderId: params.workOrderId,
@@ -249,9 +247,9 @@ class WorkflowApprovalService {
       }
 
       // Verify approver has required role
-      const hasRole = await this.verifyApproverRole(approvedBy, (existing as any).requiredRole || 'support_manager');
+      const hasRole = await this.verifyApproverRole(approvedBy, (existing as Record<string,unknown>).requiredRole || 'support_manager');
       if (!hasRole) {
-        return { success: false, message: `Insufficient role. Requires: ${(existing as any).requiredRole}` };
+        return { success: false, message: `Insufficient role. Requires: ${(existing as Record<string,unknown>).requiredRole}` };
       }
 
       await db
@@ -427,7 +425,7 @@ class WorkflowApprovalService {
     action: 'created' | 'reminder'
   ): Promise<number> {
     try {
-      const targetWorkspaceId = (approval as any).workspaceId || 'platform';
+      const targetWorkspaceId = (approval as Record<string,unknown>).workspaceId || 'platform';
       
       // Get users with appropriate support roles scoped to workspace
       let supportUsers: { id: string; email: string | null; role: string | null; workspaceRole: string | null }[] = [];
@@ -439,7 +437,7 @@ class WorkflowApprovalService {
           .from(platformRoles)
           .where(
             and(
-              inArray(platformRoles.role, SUPPORT_ROLES as any),
+              inArray(platformRoles.role, SUPPORT_ROLES as unknown),
               isNull(platformRoles.revokedAt),
               eq(platformRoles.isSuspended, false)
             )
@@ -469,7 +467,6 @@ class WorkflowApprovalService {
           .innerJoin(employees, eq(employees.userId, users.id))
           .where(and(
             eq(employees.workspaceId, targetWorkspaceId),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             inArray(employees.workspaceRole, [...APPROVER_ROLES, ROLES.SUPERVISOR])
           ));
       }
@@ -489,13 +486,12 @@ class WorkflowApprovalService {
         : 'Approval Reminder';
       
       const message = action === 'created'
-        ? `${(approval as any).endUserSummary || approval.title}. Risk: ${approval.riskLevel}. Expires in ${this.getExpiryHours(approval.riskLevel || 'medium')} hours.`
+        ? `${(approval as Record<string,unknown>).endUserSummary || approval.title}. Risk: ${approval.riskLevel}. Expires in ${this.getExpiryHours(approval.riskLevel || 'medium')} hours.`
         : `Pending approval: ${approval.title}. Please review before expiry.`;
 
       // Filter users based on role hierarchy
       const eligibleUsers = supportUsers.filter(user => {
         const platformRoleIndex = SUPPORT_ROLES.indexOf(user.role || '');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const requiredRoleIndex = SUPPORT_ROLES.indexOf(approval.requiredRole || 'support_manager');
         const hasWorkspaceAuthority = ['org_owner', 'co_owner', 'manager', 'supervisor'].includes(user.workspaceRole || '');
         
@@ -525,7 +521,7 @@ class WorkflowApprovalService {
             metadata: {
               approvalId: approval.id,
               riskLevel: approval.riskLevel,
-              requiredRole: (approval as any).requiredRole,
+              requiredRole: (approval as Record<string,unknown>).requiredRole,
               expiresAt: approval.expiresAt,
               action,
               relatedEntityType: 'workflow_approval',
@@ -575,7 +571,7 @@ class WorkflowApprovalService {
     return db
       .select()
       .from(aiWorkflowApprovals)
-      .where(eq(aiWorkflowApprovals.status, status as any))
+      .where(eq(aiWorkflowApprovals.status, status as unknown))
       .orderBy(desc(aiWorkflowApprovals.createdAt))
       .limit(limit);
   }
@@ -717,7 +713,7 @@ class WorkflowApprovalService {
     }
   }
 
-  private async emitApprovalEvent(eventType: string, data: any): Promise<void> {
+  private async emitApprovalEvent(eventType: string, data: Record<string, unknown>): Promise<void> {
     // Map internal event types to valid PlatformEventType
     const eventTypeMap: Record<string, string> = {
       'approval_created': 'trinity_fix_proposed',
@@ -757,13 +753,13 @@ class WorkflowApprovalService {
     const self = this;
     const actions = [
       { id: 'workflow_approval.create', name: 'Create Approval', desc: 'Create a new workflow approval request', 
-        fn: (p: any) => self.createApprovalRequest({ title: p.title, description: p.description, affectedFiles: p.affectedFiles || [], proposedChanges: p.proposedChanges || {}, rollbackPlan: p.rollbackPlan, riskLevel: p.riskLevel, workOrderId: p.workOrderId }) },
-      { id: 'workflow_approval.approve', name: 'Approve Request', desc: 'Approve a pending workflow request', fn: (p: any) => self.approveRequest(p.approvalId, p.userId, p.notes) },
-      { id: 'workflow_approval.reject', name: 'Reject Request', desc: 'Reject a pending workflow request', fn: (p: any) => self.rejectRequest(p.approvalId, p.userId, p.reason) },
-      { id: 'workflow_approval.get_pending', name: 'Get Pending', desc: 'Get pending workflow approval requests', fn: (p: any) => self.getPendingApprovals(p?.limit || 50) },
-      { id: 'workflow_approval.get_by_id', name: 'Get By ID', desc: 'Get a specific approval request by ID', fn: (p: any) => self.getApprovalById(p.approvalId) },
+        fn: (p: unknown) => self.createApprovalRequest({ title: p.title, description: p.description, affectedFiles: p.affectedFiles || [], proposedChanges: p.proposedChanges || {}, rollbackPlan: p.rollbackPlan, riskLevel: p.riskLevel, workOrderId: p.workOrderId }) },
+      { id: 'workflow_approval.approve', name: 'Approve Request', desc: 'Approve a pending workflow request', fn: (p: unknown) => self.approveRequest(p.approvalId, p.userId, p.notes) },
+      { id: 'workflow_approval.reject', name: 'Reject Request', desc: 'Reject a pending workflow request', fn: (p: unknown) => self.rejectRequest(p.approvalId, p.userId, p.reason) },
+      { id: 'workflow_approval.get_pending', name: 'Get Pending', desc: 'Get pending workflow approval requests', fn: (p: unknown) => self.getPendingApprovals(p?.limit || 50) },
+      { id: 'workflow_approval.get_by_id', name: 'Get By ID', desc: 'Get a specific approval request by ID', fn: (p: unknown) => self.getApprovalById(p.approvalId) },
       { id: 'workflow_approval.process_expired', name: 'Process Expired', desc: 'Process and mark expired approval requests', fn: () => self.processExpiredApprovals() },
-      { id: 'workflow_approval.mark_executed', name: 'Mark Executed', desc: 'Mark an approved request as executed', fn: (p: any) => self.markExecuted(p.approvalId, p.details) },
+      { id: 'workflow_approval.mark_executed', name: 'Mark Executed', desc: 'Mark an approved request as executed', fn: (p: unknown) => self.markExecuted(p.approvalId, p.details) },
     ];
 
     for (const action of actions) {

@@ -1,3 +1,4 @@
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 /**
  * ShiftBottomSheet - Compact professional shift creation/editing
  * Sling-inspired design with tight spacing and polished UI
@@ -87,7 +88,7 @@ interface ShiftBottomSheetProps {
   selectedDate: Date;
   selectedEmployee?: Employee;
   editingShift?: Shift;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data) => Promise<void>;
   isSubmitting: boolean;
 }
 
@@ -141,7 +142,6 @@ export function ShiftBottomSheet({
         employeeId: editingShift.employeeId || '',
         title: editingShift.title || '',
         clientId: editingShift.clientId || '',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         location: editingShift.location || '',
         startTime: format(start, 'HH:mm'),
         endTime: format(end, 'HH:mm'),
@@ -250,7 +250,7 @@ export function ShiftBottomSheet({
       <ModalGuardContent isDirty={isDirty}>
         <Drawer open={open} onOpenChange={handleGuardedOpenChange}>
           <DrawerContent 
-            className="max-h-[100dvh] h-[100dvh] sm:max-h-[85vh] sm:h-auto focus:outline-none flex flex-col"
+            className="max-h-[calc(100dvh-56px)] sm:max-h-[85vh] sm:h-auto overflow-y-auto focus:outline-none flex flex-col"
             data-testid="shift-bottom-sheet"
           >
             <MobileSheetHandle />
@@ -261,7 +261,7 @@ export function ShiftBottomSheet({
                 </VisuallyHidden>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <LogoMark size="sm" />
+                    <TrinityAnimatedLogo size={24} />
                     <div>
                       <DrawerTitle className="text-base font-semibold">
                         {editingShift ? 'Edit Shift' : 'New Shift'}

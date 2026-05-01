@@ -2,6 +2,7 @@
  * Compliance Reports Routes — /api/compliance-reports
  * Generate, list, and manage regulatory compliance reports.
  */
+import { complianceReports, workspaces } from "@shared/schema";
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
@@ -74,7 +75,7 @@ router.post("/generate", requireManager, async (req: AuthenticatedRequest, res) 
       .from(complianceReports)
       .where(and(
         eq(complianceReports.workspaceId, workspaceId),
-        eq(complianceReports.reportType, reportType as any),
+        eq(complianceReports.reportType, reportType as unknown),
         eq(complianceReports.periodStart, start),
         eq(complianceReports.periodEnd, end),
       ))
@@ -94,28 +95,27 @@ router.post("/generate", requireManager, async (req: AuthenticatedRequest, res) 
       `${workspaceId}:${reportType}:${startDay}:${endDay}:${JSON.stringify(reportPayload)}`
     ).digest('hex');
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [report] = await db.insert(complianceReports).values({
       id: randomUUID(),
       workspaceId,
-      reportType: reportType as any,
+      reportType: reportType as unknown,
       reportTitle: reportMeta.label,
       description: reportMeta.description,
       periodStart: start,
       periodEnd: end,
-      status: "complete" as any,
+      status: "complete",
       generatedBy: userId,
       generatedAt: new Date(),
       automatedGeneration: false,
       reportData: {
         ...reportPayload,
         checksum,
-      } as any,
+      } as unknown,
       summaryStats: {
         totalRecords: 0,
         complianceRate: 100,
         issuesFound: 0,
-      } as any,
+      } as unknown,
       regulations: reportMeta.regulations,
       jurisdiction: jurisdiction || "US-FEDERAL",
       hasViolations: false,
@@ -158,8 +158,8 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
     if (!report) return res.status(404).json({ error: "Report not found" });
 
     // Check if a vaulted PDF already exists for this report
-    if ((report as any).vaultDocumentNumber) {
-      const vaultRecord = await getVaultRecord(workspaceId, (report as any).vaultDocumentNumber);
+    if ((report as Record<string, unknown>).vaultDocumentNumber) {
+      const vaultRecord = await getVaultRecord(workspaceId, (report as Record<string, unknown>).vaultDocumentNumber);
       if (vaultRecord) {
         return res.json({ success: true, vaultRecord, cached: true });
       }
@@ -167,8 +167,8 @@ router.get("/:id/pdf", requireManager, async (req: AuthenticatedRequest, res) =>
 
     // Generate real PDF using PDFKit + saveToVault
     const { default: PDFDocument } = await import('pdfkit');
-    const reportData = (report.reportData || {}) as Record<string, any>;
-    const summaryStats = (report.summaryStats || {}) as Record<string, any>;
+    const reportData = (report.reportData || {}) as Record<string, unknown>;
+    const summaryStats = (report.summaryStats || {}) as Record<string, unknown>;
     const periodStart = report.periodStart ? new Date(report.periodStart).toLocaleDateString() : 'N/A';
     const periodEnd = report.periodEnd ? new Date(report.periodEnd).toLocaleDateString() : 'N/A';
 

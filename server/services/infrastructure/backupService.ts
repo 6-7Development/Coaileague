@@ -40,7 +40,7 @@ export interface BackupRecord {
   checksum?: string;
   storagePath?: string;
   error?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface BackupConfig {
@@ -187,7 +187,6 @@ class BackupService {
     // Create backup record - cast tables array properly for PostgreSQL
     const tablesArray = `{${this.config.criticalTables.join(',')}}`;
     // CATEGORY C — Raw SQL retained: ::text | Tables: backup_records | Verified: 2026-03-23
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(backupRecords).values({
       id: backupId,
       workspaceId: 'system',
@@ -204,7 +203,7 @@ class BackupService {
       const sizeResult = await typedQuery(sql`
         SELECT pg_database_size(current_database()) as size_bytes
       `);
-      const sizeBytes = (sizeResult as any[])[0]?.size_bytes || 0;
+      const sizeBytes = (sizeResult as unknown[])[0]?.size_bytes || 0;
 
       // For Neon/Postgres, we rely on built-in PITR - log the backup point
       const walPosition = await this.getWALPosition();
@@ -265,7 +264,7 @@ class BackupService {
         metadata: { walPosition, verification: verificationResults },
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[BackupService] Backup ${backupId} failed:`, error);
       
       await db.update(backupRecords).set({
@@ -298,7 +297,7 @@ class BackupService {
     try {
       // CATEGORY C — Raw SQL retained: ::text | Tables:  | Verified: 2026-03-23
       const result = await typedQuery(sql`SELECT pg_current_wal_lsn()::text as lsn`);
-      return (result as any[])[0]?.lsn || 'unknown';
+      return (result as unknown[])[0]?.lsn || 'unknown';
     } catch {
       return `checkpoint-${Date.now()}`;
     }
@@ -315,7 +314,7 @@ class BackupService {
       try {
         // CATEGORY C — Raw SQL retained: COUNT( | Tables:  | Verified: 2026-03-23
         const countResult = await typedQuery(sql.raw(`SELECT COUNT(*)::int as count FROM "${table}"`));
-        const count = (countResult as any[])[0]?.count || 0;
+        const count = (countResult as unknown[])[0]?.count || 0;
         results.push({ table, rowCount: count, verified: true });
       } catch {
         results.push({ table, rowCount: 0, verified: false });
@@ -332,7 +331,7 @@ class BackupService {
     try {
       const result = await db.select().from(backupRecords).where(eq(backupRecords.id, backupId));
       
-      const backup = ((result as any).rows as any[])[0];
+      const backup = ((result as Record<string, unknown>).rows as unknown[][])[0];
       if (!backup) {
         log.warn(`[BackupService] Backup ${backupId} not found for verification`);
         return false;
@@ -426,7 +425,7 @@ class BackupService {
         LIMIT ${limit}
       `);
       
-      return result.map((row: any) => ({
+      return result.map((row: unknown) => ({
         id: row.id,
         type: row.type,
         status: row.status,

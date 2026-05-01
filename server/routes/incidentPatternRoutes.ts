@@ -61,7 +61,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
       return res.status(403).json({ error: "Manager access required" });
     }
 
-    const newPatterns: any[] = [];
+    const newPatterns: (string | number | boolean | null)[] = [];
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
 
@@ -72,7 +72,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
        WHERE workspace_id = $1 AND COALESCE(occurred_at, updated_at) >= $2
        ORDER BY occurred_at DESC`,
       [wid, cutoff.toISOString()]
-    ).catch(() => ({ rows: [] as any[] }))).rows;
+    ).catch(() => ({ rows: [] }))).rows;
 
     if (!incidents.length) {
       return res.json({ patternsFound: 0, message: "No incidents in last 90 days" });
@@ -81,7 +81,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
     // ── PATTERN 1: Same type at 3+ sites in 30 days (multi-site pattern) ──
     const last30 = new Date();
     last30.setDate(last30.getDate() - 30);
-    const recent = incidents.filter((i: any) => new Date(i.created_at) >= last30);
+    const recent = incidents.filter((i: unknown) => new Date(i.created_at) >= last30);
 
     const byType: Record<string, Set<string>> = {};
     const typeIncidents: Record<string, string[]> = {};
@@ -112,8 +112,8 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
                recommended_action, status, created_by, created_at)
              VALUES ($1,$2,$3,'multi_site',$4,$5,$6,$7,$8,$9,$10,'active','trinity',NOW())`,
             [id, wid, type, JSON.stringify(sitesArr), incIds.length,
-             recent.filter((i: any) => typeIncidents[type].includes(i.id)).at(-1)?.occurred_at,
-             recent.filter((i: any) => typeIncidents[type].includes(i.id))[0]?.occurred_at,
+             recent.filter((i: unknown) => typeIncidents[type].includes(i.id)).at(-1)?.occurred_at,
+             recent.filter((i: unknown) => typeIncidents[type].includes(i.id))[0]?.occurred_at,
              `I have identified a pattern of ${type} incidents across ${sites.size} sites in the past 30 days. This may indicate a systemic issue requiring a company-wide policy response.`,
              risk,
              `Review ${type} prevention protocols across all affected sites. Consider enhanced coverage or officer briefings.`]
@@ -141,7 +141,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
           [wid, incType, `%${siteId}%`]
         );
         if (existing.rows.length === 0) {
-          const siteR = await db.$client.query(`SELECT name FROM sites WHERE id = $1`, [siteId]).catch(() => ({ rows: [] as any[] }));
+          const siteR = await db.$client.query(`SELECT name FROM sites WHERE id = $1`, [siteId]).catch(() => ({ rows: [] }));
           const siteName = siteR.rows[0]?.name || siteId;
           const id = `ip-${randomUUID()}`;
           await db.$client.query(
@@ -162,7 +162,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
     }
 
     // ── PATTERN 3: Time-based clustering ────────────────────────────────────
-    const midnightIncs = incidents.filter((i: any) => {
+    const midnightIncs = incidents.filter((i: unknown) => {
       const h = new Date(i.occurred_at).getHours();
       return h >= 0 && h <= 3;
     });
@@ -173,7 +173,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
         [wid]
       );
       if (existing.rows.length === 0) {
-        const sitesInvolved = [...new Set(midnightIncs.map((i: any) => i.site_id).filter(Boolean))];
+        const sitesInvolved = [...new Set(midnightIncs.map((i: unknown) => i.site_id).filter(Boolean))];
         const id = `ip-${randomUUID()}`;
         await db.$client.query(
           `INSERT INTO incident_patterns
@@ -200,7 +200,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
         description: `Trinity detected ${newPatterns.length} new incident pattern(s) requiring attention.`,
         workspaceId: wid,
         metadata: { patterns: newPatterns }
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     res.json({ patternsFound: newPatterns.length, patterns: newPatterns });

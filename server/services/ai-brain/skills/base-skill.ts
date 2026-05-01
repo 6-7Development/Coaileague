@@ -60,7 +60,7 @@ export abstract class BaseSkill {
    * @param context - Execution context (user, workspace, roles, etc.)
    * @param params - Skill-specific parameters
    */
-  abstract execute(context: SkillContext, params: any): Promise<SkillResult>;
+  abstract execute(context: SkillContext, params: Record<string, unknown>): Promise<SkillResult>;
 
   /**
    * Validate skill can execute with given context
@@ -72,7 +72,6 @@ export abstract class BaseSkill {
     // Check tier requirements
     if (manifest.requiredTier && context.subscriptionTier) {
       const tierHierarchy = { free: 1, starter: 2, professional: 3, enterprise: 4 };
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const requiredLevel = tierHierarchy[manifest.requiredTier];
       const currentLevel = tierHierarchy[context.subscriptionTier as keyof typeof tierHierarchy] || 1;
       
@@ -143,14 +142,14 @@ export abstract class BaseSkill {
   /**
    * Health check
    */
-  async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
+  async healthCheck(): Promise<{ healthy: boolean; details?: unknown }> {
     return { healthy: this.config.enabled };
   }
 
   /**
    * Get skill statistics
    */
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       skillId: this.getManifest().id,
       enabled: this.config.enabled,

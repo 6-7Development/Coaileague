@@ -95,7 +95,7 @@ export default function EmployeeComplianceDetail() {
   const [selectedStateId, setSelectedStateId] = useState<string>("");
   const [addStateDialogOpen, setAddStateDialogOpen] = useState(false);
 
-  const { data: employeeData, isLoading: employeeLoading } = useQuery<{ success: boolean; employee: any }>({
+  const { data: employeeData, isLoading: employeeLoading } = useQuery<{ success: boolean; employee: unknown }>({
     queryKey: ['/api/employees', employeeId],
     enabled: !!employeeId,
   });
@@ -140,7 +140,7 @@ export default function EmployeeComplianceDetail() {
         description: "Employee has been enrolled in the selected state compliance program",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Failed to Add State",
@@ -150,7 +150,7 @@ export default function EmployeeComplianceDetail() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (formData: any) => {
+    mutationFn: async (formData) => {
       return await apiRequest('POST', '/api/security-compliance/documents', formData);
     },
     onSuccess: () => {
@@ -162,7 +162,7 @@ export default function EmployeeComplianceDetail() {
         description: "Document has been uploaded and queued for approval",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Upload Failed",

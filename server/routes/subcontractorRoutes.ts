@@ -106,7 +106,7 @@ router.post("/companies", requireAuth, async (req: AuthenticatedRequest, res) =>
           description: `Certificate of Insurance expires in ${days} days.`,
           workspaceId: wid,
           metadata: { subcontractorId: id, companyName: company_name, daysLeft: days }
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
     }
 
@@ -128,7 +128,7 @@ router.patch("/companies/:id", requireAuth, async (req: AuthenticatedRequest, re
       'contract_path','contract_start','contract_end','payment_terms',
       'hourly_rate','flat_rate','status','notes'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }
@@ -262,7 +262,7 @@ router.patch("/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     const allowed = ['company_name','contact_name','contact_email','contact_phone','status',
       'insurance_expiration','insurance_coverage_amount','notes'];
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) { updates.push(`${key} = $${i++}`); vals.push(req.body[key]); }

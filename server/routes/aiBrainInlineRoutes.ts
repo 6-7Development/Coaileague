@@ -113,7 +113,6 @@ router.post("/work-orders/execute", requireAuth, async (req: AuthenticatedReques
       const result = await subagentSupervisor.executeParallelWorkOrders({
         workboardJobId,
         workspaceId: workspaceId!,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         userId,
         platformRole,
         tasks,
@@ -245,7 +244,7 @@ router.post("/work-orders/execute", requireAuth, async (req: AuthenticatedReques
   });
 
 // GET /api/ai-brain/status — runtime status of AI brain services
-router.get("/status", requireAuth, async (req: any, res) => {
+router.get("/status", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { getAISystemStatus } = await import("../services/ai-brain/providers/resilientAIGateway");
     const sysStatus = getAISystemStatus();
@@ -267,7 +266,7 @@ router.get("/status", requireAuth, async (req: any, res) => {
 });
 
 // GET /api/ai-brain/decisions — recent AI decisions/actions log
-router.get("/decisions", requireManager, async (req: any, res) => {
+router.get("/decisions", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const limit = Math.min(parseInt((req.query.limit as string) || '20'), 100);
@@ -287,7 +286,7 @@ router.get("/decisions", requireManager, async (req: any, res) => {
 });
 
 // GET /api/ai-brain/rules — current AI guardrails and rule configuration
-router.get("/rules", requireManager, async (req: any, res) => {
+router.get("/rules", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const { default: guardrails } = await import("@shared/config/aiBrainGuardrails");
     res.json({
@@ -319,10 +318,8 @@ router.post("/actions/execute", requireAuth, workspaceTrinityLimiter, async (req
       category: category as any,
       name,
       payload: { ...payload, workspaceId },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userId,
       userRole: req.workspaceRole || 'employee',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       priority: 'medium',
     });
     res.json({ success: result.success, message: result.message, data: result.data ?? result });
@@ -342,7 +339,7 @@ router.get("/growth-log", requireManager, async (req: AuthenticatedRequest, res)
     const eventType = (req.query.type as string) || 'all'; // 'all' | 'learning' | 'decision'
     const { pool } = await import('../db');
 
-    const entries: any[] = [];
+    const entries: (string | number | boolean | null)[] = [];
 
     // 1. Pull ai_learning_events for this workspace
     if (eventType === 'all' || eventType === 'learning') {
@@ -372,7 +369,6 @@ router.get("/growth-log", requireManager, async (req: AuthenticatedRequest, res)
         subtype: r.subtype,
         title: `Trinity learned: ${r.action || r.subtype}`,
         description: r.outcome
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           ? `Outcome: ${r.outcome} | Confidence: ${((r.confidence_level || 0.5) * 100).toFixed(0)}%`
           : `Agent: ${r.agent_id} | Domain: ${r.domain || 'general'}`,
         outcome: r.outcome,
@@ -409,8 +405,8 @@ router.get("/growth-log", requireManager, async (req: AuthenticatedRequest, res)
         id: r.id,
         entryType: r.entry_type,
         subtype: r.decision_type,
-        title: `Decision: ${(r as any).chosen_option?.substring(0, 80) || r.decision_type}`,
-        description: (r as any).reasoning?.substring(0, 200) || `Domain: ${r.domain}`,
+        title: `Decision: ${(r as Record<string, unknown>).chosen_option?.substring(0, 80) || r.decision_type}`,
+        description: (r as Record<string, unknown>).reasoning?.substring(0, 200) || `Domain: ${r.domain}`,
         outcome: r.outcome_status,
         confidence: r.confidence_score,
         humanIntervention: r.human_override,

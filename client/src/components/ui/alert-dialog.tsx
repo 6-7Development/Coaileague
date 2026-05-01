@@ -31,7 +31,7 @@ const AlertDialogOverlay = React.forwardRef<
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
 const desktopVariants = cva(
-  "fixed left-[50%] top-[50%] z-[10001] grid translate-x-[-50%] translate-y-[-50%] gap-3 border bg-background p-5 shadow-sm duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-md max-h-[90dvh] overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] box-border w-[calc(100vw-2rem)]",
+  "fixed left-[50%] top-[50%] z-[10001] grid translate-x-[-50%] translate-y-[-50%] gap-3 border bg-background p-5 shadow-sm duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-md max-h-[80dvh] sm:max-h-[90ddvh] overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] box-border w-[calc(100vw-2rem)]",
   {
     variants: {
       size: {
@@ -46,7 +46,7 @@ const desktopVariants = cva(
 )
 
 const mobileClasses =
-  "fixed bottom-0 left-0 right-0 z-[10001] w-full rounded-t-md border-t bg-background pt-2 pb-[env(safe-area-inset-bottom,16px)] px-4 shadow-sm duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom max-h-[92dvh] overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
+  "fixed bottom-0 left-0 right-0 z-[10001] w-full rounded-t-md border-t bg-background pt-2 pb-[env(safe-area-inset-bottom,16px)] px-4 shadow-sm duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slimax-h-[80dvh] sm:max-h-[92ddvh]ttom max-h-[92dvh] overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
 
 interface AlertDialogContentProps
   extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>,

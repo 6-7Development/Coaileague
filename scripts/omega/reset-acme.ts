@@ -29,7 +29,7 @@ async function run() {
   try {
     const dbModule = await import('../../server/db');
     db = dbModule.db;
-  } catch (err: any) {
+  } catch (err : unknown) {
     console.error('Cannot connect to DB:', err.message);
     process.exit(1);
   }
@@ -43,7 +43,7 @@ async function run() {
     AND id != ${SPS_ID}
     LIMIT 1
   `);
-  const acme = (rows.rows || rows)[0] as any;
+  const acme = (rows.rows || rows)[0] as unknown;
 
   if (!acme) {
     console.error('❌ ACME workspace not found. Cannot proceed.');
@@ -84,7 +84,7 @@ async function run() {
         sql.raw(`DELETE FROM ${table} WHERE workspace_id = '${ACME_ID}'`)
       );
       console.log(`✅ Cleared ${table}: ${result.rowCount ?? 'ok'} rows`);
-    } catch (err: any) {
+    } catch (err : unknown) {
       console.warn(`⚠ Could not clear ${table}: ${err.message}`);
     }
   }

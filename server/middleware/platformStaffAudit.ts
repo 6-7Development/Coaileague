@@ -47,7 +47,7 @@ export function platformStaffAuditMiddleware(req: Request, res: Response, next: 
 
   // Capture response status after the handler runs
   const originalEnd = res.end.bind(res);
-  (res as any).end = function (...args: any[]) {
+  (res as Record<string, unknown>).end = function (...args: unknown[]) {
     const duration = Date.now() - startedAt;
     const status = res.statusCode;
 

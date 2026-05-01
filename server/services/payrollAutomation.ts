@@ -28,7 +28,6 @@ import { assertNoPeriodOverlap } from './payroll/payrollLedger';
 import { calculatePayrollTaxes, type PayPeriod as TaxPayPeriod, type FilingStatus as TaxFilingStatus } from './billing/payrollTaxService';
 import { getTaxRules, computeProgressiveStateTax, TAX_REGISTRY_VERSION, TAX_REGISTRY_EFFECTIVE_YEAR } from './tax/taxRulesRegistry';
 import { claimPayrollTimeEntries } from './payroll/payrollTimeEntryClaimer';
-import { AtomicFinancialLockService } from './atomicFinancialLockService';
 import { multiplyFinancialValues, addFinancialValues, toFinancialString } from './financialCalculator';
 const PRE_TAX_BENEFIT_TYPES = ['401k', 'health_insurance', 'dental_insurance', 'vision_insurance'];
 const POST_TAX_BENEFIT_TYPES = ['life_insurance', 'other'];
@@ -1077,7 +1076,7 @@ export class PayrollAutomationEngine {
   }> {
     // Get workspace pay schedule — read from billingSettingsBlob.payrollCycle (canonical source)
     const workspace = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const blob = (workspace[0]?.billingSettingsBlob as Record<string, any>) || {};
+    const blob = (workspace[0]?.billingSettingsBlob as Record<string, unknown>) || {};
     const paySchedule: string = blob.payrollCycle || workspace[0]?.payrollSchedule || 'bi-weekly';
 
     // Use custom period dates if provided, otherwise auto-detect
@@ -1175,7 +1174,7 @@ export class PayrollAutomationEngine {
             affectedEmployeeIds: [employeeSummary.employeeId],
             employeeCount: 1,
           },
-        }).catch((err: any) => log.warn('[PayrollAuto] payroll_zero_rate_detected publish failed (non-blocking):', err.message));
+        }).catch((err: unknown) => log.warn('[PayrollAuto] payroll_zero_rate_detected publish failed (non-blocking):', err.message));
         // CRITICAL: Skip this employee entirely — do NOT create a $0 payroll entry and do NOT
         // mark their time entries as payrolled. Hours stay unpayrolled so a manager can set
         // the correct rate and re-run payroll. Creating a $0 entry would permanently orphan
@@ -1240,7 +1239,7 @@ export class PayrollAutomationEngine {
             const warning = `1099-NEC APPROACHING: Contractor ${employeeSummary.employeeName} has $${newYtdTotal.toFixed(2)} YTD in ${calendarYear} — approaching $600 threshold.`;
             allWarnings.push(warning);
           }
-        } catch (thresholdErr: any) {
+        } catch (thresholdErr: unknown) {
           log.warn(`[AI Payroll™] 1099 threshold check failed for ${employeeSummary.employeeName}:`, thresholdErr.message);
         }
       } else {
@@ -1365,9 +1364,9 @@ export class PayrollAutomationEngine {
       allTimeEntryIds.push(...employeeSummary.entries.map(e => e.timeEntryId));
 
       // Detect manually-edited entries — record in payroll audit notes so ledger is never blind
-      const editedEntries = employeeSummary.entries.filter((e: any) => e.manuallyEdited);
+      const editedEntries = employeeSummary.entries.filter((e: unknown) => e.manuallyEdited);
       if (editedEntries.length > 0) {
-        const reasons = editedEntries.map((e: any) => e.manualEditReason).filter(Boolean).join('; ');
+        const reasons = editedEntries.map((e: unknown) => e.manualEditReason).filter(Boolean).join('; ');
         const note = reasons
           ? `AUDIT: ${editedEntries.length} time entr${editedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before payroll. Reason(s): ${reasons}`
           : `AUDIT: ${editedEntries.length} time entr${editedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before payroll.`;
@@ -1390,6 +1389,15 @@ export class PayrollAutomationEngine {
     // C5: Wrap payroll run creation, payroll entries, and time entry marking in a single
     // atomic transaction. If any step fails, the entire payroll is rolled back —
     // no orphaned run records and no entries marked payrolled without a corresponding run.
+
+    // One-week-in-arrears invariant (bi-weekly default).
+    // Compliance constraint: bi-weekly payroll for security operations is processed one full
+    // week after period end so timesheets can be approved, edits flagged, and tax-period
+    // boundaries respected. We set disbursementDate = periodEnd + 7d explicitly here; if a
+    // workspace's policy ever overrides this, the override should be applied AFTER this default.
+    const arrearsDays = 7;
+    const expectedDisbursementDate = new Date(payPeriod.end.getTime() + arrearsDays * 24 * 60 * 60 * 1000);
+
     const payrollRun = await db.transaction(async (tx) => {
       const [run] = await tx
         .insert(payrollRuns)
@@ -1401,6 +1409,7 @@ export class PayrollAutomationEngine {
           runType: 'regular',
           isOffCycle: false,
           disbursementStatus: 'pending',
+          disbursementDate: expectedDisbursementDate,
           workerTypeBreakdown,
           totalGrossPay: totalGrossPay.toFixed(2),
           totalTaxes: totalActualTaxes.toFixed(2),
@@ -1465,31 +1474,6 @@ export class PayrollAutomationEngine {
           tx,
         });
         log.info(`[AI Payroll™] Claimed ${claimed.claimedCount}/${claimed.requestedCount} entries for run ${run.id} — within transaction`);
-
-        // Write per-entry FLSA-bucketed hours back to the source time_entries
-        // so downstream readers (billing path, margin report fallback) see
-        // accurate regular/OT/holiday splits. Without this, time_entries.
-        // overtimeHours stays NULL and the billing path bills everything at
-        // straight rate — silently understating revenue and inflating the
-        // computed gross margin.
-        for (const empSummary of aggregationResult.employeeSummaries) {
-          for (const entry of empSummary.entries) {
-            await tx.update(timeEntries)
-              .set({
-                regularHours: entry.regularHours.toFixed(2),
-                overtimeHours: entry.overtimeHours.toFixed(2),
-                holidayHours: entry.holidayHours.toFixed(2),
-                payableAmount: entry.totalPay.toFixed(2),
-                capturedPayRate: entry.payRate.toFixed(2),
-                updatedAt: new Date(),
-              })
-              .where(and(
-                eq(timeEntries.id, entry.timeEntryId),
-                eq(timeEntries.workspaceId, workspaceId),
-              ));
-          }
-        }
-        log.info(`[AI Payroll™] Wrote per-entry hours buckets back to ${allTimeEntryIds.length} time entries`);
       }
 
       // FIX-3: Ledger write INSIDE the payroll transaction.
@@ -1538,7 +1522,7 @@ export class PayrollAutomationEngine {
           })),
         },
       });
-    } catch (auditErr: any) {
+    } catch (auditErr: unknown) {
       log.warn('[AI Payroll™] overtime_calculated audit log failed (non-fatal):', auditErr?.message);
     }
 
@@ -1575,7 +1559,6 @@ export class PayrollAutomationEngine {
           affectedEmployeeIds: Array.from(manualEditNotesMap.keys()),
           affectedEmployeeNames: affectedNames,
           totalAffected: manualEditNotesMap.size,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: 'audit_flag',
         },
       }).catch((err) => log.warn('[payrollAutomation] Fire-and-forget failed:', err));
@@ -1598,7 +1581,6 @@ export class PayrollAutomationEngine {
       calculations,
       timeEntryIds: allTimeEntryIds, // Return for marking as payrolled after approval
       warnings: allWarnings, // Surface warnings to caller
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       errors: allErrors, // Explicit hard-block errors — zero-rate employees, data integrity failures
       hasBlockedEmployees: zeroRateEmployees.length > 0, // True if any employees were blocked due to missing rates
       zeroRateEmployees, // Employees with hours but $0 gross pay
@@ -1606,19 +1588,9 @@ export class PayrollAutomationEngine {
   }
   
   /**
-   * Approve payroll run (1% human QC step).
-   *
-   * Marks time entries as payrolled after approval. Idempotent w.r.t. the
-   * claim state of the source entries — the function tolerates being called
-   * for runs that already claimed entries at creation (processAutomatedPayroll
-   * path) AND for runs that defer the claim until approval. Callers can
-   * always pass the full timeEntryIds list without needing to know which
-   * workflow created the run.
-   *
-   * Behaviour per entry:
-   *   - already claimed by THIS run     → no-op (idempotent re-approval safe)
-   *   - already claimed by ANOTHER run  → throw (data-corruption guard)
-   *   - unclaimed                       → claim atomically inside this txn
+   * Approve payroll run (1% human QC step)
+   * Marks time entries as payrolled after approval
+   * BACKWARD COMPATIBLE: timeEntryIds optional for existing callers
    */
   static async approvePayrollRun(payrollRunId: string, approverId: string, timeEntryIds?: string[]): Promise<void> {
     // ATOMIC: both the payroll run status update and all time-entry markings execute
@@ -1642,43 +1614,20 @@ export class PayrollAutomationEngine {
         throw new Error(`Payroll run ${payrollRunId} not found`);
       }
 
+      // Bulk-claim source time entries atomically via canonical claimer.
+      // workspaceId is sourced from the returning() row above so this approval path stays
+      // self-contained — callers do not need to pass it separately.
       if (timeEntryIds && timeEntryIds.length > 0) {
-        // Inspect current claim state so we can split entries into
-        // already-claimed-by-this-run, claimed-by-another-run, and unclaimed.
-        const existing = await tx
-          .select({ id: timeEntries.id, payrollRunId: timeEntries.payrollRunId, payrolledAt: timeEntries.payrolledAt })
-          .from(timeEntries)
-          .where(and(
-            eq(timeEntries.workspaceId, row.workspaceId),
-            inArray(timeEntries.id, timeEntryIds),
-          ));
-
-        const claimedByOtherRun = existing.filter(e => e.payrolledAt !== null && e.payrollRunId && e.payrollRunId !== payrollRunId);
-        if (claimedByOtherRun.length > 0) {
-          throw new Error(
-            `[approvePayrollRun] Refusing to mark ${claimedByOtherRun.length} time entries already claimed by other payroll runs: ` +
-            claimedByOtherRun.slice(0, 5).map(e => `${e.id}→run:${e.payrollRunId}`).join(', ') +
-            (claimedByOtherRun.length > 5 ? ` +${claimedByOtherRun.length - 5} more` : '')
-          );
-        }
-
-        const alreadyClaimedHere = existing.filter(e => e.payrollRunId === payrollRunId).length;
-        const unclaimedIds = existing.filter(e => e.payrolledAt === null).map(e => e.id);
-
-        if (unclaimedIds.length > 0) {
-          const claimed = await claimPayrollTimeEntries({
-            workspaceId: row.workspaceId,
-            timeEntryIds: unclaimedIds,
-            payrollRunId,
-            requireAll: true,
-            tx,
-          });
-          log.info(`[AI Payroll™] Approved run ${payrollRunId}: ${alreadyClaimedHere} entries already claimed, claimed ${claimed.claimedCount} new`);
-        } else {
-          log.info(`[AI Payroll™] Approved run ${payrollRunId}: all ${alreadyClaimedHere} entries already claimed at run creation — no-op`);
-        }
+        const claimed = await claimPayrollTimeEntries({
+          workspaceId: row.workspaceId,
+          timeEntryIds,
+          payrollRunId,
+          requireAll: true,
+          tx,
+        });
+        log.info(`[AI Payroll™] Claimed ${claimed.claimedCount}/${claimed.requestedCount} entries for run ${payrollRunId}`);
       } else {
-        log.info(`[AI Payroll™] Approved run ${payrollRunId} with no timeEntryIds passed — assuming creation-time claim path`);
+        log.warn(`[AI Payroll™] Approved payroll ${payrollRunId} without marking entries - timeEntryIds not provided`);
       }
 
       return row;
@@ -1763,14 +1712,16 @@ export async function voidPayrollRun(
         }).where(eq(payrollEntries.id, entry.id));
       }
 
-      // Release time_entries via the canonical gatekeeper. The run's status is
-      // now 'draft' (set above in this same tx), so PAYROLL_RELEASABLE_STATUSES
-      // permits release. If a future caller skips the status flip and tries to
-      // void a 'disbursing'/'paid'/'completed'/'partial' run, releaseFromPayroll
-      // throws FinancialLockConflict instead of silently breaking the audit chain.
-      const { released } = await AtomicFinancialLockService.releaseFromPayroll(runId, tx);
-      if (released > 0) {
-        log.info(`[AI Payroll] Void: released ${released} time entries from run ${runId}`);
+      // Reset payrolledAt on all time entries linked to this run so they are eligible
+      // for re-processing in the next payroll run. Without this, voided entries would
+      // be permanently locked out of future payrolls.
+      const resetResult = await tx
+        .update(timeEntries)
+        .set({ payrolledAt: null, payrollRunId: null, updatedAt: new Date() })
+        .where(eq(timeEntries.payrollRunId, runId))
+        .returning({ id: timeEntries.id });
+      if (resetResult.length > 0) {
+        log.info(`[AI Payroll] Void: reset payrolledAt on ${resetResult.length} time entries (run ${runId})`);
       }
     });
 
@@ -1833,7 +1784,7 @@ export async function amendPayrollEntry(
     netPay?: string;
     reason: string;
   }
-): Promise<{ success: boolean; originalEntry?: any; amendedEntry?: any; error?: string }> {
+): Promise<{ success: boolean; originalEntry?: unknown; amendedEntry?: unknown; error?: string }> {
   try {
     const [entry] = await db.select().from(payrollEntries)
       .where(and(eq(payrollEntries.id, entryId), eq(payrollEntries.workspaceId, workspaceId)))
@@ -1860,7 +1811,7 @@ export async function amendPayrollEntry(
 
     const originalSnapshot = { ...entry };
 
-    const updateFields: Record<string, any> = {
+    const updateFields: Record<string, unknown> = {
       updatedAt: new Date(),
       notes: `${entry.notes || ''}\n[AMENDED ${new Date().toISOString()}] by ${userId}: ${amendments.reason}` +
         `\nOriginal values: gross=${entry.grossPay}, net=${entry.netPay}, regHrs=${entry.regularHours}, otHrs=${entry.overtimeHours}`,
@@ -1914,7 +1865,7 @@ export async function amendPayrollEntry(
 // Export convenience functions for use in routes
 export const detectPayPeriod = async (workspaceId: string) => {
   const workspace = await db.select({ billingSettingsBlob: workspaces.billingSettingsBlob }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-  const blob = (workspace[0]?.billingSettingsBlob || {}) as Record<string, any>;
+  const blob = (workspace[0]?.billingSettingsBlob || {}) as Record<string, unknown>;
   // payrollCycle stored in billingSettingsBlob: weekly | biweekly | semimonthly | monthly
   const rawCycle: string = blob.payrollCycle || 'bi-weekly';
   // Normalize: biweekly → bi-weekly, semimonthly → semi-monthly
@@ -1929,6 +1880,18 @@ export const detectPayPeriod = async (workspaceId: string) => {
     periodEnd: period.end,
     periodType: period.type
   };
+};
+
+export const calculatePayroll = (params: {
+  timeEntries: TimeEntry[];
+  employeeId: string;
+  employeeName: string;
+  hourlyRate: number;
+  taxState: string;
+}) => {
+  // Legacy function - use processAutomatedPayroll instead
+  log.warn('[AI Payroll™] Legacy calculatePayroll called - use processAutomatedPayroll with aggregator instead');
+  throw new Error('calculatePayroll is deprecated - use processAutomatedPayroll instead');
 };
 
 export const createAutomatedPayrollRun = async (params: {
@@ -2011,7 +1974,7 @@ export async function executePayrollEntry(
 
         log.warn(`[InternalPayroll] Stripe payout failed for ${employeeId}: ${payoutResult.error}, falling back to manual`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[InternalPayroll] Stripe Connect error for ${employeeId}:`, (err instanceof Error ? err.message : String(err)));
     }
   }
@@ -2053,7 +2016,7 @@ export async function executePayrollEntry(
         error: achResult.reason,
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Non-fatal — fall through to manual if Plaid ACH fails
     log.warn(`[InternalPayroll] Plaid ACH transfer failed for ${employeeId} (falling back to manual):`, (err instanceof Error ? err.message : String(err)));
   }
@@ -2061,7 +2024,6 @@ export async function executePayrollEntry(
 
   try {
     const { payrollPayouts } = await import('@shared/schema');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(payrollPayouts).values({
       workspaceId,
       payrollRunId: entry.payrollRunId,
@@ -2172,7 +2134,7 @@ export async function executeInternalPayroll(
   // cannot both succeed — only the first UPDATE returns rows.
   try {
     const disbursing = await db.update(payrollRuns)
-      .set({ status: 'disbursing' as any, updatedAt: new Date() })
+      .set({ status: 'disbursing', updatedAt: new Date() })
       .where(and(
         eq(payrollRuns.id, payrollRunId),
         eq(payrollRuns.workspaceId, workspaceId),
@@ -2181,18 +2143,17 @@ export async function executeInternalPayroll(
       .returning({ id: payrollRuns.id });
     if (!disbursing.length) {
       logAudit('STATUS_UPDATE_SKIP', 'Payroll run already being executed by another process — aborting duplicate');
-      return { success: false, message: 'Payroll run is already executing' } as any;
+      return { success: false, message: 'Payroll run is already executing' } as Record<string, unknown>;
     }
     platformEventBus.publish({
       type: 'payroll_run_disbursing',
       workspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       payrollRunId,
       transferCount: entries.length,
       nachaCount: 0,
     }).catch((err) => log.warn('[payrollAutomation] Fire-and-forget failed:', err));
     logAudit('STATUS_UPDATE', `Payroll run status set to 'disbursing' — initiating ${entries.length} transfers`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     logAudit('STATUS_UPDATE_WARN', `Could not set disbursing status: ${(err instanceof Error ? err.message : String(err))}`);
   }
 
@@ -2283,7 +2244,7 @@ export async function executeInternalPayroll(
         errors.push(`${entry.employeeId}: ${result.error}`);
         logAudit('PAYOUT_FAILED', `Failed for ${entry.employeeId}: ${result.error}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       failedEntries++;
       errors.push(`${entry.employeeId}: ${(err instanceof Error ? err.message : String(err))}`);
       logAudit('PAYOUT_ERROR', `Error processing ${entry.employeeId}: ${(err instanceof Error ? err.message : String(err))}`);
@@ -2306,7 +2267,7 @@ export async function executeInternalPayroll(
       );
 
       logAudit('JOURNAL_ENTRIES', `Created ${journalEntriesCreated} journal entries, employer taxes: $${totalEmployerTaxes.toFixed(2)}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logAudit('JOURNAL_ERROR', `Failed to create journal entries: ${(err instanceof Error ? err.message : String(err))}`);
       errors.push(`Journal entries failed: ${(err instanceof Error ? err.message : String(err))}`);
     }
@@ -2322,7 +2283,7 @@ export async function executeInternalPayroll(
     'pending';
 
   try {
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: finalStatus,
       disbursementStatus: finalDisbursementStatus,
       disbursedAt: (automatedPayouts > 0 || pendingManualPayments > 0) ? new Date() : undefined,
@@ -2341,7 +2302,7 @@ export async function executeInternalPayroll(
       .where(eq(payrollRuns.id, payrollRunId));
 
     logAudit('STATUS_UPDATE', `Payroll run status updated to '${finalStatus}', disbursement: '${finalDisbursementStatus}'`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     logAudit('STATUS_UPDATE_ERROR', `Failed to update payroll run status: ${(err instanceof Error ? err.message : String(err))}`);
     errors.push(`Status update failed: ${(err instanceof Error ? err.message : String(err))}`);
   }
@@ -2372,7 +2333,7 @@ export async function executeInternalPayroll(
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (pubErr: any) {
+  } catch (pubErr: unknown) {
     log.warn('[InternalPayroll] Event publish failed (non-critical):', pubErr?.message);
   }
 

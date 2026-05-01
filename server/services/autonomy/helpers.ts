@@ -32,7 +32,7 @@ export type IdempotencyStatus = 'processing' | 'completed' | 'failed';
 interface IdempotencyParams {
   workspaceId: string;
   operationType: OperationType;
-  requestData: Record<string, any>; // Hash these params for fingerprint
+  requestData: Record<string, unknown>; // Hash these params for fingerprint
   ttlDays?: number; // Default: 7 days
 }
 
@@ -47,12 +47,12 @@ interface IdempotencyResult {
  * Generate fingerprint hash from request parameters
  * Ensures identical requests produce identical hashes
  */
-function generateFingerprint(params: Record<string, any>): string {
+function generateFingerprint(params: Record<string, unknown>): string {
   // Sort keys to ensure consistent ordering
   const sorted = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key];
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, unknown>);
   
   const canonical = JSON.stringify(sorted);
   return crypto.createHash('sha256').update(canonical).digest('hex');
@@ -148,11 +148,11 @@ export async function executeIdempotencyCheck(params: IdempotencyParams): Promis
     SELECT * FROM upsert
   `);
 
-  if (!result || (result as any[]).length === 0) {
+  if (!result || (result as unknown[]).length === 0) {
     throw new Error('[IDEMPOTENCY] No rows returned from atomic upsert');
   }
 
-  const row = (result as any[])[0] as any;
+  const row = (result as unknown[])[0] as unknown;
   const isNew = row.is_fresh_insert || row.is_resurrected;
 
   if (isNew) {
@@ -187,7 +187,7 @@ export async function checkIdempotency(params: IdempotencyParams): Promise<Idemp
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await executeIdempotencyCheck(params);
-    } catch (error: any) {
+    } catch (error : unknown) {
       const isRetryable = 
         error.code === '40001' || // serialization_failure
         error.code === '40P01' || // deadlock_detected
@@ -223,15 +223,15 @@ export async function updateIdempotencyResult(
     idempotencyKeyId: string;
     status: 'completed' | 'failed' | 'pending_approval';
     resultId?: number | string;
-    resultMetadata?: Record<string, any>;
+    resultMetadata?: Record<string, unknown>;
     errorMessage?: string;
     errorStack?: string;
   },
-  tx?: any // Transaction client (PgTransaction)
+  tx?: unknown // Transaction client (PgTransaction)
 ): Promise<void> {
   const { idempotencyKeyId, status, resultId, resultMetadata, errorMessage, errorStack } = params;
   
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
     status,
     completedAt: new Date(),
   };
@@ -275,7 +275,7 @@ export async function updateIdempotencyResult(
 export async function completeIdempotencyKey(
   idempotencyKeyId: string,
   resultId: string,
-  resultMetadata?: Record<string, any>
+  resultMetadata?: Record<string, unknown>
 ): Promise<void> {
   await updateIdempotencyResult({
     idempotencyKeyId,
@@ -487,25 +487,18 @@ export async function getClientRateAtDate(params: RateVersionParams): Promise<Cl
   // Check history
   const [historicalRate] = await db
     .select()
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     .from(clientRateHistory)
     .where(
       and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(clientRateHistory.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(clientRateHistory.clientId, clientId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(clientRateHistory.validFrom, effectiveDate),
         or(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           isNull(clientRateHistory.validTo),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           gte(clientRateHistory.validTo, effectiveDate)
         )
       )
     )
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     .orderBy(clientRateHistory.validFrom)
     .limit(1);
 

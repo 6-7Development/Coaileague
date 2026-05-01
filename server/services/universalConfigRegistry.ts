@@ -28,7 +28,7 @@ export type ConfigDomain = typeof CONFIG_DOMAINS[keyof typeof CONFIG_DOMAINS];
 
 export class UniversalConfigRegistry {
   private static instance: UniversalConfigRegistry;
-  private cache: Map<string, { value: any; expiry: number }> = new Map();
+  private cache: Map<string, { value: unknown; expiry: number }> = new Map();
   private cacheTTL = 60000;
 
   static getInstance(): UniversalConfigRegistry {
@@ -51,7 +51,7 @@ export class UniversalConfigRegistry {
     return undefined;
   }
 
-  private setCache(cacheKey: string, value: any): void {
+  private setCache(cacheKey: string, value: unknown): void {
     this.cache.set(cacheKey, { value, expiry: Date.now() + this.cacheTTL });
   }
 
@@ -125,7 +125,7 @@ export class UniversalConfigRegistry {
       description?: string;
       valueType?: string;
       priority?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
       changedBy?: string;
       changeSource?: string;
       reason?: string;
@@ -303,7 +303,7 @@ export class UniversalConfigRegistry {
     }
   }
 
-  async getAllConfig(workspaceId?: string): Promise<Record<string, Record<string, any>>> {
+  async getAllConfig(workspaceId?: string): Promise<Record<string, Record<string, unknown>>> {
     try {
       const conditions = [eq(platformConfigRegistry.isActive, true)];
       const results = await db
@@ -312,7 +312,7 @@ export class UniversalConfigRegistry {
         .where(and(...conditions))
         .orderBy(platformConfigRegistry.domain, platformConfigRegistry.key);
 
-      const config: Record<string, Record<string, any>> = {};
+      const config: Record<string, Record<string, unknown>> = {};
 
       for (const entry of results) {
         if (!entry.isGlobal && entry.workspaceId !== workspaceId) continue;
@@ -383,7 +383,7 @@ export class UniversalConfigRegistry {
 
       if (!snapshot) return false;
 
-      const data = snapshot.snapshotData as Record<string, Record<string, any>>;
+      const data = snapshot.snapshotData as Record<string, Record<string, unknown>>;
 
       for (const [domain, entries] of Object.entries(data)) {
         for (const [key, value] of Object.entries(entries)) {
@@ -431,7 +431,7 @@ export class UniversalConfigRegistry {
     let skipped = 0;
 
     try {
-      const featureDefaults: Record<string, any> = {
+      const featureDefaults: Record<string, unknown> = {
         'ai.autoScheduling': true,
         'ai.sentimentAnalysis': true,
         'ai.predictiveAnalytics': true,
@@ -475,7 +475,7 @@ export class UniversalConfigRegistry {
         seeded++;
       }
 
-      const seasonalDefaults: Record<string, any> = {
+      const seasonalDefaults: Record<string, unknown> = {
         'enabled': false,
         'currentTheme': 'default',
         'autoDetect': true,
@@ -497,7 +497,7 @@ export class UniversalConfigRegistry {
         seeded++;
       }
 
-      const systemDefaults: Record<string, any> = {
+      const systemDefaults: Record<string, unknown> = {
         'platform.name': process.env.PLATFORM_NAME || 'CoAIleague',
         'platform.tagline': 'AI-Powered Workforce Intelligence',
         'platform.version': '1.0.0',
@@ -530,7 +530,7 @@ export class UniversalConfigRegistry {
     }
   }
 
-  async trinityExecute(action: string, params: Record<string, any>): Promise<{ success: boolean; message: string; data?: any }> {
+  async trinityExecute(action: string, params: Record<string, unknown>): Promise<{ success: boolean; message: string; data?: unknown }> {
     const source = 'trinity_ai';
     const changedBy = 'trinity';
 
@@ -606,7 +606,7 @@ export class UniversalConfigRegistry {
         default:
           return { success: false, message: `Unknown action: ${action}. Available: get_config, set_config, toggle_feature, set_seasonal_theme, disable_seasonal, create_snapshot, restore_snapshot, list_domain, get_all, set_maintenance_mode` };
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[ConfigRegistry] Trinity execute error (${action}):`, error);
       return { success: false, message: `Error: ${(error instanceof Error ? error.message : String(error))}` };
     }
@@ -616,8 +616,8 @@ export class UniversalConfigRegistry {
     domain: string;
     key: string;
     action: string;
-    previousValue: any;
-    newValue: any;
+    previousValue: unknown;
+    newValue: unknown;
     changedBy?: string;
     changeSource?: string;
     workspaceId?: string;

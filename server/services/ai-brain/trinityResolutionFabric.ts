@@ -527,7 +527,7 @@ class TrinityResolutionFabricService {
         message: `${issue.description}\n\n${reason}${ticketId ? `\n\nTicket: ${ticketId}` : ''}`,
         severity: issue.priority === 'critical' ? 'critical' : 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
     } catch (err) {
       log.warn('[ResolutionFabric] Escalation notification failed:', err);
     }
@@ -552,7 +552,6 @@ class TrinityResolutionFabricService {
     issue: TrinityIssue,
   ): Promise<string | null> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await domainLeadSupervisorService.submitTask(domain, action, {
         workspaceId: issue.workspaceId,
         issueType: issue.type,
@@ -603,7 +602,7 @@ class TrinityResolutionFabricService {
         message: `You have ${result.rows.length} incident report(s) that were started but not completed. Please complete them as soon as possible.`,
         severity: 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       return [`Sent completion reminders for ${result.rows.length} incomplete incident report(s)`];
     } catch (_err) {
       return [];
@@ -640,7 +639,7 @@ class TrinityResolutionFabricService {
         message: `Trinity detected ${result.rows.length} officer(s) who have not clocked in for their shift (started 20+ minutes ago). Trinity has notified them and alerted their supervisor.`,
         severity: 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
 
       return [`Alerted ${result.rows.length} officer(s) about missed clock-in and notified supervisor`];
     } catch (_err) {
@@ -667,7 +666,7 @@ class TrinityResolutionFabricService {
         message: `Trinity sent renewal reminders to ${count} officer(s) whose licenses expire within 30 days. Renewal tracking has been updated.`,
         severity: 'info',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       return [`Sent renewal reminders to ${count} officer(s) with expiring licenses`];
     } catch (_err) {
       return [];
@@ -697,7 +696,7 @@ class TrinityResolutionFabricService {
         message: `Trinity detected ${count} unread client message(s) and sent auto-acknowledgments. Your account manager has been notified to follow up.`,
         severity: 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       return [`Auto-acknowledged ${count} unread client message(s) and notified account manager`];
     } catch (_err) {
       return [];
@@ -715,7 +714,7 @@ class TrinityResolutionFabricService {
         message: `${issue.description}\n\nTrinity has flagged this for your financial review. A variance report has been queued.`,
         severity: 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       actions.push(`Flagged ${issue.type} and notified finance team`);
     } catch (_err) { /* silent */ }
     return actions;
@@ -744,7 +743,7 @@ class TrinityResolutionFabricService {
         message: `${issue.description}\n\nTrinity has initiated recovery actions and notified the account manager. Client communication is recommended.`,
         severity: 'critical',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       actions.push('SLA breach escalated to account manager with recovery status');
     } catch (_err) { /* silent */ }
     return actions;
@@ -761,7 +760,7 @@ class TrinityResolutionFabricService {
         message: `${issue.description}\n\nTrinity has flagged this compliance gap and notified the compliance lead. Required documents have been queued for follow-up.`,
         severity: 'warning',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
       actions.push('Compliance gap flagged and remediation workflow initiated');
     } catch (_err) { /* silent */ }
     return actions;
@@ -812,8 +811,8 @@ class TrinityResolutionFabricService {
         `(${result.tier}, ${result.processingTimeMs}ms, confidence=${result.confidenceScore.toFixed(2)})`
       );
     } catch (err) {
-      const rfErrMsg = (err as any)?.message || (err as any)?.detail || String(err);
-      const rfErrCode = (err as any)?.code || 'unknown';
+      const rfErrMsg = (err as Error)?.message || (err as Error)?.detail || String(err);
+      const rfErrCode = (err as Error)?.code || 'unknown';
       log.warn(`[ResolutionFabric] Failed to record outcome (non-fatal) [${rfErrCode}]: ${rfErrMsg}`);
     }
   }
@@ -851,7 +850,7 @@ class TrinityResolutionFabricService {
         message: `${actionLines}\n\nNo action needed on your part.`,
         severity: 'info',
         source: 'trinity_resolution_fabric',
-      } as any);
+      } as unknown);
     } catch (_err) { /* silent */ }
   }
 

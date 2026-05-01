@@ -6,20 +6,17 @@ import { eq, and, desc, gte, count, sql } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityHelpdeskActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity helpdesk action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -55,7 +52,7 @@ export function registerHelpdeskActions() {
     const { workspaceId, status, limit = 10 } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
     const conditions = [eq(supportTickets.workspaceId, workspaceId)];
-    if (status) conditions.push(eq(supportTickets.status as any, status));
+    if (status) conditions.push(eq(supportTickets.status, status));
     const tickets = await db.select({
       id: supportTickets.id,
       ticketNumber: supportTickets.ticketNumber,
@@ -121,7 +118,6 @@ export function registerHelpdeskActions() {
     if (!workspaceId || !question || !answer) {
       return { error: 'workspaceId, question, and answer are required' };
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [faq] = await db.insert(helposFaqs).values({
       workspaceId,
       category,

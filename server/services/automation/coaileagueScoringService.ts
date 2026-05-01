@@ -85,7 +85,7 @@ export interface ScoringWeights {
 export interface EventContext {
   referenceId?: string;
   referenceType?: 'shift' | 'time_entry' | 'feedback' | 'certification' | 'document' | 'compliance' | 'grievance';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   triggeredBy?: string;
   isAutomatic?: boolean;
 }
@@ -292,7 +292,6 @@ export class CoAIleagueScoringService {
         ));
       
       // Log the event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [eventLog] = await db.insert(employeeEventLog).values({
         workspaceId,
         employeeId,
@@ -482,13 +481,11 @@ export class CoAIleagueScoringService {
   ): Promise<number> {
     try {
       // Get employee personality tags
-      const employeeTags = await (db as any).query.employeePersonalityTags.findMany({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      const employeeTags = await (db as Record<string, unknown>).query.employeePersonalityTags.findMany({
         where: eq(employeePersonalityTags.employeeId, employeeId),
       });
 
-      const clientPrefs = await (db as any).query.clientPersonalityPreferences.findMany({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      const clientPrefs = await (db as Record<string, unknown>).query.clientPersonalityPreferences.findMany({
         where: eq(clientPersonalityPreferences.clientId, clientId),
       });
 
@@ -500,7 +497,6 @@ export class CoAIleagueScoringService {
       let totalWeight = 0;
 
       for (const pref of clientPrefs) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const employeeHasTag = employeeTags.some(et => et.tagId === pref.tagId);
         const weight = parseFloat(pref.preferenceWeight || "0.5");
         

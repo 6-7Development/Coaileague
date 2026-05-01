@@ -211,7 +211,7 @@ interface MobileClientCardProps {
 }
 
 function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate, canEdit, canDelete }: MobileClientCardProps) {
-  const c = client as any;
+  const c = client as unknown;
   return (
     <Card data-testid={`card-client-${client.id}`}>
       <CardHeader className="pb-3">
@@ -231,9 +231,9 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                 {client.companyName}
               </div>
             )}
-            {(client as any).category && (client as any).category !== 'other' && (
+            {(client as unknown).category && (client as unknown).category !== 'other' && (
               <Badge variant="outline" className="mt-1 text-[10px]" data-testid={`badge-category-${client.id}`}>
-                {CLIENT_CATEGORIES[(client as any).category as ClientCategory]?.label || (client as any).category}
+                {CLIENT_CATEGORIES[(client as unknown).category as ClientCategory]?.label || (client as unknown).category}
               </Badge>
             )}
           </div>
@@ -245,12 +245,12 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                 pending/invited → ORANGE border  (awaiting client action)
                 accepted        → GREEN  border  (handshake complete)
                 expired         → RED    border  (> 7 days, Reaper swept) */}
-            {(client as any).portalVisualStatus && (client as any).portalVisualStatus !== 'accepted' && (
+            {(client as unknown).portalVisualStatus && (client as unknown).portalVisualStatus !== 'accepted' && (
               <Badge
                 variant="outline"
                 data-testid={`badge-portal-status-${client.id}`}
                 className={(() => {
-                  switch ((client as any).portalVisualStatus) {
+                  switch ((client as unknown).portalVisualStatus) {
                     case 'expired':  return 'text-[10px] border-red-500 text-red-600 dark:text-red-400';
                     case 'pending':
                     case 'invited':  return 'text-[10px] border-orange-500 text-orange-600 dark:text-orange-400';
@@ -258,9 +258,9 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                   }
                 })()}
               >
-                {(client as any).portalVisualStatus === 'expired'  ? 'Invite Expired' :
-                 (client as any).portalVisualStatus === 'invited'  ? 'Invite Pending' :
-                 (client as any).portalVisualStatus === 'pending'  ? 'Invite Sent' : null}
+                {(client as unknown).portalVisualStatus === 'expired'  ? 'Invite Expired' :
+                 (client as unknown).portalVisualStatus === 'invited'  ? 'Invite Pending' :
+                 (client as unknown).portalVisualStatus === 'pending'  ? 'Invite Sent' : null}
               </Badge>
             )}
             {!client.isActive && c.collectionsStatus && c.collectionsStatus !== 'none' && (
@@ -486,7 +486,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
 
   const handleEdit = (client: ClientWithInvoiceCount) => {
     setClientToEdit(client);
-    const c = client as any;
+    const c = client as unknown;
     setEditFormData({
       firstName: c.firstName || '',
       lastName: c.lastName || '',
@@ -537,7 +537,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
       // Refresh client data
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/clients/lookup'] });
-    } catch (error: any) {
+    } catch (error : unknown) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
@@ -628,7 +628,6 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
     },
   });
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const rawClients = data?.clients || [];
   const total = data?.total || 0;
   const pageCount = data?.pageCount || 0;
@@ -637,10 +636,10 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
   const clients = useMemo(() => {
     let filtered = rawClients;
     if (clientTierFilter !== 'all') {
-      filtered = filtered.filter((c: any) => (c.strategicTier || 'standard') === clientTierFilter);
+      filtered = filtered.filter((c) => (c.strategicTier || 'standard') === clientTierFilter);
     }
     if (clientCategoryFilter !== 'all') {
-      filtered = filtered.filter((c: any) => (c.category || 'other') === clientCategoryFilter);
+      filtered = filtered.filter((c) => (c.category || 'other') === clientCategoryFilter);
     }
     return filtered;
   }, [rawClients, clientTierFilter, clientCategoryFilter]);
@@ -648,22 +647,21 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
   const clientGroups = useMemo(() => {
     if (clientGroupBy === 'none') return [{ label: '', items: clients }];
     const groups: Record<string, ClientWithInvoiceCount[]> = {};
-    clients.forEach((c: any) => {
+    clients.forEach((c) => {
       let key = 'Unassigned';
       if (clientGroupBy === 'company') key = c.companyName || 'No Company';
       else if (clientGroupBy === 'category') {
-        const cat = (c as any).category || 'other';
+        const cat = (c as unknown).category || 'other';
         key = CLIENT_CATEGORIES[cat as ClientCategory]?.label || cat;
       }
-      else if (clientGroupBy === 'tier') key = ((c as any).strategicTier || 'standard').charAt(0).toUpperCase() + ((c as any).strategicTier || 'standard').slice(1);
-      else if (clientGroupBy === 'state') key = (c as any).state || 'No State';
+      else if (clientGroupBy === 'tier') key = ((c as unknown).strategicTier || 'standard').charAt(0).toUpperCase() + ((c as unknown).strategicTier || 'standard').slice(1);
+      else if (clientGroupBy === 'state') key = (c as unknown).state || 'No State';
       if (!groups[key]) groups[key] = [];
       groups[key].push(c);
     });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([label, items]) => ({ label, items }));
   }, [clients, clientGroupBy]);
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (!isLoading && (!data || !data.clients || data.clients.length === 0) && !params.search) {
     return (
       <Card data-testid="card-no-clients">
@@ -786,53 +784,29 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
   }
 
   const handleClose = () => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (editFormData.firstName !== (selectedClient?.firstName || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.lastName !== (selectedClient?.lastName || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.companyName !== (selectedClient?.companyName || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.category !== (selectedClient?.category || "other") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.email !== (selectedClient?.email || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.phone !== (selectedClient?.phone || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.address !== (selectedClient?.address || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.addressLine2 !== (selectedClient?.addressLine2 || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.city !== (selectedClient?.city || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.state !== (selectedClient?.state || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.postalCode !== (selectedClient?.postalCode || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.notes !== (selectedClient?.notes || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.billableRate !== (selectedClient?.billableRate?.toString() || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.billingCycle !== (selectedClient?.billingCycle || "monthly") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.paymentTermsDays !== (selectedClient?.paymentTermsDays?.toString() || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.preferredPaymentMethod !== (selectedClient?.preferredPaymentMethod || "check") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.autoSendInvoice !== (selectedClient?.autoSendInvoice ?? true) ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.pocName !== (selectedClient?.pocName || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.pocTitle !== (selectedClient?.pocTitle || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.pocPhone !== (selectedClient?.pocPhone || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.pocEmail !== (selectedClient?.pocEmail || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.apContactName !== (selectedClient?.apContactName || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.apContactEmail !== (selectedClient?.apContactEmail || "") ||
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         editFormData.apContactPhone !== (selectedClient?.apContactPhone || "")) {
       if (!confirm('You have unsaved changes. Discard them?')) return;
     }
@@ -869,7 +843,6 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 </div>
               )}
               <div className="grid gap-4">
-                {/* @ts-ignore */}
                 {group.items.map(client => (
                   <MobileClientCard
                     key={client.id}
@@ -945,7 +918,6 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                         </TableCell>
                       </TableRow>
                     )}
-                    {/* @ts-ignore */}
                     {group.items.map(client => (
                   <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
                     <TableCell className="font-medium" data-testid={`text-client-name-${client.id}`}>
@@ -962,9 +934,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {(client as any).category && (client as any).category !== 'other' ? (
+                      {(client as unknown).category && (client as unknown).category !== 'other' ? (
                         <Badge variant="outline" className="text-[10px]" data-testid={`badge-category-${client.id}`}>
-                          {CLIENT_CATEGORIES[(client as any).category as ClientCategory]?.label || (client as any).category}
+                          {CLIENT_CATEGORIES[(client as unknown).category as ClientCategory]?.label || (client as unknown).category}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
@@ -997,9 +969,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                         <Badge variant={client.isActive ? "default" : "secondary"} data-testid={`badge-status-${client.id}`}>
                           {client.isActive ? 'Active' : 'Inactive'}
                         </Badge>
-                        {!(client as any).isActive && (client as any).collectionsStatus && (client as any).collectionsStatus !== 'none' && (
+                        {!(client as unknown).isActive && (client as unknown).collectionsStatus && (client as unknown).collectionsStatus !== 'none' && (
                           <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600 dark:text-yellow-400" data-testid={`badge-collections-${client.id}`}>
-                            {(client as any).collectionsStatus === 'active' ? 'In Collections' : (client as any).collectionsStatus === 'written_off' ? 'Written Off' : (client as any).collectionsStatus === 'resolved' ? 'Resolved' : (client as any).collectionsStatus}
+                            {(client as unknown).collectionsStatus === 'active' ? 'In Collections' : (client as unknown).collectionsStatus === 'written_off' ? 'Written Off' : (client as unknown).collectionsStatus === 'resolved' ? 'Resolved' : (client as unknown).collectionsStatus}
                           </Badge>
                         )}
                       </div>
@@ -1308,9 +1280,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 <p className="text-sm">
                   The client's account will be restored to active status. Any open collections pipeline will be marked as resolved. You will need to manually reschedule shifts.
                 </p>
-                {(clientToReactivate as any)?.deactivationReason && (
+                {(clientToReactivate as unknown)?.deactivationReason && (
                   <div className="p-3 rounded-md bg-muted text-xs text-muted-foreground">
-                    Previously deactivated for: <span className="font-medium">{(clientToReactivate as any).deactivationReason?.replace(/_/g, ' ')}</span>
+                    Previously deactivated for: <span className="font-medium">{(clientToReactivate as unknown).deactivationReason?.replace(/_/g, ' ')}</span>
                   </div>
                 )}
               </div>
@@ -1332,7 +1304,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
       </AlertDialog>
 
       <UniversalModal open={editDialogOpen} onOpenChange={(open) => { if (!open) handleClose(); else setEditDialogOpen(true); }}>
-        <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-client">
+        <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-client">
           <UniversalModalHeader>
             <div className="flex items-center justify-between w-full">
               <UniversalModalTitle>Edit Client</UniversalModalTitle>
@@ -1342,7 +1314,6 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 className="h-8 w-8 -mr-2"
                 onClick={handleClose}
               >
-                {/* @ts-ignore */}
                 <X className="h-4 w-4" />
               </Button>
             </div>

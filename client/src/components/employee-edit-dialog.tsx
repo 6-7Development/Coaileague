@@ -144,8 +144,8 @@ export function EmployeeEditDialog({
   // Reset form when employee changes
   useEffect(() => {
     if (employee) {
-      const hireDateStr = (employee as any).hireDate
-        ? new Date((employee as any).hireDate).toISOString().split('T')[0]
+      const hireDateStr = (employee as unknown).hireDate
+        ? new Date((employee as unknown).hireDate).toISOString().split('T')[0]
         : "";
       setFormData({
         firstName: employee.firstName || "",
@@ -153,16 +153,16 @@ export function EmployeeEditDialog({
         email: employee.email || "",
         phone: employee.phone || "",
         role: employee.role || "",
-        position: (employee as any).position || "",
-        organizationalTitle: (employee as any).organizationalTitle || "staff",
+        position: (employee as unknown).position || "",
+        organizationalTitle: (employee as unknown).organizationalTitle || "staff",
         hourlyRate: employee.hourlyRate?.toString() || "",
-        payType: (employee as any).payType || "hourly",
-        payFrequency: (employee as any).payFrequency || "biweekly",
+        payType: (employee as unknown).payType || "hourly",
+        payFrequency: (employee as unknown).payFrequency || "biweekly",
         hireDate: hireDateStr,
         workspaceRole: (employee.workspaceRole || "staff") as WorkspaceRole,
-        isArmed: (employee as any).isArmed ?? false,
-        travelRadiusMiles: (employee as any).travelRadiusMiles ?? 25,
-        availabilityMode: ((employee as any).availabilityMode ?? "open") as "open" | "restricted" | "unavailable",
+        isArmed: (employee as unknown).isArmed ?? false,
+        travelRadiusMiles: (employee as unknown).travelRadiusMiles ?? 25,
+        availabilityMode: ((employee as unknown).availabilityMode ?? "open") as "open" | "restricted" | "unavailable",
       });
       setActiveTab("details");
     }
@@ -175,7 +175,7 @@ export function EmployeeEditDialog({
 
   // Edit mutation
   const editMutation = useMutation({
-    mutationFn: async (data: { id: string; updates: Record<string, any> }) => {
+    mutationFn: async (data: { id: string; updates: Record<string, unknown> }) => {
       const response = await secureFetch(`/api/employees/${data.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -431,7 +431,7 @@ export function EmployeeEditDialog({
 
   const handleSave = () => {
     if (!employee?.id) return;
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
@@ -505,14 +505,14 @@ export function EmployeeEditDialog({
         formData.email !== (employee?.email || "") ||
         formData.phone !== (employee?.phone || "") ||
         formData.role !== (employee?.role || "") ||
-        formData.position !== ((employee as any)?.position || "") ||
-        formData.organizationalTitle !== ((employee as any)?.organizationalTitle || "staff") ||
+        formData.position !== ((employee as unknown)?.position || "") ||
+        formData.organizationalTitle !== ((employee as unknown)?.organizationalTitle || "staff") ||
         formData.hourlyRate !== (employee?.hourlyRate?.toString() || "") ||
-        formData.payType !== ((employee as any)?.payType || "hourly") ||
-        formData.payFrequency !== ((employee as any)?.payFrequency || "biweekly") ||
-        formData.isArmed !== ((employee as any)?.isArmed ?? false) ||
-        formData.travelRadiusMiles !== ((employee as any)?.travelRadiusMiles ?? 25) ||
-        formData.availabilityMode !== ((employee as any)?.availabilityMode ?? "open")) {
+        formData.payType !== ((employee as unknown)?.payType || "hourly") ||
+        formData.payFrequency !== ((employee as unknown)?.payFrequency || "biweekly") ||
+        formData.isArmed !== ((employee as unknown)?.isArmed ?? false) ||
+        formData.travelRadiusMiles !== ((employee as unknown)?.travelRadiusMiles ?? 25) ||
+        formData.availabilityMode !== ((employee as unknown)?.availabilityMode ?? "open")) {
       if (!confirm('You have unsaved changes. Discard them?')) return;
     }
     onOpenChange(false);
@@ -659,7 +659,7 @@ export function EmployeeEditDialog({
                       })()}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-[40vh]">
+                  <SelectContent className="max-h-[40dvh]">
                     {positionsByCategory.map(cat => (
                       <SelectGroup key={cat.id}>
                         <SelectLabel className="flex items-center gap-1.5 text-xs">
@@ -789,7 +789,7 @@ export function EmployeeEditDialog({
                 />
               </div>
 
-              {(employee as any)?.armedLicenseVerified !== undefined && (
+              {(employee as unknown)?.armedLicenseVerified !== undefined && (
                 <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
                   <div>
                     <p className="text-xs font-medium flex items-center gap-1">
@@ -799,13 +799,13 @@ export function EmployeeEditDialog({
                   </div>
                   <Badge
                     variant="outline"
-                    className={(employee as any).armedLicenseVerified
+                    className={(employee as unknown).armedLicenseVerified
                       ? "text-green-700 border-green-400 bg-green-50 dark:text-green-400 dark:bg-green-950/30"
                       : "text-muted-foreground"
                     }
                     data-testid="status-license-verified"
                   >
-                    {(employee as any).armedLicenseVerified ? "Verified" : "Pending"}
+                    {(employee as unknown).armedLicenseVerified ? "Verified" : "Pending"}
                   </Badge>
                 </div>
               )}
@@ -836,7 +836,7 @@ export function EmployeeEditDialog({
                     data-testid="display-scheduling-score"
                   >
                     <span className="text-sm font-semibold">
-                      {(employee as any)?.schedulingScore ?? 75}
+                      {(employee as unknown)?.schedulingScore ?? 75}
                     </span>
                     <span className="text-xs text-muted-foreground">/ 100</span>
                   </div>
@@ -966,7 +966,7 @@ export function EmployeeEditDialog({
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {currentAssignments.map((a: any) => {
+                    {currentAssignments.map((a) => {
                       const mgr = allEmployees.find((e) => e.id === a.managerId);
                       const label = mgr
                         ? `${mgr.firstName} ${mgr.lastName}`
@@ -1312,11 +1312,11 @@ function ConfirmationDialogs({
   employee: Employee | null;
   pendingRole: WorkspaceRole | null;
   confirmRoleChange: () => void;
-  suspendMutation: any;
-  removeMutation: any;
-  roleChangeMutation: any;
-  terminateMutation: any;
-  reactivateMutation: any;
+  suspendMutation: unknown;
+  removeMutation: unknown;
+  roleChangeMutation: unknown;
+  terminateMutation: unknown;
+  reactivateMutation: unknown;
   overageWarning: { message: string; projectedMonthlyCharge: string } | null;
 }) {
   return (

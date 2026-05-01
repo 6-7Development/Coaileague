@@ -107,7 +107,6 @@ async function setupCertificationsForEmployee(employeeId: string, role: string):
     for (const certType of certsToCreate) {
       const dueDate = addDays(new Date(), 30);
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(employeeCertifications).values({
         employeeId,
         certificationType: certType.id,
@@ -177,7 +176,7 @@ export async function ensureUserHasEmployeeRecord(
     await db.update(employees)
       .set({ 
         userId: user.id,
-        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
         organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
         updatedAt: new Date(),
       })
@@ -204,7 +203,7 @@ export async function ensureUserHasEmployeeRecord(
     await db.update(employees)
       .set({ 
         userId: user.id,
-        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
         organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
         updatedAt: new Date(),
       })
@@ -231,7 +230,7 @@ export async function ensureUserHasEmployeeRecord(
       phone: user.phone || null,
       role: ROLE_TO_JOB_TITLE[userRole] || 'Staff',
       organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
-      workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+      workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
       workerType: 'employee',
       isActive: true,
       onboardingStatus: 'completed',
@@ -240,14 +239,14 @@ export async function ensureUserHasEmployeeRecord(
 
   await setupCertificationsForEmployee(newEmployee.id, newEmployee.role || 'Staff');
 
-  (eventBus as any).publish({
+  (eventBus as Record<string,unknown>).publish({
     type: 'employee_hired',
     category: 'automation',
     title: `Employee Record Created — ${userRole}`,
     description: `${userRole} employee record created for ${user.email} in workspace ${workspaceId}`,
     workspaceId,
     metadata: { employeeId: newEmployee.id, userId: user.id, role: userRole, source: 'owner_manager_employee_service', isRoleHolder: ROLE_HOLDER_ROLES.includes(userRole as RoleHolderRole) },
-  }).catch((err: any) => log.warn('[OwnerManagerEmployeeService] publish employee_hired failed:', err.message));
+  }).catch((err: unknown) => log.warn('[OwnerManagerEmployeeService] publish employee_hired failed:', err.message));
 
   return {
     userId,

@@ -217,7 +217,7 @@ export function renderPdfFooter(
   doc: PDFDocumentType,
   opts: PdfFooterOptions,
 ): void {
-  const pageCount = (doc as any)._pageBuffer?.length ?? 1;
+  const pageCount = (doc as Record<string, unknown>)._pageBuffer?.length ?? 1;
   const { docId, docType = 'Document', hash, workspaceName = 'CoAIleague' } = opts;
 
   for (let i = 0; i < pageCount; i++) {
@@ -253,7 +253,7 @@ export async function loadTenantLogo(
     const { eq } = await import('drizzle-orm');
     const [ws] = await db.select().from(workspaces)
       .where(eq(workspaces.id, workspaceId)).limit(1);
-    const logoUrl: string | undefined = (ws as any)?.logoUrl ?? (ws as any)?.logo_url;
+    const logoUrl: string | undefined = (ws as Record<string,unknown>)?.logoUrl ?? (ws as Record<string,unknown>)?.logo_url;
     if (!logoUrl) return null;
 
     const { downloadFileFromObjectStorage } = await import('../objectStorage');

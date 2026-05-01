@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { AuthenticatedRequest } from '../rbac';
 import { Router } from "express";
 import { db } from "../db";
 import { shiftChatrooms, darReports } from "@shared/schema";
@@ -14,7 +15,7 @@ const log = createLogger('ShiftChatroomRoutes');
 
 const router = Router();
 
-router.get('/active', async (req: any, res) => {
+router.get('/active', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const activeChatrooms = await storage.getActiveShiftChatrooms(workspaceId);
@@ -25,7 +26,7 @@ router.get('/active', async (req: any, res) => {
   }
 });
 
-router.get('/by-shift/:shiftId', async (req: any, res) => {
+router.get('/by-shift/:shiftId', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const [chatroom] = await db.select()
@@ -46,7 +47,7 @@ router.get('/by-shift/:shiftId', async (req: any, res) => {
 });
 
 // These specific routes must be registered BEFORE /:shiftId/:timeEntryId to prevent shadowing
-router.get('/:chatroomId/premium-status', async (req: any, res) => {
+router.get('/:chatroomId/premium-status', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const { chatroomId } = req.params;
@@ -61,7 +62,7 @@ router.get('/:chatroomId/premium-status', async (req: any, res) => {
   }
 });
 
-router.get('/dar/:darId', async (req: any, res) => {
+router.get('/dar/:darId', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -74,11 +75,10 @@ router.get('/dar/:darId', async (req: any, res) => {
   }
 });
 
-router.get('/:shiftId/:timeEntryId', async (req: any, res) => {
+router.get('/:shiftId/:timeEntryId', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const chatroom = await storage.getShiftChatroom(req.params.shiftId, req.params.timeEntryId);
     
     if (!chatroom) {
@@ -89,7 +89,6 @@ router.get('/:shiftId/:timeEntryId', async (req: any, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const messages = await storage.getChatMessagesByConversation(chatroom.id);
     
     res.json({ chatroom, messages });
@@ -99,7 +98,7 @@ router.get('/:shiftId/:timeEntryId', async (req: any, res) => {
   }
 });
 
-router.post('/:conversationId/messages', async (req: any, res) => {
+router.post('/:conversationId/messages', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspaceId = req.workspaceId;
@@ -150,7 +149,7 @@ router.post('/:conversationId/messages', async (req: any, res) => {
   }
 });
 
-router.post('/:chatroomId/send', async (req: any, res) => {
+router.post('/:chatroomId/send', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspaceId = req.workspaceId;
@@ -190,7 +189,7 @@ router.post('/:chatroomId/send', async (req: any, res) => {
   }
 });
 
-router.post('/:chatroomId/enable-recording', async (req: any, res) => {
+router.post('/:chatroomId/enable-recording', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspaceId = req.workspaceId;
@@ -227,7 +226,7 @@ router.post('/:chatroomId/enable-recording', async (req: any, res) => {
   }
 });
 
-router.post('/:chatroomId/generate-transcript', async (req: any, res) => {
+router.post('/:chatroomId/generate-transcript', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspaceId = req.workspaceId;
@@ -286,13 +285,13 @@ async function appendAccessLog(darId: string, userId: string, action: string) {
     const existing = (dar?.accessLog as any[]) || [];
     const newEntry = { accessedBy: userId, accessedAt: new Date().toISOString(), action };
     await db.update(darReports)
-      .set({ accessLog: [...existing, newEntry] } as any)
+      .set({ accessLog: [...existing, newEntry] } as Record<string, unknown>)
       .where(eq(darReports.id, darId));
   } catch { /* access log write failure is non-blocking */ }
 }
 
 // GET /dar/:darId/access-log — chain of custody audit trail
-router.get('/dar/:darId/access-log', async (req: any, res) => {
+router.get('/dar/:darId/access-log', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const dar = await fetchDAR(req.params.darId, workspaceId);
@@ -304,7 +303,7 @@ router.get('/dar/:darId/access-log', async (req: any, res) => {
 });
 
 // POST /dar/:darId/approve — manager approves DAR
-router.post('/dar/:darId/approve', async (req: any, res) => {
+router.post('/dar/:darId/approve', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -322,7 +321,7 @@ router.post('/dar/:darId/approve', async (req: any, res) => {
         approvedAt: new Date(),
         verificationNotes: notes || null,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'approved');
@@ -330,7 +329,7 @@ router.post('/dar/:darId/approve', async (req: any, res) => {
     // Notify officer
     if (dar.employeeId) {
       try {
-        const [emp] = await db.select({ userId: (darReports as any).employeeId }).from(darReports).where(eq(darReports.id, dar.id)).limit(1);
+        const [emp] = await db.select({ userId: (darReports as Record<string,unknown>).employeeId }).from(darReports).where(eq(darReports.id, dar.id)).limit(1);
       } catch { /* non-blocking */ }
     }
 
@@ -342,7 +341,7 @@ router.post('/dar/:darId/approve', async (req: any, res) => {
       description: `Daily Activity Report approved for ${dar.employeeName || 'officer'}`,
       workspaceId,
       metadata: { darId: dar.id, shiftId: dar.shiftId, approvedBy: userId, timestamp: new Date().toISOString() },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({ success: true, darId: dar.id, status: 'verified' });
   } catch (err: unknown) {
@@ -351,7 +350,7 @@ router.post('/dar/:darId/approve', async (req: any, res) => {
 });
 
 // POST /dar/:darId/reject — manager rejects DAR
-router.post('/dar/:darId/reject', async (req: any, res) => {
+router.post('/dar/:darId/reject', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -370,7 +369,7 @@ router.post('/dar/:darId/reject', async (req: any, res) => {
         rejectedAt: new Date(),
         rejectionReason: parsed.data.reason,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'rejected');
@@ -381,7 +380,7 @@ router.post('/dar/:darId/reject', async (req: any, res) => {
 });
 
 // POST /dar/:darId/escalate — escalate to org owner / senior management
-router.post('/dar/:darId/escalate', async (req: any, res) => {
+router.post('/dar/:darId/escalate', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -402,7 +401,7 @@ router.post('/dar/:darId/escalate', async (req: any, res) => {
         escalatedAt: new Date(),
         escalationReason: parsed.data.reason,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'escalated');
@@ -413,7 +412,7 @@ router.post('/dar/:darId/escalate', async (req: any, res) => {
 });
 
 // POST /dar/:darId/request-changes — manager requests corrections from officer
-router.post('/dar/:darId/request-changes', async (req: any, res) => {
+router.post('/dar/:darId/request-changes', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -432,7 +431,7 @@ router.post('/dar/:darId/request-changes', async (req: any, res) => {
         changesRequestedAt: new Date(),
         changesRequestedNotes: parsed.data.notes,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, 'changes_requested');
@@ -443,7 +442,7 @@ router.post('/dar/:darId/request-changes', async (req: any, res) => {
 });
 
 // POST /dar/:darId/legal-hold — set or release legal hold (compliance/legal team)
-router.post('/dar/:darId/legal-hold', async (req: any, res) => {
+router.post('/dar/:darId/legal-hold', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -475,8 +474,7 @@ router.post('/dar/:darId/legal-hold', async (req: any, res) => {
             legalHoldSetBy: null,
             legalHoldSetAt: null,
             updatedAt: new Date(),
-          } as any
-      )
+          } as unknown)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, hold ? 'legal_hold_set' : 'legal_hold_released');
@@ -489,7 +487,7 @@ router.post('/dar/:darId/legal-hold', async (req: any, res) => {
 
 // Manual report generation — managers can retrigger a shift report at any time
 // (covers extended shifts, late data entry, or missed auto-trigger windows)
-router.post('/:chatroomId/generate-report', async (req: any, res) => {
+router.post('/:chatroomId/generate-report', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const { chatroomId } = req.params;

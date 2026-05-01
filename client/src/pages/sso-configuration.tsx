@@ -118,7 +118,7 @@ export default function SsoConfiguration() {
       queryClient.invalidateQueries({ queryKey: ['/api/enterprise-features/sso'] });
       toast({ title: "SSO Configuration Saved", description: "Your SSO settings have been updated." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to save SSO configuration", variant: "destructive" });
     },
   });
@@ -141,7 +141,7 @@ export default function SsoConfiguration() {
     id: 'sso-configuration',
     title: 'SSO Configuration',
     subtitle: 'Configure Single Sign-On for your organization',
-    category: 'admin' as any,
+    category: 'admin',
     showHeader: true,
   };
 

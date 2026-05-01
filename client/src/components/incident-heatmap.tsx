@@ -41,7 +41,7 @@ function weightToColor(weight: number, max: number): string {
 
 function LeafletMap({ points, maxWeight }: { points: HeatPoint[]; maxWeight: number }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
+  const mapInstance = useRef<unknown>(null);
   const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ function LeafletMap({ points, maxWeight }: { points: HeatPoint[]; maxWeight: num
 
 export function IncidentHeatmap() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [dateRange, setDateRange] = useState("30");
   const [categoryFilter, setFilterCategory] = useState("all");
 

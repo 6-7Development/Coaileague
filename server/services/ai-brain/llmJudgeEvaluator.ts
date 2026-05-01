@@ -45,7 +45,7 @@ export interface EvaluationRequest {
   userId: string;
   
   // What to evaluate
-  content: any;
+  content: unknown;
   contentType: 'text' | 'json' | 'code' | 'decision' | 'plan';
   context?: string;
   
@@ -218,7 +218,7 @@ class LLMJudgeEvaluator {
     
     try {
       // Call AI for evaluation
-      const response = await (aiBrainService as any).query({
+      const response = await (aiBrainService as Record<string,unknown>).query({
         prompt,
         systemPrompt: this.buildSystemPrompt(persona),
         featureId: 'llm_judge',
@@ -228,7 +228,7 @@ class LLMJudgeEvaluator {
       });
 
       // Parse response
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       
       // Calculate criteria scores
       const criteriaScores = this.calculateCriteriaScores(request.criteria, parsed.scores || {});
@@ -267,7 +267,6 @@ class LLMJudgeEvaluator {
       await this.logEvaluation(request, result);
 
       // Publish event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'llm_judge_evaluation',
         evaluationId,
@@ -279,7 +278,7 @@ class LLMJudgeEvaluator {
 
       return result;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[LLMJudgeEvaluator] Evaluation failed:', error);
       
       // Return failed evaluation

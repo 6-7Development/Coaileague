@@ -36,7 +36,6 @@ import type { SiteBriefing } from "@shared/schema";
 const pageConfig: CanvasPageConfig = {
   title: "Site Briefing Hub",
   subtitle: "Emergency contacts, access codes, and site instructions for every location",
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   icon: Shield,
 };
 
@@ -65,7 +64,7 @@ function ContactEditor({ contacts, onChange }: { contacts: EmergencyContact[]; o
   const remove = (i: number) => onChange(contacts.filter((_, idx) => idx !== i));
   const update = (i: number, field: keyof EmergencyContact, val: string | number) => {
     const copy = [...contacts];
-    (copy[i] as any)[field] = val;
+    (copy[i] as unknown)[field] = val;
     onChange(copy);
   };
 
@@ -92,7 +91,7 @@ function CodeEditor({ codes, onChange }: { codes: AccessCode[]; onChange: (c: Ac
   const remove = (i: number) => onChange(codes.filter((_, idx) => idx !== i));
   const update = (i: number, field: keyof AccessCode, val: string) => {
     const copy = [...codes];
-    (copy[i] as any)[field] = val;
+    (copy[i] as unknown)[field] = val;
     onChange(copy);
   };
 
@@ -114,7 +113,7 @@ function CodeEditor({ codes, onChange }: { codes: AccessCode[]; onChange: (c: Ac
   );
 }
 
-function FacilityEditor({ label, icon: Icon, value, onChange }: { label: string; icon: any; value: FacilityInfo | null; onChange: (f: FacilityInfo | null) => void }) {
+function FacilityEditor({ label, icon: Icon, value, onChange }: { label: string; icon: string | React.ReactNode; value: FacilityInfo | null; onChange: (f: FacilityInfo | null) => void }) {
   const v = value ?? { name: "", address: "", phone: "" };
   const set = (field: keyof FacilityInfo, val: string) => onChange({ ...v, [field]: val });
   return (
@@ -131,7 +130,7 @@ function FacilityEditor({ label, icon: Icon, value, onChange }: { label: string;
 
 function BriefingForm({ briefing, onClose }: { briefing?: SiteBriefing; onClose: () => void }) {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [form, setForm] = useState(() => {
     if (briefing) {
@@ -155,7 +154,7 @@ function BriefingForm({ briefing, onClose }: { briefing?: SiteBriefing; onClose:
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       briefing
         ? apiRequest("PATCH", `/api/site-briefings/${briefing.id}`, data)
         : apiRequest("POST", "/api/site-briefings", data),
@@ -237,7 +236,7 @@ function BriefingForm({ briefing, onClose }: { briefing?: SiteBriefing; onClose:
   );
 }
 
-function FacilityDisplay({ label, icon: Icon, value }: { label: string; icon: any; value: FacilityInfo | null | undefined }) {
+function FacilityDisplay({ label, icon: Icon, value }: { label: string; icon: string | React.ReactNode; value: FacilityInfo | null | undefined }) {
   if (!value || !value.name) return null;
   return (
     <div className="flex items-start gap-2">
@@ -333,7 +332,7 @@ const Icon = ({ name, className }: any) => <span className={className}>●</span
 
 export default function SiteBriefingPage() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBriefing, setEditingBriefing] = useState<SiteBriefing | undefined>();

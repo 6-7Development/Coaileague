@@ -136,7 +136,7 @@ async function fetchTableColumns(tableName: string): Promise<ColumnInfo[]> {
 /**
  * Extract expected columns from Drizzle schema table definition
  */
-function extractSchemaColumns(tableDefinition: any): Map<string, { type: string; nullable: boolean; hasDefault: boolean }> {
+function extractSchemaColumns(tableDefinition: unknown): Map<string, { type: string; nullable: boolean; hasDefault: boolean }> {
   const columns = new Map<string, { type: string; nullable: boolean; hasDefault: boolean }>();
   
   if (!tableDefinition || typeof tableDefinition !== 'object') {
@@ -259,7 +259,7 @@ export async function runParityScan(): Promise<ParityScanResult> {
     log.info('[ParityScanner] STEP 3: VALIDATE - Comparing with Drizzle schema');
     
     // Get expected tables from schema
-    const expectedTables = new Map<string, any>();
+    const expectedTables = new Map<string, unknown>();
     for (const [key, value] of Object.entries(schema)) {
       if (value && typeof value === 'object' && 'getSQL' in value) {
         // This is a Drizzle table - extract the actual table name
@@ -345,7 +345,7 @@ export async function runParityScan(): Promise<ParityScanResult> {
 
     return result;
     
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[ParityScanner] Error during scan:', error);
     addStepResult(result.currentStep, 'failed', (error instanceof Error ? error.message : String(error)));
     result.allTablesHealthy = false;
@@ -373,7 +373,7 @@ export async function executeAutoFix(fixStatements: string[]): Promise<AutoFixRe
       await typedQuery(sql.raw(statement));
       result.statementsExecuted++;
       result.fixedIssues.push(statement);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[ParityScanner] Error executing statement: ${statement}`, error);
       result.errors.push(`${statement}: ${(error instanceof Error ? error.message : String(error))}`);
       result.success = false;

@@ -18,11 +18,9 @@
 import { db } from '../../db';
 import { eq, and } from 'drizzle-orm';
 import {
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   aiBrainTasks,
   type TrinityTask,
   type TrinityStateTransition,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   type InsertAiBrainTask,
   VALID_PHASE_TRANSITIONS,
   isValidPhaseTransition,
@@ -52,7 +50,7 @@ export interface TransitionRequest {
   toPhase?: TaskPhase;
   reason: string;
   triggeredBy: 'system' | 'user' | 'ai' | 'timeout' | 'error';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface TransitionResult {
@@ -224,7 +222,6 @@ class TaskStateMachine {
       await this.logTransitionAttempt(taskId, fromStatus, toStatus, true, undefined, triggeredBy);
 
       // Publish event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'task_state_transition',
         taskId,
@@ -244,7 +241,7 @@ class TaskStateMachine {
         currentPhase: resolvedToPhase,
         transition,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         previousStatus: fromStatus,
@@ -312,7 +309,6 @@ class TaskStateMachine {
     try {
       await db.insert(aiBrainTasks).values(insertData);
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'task_created',
         taskId,
@@ -322,7 +318,7 @@ class TaskStateMachine {
       });
 
       return { taskId, success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return { taskId, success: false, error: error.message };
     }
   }
@@ -411,7 +407,7 @@ class TaskStateMachine {
     await db.update(aiBrainTasks)
       .set({ 
         lastError: error,
-        errorCount: (db as any).raw(`COALESCE(error_count, 0) + 1`) as any,
+        errorCount: (db as Record<string, unknown>).raw(`COALESCE(error_count, 0) + 1`) as any,
       })
       .where(eq(aiBrainTasks.id, taskId));
 
@@ -436,7 +432,6 @@ class TaskStateMachine {
         .set({
           escalatedAt: new Date(),
           escalationReason: reason,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           escalatedToUserId,
         })
         .where(eq(aiBrainTasks.id, taskId));
@@ -447,7 +442,6 @@ class TaskStateMachine {
       toStatus: 'escalated',
       reason,
       triggeredBy: 'system',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       metadata: { escalatedToUserId },
     });
   }
@@ -464,7 +458,6 @@ class TaskStateMachine {
     triggeredBy?: string
   ): Promise<void> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(systemAuditLogs).values({
         id: `audit-${crypto.randomUUID()}`,
         eventType: success ? 'state_machine_transition' : 'state_machine_violation',
@@ -493,7 +486,7 @@ class TaskStateMachine {
    */
   async updateTaskSteps(
     taskId: string,
-    steps: any[],
+    steps: unknown[],
     planId?: string,
     framework?: string
   ): Promise<boolean> {
@@ -537,7 +530,7 @@ class TaskStateMachine {
   /**
    * Add reflection to task
    */
-  async addReflection(taskId: string, reflection: any): Promise<boolean> {
+  async addReflection(taskId: string, reflection: unknown): Promise<boolean> {
     try {
       const [task] = await db.select()
         .from(aiBrainTasks)

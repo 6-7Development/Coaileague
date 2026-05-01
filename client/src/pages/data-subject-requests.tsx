@@ -120,7 +120,7 @@ function UpdateStatusDialog({ dsr, canEdit }: { dsr: DataSubjectRequest; canEdit
       toast({ title: "DSR updated", description: `Status changed to ${status}` });
       setOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
     },
   });
@@ -184,13 +184,13 @@ function SubmitDSRDialog() {
   const [requestType, setRequestType] = useState("access");
 
   const mutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/privacy/requests", data),
+    mutationFn: (data) => apiRequest("POST", "/api/privacy/requests", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/privacy/requests"] });
       toast({ title: "Request submitted", description: "You will be notified within 30 days." });
       setOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
     },
   });
@@ -353,7 +353,7 @@ function DSRCard({ dsr, canEdit }: { dsr: DataSubjectRequest; canEdit: boolean }
 
 export default function DataSubjectRequests() {
   const { user } = useAuth();
-  const role = (user as any)?.role ?? (user as any)?.workspaceRole ?? "officer";
+  const role = (user as Record<string,unknown>)?.role ?? (user as Record<string,unknown>)?.workspaceRole ?? "officer";
   const isStaff = ["platform_admin", "platform_staff"].includes(role);
   const isManager = ["org_owner", "manager", "compliance_officer"].includes(role) || isStaff;
 

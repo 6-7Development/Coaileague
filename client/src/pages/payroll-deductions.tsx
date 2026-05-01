@@ -45,7 +45,7 @@ export default function PayrollDeductionsPage() {
   });
 
   // Fetch employees
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
     enabled: !!user,
@@ -87,7 +87,7 @@ export default function PayrollDeductionsPage() {
       form.reset();
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "✗ Error", description: error.message, variant: "destructive" });
     },
   });
@@ -101,7 +101,7 @@ export default function PayrollDeductionsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/payroll/deductions'] });
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "✗ Error", description: error.message, variant: "destructive" });
     },
   });

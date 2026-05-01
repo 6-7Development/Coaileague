@@ -70,7 +70,7 @@ export interface DiagnosticReport {
   diagnosis: string;
   fixAttempted: boolean;
   fixSucceeded?: boolean;
-  fixDetails?: any;
+  fixDetails?: unknown;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   recommendations: string[];
   escalationRequired: boolean;
@@ -85,7 +85,7 @@ export interface TelemetryEvent {
   durationMs: number;
   anomalyCode?: SessionAnomalyCode;
   healingAction?: HealingAction;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 type ElevationReason = 'auto_support_login' | 'governance_approved' | 'mfa_verified' | 'bot_service' | 'subagent_service' | 'trinity_service' | 'helpai_service';
@@ -148,7 +148,7 @@ class ElevatedSessionGuardian {
         error: result.error,
         telemetry 
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       const anomalyCode = this.classifyError(error);
       
       const telemetry = await this.emitTelemetry({
@@ -168,7 +168,7 @@ class ElevatedSessionGuardian {
     }
   }
 
-  async validateElevation(userId: string, sessionId: string): Promise<{ isElevated: boolean; context?: any; anomaly?: SessionAnomalyCode; telemetry: TelemetryEvent }> {
+  async validateElevation(userId: string, sessionId: string): Promise<{ isElevated: boolean; context?: unknown; anomaly?: SessionAnomalyCode; telemetry: TelemetryEvent }> {
     const startTime = Date.now();
 
     try {
@@ -189,7 +189,7 @@ class ElevatedSessionGuardian {
       }
 
       return { isElevated: result.isElevated, context: result, telemetry };
-    } catch (error: any) {
+    } catch (error : unknown) {
       const anomalyCode = this.classifyError(error);
       
       const telemetry = await this.emitTelemetry({
@@ -225,7 +225,7 @@ class ElevatedSessionGuardian {
       log.info(`[ElevatedSessionGuardian] Elevation ${elevationId} revoked by ${revokedBy}: ${reason}`);
       
       return { success: true, telemetry };
-    } catch (error: any) {
+    } catch (error : unknown) {
       const telemetry = await this.emitTelemetry({
         subagentId: this.SUBAGENT_ID,
         subagentName: this.SUBAGENT_NAME,
@@ -346,7 +346,7 @@ class ElevatedSessionGuardian {
 
       this.lastHealthCheck = new Date();
       return report;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[ElevatedSessionGuardian] Diagnostics failed:', error);
       return {
         executionId,
@@ -588,7 +588,7 @@ class ElevatedSessionGuardian {
     }
   }
 
-  private classifyError(error: any): SessionAnomalyCode {
+  private classifyError(error: unknown): SessionAnomalyCode {
     const message = error.message?.toLowerCase() || '';
     
     if (message.includes('signature') || message.includes('hmac')) {
@@ -670,7 +670,7 @@ class ElevatedSessionGuardian {
 
   private async createSupportTicket(
     anomalyCode: SessionAnomalyCode,
-    context: Record<string, any>,
+    context: Record<string, unknown>,
     details: string,
     riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'medium'
   ): Promise<void> {
@@ -719,7 +719,7 @@ class ElevatedSessionGuardian {
     try {
       const telemetryRecord: InsertSubagentTelemetry = {
         subagentId: event.subagentId,
-        workspaceId: (event as any).workspaceId || 'system',
+        workspaceId: (event as Record<string,unknown>).workspaceId || 'system',
         executionId: `tel-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
         actionId: event.actionId,
         status: event.status === 'success' ? 'completed' : event.status === 'failure' ? 'failed' : 'escalating',

@@ -142,7 +142,7 @@ export async function executeCalloffCoverageWorkflow(
       };
     }
     resolvedShiftId = shiftRow.id;
-  } catch (err: any) {
+  } catch (err: unknown) {
     await logWorkflowStep(record, 'fetch', false, err?.message);
     errors.push(`fetch:${err?.message}`);
   }
@@ -178,7 +178,7 @@ export async function executeCalloffCoverageWorkflow(
         denialReason: params.reason ?? 'Officer reported calloff',
         deniedAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(
         and(
           eq(shifts.id, shiftRow.id),
@@ -200,7 +200,7 @@ export async function executeCalloffCoverageWorkflow(
       changesBefore: { status: shiftRow.status },
       changesAfter: { status: 'calloff', reason: params.reason ?? null },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     await logWorkflowStep(record, 'mutate', false, `shift update failed: ${err?.message}`);
     errors.push(`mutate:${err?.message}`);
     await logWorkflowComplete(record, {
@@ -236,7 +236,7 @@ export async function executeCalloffCoverageWorkflow(
         params.triggerSource,
       ],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.info('[calloff] shift_calloffs insert skipped (non-fatal):', err?.message);
   }
 
@@ -263,7 +263,7 @@ export async function executeCalloffCoverageWorkflow(
       `sent ${offersSent} offers (${result.errors.length} errors)`,
       { offered: offersSent, errorCount: result.errors.length },
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     await logWorkflowStep(record, 'process', false, `sendShiftOffers error: ${err?.message}`);
     errors.push(`process:${err?.message}`);
   }
@@ -359,14 +359,14 @@ export async function scanStaleCalloffWorkflows(): Promise<{
 
     for (const row of rows) {
       scanned++;
-      const meta = (row.metadata ?? {}) as Record<string, any>;
+      const meta = (row.metadata ?? {}) as Record<string, unknown>;
       if (meta.status !== 'running' && meta.status !== 'completed') continue;
       if (meta.escalated_at) continue; // already escalated
 
       const workflowTrail = Array.isArray(meta.trail) ? meta.trail : [];
-      const processStep = workflowTrail.find((t: any) => t.step === 'process');
+      const processStep = workflowTrail.find((t: unknown) => t.step === 'process');
       const shiftId = processStep?.data?.shiftId
-        ?? workflowTrail.find((t: any) => t.step === 'fetch')?.data?.shiftId;
+        ?? workflowTrail.find((t: unknown) => t.step === 'fetch')?.data?.shiftId;
 
       if (!shiftId || !row.workspaceId) continue;
 
@@ -400,14 +400,14 @@ export async function scanStaleCalloffWorkflows(): Promise<{
               ...meta,
               escalated_at: new Date().toISOString(),
               status: 'escalated',
-            } as any,
+            } as unknown,
           })
           .where(eq(auditLogs.id, row.id));
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[calloff escalation] metadata update failed:', err?.message);
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[calloff escalation sweep] error:', err?.message);
   }
 
@@ -424,7 +424,7 @@ async function findCalloffShift(params: {
   shiftId?: string;
 }) {
   const { pool } = await import('../../../db');
-  const args: any[] = [params.workspaceId, params.employeeId];
+  const args: Record<string, unknown>[] = [params.workspaceId, params.employeeId];
   let sqlText: string;
   if (params.shiftId) {
     args.push(params.shiftId);
@@ -476,7 +476,7 @@ async function loadShiftDisplayContext(
         clientName: r.rows[0].client_name ?? null,
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.info('[calloff] display context lookup skipped:', err?.message);
   }
   return { location: 'assigned site', clientName: null };
@@ -484,7 +484,7 @@ async function loadShiftDisplayContext(
 
 async function notifySupervisors(params: {
   workspaceId: string;
-  shift: any;
+  shift: unknown;
   employeeId: string;
   offersSent: number;
   reason?: string;
@@ -518,10 +518,10 @@ async function notifySupervisors(params: {
   await Promise.allSettled(
     supervisorIds.map((recipientUserId) =>
       NotificationDeliveryService.send({
-        type: 'calloff.coverage.initiated' as any,
+        type: 'calloff.coverage.initiated',
         workspaceId: params.workspaceId,
         recipientUserId,
-        channel: 'in_app' as any,
+        channel: 'in_app',
         subject: `Calloff: ${officerName}`,
         body: {
           summary,
@@ -549,14 +549,14 @@ async function notifySupervisors(params: {
         ),
       ),
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[calloff] supervisor SMS alert failed (non-fatal):', err?.message);
   }
 }
 
 async function publishCalloffEvent(params: {
   workspaceId: string;
-  shift: any;
+  shift: unknown;
   employeeId: string;
   offersSent: number;
 }): Promise<void> {
@@ -572,8 +572,8 @@ async function publishCalloffEvent(params: {
         offersSent: params.offersSent,
         workflow: WORKFLOW_NAME,
       },
-    } as any);
-  } catch (err: any) {
+    } as unknown);
+  } catch (err: unknown) {
     log.warn('[calloff] event bus publish failed (non-fatal):', err?.message);
   }
 }
@@ -594,10 +594,10 @@ async function escalateToSupervisor(params: {
   await Promise.allSettled([
     ...supervisorIds.map((recipientUserId) =>
       NotificationDeliveryService.send({
-        type: 'calloff.coverage.escalated' as any,
+        type: 'calloff.coverage.escalated',
         workspaceId: params.workspaceId,
         recipientUserId,
-        channel: 'in_app' as any,
+        channel: 'in_app',
         subject: 'ESCALATION: Calloff uncovered',
         body,
         idempotencyKey: `calloff-escalation-${params.shiftId}-${recipientUserId}`,
@@ -619,9 +619,9 @@ async function escalateToSupervisor(params: {
       workspaceId: params.workspaceId,
       title: 'Calloff escalation',
       description: body.summary,
-      metadata: body as any,
-    } as any);
-  } catch (err: any) {
+      metadata: body as unknown,
+    } as unknown);
+  } catch (err: unknown) {
     log.warn('[calloff] escalation event publish failed:', err?.message);
   }
 }
@@ -637,8 +637,8 @@ async function fetchWorkspaceSupervisors(workspaceId: string): Promise<string[]>
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
-  } catch (err: any) {
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
+  } catch (err: unknown) {
     log.info('[calloff] supervisor lookup skipped:', err?.message);
     return [];
   }
@@ -658,9 +658,9 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
-  } catch (err: any) {
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
+  } catch (err: unknown) {
     // `role`/`is_supervisor` may not exist; fall back to any active phone for an owner/manager.
     try {
       const { pool } = await import('../../../db');
@@ -675,9 +675,9 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
         [workspaceId],
       );
       return r.rows
-        .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-        .filter((row: any) => row.employeeId && row.phone);
-    } catch (fallbackErr: any) {
+        .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+        .filter((row: unknown) => row.employeeId && row.phone);
+    } catch (fallbackErr: unknown) {
       log.info('[calloff] supervisor phone fallback skipped:', fallbackErr?.message);
       return [];
     }

@@ -15,6 +15,8 @@ import {
   trainingQuestions,
 } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('trainingModuleSeeder');
 
 interface FlashCard {
   front: string;
@@ -1472,7 +1474,7 @@ Bystander barriers to overcome: "It's not my place," "I don't want to get involv
 ];
 
 export async function seedPlatformTrainingModules(): Promise<{ modulesSeeded: number; sectionsSeeded: number; questionsSeeded: number; skipped: number }> {
-  console.log('[TrainingSeeder] Starting platform module seed check...');
+  log.info('[TrainingSeeder] Starting platform module seed check...');
 
   let modulesSeeded = 0;
   let sectionsSeeded = 0;
@@ -1490,7 +1492,7 @@ export async function seedPlatformTrainingModules(): Promise<{ modulesSeeded: nu
       .limit(1);
 
     if (existing.length > 0) {
-      console.log(`[TrainingSeeder] Module "${moduleDef.title}" already exists — skipping`);
+      log.info(`[TrainingSeeder] Module "${moduleDef.title}" already exists — skipping`);
       skipped++;
       continue;
     }
@@ -1516,12 +1518,12 @@ export async function seedPlatformTrainingModules(): Promise<{ modulesSeeded: nu
       .returning({ id: trainingModules.id });
 
     if (!insertedModule) {
-      console.error(`[TrainingSeeder] Failed to insert module: ${moduleDef.title}`);
+      log.error(`[TrainingSeeder] Failed to insert module: ${moduleDef.title}`);
       continue;
     }
 
     modulesSeeded++;
-    console.log(`[TrainingSeeder] Seeded module: ${moduleDef.title} (${insertedModule.id})`);
+    log.info(`[TrainingSeeder] Seeded module: ${moduleDef.title} (${insertedModule.id})`);
 
     // Insert sections
     for (let sIdx = 0; sIdx < moduleDef.sections.length; sIdx++) {
@@ -1576,6 +1578,6 @@ export async function seedPlatformTrainingModules(): Promise<{ modulesSeeded: nu
     }
   }
 
-  console.log(`[TrainingSeeder] Complete: ${modulesSeeded} modules, ${sectionsSeeded} sections, ${questionsSeeded} questions seeded. ${skipped} modules already existed.`);
+  log.info(`[TrainingSeeder] Complete: ${modulesSeeded} modules, ${sectionsSeeded} sections, ${questionsSeeded} questions seeded. ${skipped} modules already existed.`);
   return { modulesSeeded, sectionsSeeded, questionsSeeded, skipped };
 }

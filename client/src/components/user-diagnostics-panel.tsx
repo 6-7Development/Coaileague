@@ -243,7 +243,7 @@ export function UserDiagnosticsPanel({
             {userContext.chatHistory && userContext.chatHistory.length > 0 ? (
               <ScrollArea className="h-32 pl-6">
                 <div className="space-y-2">
-                  {userContext.chatHistory.slice(0, 5).map((msg: any, idx: number) => (
+                  {userContext.chatHistory.slice(0, 5).map((msg: unknown, idx: number) => (
                     <div key={idx} className="text-xs p-2 bg-card rounded border">
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="font-medium">{msg.roomSlug || 'main'}</span>
@@ -280,7 +280,7 @@ export function UserDiagnosticsPanel({
   if (variant === 'mobile') {
     return (
       <UniversalModal open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <UniversalModalContent side="bottom" className="h-[90vh] flex flex-col overflow-hidden sm:max-w-3xl" showHomeButton={false}>
+        <UniversalModalContent side="bottom" className="max-h-[calc(90dvh-56px)] sm:max-h-[90dvh] overflow-y-auto flex flex-col overflow-hidden sm:max-w-3xl" showHomeButton={false}>
           <UniversalModalHeader className="flex-shrink-0">
             <UniversalModalTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />

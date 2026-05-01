@@ -152,7 +152,7 @@ router.get('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest,
         const inviteMap = new Map<string, typeof latestInvites[0]>();
         for (const inv of latestInvites) {
           const existing = inviteMap.get(inv.clientId);
-          if (!existing || new Date(inv.createdAt as any) > new Date(existing.createdAt as any)) {
+          if (!existing || new Date(String(inv.createdAt)) > new Date(String(existing.createdAt))) {
             inviteMap.set(inv.clientId, inv);
           }
         }
@@ -163,8 +163,8 @@ router.get('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest,
         enrichedData = result.data.map(client => {
           const inv = inviteMap.get(client.id);
           if (!inv) return client;
-          const isExpired = now > new Date(inv.expiresAt as any).getTime() ||
-            (now - new Date(inv.createdAt as any).getTime() > SEVEN_DAYS);
+          const isExpired = now > new Date(String(inv.expiresAt)).getTime() ||
+            (now - new Date(String(inv.createdAt)).getTime() > SEVEN_DAYS);
           const visualStatus = inv.isUsed ? 'accepted'
             : isExpired ? 'expired'
             : 'invited';
@@ -312,7 +312,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
          ON CONFLICT (client_id) DO NOTHING`,
         [workspaceId, client.id]
       );
-    } catch (crmErr: any) {
+    } catch (crmErr : unknown) {
       log.warn('[Client Creation] CRM pipeline initialization failed (non-blocking):', crmErr.message);
     }
 
@@ -363,8 +363,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
 
     if (validated.email) {
       const { emailService } = await import('../services/emailService');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as any).name || 'Valued Client', validated.companyName || '', workspace.name || '');
+      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as Record<string, unknown>).name || 'Valued Client', validated.companyName || '', workspace.name || '');
       NotificationDeliveryService.send({ idempotencyKey: `notif:client:${client.id}:welcome`,
             type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
         .catch(err => log.error('[Client Creation] Failed to queue welcome email:', err));
@@ -378,7 +377,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
           userEmail: validated.email,
           userType: 'client',
           workspaceName: workspace.name || 'Your Organization',
-          userName: (validated as any).name || validated.companyName || 'Valued Client',
+          userName: (validated as Record<string, unknown>).name || validated.companyName || 'Valued Client',
           customContext: { tenantName: workspace.name || 'Your Organization' },
         });
       } catch (trinityEmailErr) {
@@ -390,7 +389,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     entityCreationNotifier.notifyNewClient({
       clientId: client.id,
       workspaceId,
-      name: (validated as any).name || validated.companyName || 'New Client',
+      name: (validated as Record<string, unknown>).name || validated.companyName || 'New Client',
       contactEmail: validated.email,
       address: validated.address,
       createdBy: userId || 'system',
@@ -406,7 +405,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       const emailSlug = wsRow.rows[0]?.email_slug;
       if (emailSlug) {
         const { emailProvisioningService } = await import('../services/email/emailProvisioningService');
-        const clientName = validated.companyName || (validated as any).name || `client-${client.id.slice(0, 8)}`;
+        const clientName = validated.companyName || (validated as Record<string, unknown>).name || `client-${client.id.slice(0, 8)}`;
         await emailProvisioningService.reserveClientEmailAddress(
           workspaceId,
           client.id,
@@ -426,7 +425,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     try {
       const { platformEventBus } = await import('../services/platformEventBus');
       const clientRates = await storage.getClientRates(workspaceId, client.id);
-      const contractRate = (clientRates as any)?.[0]?.rate || null;
+      const contractRate = (clientRates as Record<string, unknown>[])?.[0]?.rate || null;
       platformEventBus.publish({
         type: 'client.created',
         workspaceId,
@@ -439,7 +438,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
           contractRate,
           category: client.category,
         },
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     } catch (_publishErr) { log.warn('[ClientRoutes] Failed to publish client.created event — non-critical:', _publishErr instanceof Error ? _publishErr.message : String(_publishErr)); }
 
     res.status(201).json(filterClientForResponse(client, createFilterContext(req)));
@@ -464,8 +463,8 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
     }
     const validated = validationResult.data;
 
-    if ((validated as any).billableRate !== undefined) {
-      if (businessRuleResponse(res, [validateBillingRate((validated as any).billableRate, 'billableRate')])) return;
+    if ((validated as Record<string, unknown>).billableRate !== undefined) {
+      if (businessRuleResponse(res, [validateBillingRate((validated as Record<string, unknown>).billableRate, 'billableRate')])) return;
     }
 
     // Fetch current client state BEFORE update so we can detect deactivation
@@ -510,19 +509,18 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
     // 🧠 TRINITY: If billing rates changed, trigger downstream recalculation pipeline
     // Flags draft invoices, re-evaluates revenue projections and margin risk automatically
     const rateFields = ['armedBillRate', 'unarmedBillRate', 'overtimeBillRate', 'contractRate'];
-    const hasRateChange = rateFields.some(field => (validated as any)[field] !== undefined);
+    const hasRateChange = rateFields.some(field => (validated as unknown)[field] !== undefined);
     if (hasRateChange) {
       (async () => {
         try {
           const { helpaiOrchestrator } = await import('../services/helpai/platformActionHub');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await helpaiOrchestrator.executeAction('settings.propagate_bill_rate_change', {
             clientId: req.params.id,
             workspaceId,
-            changedFields: rateFields.filter(f => (validated as any)[f] !== undefined),
+            changedFields: rateFields.filter(f => (validated as unknown)[f] !== undefined),
             newRates: Object.fromEntries(
-              rateFields.filter(f => (validated as any)[f] !== undefined)
-                .map(f => [f, (validated as any)[f]])
+              rateFields.filter(f => (validated as unknown)[f] !== undefined)
+                .map(f => [f, (validated as unknown)[f]])
             ),
             changedBy: req.user?.id,
           });
@@ -561,7 +559,7 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
       changesBefore: existing || null,
       changesAfter: client,
       createdAt: new Date(),
-    } as any);
+    } as Record<string, unknown>);
     
     res.json(filterClientForResponse(
       { ...client, shiftsClosedCount: wasJustDeactivated ? shiftsClosedCount : undefined },
@@ -622,7 +620,7 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
     // Before any destructive action, Trinity's conscience considers financial,
     // legal, relational, and operational impact. Owners can override by
     // resubmitting with { deliberationApproved: true }.
-    const deliberationApproved = (req.body as any)?.deliberationApproved === true;
+    const deliberationApproved = (req.body as unknown)?.deliberationApproved === true;
     if (!deliberationApproved) {
       try {
         const { deliberate, persistDeliberationDocuments } =
@@ -660,7 +658,7 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
           });
         }
         log.info(`[ClientDeactivate] Trinity verdict: ${result.verdict} — ${result.headline}`);
-      } catch (deliberationErr: any) {
+      } catch (deliberationErr : unknown) {
         log.warn('[ClientDeactivate] Deliberation failed (non-fatal):', deliberationErr?.message);
       }
     }
@@ -759,13 +757,13 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
             amountPaid: '0',
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             notes: `Final invoice generated on client offboarding — ${unbilledEntries.length} unbilled entries, ${totalUnbilledHours.toFixed(2)} hours at $${contractRate}/hr`,
-          } as any);
+          } as unknown);
 
-          await db.update(timeEntries as any)
-            .set({ invoiceId: finalInvoiceId } as any)
+          await db.update(timeEntries as unknown)
+            .set({ invoiceId: finalInvoiceId } as Record<string, unknown>)
             .where(and(
-              inArray((timeEntries as any).id, unbilledEntries.map(e => e.id)),
-              eq((timeEntries as any).workspaceId, workspaceId),
+              inArray(((timeEntries as {id?: string}).id), unbilledEntries.map(e => e.id)),
+              eq((timeEntries as Record<string,unknown>).workspaceId as string, workspaceId),
             ));
 
           // Register in Document Vault for compliance/integrity
@@ -799,13 +797,11 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
     try {
       const { db: dbInner } = await import('../db');
       const { sql: drizzleSql } = await import('drizzle-orm');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [qbRow] = await dbInner.execute(drizzleSql`
         SELECT quickbooks_realm_id FROM workspaces WHERE id = ${workspaceId} LIMIT 1
       `) as any[];
       if (qbRow?.quickbooks_realm_id) {
         import('../services/partners/quickbooksSyncService')
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .then(({ quickbooksSyncService }) => quickbooksSyncService.syncWorkspace(workspaceId!))
           .catch(e => log.warn('[ClientOffboarding] QB final sync failed (non-blocking):', e));
       }
@@ -815,7 +811,6 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
 
     // ── STRUCTURED OFFBOARDING AUDIT RECORD ──────────────────────────────────
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { universalAuditService, AUDIT_ACTIONS } = await import('../services/universalAuditService');
       await universalAuditService.log({
         workspaceId: workspaceId!,
@@ -1039,7 +1034,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-function dockChatRateLimit(req: any, res: any, next: any) {
+function dockChatRateLimit(req: AuthenticatedRequest, res: Response, next: unknown) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = 60_000;
@@ -1056,7 +1051,7 @@ function dockChatRateLimit(req: any, res: any, next: any) {
   return next();
 }
 
-router.post('/dockchat/start', dockChatRateLimit, async (req: any, res: any) => {
+router.post('/dockchat/start', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatStartSchema = z.object({
       orgWorkspaceId: z.string().min(1, 'orgWorkspaceId required'),
@@ -1089,7 +1084,7 @@ router.post('/dockchat/start', dockChatRateLimit, async (req: any, res: any) => 
 });
 
 // Send a message in a DockChat session
-router.post('/dockchat/message', dockChatRateLimit, async (req: any, res: any) => {
+router.post('/dockchat/message', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatMsgSchema = z.object({
       sessionId: z.string().min(1, 'sessionId required'),
@@ -1109,7 +1104,7 @@ router.post('/dockchat/message', dockChatRateLimit, async (req: any, res: any) =
 });
 
 // Close session and generate structured report
-router.post('/dockchat/close', dockChatRateLimit, async (req: any, res: any) => {
+router.post('/dockchat/close', dockChatRateLimit, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dockChatCloseSchema = z.object({
       sessionId: z.string().min(1, 'sessionId required'),
@@ -1161,7 +1156,7 @@ router.get('/my-communications', requireAuth, async (req: AuthenticatedRequest, 
     const allReports = await clientPortalHelpAIService.getOrgReports(workspaceId, 200);
     const myReports = allReports.filter(r => {
       if (!userEmail) return false;
-      const reportEmail = (r as any).clientEmail || (r as any).guestEmail || '';
+      const reportEmail = (r as Record<string, unknown>).clientEmail || (r as Record<string, unknown>).guestEmail || '';
       return normalizeEmail(reportEmail) === normalizeEmail(userEmail);
     }).slice(0, limit);
 
@@ -1203,7 +1198,7 @@ router.post('/contract-renewal-request', requireAuth, async (req: AuthenticatedR
       userId: userId || 'system',
       userEmail: userEmail || 'client@portal.com',
       userRole: 'client',
-      action: 'contract_renewal_request' as any,
+      action: 'contract_renewal_request',
       entityType: 'contract',
       entityId: workspaceId,
       changes: {
@@ -1214,12 +1209,12 @@ router.post('/contract-renewal-request', requireAuth, async (req: AuthenticatedR
       },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] || null,
-    } as any);
+    } as unknown);
 
     await db.insert(notifications).values({
       workspaceId,
       userId: userId || '',
-      type: 'document_uploaded' as any,
+      type: 'document_uploaded',
       title: 'Contract Renewal Request',
       message: `${userEmail} has requested renewal of contract: "${contractTitle}". ${notes ? `Notes: ${notes}` : ''}`,
       isRead: false,
@@ -1263,7 +1258,7 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
       userId: userId || 'system',
       userEmail: userEmail || 'client@portal.com',
       userRole: 'client',
-      action: 'coi_request' as any,
+      action: 'coi_request',
       entityType: 'document',
       entityId: workspaceId,
       changes: {
@@ -1276,13 +1271,13 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
       },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] || null,
-    } as any);
+    } as unknown);
 
     // Fire UNS notification to org managers
     await db.insert(notifications).values({
       workspaceId,
       userId: userId || '',
-      type: 'document_expiring' as any, // Reuse existing type for document requests
+      type: 'document_expiring', // Reuse existing type for document requests
       title: 'COI Request from Client Portal',
       message: `${clientName || userEmail} has requested a Certificate of Insurance (COI/Proof of Insurance). Certificate Holder: ${certificateHolder || 'N/A'}. Reason: ${reason || 'Not specified'}.`,
       isRead: false,
@@ -1314,7 +1309,7 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
         <p><strong>Additional Info:</strong> ${additionalInfo || 'None'}</p>
         <p>Please fulfill this request and upload the COI to the client's document portal.</p>`,
       },
-    }).catch(err => log.warn('[ClientRoutes] COI email queue failed:', (err as any)?.message));
+    }).catch(err => log.warn('[ClientRoutes] COI email queue failed:', (err as Error)?.message));
 
     res.json({
       success: true,

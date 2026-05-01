@@ -52,8 +52,7 @@ function canonicalize(report: ReportHashInput): string {
     rawVoiceTranscript: (report.rawVoiceTranscript ?? '').trim(),
     polishedDescription: (report.polishedDescription ?? '').trim(),
     polishedSummary: (report.polishedSummary ?? '').trim(),
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    occurredAt: report.occurredAt ? new Date(report as any).occurredAt.toISOString() : '',
+    occurredAt: report.occurredAt ? new Date(report as Record<string, unknown>).occurredAt.toISOString() : '',
     locationAddress: (report.locationAddress ?? '').trim(),
     gpsLatitude: report.gpsLatitude ?? '',
     gpsLongitude: report.gpsLongitude ?? '',

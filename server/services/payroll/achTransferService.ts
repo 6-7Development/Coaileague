@@ -126,7 +126,7 @@ export async function initiatePayrollAchTransfer(params: {
       await db.update(payStubs).set({
         plaidTransferStatus: 'payment_held',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payStubs.id, payStubId),
         eq(payStubs.workspaceId, workspaceId),
       ));
@@ -135,7 +135,7 @@ export async function initiatePayrollAchTransfer(params: {
       await db.update(payrollEntries).set({
         plaidTransferStatus: 'payment_held',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payrollEntries.id, payrollEntryId),
         eq(payrollEntries.workspaceId, workspaceId),
       ));
@@ -148,13 +148,13 @@ export async function initiatePayrollAchTransfer(params: {
     .from(plaidTransferAttempts)
     .where(and(
       eq(plaidTransferAttempts.workspaceId, workspaceId),
-      eq((plaidTransferAttempts as any).idempotencyKey, idempotencyKey)
+      eq((plaidTransferAttempts as Record<string,unknown>).idempotencyKey, idempotencyKey)
     ))
     .limit(1)
     .catch(() => []);
 
   if (existingAttempt.length > 0) {
-    const existing = existingAttempt[0] as any;
+    const existing = existingAttempt[0] as unknown;
     log.info('[AchTransfer] Idempotent retry — returning existing attempt', { idempotencyKey, status: existing.status });
     return {
       status: existing.transferId ? 'initiated' : existing.status,
@@ -170,7 +170,7 @@ export async function initiatePayrollAchTransfer(params: {
     payrollEntryId: payrollEntryId || null,
     amount: amountStr,
     status: 'pending',
-  } as any).returning().catch(() => [null as any]);
+  }).returning().catch(() => [null]);
 
   try {
     const transfer = await initiateTransfer({
@@ -188,7 +188,7 @@ export async function initiatePayrollAchTransfer(params: {
         status: 'initiated',
         transferId: transfer.transferId,
         initiatedAt: new Date(),
-      } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+      } as Record<string, unknown>).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
     }
 
     if (payrollEntryId) {
@@ -197,7 +197,7 @@ export async function initiatePayrollAchTransfer(params: {
         plaidTransferStatus: 'pending',
         disbursementMethod: 'plaid_ach',
         disbursedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payrollEntries.id, payrollEntryId),
         eq(payrollEntries.workspaceId, workspaceId),
       ));
@@ -208,19 +208,19 @@ export async function initiatePayrollAchTransfer(params: {
         plaidTransferId: transfer.transferId,
         plaidTransferStatus: 'pending',
         updatedAt: new Date(),
-      } as any).where(and(
+      } as Record<string, unknown>).where(and(
         eq(payStubs.id, payStubId),
         eq(payStubs.workspaceId, workspaceId),
       ));
     }
 
     return { status: 'initiated', transferId: transfer.transferId };
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (pendingRecord?.id) {
       await db.update(plaidTransferAttempts).set({
         status: 'failed',
         errorMessage: err?.message ?? String(err),
-      } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+      } as Record<string, unknown>).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
     }
     log.warn('[ACH] Transfer initiation failed:', err?.message ?? err);
     return { status: 'failed', reason: err?.message ?? String(err) };

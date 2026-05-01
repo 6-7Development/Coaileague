@@ -16,6 +16,7 @@ import { employees, invoices, clients, payrollRuns, aiBrainActionLogs } from '@s
 import { and, eq, gte, lte, sql, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 import { isDeliverableEmployee } from '../../lib/isDeliverableEmployee';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('preExecutionValidator');
 
 
@@ -56,7 +57,7 @@ async function logValidationDecision(
       },
       createdAt: new Date(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[PreExecutionValidator] Audit log write failed (non-blocking):', err?.message);
   }
 }
@@ -83,7 +84,7 @@ const INVOICE_CREATE_ACTIONS = new Set([
 
 export async function validateBeforeExecution(
   actionId: string,
-  payload: any,
+  payload: Record<string, unknown>,
   workspaceId: string,
 ): Promise<ValidationResult> {
   /** Log and return in one step */
@@ -117,7 +118,7 @@ export async function validateBeforeExecution(
           id: employees.id,
           isActive: employees.isActive,
           terminationDate: employees.terminationDate,
-          status: (employees as any).status,   // 'active'|'inactive'|'terminated'|'suspended'
+          status: (employees as EmployeeWithStatus).status,   // 'active'|'inactive'|'terminated'|'suspended'
           firstName: employees.firstName,
           lastName: employees.lastName,
         })
@@ -302,7 +303,7 @@ export async function validateBeforeExecution(
 
     await logValidationDecision(actionId, workspaceId, PASSED);
     return PASSED;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[PreExecutionValidator] Check threw unexpectedly:', err?.message);
     // Fail CLOSED for high-risk action categories — cannot allow mutation on validator error
     const HIGH_RISK_CATEGORIES = ['payroll', 'invoicing', 'billing', 'scheduling', 'admin', 'compliance', 'tax'];
@@ -313,7 +314,7 @@ export async function validateBeforeExecution(
       : { ...PASSED, checkName: 'error_fallthrough_read_only' };
     try {
       await logValidationDecision(actionId, workspaceId, result);
-    } catch (auditErr: any) {
+    } catch (auditErr: unknown) {
       log.warn('[PreExecutionValidator] Audit log write failed (non-fatal):', auditErr?.message);
     }
     return result;

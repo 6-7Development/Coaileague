@@ -119,10 +119,9 @@ export function requireBreakGlass(action: string) {
     log.warn(`[BreakGlass] INITIATED: auditId=${auditId} actor=${user.id} role=${userRole} action=${action} workspace=${workspaceId} reason="${reason}" requestId=${requestId}`);
 
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { universalAudit } = await import('../services/audit/universalAuditLogger').catch(() =>
-        import('../services/universalAuditLogger' as any)
-      ) as any;
+        import('../services/universalAuditLogger')
+      ) as unknown;
 
       if (universalAudit?.log) {
         await universalAudit.log({
@@ -167,10 +166,9 @@ export async function completeBreakGlassAudit(
   log.warn(`[BreakGlass] COMPLETED: auditId=${context.auditId} entity=${entityType}/${entityId}`);
 
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { universalAudit } = await import('../services/audit/universalAuditLogger').catch(() =>
-      import('../services/universalAuditLogger' as any)
-    ) as any;
+      import('../services/universalAuditLogger')
+    ) as unknown;
 
     if (universalAudit?.log) {
       await universalAudit.log({

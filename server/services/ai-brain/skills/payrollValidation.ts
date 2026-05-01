@@ -44,7 +44,7 @@ interface ValidationIssue {
   description: string;
   suggestedFix: string;
   autoFixable: boolean;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface PayrollValidationResult {
@@ -78,7 +78,6 @@ export class PayrollValidationSkill extends BaseSkill {
       version: '1.0.0',
       description: 'AI-powered validation and gap analysis for payroll runs using Gemini 3 Pro',
       author: PLATFORM.name + " AI Brain",
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'payroll',
       requiredTier: 'professional',
       requiredRole: ['org_owner', 'co_owner', 'manager'],
@@ -140,9 +139,7 @@ export class PayrollValidationSkill extends BaseSkill {
       logs.push(`[PayrollValidation] Found ${issues.length} total issues`);
 
       // Step 3: Calculate summary metrics
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const totalHours = timesheetData.reduce((sum, t) => sum + (t.hoursWorked || 0), 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const estimatedGross = timesheetData.reduce((sum, t) => sum + ((t.hoursWorked || 0) * (t.hourlyRate || 0)), 0);
 
       const summary = {
@@ -186,23 +183,21 @@ export class PayrollValidationSkill extends BaseSkill {
         success: true,
         data: result,
         logs,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         tokensUsed: aiInsights ? 500 : 0,
-        executionTimeMs: Date.now() - (context as any).startTime,
+        executionTimeMs: Date.now() - (context as Record<string,unknown>).startTime,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       logs.push(`[PayrollValidation] Error: ${(error instanceof Error ? error.message : String(error))}`);
       return {
         success: false,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         error: {
           code: 'PAYROLL_VALIDATION_ERROR',
           message: (error instanceof Error ? error.message : String(error)),
         },
         logs,
         tokensUsed: 0,
-        executionTimeMs: Date.now() - (context as any).startTime,
+        executionTimeMs: Date.now() - (context as Record<string,unknown>).startTime,
       };
     }
   }
@@ -268,8 +263,8 @@ export class PayrollValidationSkill extends BaseSkill {
   }
 
   private detectMissingTimesheets(
-    employeeData: any[], 
-    timesheetData: any[],
+    employeeData: unknown[], 
+    timesheetData: unknown[],
     params: PayrollValidationParams
   ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
@@ -294,7 +289,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectUnapprovedHours(timesheetData: any[]): ValidationIssue[] {
+  private detectUnapprovedHours(timesheetData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     const unapproved = timesheetData.filter(t => t.status !== 'approved');
@@ -321,7 +316,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectRateAnomalies(timesheetData: any[], employeeData: any[]): ValidationIssue[] {
+  private detectRateAnomalies(timesheetData: unknown[], employeeData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     const employeeRates = new Map(employeeData.map(e => [e.id, parseFloat(e.hourlyRate || '0')]));
 
@@ -346,7 +341,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectOvertimeViolations(timesheetData: any[], employeeData: any[]): ValidationIssue[] {
+  private detectOvertimeViolations(timesheetData: unknown[], employeeData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     // Group hours by employee
@@ -373,7 +368,7 @@ export class PayrollValidationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectHistoricalVariance(timesheetData: any[], historicalData: any[]): ValidationIssue[] {
+  private detectHistoricalVariance(timesheetData: unknown[], historicalData: unknown[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     
     if (historicalData.length === 0) return issues;
@@ -401,7 +396,7 @@ export class PayrollValidationSkill extends BaseSkill {
 
   private async generateAIInsights(
     issues: ValidationIssue[], 
-    summary: any,
+    summary: Record<string, unknown>,
     context: SkillContext
   ): Promise<string> {
     try {
@@ -437,8 +432,8 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
   }
 
   private calculateGapAnalysis(
-    employeeData: any[],
-    timesheetData: any[],
+    employeeData: unknown[],
+    timesheetData: unknown[],
     params: PayrollValidationParams
   ) {
     const employeesWithData = new Set(timesheetData.map(t => t.employeeId));
@@ -458,9 +453,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
 
   private generateRecommendations(
     issues: ValidationIssue[],
-    summary: any,
-    gapAnalysis: any
-  ): string[] {
+    summary: Record<string, unknown>, gapAnalysis: unknown): string[] {
     const recommendations: string[] = [];
 
     if (summary.criticalIssues > 0) {
@@ -489,9 +482,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
 
   private calculateConfidence(
     issues: ValidationIssue[],
-    summary: any,
-    gapAnalysis: any
-  ): number {
+    summary: Record<string, unknown>, gapAnalysis: unknown): number {
     let confidence = 1.0;
 
     // Deduct for critical issues
@@ -506,7 +497,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
     return Math.max(0.1, Math.min(1.0, confidence));
   }
 
-  async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
+  async healthCheck(): Promise<{ healthy: boolean; details?: unknown }> {
     return {
       healthy: this.config.enabled,
       details: {
@@ -517,7 +508,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'ai-powered-validation',
@@ -526,5 +517,4 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
   }
 }
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 export const payrollValidationSkill = new PayrollValidationSkill({ enabled: true });

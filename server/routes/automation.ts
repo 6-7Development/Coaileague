@@ -10,6 +10,7 @@
  */
 
 import { setupAuth, requireAuth } from '../auth';
+import { AuthenticatedRequest } from '../rbac';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router, type Request, type Response } from 'express';
 import { automationEngine } from '../services/automation-engine';
@@ -109,7 +110,7 @@ const migrationWizardSchema = z.object({
  * POST /api/automation/schedule/generate
  * Generate AI-optimized schedule with confidence scoring
  */
-automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/schedule/generate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = scheduleGenerateSchema.safeParse(req.body);
@@ -167,7 +168,6 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
 
     // Handle insufficient credits
     if (!creditResult.success) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (creditResult.insufficientCredits) {
         return res.status(402).json({
           error: 'Insufficient credits',
@@ -186,7 +186,6 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
     try {
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(req.workspaceId, { type: 'schedules_updated' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
     const _wsId1 = req.workspaceId || req.user?.currentWorkspaceId;
@@ -200,7 +199,7 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
       metadata: { source: 'ai_automation', transactionId: result.transactionId, requiresApproval: result.decision?.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Schedule activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Schedule activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -227,7 +226,7 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
  * POST /api/automation/schedule/apply
  * Apply approved AI schedule to database
  */
-automationRouter.post('/schedule/apply', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/schedule/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = scheduleApplySchema.safeParse(req.body);
@@ -296,7 +295,7 @@ const singlePayrollGenerateSchema = z.object({
  * POST /api/automation/invoice/generate
  * Generate invoice for a specific client (single)
  */
-automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/invoice/generate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = singleInvoiceGenerateSchema.safeParse(req.body);
@@ -359,7 +358,6 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
 
     // Handle insufficient credits
     if (!creditResult.success) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (creditResult.insufficientCredits) {
         return res.status(402).json({
           error: 'Insufficient credits',
@@ -378,7 +376,6 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
     try {
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(req.workspaceId, { type: 'invoices_updated' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
     const _wsId2 = req.workspaceId || req.user?.currentWorkspaceId;
@@ -419,7 +416,7 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
  * POST /api/automation/invoice/anchor-close
  * Run anchor period close and generate ALL invoices (biweekly automation)
  */
-automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/invoice/anchor-close', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = invoiceGenerateSchema.safeParse(req.body);
@@ -498,7 +495,6 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
     try {
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(req.workspaceId, { type: 'invoices_updated' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
     const _wsId3 = req.workspaceId || req.user?.currentWorkspaceId;
@@ -512,7 +508,7 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
       metadata: { source: 'ai_automation_anchor', count: result.invoices?.length, requiresApproval: result.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Batch invoice activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Batch invoice activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -544,7 +540,7 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
  * POST /api/automation/payroll/generate
  * Generate payroll for a specific employee (single)
  */
-automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/payroll/generate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = singlePayrollGenerateSchema.safeParse(req.body);
@@ -612,7 +608,6 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
 
     // Handle insufficient credits
     if (!creditResult.success) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (creditResult.insufficientCredits) {
         return res.status(402).json({
           error: 'Insufficient credits',
@@ -631,7 +626,6 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
     try {
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(req.workspaceId, { type: 'payroll_updated' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
     const _wsId4 = req.workspaceId || req.user?.currentWorkspaceId;
@@ -645,7 +639,7 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
       metadata: { source: 'ai_automation', transactionId: result.transactionId, netPay: result.decision?.netPay, requiresApproval: result.decision?.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Payroll activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Payroll activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -672,7 +666,7 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
  * POST /api/automation/payroll/anchor-close
  * Run anchor period close and generate ALL payroll (biweekly automation)
  */
-automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/payroll/anchor-close', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate request body
     const validationResult = payrollGenerateSchema.safeParse(req.body);
@@ -751,7 +745,6 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
     try {
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(req.workspaceId, { type: 'payroll_updated' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
     const _wsId5 = req.workspaceId || req.user?.currentWorkspaceId;
@@ -764,7 +757,7 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
       userId: req.user?.id,
       metadata: { source: 'ai_automation_anchor', count: result.payrolls?.length, requiresApproval: result.requiresApproval },
       visibility: 'manager',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     return res.json({
       success: true,
@@ -795,7 +788,7 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
  * POST /api/automation/migrate/schedule
  * Extract schedule data from uploaded image/PDF using Gemini Vision
  */
-automationRouter.post('/migrate/schedule', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/migrate/schedule', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { imageBase64, mimeType } = req.body;
     
@@ -850,7 +843,7 @@ automationRouter.post('/migrate/schedule', requireAuth, async (req: any, res: Re
  * GET /api/automation/status
  * Get automation system health and recent activity
  */
-automationRouter.get('/status', requireAuth, async (req: any, res: Response) => {
+automationRouter.get('/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -864,18 +857,18 @@ automationRouter.get('/status', requireAuth, async (req: any, res: Response) => 
     });
 
     // Calculate stats for each automation type
-    const schedulingEvents = recentEvents.filter(e => (e as any).eventType?.includes('(schedule as any)') || (e as any).eventType?.includes('shift'));
-    const invoicingEvents = recentEvents.filter(e => (e as any).eventType?.includes('invoice'));
-    const payrollEvents = recentEvents.filter(e => (e as any).eventType?.includes('payroll'));
-    const complianceEvents = recentEvents.filter(e => (e as any).eventType?.includes('compliance'));
+    const schedulingEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('(schedule as any)') || (e as Record<string, unknown>).eventType?.includes('shift'));
+    const invoicingEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('invoice'));
+    const payrollEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('payroll'));
+    const complianceEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('compliance'));
     
-    const calcSuccessRate = (events: any[]) => {
+    const calcSuccessRate = (events: unknown[]) => {
       if (events.length === 0) return 0;
       const successful = events.filter(e => e.success !== false).length;
       return successful / events.length;
     };
 
-    const getLastRun = (events: any[]) => {
+    const getLastRun = (events: unknown[]) => {
       if (events.length === 0) return null;
       // Create copy before sorting to avoid mutating cached data
       const eventsCopy = [...events];
@@ -888,7 +881,7 @@ automationRouter.get('/status', requireAuth, async (req: any, res: Response) => 
     };
 
     // Get issue count from last compliance scan metadata
-    const getIssueCount = (events: any[]) => {
+    const getIssueCount = (events: unknown[]) => {
       if (events.length === 0) return 0;
       const eventsCopy = [...events];
       const sorted = eventsCopy.sort((a, b) => {
@@ -942,7 +935,7 @@ automationRouter.get('/status', requireAuth, async (req: any, res: Response) => 
  * POST /api/automation/compliance/scan
  * Run comprehensive compliance scan and flag issues
  */
-automationRouter.post('/compliance/scan', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/compliance/scan', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -963,7 +956,6 @@ automationRouter.post('/compliance/scan', requireAuth, async (req: any, res: Res
 
     // Handle insufficient credits - MUST return error response
     if (!creditResult.success) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (creditResult.insufficientCredits) {
         return res.status(402).json({
           error: 'Insufficient credits',
@@ -985,7 +977,6 @@ automationRouter.post('/compliance/scan', requireAuth, async (req: any, res: Res
     // Create audit event for compliance scan
     await storage.createAuditEvent({
       workspaceId: req.workspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       actorId: req.user?.id,
       actorType: 'AI_AGENT',
       actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : 'AI Brain',
@@ -1036,7 +1027,7 @@ automationRouter.post('/compliance/scan', requireAuth, async (req: any, res: Res
  * GET /api/automation/compliance/recent
  * Get recent compliance issues for dashboard display
  */
-automationRouter.get('/compliance/recent', requireAuth, async (req: any, res: Response) => {
+automationRouter.get('/compliance/recent', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1123,7 +1114,7 @@ const photoValidationSchema = z.object({
  * GET /api/automation/shift-monitoring/status
  * Get shift monitoring service status
  */
-automationRouter.get('/shift-monitoring/status', requireAuth, async (req: any, res: Response) => {
+automationRouter.get('/shift-monitoring/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1152,7 +1143,7 @@ automationRouter.get('/shift-monitoring/status', requireAuth, async (req: any, r
  * POST /api/automation/shift-monitoring/start
  * Start shift monitoring service (platform admin only)
  */
-automationRouter.post('/shift-monitoring/start', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/shift-monitoring/start', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1181,7 +1172,7 @@ automationRouter.post('/shift-monitoring/start', requireAuth, async (req: any, r
  * POST /api/automation/shift-monitoring/stop
  * Stop shift monitoring service
  */
-automationRouter.post('/shift-monitoring/stop', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/shift-monitoring/stop', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1210,7 +1201,7 @@ automationRouter.post('/shift-monitoring/stop', requireAuth, async (req: any, re
  * POST /api/automation/shift-monitoring/run-cycle
  * Manually trigger a monitoring cycle
  */
-automationRouter.post('/shift-monitoring/run-cycle', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/shift-monitoring/run-cycle', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1239,7 +1230,7 @@ automationRouter.post('/shift-monitoring/run-cycle', requireAuth, async (req: an
 // LONE WORKER SAFETY TIMER
 // ============================================================================
 
-automationRouter.post('/lone-worker-safety/start', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/lone-worker-safety/start', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1255,7 +1246,7 @@ automationRouter.post('/lone-worker-safety/start', requireAuth, async (req: any,
   }
 });
 
-automationRouter.post('/lone-worker-safety/stop', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/lone-worker-safety/stop', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1271,7 +1262,7 @@ automationRouter.post('/lone-worker-safety/stop', requireAuth, async (req: any, 
   }
 });
 
-automationRouter.get('/lone-worker-safety/status', requireAuth, async (req: any, res: Response) => {
+automationRouter.get('/lone-worker-safety/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const status = loneWorkerSafetyService.getStatus();
@@ -1282,7 +1273,7 @@ automationRouter.get('/lone-worker-safety/status', requireAuth, async (req: any,
   }
 });
 
-automationRouter.post('/lone-worker-safety/acknowledge', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/lone-worker-safety/acknowledge', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const { checkId, employeeId } = req.body;
@@ -1297,7 +1288,7 @@ automationRouter.post('/lone-worker-safety/acknowledge', requireAuth, async (req
   }
 });
 
-automationRouter.post('/lone-worker-safety/resolve', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/lone-worker-safety/resolve', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1323,7 +1314,7 @@ automationRouter.post('/lone-worker-safety/resolve', requireAuth, async (req: an
  * PATCH /api/automation/trinity/settings
  * Update automation settings for workspace
  */
-automationRouter.patch('/trinity/settings', async (req: any, res: Response) => {
+automationRouter.patch('/trinity/settings', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Accept workspaceId from body for proper org isolation
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -1358,7 +1349,7 @@ automationRouter.patch('/trinity/settings', async (req: any, res: Response) => {
  * POST /api/automation/trinity/request
  * Request Trinity automation for a feature
  */
-automationRouter.post('/trinity/request', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/request', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1392,7 +1383,7 @@ automationRouter.post('/trinity/request', requireAuth, async (req: any, res: Res
  * POST /api/automation/trinity/approve/:requestId
  * Approve pending automation request
  */
-automationRouter.post('/trinity/approve/:requestId', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/approve/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1425,7 +1416,7 @@ automationRouter.post('/trinity/approve/:requestId', requireAuth, async (req: an
  * POST /api/automation/trinity/reject/:requestId
  * Reject pending automation request
  */
-automationRouter.post('/trinity/reject/:requestId', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/reject/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
@@ -1460,7 +1451,7 @@ automationRouter.post('/trinity/reject/:requestId', requireAuth, async (req: any
  * Resume a failed automation from its checkpoint.
  * Trinity analyzes saved state, skips completed steps, continues from the failed step.
  */
-automationRouter.post('/trinity/resume/:requestId', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/resume/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -1488,7 +1479,7 @@ automationRouter.post('/trinity/resume/:requestId', requireAuth, async (req: any
  * GET /api/automation/trinity/checkpoint/:requestId
  * Get the checkpoint state and Trinity analysis for an automation request.
  */
-automationRouter.get('/trinity/checkpoint/:requestId', async (req: any, res: Response) => {
+automationRouter.get('/trinity/checkpoint/:requestId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -1511,7 +1502,7 @@ automationRouter.get('/trinity/checkpoint/:requestId', async (req: any, res: Res
  * POST /api/automation/trinity/pause/:requestId
  * Pause a running or pending automation, saving its checkpoint state.
  */
-automationRouter.post('/trinity/pause/:requestId', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/pause/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1540,7 +1531,7 @@ automationRouter.post('/trinity/pause/:requestId', requireAuth, async (req: any,
  * Submit a revised payload for a pending or paused automation.
  * Body: { revisedPayload: {...}, notes: "reason for revision" }
  */
-automationRouter.patch('/trinity/revise/:requestId', async (req: any, res: Response) => {
+automationRouter.patch('/trinity/revise/:requestId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1577,7 +1568,7 @@ automationRouter.patch('/trinity/revise/:requestId', async (req: any, res: Respo
  * Ask Trinity to re-analyze the staged payload for a pending/paused automation.
  * Returns the AI analysis text and persists it to the record.
  */
-automationRouter.post('/trinity/reanalyze/:requestId', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/trinity/reanalyze/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1608,7 +1599,7 @@ automationRouter.post('/trinity/reanalyze/:requestId', requireAuth, async (req: 
  * POST /api/automation/photo/validate
  * Validate photo submission location
  */
-automationRouter.post('/photo/validate', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/photo/validate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1648,7 +1639,7 @@ automationRouter.post('/photo/validate', requireAuth, async (req: any, res: Resp
  * POST /api/automation/photo/submit
  * Submit photo with geofence validation
  */
-automationRouter.post('/photo/submit', requireAuth, async (req: any, res: Response) => {
+automationRouter.post('/photo/submit', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1697,7 +1688,7 @@ automationRouter.post('/photo/submit', requireAuth, async (req: any, res: Respon
  * GET /api/automation/quickbooks/receipts
  * Get recent QuickBooks sync receipts for workspace (from database)
  */
-automationRouter.get('/quickbooks/receipts', async (req: any, res: Response) => {
+automationRouter.get('/quickbooks/receipts', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1723,7 +1714,7 @@ automationRouter.get('/quickbooks/receipts', async (req: any, res: Response) => 
  * GET /api/automation/quickbooks/receipts/:receiptId
  * Get specific QuickBooks sync receipt (from database with workspace isolation)
  */
-automationRouter.get('/quickbooks/receipts/:receiptId', async (req: any, res: Response) => {
+automationRouter.get('/quickbooks/receipts/:receiptId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1751,7 +1742,7 @@ automationRouter.get('/quickbooks/receipts/:receiptId', async (req: any, res: Re
  * GET /api/automation/quickbooks/stats
  * Get QuickBooks sync statistics for workspace
  */
-automationRouter.get('/quickbooks/stats', async (req: any, res: Response) => {
+automationRouter.get('/quickbooks/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1773,7 +1764,7 @@ automationRouter.get('/quickbooks/stats', async (req: any, res: Response) => {
  * GET /api/automation/trinity/settings
  * Get automation settings for workspace
  */
-automationRouter.get('/trinity/settings', async (req: any, res: Response) => {
+automationRouter.get('/trinity/settings', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1791,7 +1782,7 @@ automationRouter.get('/trinity/settings', async (req: any, res: Response) => {
  * GET /api/automation/trinity/history
  * Get automation request history for workspace
  */
-automationRouter.get('/trinity/history', async (req: any, res: Response) => {
+automationRouter.get('/trinity/history', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1814,7 +1805,7 @@ automationRouter.get('/trinity/history', async (req: any, res: Response) => {
  * GET /api/automation/trinity/pending
  * Get pending automation requests for workspace
  */
-automationRouter.get('/trinity/pending', async (req: any, res: Response) => {
+automationRouter.get('/trinity/pending', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1835,7 +1826,7 @@ automationRouter.get('/trinity/pending', async (req: any, res: Response) => {
  * GET /api/automation/trinity/receipts
  * Get automation receipts for workspace
  */
-automationRouter.get('/trinity/receipts', async (req: any, res: Response) => {
+automationRouter.get('/trinity/receipts', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1858,7 +1849,7 @@ automationRouter.get('/trinity/receipts', async (req: any, res: Response) => {
  * GET /api/automation/trinity/requests/:requestId
  * Get specific automation request (with workspace isolation)
  */
-automationRouter.get('/trinity/requests/:requestId', async (req: any, res: Response) => {
+automationRouter.get('/trinity/requests/:requestId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
       return res.status(401).json({ error: 'Unauthorized' });

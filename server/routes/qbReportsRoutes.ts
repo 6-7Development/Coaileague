@@ -30,7 +30,7 @@ const dateRangeSchema = z.object({
   endDate: z.string().optional(),
 });
 
-function parseDateRange(query: any): { startDate: Date; endDate: Date; error?: string } {
+function parseDateRange(query: unknown): { startDate: Date; endDate: Date; error?: string } {
   const now = new Date();
   let startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   let endDate = now;
@@ -62,7 +62,7 @@ router.get("/client-profitability", async (req: AuthenticatedRequest, res) => {
       .from(clients)
       .where(eq(clients.workspaceId, workspaceId));
 
-    const rows: any[] = [];
+    const rows: (string | number | boolean | null)[] = [];
 
     for (const client of clientList) {
       const invoiceData = await db
@@ -250,11 +250,11 @@ router.get("/ar-aging", async (req: AuthenticatedRequest, res) => {
 
     const now = new Date();
     const buckets = {
-      current: { label: "Current", invoices: [] as any[], total: 0 },
-      "1-30": { label: "1-30 Days", invoices: [] as any[], total: 0 },
-      "31-60": { label: "31-60 Days", invoices: [] as any[], total: 0 },
-      "61-90": { label: "61-90 Days", invoices: [] as any[], total: 0 },
-      "90+": { label: "90+ Days", invoices: [] as any[], total: 0 },
+      current: { label: "Current", invoices: [], total: 0 },
+      "1-30": { label: "1-30 Days", invoices: [], total: 0 },
+      "31-60": { label: "31-60 Days", invoices: [], total: 0 },
+      "61-90": { label: "61-90 Days", invoices: [], total: 0 },
+      "90+": { label: "90+ Days", invoices: [], total: 0 },
     };
 
     for (const inv of allInvoices) {
@@ -576,7 +576,7 @@ router.get("/cash-flow", async (req: AuthenticatedRequest, res) => {
       .groupBy(sql`TO_CHAR(${payrollRuns.processedAt}, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(${payrollRuns.processedAt}, 'YYYY-MM')`);
 
-    let expenseOut: any[] = [];
+    let expenseOut: (string | number | boolean | null)[] = [];
     try {
       expenseOut = await db
         .select({
@@ -662,7 +662,7 @@ router.get("/workers-comp", async (req: AuthenticatedRequest, res) => {
         AND clock_in <= ${endDate}
       GROUP BY employee_id
     `);
-    const hoursByEmployee = (wcResult as any).rows as Array<{ employeeId: string; totalHours: string; regularHours: string; overtimeHours: string }>;
+    const hoursByEmployee = (wcResult as Record<string,unknown>).rows as Array<{ employeeId: string; totalHours: string; regularHours: string; overtimeHours: string }>;
 
     const rows = [];
     for (const row of hoursByEmployee) {
@@ -757,7 +757,6 @@ router.post("/saved", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [report] = await db.insert(savedReports).values(parsed.data).returning();
     res.status(201).json(report);
   } catch (error: unknown) {
@@ -776,7 +775,7 @@ router.patch("/saved/:id", async (req: AuthenticatedRequest, res) => {
 
     const { id } = req.params;
     const allowedFields = ['name', 'filters', 'schedule', 'scheduleRecipients', 'lastGeneratedAt'] as const;
-    const safeUpdates: Record<string, any> = { updatedAt: new Date() };
+    const safeUpdates: Record<string, unknown> = { updatedAt: new Date() };
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         safeUpdates[field] = req.body[field];

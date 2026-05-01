@@ -139,10 +139,10 @@ export async function runDecayCycle(): Promise<number> {
       sql`(${knowledgeRelationships.updatedAt} IS NULL OR ${knowledgeRelationships.updatedAt} < ${cutoff})`,
       sql`${knowledgeRelationships.strength} > ${STRENGTH_FLOOR}`
     ));
-    const affected = (result as any).rowCount ?? 0;
+    const affected = (result as Record<string, unknown>).rowCount ?? 0;
     log.info(`[Hebbian] Decay cycle complete — ${affected} edges weakened`);
     return affected;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[Hebbian] Decay cycle failed (non-fatal):', (err instanceof Error ? err.message : String(err)));
     return 0;
   }
@@ -168,7 +168,7 @@ export async function getStrongestEdges(
       ORDER  BY strength DESC
       LIMIT  ${limit}
     `);
-    return (rows as any[]).map((r: any) => ({
+    return (rows as unknown[][]).map((r: unknown) => ({
       sourceId: r.source_id,
       targetId: r.target_id,
       type: r.type,
@@ -198,7 +198,7 @@ export async function getConnectomeStats(): Promise<{
         COUNT(*) FILTER (WHERE strength <= ${STRENGTH_FLOOR}) AS dormant_edges
       FROM knowledge_relationships
     `);
-    const r = (rowResult as any[])[0] || {};
+    const r = (rowResult as unknown[])[0] || {};
     return {
       totalEdges:   parseInt(r.total || '0'),
       avgStrength:  parseFloat(r.avg_strength || '0.5'),
@@ -216,7 +216,7 @@ export async function getConnectomeStats(): Promise<{
 
 // .unref() prevents this module-level interval from blocking process shutdown
 const hebbianFlushInterval = setInterval(() => {
-  flushPendingActivations().catch((err: any) =>
+  flushPendingActivations().catch((err: unknown) =>
     log.warn('[Hebbian] Flush error (non-fatal):', (err instanceof Error ? err.message : String(err)))
   );
 }, FLUSH_INTERVAL_MS);

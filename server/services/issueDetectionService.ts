@@ -39,7 +39,7 @@ export class IssueDetectionService {
   async detectIssues(
     workspaceId: string,
     documentType: string,
-    extractedData: Record<string, any>,
+    extractedData: Record<string, unknown>,
     documentId?: string
   ): Promise<IssueDetectionResult> {
     const issues: DetectedIssue[] = [];
@@ -106,8 +106,8 @@ export class IssueDetectionService {
   /**
    * Evaluate a single rule against data
    */
-  private evaluateRule(rule: any, data: Record<string, any>): boolean {
-    return rule.conditions.some((condition: any) => {
+  private evaluateRule(rule: unknown, data: Record<string, unknown>): boolean {
+    return rule.conditions.some((condition: unknown) => {
       const fieldValue = data[condition.field];
 
       switch (condition.operator) {
@@ -132,7 +132,7 @@ export class IssueDetectionService {
   /**
    * Validate field format
    */
-  private isValidFormat(fieldName: string, value: any): boolean {
+  private isValidFormat(fieldName: string, value: unknown): boolean {
     if (value === null || value === undefined) return false;
 
     const formatRules: Record<string, RegExp> = {
@@ -157,9 +157,9 @@ export class IssueDetectionService {
   /**
    * Find which fields have issues
    */
-  private findAffectedFields(rule: any, data: Record<string, any>): string[] {
+  private findAffectedFields(rule: unknown, data: Record<string, unknown>): string[] {
     return rule.conditions
-      .map((condition: any) => {
+      .map((condition: unknown) => {
         const fieldValue = data[condition.field];
         if (condition.operator === "missingField" && (fieldValue === undefined || fieldValue === null)) {
           return condition.field;
@@ -197,7 +197,7 @@ export class IssueDetectionService {
   async analyzeWithAI(
     workspaceId: string,
     documentType: string,
-    extractedData: Record<string, any>,
+    extractedData: Record<string, unknown>,
     documentId?: string
   ): Promise<IssueDetectionResult> {
     const baseResult = await this.detectIssues(workspaceId, documentType, extractedData, documentId);
@@ -229,7 +229,7 @@ export class IssueDetectionService {
       if (result.success && result.text) {
         const jsonMatch = result.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const aiAnalysis = JSON.parse(jsonMatch[0]);
+          const aiAnalysis: unknown = JSON.parse(jsonMatch[0]);
 
           // Add AI-detected issues
           if (aiAnalysis.additionalIssues) {
@@ -248,13 +248,13 @@ export class IssueDetectionService {
             }
 
             // Update overall severity
-            if (aiAnalysis.additionalIssues.some((i: any) => i.severity === "critical")) {
+            if (aiAnalysis.additionalIssues.some((i: unknown) => i.severity === "critical")) {
               baseResult.overallSeverity = "critical";
             }
           }
         }
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.info("AI analysis skipped (optional enhancement):", (error instanceof Error ? error.message : String(error)));
     }
 

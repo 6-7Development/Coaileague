@@ -22,7 +22,7 @@ import { z } from 'zod';
 const log = createLogger('FlexStaffingRoutes');
 
 
-export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attachWorkspaceId?: any) {
+export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attachWorkspaceId?: unknown) {
   const router = Router();
 
   // ==================== CONTRACTORS ====================
@@ -77,7 +77,6 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       try {
         const { broadcastToWorkspace } = await import('../websocket');
         broadcastToWorkspace(workspaceId, { type: 'employees_updated' });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } catch (e: unknown) { log.warn('[FlexStaffing] Broadcast failed:', e.message); }
 
       res.json({ success: true, data: contractor });
@@ -112,7 +111,6 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       try {
         const { broadcastToWorkspace } = await import('../websocket');
         broadcastToWorkspace(workspaceId, { type: 'employees_updated' });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } catch (e: unknown) { log.warn('[FlexStaffing] Broadcast failed:', e.message); }
 
       res.json({ success: true, data: updated });
@@ -162,7 +160,7 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       
       if (!contractor) return res.status(403).json({ error: "Contractor not in your workspace" });
 
-      const values = dates.map((d: any) => ({
+      const values = dates.map((d: unknown) => ({
         contractorId,
         availableDate: d.date,
         availableStartTime: d.startTime,
@@ -252,7 +250,6 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       try {
         const { broadcastToWorkspace } = await import('../websocket');
         broadcastToWorkspace(workspaceId, { type: 'schedules_updated' });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } catch (e: unknown) { log.warn('[FlexStaffing] Broadcast failed:', e.message); }
 
       platformEventBus.emit('flex.gig_created', {
@@ -280,7 +277,7 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       const { id } = req.params;
       const { title, description, gigDate, startTime, endTime, locationName, locationAddress, requirements, payRate, notifyAll, status } = req.body;
 
-      const safeUpdates: Record<string, any> = { updatedAt: new Date() };
+      const safeUpdates: Record<string, unknown> = { updatedAt: new Date() };
       if (title !== undefined) safeUpdates.title = title;
       if (description !== undefined) safeUpdates.description = description;
       if (gigDate !== undefined) safeUpdates.gigDate = gigDate;
@@ -460,7 +457,6 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       try {
         const { broadcastToWorkspace } = await import('../websocket');
         broadcastToWorkspace(workspaceId, { type: 'schedules_updated' });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } catch (e: unknown) { log.warn('[FlexStaffing] Broadcast failed:', e.message); }
 
       res.json({ success: true, data: updated });

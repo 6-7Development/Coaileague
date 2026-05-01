@@ -25,7 +25,6 @@ import {
 } from '@shared/schema';
 import { eq, and, gte, lte, lt, inArray, sql, desc, isNull, ne } from 'drizzle-orm';
 import { helpaiOrchestrator } from '../helpai/platformActionHub';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import type { ActionRequest, ActionResult, ActionHandler } from './actionRegistry';
 import { createNotification } from '../notificationService';
 import { platformEventBus } from '../platformEventBus';
@@ -34,7 +33,7 @@ const log = createLogger('trinityHiringPipelineActions');
 
 const createResult = (
   actionId: string, success: boolean, message: string,
-  data: any, start: number
+  data: Record<string, unknown>, start: number
 ): ActionResult => ({
   actionId, success, message, data,
   executionTimeMs: Date.now() - start,
@@ -62,9 +61,9 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
       lastName,
       email,
       phone: phone || null,
-      status: 'in_progress' as any,
-      currentStep: 'personal_info' as any,
-    } as any).returning();
+      status: 'in_progress',
+      currentStep: 'personal_info',
+    }).returning();
 
     const [invite] = await db.insert(onboardingInvites).values({
       workspaceId,
@@ -74,9 +73,9 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
       role: role || 'Security Officer',
       inviteToken: `trinity-hire-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       expiresAt: new Date(Date.now() + 30 * 86400000),
-      status: 'sent' as any,
+      status: 'sent',
       sentBy: req.userId || 'trinity-auto',
-    } as any).returning();
+    }).returning();
 
     const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
       .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`)).catch(() => []);
@@ -87,13 +86,13 @@ const createHiringRecord = mkAction('hiring.create_record', async (req) => {
         idempotencyKey: `info-${Date.now()}-${mgr.userId}`,
         message: `Trinity created a hiring record for ${firstName} ${lastName} (${email}). Next step: background check initiation. PERC/Guard Card pipeline started.`,
         priority: 'normal',
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
 
     return createResult(req.actionId, true,
       `Hiring record created for ${firstName} ${lastName}. PERC pipeline initiated. Next step: initiate background check.`,
       { applicationId: application.id, inviteId: invite.id, email, status: 'applied' }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -111,7 +110,7 @@ const updateHiringStatus = mkAction('hiring.update_status', async (req) => {
     }
 
     await db.update(onboardingApplications)
-      .set({ status, updatedAt: new Date() } as any)
+      .set({ status, updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(onboardingApplications.id, applicationId));
 
     const NEXT_STEPS: Record<string, string> = {
@@ -125,7 +124,7 @@ const updateHiringStatus = mkAction('hiring.update_status', async (req) => {
     return createResult(req.actionId, true,
       `Hiring status updated to "${status}". ${NEXT_STEPS[status] || ''}`,
       { applicationId, newStatus: status, nextStep: NEXT_STEPS[status] || null }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -138,7 +137,7 @@ const initiateBackgroundCheck = mkAction('hiring.initiate_background_check', asy
     if (!applicationId || !wid) return createResult(req.actionId, false, 'applicationId and workspaceId required', null, start);
 
     await db.update(onboardingApplications)
-      .set({ status: 'background_check_initiated' as any, updatedAt: new Date() } as any)
+      .set({ status: 'background_check_initiated', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(onboardingApplications.id, applicationId));
 
     const checkTypes = ['criminal_federal', 'criminal_state_tx', 'sex_offender_registry', 'identity_verification'];
@@ -159,7 +158,7 @@ const initiateBackgroundCheck = mkAction('hiring.initiate_background_check', asy
       stateNotes: 'Texas DPS Ch. 1702 — certain felonies auto-disqualify. Others require assessment per EEOC guidelines.',
       nextStep: 'Schedule Level II 6-hour pre-assignment training while awaiting results.',
     }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -171,7 +170,7 @@ const schedulePERCTraining = mkAction('hiring.schedule_perc_training', async (re
     if (!applicationId) return createResult(req.actionId, false, 'applicationId required', null, start);
 
     await db.update(onboardingApplications)
-      .set({ status: 'training_scheduled' as any, updatedAt: new Date() } as any)
+      .set({ status: 'training_scheduled', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(onboardingApplications.id, applicationId));
 
     const instructions = [
@@ -188,7 +187,7 @@ const schedulePERCTraining = mkAction('hiring.schedule_perc_training', async (re
       trainingDate: trainingDate || 'TBD', trainingProvider: trainingProvider || 'DPS-approved provider required',
       status: 'training_scheduled',
     }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -200,7 +199,7 @@ const trackDPSApplication = mkAction('hiring.track_dps_application', async (req)
     if (!applicationId) return createResult(req.actionId, false, 'applicationId required', null, start);
 
     await db.update(onboardingApplications)
-      .set({ status: 'dps_application_submitted' as any, updatedAt: new Date() } as any)
+      .set({ status: 'dps_application_submitted', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(onboardingApplications.id, applicationId));
 
     const estimatedCompletion = submittedDate
@@ -211,7 +210,7 @@ const trackDPSApplication = mkAction('hiring.track_dps_application', async (req)
       `DPS application tracked. Application #${dpsApplicationNumber || 'pending'}. Estimated PERC card receipt: ${estimatedCompletion}. Do NOT schedule this officer until PERC confirmed in hand.`,
       { applicationId, dpsApplicationNumber, submittedDate, estimatedCompletion, status: 'dps_application_submitted',
         warning: 'SCHEDULING BLOCKED until license_received status confirmed.' }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -224,7 +223,7 @@ const confirmLicenseReceived = mkAction('hiring.confirm_license_received', async
     if (!applicationId || !wid) return createResult(req.actionId, false, 'applicationId and workspaceId required', null, start);
 
     await db.update(onboardingApplications)
-      .set({ status: 'completed' as any, updatedAt: new Date() } as any)
+      .set({ status: 'completed', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(onboardingApplications.id, applicationId));
 
     if (employeeId && percCardNumber && expirationDate) {
@@ -237,7 +236,7 @@ const confirmLicenseReceived = mkAction('hiring.confirm_license_received', async
         expirationDate: new Date(expirationDate),
         status: 'active',
         fileName: `PERC_Card_${percCardNumber}`,
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
 
     await platformEventBus.publish({
@@ -263,7 +262,7 @@ const confirmLicenseReceived = mkAction('hiring.confirm_license_received', async
     return createResult(req.actionId, true,
       `PERC/Guard Card confirmed. Officer is now schedule-eligible. License record created. Compliance tracking started.`,
       { applicationId, employeeId, percCardNumber, licenseLevel: licenseLevel || 'Level II', expirationDate, scheduleEligible: true }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -285,8 +284,8 @@ const getHiringPipelineStatus = mkAction('hiring.pipeline_status', async (req) =
     }).from(onboardingApplications)
       .where(and(
         eq(onboardingApplications.workspaceId, wid),
-        ne(onboardingApplications.status as any, 'completed'),
-        ne(onboardingApplications.status as any, 'rejected'),
+        ne(onboardingApplications.status, 'completed'),
+        ne(onboardingApplications.status, 'rejected'),
       ))
       .orderBy(desc(onboardingApplications.createdAt))
       .catch(() => []);
@@ -296,14 +295,13 @@ const getHiringPipelineStatus = mkAction('hiring.pipeline_status', async (req) =
       return acc;
     }, {});
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const dpsStuck = applications.filter(a => a.status === 'dps_application_submitted');
     const dpsAlert = dpsStuck.length > 0 ? `${dpsStuck.length} applicant(s) waiting on DPS. Follow up if >6 weeks since submission.` : '';
 
     return createResult(req.actionId, true,
       `Hiring pipeline: ${applications.length} active candidates. ${Object.entries(byStatus).map(([s, c]) => `${s}: ${c}`).join(', ')}. ${dpsAlert}`,
       { pipeline: applications, byStatus, dpsAlert, totalActive: applications.length }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -318,8 +316,8 @@ const checkMultiStateLicenseEligibility = mkAction('hiring.check_multistate_lice
     const licenses = await db.select().from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.employeeId, employeeId),
-        inArray(employeeDocuments.documentType as any, ['security_license', 'armed_license', 'guard_card']),
-        eq(employeeDocuments.status as any, 'active'),
+        inArray(employeeDocuments.documentType, ['security_license', 'armed_license', 'guard_card']),
+        eq(employeeDocuments.status, 'active'),
       )).catch(() => []);
 
     const STATE_REQUIREMENTS: Record<string, { authority: string; cardName: string; transfersFromTX: boolean; notes: string }> = {
@@ -339,8 +337,8 @@ const checkMultiStateLicenseEligibility = mkAction('hiring.check_multistate_lice
         { employeeId, targetState, warning: 'Unknown state requirements — verify before scheduling' }, start);
     }
 
-    const hasTXLicense = licenses.some(l => (l as any).issuingAuthority?.includes('Texas DPS') || (l as any).issuingAuthority?.includes('DPS Private Security'));
-    const hasStateSpecificLicense = licenses.some(l => (l as any).issuingAuthority?.includes(stateReq.authority));
+    const hasTXLicense = licenses.some(l => (l as Record<string, unknown>).issuingAuthority?.includes('Texas DPS') || (l as Record<string, unknown>).issuingAuthority?.includes('DPS Private Security'));
+    const hasStateSpecificLicense = licenses.some(l => (l as Record<string, unknown>).issuingAuthority?.includes(stateReq.authority));
 
     if (hasStateSpecificLicense) {
       return createResult(req.actionId, true,
@@ -358,7 +356,7 @@ const checkMultiStateLicenseEligibility = mkAction('hiring.check_multistate_lice
     }
 
     return createResult(req.actionId, true, stateReq.notes, { employeeId, targetState, eligible: stateReq.transfersFromTX }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -375,15 +373,15 @@ const getExpiringLicensesAlert = mkAction('hiring.expiring_licenses_alert', asyn
       id: employeeDocuments.id,
       employeeId: employeeDocuments.employeeId,
       documentType: employeeDocuments.documentType,
-      docNumber: (employeeDocuments as any).docNumber,
+      docNumber: (employeeDocuments as Record<string,unknown>).docNumber,
       expirationDate: employeeDocuments.expirationDate,
-      issuingAuthority: (employeeDocuments as any).issuingAuthority,
+      issuingAuthority: (employeeDocuments as Record<string,unknown>).issuingAuthority,
     }).from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.workspaceId, wid),
         lte(employeeDocuments.expirationDate, cutoff),
         gte(employeeDocuments.expirationDate, new Date()),
-        inArray(employeeDocuments.documentType as any, ['security_license', 'armed_license', 'guard_card', 'perc_card']),
+        inArray(employeeDocuments.documentType, ['security_license', 'armed_license', 'guard_card', 'perc_card']),
       ))
       .orderBy(employeeDocuments.expirationDate)
       .catch(() => []);
@@ -397,7 +395,6 @@ const getExpiringLicensesAlert = mkAction('hiring.expiring_licenses_alert', asyn
       ...e,
       daysUntilExpiry: Math.ceil((new Date(e.expirationDate!).getTime() - now.getTime()) / 86400000),
       expiresDate: new Date(e.expirationDate!).toISOString().split('T')[0],
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       action: new Date(e.expiresAt!).getTime() - now.getTime() < 30 * 86400000
         ? 'URGENT: DPS renewal takes 2-6 weeks. Initiate immediately or remove from schedule on expiry date.'
         : 'Notify officer now. Texas DPS renewal processing: 2-6 weeks.',
@@ -406,7 +403,7 @@ const getExpiringLicensesAlert = mkAction('hiring.expiring_licenses_alert', asyn
     return createResult(req.actionId, true,
       `${expiring.length} security license(s) expiring within ${daysAhead} days. DPS renewal takes 2-6 weeks — notify officers NOW.`,
       { expiring: withDays, count: expiring.length, daysAhead }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });

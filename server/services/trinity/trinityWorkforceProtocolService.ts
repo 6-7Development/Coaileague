@@ -240,7 +240,7 @@ class TrinityWorkforceProtocolService {
 
     const records = await db.select({
       id: disciplinaryRecords.id,
-      type: (disciplinaryRecords as any).type,
+      type: (disciplinaryRecords as Record<string,unknown>).type,
       issuedAt: disciplinaryRecords.issuedAt,
     })
       .from(disciplinaryRecords)
@@ -443,26 +443,25 @@ class TrinityWorkforceProtocolService {
     // Converted to Drizzle ORM: IN subquery → inArray()
     const handbookRows = await db.select({
       documentType: employeeDocuments.documentType,
-      storagePath: (employeeDocuments as any).storagePath,
-      fileName: (employeeDocuments as any).fileName,
+      storagePath: (employeeDocuments as Record<string,unknown>).storagePath,
+      fileName: (employeeDocuments as Record<string,unknown>).fileName,
     })
       .from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         inArray(employeeDocuments.documentType, ['employee_handbook', 'handbook', 'policy'])
       ))
       .limit(5)
       .catch(() => []);
 
     // CATEGORY C — Genuine schema mismatch: No client_documents table in schema; SOP docs stored in org_documents without clientId FK | Tables: org_documents | Verified: 2026-03-23
-    const sopRows: any[] = clientId ? await db.execute(sql`
+    const sopRows: unknown[] = clientId ? await db.execute(sql`
       SELECT category as "documentType", file_path as "storagePath", file_name as "fileName"
       FROM org_documents
       WHERE workspace_id = ${workspaceId}
         AND category IN ('sop', 'post_orders', 'site_instructions')
       LIMIT 5
-    `).then(r => Array.isArray(r) ? r : (r as any).rows || []).catch(() => []) : [];
+    `).then(r => Array.isArray(r) ? r : (r as Record<string, unknown>).rows || []).catch(() => []) : [];
 
     const hasHandbook = handbookRows.length > 0;
     const hasSOP = sopRows.length > 0;

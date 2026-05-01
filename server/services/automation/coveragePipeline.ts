@@ -98,7 +98,7 @@ class CoveragePipelineService {
           await this.checkTierAdvancement();
           await this.checkExpiredRequests();
         });
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('Check cycle failed (will retry)', { error: error?.message || 'unknown' });
       }
     }, COVERAGE_CHECK_INTERVAL_MS);
@@ -257,7 +257,7 @@ class CoveragePipelineService {
    * Tier 2: Internal qualified pool — available employees with no shift conflict that day.
    * Tier 3: Full platform pool — remaining available employees with lower scores.
    */
-  private async findCandidates(shift: any, excludeEmployeeId?: string): Promise<CoverageCandidate[]> {
+  private async findCandidates(shift: unknown, excludeEmployeeId?: string): Promise<CoverageCandidate[]> {
     const shiftDate = shift.date;
     const shiftStart = new Date(shift.startTime);
     const shiftEnd = new Date(shift.endTime);
@@ -402,7 +402,7 @@ class CoveragePipelineService {
         const shouldNotifyNow = isEmergency || candidate.tier === 1;
         const offerStatus = shouldNotifyNow ? 'pending' : 'queued';
 
-        const offerData: any = {
+        const offerData: Record<string, unknown> = {
           coverageRequestId: request.id,
           employeeId: candidate.employeeId,
           workspaceId: request.workspaceId,
@@ -440,7 +440,6 @@ class CoveragePipelineService {
               : candidate.tier === 1
               ? `You may be eligible to stay late and cover a ${shiftTimeStr} shift. First to accept gets it!`
               : `We need someone to fill a shift at ${shiftTimeStr}. First to accept gets the shift!`,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: isEmergency ? 'critical' : 'high',
             metadata: {
               coverageRequestId: request.id,
@@ -474,7 +473,7 @@ class CoveragePipelineService {
     }
 
     // Update request tier tracking fields
-    const tierUpdates: Record<string, any> = { updatedAt: new Date() };
+    const tierUpdates: Record<string, unknown> = { updatedAt: new Date() };
 
     if (isEmergency) {
       // Emergency: all tiers notified simultaneously
@@ -539,7 +538,7 @@ class CoveragePipelineService {
           log.info(`No Tier ${nextTier} candidates queued for request ${request.id}`);
           if (nextTier === 3) {
             // No more tiers — escalate
-            await this.escalateToOrgOwner(request as any, `No candidates responded through Tier 2 and no Tier 3 pool`);
+            await this.escalateToOrgOwner(request as unknown, `No candidates responded through Tier 2 and no Tier 3 pool`);
           } else {
             // Advance current_tier counter so next cycle can try Tier 3
             const tier3Window = new Date(now.getTime() + TIER2_WINDOW_MINUTES * 60 * 1000);
@@ -583,7 +582,6 @@ class CoveragePipelineService {
           type: 'coverage_offer',
                 title: `${tierLabel} — shift on ${shiftDateStr}`,
                 message: `Can you cover a shift at ${shiftTimeStr}? We still need someone. First to accept gets it!`,
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 severity: 'high',
                 metadata: {
                   coverageRequestId: request.id,
@@ -652,7 +650,7 @@ class CoveragePipelineService {
         FOR UPDATE
       `);
 
-      const offer = (offerResult.rows as any[])[0];
+      const offer = (offerResult.rows as unknown[][])[0];
 
       if (!offer) {
         return { success: false, message: 'Offer not found or not for this employee' };
@@ -668,7 +666,7 @@ class CoveragePipelineService {
         FOR UPDATE
       `);
 
-      const request = (requestResult.rows as any[])[0];
+      const request = (requestResult.rows as unknown[][])[0];
 
       if (!request) {
         return { success: false, message: 'Coverage request not found' };
@@ -736,8 +734,7 @@ class CoveragePipelineService {
             status: 'confirmed',
             aiGenerated: true,
             description: `Coverage for original shift ${originalShift.id}. Reason: ${request.reason}`,
-          } as any)
-          .returning();
+          }).returning();
 
         newShiftId = newShift.id;
 
@@ -745,7 +742,7 @@ class CoveragePipelineService {
           .set({
             status: 'cancelled',
             description: `Cancelled - covered by shift ${newShiftId}`,
-          } as any)
+          } as unknown)
           .where(eq(shifts.id, request.original_shift_id));
       }
 
@@ -856,8 +853,8 @@ class CoveragePipelineService {
         and(
           eq(employees.workspaceId, request.workspaceId),
           or(
-            eq(employees.workspaceRole as any, 'org_owner'),
-            eq(employees.workspaceRole as any, 'co_owner')
+            eq(employees.workspaceRole, 'org_owner'),
+            eq(employees.workspaceRole, 'co_owner')
           )
         )
       );

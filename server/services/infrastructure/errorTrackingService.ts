@@ -55,7 +55,7 @@ export interface ErrorContext {
   ip?: string;
   environment?: string;
   version?: string;
-  extra?: Record<string, any>;
+  extra?: Record<string, unknown>;
 }
 
 export interface ErrorStats {
@@ -198,7 +198,7 @@ class ErrorTrackingService {
     this.checkInterval = setInterval(async () => {
       try {
         await this.checkAlertRules();
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[ErrorTracking] Alert check cycle failed (will retry next interval):', error?.message || error);
       }
     }, 60000);
@@ -303,7 +303,6 @@ class ErrorTrackingService {
         category: 'feature',
         title: `${severity.toUpperCase()}: ${params.message.slice(0, 50)}`,
         description: params.message,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: { fingerprint, severity, source },
       }).catch((err: Error) => log.warn('[ErrorTracking] Event bus publish failed (error captured):', err.message));
 
@@ -399,8 +398,8 @@ class ErrorTrackingService {
 
     // CATEGORY C — Raw SQL retained: Dynamic query execution for error tracking | Tables: dynamic | Verified: 2026-03-23
     const result = await typedQuery(query);
-    const rows = Array.isArray(result) ? result : ((result as any).rows || []);
-    const count = (rows as any[])[0]?.count || 0;
+    const rows = Array.isArray(result) ? result : ((result as Record<string, unknown>).rows || []);
+    const count = (rows as unknown[][])[0]?.count || 0;
     
     if (rule.condition === 'error_rate') {
       const rate = count / rule.windowMinutes;
@@ -476,16 +475,16 @@ class ErrorTrackingService {
         GROUP BY e.severity
       `);
 
-      const total = ((totalResult as any).rows as any[])[0]?.total || 0;
-      const critical = ((criticalResult as any).rows as any[])[0]?.total || 0;
+      const total = ((totalResult as Record<string,unknown>).rows as unknown[][])[0]?.total || 0;
+      const critical = ((criticalResult as Record<string,unknown>).rows as unknown[][])[0]?.total || 0;
       
       const errorsBySource: Record<string, number> = {};
-      for (const row of ((bySourceResult as any).rows as any[]) || []) {
+      for (const row of ((bySourceResult as Record<string,unknown>).rows as unknown[][]) || []) {
         errorsBySource[row.source] = row.count;
       }
       
       const errorsBySeverity: Record<string, number> = {};
-      for (const row of ((bySeverityResult as any).rows as any[]) || []) {
+      for (const row of ((bySeverityResult as Record<string,unknown>).rows as unknown[][]) || []) {
         errorsBySeverity[row.severity] = row.count;
       }
 
@@ -493,7 +492,7 @@ class ErrorTrackingService {
         totalErrors: total,
         criticalErrors: critical,
         errorRate: total / windowMinutes,
-        topErrors: (((topResult as any).rows as any[]) || []).map(r => ({
+        topErrors: (((topResult as Record<string,unknown>).rows as unknown[][]) || []).map(r => ({
           fingerprint: r.fingerprint,
           message: r.message,
           count: r.count,
@@ -526,7 +525,7 @@ class ErrorTrackingService {
         LIMIT ${limit}
       `);
       
-      return result.map((row: any) => ({
+      return result.map((row: unknown) => ({
         id: row.id,
         fingerprint: row.fingerprint,
         message: row.message,
@@ -554,7 +553,6 @@ class ErrorTrackingService {
     const newRule: AlertRule = { id, ...rule };
     this.alertRules.push(newRule);
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(alertRules).values({
       id: id,
       name: rule.name,

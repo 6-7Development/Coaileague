@@ -27,22 +27,20 @@ import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityPortalActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity portal action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: (err instanceof Error ? err.message : String(err)) };
       }
     },
@@ -61,9 +59,9 @@ export function registerPortalActions(): void {
     // Verify client belongs to this workspace
     const [client] = await db.select({
       id: clients.id,
-      companyName: (clients as any).companyName,
+      companyName: (clients as ClientWithExtras).companyName,
       email: clients.email,
-      portalAccessEnabled: (clients as any).portalAccessEnabled,
+      portalAccessEnabled: (clients as ClientWithExtras).portalAccessEnabled,
     }).from(clients)
       .where(and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)));
 
@@ -83,7 +81,6 @@ export function registerPortalActions(): void {
       .limit(10);
 
     // Count outstanding invoices
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const outstanding = recentInvoices.filter(i => ['sent', 'overdue', 'partial'].includes(i.status));
 
     // Portal access token status
@@ -109,9 +106,9 @@ export function registerPortalActions(): void {
     return {
       client: {
         id: client.id,
-        name: (client as any).companyName || client.email,
+        name: (client as ClientWithExtras).companyName || client.email,
         email: client.email,
-        portalAccessEnabled: (client as any).portalAccessEnabled,
+        portalAccessEnabled: (client as ClientWithExtras).portalAccessEnabled,
       },
       portalStatus,
       lastAccessed: portalAccess?.lastAccessedAt || null,
@@ -153,7 +150,7 @@ export function registerPortalActions(): void {
       startTime: shifts.startTime,
       endTime: shifts.endTime,
       status: shifts.status,
-      locationName: (shifts as any).locationName,
+      locationName: (shifts as Record<string,unknown>).locationName,
     }).from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
@@ -167,14 +164,13 @@ export function registerPortalActions(): void {
     const pendingDocs = await db.select({
       id: employeeDocuments.id,
       documentType: employeeDocuments.documentType,
-      title: (employeeDocuments as any).title,
+      title: (employeeDocuments as Record<string,unknown>).title,
       status: employeeDocuments.status,
-      dueDate: (employeeDocuments as any).dueDate,
+      dueDate: (employeeDocuments as Record<string,unknown>).dueDate,
     }).from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.workspaceId, workspaceId),
         eq(employeeDocuments.employeeId, employeeId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(employeeDocuments.status, 'pending'),
       ))
       .limit(10);
@@ -189,7 +185,6 @@ export function registerPortalActions(): void {
       upcomingShifts,
       pendingDocuments: pendingDocs,
       shiftsNext7Days: upcomingShifts.length,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       pendingSignatures: pendingDocs.filter(d => d.documentType === 'signature_required').length,
     };
   }));
@@ -287,7 +282,7 @@ export function registerPortalActions(): void {
           email: client.email || '',
           isActive: true,
           expiresAt,
-        } as any).returning();
+        }).returning();
       }
 
       const appBase = process.env.APP_BASE_URL || 'https://www.coaileague.com';
@@ -299,7 +294,7 @@ export function registerPortalActions(): void {
         recipientId: client.id,
         email: client.email,
         portalUrl,
-        expiresAt: (portalAccess as any).expiresAt,
+        expiresAt: (portalAccess as Record<string,unknown>).expiresAt,
       };
     }
 

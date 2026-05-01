@@ -133,12 +133,11 @@ class BugReportOrchestrator {
 
     // Emit event for real-time tracking
     platformEventBus.publish({
-      type: 'automation_completed' as any,
+      type: 'automation_completed',
       category: 'ai_brain',
       title: 'Bug Report Received',
       description: `New ${report.type} report: ${report.title}`,
       metadata: { reportId, type: report.type, analysisQueued },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       severity: 'info',
       isNew: true
     }).catch((err) => log.warn('[bugReportOrchestrator] Fire-and-forget failed:', err));
@@ -165,7 +164,6 @@ class BugReportOrchestrator {
       const prompt = this.buildAnalysisPrompt(report);
 
       const response = await geminiClient.generate({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         tier: 'pro',
         prompt,
         systemInstruction: `You are Trinity, an expert AI system analyst for the CoAIleague platform.
@@ -192,19 +190,18 @@ Always prioritize user safety and data integrity.`,
       }
 
       platformEventBus.publish({
-        type: 'automation_completed' as any,
+        type: 'automation_completed',
         category: 'ai_brain',
         title: 'Bug Analysis Complete',
         description: `Analysis for report ${reportId}: ${analysis.severity} severity, ${analysis.category} issue`,
         metadata: { reportId, severity: analysis.severity, category: analysis.category },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         severity: analysis.severity === 'critical' ? 'error' : 'info',
         isNew: true
       }).catch((err) => log.warn('[bugReportOrchestrator] Fire-and-forget failed:', err));
 
       return analysis;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[BugReportOrchestrator] Analysis error for ${reportId}:`, error);
       
       const fallbackAnalysis: BugAnalysis = {
@@ -274,7 +271,7 @@ Always prioritize user safety and data integrity.`,
     try {
       const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[1]);
+        const parsed: unknown = JSON.parse(jsonMatch[1]);
         return {
           reportId,
           severity: parsed.severity || 'medium',
@@ -334,7 +331,7 @@ Always prioritize user safety and data integrity.`,
     log.info(`[BugReportOrchestrator] Remediation request created: ${requestId}`);
 
     platformEventBus.publish({
-      type: 'ticket_created' as any,
+      type: 'ticket_created',
       category: 'ai_brain',
       title: `🔧 Auto-Fix Pending: ${report?.title || 'Bug fix'}`,
       description: `I've proposed a fix. Severity: ${analysis.severity}, Confidence: ${(analysis.suggestedFix.confidence * 100).toFixed(0)}%`,
@@ -344,7 +341,6 @@ Always prioritize user safety and data integrity.`,
         severity: analysis.severity,
         patchCount: request.patches.length
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       severity: analysis.severity === 'critical' ? 'error' : 'warning',
       isNew: true
     }).catch((err) => log.warn('[bugReportOrchestrator] Fire-and-forget failed:', err));
@@ -396,12 +392,11 @@ Always prioritize user safety and data integrity.`,
         request.executionTimestamp = new Date();
 
         platformEventBus.publish({
-          type: 'automation_completed' as any,
+          type: 'automation_completed',
           category: 'ai_brain',
           title: 'Hotfix Applied Successfully',
           description: `Bug fix committed: ${result.commitHash}`,
           metadata: { remediationId: request.id, commitHash: result.commitHash },
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: 'info',
           isNew: true
         }).catch((err) => log.warn('[bugReportOrchestrator] Fire-and-forget failed:', err));
@@ -413,7 +408,7 @@ Always prioritize user safety and data integrity.`,
         return { success: false, error: request.error };
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[BugReportOrchestrator] Remediation execution failed:`, err);
       request.status = 'failed';
       request.error = (err instanceof Error ? err.message : String(err));

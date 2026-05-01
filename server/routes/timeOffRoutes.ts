@@ -87,7 +87,6 @@ router.post("/api/pto", requireAuth, async (req: AuthenticatedRequest, res) => {
         .where(and(
           eq(employeeBenefits.employeeId, validated.employeeId),
           eq(employeeBenefits.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(employeeBenefits.benefitType, 'pto'),
           eq(employeeBenefits.status, 'active'),
         ))
@@ -145,7 +144,7 @@ router.patch("/api/pto/:id/approve", requireAuth, requireManager, async (req: Au
     const pto = approved as any;
     if (pto.employeeId && pto.startDate && pto.endDate) {
       await db.update(shifts)
-        .set({ status: 'cancelled' } as any)
+        .set({ status: 'cancelled' } as Record<string, unknown>)
         .where(and(
           eq(shifts.workspaceId, workspaceId),
           eq(shifts.employeeId, pto.employeeId),
@@ -168,7 +167,6 @@ router.patch("/api/pto/:id/approve", requireAuth, requireManager, async (req: Au
             type: 'request_approved',
             title: 'Time-Off Request Approved',
             message: 'Your time-off request has been approved.',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: 'success',
             metadata: { ptoRequestId: id, source: 'pto_approved' },
           });
@@ -206,7 +204,7 @@ router.patch("/api/pto/:id/deny", requireAuth, async (req: AuthenticatedRequest,
     // Notify the employee their PTO was denied
     (async () => {
       try {
-        const employee = await storage.getEmployee((denied as any).employeeId, workspaceId);
+        const employee = await storage.getEmployee((denied as Record<string,unknown>).employeeId, workspaceId);
         if (employee?.userId) {
           await universalNotificationEngine.sendNotification({
             workspaceId: workspaceId,
@@ -432,7 +430,6 @@ router.put("/api/time-off-requests/:id/status", requireManager, async (req: Auth
               : managerNotes
                 ? `Your time-off request was denied. Reason: ${managerNotes}`
                 : 'Your time-off request has been denied. Contact your manager for details.',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: isApproved ? 'success' : 'warning',
             metadata: { timeOffRequestId: id, status, source: 'time_off_status_update' },
           });
@@ -464,7 +461,7 @@ router.get("/api/shift-actions/pending", requireManager, async (req: Authenticat
 
     const enriched = await Promise.all(
       pendingActions.map(async (action) => {
-        const employee = await storage.getEmployee((action as any).employeeId, workspaceId);
+        const employee = await storage.getEmployee((action as Record<string,unknown>).employeeId, workspaceId);
         const shift = action.shiftId
           ? await db
               .select()
@@ -523,7 +520,6 @@ router.put("/api/shift-actions/:id/approve", requireManager, async (req: Authent
     const [updated] = await db
       .update(shiftActions)
       .set({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         status: newStatus,
         approvedBy: userId,
         approvedAt: new Date(),
@@ -616,7 +612,7 @@ router.get("/api/timesheet-edit-requests/pending", requireManager, async (req: A
 
     const enriched = await Promise.all(
       requests.map(async (request) => {
-        const employee = await storage.getEmployee((request as any).employeeId, workspaceId);
+        const employee = await storage.getEmployee(request.employeeId, workspaceId);
         return {
           ...request,
           employeeName: employee ? `${employee.firstName} ${employee.lastName}` : "Unknown",
@@ -650,7 +646,6 @@ router.get("/api/timesheet-edit-requests", requireAuth, async (req: Authenticate
     const requests = await db
       .select()
       .from(timesheetEditRequests)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(and(eq(timesheetEditRequests.employeeId, employee.id), eq(timesheetEditRequests.workspaceId, workspaceId)))
       .orderBy(desc(timesheetEditRequests.createdAt));
 

@@ -99,7 +99,7 @@ class SupportSessionService {
           return;
         }
         await this.loadActiveSessionsFromDB();
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[SupportSession] Error loading sessions:', err?.message || err);
       }
     }, 120000);
@@ -224,7 +224,6 @@ class SupportSessionService {
       metadata: {
         userAgent: params.userAgent,
         url: params.url,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         quickbooksId: params.quickbooksId || undefined,
         issueDescription: params.issueDescription,
       },
@@ -507,7 +506,6 @@ class SupportSessionService {
     const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
     
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [ticket] = await db.insert(supportTickets).values({
         subject: `Support Request - ${session.guestName || session.userId || 'Guest'}`,
         description: session.messages.map(m => `${m.senderName}: ${m.content}`).join('\n'),
@@ -553,7 +551,7 @@ class SupportSessionService {
     // Notify support staff via Trinity Autonomous Notifier
     try {
       const { trinityAutonomousNotifier } = await import('./ai-brain/trinityAutonomousNotifier');
-      await (trinityAutonomousNotifier as any).emitAlert({
+      await (trinityAutonomousNotifier as Record<string,unknown>).emitAlert({
         id: randomUUID(),
         severity: 'warning',
         category: 'platform',
@@ -728,7 +726,6 @@ class SupportSessionService {
 
     // Store in aiFeedbackLoops for AI learning
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(aiFeedbackLoops).values({
         workspaceId: session.workspaceId,
         rating,

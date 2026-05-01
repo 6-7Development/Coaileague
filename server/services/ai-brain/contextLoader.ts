@@ -6,10 +6,11 @@
  */
 
 import { db } from '../../db';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { aiContext, type AiContext, type InsertAiContext } from '@shared/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { LoadContextParams, UpsertContextParams, MonitoringContext } from './types';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('contextLoader');
 
 // Simple LRU cache implementation
 class LRUCache<T> {
@@ -78,7 +79,7 @@ export class ContextLoader {
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`🗄️ [ContextLoader] Cache hit for ${cacheKey}`);
+      log.info(`🗄️ [ContextLoader] Cache hit for ${cacheKey}`);
       return cached;
     }
 
@@ -114,7 +115,7 @@ export class ContextLoader {
       .limit(1);
 
     if (!result) {
-      console.log(`🔍 [ContextLoader] No context found for ${cacheKey}`);
+      log.info(`🔍 [ContextLoader] No context found for ${cacheKey}`);
       return null;
     }
 
@@ -122,7 +123,7 @@ export class ContextLoader {
     
     // Cache the result
     this.cache.set(cacheKey, context);
-    console.log(`💾 [ContextLoader] Loaded and cached context for ${cacheKey}`);
+    log.info(`💾 [ContextLoader] Loaded and cached context for ${cacheKey}`);
 
     return context;
   }
@@ -153,7 +154,7 @@ export class ContextLoader {
     });
     this.cache.invalidate(cacheKey);
 
-    console.log(`🔄 [ContextLoader] Refreshed context ${contextId}`);
+    log.info(`🔄 [ContextLoader] Refreshed context ${contextId}`);
     return context;
   }
 
@@ -202,7 +203,7 @@ export class ContextLoader {
       });
       this.cache.invalidate(cacheKey);
 
-      console.log(`🔼 [ContextLoader] Updated context ${existing.id} (v${context.version})`);
+      log.info(`🔼 [ContextLoader] Updated context ${existing.id} (v${context.version})`);
       return context;
     }
 
@@ -226,7 +227,7 @@ export class ContextLoader {
       .returning();
 
     const context = this.mapToMonitoringContext(created);
-    console.log(`🆕 [ContextLoader] Created new context ${context.id}`);
+    log.info(`🆕 [ContextLoader] Created new context ${context.id}`);
 
     return context;
   }
@@ -256,8 +257,8 @@ export class ContextLoader {
       contextKey: record.contextKey,
       entityType: record.entityType,
       entityId: record.entityId,
-      contextData: record.contextData as Record<string, any>,
-      metadata: record.metadata as Record<string, any> | undefined,
+      contextData: record.contextData as Record<string, unknown>,
+      metadata: record.metadata as Record<string, unknown> | undefined,
       refreshIntervalMinutes: record.refreshIntervalMinutes,
       lastRefreshedAt: record.lastRefreshedAt,
       nextRefreshAt: record.nextRefreshAt,
@@ -270,6 +271,6 @@ export class ContextLoader {
    */
   clearCache(): void {
     this.cache.clear();
-    console.log(`🗑️ [ContextLoader] Cache cleared`);
+    log.info(`🗑️ [ContextLoader] Cache cleared`);
   }
 }

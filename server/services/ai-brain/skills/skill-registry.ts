@@ -107,7 +107,7 @@ export class SkillRegistry {
   async executeSkill(
     skillId: string,
     context: SkillContext,
-    params: any
+    params: Record<string, unknown>
   ): Promise<SkillResult> {
     const executionId = `skill-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const startTime = Date.now();
@@ -206,7 +206,7 @@ export class SkillRegistry {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       const durationMs = Date.now() - startTime;
       log.error(`[SkillRegistry] Error executing ${skillId}:`, error);
 

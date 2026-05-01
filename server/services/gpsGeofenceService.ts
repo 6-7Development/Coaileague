@@ -4,6 +4,7 @@ import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { platformEventBus } from './platformEventBus';
 import { universalNotificationEngine } from './universalNotificationEngine';
 import { createLogger } from '../lib/logger';
+import type { EmployeeWithStatus, ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('gpsGeofenceService');
 
 
@@ -88,14 +89,14 @@ async function getSiteLocation(clientId: string, workspaceId?: string): Promise<
 
   if (!client) return null;
 
-  const latitude = (client as any).latitude || (client as any).siteLatitude;
-  const longitude = (client as any).longitude || (client as any).siteLongitude;
+  const latitude = (client as ClientWithExtras).latitude || (client as ClientWithExtras).siteLatitude;
+  const longitude = (client as ClientWithExtras).longitude || (client as ClientWithExtras).siteLongitude;
 
   if (!latitude || !longitude) {
     return null;
   }
 
-  const geofenceRadius = (client as any).geofenceRadiusMeters ?? DEFAULT_GEOFENCE_RADIUS_METERS;
+  const geofenceRadius = (client as ClientWithExtras).geofenceRadiusMeters ?? DEFAULT_GEOFENCE_RADIUS_METERS;
 
   return {
     latitude: parseFloat(latitude),
@@ -131,14 +132,14 @@ async function notifyManager(workspaceId: string, employeeId: string, message: s
     where: and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)),
   });
 
-  if (!(employee as any)?.supervisorId) {
+  if (!(employee as Record<string,unknown>)?.supervisorId) {
     log.info('[GPS] No supervisor assigned for GPS violation notification');
     return;
   }
 
   await universalNotificationEngine.sendNotification({
     workspaceId,
-    userId: (employee as any).supervisorId,
+    userId: (employee as EmployeeWithStatus).supervisorId,
     idempotencyKey: `notif-${Date.now()}`,
           type: 'issue_detected',
     title: `GPS Location Violation Detected`,
@@ -178,7 +179,7 @@ export async function validateClockIn(
     };
   }
 
-  const clientId = currentShift.clientId || (currentShift as any).siteId;
+  const clientId = currentShift.clientId || (currentShift as Record<string,unknown>).siteId;
   if (!clientId) {
     return {
       allowed: true,
@@ -233,7 +234,7 @@ export async function validateClockIn(
           site: site.name
         })]
       );
-    } catch (auditErr: any) {
+    } catch (auditErr : unknown) {
       log.warn('[GPS] Failed to write scheduling audit log:', auditErr.message);
     }
 
@@ -286,7 +287,7 @@ export async function validateClockOut(
     if (employee) {
       const currentShift = await getCurrentShift(employeeId, workspaceId);
       if (currentShift) {
-        const clientId = currentShift.clientId || (currentShift as any).siteId;
+        const clientId = currentShift.clientId || (currentShift as Record<string,unknown>).siteId;
         const site = await getSiteLocation(clientId, workspaceId);
         
         if (site && result.distanceMeters) {

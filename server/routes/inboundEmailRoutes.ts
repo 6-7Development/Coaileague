@@ -243,7 +243,7 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
 
     log.warn('[InboundEmail] No matching svix signature found');
     return false;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[InboundEmail] Signature verification error:', err.message);
     return false;
   }
@@ -431,7 +431,7 @@ async function resolveFallbackRoute(toEmail: string): Promise<ResolvedFallbackRo
   const orgCode = parseOrgCodeFromEmail(addr);
   if (orgCode) {
     const codeLookup = await lookupWorkspaceByOrgCode(orgCode);
-    if ((codeLookup as any).found && (codeLookup as any).workspaceId) {
+    if ((codeLookup as Record<string,unknown>).found && (codeLookup as Record<string,unknown>).workspaceId) {
       const fn = localPart.replace(/[-+].*/, '');
       const canonical = CANONICAL_PLATFORM_LOCALPARTS[fn];
       return {
@@ -439,10 +439,10 @@ async function resolveFallbackRoute(toEmail: string): Promise<ResolvedFallbackRo
           route_type: 'workspace_inbox',
           process_as: canonical?.processAs || fn,
           auto_process: true,
-          target_workspace_id: (codeLookup as any).workspaceId,
+          target_workspace_id: (codeLookup as Record<string,unknown>).workspaceId,
           target_user_id: null,
         },
-        workspaceId: (codeLookup as any).workspaceId,
+        workspaceId: (codeLookup as Record<string,unknown>).workspaceId,
         targetUserId: null,
         resolution: 'slug_dash',
       };
@@ -485,7 +485,7 @@ async function handleInboundWebhook(
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
   // Check 1: Signature verification
-  const signatureValid = verifyResendSignature(rawBody, req.headers as any);
+  const signatureValid = verifyResendSignature(rawBody, req.headers as unknown);
   if (!signatureValid) {
     log.warn(`[InboundEmail] Invalid signature for ${targetAddress} — returning 401`);
     // Per spec: still return a safe response; 401 is acceptable for signature failure
@@ -493,10 +493,10 @@ async function handleInboundWebhook(
     return;
   }
 
-  let rawParsed: any;
+  let rawParsed: unknown;
   try {
     rawParsed = typeof req.body === 'object' ? req.body : JSON.parse(rawBody.toString());
-  } catch (parseErr: any) {
+  } catch (parseErr: unknown) {
     // Check 10: Malformed payload — log and return 200 (never 5xx)
     log.error(`[InboundEmail] Malformed payload for ${targetAddress}:`, parseErr.message);
     res.status(200).json({ received: true, warning: 'Malformed payload — flagged for admin review' });
@@ -541,13 +541,13 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
   // Step 1: Signature verification
-  if (!verifyResendSignature(rawBody, req.headers as any)) {
+  if (!verifyResendSignature(rawBody, req.headers as unknown)) {
     log.warn('[InboundEmail/root] Invalid signature');
     res.status(401).json({ error: 'Invalid webhook signature' });
     return;
   }
 
-  let rawPayload: any;
+  let rawPayload: unknown;
   try {
     rawPayload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody.toString());
   } catch {
@@ -564,17 +564,17 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     : rawPayload;
 
   // Step 3: Parse fields
-  const resendEmailId = (payload as any).email_id || (rawPayload as any).id || undefined;
+  const resendEmailId = (payload as Record<string,unknown>).email_id || ((rawPayload as {id?: string}).id) || undefined;
   const toRaw = Array.isArray(payload.to) ? payload.to[0] : (payload.to || '');
   const toMatch = toRaw.match(/<?([^>]+)>?$/);
   const toEmail = (toMatch?.[1]?.trim() || toRaw).toLowerCase();
 
-  const fromRaw = (payload as any).from || '';
+  const fromRaw = (payload as Record<string,unknown>).from || '';
   const fromMatch = fromRaw.match(/^(?:"?([^"<]+)"?\s+)?<?([^>]+)>?$/);
   const fromEmail = fromMatch?.[2]?.trim() || fromRaw.trim();
   const fromName  = fromMatch?.[1]?.trim() || undefined;
 
-  const messageId   = (payload as any).message_id || payload.headers?.['message-id'] || payload.headers?.['Message-ID'] || undefined;
+  const messageId   = (payload as Record<string,unknown>).message_id || payload.headers?.['message-id'] || payload.headers?.['Message-ID'] || undefined;
   const inReplyTo   = payload.headers?.['in-reply-to'] || undefined;
   const references  = payload.headers?.['references'] || undefined;
   const subject     = payload.subject || '(no subject)';
@@ -629,7 +629,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
             skipUnsubscribeCheck: true,
           });
           log.info(`[InboundEmail/root] Forwarded ${toEmail} to ${ROOT_EMAIL_FORWARD_TO}`);
-        } catch (fwdErr: any) {
+        } catch (fwdErr: unknown) {
           log.warn(`[InboundEmail/root] ${toEmail} forward failed: ${fwdErr?.message}`);
         }
       });
@@ -661,7 +661,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     // Step 5: Route resolution with fallback cascade.
     // When email_routing has no match, try per-org slug, org-code, and
     // canonical platform addresses before silently dropping the message.
-    let route: any;
+    let route: unknown;
     let workspaceId: string | null;
     let targetUserId: string | null;
     let resolvedVia: string = 'email_routing';
@@ -699,7 +699,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
                 emailType: 'inbound_forward',
                 skipUnsubscribeCheck: true,
               });
-            } catch (fwdErr: any) {
+            } catch (fwdErr: unknown) {
               log.warn(`[InboundEmail/root] Unrouted forward failed: ${fwdErr?.message}`);
             }
           });
@@ -845,7 +845,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
             skipUnsubscribeCheck: true,
           });
           log.info(`[InboundEmail] Personal forward sent to ${forwardTo} for user ${targetUserId}`);
-        } catch (fwdErr: any) {
+        } catch (fwdErr: unknown) {
           log.warn('[InboundEmail] Personal forward failed (non-blocking):', fwdErr?.message);
         }
       });
@@ -902,13 +902,13 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
             skipUnsubscribeCheck: true,
           });
           log.info(`[InboundEmail/forward] Forwarded email to ${forwardTo} for workspace ${workspaceId}`);
-        } catch (fwdErr: any) {
+        } catch (fwdErr: unknown) {
           log.warn(`[InboundEmail/forward] Forward failed for workspace ${workspaceId}: ${fwdErr?.message}`);
         }
       });
     }
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[InboundEmail/root] Unhandled error:', err.message);
     // Still return 200 — never 5xx to Resend
     if (!res.headersSent) {
@@ -954,14 +954,14 @@ inboundEmailRouter.post('/per-org', async (req: Request, res: Response) => {
       ? req.rawBody
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
-  const signatureValid = verifyResendSignature(rawBody, req.headers as any);
+  const signatureValid = verifyResendSignature(rawBody, req.headers as unknown);
   if (!signatureValid) {
     log.warn('[InboundEmail/per-org] Invalid signature');
     res.status(401).json({ error: 'Invalid webhook signature' });
     return;
   }
 
-  let rawPerOrg: any;
+  let rawPerOrg: unknown;
   try {
     rawPerOrg = typeof req.body === 'object' ? req.body : JSON.parse(rawBody.toString());
   } catch {

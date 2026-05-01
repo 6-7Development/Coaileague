@@ -113,7 +113,7 @@ function ApplicationForm({
   return (
     <div className="space-y-5" data-testid="application-form">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onCancel} data-testid="button-cancel-apply">
+        <Button variant="ghost" size="icon" aria-label="Cancel Apply" onClick={onCancel} data-testid="button-cancel-apply">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>

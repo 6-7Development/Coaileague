@@ -129,11 +129,11 @@ export interface DraftPayrollResult {
 
 // ─── Helper: result factory ───────────────────────────────────────────────────
 
-function ok(actionId: string, message: string, data: any, start: number): ActionResult {
+function ok(actionId: string, message: string, data: Record<string, unknown>, start: number): ActionResult {
   return { success: true, actionId, message, data, executionTimeMs: Date.now() - start };
 }
 
-function fail(actionId: string, message: string, data: any, start: number): ActionResult {
+function fail(actionId: string, message: string, data: Record<string, unknown>, start: number): ActionResult {
   return { success: false, actionId, message, data, executionTimeMs: Date.now() - start };
 }
 
@@ -195,8 +195,8 @@ async function detectFinanceMode(workspaceId: string): Promise<WorkspaceFinanceM
   return {
     mode,
     qbConnected: connected,
-    qbRealmId: (connection as any).realmId ?? null,
-    qbLastSync: (connection as any).updatedAt ?? null,
+    qbRealmId: (connection as Record<string, unknown>).realmId ?? null,
+    qbLastSync: (connection as Record<string, unknown>).updatedAt ?? null,
     qbStatus,
     internalPayrollEnabled: true,
     internalInvoicingEnabled: true,
@@ -226,7 +226,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
         clientId: timeEntries.clientId,
         hours: sql<number>`COALESCE(${timeEntries.totalHours}, 0)::numeric`,
         rate: sql<number>`COALESCE(${timeEntries.capturedBillRate}, 0)::numeric`,
-        date: (timeEntries as any).date,
+        date: (timeEntries as Record<string,unknown>).date,
       })
       .from(timeEntries)
       .where(
@@ -234,7 +234,6 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
           eq(timeEntries.workspaceId, workspaceId),
           eq(timeEntries.status, 'approved'),
           isNull(timeEntries.billedAt),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           gte(timeEntries.date, sixtyDaysAgo.toISOString().split('T')[0])
         )
       ),
@@ -306,7 +305,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
     } else {
       byClientMap.set(clientId, {
         clientId,
-        clientName: (client as any)?.companyName ?? 'Unknown Client',
+        clientName: (client as Record<string,unknown>)?.companyName ?? 'Unknown Client',
         hours,
         revenue,
         lastDate: entryDate,
@@ -324,8 +323,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
   if (recentPayrollRun) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const lastEnd = new Date(recentPayrollRun as any).periodEnd;
+    const lastEnd = new Date(recentPayrollRun as Record<string,unknown>).periodEnd;
     periodStart = new Date(lastEnd.getTime() + 86400000);
     periodEnd = new Date(periodStart.getTime() + 6 * 86400000);
   } else {
@@ -343,9 +341,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
       and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.status, 'pending'),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(timeEntries.date, periodStart.toISOString().split('T')[0]),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(timeEntries.date, periodEnd.toISOString().split('T')[0])
       )
     )
@@ -362,9 +358,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
       and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.status, 'approved'),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(timeEntries.date, periodStart.toISOString().split('T')[0]),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(timeEntries.date, periodEnd.toISOString().split('T')[0])
       )
     );
@@ -392,11 +386,10 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
   let qbSnapshot: FinancialSnapshot['qbSnapshot'] = null;
   if (modeInfo.qbConnected) {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { trinityQuickBooksSnapshotService } = await import('./trinityQuickBooksSnapshot');
       const snap = await trinityQuickBooksSnapshotService.getFinancialSnapshot(workspaceId);
 
-      const arTotal = snap.arAging.reduce((s: any, b: any) => s + b.totalAmount, 0);
+      const arTotal = snap.arAging.reduce((s: Record<string, unknown>, b: unknown) => s + b.totalAmount, 0);
       const overdueCount = snap.overdueInvoices.length;
 
       let lastSyncAge = 'never';
@@ -587,7 +580,7 @@ async function runDraftPayroll(workspaceId: string, requestedBy: string, overrid
       status: result.payrollRunId ? 'draft' : 'failed',
       summary: `Payroll draft created for ${employeeCount} employee(s) covering ${periodStart} → ${periodEnd}. Estimated gross: $${totalGross.toFixed(2)}. Mode: ${modeLabel}.`,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       mode: modeInfo.mode,
       payrollRunId: null,
@@ -623,7 +616,7 @@ async function pushToQuickBooks(workspaceId: string, params: { type: 'invoice' |
         message: result.success ? `Invoice synced to QuickBooks successfully.` : `QB sync failed: ${result.error}`,
         qbEntityId: result.qbInvoiceId,
       };
-    } catch (e: any) {
+    } catch (e: unknown) {
       return { success: false, message: `QB invoice push error: ${e.message}` };
     }
   }
@@ -667,11 +660,10 @@ async function buildReconciliationReport(workspaceId: string): Promise<{
 
   if (modeInfo.qbConnected) {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { trinityQuickBooksSnapshotService } = await import('./trinityQuickBooksSnapshot');
       const snap = await trinityQuickBooksSnapshotService.getFinancialSnapshot(workspaceId);
 
-      qbArTotal = snap.arAging.reduce((s: any, b: any) => s + b.totalAmount, 0);
+      qbArTotal = snap.arAging.reduce((s: Record<string, unknown>, b: unknown) => s + b.totalAmount, 0);
       hoursVariance = snap.hoursReconciliation.variance;
       revenueVariance = qbArTotal - internalOutstanding;
 
@@ -691,7 +683,7 @@ async function buildReconciliationReport(workspaceId: string): Promise<{
         discrepancies.push(`QB sync has ${snap.syncHealth.errorCount} error(s): ${snap.syncHealth.recentErrors.slice(0, 2).join('; ')}`);
         recommendations.push('Check the QB review queue and resolve pending sync errors.');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       discrepancies.push(`Could not fetch QB snapshot: ${e.message}`);
     }
   } else {
@@ -720,7 +712,7 @@ export function registerFinanceOrchestratorActions(): void {
   const getConnectionStatus: ActionHandler = {
     actionId: 'billing.sync_qb',
     name: 'QuickBooks Sync & Status',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Consolidated QB action. Use payload.action: "status" to get QB connection status (default), "push" to push an entity to QB (requires payload.type and payload.id), "prepare" to prepare an invoice QB payload (requires payload.invoiceId).',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -754,7 +746,7 @@ export function registerFinanceOrchestratorActions(): void {
         // Default: action=status (or no action) → get connection status
         const result = await detectFinanceMode(workspaceId);
         return ok(req.actionId, `Finance mode: ${result.mode}. ${result.recommendation}`, result, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },
@@ -763,7 +755,7 @@ export function registerFinanceOrchestratorActions(): void {
   const gatherSnapshot: ActionHandler = {
     actionId: 'billing.financial_snapshot',
     name: 'Gather Financial Snapshot',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Pull complete financial dataset: unbilled work, open payroll period, pending invoices, QB AR aging (if connected), and data quality score.',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -781,7 +773,7 @@ export function registerFinanceOrchestratorActions(): void {
           `Data quality: ${snapshot.dataQuality.score}/100${snapshot.dataQuality.warnings.length > 0 ? ' — ' + snapshot.dataQuality.warnings.join('; ') : ''}`,
         ].join('\n');
         return ok(req.actionId, summary, snapshot, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },
@@ -790,7 +782,7 @@ export function registerFinanceOrchestratorActions(): void {
   const draftInvoices: ActionHandler = {
     actionId: 'billing.invoice_generate',
     name: 'Generate Draft Invoices',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Generate draft invoices for all clients with approved, unbilled time entries. Auto-detects QB vs internal mode. In QB_MODE, triggers confidence pipeline for potential auto-sync.',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -803,7 +795,7 @@ export function registerFinanceOrchestratorActions(): void {
         return result.drafted > 0
           ? ok(req.actionId, result.summary, result, start)
           : ok(req.actionId, result.summary, result, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },
@@ -812,7 +804,7 @@ export function registerFinanceOrchestratorActions(): void {
   const draftPayroll: ActionHandler = {
     actionId: 'payroll.draft',
     name: 'Draft Payroll Run',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Generate a draft payroll run for the current or specified pay period. Auto-detects QB vs internal mode. Uses full internal tax engine (FLSA, OT, state taxes). In QB_MODE, triggers pipeline for QB sync after approval.',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -828,7 +820,7 @@ export function registerFinanceOrchestratorActions(): void {
         return result.status === 'draft'
           ? ok(req.actionId, result.summary, result, start)
           : fail(req.actionId, result.summary, result, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },
@@ -837,7 +829,7 @@ export function registerFinanceOrchestratorActions(): void {
   const pushToQB: ActionHandler = {
     actionId: 'billing.push_to_qb',
     name: 'Push to QuickBooks',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Push a specific invoice or payroll run to QuickBooks. Requires QB_MODE (active QB connection). For invoices: direct QBO sync. For payroll: approve the run first, pipeline handles QB sync.',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -851,7 +843,7 @@ export function registerFinanceOrchestratorActions(): void {
         return result.success
           ? ok(req.actionId, result.message, result, start)
           : fail(req.actionId, result.message, result, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },
@@ -860,7 +852,7 @@ export function registerFinanceOrchestratorActions(): void {
   const reconcile: ActionHandler = {
     actionId: 'billing.reconcile',
     name: 'Reconcile Financial Records',
-    category: 'billing' as any,
+    category: 'billing',
     description: 'Compare CoAIleague records vs QuickBooks ledger. Surfaces hours variance, revenue gaps, sync errors. In INTERNAL mode, reports on internal record consistency.',
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -874,7 +866,7 @@ export function registerFinanceOrchestratorActions(): void {
           ? 'Financial records are consistent. No discrepancies found.'
           : `Found ${report.discrepancies.length} discrepancy/discrepancies: ${report.discrepancies[0]}`;
         return ok(req.actionId, summary, report, start);
-      } catch (e: any) {
+      } catch (e: unknown) {
         return fail(req.actionId, e.message, null, start);
       }
     },

@@ -45,7 +45,7 @@ class DocumentPipelineService {
       title?: string;
       priority?: 'low' | 'normal' | 'high' | 'urgent';
       workspaceId?: string;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
       tags?: string[];
     }
   ): Promise<PipelineDocument> {
@@ -297,7 +297,7 @@ class DocumentPipelineService {
     log.info(`[Pipeline] Document ${doc.id} completed pipeline successfully`);
   }
 
-  private async analyzeContent(doc: PipelineDocument): Promise<any> {
+  private async analyzeContent(doc: PipelineDocument): Promise<unknown> {
     return {
       summary: 'Document content analyzed',
       extractedAt: new Date(),

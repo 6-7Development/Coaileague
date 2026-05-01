@@ -33,7 +33,7 @@ import {
  * @param tx - Active transaction context
  */
 async function ensureOrgIdentifiersInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   orgId: string,
   orgName: string
 ): Promise<{ orgCode: string; externalId: string }> {
@@ -127,7 +127,7 @@ async function ensureOrgIdentifiersInTx(
            ON CONFLICT DO NOTHING`,
           ['org', orgId, externalId]
         );
-      } catch (_poolErr: any) {
+      } catch (_poolErr : unknown) {
         // Pool import failed — fall back to Drizzle (may abort tx on conflict)
         await tx.insert(externalIdentifiers).values({
           entityType: 'org',
@@ -141,7 +141,7 @@ async function ensureOrgIdentifiersInTx(
 
       // Success!
       success = true;
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Concurrent insert race — re-check if this org now has an external ID.
       if (error.code === '23505') {
         const recheck = await tx
@@ -186,7 +186,7 @@ async function ensureOrgIdentifiersInTx(
       nextVal: 1,
     });
     log.info(`[Identity] Employee sequence initialized successfully`);
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.info(`[Identity] Employee sequence init caught error: ${error.code}`);
     // Ignore unique constraint violation - another transaction created it
     if (error.code !== '23505') {
@@ -205,7 +205,7 @@ async function ensureOrgIdentifiersInTx(
       nextVal: 1,
     });
     log.info(`[Identity] Client sequence initialized successfully`);
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.info(`[Identity] Client sequence init caught error: ${error.code}`);
     // Ignore unique constraint violation - another transaction created it
     if (error.code !== '23505') {
@@ -226,7 +226,7 @@ async function ensureOrgIdentifiersInTx(
 export async function ensureOrgIdentifiers(
   orgId: string,
   orgName: string,
-  txParam?: any
+  txParam?: unknown
 ): Promise<{ orgCode: string; externalId: string }> {
   // If transaction provided, use it directly
   if (txParam) {
@@ -234,7 +234,7 @@ export async function ensureOrgIdentifiers(
   }
   
   // Otherwise start own transaction (backward compatible)
-  return await db.transaction(async (tx: any) => {
+  return await db.transaction(async (tx: unknown) => {
     return ensureOrgIdentifiersInTx(tx, orgId, orgName);
   });
 }
@@ -243,7 +243,7 @@ export async function ensureOrgIdentifiers(
  * Internal function to attach employee external ID within a transaction
  */
 async function attachEmployeeExternalIdInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   employeeId: string,
   orgId: string
 ): Promise<{ externalId: string; localNumber: number }> {
@@ -340,7 +340,7 @@ async function attachEmployeeExternalIdInTx(
 
         log.info(`[Identity] Created employee external ID: ${externalId} for employee ${employeeId}`);
         return { externalId, localNumber: nextVal };
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.error('[Identity] Error in attachEmployeeExternalIdInTx:', (error instanceof Error ? error.message : String(error)), error.code);
         throw error;
       }
@@ -353,7 +353,7 @@ async function attachEmployeeExternalIdInTx(
 export async function attachEmployeeExternalId(
   employeeId: string,
   orgId: string,
-  txParam?: any
+  txParam?: unknown
 ): Promise<{ externalId: string; localNumber: number }> {
   // If transaction provided, use it directly
   if (txParam) {
@@ -362,10 +362,10 @@ export async function attachEmployeeExternalId(
   
   // Otherwise start own transaction (backward compatible)
   try {
-    return await db.transaction(async (tx: any) => {
+    return await db.transaction(async (tx: unknown) => {
       return attachEmployeeExternalIdInTx(tx, employeeId, orgId);
     });
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Identity] Failed to attach employee external ID:', (error instanceof Error ? error.message : String(error)), error.code);
     throw error;
   }
@@ -375,7 +375,7 @@ export async function attachEmployeeExternalId(
  * Internal function to attach client external ID within a transaction
  */
 async function attachClientExternalIdInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   clientId: string,
   orgId: string
 ): Promise<{ externalId: string; localNumber: number }> {
@@ -459,7 +459,7 @@ async function attachClientExternalIdInTx(
 
     log.info(`[Identity] Created client external ID: ${externalId} for client ${clientId}`);
     return { externalId, localNumber: nextVal };
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Identity] Error in attachClientExternalIdInTx:', (error instanceof Error ? error.message : String(error)), error.code);
     throw error;
   }
@@ -472,7 +472,7 @@ async function attachClientExternalIdInTx(
 export async function attachClientExternalId(
   clientId: string,
   orgId: string,
-  txParam?: any
+  txParam?: unknown
 ): Promise<{ externalId: string; localNumber: number }> {
   // If transaction provided, use it directly
   if (txParam) {
@@ -481,10 +481,10 @@ export async function attachClientExternalId(
   
   // Otherwise start own transaction (backward compatible)
   try {
-    return await db.transaction(async (tx: any) => {
+    return await db.transaction(async (tx: unknown) => {
       return attachClientExternalIdInTx(tx, clientId, orgId);
     });
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Identity] Failed to attach client external ID:', (error instanceof Error ? error.message : String(error)), error.code);
     throw error;
   }
@@ -518,7 +518,7 @@ export async function ensureSupportCode(userId: string): Promise<{ supportCode: 
       });
       
       return { supportCode: code };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // If unique constraint violation, retry
       if (error.code === '23505') {
         attempts++;
@@ -553,7 +553,7 @@ export async function supportLookup(query: string): Promise<Array<{
       .where(eq(externalIdentifiers.externalId, trimmed.toUpperCase()))
       .limit(10);
 
-    return results.map((r: any) => ({
+    return results.map((r: unknown) => ({
       entityType: r.entityType,
       entityId: r.entityId,
       externalId: r.externalId,
@@ -571,7 +571,7 @@ export async function supportLookup(query: string): Promise<Array<{
       .limit(10);
 
     if (idResults.length > 0) {
-      return idResults.map((r: any) => ({
+      return idResults.map((r: unknown) => ({
         entityType: r.entityType,
         entityId: r.entityId,
         externalId: r.externalId,
@@ -604,7 +604,7 @@ export async function supportLookup(query: string): Promise<Array<{
     .where(sql`LOWER(${users.email}) = LOWER(${trimmed})`)
     .limit(10);
 
-  return userResults.map((u: any) => ({
+  return userResults.map((u: unknown) => ({
     entityType: 'user',
     entityId: u.id,
     email: u.email,
@@ -655,7 +655,7 @@ export async function migrateEmployeeIdsToNewOrgCode(
   log.info(`[Identity] Migrating employee IDs for workspace ${workspaceId} to new org code: ${normalizedCode}`);
   
   try {
-    await db.transaction(async (tx: any) => {
+    await db.transaction(async (tx: unknown) => {
       // Get all employees for this workspace with their external IDs
       const empList = await tx
         .select({
@@ -677,7 +677,6 @@ export async function migrateEmployeeIdsToNewOrgCode(
         );
       
       // Build a map of employee ID to external identifier record
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const extIdMap = new Map(existingIds.map(e => [e.entityId, e]));
       
       // Check for potential conflicts with new IDs first
@@ -704,12 +703,11 @@ export async function migrateEmployeeIdsToNewOrgCode(
           
           if (extRecord) {
             // Extract sequence number from existing ID (EMP-XXXX-00001 -> 00001)
-            const parts = (extRecord as any).externalId.split('-');
+            const parts = (extRecord as Record<string,unknown>).externalId.split('-');
             const seqNumber = parts.length === 3 ? parts[2] : '00001';
             const newExternalId = `EMP-${normalizedCode}-${seqNumber}`;
             
             // Skip if already has the new format
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             if (extRecord.externalId === newExternalId) {
               continue;
             }
@@ -718,7 +716,7 @@ export async function migrateEmployeeIdsToNewOrgCode(
             await tx
               .update(externalIdentifiers)
               .set({ externalId: newExternalId })
-              .where(eq(externalIdentifiers.id, (extRecord as any).id));
+              .where(eq(externalIdentifiers.id, ((extRecord as {id?: string}).id)));
             
             // Update employees.employee_number
             await tx
@@ -726,11 +724,11 @@ export async function migrateEmployeeIdsToNewOrgCode(
               .set({ employeeNumber: newExternalId })
               .where(eq(employees.id, emp.employeeId));
             
-            log.info(`[Identity] Migrated ${(extRecord as any).externalId} -> ${newExternalId}`);
+            log.info(`[Identity] Migrated ${(extRecord as Record<string,unknown>).externalId} -> ${newExternalId}`);
             migratedCount++;
             migratedEmployeeIds.push(emp.employeeId);
           }
-        } catch (empError: any) {
+        } catch (empError : unknown) {
           // Handle unique constraint violations gracefully
           if (empError.code === '23505') {
             errors.push(`Employee ${emp.employeeId}: ID conflict - skipped`);
@@ -776,14 +774,14 @@ export async function migrateEmployeeIdsToNewOrgCode(
           });
         }
         log.info(`[Identity] Emitted ${migratedEmployeeIds.length} cross-device sync events`);
-      } catch (syncError: any) {
+      } catch (syncError : unknown) {
         log.warn(`[Identity] Cross-device sync warning: ${syncError.message}`);
       }
     }
     
     log.info(`[Identity] Migration complete: ${migratedCount} employees migrated to ${normalizedCode}`);
     return { success: true, migratedCount, errors };
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Identity] Migration failed:', (error instanceof Error ? error.message : String(error)));
     return { success: false, migratedCount, errors: [(error instanceof Error ? error.message : String(error))] };
   }
@@ -866,7 +864,7 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
   const results: FullIdentityRecord[] = [];
 
   try {
-    let userRecords: any[] = [];
+    let userRecords: (string | number | boolean | null)[] = [];
 
     // 1. Try external ID format
     if (isExternalIdFormat(trimmed)) {
@@ -974,7 +972,7 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
         record.employeeId = emp.id;
         record.employeeNumber = emp.employeeNumber || undefined;
         record.position = emp.position || undefined;
-        record.department = (emp as any).department || undefined;
+        record.department = (emp as EmployeeWithStatus).department || undefined;
         record.hireDate = emp.hireDate?.toISOString() || undefined;
         record.isActive = emp.isActive ?? true;
         // Employee external ID
@@ -998,7 +996,7 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
           .where(eq(supportRegistry.userId, user.id))
           .limit(1);
         if (sr) record.supportCode = sr.supportCode || undefined;
-      } catch (srErr: any) { log.warn('[Identity] Support registry lookup failed:', srErr.message); }
+      } catch (srErr : unknown) { log.warn('[Identity] Support registry lookup failed:', srErr.message); }
 
       // Recent HelpAI sessions (last 5)
       const sessions = await db.select({
@@ -1034,7 +1032,6 @@ export async function supportLookupFull(query: string): Promise<FullIdentityReco
           .limit(1);
         return { workspaceId: m.workspaceId, workspaceName: w?.name || m.workspaceId, role: m.role };
       }));
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       record.allWorkspaces = wsNames;
 
       results.push(record);

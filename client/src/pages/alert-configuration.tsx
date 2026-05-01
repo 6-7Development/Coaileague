@@ -51,7 +51,7 @@ interface AlertHistoryItem {
   createdAt: string;
 }
 
-const ALERT_TYPE_CONFIG: Record<string, { label: string; icon: any; description: string; thresholdLabel: string; thresholdUnit: string }> = {
+const ALERT_TYPE_CONFIG: Record<string, { label: string; icon: string | React.ReactNode; description: string; thresholdLabel: string; thresholdUnit: string }> = {
   overtime: {
     label: 'Overtime Alert',
     icon: Clock,
@@ -117,7 +117,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200',
 };
 
-const CHANNEL_ICONS: Record<string, any> = {
+const CHANNEL_ICONS: Record<string, unknown> = {
   in_app: Bell,
   email: Mail,
   sms: Smartphone,
@@ -507,7 +507,7 @@ function EditAlertDialog({ config, onClose, onSave, isSaving }: EditAlertDialogP
 
           <div className="space-y-2">
             <Label>Severity</Label>
-            <Select value={severity} onValueChange={(v) => setSeverity(v as any)}>
+            <Select value={severity} onValueChange={(v) => setSeverity(v as unknown)}>
               <SelectTrigger data-testid="select-severity">
                 <SelectValue />
               </SelectTrigger>

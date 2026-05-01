@@ -162,7 +162,7 @@ router.get("/policies/:id/acknowledgments", requireManager, async (req: Authenti
   }
 });
 
-router.get("/compliance-reports/labor-violations", requireAuth, async (req: any, res) => {
+router.get("/compliance-reports/labor-violations", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
@@ -189,7 +189,7 @@ router.get("/compliance-reports/labor-violations", requireAuth, async (req: any,
   }
 });
 
-router.get("/compliance-reports/tax-remittance", requireAuth, async (req: any, res) => {
+router.get("/compliance-reports/tax-remittance", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
@@ -202,7 +202,6 @@ router.get("/compliance-reports/tax-remittance", requireAuth, async (req: any, r
       return res.status(400).json({ message: "Start and end dates required" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { generateTaxRemittanceProofReport } = await import('../services/complianceReports');
     const report = await generateTaxRemittanceProofReport(
       user.currentWorkspaceId,
@@ -217,7 +216,7 @@ router.get("/compliance-reports/tax-remittance", requireAuth, async (req: any, r
   }
 });
 
-router.get("/compliance-reports/audit-log", requireAuth, async (req: any, res) => {
+router.get("/compliance-reports/audit-log", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
@@ -245,7 +244,7 @@ router.get("/compliance-reports/audit-log", requireAuth, async (req: any, res) =
   }
 });
 
-router.get("/compliance/summary", requireAuth, async (req: any, res) => {
+router.get("/compliance/summary", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
@@ -409,7 +408,7 @@ router.post("/compliance-reports/generate", requireManager, async (req: Authenti
       description: catalog.description,
       periodStart,
       periodEnd,
-      status: 'completed' as any,
+      status: 'completed',
       generatedBy: userId,
       generatedAt: now,
       automatedGeneration: false,

@@ -107,7 +107,7 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'debug';
   source: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -129,7 +129,6 @@ const RBAC_PERMISSIONS: Record<string, {
     canExecuteHotpatch: true,
     canEditCode: true,
     canDeleteWithoutApproval: false, // Even root needs two-code for delete
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     hotpatchTypes: ['config_update', 'cache_clear', 'service_restart', 'data_fix', 'code_edit', 'query_fix', 'permission_fix']
   },
   support_agent: {
@@ -138,7 +137,6 @@ const RBAC_PERMISSIONS: Record<string, {
     canExecuteHotpatch: true,
     canEditCode: false,
     canDeleteWithoutApproval: false,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     hotpatchTypes: ['config_update', 'cache_clear', 'service_restart', 'data_fix']
   },
   sysop: {
@@ -147,7 +145,6 @@ const RBAC_PERMISSIONS: Record<string, {
     canExecuteHotpatch: true,
     canEditCode: true,
     canDeleteWithoutApproval: false,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     hotpatchTypes: ['config_update', 'cache_clear', 'service_restart', 'data_fix', 'code_edit', 'query_fix', 'permission_fix']
   },
   // Workspace roles
@@ -174,7 +171,6 @@ const RBAC_PERMISSIONS: Record<string, {
     canExecuteHotpatch: true,
     canEditCode: true,
     canDeleteWithoutApproval: false, // Trinity cannot delete without two-code
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     hotpatchTypes: ['config_update', 'cache_clear', 'service_restart', 'data_fix', 'code_edit', 'query_fix', 'permission_fix']
   }
 };
@@ -208,7 +204,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as recent
           FROM notifications
         `);
-        const stats = (result as any[])[0] as any;
+        const stats = (result as unknown[])[0] as unknown;
         
         if (parseInt(stats?.unread || '0') > 1000) {
           issues.push({
@@ -221,7 +217,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             autoFixable: true,
             suggestedFix: {
               id: crypto.randomUUID(),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               type: 'data_fix',
               title: 'Archive old notifications',
               description: 'Move notifications older than 30 days to archive',
@@ -232,8 +227,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             }
           });
         }
-      } catch (error: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (error : unknown) {
         issues.push({
           id: crypto.randomUUID(),
           domain: 'notifications',
@@ -265,7 +259,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
           SELECT COUNT(*) as conflicts FROM shifts 
           WHERE status = 'conflict' AND shift_date >= CURRENT_DATE
         `);
-        const conflicts = parseInt((result as any[])[0]?.conflicts || '0');
+        const conflicts = parseInt((result as unknown[])[0]?.conflicts || '0');
         
         if (conflicts > 0) {
           issues.push({
@@ -278,7 +272,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             autoFixable: true,
             suggestedFix: {
               id: crypto.randomUUID(),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               type: 'data_fix',
               title: 'Run AI conflict resolver',
               description: 'Use AI to suggest optimal resolution for conflicts',
@@ -289,7 +282,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             }
           });
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         // Table may not exist, that's ok
       }
       return { healthy: issues.length === 0, issues };
@@ -312,7 +305,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
           SELECT COUNT(*) as expired FROM sessions 
           WHERE expire < NOW()
         `);
-        const expired = parseInt((result as any[])[0]?.expired || '0');
+        const expired = parseInt((result as unknown[])[0]?.expired || '0');
         
         if (expired > 100) {
           issues.push({
@@ -325,7 +318,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             autoFixable: true,
             suggestedFix: {
               id: crypto.randomUUID(),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               type: 'data_fix',
               title: 'Cleanup expired sessions',
               description: 'Remove expired session records',
@@ -336,7 +328,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             }
           });
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         // Session table may not exist
       }
       return { healthy: issues.length === 0, issues };
@@ -348,7 +340,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
     }
   },
   {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     domain: 'websocket',
     name: 'WebSocketDiagnostician',
     description: 'Monitors WebSocket connections, message delivery, reconnection health',
@@ -376,7 +367,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
         const latency = Date.now() - start;
         
         if (latency > 500) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           issues.push({
             id: crypto.randomUUID(),
             domain: 'database',
@@ -387,8 +377,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             autoFixable: false
           });
         }
-      } catch (error: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (error : unknown) {
         issues.push({
           id: crypto.randomUUID(),
           domain: 'database',
@@ -408,7 +397,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
     }
   },
   {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     domain: 'frontend',
     name: 'FrontendDiagnostician',
     description: 'Monitors React errors, rendering issues, scroll behavior, component health',
@@ -423,7 +411,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
     }
   },
   {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     domain: 'ai_brain',
     name: 'AIBrainDiagnostician',
     description: 'Monitors AI Brain health, Gemini API, subagent performance, credit usage',
@@ -438,7 +425,6 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
         if (inactiveCount > allSubagents.length * 0.3) {
           issues.push({
             id: crypto.randomUUID(),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             domain: 'ai_brain',
             severity: 'warning',
             title: `${inactiveCount} subagents inactive`,
@@ -451,14 +437,13 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
               title: 'Reset inactive subagents',
               description: 'Restart subagents that failed health checks',
               estimatedImpact: 'low',
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               requiresTwoCodeApproval: false,
               rbacMinimumRole: 'support_agent',
               canAutoExecute: true
             }
           });
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         // Subagent health check failed gracefully - AI Brain is still operational
         log.info('[AIBrainDiagnostician] Subagent health check skipped:', (error instanceof Error ? error.message : String(error)));
       }
@@ -543,7 +528,7 @@ Format as structured analysis. Be specific about file names, functions, and exac
       recommendations: [],
       geminiInsight: response.text || 'Analysis unavailable'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       issuesDetected: [],
       patterns: [],
@@ -681,7 +666,6 @@ class HotpatchExecutor {
           execution.result = 'Service restart initiated';
           break;
           
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         case 'data_fix':
           if (hotpatch.code) {
             // Additional security check for data_fix
@@ -704,7 +688,7 @@ class HotpatchExecutor {
       }
       
       execution.status = 'success';
-    } catch (error: any) {
+    } catch (error : unknown) {
       execution.status = 'failed';
       execution.result = (error instanceof Error ? error.message : String(error));
     }
@@ -768,7 +752,7 @@ class UniversalDiagnosticOrchestrator {
         try {
           const result = await subagent.healthCheckFn();
           return { domain: subagent.domain, ...result };
-        } catch (error: any) {
+        } catch (error : unknown) {
           return {
             domain: subagent.domain,
             healthy: false,
@@ -788,7 +772,6 @@ class UniversalDiagnosticOrchestrator {
 
     // Collect all issues
     healthChecks.forEach(check => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       allIssues.push(...check.issues);
     });
 
@@ -823,7 +806,6 @@ class UniversalDiagnosticOrchestrator {
       geminiSummary = 'All systems healthy. No issues detected.';
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const report: DiagnosticReport = {
       id: crypto.randomUUID(),
       runAt: new Date(),
@@ -899,7 +881,7 @@ export const universalDiagnosticOrchestrator = UniversalDiagnosticOrchestrator.g
 // This function is called from server/index.ts to avoid circular dependencies
 // ============================================================================
 
-export async function registerUniversalDiagnosticActions(orchestrator: any): Promise<void> {
+export async function registerUniversalDiagnosticActions(orchestrator: unknown): Promise<void> {
   // Full platform diagnostic scan
   orchestrator.registerAction({
     actionId: 'diagnostics.full_scan',
@@ -907,7 +889,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Run full platform diagnostic scan using Gemini 3 deep analysis',
     category: 'system',
     requiredRoles: ['support_agent', 'sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const userId = request.userId || 'system';
       const platformRole = request.metadata?.platformRole || 'support_agent';
       const report = await universalDiagnosticOrchestrator.runFullDiagnostic(userId, platformRole);
@@ -927,7 +909,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Run diagnostic on a specific domain',
     category: 'system',
     requiredRoles: ['support_agent', 'sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const domain = request.params?.domain || request.payload?.domain;
       if (!domain) {
         return { success: false, message: 'Domain parameter required' };
@@ -949,7 +931,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Analyze logs with Gemini 3 for root cause analysis',
     category: 'system',
     requiredRoles: ['support_agent', 'sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const logs = request.params?.logs || request.payload?.logs || '';
       const domain = request.params?.domain || request.payload?.domain;
       const analysis = await universalDiagnosticOrchestrator.analyzeLogsForIssues(logs, domain);
@@ -969,7 +951,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Execute a suggested hotpatch with RBAC validation. Destructive operations require two-code approval.',
     category: 'system',
     requiredRoles: ['sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const hotpatch = request.params?.hotpatch || request.payload?.hotpatch;
       const userId = request.userId || 'system';
       const platformRole = request.metadata?.platformRole || 'sysop';
@@ -1002,7 +984,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Get RBAC permissions for a specific role regarding diagnostics and hotpatches',
     category: 'security',
     requiredRoles: ['support_agent', 'sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const role = request.params?.role || request.payload?.role || request.metadata?.platformRole || 'support_agent';
       const permissions = universalDiagnosticOrchestrator.getRBACPermissions(role);
       return {
@@ -1021,7 +1003,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'List all specialized diagnostic subagents and their domains',
     category: 'system',
     requiredRoles: ['admin', 'support_agent', 'sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const subagents = DOMAIN_SUBAGENTS.map(s => ({
         domain: s.domain,
         name: s.name,
@@ -1044,7 +1026,7 @@ export async function registerUniversalDiagnosticActions(orchestrator: any): Pro
     description: 'Get history of hotpatch executions for audit trail',
     category: 'security',
     requiredRoles: ['sysop', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const history = universalDiagnosticOrchestrator.getExecutionHistory();
       return {
         success: true,

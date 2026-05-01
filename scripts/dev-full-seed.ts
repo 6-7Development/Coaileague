@@ -64,10 +64,10 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
 function randInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function randFloat(min: number, max: number) { return +(Math.random() * (max - min) + min).toFixed(2); }
 
-async function q(sql: string, params: any[] = []) {
+async function q(sql: string, params: unknown[] = []) {
   try {
     return await pool.query(sql, params);
-  } catch (e: any) {
+  } catch (e : unknown) {
     if (!e.message?.includes('duplicate key') && !e.message?.includes('already exists')) {
       console.warn(`  ⚠️  ${e.message?.slice(0, 100)}`);
     }
@@ -190,12 +190,12 @@ async function seedACME() {
 // ─── Shift Seeder ─────────────────────────────────────────────────────────────
 async function seedShifts(
   workspaceId: string,
-  officers: any[],
-  clients: any[],
+  officers: unknown[],
+  clients: unknown[],
   historyDays: number,
   futureDays: number
 ) {
-  const shifts: any[] = [];
+  const shifts: unknown[] = [];
   const SHIFT_TYPES = [
     { start: '07:00', end: '15:00', title: 'Day Shift' },
     { start: '15:00', end: '23:00', title: 'Evening Shift' },
@@ -252,7 +252,7 @@ async function seedShifts(
 }
 
 // ─── Invoice Seeder ──────────────────────────────────────────────────────────
-async function seedInvoices(workspaceId: string, clients: any[], ownerId: string) {
+async function seedInvoices(workspaceId: string, clients: unknown[], ownerId: string) {
   const statuses = [
     { status: 'paid', count: 6 },
     { status: 'sent', count: 3 },
@@ -288,7 +288,7 @@ async function seedInvoices(workspaceId: string, clients: any[], ownerId: string
 }
 
 // ─── Payroll Seeder ───────────────────────────────────────────────────────────
-async function seedPayroll(workspaceId: string, employees: any[]) {
+async function seedPayroll(workspaceId: string, employees: unknown[]) {
   const periods = [
     { start: daysAgo(45), end: daysAgo(31), status: 'completed' },
     { start: daysAgo(30), end: daysAgo(16), status: 'completed' },
@@ -347,7 +347,7 @@ async function seedHelpTickets(workspaceId: string, userId: string) {
 }
 
 // ─── Incident Report Seeder ───────────────────────────────────────────────────
-async function seedIncidents(workspaceId: string, officers: any[], clients: any[]) {
+async function seedIncidents(workspaceId: string, officers: unknown[], clients: unknown[]) {
   const incidents = [
     { type: 'theft', title: 'Shoplifting incident — Riverside Mall', severity: 'medium' },
     { type: 'trespass', title: 'Unauthorized access to server room', severity: 'high' },
@@ -612,7 +612,7 @@ async function main() {
     console.log('');
     console.log('   ⚠️  Token expires: revoke GitHub PAT after session');
 
-  } catch (err: any) {
+  } catch (err : unknown) {
     console.error('\n❌ Seed failed:', err?.message || err);
     process.exit(1);
   } finally {

@@ -132,7 +132,6 @@ async function processEquipmentAssignment(req: import("express").Request, res: i
 
     tokenManager.recordUsage({
       workspaceId, userId: userId || 'system', featureKey: 'equipment_checkout',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       featureName: 'Equipment Checkout', description: `Equipment item ${validated.equipmentItemId} checked out`,
       amountOverride: 1, relatedEntityType: 'equipment_assignment', relatedEntityId: assignment.id,
     }).catch((err: Error) => { log.error('[Equipment] Checkout credit deduction failed (non-blocking):', err.message); });
@@ -209,7 +208,6 @@ async function processEquipmentReturn(
 
     tokenManager.recordUsage({
       workspaceId, userId: userId || 'system', featureKey: 'equipment_return',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       featureName: 'Equipment Return', description: `Equipment item ${assignment.equipment_item_id} returned`,
       amountOverride: 1, relatedEntityType: 'equipment_assignment', relatedEntityId: assignment.id,
     }).catch((err: Error) => { log.error('[Equipment] Return credit deduction failed (non-blocking):', err.message); });
@@ -486,7 +484,7 @@ router.post("/report-lost/:assignmentId", async (req, res) => {
         );
 
         await client.query(
-          `UPDATE equipment_assignments SET deduction_amount = $1 WHERE id = $2`,
+          `UPDATE equipment_assignments SET deduction_amount = $1 WHERE id = $2 AND workspace_id = $3`,
           [deductionAmount, assignmentId]
         );
       }
@@ -850,7 +848,7 @@ router.post("/:itemId/report-lost", async (req, res) => {
     await client.query('COMMIT');
     res.json({ success: true, assignmentId, deductionAmount });
   } catch (error: unknown) {
-    await client.query('ROLLBACK').catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    await client.query('ROLLBACK').catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     log.error("Error reporting lost equipment by item:", error);
     res.status(500).json({ error: "Failed to report lost equipment" });
   } finally {

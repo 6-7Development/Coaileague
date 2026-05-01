@@ -1,8 +1,6 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { requireAuth } from "../auth";
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { requireAuth } from "../auth";
 import { requireOwner, requireManager, requirePlatformStaff, attachWorkspaceId, type AuthenticatedRequest } from "../rbac";
 import { requireProfessional } from "../tierGuards";
@@ -37,14 +35,14 @@ router.get("/audit-trail", requireManager, async (req: AuthenticatedRequest, res
       .limit(parseInt(limit as string));
     
     if (entityType) {
-      query = (query as any).where(and(
+      query = (query as Record<string,unknown>).where(and(
         eq(auditLogs.workspaceId, workspaceId),
         eq(auditLogs.entityType, entityType as string)
       ));
     }
     
     if (entityId) {
-      query = (query as any).where(and(
+      query = (query as Record<string,unknown>).where(and(
         eq(auditLogs.workspaceId, workspaceId),
         eq(auditLogs.entityId, entityId as string)
       ));
@@ -74,11 +72,11 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
     const conditions = [eq(auditLogs.workspaceId, workspaceId)];
     
     if (actorFilter && actorFilter !== 'all') {
-      conditions.push(eq(auditLogs.actorType, actorFilter as any));
+      conditions.push(eq(auditLogs.actorType, actorFilter as unknown));
     }
     
     if (statusFilter && statusFilter !== 'all') {
-      conditions.push(eq(auditLogs.eventStatus, statusFilter as any));
+      conditions.push(eq(auditLogs.eventStatus, statusFilter as unknown));
     }
 
     const events = await db
@@ -91,17 +89,17 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
 
     const logs = events.map(event => ({
       id: event.id,
-      timestamp: (event as any).timestamp,
+      timestamp: (event as Record<string,unknown>).timestamp,
       actorType: event.actorType,
-      actorId: (event as any).actorId,
-      actorName: (event as any).actorName || 'Unknown',
-      action: (event as any).eventType,
-      resourceType: (event as any).aggregateType,
-      resourceId: (event as any).aggregateId,
-      status: (event as any).status === 'completed' ? '(success as any)' : (event as any).status === 'failed' ? 'failure' : 'warning',
+      actorId: (event as Record<string,unknown>).actorId,
+      actorName: (event as Record<string,unknown>).actorName || 'Unknown',
+      action: (event as Record<string,unknown>).eventType,
+      resourceType: (event as Record<string,unknown>).aggregateType,
+      resourceId: (event as Record<string,unknown>).aggregateId,
+      status: (event as Record<string,unknown>).status === 'completed' ? '(success as unknown)' : (event as Record<string,unknown>).status === 'failed' ? 'failure' : 'warning',
       details: typeof event.payload === 'object' && event.payload && 'description' in event.payload
         ? String(event.payload.description)
-        : `${(event as any).eventType} (on as any) ${(event as any).aggregateType}`,
+        : `${(event as Record<string,unknown>).eventType} (on as unknown) ${(event as Record<string,unknown>).aggregateType}`,
       ipAddress: event.ipAddress || undefined,
       userAgent: event.userAgent || undefined,
       verificationHash: event.actionHash || undefined,
@@ -153,7 +151,7 @@ router.post("/security-compliance/records/:recordId/lock-vault", requireAuth, as
           ${workspaceId ? sql`AND workspace_id = ${workspaceId}` : sql``}
           RETURNING *`
     );
-    const updated = (result as any).rows?.[0];
+    const updated = (result as Record<string, unknown>).rows?.[0];
     if (!updated) return res.status(404).json({ message: 'Compliance record not found' });
     res.json({ success: true, data: updated });
   } catch (error: unknown) {
@@ -176,13 +174,13 @@ router.get("/safety-checks/recent", requireAuth, async (req: AuthenticatedReques
       .limit(20);
     
     const formatted = reports.map(r => {
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       try {
         data = typeof r.summary === 'string' ? JSON.parse(r.summary) : {};
       } catch { data = {}; }
       const items = data.items || {};
-      const passCount = Object.values(items).filter((v: any) => v === 'pass').length;
-      const failCount = Object.values(items).filter((v: any) => v === 'fail').length;
+      const passCount = Object.values(items).filter((v: unknown) => v === 'pass').length;
+      const failCount = Object.values(items).filter((v: unknown) => v === 'fail').length;
       return {
         id: r.id,
         siteName: data.location ? `${data.location.lat}, ${data.location.lng}` : 'Unknown Site',
@@ -200,7 +198,7 @@ router.get("/safety-checks/recent", requireAuth, async (req: AuthenticatedReques
   }
 });
 
-router.post("/dar/:darId/verify", requireAuth, async (req: any, res) => {
+router.post("/dar/:darId/verify", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const { notes } = req.body;
@@ -222,7 +220,7 @@ router.post("/dar/:darId/verify", requireAuth, async (req: any, res) => {
   }
 });
 
-router.post("/dar/:darId/send", requireAuth, async (req: any, res) => {
+router.post("/dar/:darId/send", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await shiftChatroomWorkflowService.sendDARToClient(req.params.darId);
 

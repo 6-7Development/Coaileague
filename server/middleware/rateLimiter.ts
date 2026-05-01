@@ -39,7 +39,7 @@ function getClientIp(req: Request): string {
  * key by IP where per-IP limiting is semantically correct.
  */
 function getUserKey(req: Request): string {
-  const userId = (req as any).user?.id;
+  const userId = req.user?.id;
   if (userId) return `user:${userId}`;
   return getClientIp(req);
 }
@@ -80,7 +80,6 @@ function logRateLimitViolation(req: Request, limitType: string): void {
       // Fire admin alert via platform event bus (non-blocking — dynamic import avoids circular deps + ESM compat)
       scheduleNonBlocking('rate-limiter.violation-alert', async () => {
         const { platformEventBus } = await import('../services/platformEventBus');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformEventBus.publish('rate_limit_violation', {
           ip,
           limitType,

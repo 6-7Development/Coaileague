@@ -5,6 +5,7 @@
  */
 
 import { format } from 'date-fns';
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import {
   Drawer,
   DrawerContent,
@@ -148,7 +149,7 @@ export function ShiftDetailSheet({
     if (client?.address) {
       return client.address;
     }
-    return (shift as any).jobSiteAddress || null;
+    return (shift as Record<string,unknown>).jobSiteAddress || null;
   };
 
   const siteAddress = getSiteAddress();
@@ -174,7 +175,7 @@ export function ShiftDetailSheet({
   };
 
   const getPostOrders = (): string | null => {
-    return (shift as any).postOrders || null;
+    return (shift as Record<string,unknown>).postOrders || null;
   };
 
   const hasPhotoRequirement = site?.requiresPhotoVerification || false;
@@ -184,13 +185,13 @@ export function ShiftDetailSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[100dvh] focus:outline-none">
+      <DrawerContent className="max-h-[80dvh] sm:max-h-[100ddvh] focus:outline-none">
         <div data-vaul-no-drag className="mx-auto w-full max-w-md overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
           <DrawerHeader className="pb-3 pt-2 px-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 shrink-0">
-                  <TrinityLogo size={18} />
+                  <TrinityAnimatedLogo size={18} />
                 </div>
                 <div>
                   <DrawerTitle className="text-base font-semibold">

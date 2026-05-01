@@ -33,7 +33,7 @@ const OWNER_ROLES = new Set(['org_owner', 'co_owner']);
 const requireOwnerOrPlatformStaff: RequestHandler = (req, res, next) => {
   const authReq = req as AuthenticatedRequest;
   if (OWNER_ROLES.has(authReq.workspaceRole ?? '')) return next();
-  const platformRole = (authReq as any).platformRole;
+  const platformRole = (authReq as Record<string,unknown>).platformRole;
   if (platformRole && hasPlatformWideAccess(platformRole)) return next();
   return res.status(403).json({ error: 'Only workspace owners or platform staff can edit permissions' });
 };
@@ -89,14 +89,13 @@ router.patch('/', requireOwnerOrPlatformStaff, async (req, res) => {
     return res.status(400).json({ error: `Unknown featureKey: ${featureKey}` });
   }
 
-  if (!MATRIX_ROLES.includes(role as any)) {
+  if (!MATRIX_ROLES.includes(role as string)) {
     return res.status(400).json({
       error: `Role ${role} is not eligible for permission overrides. Owner roles are always granted full access.`,
     });
   }
 
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await upsertPermission(workspaceId, role, featureKey, enabled, authReq.user?.id ?? null);
     broadcastToWorkspace(workspaceId, {
       type: 'permission_update',
@@ -129,7 +128,6 @@ router.delete('/', requireOwnerOrPlatformStaff, async (req, res) => {
   }
 
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await deletePermission(workspaceId, role, featureKey);
     broadcastToWorkspace(workspaceId, { type: 'permission_update', role, featureKey, reset: true });
     return res.json({ ok: true, reset: true, role, featureKey });

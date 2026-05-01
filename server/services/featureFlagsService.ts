@@ -16,7 +16,7 @@ const log = createLogger('featureFlagsService');
 
 
 // In-memory cache for fast flag lookups - longer TTL for resilience
-const flagCache = new Map<string, { value: any; expiresAt: number; flag: TrinityRuntimeFlag }>();
+const flagCache = new Map<string, { value: unknown; expiresAt: number; flag: TrinityRuntimeFlag }>();
 const CACHE_TTL_MS = TIMEOUTS.featureFlagCacheTtlMs;
 const STALE_CACHE_TTL_MS = TIMEOUTS.featureFlagStaleTtlMs;
 
@@ -38,7 +38,7 @@ interface FlagUpdateResult {
 
 interface FlagValue {
   key: string;
-  value: any;
+  value: unknown;
   valueType: ValueType;
   isEnabled: boolean;
 }
@@ -58,7 +58,7 @@ export const trinityRuntimeFlagsService = {
   }): Promise<TrinityRuntimeFlag[]> {
     let query = db.select().from(trinityRuntimeFlags);
     
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     
     if (filters?.category) {
       conditions.push(eq(trinityRuntimeFlags.category, filters.category));
@@ -199,7 +199,7 @@ export const trinityRuntimeFlagsService = {
     actor: { type: ActorType; id?: string },
     reason: string,
     source: string = 'manual',
-    sourceDetails?: any
+    sourceDetails?: unknown
   ): Promise<FlagUpdateResult> {
     const flag = await this.getFlagByKey(key);
     
@@ -273,7 +273,7 @@ export const trinityRuntimeFlagsService = {
       log.info(`[TrinityRuntimeFlags] ${actor.type} updated '${key}': ${previousValue} → ${newValueJson}`);
       
       return { success: true, flag: updated };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Log failed attempt
       await db.insert(trinityRuntimeFlagChanges).values({
         flagId: flag.id,
@@ -311,7 +311,7 @@ export const trinityRuntimeFlagsService = {
       return { success: false, error: `Flag '${key}' is not a boolean toggle` };
     }
     
-    const currentValue = JSON.parse(flag.currentValue);
+    const currentValue: unknown = JSON.parse(flag.currentValue);
     return this.updateFlagValue(key, !currentValue, actor, reason, source);
   },
 
@@ -325,7 +325,7 @@ export const trinityRuntimeFlagsService = {
     category?: string;
     flagType?: FlagType;
     valueType?: ValueType;
-    defaultValue: any;
+    defaultValue: unknown;
     safetyLevel?: SafetyLevel;
     allowedActors?: string[];
     requiresApproval?: boolean;
@@ -379,7 +379,7 @@ export const trinityRuntimeFlagsService = {
     }
     
     const previousChange = history[1]; // Second most recent change
-    const previousValue = JSON.parse(previousChange.previousValue);
+    const previousValue: unknown = JSON.parse(previousChange.previousValue);
     
     return this.updateFlagValue(
       key,

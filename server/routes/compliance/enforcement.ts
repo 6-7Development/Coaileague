@@ -16,6 +16,7 @@ import {
 import { eq, and, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { createLogger } from '../../lib/logger';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('ComplianceEnforcement');
 
 
@@ -127,10 +128,8 @@ async function requireAuditorOrStandardAuth(req: Request, res: Response, next: F
   if (auditorId) {
     req.auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return enforceAuditorSession(req, res, next);
   }
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   requireAuth(req, res, next);
 }
 
@@ -139,7 +138,6 @@ async function requireAuditorOrManagerAuth(req: Request, res: Response, next: Fu
   if (auditorId) {
     req.auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return enforceAuditorSession(req, res, next);
   }
   requireAuth(req, res, () => requireManagerRole(req, res, next));
@@ -218,7 +216,6 @@ router.post("/grievance-score-adjustment", requireAuth, requireManager, async (r
       userId
     );
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     res.json({ success: true, ...result });
   } catch (error) {
     log.error("[Compliance Enforcement] Grievance adjustment error:", error);
@@ -305,7 +302,7 @@ router.get("/hiring-score/:employeeId", requireAuth, requireManagerRole, async (
       }
     }
 
-    const anonymizedScore: any = {
+    const anonymizedScore: Record<string, unknown> = {
       success: true,
       accessLevel: hasBackgroundAuth ? 'authorized' : 'anonymized',
       employeeId,
@@ -546,8 +543,8 @@ router.get("/compliance-score/:employeeId", requireAuth, requireManagerRole, asy
         where: and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)),
       });
       if (employee) {
-        const stateCode = (employee as any).stateCode || 'CA';
-        const guardType = ((employee as any).guardType || 'unarmed') as 'armed' | 'unarmed';
+        const stateCode = (employee as EmployeeWithStatus).stateCode || 'CA';
+        const guardType = ((employee as EmployeeWithStatus).guardType || 'unarmed') as 'armed' | 'unarmed';
         const empDocs = await db.select()
           .from(employeeDocuments)
           .where(and(eq(employeeDocuments.employeeId, employeeId), eq(employeeDocuments.workspaceId, workspaceId)));
@@ -612,7 +609,7 @@ router.get("/audit-report", requireAuditorOrManagerAuth, async (req: Request, re
       ? Math.round((auditResult.compliant / auditResult.totalEmployees) * 100)
       : 100;
 
-    let scoreboardArray: any[] = [];
+    let scoreboardArray: (string | number | boolean | null)[] = [];
     try {
       const scoreboardResult = await complianceScoringBridge.getWorkspaceComplianceScoreboard(workspaceId);
       scoreboardArray = scoreboardResult?.scoreboard || [];
@@ -693,9 +690,7 @@ router.post("/cross-org-hiring-score/request", requireAuth, requireManagerRole, 
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await setComplianceAuthToken(token, {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       requestingWorkspaceId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       requestedBy,
       employeeId,
       purpose,
@@ -778,7 +773,7 @@ router.get("/cross-org-hiring-score/verify/:token", requireAuth, requireManagerR
   }
 });
 
-function getHiringRecommendation(complianceScore: number, behaviorScore: any): {
+function getHiringRecommendation(complianceScore: number, behaviorScore: unknown): {
   recommendation: 'strongly_recommend' | 'recommend' | 'neutral' | 'caution' | 'do_not_recommend';
   reasons: string[];
 } {

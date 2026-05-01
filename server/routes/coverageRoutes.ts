@@ -18,22 +18,22 @@ const log = createLogger('CoverageRoutes');
 interface AuthenticatedRequest {
   userId?: string;
   workspaceId?: string;
-  params: any;
-  body: any;
+  params: Record<string, unknown>;
+  body: Record<string, unknown>;
 }
 
 const coverageRouter = Router();
 
-coverageRouter.get('/', requireAuth as any, async (req: AuthenticatedRequest, res: Response) => {
+coverageRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    const statusFilter = (req as any).query?.status as string | undefined;
+    const statusFilter = (req as Record<string, unknown>).query?.status as string | undefined;
     if (!workspaceId) return res.status(401).json({ error: 'Workspace context required' });
     const status = await coveragePipeline.getCoverageStatus(workspaceId);
     // Return shifts array for marketplace UI
-    const shifts = (status as any)?.pendingOffers ?? (status as any)?.activeRequests ?? [];
+    const shifts = (status as Record<string,unknown>)?.pendingOffers ?? (status as Record<string,unknown>)?.activeRequests ?? [];
     res.json({ shifts, status });
-  } catch (e: any) {
+  } catch (e: unknown) {
     log.error('[CoverageRoutes] GET / failed:', e.message);
     res.status(500).json({ error: e.message });
   }
@@ -68,7 +68,6 @@ coverageRouter.post('/accept/:offerId', async (req: AuthenticatedRequest, res: R
           const { broadcastToWorkspace } = await import('../websocket');
           broadcastToWorkspace(wsWorkspaceId, { type: 'schedules_updated' });
         }
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } catch (e: unknown) { log.warn('[Coverage] Broadcast failed:', e.message); }
 
       res.json({ 
@@ -130,7 +129,7 @@ coverageRouter.post('/decline/:offerId', async (req: AuthenticatedRequest, res: 
   }
 });
 
-coverageRouter.get('/request/:requestId', requireAuth as any, async (req: AuthenticatedRequest, res: Response) => {
+coverageRouter.get('/request/:requestId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { requestId } = req.params;
     

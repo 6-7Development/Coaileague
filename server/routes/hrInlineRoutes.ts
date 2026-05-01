@@ -179,7 +179,7 @@ router.post("/experience/notification-preferences", requireAuth, async (req: Aut
     if (!notifParsed.success) return res.status(400).json({ error: 'Validation failed', details: notifParsed.error.flatten() });
     const { email, push, sms, digest, shiftReminders, shiftReminderTiming, scheduleChangeNotifications, approvalNotifications, quietHoursStart, quietHoursEnd } = notifParsed.data;
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (email !== undefined) updateData.enableEmail = email;
     if (push !== undefined) updateData.enablePush = push;
     if (sms !== undefined) updateData.enableSms = sms;
@@ -239,7 +239,6 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
     const todayEnd = new Date(now);
     todayEnd.setHours(23, 59, 59, 999);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { notifications, documentSignatures, incidents } = await import('@shared/schema');
     const { gte: gteOp, lte: lteOp, ne: neOp } = await import('drizzle-orm');
 
@@ -249,15 +248,13 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
       startTime: shifts.startTime,
       endTime: shifts.endTime,
       status: shifts.status,
-      siteName: (shifts as any).siteName,
+      siteName: (shifts as Record<string,unknown>).siteName,
     }).from(shifts)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         gte(shifts.startTime, todayStart.toISOString()),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lteOp(shifts.startTime, todayEnd.toISOString()),
-        neOp(shifts.status, 'cancelled' as any),
+        neOp(shifts.status, 'cancelled'),
       ))
       .orderBy(shifts.startTime)
       .limit(50);
@@ -299,11 +296,11 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
         ))
         .limit(20);
       pendingDocCount = pendingDocs.length;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[HRInline] Failed to update onboarding status', { error: err.message });
     }
 
-    let openIncidents: any[] = [];
+    let openIncidents: (string | number | boolean | null)[] = [];
     try {
       openIncidents = await db.select({
         id: incidents.id,
@@ -317,7 +314,7 @@ router.get("/manager/command-center", requireManager, async (req: AuthenticatedR
         ))
         .orderBy(desc(incidents.createdAt))
         .limit(10);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[HRInline] Failed to update onboarding status', { error: err.message });
     }
 
@@ -700,12 +697,11 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
             licenseTypes,
             inviterUserId: userId,
           },
-        }).catch(() => null);
+        }).catch((e: unknown) => log.warn('[hrInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       } catch (_) { /* non-blocking */ }
       try {
         const { auditLogs } = await import('@shared/schema');
         const inviteeLabel = [inviteeFirstName, inviteeLastName].filter(Boolean).join(' ') || inviteeEmail || 'recipient';
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(auditLogs).values({
           workspaceId: activeWorkspaceId,
           entityType: 'invite',
@@ -721,7 +717,7 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
           createdAt: new Date(),
         });
       } catch (_) { /* non-blocking */ }
-    }).catch(() => null);
+    }).catch((e: unknown) => log.warn('[hrInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     // Build invite link from request so it works in every environment
     const appBase = process.env.APP_URL ||
@@ -815,7 +811,7 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
       return res.status(404).json({ message: "Organization no longer exists" });
     }
 
-    const onboardingPosition = employeeDocumentOnboardingService.getPositionFromRole((invite as any).inviteeRole || 'staff');
+    const onboardingPosition = employeeDocumentOnboardingService.getPositionFromRole((invite as Record<string,unknown>).inviteeRole || 'staff');
     const onboardingRequiredDocs = employeeDocumentOnboardingService.getRequiredDocuments(onboardingPosition);
     const onboardingRequiredStepIds = onboardingRequiredDocs.map((doc) => doc.id);
 
@@ -833,14 +829,13 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
         .set({ currentWorkspaceId: invite.workspaceId })
         .where(eq(users.id, userId));
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [createdEmployee] = await tx.insert(employees).values({
         workspaceId: invite.workspaceId,
         userId: userId,
         firstName: user.firstName || 'New',
         lastName: user.lastName || 'Employee',
         email: user.email,
-        workspaceRole: (invite as any).inviteeRole || 'staff',
+        workspaceRole: (invite as Record<string,unknown>).inviteeRole || 'staff',
         isActive: true,
         hireDate: new Date().toISOString().split('T')[0],
       }).returning({ id: employees.id });
@@ -928,7 +923,7 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
           },
           invite.workspaceId
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[InviteAccept] Post-accept onboarding setup failed (non-blocking):', err?.message);
       }
     })();
@@ -957,7 +952,7 @@ router.get("/organizations/managed", requireAuth, async (req: AuthenticatedReque
     const platformRole = req.platformRole || await getUserPlatformRole(userId);
     const isPlatformStaff = platformRole && ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'].includes(platformRole);
 
-    const mapWorkspace = async (workspace: any, isOwner: boolean, canManage: boolean) => {
+    const mapWorkspace = async (workspace: unknown, isOwner: boolean, canManage: boolean) => {
       const emps = await storage.getEmployeesByWorkspace(workspace.id);
       const clientList = await db.select({ id: clients.id }).from(clients).where(eq(clients.workspaceId, workspace.id)).limit(500);
       return {
@@ -995,7 +990,7 @@ router.get("/organizations/managed", requireAuth, async (req: AuthenticatedReque
     }
 
     const ownedWorkspaces = await db.select().from(workspaces).where(eq(workspaces.ownerId, userId));
-    const orgs: any[] = [];
+    const orgs: (string | number | boolean | null)[] = [];
     const processedIds = new Set<string>();
 
     for (const workspace of ownedWorkspaces) {

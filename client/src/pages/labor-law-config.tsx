@@ -55,7 +55,7 @@ interface LaborRule {
   notes: string;
 }
 
-function RuleDetailRow({ label, value, icon: Icon }: { label: string; value: string | number | boolean; icon?: any }) {
+function RuleDetailRow({ label, value, icon: Icon }: { label: string; value: string | number | boolean; icon?: unknown }) {
   return (
     <div className="flex items-center justify-between gap-3 p-2 border-b border-[var(--ds-border)] last:border-0">
       <div className="flex items-center gap-2 min-w-0">
@@ -80,7 +80,7 @@ export default function LaborLawConfigPage() {
   const allRulesQuery = useQuery<LaborRule[]>({
     queryKey: ["/api/breaks/rules"],
     queryFn: () => secureFetch("/api/breaks/rules"),
-    select: (data: any) => (Array.isArray(data) ? data : data?.rules || []),
+    select: (data) => (Array.isArray(data) ? data : data?.rules || []),
   });
 
   const workspaceRulesQuery = useQuery({

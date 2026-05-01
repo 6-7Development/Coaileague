@@ -85,7 +85,7 @@ export function ResponsiveAppFrame({ children }: { children: ReactNode }) {
   const [screenHeight, setScreenHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 768);
   const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 768);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<null>(null);
   const [safeAreaTop, setSafeAreaTop] = useState(0);
   const [safeAreaBottom, setSafeAreaBottom] = useState(0);
 
@@ -116,7 +116,7 @@ export function ResponsiveAppFrame({ children }: { children: ReactNode }) {
   // PWA detection
   const isPWA = typeof window !== 'undefined' && (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true ||
+    (window.navigator as unknown).standalone === true ||
     document.referrer.includes('android-app://')
   );
 

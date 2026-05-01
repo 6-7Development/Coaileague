@@ -213,7 +213,7 @@ export default function DocumentTemplatesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (body: Record<string, any>) => {
+    mutationFn: async (body: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-templates", body);
       return res.json();
     },
@@ -223,13 +223,13 @@ export default function DocumentTemplatesPage() {
       setShowCreateModal(false);
       setForm({ ...EMPTY_FORM });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to create template", variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: Record<string, any> }) => {
+    mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/document-templates/${id}`, body);
       return res.json();
     },
@@ -238,7 +238,7 @@ export default function DocumentTemplatesPage() {
       toast({ title: "Template Updated", description: "Document template has been updated." });
       setEditTemplate(null);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to update template", variant: "destructive" });
     },
   });
@@ -253,7 +253,7 @@ export default function DocumentTemplatesPage() {
       toast({ title: "Template Deactivated", description: "Template has been soft-deleted." });
       setEditTemplate(null);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to deactivate template", variant: "destructive" });
     },
   });
@@ -269,14 +269,14 @@ export default function DocumentTemplatesPage() {
     onSuccess: () => {
       toast({ title: "Document Generated", description: "A new document instance has been created from this template." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to generate document", variant: "destructive" });
     },
   });
 
   const parseFormBody = (f: typeof form) => {
-    let mergeFields: any = [];
-    let signatureFields: any = [];
+    let mergeFields: unknown = [];
+    let signatureFields: unknown = [];
     try { mergeFields = JSON.parse(f.mergeFields); } catch { /* keep default */ }
     try { signatureFields = JSON.parse(f.signatureFields); } catch { /* keep default */ }
     return {
@@ -486,7 +486,7 @@ export default function DocumentTemplatesPage() {
 }
 
 function TemplateFormFields({ form, setForm }: { form: typeof EMPTY_FORM; setForm: (f: typeof EMPTY_FORM) => void }) {
-  const update = (field: string, value: any) => setForm({ ...form, [field]: value });
+  const update = (field: string, value: unknown) => setForm({ ...form, [field]: value });
 
   return (
     <>

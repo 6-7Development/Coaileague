@@ -56,7 +56,7 @@ export interface SetupContext {
   includedPremiumFeatures: string[];
   baseMonthlyPrice: number;
   includedCredits: number;
-  availableAddons: any[];
+  availableAddons: unknown[];
 }
 
 export interface AddonSelection {
@@ -76,7 +76,7 @@ export interface PricingBreakdown {
 export interface PhaseResult {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 // ============================================================================
@@ -277,13 +277,9 @@ export class EnterpriseOnboardingOrchestrator {
       const setupContext: SetupContext = {
         orgId: result.context.workspaceId!,
         assignedTier: signupData.selectedTier,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         coreFeatures: result.result.coreFeatures,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         includedPremiumFeatures: result.result.includedPremiumFeatures,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         baseMonthlyPrice: result.result.baseMonthlyPrice,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         includedCredits: result.result.includedCredits,
         availableAddons: addons,
       };
@@ -597,7 +593,6 @@ export class EnterpriseOnboardingOrchestrator {
                   {
                     price_data: {
                       currency: 'usd',
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       product_data: {
                         name: `CoAIleague ${fetchedData.org.subscriptionTier} Plan`,
                       },
@@ -639,7 +634,7 @@ export class EnterpriseOnboardingOrchestrator {
                 // 24h Stripe idempotency window also prevents accidental double-purchase within the same session.
                 }, { idempotencyKey: `pi-credit-${workspaceId}-${paymentData.creditPackage}` });
               }
-            } catch (stripeError: any) {
+            } catch (stripeError : unknown) {
               log.error('[EnterpriseOnboarding] Stripe error:', stripeError.message);
               throw new Error(`Payment processing failed: ${stripeError.message}`);
             }
@@ -730,7 +725,7 @@ export class EnterpriseOnboardingOrchestrator {
             .where(eq(workspaces.id, workspaceId))
             .limit(1);
           
-          return (org as any)?.status === 'active';
+          return (org as Record<string,unknown>)?.status === 'active';
         },
         
         // STEP 7: NOTIFY
@@ -751,9 +746,7 @@ export class EnterpriseOnboardingOrchestrator {
         data: {
           status: 'active',
           workspaceId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           creditBalance: result.result.creditsPurchased,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           autoTopoffEnabled: result.result.autoTopoffEnabled,
         },
       };
@@ -774,8 +767,8 @@ export class EnterpriseOnboardingOrchestrator {
    */
   async getOnboardingStatus(workspaceId: string): Promise<{
     phase: 'signup' | 'configuration' | 'payment' | 'complete';
-    pendingConfig?: any;
-    subscription?: any;
+    pendingConfig?: unknown;
+    subscription?: unknown;
     staffingEmail?: string;
     orgCode?: string;
     setupChecklist?: Record<string, boolean>;
@@ -790,16 +783,15 @@ export class EnterpriseOnboardingOrchestrator {
     }
 
     // Build setup checklist and staffing email
-    const orgCode = (org as any).orgCode || null;
+    const orgCode = (org as Record<string,unknown>).orgCode || null;
     const staffingEmail = orgCode ? `staffing-${orgCode.toLowerCase()}@coaileague.com` : null;
     const setupChecklist = {
-      profile_complete: !!(org.name && (org as any).licenseNumber),
+      profile_complete: !!(org.name && (org as Record<string,unknown>).licenseNumber),
       staffing_email_known: !!orgCode,
-      subscription_active: (org as any).status === 'active',
+      subscription_active: (org as Record<string,unknown>).status === 'active',
       qb_connected: false, // populated below if needed
     };
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (org.status === 'active') {
       return {
         phase: 'complete',

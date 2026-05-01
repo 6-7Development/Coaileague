@@ -167,7 +167,6 @@ router.post("/api/auth/register", async (req, res) => {
       );
     } catch (emailError: unknown) {
       // Log but don't fail registration - user can request resend later
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.warn(`[Registration] Verification email failed for ${newUser.email}:`, emailError.message);
     }
 
@@ -190,7 +189,7 @@ router.post("/api/auth/register", async (req, res) => {
     try {
       const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
       await saveSessionAsync(req);
-    } catch (sessionErr: any) {
+    } catch (sessionErr: unknown) {
       log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
       // Return a clear, actionable error rather than a generic 500
       return res.status(503).json({
@@ -233,6 +232,7 @@ router.post("/api/auth/register", async (req, res) => {
 
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 // ── Phase 53: Concurrent session registry (stub — full impl in sessionWorkspaceService) ──
 async function registerSession(
@@ -269,17 +269,17 @@ function isMfaMandatory(role: string): boolean {
 }
 
 async function generateAndSendSupportOtp(userId: string): Promise<{success: boolean; message?: string}> {
-  // TODO: Full OTP implementation via Resend/SMS
+  // PLANNED: OTP via Resend (email) + Twilio (SMS) — see server/services/notifications/otpService.ts
   return { success: false, message: 'OTP service not yet configured. Contact support.' };
 }
 
 async function adminResetUserMfa(targetUserId: string, adminId: string): Promise<void> {
-  // TODO: Reset MFA for user — update users table
+  // PLANNED: MFA reset — update users.mfaEnabled=false, users.mfaSecret=null, log to audit_log
   await pool.query('UPDATE users SET mfa_enabled = false, mfa_secret = null WHERE id = $1', [targetUserId])
     .catch(() => {});
 }
 
-async function getActiveSessions(req: any): Promise<any[]> {
+async function getActiveSessions(req: AuthenticatedRequest): Promise<any[]> {
   // Return active sessions for user from express-session store
   return [];
 }
@@ -290,17 +290,17 @@ async function removeSession(sessionId: string): Promise<void> {
 }
 
 async function isDeviceTrusted(userId: string, deviceToken: string): Promise<boolean> {
-  // TODO: Implement device trust via JWT or DB record
+  // PLANNED: Device trust — store deviceId in device_trust_tokens table, TTL 30d
   return false;
 }
 
 async function verifySupportOtp(userId: string, otp: string): Promise<boolean> {
-  // TODO: Verify OTP from support flow
+  // PLANNED: Verify OTP — check otp_tokens table where token=input AND expires_at>NOW()
   return false;
 }
 
-async function trustDevice(userId: string, ipAddress: string, userAgent: string, res: any): Promise<void> {
-  // TODO: Issue device trust cookie (Phase 53 - MFA trusted devices)
+async function trustDevice(userId: string, ipAddress: string, userAgent: string, res: unknown): Promise<void> {
+  // PLANNED: Device trust cookie — JWT signed with deviceId, 30d TTL, stored in device_trust_tokens
   // Generates a signed JWT stored in dt_token cookie
   try {
     const crypto = await import('crypto');
@@ -405,7 +405,6 @@ router.post("/api/auth/resend-verification", async (req, res) => {
         undefined
       );
     } catch (emailError: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.warn(`[ResendVerification] Email send failed for ${user.email}:`, emailError.message);
     }
 
@@ -578,7 +577,7 @@ router.post("/api/auth/login", async (req, res) => {
     if (user.role === 'client') {
       try {
         const [clientRecord] = await db
-          .select({ id: clients.id, clientOnboardingStatus: (clients as any).clientOnboardingStatus })
+          .select({ id: clients.id, clientOnboardingStatus: (clients as ClientWithExtras).clientOnboardingStatus })
           .from(clients)
           .where(eq(clients.userId, user.id))
           .limit(1);
@@ -595,8 +594,8 @@ router.post("/api/auth/login", async (req, res) => {
           if (invite) {
             const now = Date.now();
             const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-            const created = invite.createdAt ? new Date(invite.createdAt as any).getTime() : now;
-            const isExpired = now > new Date(invite.expiresAt as any).getTime() || (now - created > SEVEN_DAYS);
+            const created = invite.createdAt ? new Date(invite.createdAt as unknown).getTime() : now;
+            const isExpired = now > new Date(invite.expiresAt as unknown).getTime() || (now - created > SEVEN_DAYS);
 
             // EXPIRED gate: block login for expired, non-accepted invites (RED border → blocked)
             if (isExpired && !invite.isUsed) {
@@ -614,11 +613,11 @@ router.post("/api/auth/login", async (req, res) => {
             if (clientRecord.clientOnboardingStatus !== 'active') {
               await db.update(clients)
                 .set({
-                  clientOnboardingStatus: 'active' as any,
+                  clientOnboardingStatus: 'active',
                   updatedAt: new Date(),
                   // activated_at = the exact moment of first login (Pillar 2, Step 4)
-                  activatedAt: new Date() as any,
-                } as any)
+                  activatedAt: new Date() as unknown,
+                } as Record<string, unknown>)
                 .where(eq(clients.id, clientRecord.id));
               // Also flip the invite token status to 'active' and set activated_at
               await db.execute(
@@ -629,7 +628,7 @@ router.post("/api/auth/login", async (req, res) => {
                     WHERE client_id = ${clientRecord.id}
                       AND is_used = true
                       AND invite_status != 'active'`
-              ).catch(() => null); // non-fatal
+              ).catch((e: unknown) => log.warn('[authCoreRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e))); // non-fatal
               log.info(`[Auth] Handshake complete — client ${clientRecord.id} flipped INVITED→ACTIVE, activated_at set`);
             }
           }
@@ -647,7 +646,7 @@ router.post("/api/auth/login", async (req, res) => {
     // after the victim logs in. Capture pre-auth session values so they survive rotation.
     const priorHrisState = req.session.hrisOAuthState;
     const priorSessionData = { ...req.session };
-    delete (priorSessionData as any).cookie; // Don't copy cookie config
+    delete (priorSessionData as Record<string,unknown>).cookie; // Don't copy cookie config
 
     await new Promise<void>((resolve, reject) => {
       req.session.regenerate((err) => {
@@ -741,7 +740,7 @@ router.post("/api/auth/login", async (req, res) => {
           }
         }
       } catch (activeCheckErr: unknown) {
-        log.warn('[Auth] Per-workspace is_active check failed (fail-open):', (activeCheckErr as any)?.message || String(activeCheckErr));
+        log.warn('[Auth] Per-workspace is_active check failed (fail-open):', (activeCheckErr as Record<string,unknown>)?.message || String(activeCheckErr));
       }
     }
 
@@ -757,7 +756,7 @@ router.post("/api/auth/login", async (req, res) => {
     try {
       const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
       await saveSessionAsync(req);
-    } catch (sessionErr: any) {
+    } catch (sessionErr: unknown) {
       log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
       // Return a clear, actionable error rather than a generic 500
       return res.status(503).json({
@@ -878,7 +877,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
     // Create session
     const priorHrisState = req.session.hrisOAuthState;
     const priorSessionData = { ...req.session };
-    delete (priorSessionData as any).cookie;
+    delete (priorSessionData as Record<string,unknown>).cookie;
 
     await new Promise<void>((resolve, reject) => {
       req.session.regenerate((err) => (err ? reject(err) : resolve()));
@@ -909,7 +908,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
     try {
       const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
       await saveSessionAsync(req);
-    } catch (sessionErr: any) {
+    } catch (sessionErr: unknown) {
       log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
       // Return a clear, actionable error rather than a generic 500
       return res.status(503).json({
@@ -950,7 +949,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
 // PHASE 53 — Active Sessions Management
 // ============================================================================
 
-router.get("/api/auth/sessions", requireAuth, async (req: any, res) => {
+router.get("/api/auth/sessions", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const sessions = await getActiveSessions(req.user.id);
     return res.json({
@@ -963,12 +962,12 @@ router.get("/api/auth/sessions", requireAuth, async (req: any, res) => {
         isCurrent: s.session_id === req.session?.id,
       })),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to fetch sessions' });
   }
 });
 
-router.delete("/api/auth/sessions/:id", requireAuth, async (req: any, res) => {
+router.delete("/api/auth/sessions/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT session_id FROM user_sessions WHERE id = $1 AND user_id = $2`,
@@ -978,7 +977,7 @@ router.delete("/api/auth/sessions/:id", requireAuth, async (req: any, res) => {
     await removeSession(rows[0].session_id);
     await pool.query(`DELETE FROM user_sessions WHERE id = $1`, [req.params.id]);
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return res.status(500).json({ error: 'Failed to revoke session' });
   }
 });
@@ -987,7 +986,7 @@ router.delete("/api/auth/sessions/:id", requireAuth, async (req: any, res) => {
 // PHASE 53 — Admin MFA Reset (org_owner / platform_staff only)
 // ============================================================================
 
-router.post("/api/mfa/admin-reset", requireAuth, async (req: any, res) => {
+router.post("/api/mfa/admin-reset", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { targetUserId } = req.body;
     if (!targetUserId) return res.status(400).json({ error: 'targetUserId required' });
@@ -999,7 +998,7 @@ router.post("/api/mfa/admin-reset", requireAuth, async (req: any, res) => {
 
     await adminResetUserMfa(targetUserId, actorId, role, workspaceId);
     return res.json({ success: true, message: `2FA reset for user ${targetUserId}. They will need to re-enroll.` });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[MFA AdminReset] error:', err.message);
     return res.status(500).json({ error: 'Failed to reset MFA. Please try again.' });
   }
@@ -1043,7 +1042,7 @@ const DEV_ACCOUNTS = {
   },
 } as const;
 
-async function devLoginById(userId: string, targetWorkspaceId: string, label: string, req: any, res: any) {
+async function devLoginById(userId: string, targetWorkspaceId: string, label: string, req: AuthenticatedRequest, res: unknown) {
   if (isProduction()) {
     return res.status(404).json({ message: "Not found" });
   }
@@ -1206,7 +1205,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
   // the DB at all. Return a minimal auth response based on session data so the
   // frontend stays logged-in instead of getting a 500 and being force-signed-out.
   // The _dbDegraded flag triggers an amber degraded-mode banner in the UI.
-  if (isDbCircuitOpen() || (sessionUser as any)._dbDegraded) {
+  if (isDbCircuitOpen() || (sessionUser as Record<string,unknown>)._dbDegraded) {
     const wsId = sessionUser.currentWorkspaceId || req.workspaceId || null;
     log.warn(`[Auth /me] DB circuit open — returning session-based fallback for user ${sessionUser.id}`);
     return res.json({
@@ -1215,7 +1214,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
         email: sessionUser.email || '',
         firstName: sessionUser.firstName ?? null,
         lastName: sessionUser.lastName ?? null,
-        username: (sessionUser as any).username ?? null,
+        username: (sessionUser as Record<string,unknown>).username ?? null,
         role: sessionUser.role ?? 'employee',
         currentWorkspaceId: wsId,
         workspaceRole: null,
@@ -1313,7 +1312,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
             currentEmployeeRecord = newEmployee;
           });
           log.info(`[Auth] Linked user ${freshUser.id} to owned workspace ${effectiveWorkspaceId} and created employee record`);
-        } catch (createError: any) {
+        } catch (createError: unknown) {
           log.warn(`[Auth] Failed to link workspace or create employee record for org_owner:`, createError?.message || createError);
         }
       } else if (workspaceWasDynamicallyResolved) {
@@ -1321,14 +1320,14 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
         await db.update(users)
           .set({ currentWorkspaceId: effectiveWorkspaceId, updatedAt: new Date() })
           .where(eq(users.id, freshUser.id))
-          .catch((err: any) => log.warn('[Auth] Failed to persist workspace link:', err?.message));
+          .catch((err: unknown) => log.warn('[Auth] Failed to persist workspace link:', err?.message));
         log.info(`[Auth] Dynamically linked user ${freshUser.id} to owned workspace ${effectiveWorkspaceId}`);
       }
     }
     
     if (currentEmployeeRecord) {
       employeeId = currentEmployeeRecord.id;
-      organizationalTitle = (currentEmployeeRecord as any).organizationalTitle || null;
+      organizationalTitle = (currentEmployeeRecord as Record<string,unknown>).organizationalTitle || null;
       // Use employee workspaceRole only if not already set as owner
       if (!workspaceRole) {
         workspaceRole = currentEmployeeRecord.workspaceRole || 'staff';
@@ -1367,7 +1366,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
             description: `Login blocked for workspace '${paymentResult.workspaceName}' — ${paymentResult.reason}`,
             workspaceId: paymentResult.workspaceId,
             metadata: { userId: freshUser.id, workspaceName: paymentResult.workspaceName, reason: paymentResult.reason, isOwner: true },
-          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+          }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
         } catch (logError) {
           log.error('[PaymentEnforcement] Failed to log audit:', logError);
         }
@@ -1460,7 +1459,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
       },
     },
   });
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error('[Auth] /api/auth/me error:', error?.message || error);
     res.status(500).json({ message: 'Internal server error' });
   }
@@ -1485,7 +1484,7 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
     const data = preferencesSchema.parse(req.body);
     
     // Get current workspace to update employee-level preference
-    const workspaceId = req.workspaceId || (sessionUser as any).workspaceId || sessionUser.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (sessionUser as Record<string,unknown>).workspaceId || sessionUser.currentWorkspaceId;
     
     // If viewModePreference is set and we have a workspace, update employee record
     if (data.viewModePreference !== undefined && workspaceId) {
@@ -1511,7 +1510,7 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
     }
     
     // Update user-level simpleMode (global fallback)
-    const userUpdates: Record<string, any> = {};
+    const userUpdates: Record<string, unknown> = {};
     if (data.simpleMode !== undefined) {
       userUpdates.simpleMode = data.simpleMode;
     }
@@ -1542,7 +1541,7 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
 router.get("/api/user/view-mode", requireAuth, async (req, res) => {
   try {
     const sessionUser = req.user as User;
-    const workspaceId = req.workspaceId || (sessionUser as any).workspaceId || sessionUser.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (sessionUser as Record<string,unknown>).workspaceId || sessionUser.currentWorkspaceId;
     
     let effectiveMode: 'simple' | 'pro' = sessionUser.simpleMode ? 'simple' : 'pro';
     let source = 'user_fallback';
@@ -1629,8 +1628,8 @@ router.post("/api/auth/reset-password-request", async (req, res) => {
       if (data.email === 'root@coaileague.com' && process.env.ROOT_EMAIL_FORWARD_TO) {
         deliveryEmail = process.env.ROOT_EMAIL_FORWARD_TO;
         log.info(`[Auth] Password reset for root@ — delivering directly to ${deliveryEmail}`);
-      } else if ((result.user as any).personalForwardEmail) {
-        deliveryEmail = (result.user as any).personalForwardEmail;
+      } else if ((result.user as unknown).personalForwardEmail) {
+        deliveryEmail = (result.user as unknown).personalForwardEmail;
       }
 
       const emailResult = await emailService.sendPasswordResetEmail( // infra
@@ -1645,7 +1644,7 @@ router.post("/api/auth/reset-password-request", async (req, res) => {
         }
         log.info(`[Auth] Password reset email sent OK for ${data.email}`);
       } catch (emailError: unknown) {
-        log.error(`[Auth] Password reset email delivery error:`, (emailError as any)?.message || emailError);
+        log.error(`[Auth] Password reset email delivery error:`, (emailError as Record<string,unknown>)?.message || emailError);
         return res.status(500).json({ success: false, error: "email_failed", message: "Could not send reset email. Try again later." });
       }
     }
@@ -1744,7 +1743,6 @@ router.post("/api/auth/change-password", requireAuth, mutationLimiter, async (re
       const { authService: _authSvc } = await import('../services/authService');
       await _authSvc.logoutAllSessions(user.id);
     } catch (sessionErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error('[AuthCoreRoutes] Failed to invalidate sessions after password change:', sessionErr.message);
     }
     // Destroy the current session last (after persisting the password update)
@@ -1808,9 +1806,7 @@ router.get("/api/demo-login", async (req, res) => {
         claims: {
           sub: user.id,
           email: user.email,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           first_name: user.firstName,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           last_name: user.lastName,
         },
         expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
@@ -1995,7 +1991,7 @@ router.post("/api/auth/sms-otp/verify", async (req, res) => {
 
     // Session fixation protection
     const priorSessionData = { ...req.session };
-    delete (priorSessionData as any).cookie;
+    delete (priorSessionData as Record<string,unknown>).cookie;
     await new Promise<void>((resolve, reject) => {
       req.session.regenerate((err) => (err ? reject(err) : resolve()));
     });
@@ -2031,7 +2027,7 @@ router.post("/api/auth/sms-otp/verify", async (req, res) => {
     try {
       const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
       await saveSessionAsync(req);
-    } catch (sessionErr: any) {
+    } catch (sessionErr: unknown) {
       log.error('[Auth] Session save failed after successful login:', sessionErr?.message);
       // Return a clear, actionable error rather than a generic 500
       return res.status(503).json({

@@ -122,7 +122,7 @@ export default function ArmoryManagement() {
     queryKey: ["/api/enterprise-features/weapons/checkouts"],
   });
 
-  const { data: employees = [] } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [] } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ["/api/employees"],
     select: (res) => res?.data ?? [],
   });
@@ -138,7 +138,7 @@ export default function ArmoryManagement() {
       setShowAddDialog(false);
       setWeaponForm(EMPTY_WEAPON);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to add weapon", variant: "destructive" });
     },
   });
@@ -155,7 +155,7 @@ export default function ArmoryManagement() {
       setSelectedWeapon(null);
       setCheckoutForm({ employeeId: "", checkoutSignature: "", conditionAtCheckout: "good" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to checkout weapon", variant: "destructive" });
     },
   });
@@ -172,7 +172,7 @@ export default function ArmoryManagement() {
       setSelectedWeapon(null);
       setCheckinForm({ checkinSignature: "", conditionAtCheckin: "good" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to checkin weapon", variant: "destructive" });
     },
   });
@@ -185,7 +185,7 @@ export default function ArmoryManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise-features/weapons"] });
       toast({ title: "Weapon Removed", description: "Weapon has been removed from the armory." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to remove weapon", variant: "destructive" });
     },
   });
@@ -210,7 +210,7 @@ export default function ArmoryManagement() {
     id: "armory-management",
     title: "Armory Management",
     subtitle: "Track weapons inventory, checkouts, and inspections",
-    category: "operations" as any,
+    category: "operations",
     showHeader: true,
     headerActions: (
       <Button onClick={() => setShowAddDialog(true)} data-testid="button-add-weapon">

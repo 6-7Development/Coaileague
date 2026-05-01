@@ -28,11 +28,11 @@ export default function SupportAgentDashboard() {
     };
   }>({ queryKey: ["/api/analytics/stats"], staleTime: 60000 });
 
-  const { data: emailData, isError: emailIsError, error: emailError, refetch: refetchEmailData } = useQuery<{ emails: any[]; total: number }>({
+  const { data: emailData, isError: emailIsError, error: emailError, refetch: refetchEmailData } = useQuery<{ emails: unknown[]; total: number }>({
     queryKey: ["/api/email/inbox", { folder: "inbox", limit: 5 }],
     staleTime: 60000,
   });
-  const unreadCount = emailData?.emails?.filter((e: any) => !e.is_read).length ?? 0;
+  const unreadCount = emailData?.emails?.filter((e) => !e.is_read).length ?? 0;
   const totalEmails = emailData?.total ?? 0;
 
   if (statsIsError || emailIsError) {

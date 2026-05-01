@@ -36,9 +36,9 @@ export interface OnboardingSource {
   type: 'pdf' | 'excel' | 'csv' | 'manual' | 'bulk_text';
   fileContent?: string; // base64 for PDF
   fileName?: string;
-  data?: Record<string, any>[]; // For spreadsheet data
+  data?: Record<string, unknown>[]; // For spreadsheet data
   headers?: string[]; // For spreadsheet columns
-  formData?: Record<string, any>; // For manual entry
+  formData?: Record<string, unknown>; // For manual entry
   extractionType?: 'employees' | 'teams' | 'schedules' | 'auto';
 }
 
@@ -111,7 +111,7 @@ class OnboardingOrchestrator {
       entityId: workspaceId,
       changeType: 'action',
       metadata: { sourceCount: sources.length, skipGamification, skipDataMigration, validateOnly },
-    }).catch((auditErr: any) => {
+    }).catch((auditErr: unknown) => {
       this.log.warn('[Onboarding] Audit log (start) failed:', auditErr?.message);
     });
 
@@ -174,7 +174,7 @@ class OnboardingOrchestrator {
                 validateOnly,
               },
             }).catch((err) => this.log.warn('[OnboardingOrchestrator] Fire-and-forget failed:', err));
-          }).catch((err: any) => {
+          }).catch((err: unknown) => {
             this.log.error('Data migration task failed:', err);
             result.errors.push(`Data migration failed: ${(err instanceof Error ? err.message : String(err))}`);
           })
@@ -216,7 +216,7 @@ class OnboardingOrchestrator {
                 errorCount: gamificationResult.errors.length,
               },
             }).catch((err) => this.log.warn('[OnboardingOrchestrator] Fire-and-forget failed:', err));
-          }).catch((err: any) => {
+          }).catch((err: unknown) => {
             this.log.error('Gamification activation task failed:', err);
             result.errors.push(`Gamification activation failed: ${(err instanceof Error ? err.message : String(err))}`);
           })
@@ -240,7 +240,7 @@ class OnboardingOrchestrator {
             } else {
               this.log.info(`Industry compliance deployed: ${complianceResult.templatesDeployed.length} templates, ${complianceResult.requirementsCreated} requirements`);
             }
-          }).catch((err: any) => {
+          }).catch((err: unknown) => {
             this.log.error('Industry compliance task failed:', err);
             result.warnings.push(`Industry compliance deployment failed: ${(err instanceof Error ? err.message : String(err))}`);
           })
@@ -260,7 +260,7 @@ class OnboardingOrchestrator {
               } else {
                 this.log.info(`Custom industry compliance deployed for "${workspace.customIndustryName}": ${complianceResult.templatesDeployed.length} templates`);
               }
-            }).catch((err: any) => {
+            }).catch((err: unknown) => {
               this.log.error('Custom industry compliance task failed:', err);
               result.warnings.push(`Custom industry compliance deployment failed: ${(err instanceof Error ? err.message : String(err))}`);
             })
@@ -282,7 +282,7 @@ class OnboardingOrchestrator {
 
       result.success = result.errors.length === 0;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('Onboarding failed:', error);
       result.success = false;
       result.errors.push((error instanceof Error ? error.message : String(error)));
@@ -309,7 +309,7 @@ class OnboardingOrchestrator {
         errorCount: result.errors.length,
         warningCount: result.warnings.length,
       },
-    }).catch((auditErr: any) => {
+    }).catch((auditErr: unknown) => {
       this.log.warn('[Onboarding] Audit log (complete) failed:', auditErr?.message);
     });
 
@@ -403,7 +403,7 @@ class OnboardingOrchestrator {
         combinedData.errors.push(...extracted.errors);
         combinedData.confidence = Math.max(combinedData.confidence, extracted.confidence);
 
-      } catch (error: any) {
+      } catch (error : unknown) {
         errors.push(`Source extraction failed: ${(error instanceof Error ? error.message : String(error))}`);
       }
     }
@@ -467,14 +467,14 @@ class OnboardingOrchestrator {
 
     return {
       gamificationEnabled,
-      automationGates: gateStatus.gates.map(g => ({
+      automationGates: gateStatus.gates.map((g: Record<string,unknown>) => ({
         id: g.id,
         name: g.name,
         unlocked: g.unlocked,
         requiredLevel: g.requiredLevel,
       })),
       currentLevel: gateStatus.currentLevel,
-      readyForAutomation: gateStatus.gates.some(g => g.unlocked),
+      readyForAutomation: gateStatus.gates.some((g: Record<string,unknown>) => g.unlocked),
     };
   }
 
@@ -556,7 +556,7 @@ class OnboardingOrchestrator {
       
       this.log.info(`Cleared ${viewRecords.length} platform updates for new user ${userId}`);
       return viewRecords.length;
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('Failed to clear platform updates:', (error instanceof Error ? error.message : String(error)));
       return 0;
     }
@@ -670,7 +670,7 @@ class OnboardingOrchestrator {
         } else {
           this.log.warn(`[OnboardingOrchestrator] Trial start warning: ${trialResult.error}`);
         }
-      } catch (trialError: any) {
+      } catch (trialError : unknown) {
         this.log.warn('[OnboardingOrchestrator] Trial start failed (may already exist):', trialError.message);
       }
 
@@ -684,7 +684,7 @@ class OnboardingOrchestrator {
           completionPercent: pipelineProgress.completionPercent,
         };
         this.log.info(`[OnboardingOrchestrator] Billing pipeline initialized: ${pipelineProgress.totalTasks} tasks`);
-      } catch (pipelineError: any) {
+      } catch (pipelineError : unknown) {
         this.log.warn('[OnboardingOrchestrator] Pipeline init warning:', pipelineError.message);
       }
 
@@ -805,7 +805,7 @@ class OnboardingOrchestrator {
         errors,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('[OnboardingOrchestrator] Invitation acceptance failed:', error);
       errors.push((error instanceof Error ? error.message : String(error)));
       return {
@@ -915,7 +915,7 @@ class OnboardingOrchestrator {
         errors,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('[OnboardingOrchestrator] Trinity initialization failed:', error);
       errors.push((error instanceof Error ? error.message : String(error)));
       return {
@@ -1082,7 +1082,7 @@ class OnboardingOrchestrator {
         status: 'passed',
         duration: Date.now() - step1Start,
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       steps.push({
         name: 'Validate Workspace',
         status: dryRun ? 'passed' : 'failed',
@@ -1110,7 +1110,7 @@ class OnboardingOrchestrator {
         status: 'passed',
         duration: Date.now() - step2Start,
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       steps.push({
         name: 'Generate Trinity Welcome',
         status: 'failed',
@@ -1136,7 +1136,7 @@ class OnboardingOrchestrator {
           duration: Date.now() - step3Start,
           error: trinityInit.errors[0],
         });
-      } catch (error: any) {
+      } catch (error : unknown) {
         steps.push({
           name: 'Initialize Workspace Trinity',
           status: 'failed',
@@ -1172,7 +1172,7 @@ class OnboardingOrchestrator {
           duration: Date.now() - step4Start,
           error: gamificationResult.errors[0],
         });
-      } catch (error: any) {
+      } catch (error : unknown) {
         steps.push({
           name: 'Activate Gamification',
           status: 'failed',
@@ -1197,7 +1197,7 @@ class OnboardingOrchestrator {
         status: 'passed',
         duration: Date.now() - step5Start,
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       steps.push({
         name: 'Verify Onboarding Status',
         status: dryRun ? 'passed' : 'failed',
@@ -1284,7 +1284,7 @@ class OnboardingOrchestrator {
       if (!trinityInitialized) {
         recommendations.push('Initialize Trinity AI assistant for personalized guidance');
       }
-      if (gateStatus.gates.filter(g => g.unlocked).length === 0) {
+      if (gateStatus.gates.filter((g: Record<string,unknown>) => g.unlocked).length === 0) {
         recommendations.push('Complete onboarding challenges to unlock automation gates');
       }
       if (!dataImported) {
@@ -1293,16 +1293,16 @@ class OnboardingOrchestrator {
 
       return {
         workspaceId,
-        onboardingComplete: gamificationEnabled && gateStatus.gates.some(g => g.unlocked),
+        onboardingComplete: gamificationEnabled && gateStatus.gates.some((g: Record<string,unknown>) => g.unlocked),
         trinityInitialized,
         gamificationActive: gamificationEnabled,
-        automationGatesUnlocked: gateStatus.gates.filter(g => g.unlocked).map(g => g.name),
+        automationGatesUnlocked: gateStatus.gates.filter((g: Record<string,unknown>) => g.unlocked).map((g: Record<string,unknown>) => g.name),
         dataImported,
         errors,
         recommendations,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       errors.push((error instanceof Error ? error.message : String(error)));
       return {
         workspaceId,
@@ -1390,7 +1390,7 @@ class OnboardingOrchestrator {
         errors,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('[OnboardingOrchestrator] Industry compliance deployment failed:', error);
       errors.push((error instanceof Error ? error.message : String(error)));
       return {
@@ -1491,7 +1491,7 @@ class OnboardingOrchestrator {
         errors,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('[OnboardingOrchestrator] Custom industry compliance deployment failed:', error);
       errors.push((error instanceof Error ? error.message : String(error)));
       return {
@@ -1591,7 +1591,7 @@ class OnboardingOrchestrator {
         requiredCertifications,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error('[OnboardingOrchestrator] Failed to get industry compliance status:', error);
       return {
         industryConfigured: false,

@@ -105,7 +105,7 @@ router.patch('/workspaces/:wsId/matrix', requireSupportManager, async (req, res)
   const knownFeature = FEATURE_REGISTRY.find((f) => f.key === featureKey);
   if (!knownFeature) return res.status(400).json({ error: `Unknown featureKey: ${featureKey}` });
 
-  if (!MATRIX_ROLES.includes(role as any)) {
+  if (!MATRIX_ROLES.includes(role as unknown)) {
     return res.status(400).json({
       error: `Role ${role} is not eligible for permission overrides.`,
     });
@@ -122,7 +122,7 @@ router.patch('/workspaces/:wsId/matrix', requireSupportManager, async (req, res)
       entityId: wsId,
       changeType: 'update',
       metadata: { role, featureKey, enabled, source: 'platform_staff' },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     broadcastToWorkspace(wsId, {
       type: 'permission_update',
       role,
@@ -158,7 +158,7 @@ router.delete('/workspaces/:wsId/matrix', requireSupportManager, async (req, res
       entityId: wsId,
       changeType: 'delete',
       metadata: { role, featureKey, reset: true, source: 'platform_staff' },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     broadcastToWorkspace(wsId, {
       type: 'permission_update',
       role,
@@ -188,7 +188,7 @@ router.get('/workspaces/:wsId/users', requirePlatformStaff, async (req, res) => 
           ilike(employees.firstName, `%${search}%`),
           ilike(employees.lastName, `%${search}%`),
           ilike(employees.email, `%${search}%`),
-        ) as any,
+        ) as unknown,
       );
     }
 
@@ -224,7 +224,7 @@ router.patch('/workspaces/:wsId/users/:userId/role', requireSupportManager, asyn
 
   if (!workspaceRole) return res.status(400).json({ error: 'workspaceRole is required' });
 
-  if (!MATRIX_ROLES.includes(workspaceRole as any)) {
+  if (!MATRIX_ROLES.includes(workspaceRole as unknown)) {
     return res.status(400).json({
       error: `Role ${workspaceRole} is not a valid non-owner workspace role. Owner roles are managed separately.`,
     });
@@ -245,7 +245,7 @@ router.patch('/workspaces/:wsId/users/:userId/role', requireSupportManager, asyn
     if (target.workspaceRole === 'org_owner') {
       const [ws] = await db.select({ ownerId: workspaces.ownerId }).from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
       if (ws?.ownerId === target.userId) {
-        const actorPlatRole = (authReq as any).platformRole as string | undefined;
+        const actorPlatRole = (authReq as Record<string,unknown>).platformRole as string | undefined;
         const { PLATFORM_ROLE_HIERARCHY } = await import('../lib/rbac/roleDefinitions');
         const actorLevel = PLATFORM_ROLE_HIERARCHY[actorPlatRole ?? ''] ?? 0;
         if (actorLevel < 5) { // sysop (5) minimum
@@ -273,7 +273,7 @@ router.patch('/workspaces/:wsId/users/:userId/role', requireSupportManager, asyn
       changeType: 'update',
       changes: { workspaceRole: { old: target.workspaceRole, new: workspaceRole } },
       metadata: { reason: reason ?? 'Platform admin role change', source: 'platform_staff' },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     broadcastToWorkspace(wsId, {
       type: 'permission_update',

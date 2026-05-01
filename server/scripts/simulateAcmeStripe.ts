@@ -26,7 +26,7 @@ const TEST_API_KEY = process.env.STRIPE_TEST_API_KEY
   || process.env.TESTING_STRIPE_SECRET_KEY
   || process.env.STRIPE_SECRET_KEY; // fallback (if it happens to be test)
 
-function log(msg: string, data?: any) {
+function log(msg: string, data?: unknown) {
   console.log(`\n[ACME-SIM] ${msg}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
@@ -131,7 +131,7 @@ async function main() {
   }
 
   const stripe = new Stripe(TEST_API_KEY!, {
-    apiVersion: '2025-09-30.clover' as any,
+    apiVersion: '2025-09-30.clover',
   });
 
   // ── 1. Look up ACME workspace ─────────────────────────────────────────────
@@ -144,14 +144,14 @@ async function main() {
   log('ACME workspace found', {
     id: acme.id,
     name: acme.name,
-    tier: (acme as any).subscriptionTier,
-    stripeCustomerId: (acme as any).stripeCustomerId,
-    stripeSubscriptionId: (acme as any).stripeSubscriptionId,
+    tier: (acme as Record<string,unknown>).subscriptionTier,
+    stripeCustomerId: (acme as Record<string,unknown>).stripeCustomerId,
+    stripeSubscriptionId: (acme as Record<string,unknown>).stripeSubscriptionId,
   });
 
   // ── 2. Create or reuse test Stripe customer ───────────────────────────────
   sep('Step 2: Create test Stripe customer');
-  let customerId = (acme as any).stripeCustomerId as string | undefined;
+  let customerId = (acme as Record<string,unknown>).stripeCustomerId as string | undefined;
   let customer: Stripe.Customer;
 
   if (customerId?.startsWith('cus_')) {
@@ -179,7 +179,7 @@ async function main() {
 
     // Update workspace with the new customer ID
     await db.update(workspaces)
-      .set({ stripeCustomerId: customer.id } as any)
+      .set({ stripeCustomerId: customer.id } as Record<string, unknown>)
       .where(eq(workspaces.id, ACME_WS_ID));
     log('Updated ACME workspace stripeCustomerId in DB');
   } else {
@@ -222,7 +222,7 @@ async function main() {
     invoiceId = `in_sim_acme_${Date.now()}`;
     log('Live key detected — using simulated subscription/invoice IDs for webhook events', { subscriptionId, invoiceId });
   } else {
-    const existingSubId = (acme as any).stripeSubscriptionId as string | undefined;
+    const existingSubId = (acme as Record<string,unknown>).stripeSubscriptionId as string | undefined;
     let subscription: Stripe.Subscription | null = null;
 
     if (existingSubId?.startsWith('sub_')) {
@@ -247,11 +247,11 @@ async function main() {
     }
 
     subscriptionId = subscription.id;
-    invoiceId = (subscription as any).latest_invoice?.id || `in_auto_${Date.now()}`;
+    invoiceId = (subscription as Record<string,unknown>).latest_invoice?.id || `in_auto_${Date.now()}`;
 
     // Update workspace with subscription ID
     await db.update(workspaces)
-      .set({ stripeSubscriptionId: subscriptionId } as any)
+      .set({ stripeSubscriptionId: subscriptionId } as Record<string, unknown>)
       .where(eq(workspaces.id, ACME_WS_ID));
     log('Updated ACME workspace stripeSubscriptionId in DB');
   }
@@ -337,10 +337,10 @@ async function main() {
   log('ACME workspace final state', {
     id: updated.id,
     name: updated.name,
-    tier: (updated as any).subscriptionTier,
-    status: (updated as any).subscriptionStatus,
-    stripeCustomerId: (updated as any).stripeCustomerId,
-    stripeSubscriptionId: (updated as any).stripeSubscriptionId,
+    tier: (updated as Record<string,unknown>).subscriptionTier,
+    status: (updated as Record<string,unknown>).subscriptionStatus,
+    stripeCustomerId: (updated as Record<string,unknown>).stripeCustomerId,
+    stripeSubscriptionId: (updated as Record<string,unknown>).stripeSubscriptionId,
   });
 
   sep('✅ Simulation Complete');

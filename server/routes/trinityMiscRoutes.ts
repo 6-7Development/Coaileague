@@ -81,10 +81,10 @@ router.get("/onboarding-status/:employeeId", async (req: AuthenticatedRequest, r
       [employeeId, workspaceId]
     );
 
-    const totalRequired = allTasks.filter((t: any) => t.is_required).length;
-    const completed = allTasks.filter((t: any) => t.is_required && (t.status === 'completed' || t.status === 'waived')).length;
-    const pendingTier1 = tier1Templates.filter((t: any) => {
-      const match = allTasks.find((a: any) => a.id === t.id);
+    const totalRequired = allTasks.filter((t: unknown) => t.is_required).length;
+    const completed = allTasks.filter((t: unknown) => t.is_required && (t.status === 'completed' || t.status === 'waived')).length;
+    const pendingTier1 = tier1Templates.filter((t: unknown) => {
+      const match = allTasks.find((a: unknown) => a.id === t.id);
       return !match || !['completed','waived'].includes(match.status);
     });
 

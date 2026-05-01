@@ -23,6 +23,7 @@ import {
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, count, isNull } from "drizzle-orm";
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('scheduleos');
 
 
@@ -161,7 +162,7 @@ export class SchedulingAI {
     const weekEndDate = new Date(request.weekStartDate);
     weekEndDate.setDate(weekEndDate.getDate() + 7);
     
-    const existingShifts: any[] = await db
+    const existingShifts: unknown[] = await db
       .select()
       .from(shifts)
       .where(
@@ -232,7 +233,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
 
     log.info(`[AI Scheduling] Billed ${aiResult.tokensUsed} tokens to workspace ${wsId}`);
 
-    const validationResult = JSON.parse(aiResult.content || '{}');
+    const validationResult: unknown = JSON.parse(aiResult.content || '{}');
 
     // FAIL FAST: If GPT-4 validation fails, reject the schedule
     if (validationResult.valid === false) {
@@ -241,7 +242,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
     }
 
     // 7. Transform solver output into shift objects with full metadata
-    const generatedShifts = solvedSchedule.assignments.map((assignment: any): any => {
+    const generatedShifts = solvedSchedule.assignments.map((assignment: unknown): any => {
       const emp = employeeIntelligence.find(e => e.employeeId === assignment.employeeId);
       const shiftReq = request.shiftRequirements[assignment.shiftIndex];
       const shiftHours = (shiftReq.endTime.getTime() - shiftReq.startTime.getTime()) / (1000 * 60 * 60);
@@ -272,7 +273,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
       success: true,
       scheduleDate: request.weekStartDate,
       shiftsGenerated: generatedShifts.length,
-      employeesScheduled: new Set(generatedShifts.map((s: any) => s.employeeId)).size,
+      employeesScheduled: new Set(generatedShifts.map((s: unknown) => s.employeeId)).size,
       conflicts: solvedSchedule.conflicts,
       warnings: validationResult.warnings || [],
       recommendations: validationResult.recommendations || [],
@@ -288,8 +289,8 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
   private async constraintSolver(
     employees: EmployeeIntelligence[],
     shiftRequirements: ScheduleRequest['shiftRequirements'],
-    existingShifts: any[],
-    jobSites: any[]
+    existingShifts: unknown[],
+    jobSites: unknown[]
   ): Promise<{
     assignments: Array<{
       employeeId: string;
@@ -300,7 +301,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
     }>;
     conflicts: string[];
   }> {
-    const assignments: any[] = [];
+    const assignments: (string | number | boolean | null)[] = [];
     const conflicts: string[] = [];
     const employeeHours: Map<string, number> = new Map();
 
@@ -350,8 +351,8 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
     employee: EmployeeIntelligence,
     shift: ScheduleRequest['shiftRequirements'][0],
     employeeHours: Map<string, number>,
-    existingShifts: any[],
-    jobSites: any[]
+    existingShifts: unknown[],
+    jobSites: unknown[]
   ): {
     feasible: boolean;
     totalScore: number;
@@ -444,9 +445,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
    */
   private buildValidationPrompt(
     employees: EmployeeIntelligence[],
-    shifts: ScheduleRequest['shiftRequirements'],
-    solution: any
-  ): string {
+    shifts: ScheduleRequest['shiftRequirements'], solution: unknown): string {
     return `Validate this workforce schedule:
 
 SHIFTS REQUIRED: ${shifts.length}
@@ -530,7 +529,7 @@ Analyze the solution quality and provide:
         let tardyCount = 0;
         let onTimeCount = 0;
         for (const shift of shiftsForEmployee) {
-          const timeEntry = timeEntriesData.find((te: any) => {
+          const timeEntry = timeEntriesData.find((te: unknown) => {
             const clockInTime = new Date(te.clockIn);
             const shiftStart = new Date(shift.startTime);
             const timeDiff = Math.abs(clockInTime.getTime() - shiftStart.getTime());
@@ -554,8 +553,8 @@ Analyze the solution quality and provide:
         const onTimeClockInRate = totalShifts > 0 ? (onTimeCount / totalShifts) * 100 : 100;
 
         // Calculate no-call-no-show (scheduled shift with no time entry)
-        const noCallNoShowCount = shiftsForEmployee.filter((shift: any) => {
-          const hasTimeEntry = timeEntriesData.some((te: any) => {
+        const noCallNoShowCount = shiftsForEmployee.filter((shift: unknown) => {
+          const hasTimeEntry = timeEntriesData.some((te: unknown) => {
             const clockInTime = new Date(te.clockIn);
             const shiftStart = new Date(shift.startTime);
             const timeDiff = Math.abs(clockInTime.getTime() - shiftStart.getTime());
@@ -564,7 +563,7 @@ Analyze the solution quality and provide:
           return !hasTimeEntry && shift.status === 'scheduled';
         }).length;
 
-        const totalHours = timeEntriesData.reduce((sum: number, e: any) => {
+        const totalHours = timeEntriesData.reduce((sum: number, e: unknown) => {
           return sum + (parseFloat(e.totalHours?.toString() || '0'));
         }, 0);
 
@@ -601,7 +600,7 @@ Analyze the solution quality and provide:
           .where(eq(employeeAvailability.employeeId, emp.id));
 
         // Build availability map with time windows
-        const availabilityMap: any = {
+        const availabilityMap: Record<string, unknown> = {
           monday: { available: false },
           tuesday: { available: false },
           wednesday: { available: false },
@@ -805,7 +804,7 @@ Analyze the solution quality and provide:
   /**
    * GET JOB SITE DATA FOR LOCATION-BASED ASSIGNMENT
    */
-  private async getJobSiteData(clientIds: string[], workspaceId: string): Promise<any[]> {
+  private async getJobSiteData(clientIds: string[], workspaceId: string): Promise<Record<string,unknown>[]> {
     if (clientIds.length === 0) {
       return await db.select().from(clients).where(eq(clients.workspaceId, workspaceId));
     }
@@ -827,8 +826,8 @@ Analyze the solution quality and provide:
   private buildIntelligentSchedulingPrompt(
     employeeIntelligence: EmployeeIntelligence[],
     shiftRequirements: ScheduleRequest['shiftRequirements'],
-    existingShifts: any[],
-    jobSites: any[]
+    existingShifts: unknown[],
+    jobSites: unknown[]
   ): string {
     return `
 You are Trinity Schedule, the world's most advanced AI workforce scheduling system. Generate an optimal schedule using comprehensive employee intelligence data.
@@ -846,8 +845,8 @@ ${idx + 1}. ${emp.employeeName} (ID: ${emp.employeeId})
    ├─ Years of Service: ${emp.yearsOfService.toFixed(1)} years (joined ${emp.employmentStartDate.toLocaleDateString()})
    ├─ Location: ${emp.homeCity}, ${emp.homeState} ${emp.homeZipCode}
    ├─ Availability: ${Object.entries(emp.availability)
-     .filter(([_, v]: any) => v.available)
-     .map(([k, v]: any) => {
+     .filter(([_, v]: [string, unknown]) => v.available)
+     .map(([k, v]: [string, unknown]) => {
        const day = k.substring(0, 3).toUpperCase();
        return v.startTime && v.endTime ? `${day} (${v.startTime}-${v.endTime})` : day;
      })
@@ -879,7 +878,7 @@ ${jobSites.map(site => `
 ═══════════════════════════════════════════════════════════════════════════════
 EXISTING SHIFTS (avoid conflicts)
 ═══════════════════════════════════════════════════════════════════════════════
-${existingShifts.length > 0 ? existingShifts.map((s: any) => `
+${existingShifts.length > 0 ? existingShifts.map((s: unknown) => `
 - Employee ${s.employeeId}: ${new Date(s.startTime).toLocaleString()} → ${new Date(s.endTime).toLocaleString()}
 `).join('\n') : 'None'}
 
@@ -1251,7 +1250,7 @@ RESPONSE FORMAT (JSON)
 
       const clientIds = [...new Set(shiftClients.map(s => s.clientId).filter(Boolean))] as string[];
       const clientRates = clientIds.length > 0
-        ? await db.select({ id: clients.id, billableRate: (clients as any).billableRate })
+        ? await db.select({ id: clients.id, billableRate: (clients as ClientWithExtras).billableRate })
             .from(clients)
             .where(sql`${clients.id} = ANY(ARRAY[${sql.join(clientIds.map(id => sql`${id}::uuid`), sql`, `)}])`)
         : [];
@@ -1289,7 +1288,6 @@ RESPONSE FORMAT (JSON)
       assignments,
       unfilled,
       processingTimeMs,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       warnings: marginWarnings.length > 0 ? marginWarnings : undefined,
     };
   }

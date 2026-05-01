@@ -14,7 +14,7 @@ import { z } from 'zod';
 const log = createLogger('DocumentLibraryRoutes');
 
 
-export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, attachWorkspaceId?: any) {
+export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, attachWorkspaceId?: unknown) {
   const router = Router();
 
   // ==================== DOCUMENTS ====================
@@ -52,7 +52,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       const userId = (req.user)?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      const pending = await (documentSigningService as any).getMyPendingSignatures(userId, workspaceId);
+      const pending = await (documentSigningService as Record<string,unknown>).getMyPendingSignatures(userId, workspaceId);
       res.json({ success: true, data: pending });
     } catch (error: unknown) {
       log.error('[DocumentLibrary] Operation error:', error);
@@ -88,7 +88,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       const userId = (req.user)?.id;
 
       const [doc] = await db.select().from(orgDocuments)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(and(eq(orgDocuments.id, id), eq(orgDocuments.workspaceId, workspaceId)));
 
       if (!doc) return res.status(404).json({ error: "Document not found" });
@@ -145,9 +144,9 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
               workspaceId: workspaceId!,
               filePath: doc.filePath,
               category,
-              version: (doc as any).version || 1,
+              version: (doc as Record<string, unknown>).version || 1,
             });
-          } catch (err: any) {
+          } catch (err: unknown) {
             log.warn('[SOP] Indexing failed (non-fatal):', err?.message);
           }
         });
@@ -166,7 +165,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       const { id } = req.params;
       const { title, description, category, fileUrl, fileName, fileType, fileSize, status, tags, signatureRequired, totalSignaturesRequired } = req.body;
 
-      const safeDocUpdates: Record<string, any> = { updatedAt: new Date() };
+      const safeDocUpdates: Record<string, unknown> = { updatedAt: new Date() };
       if (title !== undefined) safeDocUpdates.title = title;
       if (description !== undefined) safeDocUpdates.description = description;
       if (category !== undefined) safeDocUpdates.category = category;
@@ -181,7 +180,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
 
       const [updated] = await db.update(orgDocuments)
         .set(safeDocUpdates)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(and(eq(orgDocuments.id, id), eq(orgDocuments.workspaceId, workspaceId)))
         .returning();
 
@@ -199,7 +197,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       const { signatureFields } = req.body;
       const [updated] = await db.update(orgDocuments)
         .set({ signatureFields, updatedAt: new Date() })
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(and(eq(orgDocuments.id, id), eq(orgDocuments.workspaceId, workspaceId)))
         .returning();
       res.json({ success: true, data: updated });
@@ -216,7 +213,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
 
       await db.update(orgDocuments)
         .set({ isActive: false, updatedAt: new Date() })
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(and(eq(orgDocuments.id, id), eq(orgDocuments.workspaceId, workspaceId)));
 
       res.json({ success: true });
@@ -346,11 +342,10 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
 
       const result = await documentSigningService.sendDocumentForSignature({
         documentId: id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         senderUserId: userId,
         senderName,
-        recipients: recipients.map((r: any) => ({
+        recipients: recipients.map((r: unknown) => ({
           email: r.email,
           name: r.name,
           userId: r.userId,
@@ -365,7 +360,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
           workspaceId,
           userId: userId || 'system',
           featureKey: 'document_signing_send',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           featureName: 'Digital E-Signature Send',
           description: `Document ${id} sent for e-signature to ${recipients.length} recipient(s)`,
           amountOverride: 3,
@@ -394,7 +388,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
 
       const result = await documentSigningService.sendDocumentForSignature({
         documentId: id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         senderUserId: userId,
         senderName,
@@ -418,7 +411,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       if (!signatureData) return res.status(400).json({ error: "Signature data is required" });
 
       const result = await documentSigningService.processInternalSignature(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id, userId, signatureData, signatureType || 'drawn',
         req.ip || req.socket.remoteAddress || '',
         req.headers['user-agent'] || ''
@@ -434,7 +426,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
   router.get("/:id/signature-status", requireAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const status = await (documentSigningService as any).getSignatureStatus(id);
+      const status = await (documentSigningService as Record<string,unknown>).getSignatureStatus(id);
       res.json({ success: true, data: status });
     } catch (error: unknown) {
       log.error('[DocumentLibrary] Operation error:', error);
@@ -445,7 +437,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
   router.post("/:id/send-reminders", requireAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const result = await (documentSigningService as any).sendDocumentReminders(id);
+      const result = await (documentSigningService as Record<string,unknown>).sendDocumentReminders(id);
       res.json({ success: true, data: result });
     } catch (error: unknown) {
       log.error('[DocumentLibrary] Operation error:', error);

@@ -9,7 +9,7 @@ const log = createLogger('AuditTrail');
 
 const router = Router();
 
-const q = (text: string, params?: any[]) => typedPool(text, params);
+const q = (text: string, params?: unknown[]) => typedPool(text, params);
 const MAX_EXPORT_ROWS = 10_000;
 
 // Actions that are system automation noise — not human compliance records.
@@ -31,7 +31,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     }
 
     let conditions = ["workspace_id = $1"];
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let idx = 2;
 
     if (entityType) { conditions.push(`entity_type = $${idx++}`); params.push(entityType); }
@@ -55,7 +55,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response) =>
       [...params, Math.min(Math.max(1, Number(limit) || 100), 500)]
     );
 
-    res.json({ success: true, auditLogs, count: (auditLogs as any).length });
+    res.json({ success: true, auditLogs, count: (auditLogs as Record<string,unknown>).length });
   } catch (error) {
     log.error("[Compliance Audit Trail] Error:", error);
     res.status(500).json({ success: false, error: "Failed to fetch audit trail" });
@@ -71,7 +71,7 @@ router.get("/export", requireAuth, requireManager, async (req: AuthenticatedRequ
       return res.status(400).json({ success: false, error: "Workspace required" });
     }
 
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let idx = 2;
     const conditions = [`workspace_id = $1`];
     if (start) { conditions.push(`created_at >= $${idx++}`); params.push(new Date(String(start))); }

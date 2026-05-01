@@ -21,20 +21,17 @@ import { broadcastToWorkspace } from '../../websocket';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityChangePropagationActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity change propagation: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -75,10 +72,9 @@ export function registerChangePropagationActions() {
       case 'hourly_rate': {
         const employeeId = params.employeeId || params.resourceId;
         if (employeeId && oldValue !== undefined && newValue !== undefined) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const result = await helpaiOrchestrator.executeAction('settings.propagate_pay_rate_change', {
             workspaceId, employeeId, oldRate: oldValue, newRate: newValue, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_pay_rate_change');
           impacts.push(`Pay rate change from $${oldValue}/hr to $${newValue}/hr — payroll drafts recomputed, schedule cost calculations flagged`);
         }
@@ -89,10 +85,9 @@ export function registerChangePropagationActions() {
       case 'billing_rate': {
         const clientId = params.clientId || params.resourceId;
         if (clientId && oldValue !== undefined && newValue !== undefined) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const result = await helpaiOrchestrator.executeAction('settings.propagate_bill_rate_change', {
             workspaceId, clientId, oldRate: oldValue, newRate: newValue, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_bill_rate_change');
           impacts.push(`Bill rate change from $${oldValue}/hr to $${newValue}/hr — draft invoice line items recalculated, margin risk assessed`);
         }
@@ -104,10 +99,9 @@ export function registerChangePropagationActions() {
       case 'perc_expiry': {
         const employeeId = params.employeeId || params.resourceId;
         if (employeeId) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const result = await helpaiOrchestrator.executeAction('settings.propagate_license_expiry', {
             workspaceId, employeeId, docType: settingKey, changedBy,
-          } as any).catch(() => null);
+          }).catch(() => null);
           actionsTriggered.push('settings.propagate_license_expiry');
           impacts.push(`License/certification expired — officer removed from future shifts, replacement slots created`);
         }
@@ -141,14 +135,14 @@ export function registerChangePropagationActions() {
   helpaiOrchestrator.registerAction(mkAction('settings.propagate_pay_rate_change', async (params) => {
     const { workspaceId, employeeId, oldRate, newRate, changedBy } = params;
     if (!workspaceId || !employeeId) return { error: 'workspaceId and employeeId required' };
-    const flaggedItems: any[] = [];
+    const flaggedItems: (string | number | boolean | null)[] = [];
     const newRateNum = parseFloat(String(newRate));
     const oldRateNum = parseFloat(String(oldRate));
     const rateChange = newRateNum - oldRateNum;
     const rateChangePct = oldRateNum > 0 ? ((rateChange / oldRateNum) * 100).toFixed(1) : 'N/A';
 
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
-    const empName = `${(emp as any)?.firstName || ''} ${(emp as any)?.lastName || ''}`.trim() || employeeId;
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
+    const empName = `${(emp as EmployeeWithStatus)?.firstName || ''} ${(emp as EmployeeWithStatus)?.lastName || ''}`.trim() || employeeId;
 
     // ── STEP 1: Find all draft/pending payroll runs for this workspace ──
     const draftPayrolls = await db.select({
@@ -227,7 +221,7 @@ export function registerChangePropagationActions() {
             totalGrossPay: runTotals[0].sumGross,
             totalNetPay: runTotals[0].sumNet,
             updatedAt: new Date(),
-          } as any).where(eq(payrollRuns.id, run.id)).catch(() => null);
+          } as Record<string, unknown>).where(eq(payrollRuns.id, run.id)).catch(() => null);
         }
       }
 
@@ -239,7 +233,7 @@ export function registerChangePropagationActions() {
         impact: entries.length > 0
           ? `Recomputed ${entries.length} payroll entry(s) at new rate $${newRate}/hr`
           : 'No entries for this employee in this run',
-        period: `${(run as any).periodStart} - ${(run as any).periodEnd}`,
+        period: `${(run as Record<string, unknown>).periodStart} - ${(run as Record<string, unknown>).periodEnd}`,
       });
     }
 
@@ -253,7 +247,7 @@ export function registerChangePropagationActions() {
         ne(shifts.status, 'cancelled'),
       ))
       .catch(() => [{ count: 0 }]);
-    const futureShifts = parseInt(String((futureShiftCount[0] as any)?.count || 0));
+    const futureShifts = parseInt(String((futureShiftCount[0] as unknown)?.count || 0));
     if (futureShifts > 0) {
       const estimatedImpact = (rateChange * 8 * futureShifts).toFixed(2);
       flaggedItems.push({
@@ -293,7 +287,7 @@ export function registerChangePropagationActions() {
   helpaiOrchestrator.registerAction(mkAction('settings.propagate_bill_rate_change', async (params) => {
     const { workspaceId, clientId, oldRate, newRate, changedBy } = params;
     if (!workspaceId || !clientId) return { error: 'workspaceId and clientId required' };
-    const flaggedItems: any[] = [];
+    const flaggedItems: (string | number | boolean | null)[] = [];
     const newRateNum = parseFloat(String(newRate));
     const oldRateNum = parseFloat(String(oldRate));
     const rateChange = newRateNum - oldRateNum;
@@ -352,7 +346,7 @@ export function registerChangePropagationActions() {
         await db.update(invoices).set({
           amount: invoiceRunningTotal.toFixed(2),
           updatedAt: new Date(),
-        } as any).where(eq(invoices.id, inv.id)).catch(() => null);
+        } as Record<string, unknown>).where(eq(invoices.id, inv.id)).catch(() => null);
         recomputedInvoices++;
       }
 
@@ -366,7 +360,7 @@ export function registerChangePropagationActions() {
         impact: anyItemUpdated
           ? `Line items recalculated at new rate $${newRate}/hr. New total: $${invoiceRunningTotal.toFixed(2)}`
           : 'No line items matched old rate — manual review recommended',
-        dueDate: (inv as any).dueDate,
+        dueDate: (inv as Record<string, unknown>).dueDate,
       });
     }
 
@@ -375,7 +369,7 @@ export function registerChangePropagationActions() {
       .from(shifts)
       .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.clientId, clientId), gte(shifts.startTime, new Date()), ne(shifts.status, 'cancelled')))
       .catch(() => [{ count: 0 }]);
-    const futureShifts = parseInt(String((futureShiftCount[0] as any)?.count || 0));
+    const futureShifts = parseInt(String((futureShiftCount[0] as unknown)?.count || 0));
     if (futureShifts > 0) {
       const projectedImpact = (rateChange * 8 * futureShifts).toFixed(2);
       const isMarginRisk = newRateNum > 0 && oldRateNum > 0 && (newRateNum / oldRateNum) < 0.95;
@@ -419,9 +413,9 @@ export function registerChangePropagationActions() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
 
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
-    const empName = `${(emp as any)?.firstName || ''} ${(emp as any)?.lastName || ''}`.trim() || employeeId;
-    const userId = (emp as any)?.userId;
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
+    const empName = `${(emp as EmployeeWithStatus)?.firstName || ''} ${(emp as EmployeeWithStatus)?.lastName || ''}`.trim() || employeeId;
+    const userId = (emp as EmployeeWithStatus)?.userId;
 
     const futureShifts = await db.select({ id: shifts.id, startTime: shifts.startTime, clientId: shifts.clientId, title: shifts.title })
       .from(shifts)
@@ -446,7 +440,7 @@ export function registerChangePropagationActions() {
           status: 'open',
           notes: `[COMPLIANCE_HOLD] Officer ${empName} removed — ${docType || 'license'} expired. Replacement needed.`,
           updatedAt: new Date(),
-        } as any)
+        } as unknown)
         .where(eq(shifts.id, shift.id)).catch(() => null);
       unassigned++;
       replacementsCreated++;

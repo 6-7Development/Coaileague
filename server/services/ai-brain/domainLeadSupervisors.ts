@@ -69,13 +69,13 @@ export interface DomainTask {
   id: string;
   domain: SupervisorDomain;
   action: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   priority: 'critical' | 'high' | 'normal' | 'low';
   requestedBy: string;
   workspaceId?: string;
   status: 'pending' | 'assigned' | 'executing' | 'completed' | 'failed' | 'escalated';
   assignedSubagent?: string;
-  result?: any;
+  result?: unknown;
   error?: string;
   createdAt: Date;
   completedAt?: Date;
@@ -83,7 +83,7 @@ export interface DomainTask {
 
 export interface TaskResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   escalated?: boolean;
   humanApprovalNeeded?: boolean;
@@ -416,7 +416,7 @@ class DomainLeadSupervisorService {
   async submitTask(
     domain: SupervisorDomain,
     action: string,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
     options: {
       priority?: 'critical' | 'high' | 'normal' | 'low';
       requestedBy: string;
@@ -508,7 +508,7 @@ class DomainLeadSupervisorService {
           subagentUsed: subagent.id,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       task.status = 'failed';
       task.error = (error instanceof Error ? error.message : String(error));
       supervisor.metrics.tasksFailed++;
@@ -536,8 +536,8 @@ class DomainLeadSupervisorService {
   private async tryConcreteAction(
     domain: SupervisorDomain,
     action: string,
-    payload: Record<string, any>,
-  ): Promise<{ success: boolean; data?: any; error?: string; confidence?: number } | null> {
+    payload: Record<string, unknown>,
+  ): Promise<{ success: boolean; data?: unknown; error?: string; confidence?: number } | null> {
 
     // ── data_ops / generate_faq_suggestion ──────────────────────────────
     if (domain === 'data_ops' && action === 'generate_faq_suggestion') {
@@ -554,7 +554,7 @@ class DomainLeadSupervisorService {
               : 'No FAQ candidates ready for promotion yet (threshold: 3 occurrences)',
           },
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { success: false, error: `FAQ promotion failed: ${err.message}`, confidence: 0 };
       }
     }
@@ -637,7 +637,7 @@ class DomainLeadSupervisorService {
               : 'No stalled onboarding sequences found for this workspace',
           },
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { success: false, error: `Onboarding resume failed: ${err.message}`, confidence: 0 };
       }
     }
@@ -665,9 +665,9 @@ class DomainLeadSupervisorService {
   private async executeWithAI(
     domain: SupervisorDomain,
     action: string,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
     subagent: SubagentConfig
-  ): Promise<{ success: boolean; data?: any; error?: string; confidence?: number }> {
+  ): Promise<{ success: boolean; data?: unknown; error?: string; confidence?: number }> {
     const prompt = `
 You are the ${subagent.name} subagent operating under the ${domain} domain supervisor.
 
@@ -688,7 +688,7 @@ Provide a JSON response with:
 `;
 
     try {
-      const response = await (aiBrainService as any).processRequest({
+      const response = await (aiBrainService as Record<string,unknown>).processRequest({
         type: 'domain_task_execution',
         prompt,
         context: { domain, action, subagent: subagent.id },
@@ -707,7 +707,7 @@ Provide a JSON response with:
         error: response.error || 'AI execution failed',
         confidence: 0.3,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: (error instanceof Error ? error.message : String(error)),
@@ -716,7 +716,7 @@ Provide a JSON response with:
     }
   }
 
-  private shouldEscalate(supervisor: DomainLeadSupervisor, error: any): boolean {
+  private shouldEscalate(supervisor: DomainLeadSupervisor, error: unknown): boolean {
     // Escalate on critical errors or repeated failures
     const recentFailures = supervisor.metrics.tasksFailed;
     const totalTasks = supervisor.metrics.tasksAssigned;
@@ -785,7 +785,7 @@ Provide a JSON response with:
   }
 
   getSupervisorHealth(): Record<SupervisorDomain, { status: string; subagentHealth: Record<string, string> }> {
-    const health: Record<string, any> = {};
+    const health: Record<string, unknown> = {};
     
     for (const [domain, supervisor] of this.supervisors) {
       health[domain] = {

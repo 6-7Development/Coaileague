@@ -919,7 +919,6 @@ class EmployeeDocumentOnboardingService {
     const now = new Date();
 
     const documentStatuses: DocumentRequirementStatus[] = requirements.map(req => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const doc = docsByType.get(req.documentType);
       
       if (!doc) {
@@ -1029,7 +1028,7 @@ class EmployeeDocumentOnboardingService {
           description: `Employee onboarding is ${Math.abs(daysRemaining)} days overdue with ${requirements.length - completedDocs.length} document(s) still missing`,
           workspaceId: employee.workspaceId,
           metadata: { employeeId, employeeName: `${employee.firstName} ${employee.lastName}`, daysOverdue: Math.abs(daysRemaining), missingDocCount: requirements.length - completedDocs.length },
-        }).catch((err: any) => log.warn('[OnboardingService] publish compliance_onboarding_overdue failed:', err.message));
+        }).catch((err: unknown) => log.warn('[OnboardingService] publish compliance_onboarding_overdue failed:', err.message));
       }
     }
 

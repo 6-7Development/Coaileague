@@ -119,7 +119,6 @@ class AICostMonitorService {
     inputTokens: number,
     outputTokens: number
   ): number {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const pricing = API_PRICING[ai] || API_PRICING.gemini;
     const inputCost = (inputTokens / 1_000_000) * pricing.inputPer1M;
     const outputCost = (outputTokens / 1_000_000) * pricing.outputPer1M;
@@ -193,7 +192,7 @@ class AICostMonitorService {
       const workspace = await db.query.workspaces.findFirst({
         where: eq(workspaces.id, workspaceId),
       });
-      currentCredits = (workspace as any)?.aiCredits || 0;
+      currentCredits = (workspace as Record<string,unknown>)?.aiCredits || 0;
     } catch (error) {
       log.warn('[CostMonitor] Failed to fetch workspace credits:', error);
     }
@@ -376,7 +375,7 @@ class AICostMonitorService {
     const statsByType: Record<string, OperationStats> = {};
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       if (!metadata?.operationType) continue;
 
       const opType = metadata.operationType;
@@ -430,7 +429,7 @@ class AICostMonitorService {
     }> = {};
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       const wsId = log.workspaceId;
       if (!wsId) continue;
 
@@ -571,7 +570,7 @@ class AICostMonitorService {
     let unprofitableToday = 0, lowMarginToday = 0;
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       const cost = metadata.actualUsdCost || 0;
       const revenue = (metadata.creditsCharged || 0) * CREDIT_TO_USD;
       const logDate = new Date(log.createdAt!);
@@ -620,7 +619,7 @@ class AICostMonitorService {
     workspaceId: string;
     operationType: string;
     timestamp: string;
-    details: any;
+    details: Record<string, unknown>;
   }>> {
     const logs = await db
       .select()
@@ -634,11 +633,11 @@ class AICostMonitorService {
       workspaceId: string;
       operationType: string;
       timestamp: string;
-      details: any;
+      details: Record<string, unknown>;
     }> = [];
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       if (!metadata.isProfitable) {
         alerts.push({
           type: 'unprofitable',

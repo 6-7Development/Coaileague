@@ -299,12 +299,11 @@ export async function seedEmails(workspaceId?: string) {
 
   for (const email of emailsToInsert) {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [inserted] = await db.insert(internalEmails).values(email).returning();
       emailCount++;
       
       // Create recipient records for the listed recipients
-      const recipients = JSON.parse(email.toAddresses as string);
+      const recipients: unknown = JSON.parse(email.toAddresses as string);
       for (const recipientEmail of recipients) {
         const recipientMailboxId = createdMailboxes.get(recipientEmail);
         if (recipientMailboxId) {

@@ -116,17 +116,17 @@ function installScrollPassthrough() {
     e.stopPropagation();
   }
 
-  document.body.addEventListener("touchmove", stopRemoveScrollBubble as any, {
+  document.body.addEventListener("touchmove", stopRemoveScrollBubble as unknown, {
     passive: true,
   });
-  document.body.addEventListener("wheel", stopRemoveScrollBubble as any, {
+  document.body.addEventListener("wheel", stopRemoveScrollBubble as unknown, {
     passive: true,
   });
 
   // Return cleanup function
   return () => {
-    document.body.removeEventListener("touchmove", stopRemoveScrollBubble as any);
-    document.body.removeEventListener("wheel", stopRemoveScrollBubble as any);
+    document.body.removeEventListener("touchmove", stopRemoveScrollBubble as unknown);
+    document.body.removeEventListener("wheel", stopRemoveScrollBubble as unknown);
   };
 }
 

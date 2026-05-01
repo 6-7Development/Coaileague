@@ -134,7 +134,7 @@ export async function executePayrollAnomalyWorkflow(
       `detected ${anomalies.length} anomalies`,
       { count: anomalies.length, severities: anomalies.map((a) => a.severity) },
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     await logWorkflowStep(record, 'process', false, `detection failed: ${err?.message}`);
     await logWorkflowComplete(record, {
       success: false,
@@ -169,12 +169,12 @@ export async function executePayrollAnomalyWorkflow(
           status: 'pending',
           updatedAt: new Date(),
           providerData: {
-            ...((run.providerData as any) ?? {}),
+            ...((run.providerData as unknown) ?? {}),
             trinityBlocked: true,
             trinityBlockReason: 'high-severity anomalies detected',
             trinityBlockedAt: new Date().toISOString(),
-          } as any,
-        } as any)
+          } as unknown,
+        } as unknown)
         .where(
           and(
             eq(payrollRuns.id, params.payrollRunId),
@@ -183,7 +183,7 @@ export async function executePayrollAnomalyWorkflow(
         );
       blocked = true;
       await logWorkflowStep(record, 'mutate', true, 'payroll run blocked pending review');
-    } catch (err: any) {
+    } catch (err: unknown) {
       await logWorkflowStep(record, 'mutate', false, `flag failed: ${err?.message}`);
     }
   } else {
@@ -220,8 +220,8 @@ export async function executePayrollAnomalyWorkflow(
         highestSeverity,
         blocked,
       },
-    } as any);
-  } catch (err: any) {
+    } as unknown);
+  } catch (err: unknown) {
     log.warn('[payroll-anomaly] event publish failed:', err?.message);
   }
 
@@ -284,11 +284,11 @@ export async function runPayrollAnomalyScan(): Promise<{
           triggerSource: 'cron_scan',
         });
         if (wfResult.blocked) result.blocked++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         result.errors.push(`${run.id}:${err?.message}`);
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.errors.push(`scan:${err?.message}`);
   }
   return result;
@@ -331,10 +331,10 @@ async function notifyStakeholders(params: {
   await Promise.allSettled(
     managerIds.map((recipientUserId) =>
       NotificationDeliveryService.send({
-        type: params.blocked ? 'payroll.anomaly.blocked' : ('payroll.anomaly.flagged' as any),
+        type: params.blocked ? 'payroll.anomaly.blocked' : ('payroll.anomaly.flagged'),
         workspaceId: params.workspaceId,
         recipientUserId,
-        channel: 'in_app' as any,
+        channel: 'in_app',
         subject: params.blocked ? 'Payroll BLOCKED by Trinity' : 'Payroll anomaly flagged',
         body: {
           payrollRunId: params.payrollRunId,
@@ -362,7 +362,7 @@ async function notifyStakeholders(params: {
           ),
         ),
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[payroll-anomaly] manager SMS failed:', err?.message);
     }
   }
@@ -379,7 +379,7 @@ async function fetchWorkspaceManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -399,8 +399,8 @@ async function fetchManagerContacts(workspaceId: string): Promise<Array<{ employ
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

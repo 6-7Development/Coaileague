@@ -11,7 +11,7 @@ import { z } from 'zod';
 const log = createLogger('LeadCrmRoutes');
 
 
-export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWorkspaceId?: any) {
+export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWorkspaceId?: unknown) {
   const router = Router();
 
   const getWorkspaceId = (req: Request): string | null => {
@@ -34,7 +34,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
 
       const { status, industry, assignedTo, limit = 100 } = req.query;
       
-      let conditions: any[] = [eq(leads.organizationId, workspaceId)];
+      let conditions: unknown[] = [eq(leads.organizationId, workspaceId)];
       if (status) conditions.push(eq(leads.leadStatus, status as string));
       if (industry) conditions.push(eq(leads.industry, industry as string));
       if (assignedTo) conditions.push(eq(leads.assignedTo, assignedTo as string));
@@ -59,7 +59,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
 
       const { stage, status, ownerId, limit = 50 } = req.query;
       
-      let conditions: any[] = [eq(deals.organizationId, workspaceId)];
+      let conditions: unknown[] = [eq(deals.organizationId, workspaceId)];
       if (stage) conditions.push(eq(deals.stage, stage as string));
       if (status) conditions.push(eq(deals.status, status as string));
       if (ownerId) conditions.push(eq(deals.ownerId, ownerId as string));
@@ -217,7 +217,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
       if (!existing) return res.status(404).json({ error: "Lead not found" });
 
       const { companyName, contactName, contactEmail, contactPhone, leadSource, source, leadStatus, estimatedValue, notes, tags, assignedTo, industry, website, address } = req.body;
-      const safeLeadUpdates: Record<string, any> = { updatedAt: new Date() };
+      const safeLeadUpdates: Record<string, unknown> = { updatedAt: new Date() };
       if (companyName !== undefined) safeLeadUpdates.companyName = companyName;
       if (contactName !== undefined) safeLeadUpdates.contactName = contactName;
       if (contactEmail !== undefined) safeLeadUpdates.contactEmail = contactEmail;
@@ -381,7 +381,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
       const { id } = req.params;
       const { name: dealName, status: dealStatus, stage, estimatedValue: dealValue, expectedCloseDate, leadId, assignedTo: dealAssignee, notes: dealNotes } = req.body;
 
-      const safeDealUpdates: Record<string, any> = { updatedAt: new Date() };
+      const safeDealUpdates: Record<string, unknown> = { updatedAt: new Date() };
       if (dealName !== undefined) safeDealUpdates.name = dealName;
       if (dealStatus !== undefined) safeDealUpdates.status = dealStatus;
       if (stage !== undefined) safeDealUpdates.stage = stage;

@@ -29,6 +29,9 @@ const log = createLogger('WebSocket');
 // Securely extracts user identity from HTTP session (not client-supplied IDs)
 // ============================================================================
 
+/** Generic WebSocket message payload — replaces bare `any` in broadcast functions. */
+type WsPayload = Record<string, unknown>;
+
 interface AuthenticatedSession {
   userId: string;
   workspaceId?: string;
@@ -109,7 +112,7 @@ async function getSessionFromRequest(request: IncomingMessage): Promise<Authenti
     // Look up session in PostgreSQL sessions table
     // CATEGORY C — Genuine schema mismatch: sessions table managed by connect-pg-simple, no Drizzle schema defined
     // NOTE: typedQuery returns T[] directly — DO NOT use .rows (that's only for pool.query / db.$client.query)
-    const rows = await typedQuery<{ sess: any }>(
+    const rows = await typedQuery<{ sess: unknown }>(
       sql`SELECT sess FROM sessions WHERE sid = ${sessionId} AND expire > NOW()`
     );
     
@@ -117,7 +120,7 @@ async function getSessionFromRequest(request: IncomingMessage): Promise<Authenti
       return null;
     }
     
-    const sess = rows[0].sess as any;
+    const sess = rows[0].sess as Record<string, unknown>;
     
     // Extract user info from session data
     // Session structure: { userId: "...", passport: { user: { claims: {...} } } }
@@ -195,7 +198,6 @@ function createSystemMessage(
     visibleToStaffOnly?: boolean;
   }
 ): ChatMessage {
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   return {
     id: Date.now().toString(),
     conversationId,
@@ -355,7 +357,7 @@ interface RequestSecurePayload {
 
 interface SecureResponsePayload {
   type: 'secure_response';
-  data: any;
+  data: WsPayload;
 }
 
 interface ReleaseSpectatorPayload {
@@ -398,7 +400,7 @@ interface JoinShiftUpdatesPayload {
 
 interface ShiftUpdatePayload {
   type: 'shift_created' | 'shift_updated' | 'shift_deleted';
-  shift?: any;
+  shift?: WsPayload;
   shiftId?: string;
 }
 
@@ -410,7 +412,7 @@ interface JoinNotificationsPayload {
 
 interface NotificationUpdatePayload {
   type: 'notification_new' | 'notification_read' | 'notification_count_updated';
-  notification?: any;
+  notification?: WsPayload;
   unreadCount?: number;
 }
 
@@ -471,7 +473,7 @@ interface DispatchGPSUpdatePayload {
 
 interface DispatchIncidentUpdatePayload {
   type: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned';
-  incident?: any;
+  incident?: WsPayload;
   incidentId?: number;
 }
 
@@ -614,16 +616,16 @@ function revokeVoice(conversationId: string, userId: string): void {
 let globalWSS: WebSocketServer | null = null;
 
 // Global broadcaster for notifications
-let globalBroadcaster: any = null;
+let globalBroadcaster: ((msg: WsPayload) => void) | null = null;
 
-export function setGlobalBroadcaster(broadcaster: any) {
+export function setGlobalBroadcaster(broadcaster: (msg: WsPayload) => void) {
   globalBroadcaster = broadcaster;
 }
 
 export function broadcastNotificationToUser(
   workspaceId: string,
   userId: string,
-  notification: any
+  notification?: WsPayload
 ) {
   if (!globalBroadcaster) {
     log.warn('Global broadcaster not initialized for notification');
@@ -648,7 +650,7 @@ export function broadcastNotificationToUser(
 export function broadcastShiftUpdate(
   workspaceId: string,
   updateType: 'shift_created' | 'shift_updated' | 'shift_deleted',
-  shift?: any,
+  shift?: WsPayload,
   shiftId?: string
 ) {
   if (!globalBroadcaster) {
@@ -672,7 +674,7 @@ export function broadcastShiftUpdate(
  */
 export function broadcastUserScopedNotification(
   userId: string,
-  notification: any
+  notification?: WsPayload
 ) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for user-scoped notification');
@@ -690,14 +692,14 @@ export function broadcastUserScopedNotification(
     });
     
     let sentCount = 0;
-    globalWSS.clients.forEach((client: any) => {
+    globalWSS.clients.forEach((client: WebSocket) => {
       if (client.readyState === WebSocket.OPEN) {
         const clientUserId = client.userId || client._userId;
         if (clientUserId === userId) {
           try {
             client.send(payload);
             sentCount++;
-          } catch (sendErr: any) {
+          } catch (sendErr: unknown) {
             log.warn('User-scoped WS send failed — dead connection', { userId, error: sendErr?.message });
           }
         }
@@ -712,7 +714,7 @@ export function broadcastUserScopedNotification(
   }
 }
 
-export function broadcastToAllClients(message: any) {
+export function broadcastToAllClients(message: WsPayload) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for broadcast');
     return 0;
@@ -737,8 +739,8 @@ export function broadcastToAllClients(message: any) {
       try {
         client.send(payload);
         count++;
-      } catch (sendErr: any) {
-        log.warn('broadcastToAllClients: WS send failed — dead connection', { error: sendErr?.message });
+      } catch (sendErr: unknown) {
+        log.warn('broadcastToAllClients: WS send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
       }
     }
   });
@@ -813,7 +815,7 @@ const TRINITY_ALERT_ROLES = ['root_admin', 'co_admin', 'sysops', 'platform_suppo
  * Broadcast Trinity alert to all connected support staff
  * Uses existing broadcastToAllClients but filters by role
  */
-export function broadcastTrinityAlertToSupport(message: any) {
+export function broadcastTrinityAlertToSupport(message: WsPayload) {
   if (!globalWSS) {
     log.warn('Global WSS not initialized for Trinity alert');
     return 0;
@@ -822,14 +824,14 @@ export function broadcastTrinityAlertToSupport(message: any) {
   const payload = JSON.stringify(message);
   
   let sentCount = 0;
-  globalWSS.clients.forEach((client: any) => {
+  globalWSS.clients.forEach((client: WebSocket) => {
     if (client.readyState === WebSocket.OPEN) {
       const role = client.serverAuth?.role || client.serverAuth?.platformRole;
       if (role && TRINITY_ALERT_ROLES.includes(role)) {
         try {
           client.send(payload);
           sentCount++;
-        } catch (sendErr: any) {
+        } catch (sendErr: unknown) {
           log.warn('broadcastTrinityAlertToSupport: WS send failed — dead connection', { role, error: sendErr?.message });
         }
       }
@@ -846,7 +848,7 @@ export function broadcastTrinityAlertToSupport(message: any) {
 setTimeout(async () => {
   try {
     const { trinityAutonomousNotifier } = await import('./services/ai-brain/trinityAutonomousNotifier');
-    trinityAutonomousNotifier.setBroadcastHandler((message: any) => {
+    trinityAutonomousNotifier.setBroadcastHandler((message: WsPayload) => {
       broadcastTrinityAlertToSupport(message);
     });
     log.info('Trinity autonomous notifier broadcast handler registered');
@@ -882,7 +884,7 @@ export function syncToUserDevices(
   userId: string,
   resource: string,
   action: 'create' | 'update' | 'delete',
-  data?: Record<string, any>,
+  data?: Record<string, unknown>,
   queryKeys?: string[]
 ): number {
   return sessionSyncService.broadcastToUser(userId, {
@@ -924,6 +926,7 @@ export { sessionSyncService };
 // ChatDurability adapter — Redis-backed with in-memory fallback
 // Replaces the in-memory workspaceEventBuffer Map that was lost on restart
 import { pushEvent as pushEventDurable, onBroadcast, initChatDurability } from './services/chat/chatDurabilityAdapter';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 
 const EVENT_BUFFER_MAX = 100;           // Kept for replay logic references
 const EVENT_BUFFER_TTL_MS = 5 * 60 * 1000;
@@ -932,13 +935,13 @@ interface BufferedEvent {
   eventId: string;
   timestamp: number;
   workspaceId: string;
-  data: any;
+  data: WsPayload;
 }
 
 // Legacy in-memory map retained for getEventsSince() calls that haven't migrated
 const workspaceEventBuffer = new Map<string, BufferedEvent[]>();
 
-function pushEventToBuffer(workspaceId: string, data: any): string {
+function pushEventToBuffer(workspaceId: string, data: WsPayload): string {
   // Async fire-and-forget to durable adapter (non-blocking for WebSocket path)
   pushEventDurable(workspaceId, data).catch(() => null);
   
@@ -956,7 +959,7 @@ function pushEventToBuffer(workspaceId: string, data: any): string {
 // Initialize durability on startup (async, non-blocking)
 initChatDurability().catch(() => null);
 
-export function broadcastToWorkspace(workspaceId: string, data: any) {
+export function broadcastToWorkspace(workspaceId: string, data: WsPayload) {
   if (!globalBroadcaster) {
     log.warn('Global broadcaster not initialized for workspace broadcast');
     return 0;
@@ -975,7 +978,7 @@ export function broadcastToWorkspace(workspaceId: string, data: any) {
   }
 }
 
-export function broadcastToUser(userId: string, data: any): number {
+export function broadcastToUser(userId: string, data: WsPayload): number {
   if (!globalWSS || !userId) {
     return 0;
   }
@@ -993,7 +996,7 @@ export function broadcastToUser(userId: string, data: any): number {
     try {
       ws.send(payload);
       sentCount++;
-    } catch (sendErr: any) {
+    } catch (sendErr: unknown) {
       log.warn('broadcastToUser: WS send failed', { userId, error: sendErr?.message });
     }
   });
@@ -1012,7 +1015,7 @@ export function broadcastPlatformUpdateGlobal(update: {
   category: string;
   priority?: number;
   learnMoreUrl?: string;
-  metadata?: any;
+  metadata?: unknown;
   workspaceId?: string;
   visibility?: string;
 }): boolean {
@@ -1024,7 +1027,7 @@ export function broadcastPlatformUpdateGlobal(update: {
   try {
     globalBroadcaster.broadcastPlatformUpdate({
       type: 'platform_update',
-      category: update.category as any,
+      category: update.category as unknown,
       title: update.title,
       description: update.description,
       priority: update.priority || 1,
@@ -1230,7 +1233,7 @@ export function getLiveRoomConnections() {
   }>();
   
   conversationClients.forEach((clients, conversationId) => {
-    const onlineUsers: Array<any> = [];
+    const onlineUsers: Array<unknown> = [];
     clients.forEach((client) => {
       if (client.userId && client.userName) {
         onlineUsers.push({
@@ -1295,8 +1298,8 @@ export function setupWebSocket(server: Server) {
             if (!userId || client.userId === userId) {
               try {
                 client.send(eventPayload);
-              } catch (sendErr: any) {
-                log.warn('ChatServerHub conversation send failed — dead connection', { error: sendErr?.message });
+              } catch (sendErr: unknown) {
+                log.warn('ChatServerHub conversation send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           }
@@ -1315,8 +1318,8 @@ export function setupWebSocket(server: Server) {
             if (!userId || client.userId === userId) {
               try {
                 client.send(eventPayload);
-              } catch (sendErr: any) {
-                log.warn('ChatServerHub workspace send failed — dead connection', { error: sendErr?.message });
+              } catch (sendErr: unknown) {
+                log.warn('ChatServerHub workspace send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           }
@@ -1330,7 +1333,7 @@ export function setupWebSocket(server: Server) {
   // ROOM LIFECYCLE BROADCASTER - For close/reopen status changes
   // =========================================================================
   import('./services/roomLifecycleService').then(({ registerRoomBroadcaster }) => {
-    registerRoomBroadcaster((roomId: string, message: any) => {
+    registerRoomBroadcaster((roomId: string, message: WsPayload) => {
       const clients = conversationClients.get(roomId);
       if (clients) {
         const payload = JSON.stringify(message);
@@ -1338,7 +1341,7 @@ export function setupWebSocket(server: Server) {
           if (client.readyState === WebSocket.OPEN) {
             try {
               client.send(payload);
-            } catch (sendErr: any) {
+            } catch (sendErr: unknown) {
               log.warn('Room lifecycle broadcaster send failed — dead connection', { roomId, error: sendErr?.message });
             }
           }
@@ -1366,7 +1369,7 @@ export function setupWebSocket(server: Server) {
             if (!targetUserId || client.userId === targetUserId) {
               try {
                 client.send(eventPayload);
-              } catch (sendErr: any) {
+              } catch (sendErr: unknown) {
                 log.warn('IRC emitter room send failed — dead connection', { targetRoom, error: sendErr?.message });
               }
             }
@@ -1382,8 +1385,8 @@ export function setupWebSocket(server: Server) {
           if (!targetUserId || wsClient.userId === targetUserId) {
             try {
               client.send(JSON.stringify(event));
-            } catch (sendErr: any) {
-              log.warn('IRC emitter global send failed — dead connection', { error: sendErr?.message });
+            } catch (sendErr: unknown) {
+              log.warn('IRC emitter global send failed — dead connection', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
             }
           }
         }
@@ -1459,7 +1462,7 @@ export function setupWebSocket(server: Server) {
           return;
         }
 
-        const incomingMessageId = (payload as any).messageId;
+        const incomingMessageId = (payload as unknown).messageId;
         if (incomingMessageId && typeof incomingMessageId === 'string') {
           if (wsMessageIdempotencyCache.isDuplicate(incomingMessageId)) {
             log.debug('Duplicate message skipped', { messageId: incomingMessageId, type: payload.type });
@@ -1470,8 +1473,8 @@ export function setupWebSocket(server: Server) {
                   messageId: incomingMessageId,
                   status: 'duplicate',
                 }));
-              } catch (sendErr: any) {
-                log.warn('Failed to send duplicate ack', { error: sendErr?.message });
+              } catch (sendErr: unknown) {
+                log.warn('Failed to send duplicate ack', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
             return;
@@ -1483,7 +1486,7 @@ export function setupWebSocket(server: Server) {
           case 'session_sync_register': {
             // Handle session sync registration for multi-device sync
             if (ws.serverAuth?.userId) {
-              const deviceType = (payload as any).deviceType || 'unknown';
+              const deviceType = (payload as unknown).deviceType || 'unknown';
               sessionSyncService.registerConnection(
                 ws.serverAuth.userId,
                 ws,
@@ -1516,7 +1519,6 @@ export function setupWebSocket(server: Server) {
             }
             break;
           }
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'reconnect_sync': {
             // Client reconnected and sends the timestamp of the last event it received.
             // Server replays missed events from the per-workspace buffer, or instructs
@@ -1526,7 +1528,7 @@ export function setupWebSocket(server: Server) {
               ws.send(JSON.stringify({ type: 'reconnect_sync_error', error: 'No workspace context' }));
               break;
             }
-            const lastEventTimestamp = Number((payload as any).lastEventTimestamp) || 0;
+            const lastEventTimestamp = Number((payload as unknown).lastEventTimestamp) || 0;
             const now = Date.now();
             const gapMs = lastEventTimestamp ? now - lastEventTimestamp : EVENT_BUFFER_TTL_MS + 1;
             if (gapMs > EVENT_BUFFER_TTL_MS || !lastEventTimestamp) {
@@ -1548,7 +1550,6 @@ export function setupWebSocket(server: Server) {
             log.info('Reconnect sync replay sent', { workspaceId: wsId, missedCount: missed.length, gapMs });
             break;
           }
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'lone_worker_ack': {
             if (!ws.serverAuth?.userId) {
               ws.send(JSON.stringify({
@@ -1560,8 +1561,8 @@ export function setupWebSocket(server: Server) {
             }
             try {
               const { loneWorkerSafetyService } = await import('./services/automation/loneWorkerSafetyService');
-              const ackCheckId = (payload as any).checkId;
-              const ackEmployeeId = (payload as any).employeeId;
+              const ackCheckId = (payload as unknown).checkId;
+              const ackEmployeeId = (payload as unknown).employeeId;
               if (!ackCheckId || !ackEmployeeId) {
                 ws.send(JSON.stringify({
                   type: 'lone_worker_ack_result',
@@ -1576,8 +1577,8 @@ export function setupWebSocket(server: Server) {
                 success: ackResult,
                 checkId: ackCheckId,
               }));
-            } catch (lwErr: any) {
-              log.error('Lone worker ack WS error', { error: lwErr?.message });
+            } catch (lwErr: unknown) {
+              log.error('Lone worker ack WS error', { error: lwErr instanceof Error ? lwErr.message : String(lwErr) });
               ws.send(JSON.stringify({
                 type: 'lone_worker_ack_result',
                 success: false,
@@ -1586,7 +1587,6 @@ export function setupWebSocket(server: Server) {
             }
             break;
           }
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'trinity_agent_subscribe': {
             // Subscribe to Trinity Agent execution updates
             if (!ws.serverAuth?.userId) {
@@ -1597,7 +1597,7 @@ export function setupWebSocket(server: Server) {
               break;
             }
             
-            const trinityConversationId = (payload as any).conversationId;
+            const trinityConversationId = (payload as unknown).conversationId;
             if (!trinityConversationId) {
               ws.send(JSON.stringify({
                 type: 'trinity_agent_error',
@@ -1607,7 +1607,7 @@ export function setupWebSocket(server: Server) {
             }
             
             // Store Trinity subscription on the client
-            (ws as any).trinityConversationId = trinityConversationId;
+            (ws as WorkspaceWithExtras).trinityConversationId = trinityConversationId;
             
             ws.send(JSON.stringify({
               type: 'trinity_agent_subscribed',
@@ -1618,7 +1618,6 @@ export function setupWebSocket(server: Server) {
             log.debug('TrinityAgent user subscribed', { userId: ws.serverAuth.userId, conversationId: trinityConversationId });
             break;
           }
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'trinity_agent_ping': {
             // Heartbeat for Trinity Agent connection
             ws.send(JSON.stringify({
@@ -1628,11 +1627,10 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'ws_authenticate': {
             // Token-based auth fallback — handles cases where session cookie lookup
             // failed at connection time (DB hiccup, cookie edge cases in Replit env)
-            const token = (payload as any).token;
+            const token = (payload as unknown).token;
             if (!token || typeof token !== 'string') {
               ws.send(JSON.stringify({ type: 'ws_auth_failed', reason: 'Missing token' }));
               break;
@@ -1731,7 +1729,6 @@ export function setupWebSocket(server: Server) {
               if (supportRoom) {
                 log.debug('join_conversation: found support room', { slug: supportRoom.slug, conversationId: supportRoom.conversationId });
                 // Store room mode - IRC-style: modes determine behavior, not slugs
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 roomMode = supportRoom.mode;
                 supportsBots = roomSupportsBots(roomMode);
                 
@@ -1988,7 +1985,7 @@ export function setupWebSocket(server: Server) {
                   workspaceId: conversation.workspaceId || undefined,
                   source: 'websocket',
                 });
-              } catch (err: any) {
+              } catch (err: unknown) {
                 log.warn('Failed to register participant in DB', { error: err.message });
               }
             }
@@ -2060,10 +2057,9 @@ export function setupWebSocket(server: Server) {
               }));
             } else {
               // Staff or other rooms: Load recent conversation history, filtering out join/leave noise
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               const allMessages = await storage.getChatMessagesByConversation(conversationId);
               const staffMessages = allMessages
-                .filter((m: any) => {
+                .filter((m: unknown) => {
                   if (m.senderType !== 'system') return true;
                   const text = (m.message || '').toLowerCase();
                   return !(text.includes('joined') || text.includes('left') || text.includes('connected') || text.includes('disconnected'));
@@ -2218,11 +2214,9 @@ export function setupWebSocket(server: Server) {
                 
                 // Get room modes from conversation metadata
                 const joinedConversation = await storage.getChatConversation(conversationId);
-                // @ts-expect-error — TS migration: fix in refactoring sprint
-                const roomModes = (joinedConversation?.metadata as any)?.modes || 
+                const roomModes = (joinedConversation?.metadata as unknown)?.modes || 
                                   (roomMode ? [roomMode] : [RoomMode.ORG]);
-                // @ts-expect-error — TS migration: fix in refactoring sprint
-                const activeBots = (joinedConversation?.metadata as any)?.activeBots || [];
+                const activeBots = (joinedConversation?.metadata as unknown)?.activeBots || [];
                 const roomName = joinedConversation?.subject || 'Chat Room';
                 
                 // Use staff-set MOTD if available, otherwise generate dynamically
@@ -2575,9 +2569,8 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'leave_conversation': {
-            const leaveConvId = (payload as any).conversationId || ws.conversationId;
+            const leaveConvId = (payload as unknown).conversationId || ws.conversationId;
             if (leaveConvId) {
               conversationClients.get(leaveConvId)?.delete(ws);
               if (ws.conversationId === leaveConvId) {
@@ -2746,7 +2739,6 @@ export function setupWebSocket(server: Server) {
                   }
                   
                   // ESCALATION: If HelpAI can't solve, queue for human support
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   if (helpResponse.shouldEscalate) {
                     const conversation = helpAIBotService.getConversation(ws.conversationId);
                     const issueSummary = conversation?.conversationHistory
@@ -2760,7 +2752,6 @@ export function setupWebSocket(server: Server) {
                     
                     if (!ticketNumber) {
                       const newTicket = await storage.createSupportTicket({
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         userId: ws.userId.startsWith('guest-') ? undefined : ws.userId,
                         workspaceId: ws.workspaceId || PLATFORM_WORKSPACE_ID,
                         subject: conversation?.intakeData?.subject || 'Support Request',
@@ -2897,7 +2888,6 @@ export function setupWebSocket(server: Server) {
                   }
                   
                   // RESOLUTION: If HelpAI resolved the issue, close the session
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   if (helpResponse.shouldClose) {
                     const closeMsg = await storage.createChatMessage({
                       conversationId: ws.conversationId,
@@ -3711,7 +3701,7 @@ export function setupWebSocket(server: Server) {
                   }
                   
                   // Find target user by userId
-                  let targetClient: any = null;
+                  let targetClient: unknown = null;
                   let targetUserName: string = targetUserId;
                   
                   if (clients) {
@@ -3775,7 +3765,7 @@ export function setupWebSocket(server: Server) {
                   }
                   
                   // Find target user by display name or email prefix in this conversation
-                  let privMsgTargetClient: any = null;
+                  let privMsgTargetClient: unknown = null;
                   let privMsgTargetName: string = targetUsername;
                   let privMsgTargetId: string = '';
                   
@@ -3783,7 +3773,7 @@ export function setupWebSocket(server: Server) {
                     clients.forEach((client) => {
                       // Match by userName, email prefix, or userId
                       const clientName = client.userName || '';
-                      const clientEmail = (client as any).userEmail || '';
+                      const clientEmail = (client as unknown).userEmail || '';
                       const clientEmailPrefix = clientEmail.split('@')[0] || '';
                       
                       if (
@@ -3899,10 +3889,8 @@ export function setupWebSocket(server: Server) {
                   
                   // Get room modes dynamically from conversation metadata
                   const helpConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const roomModes = (helpConversation?.metadata as any)?.modes || [];
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const activeBots = (helpConversation?.metadata as any)?.activeBots || [];
+                  const roomModes = (helpConversation?.metadata as unknown)?.modes || [];
+                  const activeBots = (helpConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Import the chatroom command service for dynamic bot command help
                   const { formatHelpMessage, getCommandsForModes } = await import('./services/chatroomCommandService');
@@ -3940,8 +3928,7 @@ export function setupWebSocket(server: Server) {
                   const { RoomMode } = await import('@shared/types/chat');
                   
                   const cmdConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const cmdRoomModes = (cmdConversation?.metadata as any)?.modes || [RoomMode.ORG];
+                  const cmdRoomModes = (cmdConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
                   
                   ws.send(JSON.stringify({
                     type: 'system_message',
@@ -3982,7 +3969,7 @@ export function setupWebSocket(server: Server) {
                       });
                       helpaiMsg = aiGreet.text;
                     }
-                  } catch (aiErr: any) {
+                  } catch (aiErr: unknown) {
                     log.error('HelpAI AI generation failed, using fallback', { error: aiErr.message });
                     helpaiMsg = helpaiQuestion
                       ? `You asked: "${helpaiQuestion}"\n\nI'm HelpAI, your support assistant. I can help with:\n- Account issues and verification\n- Password resets\n- General platform questions\n- Connecting you with support staff\n\nLet me look into that for you. A support agent will be notified if needed.`
@@ -3996,7 +3983,6 @@ export function setupWebSocket(server: Server) {
                     senderType: 'bot',
                     message: helpaiMsg,
                     messageType: 'text',
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     metadata: { botCommand: 'helpai', question: helpaiQuestion || null, aiPowered: true },
                   });
 
@@ -4019,8 +4005,8 @@ export function setupWebSocket(server: Server) {
                     actionName: 'helpai_chatroom_command',
                     commandUsed: '/helpai',
                     toolUsed: 'botAIService',
-                    inputPayload: { question: helpaiQuestion || null, conversationId: ws.conversationId } as any,
-                    outputPayload: { response: helpaiMsg.substring(0, 500), messageId: helpaiResponseMsg.id } as any,
+                    inputPayload: { question: helpaiQuestion || null, conversationId: ws.conversationId } as unknown,
+                    outputPayload: { response: helpaiMsg.substring(0, 500), messageId: helpaiResponseMsg.id } as unknown,
                     success: true,
                     workspaceId: ws.workspaceId || null,
                     userId: ws.userId || null,
@@ -4034,7 +4020,7 @@ export function setupWebSocket(server: Server) {
                   const dmMessage = parsedCommand.args.slice(1).join(' ');
                   
                   const dmClients = conversationClients.get(ws.conversationId);
-                  let targetClient: any = null;
+                  let targetClient: unknown = null;
                   if (dmClients) {
                     dmClients.forEach((client) => {
                       if (client.userName === dmTarget || client.userId === dmTarget) {
@@ -4154,14 +4140,12 @@ export function setupWebSocket(server: Server) {
                   const { botPool: botsPool } = await import('./bots');
                   
                   const botConversation = await storage.getChatConversation(ws.conversationId);
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const botRoomModes = (botConversation?.metadata as any)?.modes || [RoomMode.ORG];
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const metadataBots = (botConversation?.metadata as any)?.activeBots || [];
+                  const botRoomModes = (botConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
+                  const metadataBots = (botConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Merge metadata bots with live pool instances
                   const liveInstances = botsPool.getRoomBots(ws.conversationId);
-                  const liveBotIds = liveInstances.map((inst: any) => inst.botId);
+                  const liveBotIds = liveInstances.map((inst: unknown) => inst.botId);
                   const allActiveBots = [...new Set([...metadataBots, ...liveBotIds])];
                   
                   ws.send(JSON.stringify({
@@ -4319,7 +4303,7 @@ export function setupWebSocket(server: Server) {
                     
                     // Build context from articles
                     const context = relevantArticles
-                      .map((article: any, idx: number) => `[Article ${idx + 1}: ${article.title}]\n${article.content}`)
+                      .map((article: unknown, idx: number) => `[Article ${idx + 1}: ${article.title}]\n${article.content}`)
                       .join('\n\n');
                     
                     let aiResponse = '';
@@ -4329,7 +4313,6 @@ export function setupWebSocket(server: Server) {
                         const { getMeteredOpenAICompletion } = await import('./services/billing/universalAIBillingInterceptor');
                         const result = await getMeteredOpenAICompletion({
                           workspaceId: workspaceId || '',
-                          // @ts-expect-error — TS migration: fix in refactoring sprint
                           userId: String(userId || 'system'),
                           featureKey: 'chatroom_hr_ai',
                           messages: [
@@ -4357,7 +4340,7 @@ export function setupWebSocket(server: Server) {
                     // Fallback if AI unavailable
                     if (!aiResponse) {
                       aiResponse = relevantArticles.length > 0
-                        ? `I found ${relevantArticles.length} related articles:\n\n${relevantArticles.map((a: any) => `• ${a.title}\n  ${a.summary || a.content.substring(0, 200)}...`).join('\n\n')}`
+                        ? `I found ${relevantArticles.length} related articles:\n\n${relevantArticles.map((a: unknown) => `• ${a.title}\n  ${a.summary || a.content.substring(0, 200)}...`).join('\n\n')}`
                         : "I couldn't find any relevant information in the knowledge base. Please contact HR or your manager for assistance.";
                     }
                     
@@ -4368,14 +4351,14 @@ export function setupWebSocket(server: Server) {
                       query,
                       response: aiResponse,
                       responseTime: Date.now() - startTime,
-                      articlesRetrieved: relevantArticles.map((a: any) => a.id),
+                      articlesRetrieved: relevantArticles.map((a: unknown) => a.id),
                     });
                     
                     // Format response with article references
                     let formattedResponse = `🤖 **Answer**\n\n${aiResponse}`;
                     
                     if (relevantArticles.length > 0) {
-                      formattedResponse += `\n\n📚 **Sources:**\n${relevantArticles.slice(0, 3).map((a: any, idx: number) => 
+                      formattedResponse += `\n\n📚 **Sources:**\n${relevantArticles.slice(0, 3).map((a: unknown, idx: number) => 
                         `${idx + 1}. ${a.title}`
                       ).join('\n')}`;
                     }
@@ -4552,7 +4535,7 @@ export function setupWebSocket(server: Server) {
                         suspendedAt: new Date(),
                         suspendedBy: ws.userId,
                         updatedAt: new Date()
-                      } as any)
+                      } as unknown)
                       .where(eq(usersTable.id, targetUser.id));
                     
                     ws.send(JSON.stringify({ 
@@ -4597,7 +4580,7 @@ export function setupWebSocket(server: Server) {
                         suspendedAt: null,
                         suspendedBy: null,
                         updatedAt: new Date()
-                      } as any)
+                      } as unknown)
                       .where(eq(usersTable.id, targetUser.id));
                     
                     ws.send(JSON.stringify({ 
@@ -4630,11 +4613,11 @@ export function setupWebSocket(server: Server) {
                     
                     const platformRole = await storage.getUserPlatformRole(targetUser.id);
                     const isOnline = Array.from(conversationClients.values()).some(clientSet => 
-                      Array.from(clientSet).some((client: any) => client.userId === targetUser.id && client.readyState === WebSocket.OPEN)
+                      Array.from(clientSet).some((client: WebSocket) => client.userId === targetUser.id && client.readyState === WebSocket.OPEN)
                     );
                     
                     // Check suspension status from user record
-                    const isSuspended = (targetUser as any).isSuspended === true;
+                    const isSuspended = (targetUser as unknown).isSuspended === true;
                     
                     const statusMsg = `Staff Status: ${targetUsername}\n` +
                       `Role: ${platformRole || 'N/A'}\n` +
@@ -5143,7 +5126,6 @@ export function setupWebSocket(server: Server) {
                     senderType: ws.isStaff ? 'staff' : 'user',
                     message: `* ${displayName} ${action}`,
                     messageType: 'action',
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     metadata: { isIrcAction: true },
                   });
 
@@ -5174,7 +5156,6 @@ export function setupWebSocket(server: Server) {
                     message: `${displayName} is now away: ${awayMessage}`,
                     messageType: 'text',
                     isSystemMessage: true,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     metadata: { isAwayNotice: true },
                   });
 
@@ -5213,7 +5194,6 @@ export function setupWebSocket(server: Server) {
                     message: `${displayName} is back`,
                     messageType: 'text',
                     isSystemMessage: true,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     metadata: { isBackNotice: true },
                   });
 
@@ -5261,7 +5241,6 @@ export function setupWebSocket(server: Server) {
                     senderType: 'bot',
                     message: `Processing: "${trinityQuery}"...`,
                     messageType: 'text',
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     metadata: { isTrinityThinking: true, staffOnly: true },
                   });
 
@@ -5337,7 +5316,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderType: 'bot',
                       message: trinityResponse,
                       messageType: 'text',
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       metadata: {
                         isTrinityResponse: true,
                         staffOnly: true, // Never visible to end users
@@ -5364,7 +5342,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderType: 'bot',
                       message: `⚠️ I encountered an error processing your request. Please try again or use \`/help\` for command reference.`,
                       messageType: 'text',
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       metadata: { staffOnly: true },
                     });
 
@@ -5403,14 +5380,12 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderName: BOT_REGISTRY.meetingbot.name, senderType: 'bot',
                       message: aiResp.text || `Meeting "${meetingTitle}" started. Recording in progress.\n\nUse /actionitem, /decision, /note to track items.\nUse /meetingend to finish and generate summary.`,
                       messageType: 'text',
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       metadata: { meetingTitle, startedBy: ws.userId, startedAt: new Date().toISOString(), botCommand: 'meetingstart' },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: botMsg })); }); }
                     // Update room metadata
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     await db.update(chatConversations).set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ meetingActive: true, meetingTitle, meetingStartedAt: new Date().toISOString(), meetingStartedBy: ws.userId })}::jsonb` }).where(eq(chatConversations.id, ws.conversationId));
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `MeetingBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `MeetingBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5424,11 +5399,9 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderName: BOT_REGISTRY.meetingbot.name, senderType: 'bot',
                       message: `Meeting ended by ${displayName}. Generating meeting summary PDF and saving to Document Safe...`,
                       messageType: 'text',
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       metadata: { botCommand: 'meetingend', endedBy: ws.userId, endedAt: new Date().toISOString() },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: processingMsg })); }); }
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     await db.update(chatConversations).set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || '{"meetingActive": false}'::jsonb` }).where(eq(chatConversations.id, ws.conversationId));
                     // Generate PDF in background (non-blocking to UI)
                     const capturedConvId = ws.conversationId;
@@ -5450,15 +5423,14 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                             ? `Meeting summary saved to Document Safe.\n\n${result.summaryText || ''}\n\nDocument ID: ${result.documentId}`
                             : `Meeting summary could not be saved: ${result.error}. The AI summary:\n\n${result.summaryText || 'N/A'}`,
                           messageType: 'text',
-                          // @ts-expect-error — TS migration: fix in refactoring sprint
                           metadata: { botCommand: 'meetingend_complete', documentId: result.documentId },
                         });
                         if (capturedClients) { capturedClients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: doneMsg })); }); }
-                      } catch (pdfErr: any) {
-                        log.warn('[MeetingBot] PDF generation failed (non-blocking):', { error: pdfErr?.message });
+                      } catch (pdfErr: unknown) {
+                        log.warn('[MeetingBot] PDF generation failed (non-blocking):', { error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr) });
                       }
                     })();
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `MeetingBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `MeetingBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5469,7 +5441,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'meetingbot',
                     senderName: mb3.meetingbot.name, senderType: 'bot',
                     message: `Meeting recording paused by ${displayName}. Use /meetingcontinue to resume.`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'meetingpause' },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: pauseMsg })); }); }
@@ -5483,7 +5454,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'meetingbot',
                     senderName: mb4.meetingbot.name, senderType: 'bot',
                     message: `Meeting recording resumed by ${displayName}.`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'meetingcontinue' },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: resumeMsg })); }); }
@@ -5498,7 +5468,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'meetingbot',
                     senderName: mb5.meetingbot.name, senderType: 'bot',
                     message: `Action Item recorded by ${displayName}: ${actionText}`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'actionitem', actionItem: actionText, recordedBy: ws.userId },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: actionMsg })); }); }
@@ -5513,7 +5482,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'meetingbot',
                     senderName: mb6.meetingbot.name, senderType: 'bot',
                     message: `Decision recorded by ${displayName}: ${decisionText}`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'decision', decision: decisionText, recordedBy: ws.userId },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: decMsg })); }); }
@@ -5528,7 +5496,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'meetingbot',
                     senderName: mb7.meetingbot.name, senderType: 'bot',
                     message: `Note by ${displayName}: ${noteText}`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'note', note: noteText, recordedBy: ws.userId },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: noteMsg })); }); }
@@ -5546,13 +5513,11 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       conversationId: ws.conversationId, senderId: 'reportbot',
                       senderName: rb.reportbot.name, senderType: 'bot',
                       message: `Incident report started by ${displayName}.\n\nDescribe the incident in your next messages. When finished, type /endreport to finalize.\n\nTip: Use /incident <type> to categorize (theft, trespass, medical, damage, fire, assault, other).`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'report', reportStartedBy: ws.userId, reportStartedAt: new Date().toISOString() },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: reportStartMsg })); }); }
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     await db.update(chatConversations).set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ reportActive: true, reportStartedBy: ws.userId })}::jsonb` }).where(eq(chatConversations.id, ws.conversationId));
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5564,7 +5529,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     conversationId: ws.conversationId, senderId: 'reportbot',
                     senderName: rb2.reportbot.name, senderType: 'bot',
                     message: `Incident type set: ${incidentType.toUpperCase()}\nReported by: ${displayName}\nTimestamp: ${new Date().toLocaleString()}\n\nContinue describing the incident details. Type /endreport when done.`,
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     messageType: 'text', metadata: { botCommand: 'incident', incidentType, reportedBy: ws.userId },
                   });
                   if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: incidentMsg })); }); }
@@ -5576,22 +5540,18 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                   try {
                     const { BOT_REGISTRY: rb3 } = await import('./bots/registry');
                     const { botAIService: rAI } = await import('./bots/botAIService');
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     const reportMsgs = await storage.createChatMessage(ws.conversationId, 50);
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
-                    const reportText = (reportMsgs as any).filter(m => m.senderType === 'user' || m.senderType === 'customer').map(m => m.message).join('\n');
+                    const reportText = (reportMsgs as unknown).filter(m => m.senderType === 'user' || m.senderType === 'customer').map(m => m.message).join('\n');
                     const reportSummary = await rAI.generateReportSummary(ws.workspaceId, 'general', reportText, ws.userId);
                     const endReportMsg = await storage.createChatMessage({
                       conversationId: ws.conversationId, senderId: 'reportbot',
                       senderName: rb3.reportbot.name, senderType: 'bot',
                       message: `Report finalized by ${displayName}.\n\n${reportSummary.text}`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'endreport', finalizedBy: ws.userId, finalizedAt: new Date().toISOString() },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: endReportMsg })); }); }
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     await db.update(chatConversations).set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || '{"reportActive": false}'::jsonb` }).where(eq(chatConversations.id, ws.conversationId));
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5618,11 +5578,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       conversationId: ws.conversationId, senderId: 'reportbot',
                       senderName: rb4.reportbot.name, senderType: 'bot',
                       message: `Report Analysis requested by ${displayName} (filter: ${filter})\n\n${aiAnalysis.text}`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'analyzereports', filter, requestedBy: ws.userId },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: analyzeMsg })); }); }
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ReportBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5643,11 +5602,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       conversationId: ws.conversationId, senderId: 'clockbot',
                       senderName: cb.clockbot.name, senderType: 'bot',
                       message: `Clock ${clockAction.toUpperCase()} recorded for ${displayName}\nTime: ${new Date().toLocaleString()}\nReason: ${clockReason}\nMethod: Manual (chat command)`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'clockme', clockAction, reason: clockReason, userId: ws.userId, timestamp: new Date().toISOString() },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: clockMsg })); }); }
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5673,11 +5631,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       conversationId: ws.conversationId, senderId: 'clockbot',
                       senderName: cb2.clockbot.name, senderType: 'bot',
                       message: `SUPERVISOR OVERRIDE: Clock ${forceAction.toUpperCase()} forced for @${targetEmp}\nAuthorized by: ${displayName}\nTime: ${new Date().toLocaleString()}\nReason: ${forceReason}`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'forceclock', targetEmployee: targetEmp, clockAction: forceAction, reason: forceReason, authorizedBy: ws.userId, timestamp: new Date().toISOString() },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: forceClockMsg })); }); }
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5696,11 +5653,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       conversationId: ws.conversationId, senderId: 'clockbot',
                       senderName: cb3.clockbot.name, senderType: 'bot',
                       message: `Clock Status for ${statusTarget}:\n\n${statusResp.text}`,
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       messageType: 'text', metadata: { botCommand: 'clockstatus', target: statusTarget },
                     });
                     if (clients) { clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'new_message', message: clockStatusMsg })); }); }
-                  } catch (e: any) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
+                  } catch (e: unknown) { ws.send(JSON.stringify({ type: 'error', message: `ClockBot error: ${e.message}` })); }
                   break;
                 }
 
@@ -5739,7 +5695,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
               let currentViolationCount = 0;
               try {
                 currentViolationCount = await storage.getUserViolationCount(ws.userId);
-              } catch (tableError: any) {
+              } catch (tableError: unknown) {
                 // If abuse_violations table doesn't exist, treat as first violation
                 if (tableError?.code === '42P01') {
                   log.warn('abuse_violations table not found, treating as first violation');
@@ -5771,7 +5727,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                   bannedUntil: action === 'ban' ? null : undefined, // null = permanent ban
                   banReason: action === 'ban' ? `Repeated abusive behavior (${newViolationCount} violations)` : undefined,
                 });
-              } catch (violationError: any) {
+              } catch (violationError: unknown) {
                 // If abuse_violations table doesn't exist, just log the warning
                 if (violationError?.code === '42P01') {
                   log.warn('abuse_violations table not found, skipping violation logging');
@@ -5848,22 +5804,22 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             const threadId = payload.threadId || null; // Session/thread ID for helpdesk DM isolation
 
             // Save message to database (with optional attachment metadata)
-            const messageData: any = {
+            const messageData: Record<string, unknown> = {
               conversationId: ws.conversationId,
               senderId: ws.userId?.startsWith('guest-') ? null : ws.userId,
               senderName: displayName,
               senderType: payload.senderType,
               message: sanitizedMessage,
-              messageType: (payload as any).messageType || 'text',
+              messageType: (payload as unknown).messageType || 'text',
               isPrivateMessage,
               recipientId,
             };
 
-            if ((payload as any).attachmentUrl) {
-              messageData.attachmentUrl = (payload as any).attachmentUrl;
-              messageData.attachmentName = (payload as any).attachmentName;
-              messageData.attachmentType = (payload as any).attachmentType;
-              messageData.attachmentSize = (payload as any).attachmentSize ? parseInt((payload as any).attachmentSize) : null;
+            if ((payload as unknown).attachmentUrl) {
+              messageData.attachmentUrl = (payload as unknown).attachmentUrl;
+              messageData.attachmentName = (payload as unknown).attachmentName;
+              messageData.attachmentType = (payload as unknown).attachmentType;
+              messageData.attachmentSize = (payload as unknown).attachmentSize ? parseInt((payload as unknown).attachmentSize) : null;
             }
 
             const savedMessage = await storage.createChatMessage(messageData);
@@ -5888,7 +5844,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                   const isShiftRoom = conv?.conversationType === 'shift_chat';
                   const isMeetingRoom = conv?.conversationType === 'open_chat' && /^meeting\s*—/i.test(conv?.subject || '');
 
-                  if (isShiftRoom || isMeetingRoom || (payload as any).attachmentType?.startsWith('image/')) {
+                  if (isShiftRoom || isMeetingRoom || (payload as unknown).attachmentType?.startsWith('image/')) {
                     const { shiftRoomBotOrchestrator } = await import('./services/bots/shiftRoomBotOrchestrator');
                     await shiftRoomBotOrchestrator.handleShiftRoomMessage({
                       conversationId: ws.conversationId!,
@@ -5897,18 +5853,18 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderName: displayName,
                       senderRole: ws.workspaceRole || ws.userType || 'employee',
                       message: sanitizedMessage,
-                      messageType: (payload as any).messageType || 'text',
-                      attachmentUrl: (payload as any).attachmentUrl,
-                      attachmentType: (payload as any).attachmentType,
-                      gpsLat: (payload as any).gpsLat ? parseFloat((payload as any).gpsLat) : undefined,
-                      gpsLng: (payload as any).gpsLng ? parseFloat((payload as any).gpsLng) : undefined,
-                      gpsAddress: (payload as any).gpsAddress,
+                      messageType: (payload as unknown).messageType || 'text',
+                      attachmentUrl: (payload as unknown).attachmentUrl,
+                      attachmentType: (payload as unknown).attachmentType,
+                      gpsLat: (payload as unknown).gpsLat ? parseFloat((payload as unknown).gpsLat) : undefined,
+                      gpsLng: (payload as unknown).gpsLng ? parseFloat((payload as unknown).gpsLng) : undefined,
+                      gpsAddress: (payload as unknown).gpsAddress,
                       messageId: savedMessage.id,
                     });
                   }
-                } catch (orchErr: any) {
+                } catch (orchErr: unknown) {
                   // Orchestrator is always non-blocking
-                  log.warn('ShiftBotOrchestrator error (non-blocking):', { error: orchErr?.message });
+                  log.warn('ShiftBotOrchestrator error (non-blocking):', { error: orchErr instanceof Error ? orchErr.message : String(orchErr) });
                 }
               })();
             }
@@ -6028,7 +5984,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             // CHAT SERVER HUB: Emit message_posted event for unified event system
             ChatServerHub.emitMessagePosted({
               conversationId: ws.conversationId,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               roomMode: ws.roomMode, // IRC-style room mode instead of hardcoded slug
               workspaceId: ws.workspaceId,
               userId: ws.userId,
@@ -6045,16 +6000,13 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                 // Uses dynamic ws.supportsBots flag set during join
                 const isSupportRoom = ws.supportsBots === true;
                 
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 const userPlatformRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 const isStaffUser = hasPlatformWideAccess(userPlatformRole);
                 
                 // Only auto-respond to non-staff in support rooms
                 if (!isSupportRoom || isStaffUser) return;
                 
                 // Check if any staff is currently connected to this conversation
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 const connectedClients = conversationClients.get(ws.conversationId);
                 let staffPresent = false;
                 if (connectedClients) {
@@ -6071,10 +6023,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                 
                 // Rate limit: Prevent rapid-fire duplicate responses (3s cooldown per user)
                 const autoResponseKey = `helpai_response_${ws.userId}`;
-                const lastResponse = (globalThis as any)[autoResponseKey];
+                const lastResponse = (globalThis as unknown)[autoResponseKey];
                 const now = Date.now();
                 if (lastResponse && (now - lastResponse) < 3000) return;
-                (globalThis as any)[autoResponseKey] = now;
+                (globalThis as unknown)[autoResponseKey] = now;
                 
                 // TRINITY-POWERED RESPONSE: Use actual AI brain for intelligent conversation
                 // Brief delay feels natural (like the bot is "thinking")
@@ -6084,7 +6036,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     const { helpAIExecutor } = await import('./services/helpAICapabilities');
                     
                     // Get conversation history for context
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     const recentMessages = await storage.getChatMessagesByConversation(ws.conversationId);
                     const conversationHistory = recentMessages
                       .slice(-5)
@@ -6096,7 +6047,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     
                     // Generate dynamic AI response with Trinity brain
                     const aiResponse = await helpAIExecutor.generateDynamicResponse(
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       ws.userId,
                       ws.workspaceId || 'platform-external',
                       sanitizedMessage,
@@ -6105,7 +6055,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     
                     // Save bot message to database
                     const botMsg = await storage.createChatMessage({
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       conversationId: ws.conversationId,
                       senderId: CHAT_SERVER_CONFIG.helpai.userId,
                       senderName: CHAT_SERVER_CONFIG.helpai.name,
@@ -6115,18 +6064,16 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     });
 
                     // Broadcast bot reply to all connected room clients in real-time
-                    // @ts-expect-error — TS migration: fix in refactoring sprint
                     const botRoomClients = conversationClients.get(ws.conversationId);
                     if (botRoomClients) {
                       const botMsgPayload = JSON.stringify({ type: 'new_message', message: botMsg });
-                      botRoomClients.forEach((rc: any) => {
+                      botRoomClients.forEach((rc: unknown) => {
                         if (rc.readyState === WebSocket.OPEN) rc.send(botMsgPayload);
                       });
                     }
                     
                     // Broadcast via IRC event system
                     ircEmitter.botMessage({
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       roomId: ws.conversationId,
                       messageId: String(botMsg.id),
                       botId: CHAT_SERVER_CONFIG.helpai.userId,
@@ -6144,9 +6091,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     if (aiResponse.shouldEscalate) {
                       log.info('HelpAI Trinity suggests escalation', { displayName, reason: aiResponse.escalationReason });
                       ChatServerHub.emitSupportEscalation({
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         conversationId: ws.conversationId,
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         userId: ws.userId,
                         userName: displayName,
                         reason: aiResponse.escalationReason || 'User needs human assistance',
@@ -6166,7 +6111,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                         ws.workspaceId
                       );
                       const botMsg = await storage.createChatMessage({
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         conversationId: ws.conversationId,
                         senderId: CHAT_SERVER_CONFIG.helpai.userId,
                         senderName: CHAT_SERVER_CONFIG.helpai.name,
@@ -6175,16 +6119,14 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                         messageType: 'text',
                       });
                       // Broadcast fallback bot reply to room clients
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       const fallbackRoomClients = conversationClients.get(ws.conversationId);
                       if (fallbackRoomClients) {
                         const fPayload = JSON.stringify({ type: 'new_message', message: botMsg });
-                        fallbackRoomClients.forEach((rc: any) => {
+                        fallbackRoomClients.forEach((rc: unknown) => {
                           if (rc.readyState === WebSocket.OPEN) rc.send(fPayload);
                         });
                       }
                       ircEmitter.botMessage({
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         roomId: ws.conversationId,
                         messageId: String(botMsg.id),
                         botId: CHAT_SERVER_CONFIG.helpai.userId,
@@ -6317,7 +6259,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                 ircEmitter.away({
                   userId: ws.userId,
                   userName: ws.userName,
-                  awayMessage: (payload as any).message,
+                  awayMessage: (payload as unknown).message,
                   roomId, // Always include roomId for room-scoped broadcast
                 });
               }
@@ -6625,7 +6567,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             // Add HelpAI bot from config for rooms with bot support
             // Check room mode dynamically instead of hardcoded slug
             const supportRoomForKick = await storage.getSupportRoomByConversationId(ws.conversationId);
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const roomSupportsBotsDynamic = roomSupportsBots(supportRoomForKick?.mode);
             
             const allUsers = roomSupportsBotsDynamic 
@@ -7174,7 +7115,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             break;
           }
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'join_scheduling_progress': {
             // Subscribe to Trinity scheduling progress updates for a workspace
             // SECURITY: Require session authentication
@@ -7229,7 +7169,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             break;
           }
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'join_credit_updates': {
             // Subscribe to credit balance updates for real-time sync
             // SECURITY: Require session authentication
@@ -7909,7 +7848,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             break;
           }
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           case 'join_platform_updates': {
             // Client subscribes to platform-wide update broadcasts.
             // Platform updates are already broadcast to all authenticated connections;
@@ -7919,7 +7857,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
           }
 
           default: {
-            log.warn('Unhandled WebSocket message type', { type: (payload as any).type, payload });
+            log.warn('Unhandled WebSocket message type', { type: (payload as unknown).type, payload });
             break;
           }
         }
@@ -8125,7 +8063,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
 
           // Create leave announcement
           const leaveAnnouncement = await storage.createChatMessage({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             conversationId: ws.conversationId,
             senderId: ws.userId?.startsWith('guest-') ? null : ws.userId, // Guests don't have user records - use null for FK compatibility
             senderName: 'Server',
@@ -8136,7 +8073,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
           });
 
           // Broadcast leave announcement to remaining clients
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const clients = conversationClients.get(ws.conversationId);
           if (clients) {
             const announcementPayload = JSON.stringify({
@@ -8206,8 +8142,8 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
             if (client.readyState === WebSocket.OPEN) {
               try {
                 client.send(participantsPayload);
-              } catch (sendErr: any) {
-                log.warn('Failed to send participants_update to client', { error: sendErr?.message });
+              } catch (sendErr: unknown) {
+                log.warn('Failed to send participants_update to client', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
               }
             }
           });
@@ -8237,7 +8173,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   // Export broadcast function for shift updates
   const broadcaster = {
     wss,
-    broadcastShiftUpdate: (workspaceId: string, updateType: 'shift_created' | 'shift_updated' | 'shift_deleted', shift?: any, shiftId?: string) => {
+    broadcastShiftUpdate: (workspaceId: string, updateType: 'shift_created' | 'shift_updated' | 'shift_deleted', shift?: WsPayload, shiftId?: string) => {
       const clients = shiftUpdateClients.get(workspaceId);
       if (!clients || clients.size === 0) {
         log.debug('No clients subscribed to shift updates', { workspaceId });
@@ -8273,8 +8209,8 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         if (client.readyState === WebSocket.OPEN) {
           try {
             client.send(payload);
-          } catch (sendErr: any) {
-            log.warn('Failed to send shift update to client', { error: sendErr?.message });
+          } catch (sendErr: unknown) {
+            log.warn('Failed to send shift update to client', { error: sendErr instanceof Error ? sendErr.message : String(sendErr) });
           }
         } else {
           // Clean up dead connections
@@ -8282,7 +8218,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastNotification: (workspaceId: string, userId: string, updateType: 'notification_new' | 'notification_read' | 'notification_count_updated', notification?: any, unreadCount?: number) => {
+    broadcastNotification: (workspaceId: string, userId: string, updateType: 'notification_new' | 'notification_read' | 'notification_count_updated', notification?: WsPayload, unreadCount?: number) => {
       const workspaceClients = notificationClients.get(workspaceId);
       if (!workspaceClients) {
         log.debug('No notification clients for workspace', { workspaceId });
@@ -8357,7 +8293,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastIncidentUpdate: (workspaceId: string, updateType: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned', incident: any) => {
+    broadcastIncidentUpdate: (workspaceId: string, updateType: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned', incident?: WsPayload) => {
       const clients = dispatchUpdateClients.get(workspaceId);
       if (!clients || clients.size === 0) {
         return;
@@ -8409,7 +8345,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
         }
       });
     },
-    broadcastToWorkspace: (workspaceId: string, data: any) => {
+    broadcastToWorkspace: (workspaceId: string, data: WsPayload) => {
       if (!workspaceId) {
         log.warn('broadcastToWorkspace called without workspaceId');
         return;
@@ -8515,7 +8451,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
       version?: string;
       priority?: number;
       learnMoreUrl?: string;
-      metadata?: any;
+      metadata?: unknown;
       // Enhanced fields for end-user display
       detailedCategory?: string;
       sourceType?: string;
@@ -8572,7 +8508,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     
     broadcastTrinityAgentEvent: (conversationId: string, event: {
       type: string;
-      data: any;
+      data: WsPayload;
       timestamp?: number;
     }) => {
       const payload = JSON.stringify({
@@ -8584,9 +8520,9 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
       });
       
       let clientCount = 0;
-      wss.clients.forEach((client: any) => {
+      wss.clients.forEach((client: WebSocket) => {
         if (client.readyState === WebSocket.OPEN) {
-          if ((client as any).trinityConversationId === conversationId) {
+          if ((client as unknown).trinityConversationId === conversationId) {
             client.send(payload);
             clientCount++;
           }
@@ -8604,7 +8540,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   log.info('Global broadcaster initialized');
 
   // Subscribe to Trinity stream events from GoalExecutionService
-  platformEventBus.on('trinity:stream', (payload: { conversationId: string; event: any }) => {
+  platformEventBus.on('trinity:stream', (payload: { conversationId: string; event: unknown }) => {
     if (payload?.conversationId && payload?.event) {
       broadcaster.broadcastTrinityAgentEvent(payload.conversationId, {
         type: payload.event.type,
@@ -8616,7 +8552,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   log.info('Trinity stream event listener registered');
 
   // Subscribe to Trinity scheduling events for real-time visual feedback
-  platformEventBus.on('trinity_scheduling_started', (payload: { workspaceId: string; metadata: any }) => {
+  platformEventBus.on('trinity_scheduling_started', (payload: { workspaceId: string; metadata: Record<string, unknown> }) => {
     if (payload?.workspaceId) {
       broadcastToWorkspace(payload.workspaceId, {
         type: 'trinity_scheduling_started',
@@ -8626,7 +8562,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     }
   });
 
-  platformEventBus.on('trinity_scheduling_progress', (payload: { workspaceId: string; metadata: any }) => {
+  platformEventBus.on('trinity_scheduling_progress', (payload: { workspaceId: string; metadata: Record<string, unknown> }) => {
     if (payload?.workspaceId) {
       broadcastToWorkspace(payload.workspaceId, {
         type: 'trinity_scheduling_progress',
@@ -8635,7 +8571,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     }
   });
 
-  platformEventBus.on('trinity_scheduling_completed', (payload: { workspaceId: string; metadata: any }) => {
+  platformEventBus.on('trinity_scheduling_completed', (payload: { workspaceId: string; metadata: Record<string, unknown> }) => {
     if (payload?.workspaceId) {
       broadcastToWorkspace(payload.workspaceId, {
         type: 'trinity_scheduling_completed',
@@ -8729,7 +8665,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     const { userId, workspaceId, newRole } = payload;
 
     let updatedCount = 0;
-    wss.clients.forEach((client: any) => {
+    wss.clients.forEach((client: WebSocket) => {
       if (client.readyState !== WebSocket.OPEN) return;
       const clientUserId = client.serverAuth?.userId || client.userId;
       if (clientUserId !== userId) return;
@@ -8777,7 +8713,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     const { userId, workspaceId, newRole } = payload;
 
     let updatedCount = 0;
-    wss.clients.forEach((client: any) => {
+    wss.clients.forEach((client: WebSocket) => {
       if (client.readyState !== WebSocket.OPEN) return;
       const clientUserId = client.serverAuth?.userId || client.userId;
       if (clientUserId !== userId) return;
@@ -8950,7 +8886,6 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
     };
 
     if (payload.userId) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       sessionSyncService.broadcastToUser(payload.userId, thoughtMsg);
     } else {
       broadcastToWorkspace(wsId, thoughtMsg);

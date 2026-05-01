@@ -133,7 +133,7 @@ export class QuickBooksOAuthService {
    * Get credentials for background operations (token refresh, revoke)
    * Uses connection metadata environment if available
    */
-  private getCredentialsForBackgroundOps(connectionMetadata?: Record<string, any>): { clientId: string; clientSecret: string } {
+  private getCredentialsForBackgroundOps(connectionMetadata?: Record<string, unknown>): { clientId: string; clientSecret: string } {
     const storedEnvironment = connectionMetadata?.environment as string | undefined;
     
     let isProduction: boolean;
@@ -241,7 +241,7 @@ export class QuickBooksOAuthService {
     state: string,
     realmId: string,
     requestDomain?: string
-  ): Promise<{ workspaceId: string; connection: any }> {
+  ): Promise<{ workspaceId: string; connection: unknown }> {
     await this.cleanupExpiredStates();
     
     const [oauthState] = await db.select()
@@ -419,7 +419,7 @@ export class QuickBooksOAuthService {
       throw new Error('Failed to decrypt refresh token');
     }
     
-    const connectionMetadata = connection.metadata as Record<string, any> | null;
+    const connectionMetadata = connection.metadata as Record<string, unknown> | null;
     const { clientId, clientSecret } = this.getCredentialsForBackgroundOps(connectionMetadata || undefined);
 
     const response = await fetch(this.tokenEndpoint, {
@@ -482,7 +482,7 @@ export class QuickBooksOAuthService {
     try {
       const decryptedRefreshToken = decryptToken(connection.refreshToken);
       if (decryptedRefreshToken) {
-        const connectionMetadata = connection.metadata as Record<string, any> | null;
+        const connectionMetadata = connection.metadata as Record<string, unknown> | null;
         const { clientId, clientSecret } = this.getCredentialsForBackgroundOps(connectionMetadata || undefined);
         
         const response = await fetch(this.revokeEndpoint, {
@@ -607,7 +607,7 @@ export class QuickBooksOAuthService {
           return;
         }
         await this.cleanupExpiredStates();
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[QuickBooks OAuth] Startup cleanup error:', err?.message || err);
       }
     }, 120000);

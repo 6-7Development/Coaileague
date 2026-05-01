@@ -213,8 +213,8 @@ export class GustoIntegration {
       
       const data = await response.json();
       return (data.roles || [])
-        .filter((role: any) => role.type === 'Company')
-        .map((role: any) => ({
+        .filter((role: unknown) => role.type === 'Company')
+        .map((role: unknown) => ({
           id: role.company.uuid,
           name: role.company.name,
         }));
@@ -242,7 +242,7 @@ export class GustoIntegration {
       }
       
       const employees = await response.json();
-      return employees.map((emp: any) => ({
+      return employees.map((emp: unknown) => ({
         id: emp.uuid,
         firstName: emp.first_name,
         lastName: emp.last_name,
@@ -279,13 +279,13 @@ export class GustoIntegration {
       }
       
       const payrolls = await response.json();
-      return payrolls.map((payroll: any) => ({
+      return payrolls.map((payroll: unknown) => ({
         id: payroll.uuid,
         payPeriodStartDate: payroll.pay_period.start_date,
         payPeriodEndDate: payroll.pay_period.end_date,
         checkDate: payroll.check_date,
         processed: payroll.processed,
-        employees: (payroll.employee_compensations || []).map((comp: any) => ({
+        employees: (payroll.employee_compensations || []).map((comp: unknown) => ({
           employeeId: comp.employee_uuid,
           grossPay: parseFloat(comp.gross_pay || '0'),
           netPay: parseFloat(comp.net_pay || '0'),

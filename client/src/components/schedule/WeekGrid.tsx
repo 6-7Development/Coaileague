@@ -160,7 +160,7 @@ export function WeekGrid({
     const statusColor = getShiftStatusColor(shift);
     const isProcessing = isShiftBeingProcessed(shift.id);
     const justAssigned = wasShiftJustAssigned(shift.id);
-    const isTraining = !!(shift as any).isTrainingShift;
+    const isTraining = !!(shift as Record<string,unknown>).isTrainingShift;
     const { leftPercent, widthPercent } = getShiftPosition(shift);
 
     const gapPx = 3;
@@ -561,7 +561,7 @@ export function WeekGrid({
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                           {(() => {
                             const pos = resolveEmployeePosition(emp);
-                            return pos ? pos.label : ((emp as any).position || 'Staff');
+                            return pos ? pos.label : ((emp as Record<string, unknown>).position || 'Staff');
                           })()}
                         </span>
                         {weekTotalHours > 0 && (

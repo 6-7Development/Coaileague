@@ -14,12 +14,14 @@ import { distributedTracing } from './distributedTracing';
 import { connectionPooling } from './connectionPooling';
 import { rateLimiting } from './rateLimiting';
 import { db } from '../../db';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('productionSeeding');
 
 /**
  * Seed production alert rules for SRE monitoring
  */
 export function seedProductionAlertRules(): void {
-  console.log('[ProductionSeeding] Seeding SRE alert rules...');
+  log.info('[ProductionSeeding] Seeding SRE alert rules...');
 
   const alertRules = [
     {
@@ -108,14 +110,14 @@ export function seedProductionAlertRules(): void {
     metricsDashboard.addAlertRule(rule);
   }
 
-  console.log(`[ProductionSeeding] Seeded ${alertRules.length} SRE alert rules`);
+  log.info(`[ProductionSeeding] Seeded ${alertRules.length} SRE alert rules`);
 }
 
 /**
  * Seed production dashboards for operations monitoring
  */
 export function seedProductionDashboards(): void {
-  console.log('[ProductionSeeding] Seeding operations dashboards...');
+  log.info('[ProductionSeeding] Seeding operations dashboards...');
 
   metricsDashboard.createDashboard({
     name: 'Infrastructure Overview',
@@ -241,14 +243,14 @@ export function seedProductionDashboards(): void {
     ]
   });
 
-  console.log('[ProductionSeeding] Seeded 4 operations dashboards');
+  log.info('[ProductionSeeding] Seeded 4 operations dashboards');
 }
 
 /**
  * Register extended health checks for platform dependencies
  */
 export function registerExtendedHealthChecks(): void {
-  console.log('[ProductionSeeding] Registering extended health checks...');
+  log.info('[ProductionSeeding] Registering extended health checks...');
 
   healthCheckAggregation.registerService({
     serviceId: 'distributed-tracing',
@@ -330,7 +332,6 @@ export function registerExtendedHealthChecks(): void {
     serviceName: 'WebSocket Server',
     checkFn: async () => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { getWebSocketStats } = await import('../../websocket');
         const stats = getWebSocketStats();
         return {
@@ -382,7 +383,7 @@ export function registerExtendedHealthChecks(): void {
     unhealthyAfterFailures: 1
   });
 
-  console.log('[ProductionSeeding] Registered 7 extended health checks');
+  log.info('[ProductionSeeding] Registered 7 extended health checks');
 }
 
 /**
@@ -394,12 +395,12 @@ async function runInfrastructureRegressionTests(): Promise<void> {
     const results = await runAllInfrastructureTests();
     
     if (results.totalFailed > 0) {
-      console.error(`[ProductionSeeding] ⚠️ ${results.totalFailed} regression tests failed!`);
+      log.error(`[ProductionSeeding] ⚠️ ${results.totalFailed} regression tests failed!`);
     } else {
-      console.log(`[ProductionSeeding] ✅ All ${results.totalPassed} regression tests passed`);
+      log.info(`[ProductionSeeding] ✅ All ${results.totalPassed} regression tests passed`);
     }
   } catch (error) {
-    console.error('[ProductionSeeding] Failed to run regression tests:', error);
+    log.error('[ProductionSeeding] Failed to run regression tests:', error);
   }
 }
 
@@ -407,7 +408,7 @@ async function runInfrastructureRegressionTests(): Promise<void> {
  * Initialize all production seeding
  */
 export async function initializeProductionSeeding(): Promise<void> {
-  console.log('[ProductionSeeding] Initializing production configurations...');
+  log.info('[ProductionSeeding] Initializing production configurations...');
   
   seedProductionAlertRules();
   seedProductionDashboards();
@@ -418,9 +419,9 @@ export async function initializeProductionSeeding(): Promise<void> {
     try {
       await runInfrastructureRegressionTests();
     } catch (error) {
-      console.error('[ProductionSeeding] Deferred regression tests failed:', error);
+      log.error('[ProductionSeeding] Deferred regression tests failed:', error);
     }
   }, 5000); // Run 5 seconds after startup
   
-  console.log('[ProductionSeeding] Production seeding complete');
+  log.info('[ProductionSeeding] Production seeding complete');
 }

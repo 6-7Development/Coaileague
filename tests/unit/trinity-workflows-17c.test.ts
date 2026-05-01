@@ -183,11 +183,11 @@ import { logActionAudit, type ActionAuditInput } from '../../server/services/ai-
 // captures the row that the helper *would* persist.
 import * as dbModule from '../../server/db';
 
-interface CapturedInsert { table: any; values: any }
+interface CapturedInsert { table: Record<string, unknown>; values: any }
 function installInsertCapture(): { rows: CapturedInsert[]; restore: () => void } {
-  const original = (dbModule as any).db.insert;
+  const original = (dbModule as Record<string, unknown>).db.insert;
   const rows: CapturedInsert[] = [];
-  (dbModule as any).db.insert = (table: any) => ({
+  (dbModule as Record<string, unknown>).db.insert = (table: Record<string, unknown>) => ({
     values: async (values: any) => {
       rows.push({ table, values });
       return undefined;
@@ -195,7 +195,7 @@ function installInsertCapture(): { rows: CapturedInsert[]; restore: () => void }
   });
   return {
     rows,
-    restore: () => { (dbModule as any).db.insert = original; },
+    restore: () => { (dbModule as Record<string, unknown>).db.insert = original; },
   };
 }
 
@@ -278,8 +278,8 @@ describe('Phase 17C / Audit 6 — actionAuditLogger.logActionAudit', () => {
   });
 
   it('does not throw when db.insert fails (non-fatal)', async () => {
-    const original = (dbModule as any).db.insert;
-    (dbModule as any).db.insert = () => ({
+    const original = (dbModule as Record<string, unknown>).db.insert;
+    (dbModule as Record<string, unknown>).db.insert = () => ({
       values: async () => { throw new Error('db down'); },
     });
     try {
@@ -289,7 +289,7 @@ describe('Phase 17C / Audit 6 — actionAuditLogger.logActionAudit', () => {
         success: true,
       })).resolves.toBeUndefined();
     } finally {
-      (dbModule as any).db.insert = original;
+      (dbModule as Record<string, unknown>).db.insert = original;
     }
   });
 });
@@ -328,16 +328,16 @@ describe('Phase 17C / Audit 1 — invoice 3-step workflow shape', () => {
     // captures `db` once at module load, so we mutate the live singleton
     // rather than the ESM namespace.
     const { db: liveDb } = await import('../../server/db');
-    const originalSelect = (liveDb as any).select;
-    const originalTransaction = (liveDb as any).transaction;
-    (liveDb as any).select = () => ({
+    const originalSelect = (liveDb as Record<string, unknown>).select;
+    const originalTransaction = (liveDb as Record<string, unknown>).transaction;
+    (liveDb as Record<string, unknown>).select = () => ({
       from: () => ({
         where: () => ({
           limit: async () => [{ id: 'inv-1', workspaceId: 'ws-1', status: 'sent', total: '500' }],
         }),
       }),
     });
-    (liveDb as any).transaction = async (fn: any) => fn({
+    (liveDb as Record<string, unknown>).transaction = async (fn: (...args: unknown[]) => unknown) => fn({
       insert: () => ({ values: () => ({ returning: async () => [] }) }),
       update: () => ({ set: () => ({ where: async () => undefined }) }),
     });
@@ -359,10 +359,10 @@ describe('Phase 17C / Audit 1 — invoice 3-step workflow shape', () => {
           items: [{ description: 'Patrol', quantity: '5', unitPrice: '50' }],
         },
         workspaceId: 'ws-1',
-        userId: null as any,
+        userId: null as unknown,
         userRole: 'manager',
         platformRole: null,
-        priority: 'normal' as any,
+        priority: 'normal' as unknown,
         requiresConfirmation: false,
         isTestMode: true,
         metadata: {},
@@ -370,8 +370,8 @@ describe('Phase 17C / Audit 1 — invoice 3-step workflow shape', () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain("status 'sent'");
     } finally {
-      (liveDb as any).select = originalSelect;
-      (liveDb as any).transaction = originalTransaction;
+      (liveDb as Record<string, unknown>).select = originalSelect;
+      (liveDb as Record<string, unknown>).transaction = originalTransaction;
     }
   });
 });
@@ -381,8 +381,8 @@ describe('Phase 17C / Audit 1 — invoice 3-step workflow shape', () => {
 describe('Phase 17C / Audit 3 — amount threshold enforced by billing.invoice_create', () => {
   it('refuses a $7,500 invoice from a staff actor (manager threshold)', async () => {
     const { db: liveDb } = await import('../../server/db');
-    const originalInsert = (liveDb as any).insert;
-    (liveDb as any).insert = () => ({
+    const originalInsert = (liveDb as Record<string, unknown>).insert;
+    (liveDb as Record<string, unknown>).insert = () => ({
       values: () => ({ returning: async () => [{ id: 'inv-new' }] }),
     });
 
@@ -398,10 +398,10 @@ describe('Phase 17C / Audit 3 — amount threshold enforced by billing.invoice_c
         description: '',
         payload: { clientId: 'c-1', amount: 7500 },
         workspaceId: 'ws-1',
-        userId: null as any,
+        userId: null as unknown,
         userRole: 'staff',
         platformRole: null,
-        priority: 'normal' as any,
+        priority: 'normal' as unknown,
         requiresConfirmation: false,
         isTestMode: true,
         metadata: {},
@@ -410,15 +410,15 @@ describe('Phase 17C / Audit 3 — amount threshold enforced by billing.invoice_c
       expect(result.message).toContain('Approval required');
       expect(result.message).toContain('manager');
     } finally {
-      (liveDb as any).insert = originalInsert;
+      (liveDb as Record<string, unknown>).insert = originalInsert;
     }
   });
 
   it('allows a $7,500 invoice when actor is org_owner (above manager threshold)', async () => {
     const { db: liveDb } = await import('../../server/db');
-    const originalInsert = (liveDb as any).insert;
-    let capturedInsert: any = null;
-    (liveDb as any).insert = (table: any) => ({
+    const originalInsert = (liveDb as Record<string, unknown>).insert;
+    let capturedInsert: unknown = null;
+    (liveDb as Record<string, unknown>).insert = (table: Record<string, unknown>) => ({
       values: (vals: any) => ({
         returning: async () => {
           capturedInsert = { table, vals };
@@ -438,10 +438,10 @@ describe('Phase 17C / Audit 3 — amount threshold enforced by billing.invoice_c
         description: '',
         payload: { clientId: 'c-1', amount: 7500 },
         workspaceId: 'ws-1',
-        userId: null as any,
+        userId: null as unknown,
         userRole: 'org_owner',
         platformRole: null,
-        priority: 'normal' as any,
+        priority: 'normal' as unknown,
         requiresConfirmation: false,
         isTestMode: true,
         metadata: {},
@@ -449,7 +449,7 @@ describe('Phase 17C / Audit 3 — amount threshold enforced by billing.invoice_c
       expect(result.success).toBe(true);
       expect(capturedInsert).not.toBeNull();
     } finally {
-      (liveDb as any).insert = originalInsert;
+      (liveDb as Record<string, unknown>).insert = originalInsert;
     }
   });
 });

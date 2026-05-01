@@ -11,6 +11,8 @@ if (process.env.GCS_KEY_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   try {
     _fs.writeFileSync(_keyPath, process.env.GCS_KEY_JSON, { mode: 0o600 });
     process.env.GOOGLE_APPLICATION_CREDENTIALS = _keyPath;
+    // console used here intentionally — this bootstrap runs before the structured
+    // logger is initialized (logger const is defined ~180 lines below)
     console.log('[GCS] Credentials written from GCS_KEY_JSON env var');
   } catch (e) {
     console.error('[GCS] Failed to write credentials:', e);
@@ -53,7 +55,7 @@ import * as fs from "fs";
 // ============================================================================
 
 const PORT_LOCK_FILE = '/tmp/coaileague-port-5000.lock';
-let serverInstance: any = null;
+let serverInstance: unknown = null;
 let isShuttingDown = false;
 
 // Detect Cloud Run environment - skip ALL port cleanup, bind immediately
@@ -230,8 +232,8 @@ app.get('/health', rateLimitMiddleware(
     await pool.query('SELECT 1');
     dbLatencyMs = Date.now() - dbStart;
     dbConnected = true;
-  } catch (dbHealthErr: any) {
-    log.warn('[HealthCheck] DB ping failed', { error: dbHealthErr?.message });
+  } catch (dbHealthErr: unknown) {
+    log.warn('[HealthCheck] DB ping failed', { error: dbHealthErr instanceof Error ? dbHealthErr.message : String(dbHealthErr) });
   }
 
   const checkConfigured = (key: string) => !!process.env[key];
@@ -448,7 +450,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({
   limit: '10mb',
-  verify: (req: any, res, buf) => {
+  verify: (req: unknown, res, buf) => {
     // Capture raw body for webhook paths that need signature verification
     if (webhookPathsNeedingRawBody.some(path => req.path === path || req.path.startsWith(path))) {
       req.rawBody = buf.toString('utf8');
@@ -566,7 +568,6 @@ app.use(helmet({
   frameguard: false,
   xssFilter: true, // X-XSS-Protection: 1; mode=block
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   contentTypeOptions: true, // X-Content-Type-Options: nosniff
   // G24-03 fix: Explicit HSTS with 1-year max-age (Phase 24 spec requires min 1 year).
   // Helmet default is 180 days — overriding to 365 days (31536000s) with includeSubDomains.
@@ -646,7 +647,7 @@ app.use(maintenanceStatusHeader);
 
 // Rate limiting middleware - applies per-tenant quotas on API routes
 app.use('/api', rateLimitMiddleware(
-  (req: any) => {
+  (req: unknown) => {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     if (workspaceId) return String(workspaceId);
     const userId = req.session?.userId;
@@ -654,7 +655,7 @@ app.use('/api', rateLimitMiddleware(
     const ip = req.headers['x-forwarded-for'];
     return typeof ip === 'string' ? ip.split(',')[0].trim() : (req.ip || req.socket?.remoteAddress || 'anonymous');
   },
-  (req: any) => {
+  (req: unknown) => {
     const plan = req.session?.plan || req.session?.workspacePlan;
     if (plan && ['free', 'trial', 'starter', 'professional', 'business', 'enterprise', 'strategic'].includes(plan)) {
       return plan as 'free' | 'trial' | 'starter' | 'professional' | 'business' | 'enterprise' | 'strategic';
@@ -677,7 +678,7 @@ app.use(compression({
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -690,7 +691,7 @@ app.use((req, res, next) => {
     
     // Track metrics in monitoring service
     const userId = req.session?.userId;
-    const workspaceId = (req as any).workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
+    const workspaceId = (req as unknown).workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     
     monitoringService.trackRequest(
       path,
@@ -841,7 +842,7 @@ async function initializeCriticalServices() {
       const { probeDbConnection } = await import('./db');
       return await probeDbConnection();
     } catch { return false; }
-})().catch((err: any) => {
+})().catch((err: unknown) => {
       log.error(`[PostListen] Unhandled crash: ${err instanceof Error ? err.message : String(err)}`);
     });
 
@@ -962,7 +963,7 @@ async function initializeCriticalServices() {
       `).catch(() => null);
 
       log.info('[DevAccounts] Test accounts ready — owner@acme-security.test / admin123 | root@coaileague.com / admin123');
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[DevAccounts] Failed to ensure dev accounts:', err?.message);
     }
   }
@@ -1322,13 +1323,13 @@ async function initializeExtendedServices(): Promise<void> {
     timedInit('Hebbian Decay Scheduler', async () => {
       const { runDecayCycle } = await import('./services/ai-brain/hebbianLearningService');
       // Run decay once at startup (catches any missed nightly runs after a restart)
-      runDecayCycle().catch((err: any) =>
-        log.warn('Hebbian startup decay failed (non-fatal)', { error: err?.message })
+      runDecayCycle().catch((err: unknown) =>
+        log.warn('Hebbian startup decay failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) })
       );
       // Schedule nightly decay — every 24 hours
       setInterval(() => {
-        runDecayCycle().catch((err: any) =>
-          log.warn('Hebbian nightly decay failed (non-fatal)', { error: err?.message })
+        runDecayCycle().catch((err: unknown) =>
+          log.warn('Hebbian nightly decay failed (non-fatal)', { error: err instanceof Error ? err.message : String(err) })
         );
       }, 24 * 60 * 60 * 1000).unref();
       log.info('Hebbian Decay Scheduler initialized — forgetting curve active (24h cycle)');
@@ -1580,8 +1581,8 @@ async function initializeBackgroundServices(): Promise<void> {
         try {
           await runScheduledClientInvoiceAutoGeneration();
           log.info('Client Invoice Auto-Generation: weekly cycle complete');
-        } catch (err: any) {
-          log.error('Client Invoice Auto-Generation: cycle failed', { error: err?.message });
+        } catch (err: unknown) {
+          log.error('Client Invoice Auto-Generation: cycle failed', { error: err instanceof Error ? err.message : String(err) });
         }
       };
       await runCycle();
@@ -1628,7 +1629,7 @@ async function initializeBackgroundServices(): Promise<void> {
           category: 'integrations' as const,
           description: action.description,
           requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'org_owner'],
-          handler: async (request: any) => {
+          handler: async (request: unknown) => {
             const startTime = Date.now();
             try {
               const result = await action.handler(request.payload || {});
@@ -1639,7 +1640,7 @@ async function initializeBackgroundServices(): Promise<void> {
                 data: result,
                 executionTimeMs: Date.now() - startTime,
               };
-            } catch (error: any) {
+            } catch (error: unknown) {
               return {
                 success: false,
                 actionId: request.actionId,
@@ -1807,7 +1808,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 // Handle uncaught exceptions - be resilient to Neon serverless errors
-process.on('uncaughtException', (err: any) => {
+process.on('uncaughtException', (err: unknown) => {
   const errMsg = err instanceof Error ? err.message : String(err);
   const errStack = err instanceof Error ? (err.stack || '').split('\n').slice(0,5).join(' | ') : '';
   log.error(`Uncaught exception: ${errMsg} | code=${err?.code || 'none'} | ${errStack.slice(0,200)}`);
@@ -1837,7 +1838,7 @@ process.on('uncaughtException', (err: any) => {
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason: any, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise) => {
   const reasonStr = String(reason);
   if (reasonStr.includes('timeout') || reasonStr.includes('connection') || 
       reasonStr.includes('57P01') || reasonStr.includes('terminating connection') ||
@@ -1863,7 +1864,7 @@ process.on('unhandledRejection', (reason: any, promise) => {
     const { pool: earlyPool } = await import('./db');
     await earlyPool.query(`ALTER TABLE platform_updates ADD COLUMN IF NOT EXISTS date TIMESTAMP WITH TIME ZONE DEFAULT NOW()`);
     await earlyPool.query(`ALTER TABLE platform_updates ALTER COLUMN date DROP NOT NULL`);
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Non-fatal: table may not exist yet (first boot) or column already exists
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1882,7 +1883,7 @@ process.on('unhandledRejection', (reason: any, promise) => {
   // to break the service worker cache loop that causes the black screen.
   
   // /clear-sw → forces browser to unregister all service workers
-  app.get('/clear-sw', (_req: any, res: any) => {
+  app.get('/clear-sw', (_req: unknown, res: unknown) => {
     res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.send(`
@@ -1898,7 +1899,7 @@ self.addEventListener('activate', async () => {
   });
 
   // /sw-health → returns JSON so browser can check if server is alive
-  app.get('/sw-health', (_req: any, res: any) => {
+  app.get('/sw-health', (_req: unknown, res: unknown) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, ts: Date.now() });
   });
@@ -1915,7 +1916,7 @@ self.addEventListener('activate', async () => {
     const expressStaticMod = await import('express');
     const expressStatic = expressStaticMod.default.static;
     // Serve sw.js with no-cache so browser always gets latest version
-    app.get('/sw.js', (_req: any, res: any) => {
+    app.get('/sw.js', (_req: unknown, res: unknown) => {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Content-Type', 'application/javascript');
       res.sendFile(path.default.resolve(distPath, 'sw.js'));
@@ -1923,7 +1924,7 @@ self.addEventListener('activate', async () => {
     // Serve static assets (JS, CSS, images) — skips /api/* routes automatically
     app.use(expressStatic(distPath, { index: false }));
     // SPA catch-all: serve index.html for all non-API navigation requests
-    app.get('*', (req: any, res: any, next: any) => {
+    app.get('*', (req: unknown, res: unknown, next: unknown) => {
       if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
         return next();
       }
@@ -1937,7 +1938,7 @@ self.addEventListener('activate', async () => {
     log.info('[Startup] Early static serving registered — SPA routes handled before API middleware');
   } else {
     // dist/public not built yet — serve placeholder for all non-API routes
-    app.get('*', (req: any, res: any, next: any) => {
+    app.get('*', (req: unknown, res: unknown, next: unknown) => {
       if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) return next();
       res.status(200).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CoAIleague</title></head><body style="margin:0;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui"><div style="text-align:center"><h1 style="color:#7c3aed">CoAIleague</h1><p>Deploying... <button onclick="location.reload()" style="background:#7c3aed;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer">Reload</button></p></div><script>setTimeout(()=>location.reload(),15000)</script></body></html>');
     });
@@ -1967,12 +1968,12 @@ self.addEventListener('activate', async () => {
     // duplicating logic — they proxy to existing route handlers or query DB.
 
     // Trinity pending-approvals alias (actual handler lives in automationGovernanceRoutes)
-    app.get('/api/trinity/pending-approvals', requireAuth, async (req: any, res: any) => {
+    app.get('/api/trinity/pending-approvals', requireAuth, async (req: unknown, res: unknown) => {
       try {
         // Platform staff can query all workspaces or a specific one via ?workspaceId=
         // Workspace owners: resolved from ensureWorkspaceAccess session (or from DB fallback)
-        const isPlatformStaff = !!(req as any).platformRole ||
-          (req.user as any)?.role === 'platform_staff';
+        const isPlatformStaff = !!(req as unknown).platformRole ||
+          (req.user as unknown)?.role === 'platform_staff';
 
         let wid: string | undefined =
           req.workspaceId ||
@@ -2005,7 +2006,7 @@ self.addEventListener('activate', async () => {
 
         const { rows } = await pool.query(query, wid ? [wid] : []);
         res.json({ success: true, approvals: rows, count: rows.length });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] Internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
@@ -2017,7 +2018,7 @@ self.addEventListener('activate', async () => {
     // so the UI can explain exactly what happened. On successful approval
     // we schedule a non-blocking executor that runs the action via
     // helpaiOrchestrator and records completion / broadcast.
-    app.post('/api/trinity/pending-approvals/:id/approve', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.post('/api/trinity/pending-approvals/:id/approve', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
       const { id } = req.params;
       const userId = req.user?.id || req.user?.userId || 'unknown';
@@ -2034,7 +2035,7 @@ self.addEventListener('activate', async () => {
         // Primary path — atomic idempotent UPDATE using the v2 columns.
         // Falls back gracefully when execution_locked / executed_by / executed_at
         // columns don't yet exist (schema migration not applied).
-        let rows: any[] = [];
+        let rows: (string | number | boolean | null)[] = [];
         try {
           const res1 = await pool.query(
             `UPDATE governance_approvals
@@ -2056,7 +2057,7 @@ self.addEventListener('activate', async () => {
             ],
           );
           rows = res1.rows;
-        } catch (schemaErr: any) {
+        } catch (schemaErr: unknown) {
           // Columns not present — fall back to v1 shape (id + workspace + pending)
           const res2 = await pool.query(
             `UPDATE governance_approvals
@@ -2111,7 +2112,7 @@ self.addEventListener('activate', async () => {
 
             const result = await helpaiOrchestrator.executeAction({
               actionId: approval.action_type,
-              category: (payload as any).category || 'system',
+              category: (payload as unknown).category || 'system',
               name: approval.action_type,
               payload,
               workspaceId: wid,
@@ -2136,7 +2137,7 @@ self.addEventListener('activate', async () => {
                 message: result.message,
               });
             } catch { /* non-fatal */ }
-          } catch (execErr: any) {
+          } catch (execErr: unknown) {
             await pool.query(
               `UPDATE governance_approvals SET status = 'failed', updated_at = NOW() WHERE id = $1`, [id],
             ).catch(() => {});
@@ -2145,14 +2146,14 @@ self.addEventListener('activate', async () => {
         });
 
         res.json({ success: true, message: 'Action approved and queued for execution', approvalId: id, approval });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] pending-approvals/approve internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
     });
 
     // Trinity — reject endpoint, mirrors approve safety.
-    app.post('/api/trinity/pending-approvals/:id/reject', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.post('/api/trinity/pending-approvals/:id/reject', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
       const { id } = req.params;
       const userId = req.user?.id || req.user?.userId || 'unknown';
@@ -2166,7 +2167,7 @@ self.addEventListener('activate', async () => {
       }
 
       try {
-        let rows: any[] = [];
+        let rows: (string | number | boolean | null)[] = [];
         try {
           const res1 = await pool.query(
             `UPDATE governance_approvals
@@ -2200,14 +2201,14 @@ self.addEventListener('activate', async () => {
         }
         if (!rows.length) return res.status(409).json({ error: 'cannot_reject', message: 'Approval not pending or not found' });
         res.json({ success: true, approval: rows[0] });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] pending-approvals/reject internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
     });
 
     // Trinity activity endpoint — recent Trinity actions for activity center
-    app.get('/api/trinity/activity', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/trinity/activity', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       try {
@@ -2219,14 +2220,14 @@ self.addEventListener('activate', async () => {
           [wid]
         );
         res.json({ success: true, activity: rows, count: rows.length });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] Internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
     });
 
     // Compliance dashboard alias
-    app.get('/api/compliance/dashboard', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/compliance/dashboard', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       try {
@@ -2260,14 +2261,14 @@ self.addEventListener('activate', async () => {
           totalLicenses: Number(summary?.total_licenses || 0),
           violations,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] Internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
     });
 
     // Calloffs alias — shifts with calloff status + replacement cascade info
-    app.get('/api/calloffs', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/calloffs', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -2285,7 +2286,7 @@ self.addEventListener('activate', async () => {
           [wid, limit]
         );
         res.json({ success: true, data: rows, count: rows.length });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[Route] Internal error:', err);
         res.status(500).json({ error: 'Internal server error' });
       }
@@ -2298,8 +2299,8 @@ self.addEventListener('activate', async () => {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : '';
-    console.error('[FATAL] CRITICAL: Failed to register routes —', errMsg);
-    if (errStack) console.error(errStack);
+    log.error('[FATAL] CRITICAL: Failed to register routes —', errMsg);
+    if (errStack) log.error(errStack);
     log.error(`CRITICAL: Failed to register routes — ${errMsg}`, { stack: typeof errStack === 'string' ? errStack.slice(0, 500) : '' });
     process.exit(1);
   }
@@ -2394,14 +2395,14 @@ self.addEventListener('activate', async () => {
     try {
       serveStatic(app);
       log.info('[Startup] Static files registered from dist/public/');
-    } catch (staticErr: any) {
+    } catch (staticErr: unknown) {
       // dist/public/ doesn't exist — Vite build didn't run or failed.
       // Register a fallback that serves a proper page instead of raw JSON.
       log.error('[Startup] serveStatic failed — dist/public/ not found. Vite build may have failed.', {
         error: staticErr?.message,
       });
       // Fallback: serve a bootstrap page for all non-API routes
-      app.use('*', (req: any, res: any) => {
+      app.use('*', (req: unknown, res: unknown) => {
         if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
           return res.status(503).json({ message: 'Service starting up', retry: true });
         }
@@ -2437,7 +2438,7 @@ self.addEventListener('activate', async () => {
 
   try {
     await bindToPort(port);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Could not bind to port after all retries', { error: err.message, port });
     process.exit(1);
   }
@@ -2447,7 +2448,7 @@ self.addEventListener('activate', async () => {
     const { crawlerPrerenderMiddleware } = await import('./middleware/crawlerPrerender');
     app.use(crawlerPrerenderMiddleware);
     const viteRouter = express.Router();
-    await setupVite(viteRouter as any, server);
+    await setupVite(viteRouter as unknown, server);
     
     // Guard: only pass to Vite if NOT an API or WebSocket route
     app.use((req, res, next) => {
@@ -2472,7 +2473,7 @@ self.addEventListener('activate', async () => {
       const { pool } = await import('./db');
       await pool.query(`ALTER TABLE platform_updates ADD COLUMN IF NOT EXISTS date TIMESTAMP WITH TIME ZONE DEFAULT NOW()`);
       log.info('[PreGrace] platform_updates.date column ensured');
-    } catch (e: any) {
+    } catch (e: unknown) {
       log.warn('[PreGrace] platform_updates migration failed (non-fatal):', e.message);
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -2510,7 +2511,7 @@ self.addEventListener('activate', async () => {
       try {
         await initializeCriticalServices();
         log.info('Phase 1: Critical services complete');
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error(`[CriticalServices] Failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
       }
     });
@@ -2574,7 +2575,7 @@ self.addEventListener('activate', async () => {
           WHERE status IN ('queued', 'in_progress')
           AND queued_at < NOW() - INTERVAL '5 minutes'
         `);
-        const count = (orphanResult as any).rowCount ?? 0;
+        const count = (orphanResult as unknown).rowCount ?? 0;
         if (count > 0) {
           log.warn(`[ORPHAN RECOVERY] Marked ${count} orphaned automation execution(s) as failed on startup`);
         } else {
@@ -2671,10 +2672,10 @@ self.addEventListener('activate', async () => {
           await authPool.query('CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens (user_id)');
           await authPool.query('CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions (user_id)');
           log.info('[Startup] Auth tables verified: auth_tokens, auth_sessions');
-        } catch (authTableErr: any) {
+        } catch (authTableErr: unknown) {
           log.warn('[Startup] Auth table create (non-fatal):', authTableErr?.message?.slice(0, 80));
         }
-        } catch (tableErr: any) {
+        } catch (tableErr: unknown) {
           log.warn('[Startup] Missing table auto-create (non-fatal):', tableErr?.message?.slice(0, 80));
         }
         // Reset demo account locks in non-production (dev/staging Railway environments)
@@ -2713,7 +2714,7 @@ self.addEventListener('activate', async () => {
       } catch (error) {
         log.error('Onboarding task migration failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
-    })().catch((err: any) => {
+    })().catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       log.error(`[PostListen] Unhandled crash: ${msg}`);
     });
@@ -2737,7 +2738,15 @@ self.addEventListener('activate', async () => {
     await initializeBackgroundServices();
     
     // PHASE 5: Start autonomous scheduler
-    log.info('Phase 5: Autonomous scheduler');
+        // Phase 4.5: ChatDock pub/sub (Redis when REDIS_URL set, local otherwise)
+    try {
+      const { initChatDockPubSub } = await import('./services/chat/chatDockPubSub');
+      await initChatDockPubSub();
+      log.info('ChatDock pub/sub initialized');
+    } catch (err) {
+      log.warn('ChatDock pub/sub init failed (non-fatal):', { error: (err as Error).message });
+    }
+        log.info('Phase 5: Autonomous scheduler');
     try {
       startAutonomousScheduler();
       log.info('Autonomous scheduler started successfully');
@@ -2832,7 +2841,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity autonomously resolves any detected operational issue — shift coverage, compliance, notifications, account access, financial anomalies.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issue = request.payload?.issue;
           if (!issue?.type || !issue?.workspaceId) {
@@ -2855,7 +2864,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity resolves multiple detected issues in parallel across a workspace.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issues = request.payload?.issues;
           if (!Array.isArray(issues) || issues.length === 0) {
@@ -2888,7 +2897,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity runs a full PERCEIVE → REASON → ACT → VERIFY → LEARN deliberation cycle for complex operational issues.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issue = request.payload?.issue;
           if (!issue?.type || !issue?.workspaceId) {

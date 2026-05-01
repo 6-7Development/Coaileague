@@ -182,8 +182,8 @@ router.get('/history', attachWorkspaceId, requireTrinityAccess, async (req: Requ
 router.get('/session/:sessionId/messages', attachWorkspaceId, requireTrinityAccess, async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    const userId = (req as any).user?.id;
-    const workspaceId = (req as any).workspaceId;
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId;
     if (!userId || !workspaceId) return res.status(401).json({ error: 'Auth context required' });
     const messages = await trinityChatService.getSessionMessages(sessionId, userId, workspaceId);
     return res.json({ messages });
@@ -295,7 +295,7 @@ router.get('/thought-stream', attachWorkspaceId, requireTrinityAccess, async (re
       currentPhase,
       isThinking: rows.length > 0,
       lastThoughtAt: mostRecent?.createdAt ?? null,
-      thoughts: rows.map((r: any) => ({
+      thoughts: rows.map((r: unknown) => ({
         id: r.id,
         thoughtType: r.thoughtType,
         content: String(r.content ?? '').substring(0, 240),

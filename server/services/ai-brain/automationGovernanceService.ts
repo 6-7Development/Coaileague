@@ -77,7 +77,7 @@ export interface ActionContext {
   executorType?: 'user' | 'trinity' | 'helpai' | 'subagent' | 'automation_job';
   trinitySessionId?: string;
   conversationTurnId?: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
 }
 
 export interface ConsentRequest {
@@ -209,7 +209,7 @@ class AutomationGovernanceService {
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
-      const blob = (ws?.blob || {}) as Record<string, any>;
+      const blob = (ws?.blob || {}) as Record<string, unknown>;
 
       if (blob.currentLevel) {
         const policy = { id: `${workspaceId}-policy`, workspaceId, ...blob } as WorkspaceAutomationPolicy;
@@ -243,7 +243,7 @@ class AutomationGovernanceService {
       };
       this.policyCache.set(workspaceId, defaultPolicy);
       return defaultPolicy;
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Only log schema mismatch errors once to prevent log spam
       const isSchemaError = error?.code === '42703'; // Column does not exist
       if (!this.schemaErrorLogged && isSchemaError) {
@@ -284,30 +284,30 @@ class AutomationGovernanceService {
       const updates: Partial<InsertWorkspaceAutomationPolicy> = {};
       
       if (request.currentLevel) updates.currentLevel = request.currentLevel;
-      if (request.handHeldThreshold !== undefined) (updates as any).handHeldThreshold = request.handHeldThreshold;
-      if (request.graduatedThreshold !== undefined) (updates as any).graduatedThreshold = request.graduatedThreshold;
-      if (request.highRiskCategories) (updates as any).highRiskCategories = request.highRiskCategories;
-      if (request.minConfidenceForAutoExecute !== undefined) (updates as any).minConfidenceForAutoExecute = request.minConfidenceForAutoExecute;
+      if (request.handHeldThreshold !== undefined) (updates as Record<string,unknown>).handHeldThreshold = request.handHeldThreshold;
+      if (request.graduatedThreshold !== undefined) (updates as Record<string,unknown>).graduatedThreshold = request.graduatedThreshold;
+      if (request.highRiskCategories) (updates as Record<string,unknown>).highRiskCategories = request.highRiskCategories;
+      if (request.minConfidenceForAutoExecute !== undefined) (updates as Record<string,unknown>).minConfidenceForAutoExecute = request.minConfidenceForAutoExecute;
       
       if (request.orgOwnerConsent !== undefined) {
-        (updates as any).orgOwnerConsent = request.orgOwnerConsent;
+        (updates as Record<string,unknown>).orgOwnerConsent = request.orgOwnerConsent;
         if (request.orgOwnerConsent) {
-          (updates as any).orgOwnerConsentAt = new Date();
-          (updates as any).orgOwnerConsentUserId = request.orgOwnerConsentUserId || null;
+          (updates as Record<string,unknown>).orgOwnerConsentAt = new Date();
+          (updates as Record<string,unknown>).orgOwnerConsentUserId = request.orgOwnerConsentUserId || null;
         }
       }
       
       if (request.waiverAccepted !== undefined) {
-        (updates as any).waiverAccepted = request.waiverAccepted;
+        (updates as Record<string,unknown>).waiverAccepted = request.waiverAccepted;
         if (request.waiverAccepted) {
-          (updates as any).waiverAcceptedAt = new Date();
-          (updates as any).waiverVersion = request.waiverVersion || '1.0';
+          (updates as Record<string,unknown>).waiverAcceptedAt = new Date();
+          (updates as Record<string,unknown>).waiverVersion = request.waiverVersion || '1.0';
         }
       }
 
       const [ws] = await db.select({ blob: workspaces.automationPolicyBlob })
         .from(workspaces).where(eq(workspaces.id, request.workspaceId)).limit(1);
-      const current = ((ws?.blob || {}) as Record<string, any>);
+      const current = ((ws?.blob || {}) as Record<string, unknown>);
       const merged = { ...current, ...updates, updatedAt: new Date().toISOString() };
       await db.update(workspaces)
         .set({ automationPolicyBlob: merged })
@@ -715,7 +715,7 @@ class AutomationGovernanceService {
       approvedBy: string;
       approvalNotes: string;
       executionStatus: string;
-      outputResult: Record<string, any>;
+      outputResult: Record<string, unknown>;
       errorDetails: string;
       executionTimeMs: number;
       auditLogId: string;
@@ -819,7 +819,7 @@ class AutomationGovernanceService {
   async createAuditTrailEntry(
     context: ActionContext,
     decision: ExecutionDecision,
-    result: { success: boolean; message: string; data?: any }
+    result: { success: boolean; message: string; data?: unknown }
   ): Promise<string | null> {
     try {
       const [auditLog] = await db
@@ -1041,7 +1041,7 @@ class AutomationGovernanceService {
   // Refresh tool catalog with latest metrics
   async refreshToolCatalogMetrics(): Promise<void> {
     try {
-      await (trinityMemoryService as any).refreshToolCatalog();
+      await (trinityMemoryService as Record<string, unknown>).refreshToolCatalog();
       log.info('[AutomationGovernance] Tool catalog metrics refreshed');
     } catch (error) {
       log.error('[AutomationGovernance] Error refreshing tool catalog:', error);

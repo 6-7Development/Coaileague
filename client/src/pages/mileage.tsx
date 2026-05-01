@@ -339,7 +339,7 @@ function RejectDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpen
 
 function TrinityPanel({ workspaceId }: { workspaceId: string }) {
   const { toast } = useToast();
-  const [result, setResult] = useState<{ recommendations: TrinityRec[]; summary: any } | null>(null);
+  const [result, setResult] = useState<{ recommendations: TrinityRec[]; summary: Record<string, unknown> } | null>(null);
   const [expanded, setExpanded] = useState(true);
 
   const mutation = useMutation({
@@ -347,7 +347,7 @@ function TrinityPanel({ workspaceId }: { workspaceId: string }) {
       actionId: "mileage.recommend",
       payload: { workspaceId, lookbackDays: 30 },
     }),
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       if (data?.data?.recommendations) {
         setResult(data.data);
       } else {
@@ -440,9 +440,9 @@ export default function MileagePage() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const workspaceId = (user as any)?.currentWorkspaceId || (user as any)?.workspaceId || "";
-  const role = (user as any)?.workspaceRole || (user as any)?.role || "";
-  const platformRole = (user as any)?.platformRole || "";
+  const workspaceId = (user as Record<string,unknown>)?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || "";
+  const role = (user as Record<string,unknown>)?.workspaceRole || (user as Record<string,unknown>)?.role || "";
+  const platformRole = (user as Record<string,unknown>)?.platformRole || "";
   const isManager = ["manager", "department_manager", "org_manager", "co_owner", "org_owner", "supervisor"].includes(role)
     || ["root_admin", "deputy_admin", "sysop", "support_manager"].includes(platformRole);
 

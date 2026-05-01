@@ -27,7 +27,6 @@ import { z } from 'zod';
 const log = createLogger('ExperienceRoutes');
 
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthRequest extends Request {
   user?: {
     id: string;
@@ -37,13 +36,13 @@ interface AuthRequest extends Request {
 }
 
 // WebSocket broadcaster - will be set by routes.ts
-let wsBroadcaster: ((event: string, data: any, workspaceId?: string) => void) | null = null;
+let wsBroadcaster: ((event: string, data: Record<string, unknown>, workspaceId?: string) => void) | null = null;
 
-export function setWebSocketBroadcaster(broadcaster: (event: string, data: any, workspaceId?: string) => void) {
+export function setWebSocketBroadcaster(broadcaster: (event: string, data: Record<string, unknown>, workspaceId?: string) => void) {
   wsBroadcaster = broadcaster;
 }
 
-function broadcastToClients(event: string, data: any, workspaceId?: string) {
+function broadcastToClients(event: string, data: Record<string, unknown>, workspaceId?: string) {
   if (wsBroadcaster) {
     wsBroadcaster(event, data, workspaceId);
   }
@@ -120,7 +119,7 @@ router.get('/role-theme/:role', async (req: Request, res: Response) => {
   try {
     const { role } = req.params;
     
-    const themes: Record<string, any> = {
+    const themes: Record<string, unknown> = {
       root_admin: {
         name: 'Executive',
         gradient: 'from-violet-600 via-purple-600 to-fuchsia-600',
@@ -157,13 +156,13 @@ router.get('/role-theme/:role', async (req: Request, res: Response) => {
 });
 
 // In-memory storage for notification preferences (fallback when DB unavailable)
-const notificationPrefsMemory = new Map<string, any>();
+const notificationPrefsMemory = new Map<string, unknown>();
 
 router.get('/notification-preferences', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const userId = authReq.user?.id;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId || 'global';
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId || 'global';
     
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -223,7 +222,7 @@ router.post('/notification-preferences', async (req: Request, res: Response) => 
   try {
     const authReq = req as AuthRequest;
     const userId = authReq.user?.id;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId || 'global';
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId || 'global';
     const preferences = req.body;
     
     if (!userId) {
@@ -300,7 +299,7 @@ router.get('/onboarding/progress', async (req: Request, res: Response) => {
     // FIX: Never accept workspaceId from the query string — it would allow any authenticated
     // user to read onboarding progress for a workspace they don't belong to.
     // Always resolve workspace from the session only.
-    const workspaceId = (authReq as any).workspaceId || authReq.user?.currentWorkspaceId;
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || authReq.user?.currentWorkspaceId;
     const userId = authReq.user?.id;
     
     if (!userId) {
@@ -308,7 +307,7 @@ router.get('/onboarding/progress', async (req: Request, res: Response) => {
     }
     
     // Try to load from database first
-    let dbStates: any[] = [];
+    let dbStates: (string | number | boolean | null)[] = [];
     try {
       dbStates = await db.select()
         .from(interactiveOnboardingState)
@@ -361,7 +360,7 @@ router.post('/onboarding/steps/:stepId/complete', async (req: Request, res: Resp
   try {
     const authReq = req as AuthRequest;
     const { stepId } = req.params;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId;
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId;
     const userId = authReq.user?.id;
     
     if (!userId) {
@@ -419,7 +418,7 @@ router.post('/onboarding/steps/:stepId/skip', async (req: Request, res: Response
   try {
     const authReq = req as AuthRequest;
     const { stepId } = req.params;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId;
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId;
     const userId = authReq.user?.id;
     
     if (!userId) {
@@ -481,7 +480,7 @@ router.post('/ai-brain/events', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const userId = authReq.user?.id;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId;
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId;
     const { actorType, actionType, actionCategory, title, description, payload, metadata, severity, isGlobal, targetUserIds, targetRoles } = req.body;
     
     if (!actionType || !title) {
@@ -552,12 +551,12 @@ router.post('/ai-brain/events', async (req: Request, res: Response) => {
 router.get('/ai-brain/events', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
-    const workspaceId = (authReq as any).workspaceId || (authReq as any).user?.workspaceId || authReq.user?.currentWorkspaceId;
+    const workspaceId = (authReq as Record<string,unknown>).workspaceId || (authReq as Record<string,unknown>).user?.workspaceId || authReq.user?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     
     // Try to get from database - return workspace-scoped events OR global events
-    let events: any[] = [];
+    let events: (string | number | boolean | null)[] = [];
     try {
       // Get global events
       const globalEvents = await db.select()
@@ -567,7 +566,7 @@ router.get('/ai-brain/events', async (req: Request, res: Response) => {
         .limit(limit);
       
       // Get workspace-specific events if workspace is set
-      let workspaceEvents: any[] = [];
+      let workspaceEvents: (string | number | boolean | null)[] = [];
       if (workspaceId) {
         workspaceEvents = await db.select()
           .from(aiBrainLiveEvents)

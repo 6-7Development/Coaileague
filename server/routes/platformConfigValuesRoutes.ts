@@ -27,13 +27,13 @@ const WORKSPACE_OWNERS = ['org_owner', 'co_owner'];
 
 function isPlatformAdmin(req: Request): boolean {
   const r = req as AuthenticatedRequest;
-  const role = (r as any).platformRole || '';
+  const role = (r as Record<string, unknown>).platformRole || '';
   return PLATFORM_ADMINS.includes(role);
 }
 
 function isWorkspaceOwner(req: Request): boolean {
   const r = req as AuthenticatedRequest;
-  const role = (r as any).workspaceRole || r.workspaceRole || '';
+  const role = (r as Record<string, unknown>).workspaceRole || r.workspaceRole || '';
   return WORKSPACE_OWNERS.includes(role);
 }
 
@@ -51,12 +51,12 @@ platformConfigValuesRouter.get('/groups', requireAuth, async (req: Request, res:
       GROUP BY g.id
       ORDER BY g.sort_order ASC, g.label ASC
     `;
-    const params: any[] = [(req.workspaceId) || null];
+    const params: Record<string, unknown>[] = [(req.workspaceId) || null];
     if (domain) params.push(domain as string);
 
     const result = await pool.query(query, params);
     res.json({ groups: result.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to load config groups' });
   }
 });
@@ -83,7 +83,7 @@ platformConfigValuesRouter.get('/groups/:groupKey', requireAuth, async (req: Req
     }
 
     res.json({ group: groupResult.rows[0], values: valuesResult.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to load config group' });
   }
 });
@@ -97,7 +97,7 @@ platformConfigValuesRouter.get('/values', requireAuth, async (req: Request, res:
     const showInactive = includeInactive === 'true';
 
     const conditions: string[] = ['(v.workspace_id IS NULL OR v.workspace_id = $1)'];
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let idx = 2;
 
     if (group) {
@@ -118,7 +118,7 @@ platformConfigValuesRouter.get('/values', requireAuth, async (req: Request, res:
 
     const result = await pool.query(query, params);
     res.json({ values: result.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to load config values' });
   }
 });
@@ -152,7 +152,7 @@ platformConfigValuesRouter.post('/groups', requireAuth, async (req: Request, res
         isExtendable !== false, sortOrder ?? 0]);
 
     res.status(201).json({ group: result.rows[0] });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to create config group' });
   }
 });
@@ -207,7 +207,7 @@ platformConfigValuesRouter.post('/values', requireAuth, async (req: Request, res
         metadata ? JSON.stringify(metadata) : null]);
 
     res.status(201).json({ value: result.rows[0] });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err.code === '23505') {
       return res.status(409).json({ error: 'A value with that key already exists in this group' });
     }
@@ -243,7 +243,7 @@ platformConfigValuesRouter.patch('/values/:id', requireAuth, async (req: Request
     const { label, description, color, icon, sortOrder, isActive, metadata } = req.body;
 
     const updates: string[] = [];
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
     let idx = 1;
 
     if (label !== undefined)       { updates.push(`label = $${idx++}`);       params.push(label); }
@@ -264,7 +264,7 @@ platformConfigValuesRouter.patch('/values/:id', requireAuth, async (req: Request
     );
 
     res.json({ value: result.rows[0] });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to update config value' });
   }
 });
@@ -301,7 +301,7 @@ platformConfigValuesRouter.delete('/values/:id', requireAuth, async (req: Reques
     }
 
     res.json({ deleted: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to delete config value' });
   }
 });
@@ -315,8 +315,8 @@ platformConfigValuesRouter.get('/domains', requireAuth, async (_req: Request, re
       WHERE domain IS NOT NULL
       ORDER BY domain ASC
     `);
-    res.json({ domains: result.rows.map((r: any) => r.domain) });
-  } catch (err: any) {
+    res.json({ domains: result.rows.map((r: unknown) => r.domain) });
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to load domains' });
   }
 });

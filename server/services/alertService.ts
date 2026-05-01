@@ -49,7 +49,7 @@ export interface AlertTriggerContext {
   title: string;
   message: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
-  triggerData?: Record<string, any>;
+  triggerData?: Record<string, unknown>;
   relatedEntityType?: string;
   relatedEntityId?: string;
   deduplicationKey?: string;
@@ -152,7 +152,7 @@ class AlertService {
       .from(alertConfigurations)
       .where(and(
         eq(alertConfigurations.workspaceId, workspaceId),
-        eq(alertConfigurations.alertType, alertType as any)
+        eq(alertConfigurations.alertType, alertType as string)
       ));
     return config;
   }
@@ -184,7 +184,7 @@ class AlertService {
           id: randomUUID(),
           workspaceId,
           ...config,
-          alertType: config.alertType as any,
+          alertType: config.alertType as string,
           createdBy: userId,
         } as InsertAlertConfiguration)
         .returning();
@@ -230,7 +230,7 @@ class AlertService {
       .from(alertRateLimits)
       .where(and(
         eq(alertRateLimits.workspaceId, workspaceId),
-        eq(alertRateLimits.alertType, alertType as any),
+        eq(alertRateLimits.alertType, alertType as string),
         eq(alertRateLimits.deduplicationKey, deduplicationKey)
       ));
 
@@ -268,7 +268,7 @@ class AlertService {
         .insert(alertRateLimits)
         .values({
           workspaceId,
-          alertType: alertType as any,
+          alertType: alertType as string,
           deduplicationKey,
           lastTriggeredAt: now,
           triggerCount: 1,
@@ -309,7 +309,7 @@ class AlertService {
     }
 
     // Create alert history entry
-    const alertSeverity = severity || (config as any).severity || 'medium';
+    const alertSeverity = severity || (config as Record<string,unknown>).severity || 'medium';
     const channels = config.channels || ['in_app'];
     
     const [alert] = await db
@@ -317,7 +317,7 @@ class AlertService {
       .values({
         workspaceId,
         configurationId: config.id,
-        alertType: alertType as any,
+        alertType: alertType as string,
         severity: alertSeverity,
         title: config.customTitle || title,
         message: config.customMessage || message,
@@ -394,7 +394,7 @@ class AlertService {
         .from(employees)
         .where(and(
           eq(employees.workspaceId, workspaceId),
-          inArray(employees.role as any, config.notifyRoles)
+          inArray(employees.role, config.notifyRoles)
         ));
 
       for (const emp of employeesWithRoles) {
@@ -527,23 +527,21 @@ class AlertService {
       .orderBy(desc(alertHistory.createdAt));
 
     if (options?.alertType) {
-      query = (query as any).where(eq(alertHistory.alertType, options.alertType as any));
+      query = (query as Record<string,unknown>).where(eq(alertHistory.alertType, options.alertType as string));
     }
     if (options?.severity) {
-      query = (query as any).where(eq(alertHistory.severity, options.severity as any));
+      query = (query as Record<string,unknown>).where(eq(alertHistory.severity, options.severity as any));
     }
     if (options?.acknowledged !== undefined) {
-      query = (query as any).where(eq(alertHistory.isAcknowledged, options.acknowledged));
+      query = (query as Record<string,unknown>).where(eq(alertHistory.isAcknowledged, options.acknowledged));
     }
     if (options?.resolved !== undefined) {
-      query = (query as any).where(eq(alertHistory.isResolved, options.resolved));
+      query = (query as Record<string,unknown>).where(eq(alertHistory.isResolved, options.resolved));
     }
     if (options?.limit) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.limit(options.limit);
     }
     if (options?.offset) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.offset(options.offset);
     }
 

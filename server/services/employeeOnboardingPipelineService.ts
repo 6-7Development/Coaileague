@@ -36,7 +36,7 @@ export class EmployeeOnboardingPipelineService {
     entityId: string;
     pipelineType?: string;
     assignedToUserId?: string;
-  }): Promise<any> {
+  }): Promise<unknown> {
     const steps = EMPLOYEE_ONBOARDING_STEPS.map((s, idx) => ({
       ...s,
       status: 'pending',
@@ -82,12 +82,12 @@ export class EmployeeOnboardingPipelineService {
     return result.rows[0] || null;
   }
 
-  async completeStep(pipelineId: string, stepId: string, data?: any): Promise<any> {
+  async completeStep(pipelineId: string, stepId: string, data?: unknown): Promise<unknown> {
     const pipeline = await this.getPipeline(pipelineId);
     if (!pipeline) throw new Error('Pipeline not found');
 
     const steps = pipeline.steps as any[];
-    const stepIdx = steps.findIndex((s: any) => s.id === stepId);
+    const stepIdx = steps.findIndex((s: unknown) => s.id === stepId);
     if (stepIdx === -1) throw new Error(`Step ${stepId} not found in pipeline`);
 
     steps[stepIdx] = {
@@ -97,7 +97,7 @@ export class EmployeeOnboardingPipelineService {
       data: data || null,
     };
 
-    const completedCount = steps.filter((s: any) => s.status === 'completed').length;
+    const completedCount = steps.filter((s: unknown) => s.status === 'completed').length;
     const currentStep = completedCount;
     const allDone = completedCount === steps.length;
 
@@ -138,8 +138,8 @@ export class EmployeeOnboardingPipelineService {
     }).catch((err) => log.warn('[employeeOnboardingPipelineService] Fire-and-forget failed:', err));
 
     // Check if all Tier 1 blocking steps are complete → trigger activation
-    const tier1Blocking = steps.filter((s: any) => s.tier === 1 && s.blocking);
-    const tier1Done = tier1Blocking.every((s: any) => s.status === 'completed');
+    const tier1Blocking = steps.filter((s: unknown) => s.tier === 1 && s.blocking);
+    const tier1Done = tier1Blocking.every((s: unknown) => s.status === 'completed');
 
     if (tier1Done && pipeline.entity_type === 'employee') {
       await this.triggerActivationIfReady(pipeline);
@@ -148,7 +148,7 @@ export class EmployeeOnboardingPipelineService {
     return result.rows[0];
   }
 
-  private async triggerActivationIfReady(pipeline: any): Promise<void> {
+  private async triggerActivationIfReady(pipeline: unknown): Promise<void> {
     const existing = await pool.query(
       `SELECT status FROM employees WHERE id = $1`,
       [pipeline.entity_id]
@@ -197,7 +197,7 @@ export class EmployeeOnboardingPipelineService {
     completedSteps: number;
     percentComplete: number;
     currentTier: number;
-    steps: any[];
+    steps: unknown[];
     status: string;
     blockers: string[];
   }> {
@@ -205,16 +205,16 @@ export class EmployeeOnboardingPipelineService {
     if (!pipeline) throw new Error('Pipeline not found');
 
     const steps = pipeline.steps as any[];
-    const completed = steps.filter((s: any) => s.status === 'completed').length;
+    const completed = steps.filter((s: unknown) => s.status === 'completed').length;
     const percent = Math.round((completed / steps.length) * 100);
 
     // Determine current tier
-    const pendingBlocking = steps.find((s: any) => s.status === 'pending' && s.blocking);
+    const pendingBlocking = steps.find((s: unknown) => s.status === 'pending' && s.blocking);
     const currentTier = pendingBlocking?.tier ?? 3;
 
     const blockers = steps
-      .filter((s: any) => s.blocking && s.status === 'pending' && s.tier <= currentTier)
-      .map((s: any) => s.title);
+      .filter((s: unknown) => s.blocking && s.status === 'pending' && s.tier <= currentTier)
+      .map((s: unknown) => s.title);
 
     return {
       totalSteps: steps.length,

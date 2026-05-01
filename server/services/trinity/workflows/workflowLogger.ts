@@ -53,7 +53,7 @@ export interface WorkflowTrailEntry {
   ts: string;
   ok: boolean;
   detail?: string;
-  data?: Record<string, any> | null;
+  data?: Record<string, unknown> | null;
 }
 
 export interface WorkflowStartParams {
@@ -61,7 +61,7 @@ export interface WorkflowStartParams {
   workflowName: string;
   triggeredBy?: string | null;
   triggerSource?: string; // 'sms_calloff' | 'voice_calloff' | 'cron' | 'chat' | ...
-  triggerData?: Record<string, any>;
+  triggerData?: Record<string, unknown>;
   userId?: string | null;
 }
 
@@ -110,10 +110,10 @@ export async function logWorkflowStart(
           trail: initialTrail,
           startedAt: startedAt.toISOString(),
           status: 'running',
-        } as any,
+        } as unknown,
         source: 'system',
         actorType: 'trinity',
-      } as any)
+      } as unknown)
       .returning({ id: auditLogs.id });
 
     return {
@@ -122,7 +122,7 @@ export async function logWorkflowStart(
       workspaceId: params.workspaceId,
       startedAt,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[workflowLogger] Non-fatal: start insert failed', {
       workflow: params.workflowName,
       error: err?.message,
@@ -145,7 +145,7 @@ export async function logWorkflowStep(
   step: WorkflowStep,
   ok: boolean,
   detail?: string,
-  data?: Record<string, any> | null,
+  data?: Record<string, unknown> | null,
 ): Promise<void> {
   if (!record?.id) return;
   try {
@@ -155,7 +155,7 @@ export async function logWorkflowStep(
       .where(eq(auditLogs.id, record.id))
       .limit(1);
 
-    const currentMeta = (existing?.metadata ?? {}) as Record<string, any>;
+    const currentMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
     const trail: WorkflowTrailEntry[] = Array.isArray(currentMeta.trail)
       ? currentMeta.trail
       : [];
@@ -170,10 +170,10 @@ export async function logWorkflowStep(
     await db
       .update(auditLogs)
       .set({
-        metadata: { ...currentMeta, trail } as any,
+        metadata: { ...currentMeta, trail } as unknown,
       })
       .where(eq(auditLogs.id, record.id));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[workflowLogger] Non-fatal: step update failed', {
       workflow: record.workflowName,
       step,
@@ -186,7 +186,7 @@ export interface WorkflowCompleteParams {
   success: boolean;
   summary?: string;
   errorMessage?: string;
-  result?: Record<string, any> | null;
+  result?: Record<string, unknown> | null;
   escalated?: boolean;
 }
 
@@ -209,7 +209,7 @@ export async function logWorkflowComplete(
       .where(eq(auditLogs.id, record.id))
       .limit(1);
 
-    const currentMeta = (existing?.metadata ?? {}) as Record<string, any>;
+    const currentMeta = (existing?.metadata ?? {}) as Record<string, unknown>;
     const trail: WorkflowTrailEntry[] = Array.isArray(currentMeta.trail)
       ? currentMeta.trail
       : [];
@@ -232,7 +232,7 @@ export async function logWorkflowComplete(
       .set({
         success: params.success,
         errorMessage: params.errorMessage ?? null,
-        changesAfter: sanitizeForLog(params.result) as any,
+        changesAfter: sanitizeForLog(params.result) as unknown,
         metadata: {
           ...currentMeta,
           trail,
@@ -240,10 +240,10 @@ export async function logWorkflowComplete(
           finishedAt: finishedAt.toISOString(),
           durationMs,
           summary: params.summary ?? null,
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, record.id));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[workflowLogger] Non-fatal: complete update failed', {
       workflow: record.workflowName,
       error: err?.message,
@@ -254,11 +254,11 @@ export async function logWorkflowComplete(
 /** Redaction mirror of actionAuditLogger.sanitize — keep in sync if extended. */
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'auth', 'credit_card', 'ssn'];
 
-function sanitizeForLog<T extends Record<string, any> | null | undefined>(
+function sanitizeForLog<T extends Record<string, unknown> | null | undefined>(
   value: T,
 ): T {
   if (!value || typeof value !== 'object') return value;
-  const out: Record<string, any> = Array.isArray(value) ? [...value] : { ...value };
+  const out: Record<string, unknown> = Array.isArray(value) ? [...value] : { ...value };
   for (const k of Object.keys(out)) {
     if (SENSITIVE_KEYS.some((sk) => k.toLowerCase().includes(sk))) {
       out[k] = '[REDACTED]';

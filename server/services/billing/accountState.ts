@@ -1,3 +1,4 @@
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 import { db } from '../../db';
 import {
   workspaces,
@@ -53,7 +54,6 @@ export class AccountStateService {
   /**
    * Transition account to a new state with audit logging
    */
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async transitionState(change: AccountStateChange): Promise<Workspace> {
     const { workspaceId, newState, reason, actorId, actorType = 'system' } = change;
 
@@ -71,7 +71,7 @@ export class AccountStateService {
     if ((newState === 'suspended' || newState === 'requires_support') && isBillingExemptByRecord(workspace)) {
       await logExemptedAction({ workspaceId, action: `account_state_transition_blocked:${newState}`, metadata: { requestedState: newState, reason: 'founder_exemption', blockedReason: reason } });
       log.warn('EXEMPTED: Blocked account state transition for founder workspace', { workspaceId, requestedState: newState });
-      return workspace as any;
+      return workspace as WorkspaceWithExtras;
     }
 
     const previousState = workspace.accountState || 'active';
@@ -80,7 +80,7 @@ export class AccountStateService {
     if (newState !== 'active' && isBillingExemptByRecord(workspace)) {
       await logExemptedAction({ workspaceId, action: `account_state_transition_blocked:${newState}`, metadata: { requestedState: newState, reason: 'founder_exemption', blockedReason: reason } });
       log.warn('EXEMPTED: Blocked account state transition for founder workspace', { workspaceId, requestedState: newState });
-      return workspace as any;
+      return workspace as WorkspaceWithExtras;
     }
 
     // Validate state transition
@@ -136,7 +136,6 @@ export class AccountStateService {
   async suspendForNonPayment(
     workspaceId: string,
     invoiceId: string
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   ): Promise<Workspace> {
     const [invoice] = await db.select()
       .from(subscriptionInvoices)
@@ -162,7 +161,6 @@ export class AccountStateService {
     workspaceId: string,
     reason: string,
     supportTicketId?: string
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   ): Promise<Workspace> {
     const [workspace] = await db.update(workspaces)
       .set({
@@ -201,7 +199,6 @@ export class AccountStateService {
     workspaceId: string,
     actorId: string,
     reason: string
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   ): Promise<Workspace> {
     const [workspace] = await db.select()
       .from(workspaces)
@@ -235,7 +232,6 @@ export class AccountStateService {
   async markPaymentFailed(
     workspaceId: string,
     reason: string
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   ): Promise<Workspace> {
     return this.transitionState({
       workspaceId,
@@ -366,7 +362,6 @@ export class AccountStateService {
                 {
                   clientName: ownerUser.name || 'Workspace Owner',
                   invoiceNumber: invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8)}`,
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   total: String(invoice.totalAmount || '0.00'),
                   dueDate: invoice.dueDate.toLocaleDateString(),
                   daysOverdue,
@@ -378,7 +373,7 @@ export class AccountStateService {
             }
           }
         } catch (emailError) {
-          log.error('Failed to send overdue email', { invoiceId: invoice.id, error: (emailError as any).message });
+          log.error('Failed to send overdue email', { invoiceId: invoice.id, error: (emailError as Record<string,unknown>).message });
         }
 
         // Emit platform event for the notification engine
@@ -400,7 +395,7 @@ export class AccountStateService {
             },
           });
         } catch (eventError) {
-          log.error('Failed to emit platform event', { invoiceId: invoice.id, error: (eventError as any).message });
+          log.error('Failed to emit platform event', { invoiceId: invoice.id, error: (eventError as Record<string,unknown>).message });
         }
 
         // Log audit event
@@ -419,7 +414,7 @@ export class AccountStateService {
           },
         });
       } catch (error) {
-        log.error('Failed to process overdue invoice', { invoiceId: invoice.id, error: (error as any).message });
+        log.error('Failed to process overdue invoice', { invoiceId: invoice.id, error: (error instanceof Error ? error.message : String(error)) });
       }
     }
   }
@@ -444,7 +439,6 @@ export class AccountStateService {
   /**
    * Get all workspaces in a specific state
    */
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async getWorkspacesByState(state: AccountState): Promise<Workspace[]> {
     return db.select()
       .from(workspaces)

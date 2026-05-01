@@ -10,6 +10,7 @@ import { eq, and } from 'drizzle-orm';
 import { gustoOAuthService } from '../oauth/gusto';
 import { withUsageTracking, withBatchUsageTracking } from '../../middleware/usageTracking';
 import { createLogger } from '../../lib/logger';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('gusto');
 
 
@@ -109,7 +110,7 @@ export class GustoService {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     endpoint: string,
     accessToken: string,
-    body?: any,
+    body?: unknown,
     requestId?: string
   ): Promise<T> {
     const url = `${GUSTO_API_BASE}${endpoint}`;
@@ -139,7 +140,7 @@ export class GustoService {
    * Gusto requires a company_id for most operations.
    * This is typically stored in the connection metadata.
    */
-  private async getCompanyId(connection: any): Promise<string> {
+  private async getCompanyId(connection: unknown): Promise<string> {
     // If stored in metadata, return it
     if (connection.metadata?.company_id) {
       return connection.metadata.company_id;
@@ -221,12 +222,10 @@ export class GustoService {
     const gustoEmployee: GustoEmployee = {
       first_name: employee.firstName,
       last_name: employee.lastName,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       email: employee.email,
-      jobs: (employee as any).payRate ? [
+      jobs: (employee as EmployeeWithStatus).payRate ? [
         {
           title: employee.position || 'Employee',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           rate: Number(employee.payRate),
           payment_unit: employee.payType === 'salary' ? 'Year' : 'Hour',
         },
@@ -289,7 +288,6 @@ export class GustoService {
         })
         .where(eq(partnerDataMappings.id, existingMapping.id));
     } else {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(partnerDataMappings).values({
         workspaceId,
         partnerConnectionId: connection.id,
@@ -344,10 +342,10 @@ export class GustoService {
     const gustoPayroll: Partial<GustoPayroll> = {
       company_id: companyId,
       pay_period: {
-        start_date: (payrollRun as any).startDate.toISOString().split('T')[0],
-        end_date: (payrollRun as any).endDate.toISOString().split('T')[0],
+        start_date: (payrollRun as Record<string, unknown>).startDate.toISOString().split('T')[0],
+        end_date: (payrollRun as Record<string, unknown>).endDate.toISOString().split('T')[0],
       },
-      payroll_deadline: (payrollRun as any).payDate?.toISOString().split('T')[0],
+      payroll_deadline: (payrollRun as Record<string, unknown>).payDate?.toISOString().split('T')[0],
     };
 
     const createGustoPayroll = withUsageTracking(
@@ -371,8 +369,8 @@ export class GustoService {
         featureKey: 'payroll_creation',
         metadata: {
           payrollRunId,
-          startDate: (payrollRun as any).startDate,
-          endDate: (payrollRun as any).endDate,
+          startDate: (payrollRun as Record<string, unknown>).startDate,
+          endDate: (payrollRun as Record<string, unknown>).endDate,
         },
       }
     );
@@ -380,7 +378,6 @@ export class GustoService {
     const result = await createGustoPayroll();
 
     // Create mapping
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(partnerDataMappings).values({
       workspaceId,
       partnerConnectionId: connection.id,
@@ -388,7 +385,7 @@ export class GustoService {
       entityType: 'payroll_run',
       coaileagueEntityId: payrollRunId,
       partnerEntityId: result.payrollId,
-      partnerEntityName: `Payroll ${(payrollRun as any).startDate.toLocaleDateString()}`,
+      partnerEntityName: `Payroll ${(payrollRun as Record<string, unknown>).startDate.toLocaleDateString()}`,
       syncStatus: 'synced',
       lastSyncAt: new Date(),
       mappingSource: 'auto',
@@ -447,9 +444,8 @@ export class GustoService {
       }
 
       timeActivities.push({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         employee_id: employeeMapping.partnerEntityId,
-        date: (entry as any).periodEnd.toISOString().split('T')[0],
+        date: (entry as unknown).periodEnd.toISOString().split('T')[0],
         hours_worked: Number(entry.regularHours || 0) + Number(entry.overtimeHours || 0),
       });
     }
@@ -459,7 +455,6 @@ export class GustoService {
     }
 
     // Submit time activities using batch tracking
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const submitActivities = withBatchUsageTracking(
       async (batchId: string) => {
         // Gusto typically batches time activities
@@ -488,7 +483,6 @@ export class GustoService {
       }
     );
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await submitActivities();
   }
 

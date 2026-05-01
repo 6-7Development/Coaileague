@@ -49,7 +49,7 @@ export interface InvoiceLineItemInput {
   amount: number;
   addonId?: string;
   featureKey?: string;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 export interface GenerateInvoiceInput {
@@ -259,9 +259,7 @@ export class InvoiceService {
         relatedEntityId: invoice.id,
         newState: {
           invoiceNumber,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           subtotal,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           totalAmount,
           lineItemCount: lineItems.length,
         },
@@ -338,7 +336,7 @@ export class InvoiceService {
       if (subOrgs.length === 0) return lineItems;
 
       const { BILLING: billingConfig } = await import('../../../shared/billingConfig');
-      const subOrgConfig = (billingConfig as any).subOrgBilling;
+      const subOrgConfig = (billingConfig as Record<string,unknown>).subOrgBilling;
       if (!subOrgConfig) return lineItems;
 
       const basePrice = subOrgConfig.perSubOrgMonthlyPrice || 19900;
@@ -381,7 +379,7 @@ export class InvoiceService {
         if (sub.primaryOperatingState) allStates.add(sub.primaryOperatingState);
       }
 
-      const stateComplianceConfig = (billingConfig as any).stateComplianceFees;
+      const stateComplianceConfig = (billingConfig as Record<string,unknown>).stateComplianceFees;
       if (stateComplianceConfig?.enabled && allStates.size > (stateComplianceConfig.includedStates || 1)) {
         const extraStates = allStates.size - (stateComplianceConfig.includedStates || 1);
         const perStateFee = stateComplianceConfig.perStateComplianceMonitoring || 4900;
@@ -572,7 +570,7 @@ export class InvoiceService {
         description: `Subscription invoice ${invoice.invoiceNumber} is now overdue`,
         workspaceId: invoice.workspaceId,
         metadata: { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, dueDate: invoice.dueDate, totalAmount: invoice.totalAmount },
-      }).catch((err: any) => log.warn('[InvoiceService] publish invoice_overdue failed:', err.message));
+      }).catch((err: unknown) => log.warn('[InvoiceService] publish invoice_overdue failed:', err.message));
     }
 
     return invoice;
@@ -857,7 +855,6 @@ export class InvoiceService {
     const calculatedDueDate = dueDate || new Date(billingPeriodEnd.getTime() + 30 * 24 * 60 * 60 * 1000);
     log.info('Due date set', { dueDate: calculatedDueDate.toISOString() });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return await db.transaction(async (tx) => {
       const [invoice] = await tx.insert(invoices)
         .values({
@@ -1182,7 +1179,7 @@ export class InvoiceService {
     payerEmail?: string,
     payerName?: string,
     notes?: string,
-  ): Promise<{ payment: any; invoice: Invoice; remainingBalance: number }> {
+  ): Promise<{ payment: unknown; invoice: Invoice; remainingBalance: number }> {
     const { invoicePayments, paymentRecords } = await import('@shared/schema');
 
     const [invoice] = await db.select()
@@ -1215,7 +1212,7 @@ export class InvoiceService {
         notes: notes || `Partial payment of $${effectiveAmount.toFixed(2)}`,
       }).returning();
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         amountPaid: newPaidTotal.toFixed(2),
         updatedAt: new Date(),
       };
@@ -1271,7 +1268,7 @@ export class InvoiceService {
           metadata: { paymentMethod, payerEmail, payerName, fullyPaid },
           tx,
         });
-      } catch (ledgerErr: any) {
+      } catch (ledgerErr: unknown) {
         log.error('[InvoiceService] Ledger write failed — rolling back payment transaction:', ledgerErr.message);
         throw ledgerErr; // re-throw to abort the transaction
       }
@@ -1394,7 +1391,7 @@ export class InvoiceService {
         description: `$${lateFee.toFixed(2)} late fee applied to invoice ${invoice.invoiceNumber} (${daysOverdue} days overdue)`,
         workspaceId,
         metadata: { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, lateFee, daysOverdue, newTotal, feeType, feeAmount },
-      }).catch((err: any) => log.warn('[InvoiceService] publish late_fee_applied failed:', err.message));
+      }).catch((err: unknown) => log.warn('[InvoiceService] publish late_fee_applied failed:', err.message));
 
       results.push({
         invoiceId: invoice.id,
@@ -1495,7 +1492,7 @@ export class InvoiceService {
         description: `Credit memo for $${amount.toFixed(2)} issued against invoice ${originalInvoice.invoiceNumber}. Reason: ${reason}`,
         workspaceId,
         metadata: { creditMemoId: creditMemo.id, creditMemoNumber, originalInvoiceId, originalInvoiceNumber: originalInvoice.invoiceNumber, amount, reason, createdBy },
-      }).catch((err: any) => log.warn('[InvoiceService] publish credit_memo_created failed:', err.message));
+      }).catch((err: unknown) => log.warn('[InvoiceService] publish credit_memo_created failed:', err.message));
 
       return { creditMemo, originalInvoice: updatedOriginal };
     });
@@ -1612,7 +1609,7 @@ export class InvoiceService {
             type: schedule.type,
             clientEmail,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error('Failed to send payment reminder', { invoiceId: invoice.id, error: (err instanceof Error ? err.message : String(err)) });
           await db.insert(invoiceReminders).values({
             workspaceId,
@@ -1825,7 +1822,7 @@ export class InvoiceService {
         .limit(1);
       if (!invoice) return { success: false, error: 'Invoice not found' };
 
-      const inv = invoice as any;
+      const inv = invoice as unknown;
 
       const [client] = await db.select().from(clients)
         .where(and(eq(clients.id, inv.clientId), eq(clients.workspaceId, workspaceId)))
@@ -1838,8 +1835,8 @@ export class InvoiceService {
       const lineItems = await db.select().from((await import('@shared/schema')).invoiceLineItems)
         .where(eq((await import('@shared/schema')).invoiceLineItems.invoiceId, invoiceId));
 
-      const c = client as any;
-      const w = ws as any;
+      const c = client as unknown;
+      const w = ws as unknown;
       const clientName = c?.companyName || `${c?.firstName || ''} ${c?.lastName || ''}`.trim() || 'Client';
       const workspaceName = w?.companyName || workspaceId;
       const issueDate = inv.issueDate ? new Date(inv.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
@@ -1952,7 +1949,7 @@ export class InvoiceService {
         vaultId: vaultResult.vault?.id,
         documentNumber: vaultResult.vault?.documentNumber,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[InvoiceService] Invoice PDF generation failed:', error?.message);
       return { success: false, error: error?.message };
     }

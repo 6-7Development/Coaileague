@@ -36,7 +36,7 @@ export interface FastModeConfig {
 export interface FastModeOperation {
   id: string;
   type: string;
-  handler: () => Promise<any>;
+  handler: () => Promise<unknown>;
   dependencies?: string[];
   estimatedDurationMs?: number;
   creditCost?: number;
@@ -49,7 +49,7 @@ export interface FastModeRequest {
   tier: ExecutionTier;
   operations: FastModeOperation[];
   streaming?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface FastModeResult {
@@ -70,7 +70,7 @@ export interface OperationResult {
   operationId: string;
   type: string;
   success: boolean;
-  result?: any;
+  result?: unknown;
   error?: string;
   durationMs: number;
   executedAt: Date;
@@ -192,11 +192,10 @@ class TrinityFastModeService {
         // Emit streaming update if enabled
         if (request.streaming) {
           platformEventBus.publish({
-            type: 'automation' as any,
+            type: 'automation',
             title: 'Batch Execution Started',
             description: `Executing batch ${batches.indexOf(batch) + 1}/${batches.length} with ${batch.length} operations`,
             data: { requestId, batchSize: batch.length, batchIndex: batches.indexOf(batch) + 1, totalBatches: batches.length },
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: 'info',
             isNew: true
           });
@@ -264,11 +263,10 @@ class TrinityFastModeService {
 
       // Emit completion event
       platformEventBus.publish({
-        type: 'automation' as any,
+        type: 'automation',
         title: 'FAST Mode Execution Complete',
         description: `Completed ${completedOperations}/${request.operations.length} operations (${parallelSpeedup.toFixed(1)}x speedup)`,
         data: { requestId, workspaceId: request.workspaceId, tier: request.tier, completedOperations, failedOperations, parallelSpeedup, creditsCost },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         severity: 'success',
         isNew: true
       });
@@ -322,7 +320,7 @@ class TrinityFastModeService {
         tier: config.tier
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         operationId: operation.id,
         type: operation.type,

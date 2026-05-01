@@ -15,6 +15,7 @@
  */
 
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import { requireAuth } from '../auth';
 import { pool } from '../db';
 import { z } from 'zod';
@@ -37,7 +38,7 @@ router.get('/events', requireAuth, (req, res) => {
 });
 
 // ─── GET /api/webhooks ────────────────────────────────────────────────────────
-router.get('/', requireAuth, async (req: any, res) => {
+router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
 
@@ -48,7 +49,7 @@ router.get('/', requireAuth, async (req: any, res) => {
     );
 
     return res.json({ webhooks: rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] GET error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch webhooks' });
   }
@@ -62,7 +63,7 @@ const createWebhookSchema = z.object({
   events: z.array(z.string()).min(1),
 });
 
-router.post('/', requireAuth, async (req: any, res) => {
+router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId, id: userId } = req.user;
 
@@ -88,7 +89,7 @@ router.post('/', requireAuth, async (req: any, res) => {
 
     // Validate event types
     const invalidEvents = parsed.data.events.filter(
-      e => !WEBHOOK_EVENT_TYPES.includes(e as any)
+      e => !WEBHOOK_EVENT_TYPES.includes(e as string)
     );
     if (invalidEvents.length > 0) {
       return res.status(400).json({ error: `Invalid event types: ${invalidEvents.join(', ')}` });
@@ -108,7 +109,7 @@ router.post('/', requireAuth, async (req: any, res) => {
 
     // Return plaintext secret only on creation (never stored in plaintext)
     return res.status(201).json({ webhook: { ...rows[0], secret: plaintextSecret } });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] POST error:', err.message);
     return res.status(500).json({ error: 'Failed to create webhook' });
   }
@@ -122,7 +123,7 @@ const updateWebhookSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.put('/:id', requireAuth, async (req: any, res) => {
+router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId } = req.user;
 
@@ -137,7 +138,7 @@ router.put('/:id', requireAuth, async (req: any, res) => {
 
     const { name, url, events, isActive } = parsed.data;
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let paramIdx = 1;
 
     if (name !== undefined) { fields.push(`name = $${paramIdx++}`); values.push(name); }
@@ -161,14 +162,14 @@ router.put('/:id', requireAuth, async (req: any, res) => {
 
     if (!rows[0]) return res.status(404).json({ error: 'Webhook not found' });
     return res.json({ webhook: rows[0] });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] PUT error:', err.message);
     return res.status(500).json({ error: 'Failed to update webhook' });
   }
 });
 
 // ─── DELETE /api/webhooks/:id ─────────────────────────────────────────────────
-router.delete('/:id', requireAuth, async (req: any, res) => {
+router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId } = req.user;
 
@@ -183,26 +184,26 @@ router.delete('/:id', requireAuth, async (req: any, res) => {
 
     if (!rowCount) return res.status(404).json({ error: 'Webhook not found' });
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] DELETE error:', err.message);
     return res.status(500).json({ error: 'Failed to delete webhook' });
   }
 });
 
 // ─── POST /api/webhooks/:id/test ──────────────────────────────────────────────
-router.post('/:id/test', requireAuth, async (req: any, res) => {
+router.post('/:id/test', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const result = await sendTestWebhook(req.params.id, workspaceId);
     return res.json(result);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] test error:', err.message);
     return res.status(500).json({ error: 'Failed to send test webhook. Please try again.' });
   }
 });
 
 // ─── GET /api/webhooks/:id/deliveries ─────────────────────────────────────────
-router.get('/:id/deliveries', requireAuth, async (req: any, res) => {
+router.get('/:id/deliveries', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
 
@@ -223,14 +224,14 @@ router.get('/:id/deliveries', requireAuth, async (req: any, res) => {
     );
 
     return res.json({ deliveries: rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] deliveries error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch deliveries' });
   }
 });
 
 // ─── POST /api/webhooks/:id/retry ─────────────────────────────────────────────
-router.post('/:id/retry', requireAuth, async (req: any, res) => {
+router.post('/:id/retry', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId } = req.user;
 
@@ -249,7 +250,7 @@ router.post('/:id/retry', requireAuth, async (req: any, res) => {
     if (!rows[0]) return res.status(404).json({ error: 'Webhook not found' });
 
     return res.json({ success: true, message: 'Webhook re-activated — will deliver on next event' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[WebhookRoutes] retry error:', err.message);
     return res.status(500).json({ error: 'Failed to retry webhook' });
   }

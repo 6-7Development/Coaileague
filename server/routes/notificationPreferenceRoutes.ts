@@ -13,6 +13,7 @@
  */
 
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import { requireAuth } from '../auth';
 import { pool } from '../db';
 import { z } from 'zod';
@@ -30,7 +31,7 @@ import {
 const router = Router();
 
 // ─── GET /api/notification-preferences ────────────────────────────────────────
-router.get('/', requireAuth, async (req: any, res) => {
+router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id: userId, workspaceId } = req.user;
 
@@ -60,7 +61,7 @@ router.get('/', requireAuth, async (req: any, res) => {
         languagePreference: userRows[0]?.preferred_language || 'en',
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] GET preferences error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch preferences' });
   }
@@ -77,7 +78,7 @@ const updatePrefsSchema = z.object({
   digestFrequency: z.enum(['realtime', 'hourly', 'daily', 'weekly']).optional(),
 });
 
-router.put('/', requireAuth, async (req: any, res) => {
+router.put('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id: userId, workspaceId } = req.user;
 
@@ -117,26 +118,26 @@ router.put('/', requireAuth, async (req: any, res) => {
     invalidatePreferenceCache(userId, workspaceId);
 
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] PUT preferences error:', err.message);
     return res.status(500).json({ error: 'Failed to update preferences' });
   }
 });
 
 // ─── GET /api/notification-templates ──────────────────────────────────────────
-router.get('/templates', requireAuth, async (req: any, res) => {
+router.get('/templates', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const templates = await listTemplates(workspaceId);
     return res.json({ templates });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] GET templates error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch templates' });
   }
 });
 
 // ─── POST /api/notification-templates/preview ──────────────────────────────────
-router.post('/templates/preview', requireAuth, async (req: any, res) => {
+router.post('/templates/preview', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { bodyTemplate, sampleData } = req.body;
     if (!bodyTemplate) return res.status(400).json({ error: 'bodyTemplate is required' });
@@ -145,7 +146,7 @@ router.post('/templates/preview', requireAuth, async (req: any, res) => {
     const rendered = previewTemplate(bodyTemplate, sampleData);
 
     return res.json({ rendered, variables });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] preview error:', err.message);
     return res.status(500).json({ error: 'Failed to preview template' });
   }
@@ -161,7 +162,7 @@ const createTemplateSchema = z.object({
   isGlobal: z.boolean().optional().default(false),
 });
 
-router.post('/templates', requireAuth, async (req: any, res) => {
+router.post('/templates', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId, id: userId } = req.user;
 
@@ -189,14 +190,14 @@ router.post('/templates', requireAuth, async (req: any, res) => {
     });
 
     return res.status(201).json({ template });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] POST template error:', err.message);
     return res.status(500).json({ error: 'Failed to create notification template. Please try again.' });
   }
 });
 
 // ─── GET /api/notification-templates/:id/versions ─────────────────────────────
-router.get('/templates/:notifType/versions', requireAuth, async (req: any, res) => {
+router.get('/templates/:notifType/versions', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { notifType } = req.params;
@@ -209,7 +210,7 @@ router.get('/templates/:notifType/versions', requireAuth, async (req: any, res) 
     );
 
     return res.json({ versions: rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[NotifPrefRoutes] GET versions error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch template versions' });
   }

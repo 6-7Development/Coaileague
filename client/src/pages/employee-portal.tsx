@@ -181,7 +181,7 @@ export default function EmployeePortal() {
   const initials = `${currentEmployee.firstName?.[0] || ''}${currentEmployee.lastName?.[0] || ''}`.toUpperCase();
 
   const headerAction = (
-    <Button variant="outline" size="icon" data-testid="button-notifications">
+    <Button variant="outline" size="icon" aria-label="Notifications" data-testid="button-notifications">
       <Bell className="h-4 w-4" />
     </Button>
   );
@@ -227,7 +227,7 @@ export default function EmployeePortal() {
           </CardHeader>
           <CardContent>
             <Progress value={onboardingProgress.completionPercentage ?? 0} className="mb-3" />
-            {requiredDocs.map((doc: any) => (
+            {requiredDocs.map((doc) => (
               <div key={doc.id} className="flex items-center gap-3 py-2 border-b border-border/40">
                 {doc.status === 'approved'
                   ? <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -552,7 +552,7 @@ export default function EmployeePortal() {
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Required Documents</p>
                         <div className="space-y-2">
-                          {onboardingProgress.documentStatuses.map((doc: any, i: number) => (
+                          {onboardingProgress.documentStatuses.map((doc: unknown, i: number) => (
                             <div
                               key={i}
                               className="flex items-center gap-3 p-3 rounded-md bg-muted/30"

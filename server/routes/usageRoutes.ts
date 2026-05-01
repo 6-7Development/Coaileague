@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth, type AuthenticatedRequest } from "../rbac";
 import { createLogger } from '../lib/logger';
 import { TOKEN_ALLOWANCES, TOKEN_OVERAGE_RATE_CENTS_PER_100K } from '../../shared/billingConfig';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('CreditRoutes');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +132,7 @@ router.get(['/tokens', '/balance'], requireAuth, async (req: AuthenticatedReques
 
     const tier = (workspace.subscriptionTier || 'free').toLowerCase();
     const allowance = getTokenAllowance(tier);
-    const isUnlimited = allowance === null || !!(workspace as any).founderExemption;
+    const isUnlimited = allowance === null || !!(workspace as WorkspaceWithExtras).founderExemption;
     const nextReset = getNextMonthStart();
     const tokenSummary = await getMonthlyTokenSummary(billingWorkspaceId, tier);
 
@@ -193,7 +194,7 @@ router.get(['/token-breakdown', '/usage-breakdown'], requireAuth, async (req: Au
       [billingWorkspaceId, monthYear],
     );
 
-    res.json(result.rows.map((r: any) => ({
+    res.json(result.rows.map((r: unknown) => ({
       featureKey: r.featureKey,
       featureName: r.featureName,
       tokensUsed: Number(r.tokensUsed),
@@ -244,7 +245,7 @@ router.get(['/token-log', '/transactions'], requireAuth, async (req: Authenticat
       [billingWorkspaceId, limit, offset],
     );
 
-    res.json(result.rows.map((r: any) => ({
+    res.json(result.rows.map((r: unknown) => ({
       id: r.id,
       workspaceId: r.workspaceId,
       userId: r.userId,

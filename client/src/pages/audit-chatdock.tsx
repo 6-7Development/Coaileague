@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { FeatureUnavailable, isFeatureUnavailable } from "@/components/ui/feature-unavailable";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,13 +36,13 @@ export default function AuditChatdock() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
 
   const [modifyText, setModifyText] = useState('');
   const [showModifyFor, setShowModifyFor] = useState<string | null>(null);
 
   // Gate check
-  const { data: safeStatus } = useQuery({
+  const { data: safeStatus, error} = useQuery({
     queryKey: ['/api/audit-suite/audits', auditId, 'safe-status'],
     queryFn: () => apiRequest('GET', `/api/audit-suite/audits/${auditId}/safe-status?workspaceId=${workspaceId}`).then(r => r.json()),
     enabled: !!auditId && !!workspaceId,
@@ -61,7 +62,7 @@ export default function AuditChatdock() {
       queryClient.invalidateQueries({ queryKey: ['/api/audit-suite/audits', auditId, 'packets'] });
       toast({ title: 'Audit packet ready for review', description: 'Trinity has compiled your audit packet. Please review and approve before sending.' });
     },
-    onError: (err: any) => toast({ title: 'Generation failed', description: err?.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Generation failed', description: err?.message, variant: 'destructive' }),
   });
 
   const approveMutation = useMutation({
@@ -71,7 +72,7 @@ export default function AuditChatdock() {
       queryClient.invalidateQueries({ queryKey: ['/api/audit-suite/audits', auditId, 'packets'] });
       toast({ title: 'Document released', description: 'The audit packet has been sent to the auditor.' });
     },
-    onError: (err: any) => toast({ title: 'Approval failed', description: err?.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Approval failed', description: err?.message, variant: 'destructive' }),
   });
 
   const rejectMutation = useMutation({
@@ -85,10 +86,10 @@ export default function AuditChatdock() {
       setModifyText('');
       toast({ title: 'Revision requested', description: 'Trinity is generating a revised packet based on your instructions.' });
     },
-    onError: (err: any) => toast({ title: 'Revision failed', description: err?.message, variant: 'destructive' }),
+    onError: (err) => toast({ title: 'Revision failed', description: err?.message, variant: 'destructive' }),
   });
 
-  const drafts: any[] = draftsData?.drafts ?? [];
+  const drafts: unknown[] = draftsData?.drafts ?? [];
   const pendingDraft = drafts.find(d => d.status === 'pending_owner_review');
   const sentDrafts   = drafts.filter(d => d.sent_to_auditor);
 
@@ -106,6 +107,10 @@ export default function AuditChatdock() {
         </Card>
       </div>
     );
+  }
+
+  if (isFeatureUnavailable(error)) {
+    return <FeatureUnavailable feature="Audit Suite" eta="Q3 2026" />;
   }
 
   return (
@@ -235,7 +240,7 @@ export default function AuditChatdock() {
             <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Send className="h-4 w-4" /> Documents Released to Auditor
             </h3>
-            {sentDrafts.map((d: any) => (
+            {sentDrafts.map((d) => (
               <Card key={d.id} className="border-green-200">
                 <CardContent className="pt-4 pb-4 flex items-center justify-between">
                   <div className="text-sm text-slate-700">

@@ -71,7 +71,7 @@ async function requireManagerRole(req: AuthenticatedRequest): Promise<{ allowed:
   }
 
   req.workspaceId = resolved.workspaceId;
-  req.workspaceRole = resolved.role as any;
+  req.workspaceRole = resolved.role as unknown;
   req.employeeId = resolved.employeeId || undefined;
   return { allowed: true };
 }
@@ -102,7 +102,7 @@ import { mutationLimiter } from "../middleware/rateLimiter";
 // Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -126,13 +126,12 @@ const DEFAULT_ROUND_HOURS_INCREMENT = '0.25';
 // Apply rate limiting to all invoice routes
 // Billing operations are sensitive and involve PDF generation/Stripe calls
 router.use(rateLimitMiddleware(
-  (req: any) => {
+  (req: AuthenticatedRequest) => {
     const workspaceId = req.workspaceId || req.session?.currentWorkspaceId;
     if (workspaceId) return `invoices-${workspaceId}`;
     return `invoices-ip-${req.ip}`;
   },
-  (req: any) => (req.session?.plan || 'free') as any
-));
+  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as unknown));
 
 router.use((req, res, next) => {
   if (req.path.startsWith('/portal/')) return next();
@@ -171,7 +170,7 @@ import { createHash } from "crypto";
       // ── TRACE PROTOCOL V2: DOCUMENT VAULT & PDF INTEGRITY ────────────────────
       // All production documents must be hashed and registered in the vault.
       
-      const generatePdf = async (doc: any) => {
+      const generatePdf = async (doc: unknown) => {
         // Header
         doc.fontSize(24).text(workspace.companyName || PLATFORM.name, { align: 'center' });
         doc.fontSize(10).text(workspace.address || '', { align: 'center' });
@@ -197,7 +196,7 @@ import { createHash } from "crypto";
         doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
         let y = tableTop + 25;
-        lineItems.forEach((item: any) => {
+        lineItems.forEach((item: unknown) => {
           doc.text(item.description || 'Service', 50, y);
           doc.text(item.quantity?.toString() || '1', 300, y);
           doc.text(`$${item.rate || '0.00'}`, 350, y);
@@ -220,7 +219,7 @@ import { createHash } from "crypto";
 
       // Create PDF
       const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
-      const chunks: any[] = [];
+      const chunks: (string | number | boolean | null)[] = [];
       doc.on('data', chunk => chunks.push(chunk));
       
       await generatePdf(doc);
@@ -260,7 +259,7 @@ import { createHash } from "crypto";
         relatedEntityId: invoice.id,
         uploadedBy: req.user?.id || null,
         createdAt: new Date(),
-      }) as any).onConflictDoNothing();
+      }) as unknown).onConflictDoNothing();
 
       // AI-assisted verification (withGpt)
       if (true) { // AI verification always attempted via metered client
@@ -295,7 +294,7 @@ import { createHash } from "crypto";
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
       const workspaceId = req.workspaceId!;
 
-      const { invoiceProposals } = (await import("@shared/schema")) as any;
+      const { invoiceProposals } = (await import("@shared/schema")) as unknown;
       
       const proposals = await db.select({
         id: invoiceProposals.id,
@@ -374,8 +373,8 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           const billingCycle = clientRate.subscriptionFrequency || 'monthly';
           
           // Get last invoice for this client
-          const clientInvoices = allInvoices.filter((inv: any) => inv.clientId === client.id);
-          const lastInvoice = clientInvoices.sort((a: any, b: any) => 
+          const clientInvoices = allInvoices.filter((inv: unknown) => inv.clientId === client.id);
+          const lastInvoice = clientInvoices.sort((a: unknown, b: unknown) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
 
@@ -408,7 +407,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           }
 
           // Get unbilled time entries
-          const unbilledEntries = allTimeEntries.filter((entry: any) => 
+          const unbilledEntries = allTimeEntries.filter((entry: unknown) => 
             entry.clientId === client.id && !entry.invoiceId && entry.clockOut && entry.status === 'approved'
           );
 
@@ -459,15 +458,14 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
                 total: totalStr,
                 status: "draft",
                 notes: `Auto-generated invoice for ${billingCycle} billing cycle`,
-              } as any)
-              .returning();
+              }).returning();
 
             try {
               await AtomicFinancialLockService.stageForInvoice({
                 workspaceId: workspace.id,
                 clientId: client.id,
                 invoiceId: inv.id,
-                timeEntryIds: unbilledEntries.map((e: any) => e.id),
+                timeEntryIds: unbilledEntries.map((e: unknown) => e.id),
                 tx,
               });
             } catch (stageErr) {
@@ -483,7 +481,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           generatedInvoices.push({
             invoice,
             client,
-            unbilledHours: unbilledEntries.reduce((sum: number, e: any) => 
+            unbilledHours: unbilledEntries.reduce((sum: number, e: unknown) => 
               sum + parseFloat(e.totalHours as string || "0"), 0
             ),
           });
@@ -515,7 +513,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
             unbilledHours: genInv.unbilledHours,
             source: 'auto_generate',
           },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
 
       for (const genInv of generatedInvoices) {
@@ -531,7 +529,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           changes: { after: { invoiceNumber: genInv.invoice.invoiceNumber, total: genInv.invoice.total, clientId: genInv.client.id, unbilledHours: genInv.unbilledHours, status: 'draft' } },
           isSensitiveData: true,
           complianceTag: 'soc2',
-        }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for auto-generated invoice', { error: err?.message }));
+        }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for auto-generated invoice', { error: err instanceof Error ? err.message : String(err) }));
       }
 
       res.json({
@@ -550,7 +548,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.post('/:id/send-email', async (req: any, res) => {
+  router.post('/:id/send-email', async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       if (!isValidId(id)) return res.status(400).json({ message: "Invalid invoice ID format" });
@@ -578,7 +576,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // ── WRITE-PROTECT: Closed invoices cannot be re-sent ──────────────────────
       // GAP-31 FIX: Added 'refunded' — a refunded invoice must not be re-sent to client.
       const SEND_BLOCKED_STATUSES = ['paid', 'void', 'cancelled', 'refunded', 'disputed'] as const;
-      if (SEND_BLOCKED_STATUSES.includes((invoice as any).status)) {
+      if (SEND_BLOCKED_STATUSES.includes((invoice as Record<string, unknown>).status)) {
         return res.status(403).json({
           message: "This record has been closed and cannot be modified",
           code: 'RECORD_CLOSED',
@@ -600,7 +598,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // A zero-amount line item is almost always a data entry error (rate not set,
       // hours not entered). Sending such an invoice to a client is unprofessional
       // and creates billing disputes that are hard to reverse once sent.
-      const zeroAmountItems = lineItems.filter((item: any) => {
+      const zeroAmountItems = lineItems.filter((item: unknown) => {
         const amt = parseFloat(item.amount as string || '0');
         return amt === 0;
       });
@@ -608,11 +606,11 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         return res.status(422).json({
           message: `Invoice has ${zeroAmountItems.length} line item(s) with a zero amount. Correct or remove them before sending.`,
           code: 'ZERO_AMOUNT_LINE_ITEMS',
-          zeroItems: zeroAmountItems.map((i: any) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
+          zeroItems: zeroAmountItems.map((i: unknown) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
         });
       }
 
-      const emailLineItems = lineItems.map((item: any) => ({
+      const emailLineItems = lineItems.map((item: unknown) => ({
         description: item.description || '',
         quantity: toFinancialString(item.quantity as string || '1'),
         unitPrice: toFinancialString(item.unitPrice as string || '0'),
@@ -717,7 +715,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         changes: { before: { status: invoice.status }, after: { status: 'sent', sentTo: client.email } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice send', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice send', { error: err instanceof Error ? err.message : String(err) }));
 
       platformEventBus.publish({
         type: 'invoice_sent',
@@ -728,7 +726,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         userId,
         metadata: { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, sentTo: client.email, clientId: invoice.clientId },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       res.json({ 
         success: true, 
@@ -743,7 +741,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.post('/:id/send', mutationLimiter, async (req: any, res: any) => {
+  router.post('/:id/send', mutationLimiter, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const roleCheck = await requireManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
@@ -774,7 +772,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         return res.status(500).json({ message: result.message || "Failed to send invoice email" });
       }
 
-      await storage.updateInvoice(id, workspaceId, { status: 'sent', updatedAt: new Date() } as any);
+      await storage.updateInvoice(id, workspaceId, { status: 'sent', updatedAt: new Date() } as unknown);
 
       res.json({ success: true, message: "Invoice sent successfully" });
     } catch (error: unknown) {
@@ -860,7 +858,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.post('/', idempotencyMiddleware, async (req: any, res) => {
+  router.post('/', idempotencyMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
       const roleCheck = await requireManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
@@ -925,7 +923,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       });
 
       if (businessRuleResponse(res, [
-        validateInvoiceAmount((rawValidated as any).totalAmount ?? req.body.totalAmount, 'totalAmount'),
+        validateInvoiceAmount((rawValidated as Record<string,unknown>).totalAmount ?? req.body.totalAmount, 'totalAmount'),
       ])) return;
 
       const validated = enforceAttribution('invoices', rawValidated, req.attribution || {
@@ -939,7 +937,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       const invoice = await db.transaction(async (tx) => {
         const createdInvoice = await tx
           .insert(invoices)
-          .values(validated as any)
+          .values(validated)
           .returning()
           .then(rows => rows[0]);
 
@@ -960,7 +958,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         });
 
         // Create revenue recognition schedule (Issue #5: invoice-to-revenue linking)
-        const recognitionMethod = (createdInvoice as any).recognitionMethod ?? 'cash';
+        const recognitionMethod = (createdInvoice as Record<string,unknown>).recognitionMethod ?? 'cash';
         const invoiceTotal = parseFloat(String(createdInvoice.total || validated.totalAmount || 0));
         if (invoiceTotal > 0 && createdInvoice.clientId) {
           try {
@@ -975,8 +973,8 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
               startDate: createdInvoice.issueDate ? new Date(createdInvoice.issueDate) : new Date(),
               createdBy: userId,
             });
-          } catch (revErr: any) {
-            log.warn('[InvoiceRoutes] Revenue schedule creation failed', { error: revErr?.message });
+          } catch (revErr: unknown) {
+            log.warn('[InvoiceRoutes] Revenue schedule creation failed', { error: revErr instanceof Error ? revErr.message : String(revErr) });
               // Non-fatal: invoice is created but revenue ledger may need manual reconciliation
               // This is surfaced in the API response as a warning flag
           }
@@ -997,7 +995,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         changes: { after: { invoiceNumber: invoice.invoiceNumber, total: validated.totalAmount, clientId: validated.clientId, status: 'draft' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice creation', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice creation', { error: err instanceof Error ? err.message : String(err) }));
 
       pool.query(
         `INSERT INTO universal_audit_log (workspace_id, actor_id, action, entity_type, entity_id, action_description, changes)
@@ -1011,7 +1009,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           `Invoice ${invoice.invoiceNumber} created`,
           JSON.stringify({ invoiceNumber: invoice.invoiceNumber, total: validated.totalAmount, clientId: validated.clientId, status: 'draft' }),
         ]
-      ).catch(err => log.error('[FinancialAudit] CRITICAL: universal_audit_log write failed for invoice creation', { error: err?.message }));
+      ).catch(err => log.error('[FinancialAudit] CRITICAL: universal_audit_log write failed for invoice creation', { error: err instanceof Error ? err.message : String(err) }));
 
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(workspace.id, { type: 'invoices_updated', action: 'created' });
@@ -1025,7 +1023,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         userId,
         metadata: { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, total: validated.totalAmount, clientId: validated.clientId, status: 'draft' },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       notificationHelpers.createInvoiceCreatedNotification(
         { storage: storage as any },
@@ -1047,7 +1045,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.patch('/:id', mutationLimiter, async (req: any, res) => {
+  router.patch('/:id', mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
       const roleCheck = await requireManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
@@ -1098,7 +1096,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // GAP-32 FIX: Added 'refunded' — a refunded invoice is a closed accounting record
       // and must not be mutated via PATCH. Issue a new credit memo to correct it.
       const CLOSED_STATUSES = ['paid', 'cancelled', 'void', 'refunded', 'disputed'] as const;
-      if (CLOSED_STATUSES.includes((frozenCheck as any).status)) {
+      if (CLOSED_STATUSES.includes((frozenCheck as Record<string,unknown>).status)) {
         return res.status(409).json({
           message: `Invoice ${frozenCheck.invoiceNumber || id} has status '${frozenCheck.status}' and cannot be modified. To correct a paid invoice, issue a credit memo or adjustment.`,
           code: 'INVOICE_CLOSED',
@@ -1165,7 +1163,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         taxAmount !== undefined ? validateNonNegativeAmount(taxAmount, 'taxAmount') : null,
       ])) return;
 
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       if (status !== undefined) updateData.status = status;
       if (status === 'void' && bodyParsed.data.voidReason) {
         updateData.voidReason = bodyParsed.data.voidReason;
@@ -1190,7 +1188,6 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // Only reverse open AR (statuses that had an invoice_created debit recorded)
       if (status && ['void', 'cancelled'].includes(status) && currentInvoiceState) {
         const arOpenStatuses = ['sent', 'partial', 'overdue', 'draft'];
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (arOpenStatuses.includes(currentInvoiceState.status)) {
           // RC4 (Phase 2): AR reversal uses Decimal.js subtraction to avoid floating-point drift.
           const fullTotalStr = toFinancialString(String(currentInvoiceState.total || updated.total || 0));
@@ -1241,7 +1238,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
             newStatus: status,
           },
           visibility: 'manager',
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
 
       storage.createAuditLog({
@@ -1266,7 +1263,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.delete('/:id', async (req: any, res) => {
+  router.delete('/:id', async (req: AuthenticatedRequest, res) => {
     try {
       const roleCheck = await requireManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
@@ -1357,7 +1354,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           unbilledEntriesReleased: unbilledCount,
         },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       storage.createAuditLog({
         workspaceId: workspace.id,
@@ -1376,7 +1373,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.post('/:id/mark-paid', idempotencyMiddleware, async (req: any, res) => {
+  router.post('/:id/mark-paid', idempotencyMiddleware, async (req: AuthenticatedRequest, res) => {
     try {
       // F2 FIX: Reject malformed IDs before hitting the DB (Drizzle is safe from injection,
       // but this gives a clean 400 instead of an empty-result 404 for garbage input).
@@ -1518,8 +1515,8 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           parseFloat(String(updated.total || 0)),
           userId,
         );
-      } catch (revErr: any) {
-        log.warn('[InvoiceRoutes] Cash revenue recognition failed', { error: revErr?.message });
+      } catch (revErr: unknown) {
+        log.warn('[InvoiceRoutes] Cash revenue recognition failed', { error: revErr instanceof Error ? revErr.message : String(revErr) });
               // Revenue ledger needs manual reconciliation — check universalAuditTrail
       }
 
@@ -1538,7 +1535,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice mark-as-paid', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for invoice mark-as-paid', { error: err instanceof Error ? err.message : String(err) }));
 
       // FIX-2: Financial audit log for regulatory compliance
       await db.insert(billingAuditLog).values({
@@ -1556,7 +1553,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         metadata: { referenceNumber, paymentRecordId: paymentRow?.id },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] CRITICAL: billing_audit_log write failed for invoice mark-paid', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] CRITICAL: billing_audit_log write failed for invoice mark-paid', { error: err instanceof Error ? err.message : String(err) }));
 
       const { broadcastToWorkspace } = await import('../websocket');
       broadcastToWorkspace(workspace.id, {
@@ -1588,7 +1585,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           clientId: updated.clientId,
         },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       // Non-blocking: send invoice paid confirmation email to org_owner
       (async () => {
@@ -1715,14 +1712,14 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
               try {
                 const { financialProcessingFeeService } = await import('../services/billing/financialProcessingFeeService');
                 await financialProcessingFeeService.recordInvoiceFee({ workspaceId: workspace.id, referenceId: id });
-              } catch (err: any) {
+              } catch (err: unknown) {
                 log.warn('[MarkPaid] Fee ledger record failed (non-fatal):', err?.message);
               }
               // Platform revenue tracking: write to platform_revenue table
               try {
                 const { recordMiddlewareFeeCharge } = await import('../services/finance/middlewareFeeService');
                 await recordMiddlewareFeeCharge(workspace.id, 'invoice_payment', feeResult.amountCents, id);
-              } catch (err: any) {
+              } catch (err: unknown) {
                 log.warn('[MarkPaid] Platform revenue record failed (non-fatal):', err?.message);
               }
             }
@@ -1739,7 +1736,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
     }
   });
 
-  router.post('/generate-from-time', async (req: any, res) => {
+  router.post('/generate-from-time', async (req: AuthenticatedRequest, res) => {
     try {
       const roleCheck = await requireManagerRole(req);
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
@@ -1774,7 +1771,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       }
 
       // Get the time entries
-      const timeEntries: any[] = [];
+      const timeEntries: (string | number | boolean | null)[] = [];
       for (const id of timeEntryIds) {
         const entry = await storage.getTimeEntry(id, workspace.id);
         if (entry && entry.clientId === clientId && entry.clockOut) {
@@ -1976,7 +1973,7 @@ router.post('/:id/create-payment', async (req, res) => {
         return res.status(404).json({ message: 'Client not found' });
       }
 
-      const { clientPaymentInfo } = (await import("@shared/schema")) as any;
+      const { clientPaymentInfo } = (await import("@shared/schema")) as unknown;
       
       let paymentInfo = await db
         .select()
@@ -2198,7 +2195,7 @@ router.patch("/adjustments/:adjustmentId/approve", async (req: AuthenticatedRequ
       changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
       isSensitiveData: false,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for adjustment approval', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for adjustment approval', { error: err instanceof Error ? err.message : String(err) }));
 
     res.json({ success: true, data: adjustment });
   } catch (error: unknown) {
@@ -2248,7 +2245,7 @@ router.patch("/adjustments/:adjustmentId/reject", async (req: AuthenticatedReque
       changes: { before: { status: 'pending' }, after: { status: 'rejected' } },
       isSensitiveData: false,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for adjustment rejection', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for adjustment rejection', { error: err instanceof Error ? err.message : String(err) }));
 
     res.json({ success: true, data: adjustment });
   } catch (error: unknown) {
@@ -2359,7 +2356,7 @@ router.get('/portal/:accessToken', async (req, res) => {
         eq(clients.workspaceId, portal.workspaceId),
       ));
 
-    const resolvedClientName = (client as any)?.companyName || [`${(client as any)?.firstName || ''}`, `${(client as any)?.lastName || ''}`].filter(Boolean).join(' ').trim() || 'Client';
+    const resolvedClientName = (client as Record<string,unknown>)?.companyName || [`${(client as Record<string,unknown>)?.firstName || ''}`, `${(client as Record<string,unknown>)?.lastName || ''}`].filter(Boolean).join(' ').trim() || 'Client';
     res.json({
       portalName: portal.portalName || `${resolvedClientName} — Billing Portal`,
       logoUrl: portal.logoUrl,
@@ -2486,10 +2483,10 @@ router.get('/aging', async (req: AuthenticatedRequest, res) => {
     }
 
     const buckets = {
-      current: { label: '0–30 days', invoices: [] as any[], total: 0 },
-      thirtyOne: { label: '31–60 days', invoices: [] as any[], total: 0 },
-      sixtyOne: { label: '61–90 days', invoices: [] as any[], total: 0 },
-      ninetyPlus: { label: '90+ days', invoices: [] as any[], total: 0 },
+      current: { label: '0–30 days', invoices: [], total: 0 },
+      thirtyOne: { label: '31–60 days', invoices: [], total: 0 },
+      sixtyOne: { label: '61–90 days', invoices: [], total: 0 },
+      ninetyPlus: { label: '90+ days', invoices: [], total: 0 },
     };
 
     for (const inv of openInvoices) {
@@ -2750,7 +2747,7 @@ router.post('/portal/:accessToken/invoice/:invoiceId/dispute', async (req, res) 
       performedBy: `portal:${portal.clientId}`,
       metadata: { reason: reason || 'No reason provided', clientId: portal.clientId, source: 'client_portal' },
       createdAt: new Date(),
-    } as any).catch((err: any) => log.warn('[BillingAudit] billing_audit_log write failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[BillingAudit] billing_audit_log write failed (non-blocking):', err?.message));
 
     // LAW 21 — Notify org owner of client-initiated invoice dispute
     (async () => {
@@ -2865,7 +2862,7 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
 
     // Store the paymentIntentId on the invoice so the webhook can match and mark paid
     await db.update(invoices)
-      .set({ stripePaymentIntentId: paymentIntent.id, updatedAt: new Date() } as any)
+      .set({ stripePaymentIntentId: paymentIntent.id, updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, portal.workspaceId)));
 
     return res.json({
@@ -2889,11 +2886,10 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
 // functional without duplicating the service logic.
 router.post(
   '/generate-from-hours',
-  // @ts-expect-error — TS migration: requireWorkspaceRole type
   requireWorkspaceRole(['org_owner', 'co_owner']),
   async (req: Request, res: Response) => {
     try {
-      const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
+      const workspaceId = req.workspaceId ?? req.user?.workspaceId;
       if (!workspaceId) {
         return res.status(400).json({ error: 'No workspace selected' });
       }

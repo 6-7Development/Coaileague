@@ -43,7 +43,7 @@ export interface MeteredGenerateOptions {
   model?: 'gemini-2.5-flash-lite' | 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-exp-1206';
   temperature?: number;
   maxOutputTokens?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   feature?: string;
   /** When true, forces the model to return valid JSON (responseMimeType: application/json) */
   jsonMode?: boolean;
@@ -85,7 +85,7 @@ class MeteredGeminiClient {
     const cacheKey = `${modelName}-${systemInstruction || 'default'}`;
     
     if (!this.modelCache.has(cacheKey)) {
-      const config: any = {};
+      const config: Record<string, unknown> = {};
       if (systemInstruction) {
         config.systemInstruction = systemInstruction;
       }
@@ -204,7 +204,6 @@ class MeteredGeminiClient {
             callType: featureKey || 'gemini_metered',
             inputTokens,
             outputTokens,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             triggeredByUserId: userId,
             responseTimeMs: Date.now() - startTime,
           });
@@ -227,13 +226,12 @@ class MeteredGeminiClient {
         }
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[MeteredGemini] ERROR: ${(error instanceof Error ? error.message : String(error))}`);
       
       // Still record the attempt for audit
       await usageMeteringService.recordUsage({
         workspaceId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         userId,
         featureKey,
         usageType: 'api_call',
@@ -271,9 +269,9 @@ class MeteredGeminiClient {
   } {
     const summary = aiTokenGateway.getBillingSummary(featureKey);
     return {
-      isFree: (summary as any).isFree,
-      tier: (summary as any).tier,
-      estimatedCredits: (summary as any).creditCost
+      isFree: (summary as Record<string,unknown>).isFree,
+      tier: (summary as Record<string,unknown>).tier,
+      estimatedCredits: (summary as Record<string,unknown>).creditCost
     };
   }
 

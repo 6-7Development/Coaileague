@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FeatureUnavailable, isFeatureUnavailable } from "@/components/ui/feature-unavailable";
 import { secureFetch } from "@/lib/csrf";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ export default function AcceptHandoff() {
         toast({ title: "Error", description: data.error, variant: "destructive" });
       }
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to complete handoff", variant: "destructive" });
     },
   });
@@ -194,6 +195,10 @@ export default function AcceptHandoff() {
 
   const workspace = tokenData.workspace!;
 
+  if (isFeatureUnavailable(error)) {
+    return <FeatureUnavailable feature="Contractor Handoff" eta="Q3 2026" />;
+  }
+
   return (
     <CanvasHubPage config={mainConfig}>
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -231,7 +236,7 @@ export default function AcceptHandoff() {
           {isAuthenticated ? (
             <div className="space-y-3">
               <p className="text-sm text-center text-muted-foreground">
-                Signed in as <strong>{(user as any)?.email}</strong>
+                Signed in as <strong>{(user as Record<string,unknown>)?.email}</strong>
               </p>
               <Button
                 className="w-full"

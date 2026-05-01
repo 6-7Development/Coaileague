@@ -6,22 +6,20 @@ import { recurringScheduleTemplates } from '../scheduling/recurringScheduleTempl
 import { autonomousSchedulingDaemon } from '../scheduling/autonomousSchedulingDaemon';
 import { platformEventBus } from '../platformEventBus';
 import { createLogger } from '../../lib/logger';
+import type { EmployeeComplianceRecord } from '@shared/types/domainExtensions';
 const log = createLogger('trinityScheduleTimeclockActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -33,7 +31,7 @@ export function registerScheduleTimeclockActions() {
   helpaiOrchestrator.registerAction(mkAction('scheduling.auto_fill_shift', async (params) => {
     const { workspaceId, mode = 'current_week' } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const result = await autonomousSchedulingDaemon.triggerManualRun(workspaceId, mode as any);
+    const result = await autonomousSchedulingDaemon.triggerManualRun(workspaceId, mode as string);
     return result;
   }));
 
@@ -75,14 +73,14 @@ export function registerScheduleTimeclockActions() {
 
     // 3. Guard card / compliance expiry check
     const [compliance] = await db.select({
-      guardCardStatus: (employeeComplianceRecords as any).guardCardStatus,
-      guardCardExpirationDate: (employeeComplianceRecords as any).guardCardExpirationDate,
-      overallStatus: (employeeComplianceRecords as any).overallStatus,
+      guardCardStatus: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardStatus,
+      guardCardExpirationDate: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardExpirationDate,
+      overallStatus: (employeeComplianceRecords as EmployeeComplianceRecord).overallStatus,
     })
       .from(employeeComplianceRecords)
       .where(and(
-        eq((employeeComplianceRecords as any).workspaceId, workspaceId),
-        eq((employeeComplianceRecords as any).employeeId, employeeId),
+        eq((employeeComplianceRecords as EmployeeComplianceRecord).workspaceId, workspaceId),
+        eq((employeeComplianceRecords as EmployeeComplianceRecord).employeeId, employeeId),
       ))
       .limit(1);
 
@@ -147,7 +145,7 @@ export function registerScheduleTimeclockActions() {
     // 6. All checks passed (or force override) — proceed
     const now = new Date();
     await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: now } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: now } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'shift_updated',
@@ -174,7 +172,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !workspaceId) return { error: 'shiftId and workspaceId required' };
     // Security FIX: workspaceId filter prevents cross-workspace unassign
     await db.update(shifts)
-      .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as any)
+      .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'shift_updated',
@@ -189,7 +187,6 @@ export function registerScheduleTimeclockActions() {
   helpaiOrchestrator.registerAction(mkAction('scheduling.create_recurring', async (params) => {
     const { workspaceId, name, baseShift, frequency, daysOfWeek, startDate, endDate } = params;
     if (!workspaceId || !baseShift) return { error: 'workspaceId and baseShift required' };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const template = await recurringScheduleTemplates.createTemplate({
       workspaceId,
       name: name || 'Recurring Shift',
@@ -205,7 +202,6 @@ export function registerScheduleTimeclockActions() {
   helpaiOrchestrator.registerAction(mkAction('scheduling.apply_template', async (params) => {
     const { workspaceId, templateId, weekStartDate } = params;
     if (!workspaceId || !templateId) return { error: 'workspaceId and templateId required' };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await recurringScheduleTemplates.applyTemplate({
       workspaceId,
       templateId,
@@ -217,7 +213,7 @@ export function registerScheduleTimeclockActions() {
   helpaiOrchestrator.registerAction(mkAction('scheduling.publish', async (params) => {
     const { workspaceId, shiftIds, weekOf } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    let whereClause: any;
+    let whereClause: unknown;
     if (shiftIds && Array.isArray(shiftIds) && shiftIds.length > 0) {
       whereClause = and(eq(shifts.workspaceId, workspaceId), sql`${shifts.id} = ANY(${shiftIds})`);
     } else if (weekOf) {
@@ -228,13 +224,13 @@ export function registerScheduleTimeclockActions() {
         eq(shifts.workspaceId, workspaceId),
         gte(shifts.startTime, weekStart),
         lt(shifts.startTime, weekEnd),
-        eq(shifts.status as any, 'draft')
+        eq(shifts.status, 'draft')
       );
     } else {
       return { error: 'shiftIds array or weekOf date required' };
     }
     const result = await db.update(shifts)
-      .set({ status: 'published', updatedAt: new Date() } as any)
+      .set({ status: 'published', updatedAt: new Date() } as Record<string, unknown>)
       .where(whereClause);
     await platformEventBus.publish({
       eventType: 'schedule_published',
@@ -250,7 +246,7 @@ export function registerScheduleTimeclockActions() {
     const { workspaceId, shiftIds } = params;
     if (!workspaceId || !shiftIds) return { error: 'workspaceId and shiftIds required' };
     await db.update(shifts)
-      .set({ status: 'draft', updatedAt: new Date() } as any)
+      .set({ status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.workspaceId, workspaceId), sql`${shifts.id} = ANY(${shiftIds})`));
     return { unpublished: true, count: shiftIds.length };
   }));
@@ -259,10 +255,10 @@ export function registerScheduleTimeclockActions() {
     const { workspaceId, shiftId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
     const whereClause = shiftId
-      ? and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, shiftId), eq(shifts.status as any, 'pending'))
-      : and(eq(shifts.workspaceId, workspaceId), eq(shifts.status as any, 'pending'));
+      ? and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, shiftId), eq(shifts.status, 'pending'))
+      : and(eq(shifts.workspaceId, workspaceId), eq(shifts.status, 'pending'));
     await db.update(shifts)
-      .set({ status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(whereClause);
     return { approved: true, workspaceId };
   }));
@@ -272,13 +268,13 @@ export function registerScheduleTimeclockActions() {
     if (!workspaceId || !conflictingShiftId) return { error: 'workspaceId and conflictingShiftId required' };
     if (resolution === 'cancel') {
       await db.update(shifts)
-        .set({ status: 'cancelled', updatedAt: new Date() } as any)
+        .set({ status: 'cancelled', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, conflictingShiftId)));
       return { resolved: true, action: 'cancelled', shiftId: conflictingShiftId };
     }
     if (resolution === 'unassign') {
       await db.update(shifts)
-        .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as any)
+        .set({ employeeId: null, status: 'draft', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.id, conflictingShiftId)));
       return { resolved: true, action: 'unassigned', shiftId: conflictingShiftId };
     }
@@ -328,14 +324,14 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || lat === undefined || lng === undefined) return { error: 'shiftId, lat, lng required' };
     const shift = await db.query.shifts?.findFirst({
       where: and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || '')),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!shift) return { verified: false, reason: 'Shift not found' };
     const clientData = shift.clientId ? await db.query.clients?.findFirst({
       where: eq(clients.id, shift.clientId)
-    } as any).catch(() => null) : null;
-    const siteLat = (clientData as any)?.latitude;
-    const siteLng = (clientData as any)?.longitude;
-    const geofenceRadius = (clientData as any)?.geofenceRadius || 200;
+    }).catch(() => null) : null;
+    const siteLat = (clientData as Record<string,unknown>)?.latitude;
+    const siteLng = (clientData as Record<string,unknown>)?.longitude;
+    const geofenceRadius = (clientData as Record<string,unknown>)?.geofenceRadius || 200;
     if (!siteLat || !siteLng) return { verified: true, note: 'No geofence configured for site' };
     const R = 6371000;
     const dLat = (lat - siteLat) * Math.PI / 180;
@@ -377,7 +373,7 @@ export function registerScheduleTimeclockActions() {
         lte(shifts.startTime, threshold),
         gte(shifts.startTime, new Date(checkDate.getTime() - 8 * 3600000)),
         ne(shifts.status, 'cancelled'),
-        ne(shifts.status as any, 'completed')
+        ne(shifts.status, 'completed')
       ));
     const missedWithNoPunch: typeof missedShifts = [];
     for (const s of missedShifts) {
@@ -401,7 +397,7 @@ export function registerScheduleTimeclockActions() {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + expiresHours);
     await db.update(shifts)
-      .set({ status: 'marketplace', updatedAt: new Date() } as any)
+      .set({ status: 'marketplace', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId)));
     return { posted: true, shiftId, expiresAt: expiresAt.toISOString() };
   }));
@@ -411,7 +407,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !employeeId) return { error: 'shiftId and employeeId required' };
     // G21-pattern FIX: isNull guard prevents double-award in concurrent marketplace claim
     const [awarded] = await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || ''), isNull(shifts.employeeId)))
       .returning();
     if (!awarded) return { awarded: false, reason: 'ALREADY_CLAIMED', shiftId };
@@ -431,7 +427,7 @@ export function registerScheduleTimeclockActions() {
       employeeId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
     return { created: true, shift: newShift };
   }));
 
@@ -440,7 +436,7 @@ export function registerScheduleTimeclockActions() {
     if (!shiftId || !employeeId) return { error: 'shiftId and employeeId required' };
     // G21-pattern FIX: isNull guard prevents two officers both claiming an open coverage slot
     const [fulfilled] = await db.update(shifts)
-      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as any)
+      .set({ employeeId, status: 'confirmed', updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId || ''), isNull(shifts.employeeId)))
       .returning();
     if (!fulfilled) return { fulfilled: false, reason: 'ALREADY_FULFILLED', shiftId };
@@ -465,8 +461,8 @@ export function registerScheduleTimeclockActions() {
         shiftId: sql`time_entries.shift_id`,
       }).from(timeEntries).where(eq(timeEntries.id, clockEntryId)).limit(1).catch(() => []);
 
-      if (entry && (entry as any).clockIn) {
-        const clockInTime = new Date((entry as any).clockIn);
+      if (entry && (entry as Record<string,unknown>).clockIn) {
+        const clockInTime = new Date((entry as Record<string,unknown>).clockIn);
         const window2min = new Date(clockInTime.getTime() - 2 * 60000);
         const window2minAfter = new Date(clockInTime.getTime() + 2 * 60000);
 
@@ -480,7 +476,7 @@ export function registerScheduleTimeclockActions() {
           .where(and(
             eq(timeEntries.workspaceId, workspaceId),
             ne(timeEntries.id, clockEntryId),
-            ne(timeEntries.employeeId, (entry as any).employeeId),
+            ne(timeEntries.employeeId, (entry as Record<string,unknown>).employeeId),
             gte(timeEntries.clockIn, window2min),
             lte(timeEntries.clockIn, window2minAfter),
           ))
@@ -491,15 +487,15 @@ export function registerScheduleTimeclockActions() {
           riskLevel = 'HIGH';
           flags.push(`${nearbyClockIns.length} other officer(s) clocked in within 2 minutes of this entry`);
           for (const n of nearbyClockIns) {
-            if ((n as any).employeeId && !affectedOfficers.includes((n as any).employeeId)) {
-              affectedOfficers.push((n as any).employeeId);
+            if ((n as Record<string,unknown>).employeeId && !affectedOfficers.includes((n as Record<string,unknown>).employeeId)) {
+              affectedOfficers.push((n as Record<string,unknown>).employeeId);
             }
-            const sameDevice = (entry as any).deviceId && (n as any).deviceId && (entry as any).deviceId === (n as any).deviceId;
+            const sameDevice = (entry as Record<string,unknown>).deviceId && (n as Record<string,unknown>).deviceId && (entry as Record<string,unknown>).deviceId === (n as Record<string,unknown>).deviceId;
             if (sameDevice) {
               flags.push(`Same device ID used to clock in two different officers — high buddy punch indicator`);
             }
           }
-          if ((entry as any).employeeId) affectedOfficers.push((entry as any).employeeId);
+          if ((entry as Record<string,unknown>).employeeId) affectedOfficers.push((entry as Record<string,unknown>).employeeId);
         }
       }
     } else {
@@ -524,10 +520,10 @@ export function registerScheduleTimeclockActions() {
         for (let j = i + 1; j < recentEntries.length; j++) {
           const a = recentEntries[i];
           const b = recentEntries[j];
-          if ((a as any).employeeId === (b as any).employeeId) continue;
-          const timeDiff = Math.abs(new Date((b as any).clockIn).getTime() - new Date((a as any).clockIn).getTime());
+          if ((a as Record<string, unknown>).employeeId === (b as Record<string, unknown>).employeeId) continue;
+          const timeDiff = Math.abs(new Date((b as Record<string, unknown>).clockIn).getTime() - new Date((a as Record<string, unknown>).clockIn).getTime());
           if (timeDiff > 2 * 60000) break;
-          const pairKey = [(a as any).employeeId, (b as any).employeeId].sort().join('::');
+          const pairKey = [(a as Record<string, unknown>).employeeId, (b as Record<string, unknown>).employeeId].sort().join('::');
           if (!pairMap[pairKey]) pairMap[pairKey] = { count: 0, total: 0 };
           pairMap[pairKey].count++;
           pairMap[pairKey].total++;
@@ -623,7 +619,7 @@ export function registerScheduleTimeclockActions() {
 
     // 4. Supervisor approval required if either officer is on a key post (check client.requires_supervisor_approval or shift.category)
     const [clientA] = await db.select().from(clients).where(eq(clients.id, shiftA.clientId || '')).limit(1);
-    if ((clientA as any)?.requiresSupervisorApproval || shiftA.category === 'emergency') {
+    if ((clientA as Record<string,unknown>)?.requiresSupervisorApproval || shiftA.category === 'emergency') {
       requiresSupervisorApproval = true;
     }
 
@@ -653,7 +649,6 @@ export function registerScheduleTimeclockActions() {
         .where(eq(shifts.id, shiftId));
 
       await tx.update(shiftSwapRequests)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .set({ status: 'completed', updatedAt: new Date() })
         .where(eq(shiftSwapRequests.id, swapRequestId));
 
@@ -744,7 +739,7 @@ export function registerScheduleTimeclockActions() {
       byEmployee.get(s.employeeId)!.push(s);
     }
 
-    const conflicts: any[] = [];
+    const conflicts: (string | number | boolean | null)[] = [];
     for (const [empId, empShifts] of byEmployee) {
       for (let i = 0; i < empShifts.length; i++) {
         for (let j = i + 1; j < empShifts.length; j++) {

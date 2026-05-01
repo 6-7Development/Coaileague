@@ -19,7 +19,7 @@ import { Loader2, Plus, Star, AlertTriangle, FileText, User, ChevronLeft, Sparkl
 import { format } from "date-fns";
 import { Link } from "wouter";
 
-const NOTE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const NOTE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   commendation: { label: "Commendation", color: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30", icon: Star },
   concern: { label: "Concern", color: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30", icon: AlertTriangle },
   warning: { label: "Warning", color: "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30", icon: AlertTriangle },
@@ -67,7 +67,6 @@ export default function OfficerHrRecord() {
     id: "officer-hr-record",
     title: "Officer HR Record",
     subtitle: "Performance notes and disciplinary history",
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     category: "workforce",
   };
 
@@ -138,7 +137,7 @@ export default function OfficerHrRecord() {
       });
       return await res.json();
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       setTrinityDraft(result);
       toast({ title: "Trinity drafted the document — review before sending" });
     },
@@ -248,7 +247,7 @@ export default function OfficerHrRecord() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {performanceNotes.map((note: any) => {
+                {performanceNotes.map((note) => {
                   const config = NOTE_TYPE_CONFIG[note.noteType] ?? NOTE_TYPE_CONFIG.neutral;
                   const Icon = config.icon;
                   return (
@@ -314,7 +313,7 @@ export default function OfficerHrRecord() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {disciplinaryRecords.map((record: any) => {
+                {disciplinaryRecords.map((record) => {
                   const config = DISCIPLINARY_TYPE_CONFIG[record.recordType] ?? DISCIPLINARY_TYPE_CONFIG.verbal_warning;
                   return (
                     <Card key={record.id} data-testid={`card-disciplinary-record-${record.id}`}>

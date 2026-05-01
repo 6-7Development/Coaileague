@@ -41,8 +41,8 @@ interface ContractData {
   summary?: string;
   clientName?: string;
   clientEmail?: string;
-  services?: any[];
-  billingTerms?: any;
+  services?: unknown[];
+  billingTerms?: unknown;
   totalValue?: string;
   status: string;
   effectiveDate?: string;
@@ -265,7 +265,7 @@ export default function ContractSigningPortal({ token }: { token: string }) {
   });
 
   const signMutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload) => {
       const res = await fetch(`/api/contracts/portal/${token}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -525,7 +525,7 @@ export default function ContractSigningPortal({ token }: { token: string }) {
             onClick={() => setShowContent(!showContent)}
           >
             <CardTitle className="text-base">Document Content</CardTitle>
-            <Button variant="ghost" size="icon" data-testid="button-toggle-content">
+            <Button variant="ghost" size="icon" aria-label="Toggle Content" data-testid="button-toggle-content">
               {showContent ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
           </CardHeader>
@@ -578,9 +578,8 @@ export default function ContractSigningPortal({ token }: { token: string }) {
               <p className="text-sm text-muted-foreground">
                 You have requested changes to this document. The sender will review and update it.
               </p>
-              // @ts-ignore — TS migration: fix in refactoring sprint
-              {(contract as any).changesRequested && (
-                // @ts-expect-error — TS migration: fix in refactoring sprint
+              // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+              {(contract as Record<string,unknown>).changesRequested && (
                 <p className="text-sm bg-muted p-3 rounded-md text-left mt-2">{contract.changesRequested}</p>
               )}
             </CardContent>

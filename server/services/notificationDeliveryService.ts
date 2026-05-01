@@ -190,7 +190,7 @@ export interface SendNotificationPayload {
 }
 
 export class NotificationDeliveryService {
-  private static readonly DEFAULT_DEDUP_WINDOW_MS = 5 * 60 * 1000;
+  private static readonly DEFAULT_DEDUP_WINDOW_MS = 30 * 60 * 1000; // 30 min dedup (was 5 min — prevents spam)
   private static readonly EMPTY_BODY_FALLBACK = 'Notification received. Please log in for details.';
   private static readonly SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -259,7 +259,7 @@ export class NotificationDeliveryService {
         log.info(`[NotificationDeliveryService] Skipped delivery: user=${payload.recipientUserId} type=${payload.type} channel=${payload.channel} reason=${reason}`);
         return `skipped:${reason}`;
       }
-    } catch (prefErr: any) {
+    } catch (prefErr : unknown) {
       // Fail open — preference check error should never block delivery
       log.warn('[NotificationDeliveryService] Preference check failed (fail open):', prefErr?.message);
     }
@@ -321,6 +321,44 @@ export class NotificationDeliveryService {
         await this.attemptDelivery(rec.id);
       }
       return rec.id;
+    }
+
+
+    // ANTI-SPAM: Per-user push rate limit (max 3/hr, 15/day for non-critical)
+    if (payload.channel === 'push') {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const oneDayAgo  = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const criticalTypes = ['panic_alert','payroll_failure','account_suspended','security_breach','emergency'];
+      const isCritical = criticalTypes.includes(payload.type);
+
+      if (!isCritical) {
+        const [hourRows, dayRows] = await Promise.all([
+          db.select({ count: sql<number>`count(*)::int` })
+            .from(notificationDeliveries)
+            .where(and(
+              eq(notificationDeliveries.recipientUserId, payload.recipientUserId),
+              eq(notificationDeliveries.channel, 'push'),
+              gte(notificationDeliveries.createdAt, oneHourAgo),
+            )),
+          db.select({ count: sql<number>`count(*)::int` })
+            .from(notificationDeliveries)
+            .where(and(
+              eq(notificationDeliveries.recipientUserId, payload.recipientUserId),
+              eq(notificationDeliveries.channel, 'push'),
+              gte(notificationDeliveries.createdAt, oneDayAgo),
+            )),
+        ]);
+        const hCount = (hourRows[0]?.count as number) ?? 0;
+        const dCount = (dayRows[0]?.count as number) ?? 0;
+        if (hCount >= 3) {
+          log.info('[NDS] Push rate-limited (hourly cap 3/hr)', { user: payload.recipientUserId, count: hCount });
+          return `rate_limited:hourly:${payload.recipientUserId}`;
+        }
+        if (dCount >= 15) {
+          log.info('[NDS] Push rate-limited (daily cap 15/day)', { user: payload.recipientUserId, count: dCount });
+          return `rate_limited:daily:${payload.recipientUserId}`;
+        }
+      }
     }
 
     const [record] = await db
@@ -454,7 +492,7 @@ export class NotificationDeliveryService {
         await this.deliverPush(record);
         break;
       default:
-        throw new Error(`Unknown channel: ${(record as any).channel}`);
+        throw new Error(`Unknown channel: ${(record as Record<string, unknown>).channel}`);
     }
   }
 
@@ -531,7 +569,7 @@ export class NotificationDeliveryService {
     await db.insert(notifications).values({
       workspaceId: record.workspaceId,
       userId: record.recipientUserId,
-      type: 'system' as any,
+      type: 'system',
       title,
       message,
       metadata: {
@@ -554,7 +592,7 @@ export class NotificationDeliveryService {
     const recipientUserId = record.recipientUserId ?? String(payload.recipientUserId ?? '');
     const employeeId = String(payload.employeeId ?? '');
 
-    let result: any;
+    let result: unknown;
     if (recipientUserId && recipientUserId !== 'system') {
       // Preferred: consent checked + attempt logged inside sendSMSToUser
       result = await sendSMSToUser(recipientUserId, body, record.notificationType);
@@ -569,7 +607,7 @@ export class NotificationDeliveryService {
     }
 
     if (result && typeof result === 'object' && 'error' in result && result.error) {
-      throw new Error(String((result as any).error));
+      throw new Error(String((result as Record<string, unknown>).error));
     }
   }
 

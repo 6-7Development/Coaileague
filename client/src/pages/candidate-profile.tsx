@@ -167,7 +167,7 @@ function ChatCopilotPanel({
     refetchInterval: chatSession?.status === "in_progress" ? 10000 : false,
   });
 
-  const events: CoPilotEvent[] = (copilotData as any)?.events ?? [];
+  const events: CoPilotEvent[] = (copilotData as Record<string,unknown>)?.events ?? [];
 
   return (
     <Card>
@@ -373,7 +373,7 @@ export default function CandidateProfilePage() {
 
   const initVoiceSessionMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/recruitment/candidates/${candidateId}/voice-session`, {}),
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       toast({ title: "Voice interview session created", description: `${result?.questionCount ?? 0} questions loaded.` });
       refetch();
     },
@@ -497,8 +497,8 @@ export default function CandidateProfilePage() {
               </div>
               {parsedResume && Object.keys(parsedResume).length > 0 && (
                 <div className="space-y-2">
-                  // @ts-ignore — TS migration: fix in refactoring sprint
-                  {(parsedResume as any).summary && (
+                  // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+                  {(parsedResume as Record<string,unknown>).summary && (
                     <p className="text-xs text-muted-foreground">{String(parsedResume.summary)}</p>
                   )}
                   {(parsedResume.strengths as string[] | undefined)?.length ? (

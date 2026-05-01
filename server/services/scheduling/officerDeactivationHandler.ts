@@ -20,7 +20,14 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('officerDeactivationHandler');
 
 
-export type DeactivationReason = 'suspended' | 'deactivated' | 'complaint_critical' | 'complaint_client_removal';
+export type DeactivationReason =
+  | 'suspended'
+  | 'deactivated'
+  | 'complaint_critical'
+  | 'complaint_client_removal'
+  // Texas OC §1702.201 — pocket card / PERC card expired. Triggered by the midnight expiry cron
+  // in autonomousScheduler.ts. Unassigns all future shifts the moment the card lapses.
+  | 'license_expired';
 
 interface DeactivationResult {
   shiftsUnassigned: number;
@@ -86,7 +93,6 @@ export async function handleOfficerDeactivation(
               .set({
                 employeeId: null,
                 status: 'draft',
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 notes: noteText,
                 updatedAt: new Date(),
               })

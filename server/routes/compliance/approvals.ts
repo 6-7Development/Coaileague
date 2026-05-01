@@ -125,7 +125,6 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : undefined
       }).returning();
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await tx.insert(complianceAuditTrail).values({
         workspaceId,
         entityType: 'approval',
@@ -229,7 +228,6 @@ router.post("/:approvalId/decide", requireAuth, async (req: Request, res: Respon
           .where(eq(complianceDocuments.id, upd.documentId));
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await tx.insert(complianceAuditTrail).values({
         workspaceId,
         entityType: 'approval',
@@ -267,7 +265,7 @@ router.post("/:approvalId/decide", requireAuth, async (req: Request, res: Respon
         documentName: decisionNotes || 'Compliance Document',
       };
       platformEventBus.emit('compliance_document_approved', approvedPayload);
-      platformEventBus.publish({ type: 'compliance_document_approved', category: 'automation', title: 'Compliance Document Approved', description: `Document '${decisionNotes || 'Compliance Document'}' approved for employee ${updated.employeeId}`, workspaceId, metadata: approvedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'compliance_document_approved', category: 'automation', title: 'Compliance Document Approved', description: `Document '${decisionNotes || 'Compliance Document'}' approved for employee ${updated.employeeId}`, workspaceId, metadata: approvedPayload }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       (async () => {
         try {
@@ -297,7 +295,7 @@ router.post("/:approvalId/decide", requireAuth, async (req: Request, res: Respon
         reason: decisionNotes,
       };
       platformEventBus.emit('compliance_document_rejected', rejectedPayload);
-      platformEventBus.publish({ type: 'compliance_document_rejected', category: 'automation', title: 'Compliance Document Rejected', description: `Document '${decisionNotes || 'Compliance Document'}' rejected for employee ${updated.employeeId}. Reason: ${decisionNotes || 'N/A'}`, workspaceId, metadata: rejectedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'compliance_document_rejected', category: 'automation', title: 'Compliance Document Rejected', description: `Document '${decisionNotes || 'Compliance Document'}' rejected for employee ${updated.employeeId}. Reason: ${decisionNotes || 'N/A'}`, workspaceId, metadata: rejectedPayload }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       (async () => {
         try {

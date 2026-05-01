@@ -53,12 +53,11 @@ class AssetTrackingService {
     log.info('Asset Tracking Service initialized');
   }
 
-  async checkOutAsset(data: AssetCheckout): Promise<any> {
+  async checkOutAsset(data: AssetCheckout): Promise<unknown> {
     const id = randomUUID();
 
     const assetRows = await typedPool(`SELECT * FROM assets WHERE id=$1 AND workspace_id=$2`, [data.assetId, data.workspaceId]);
-    if (!(assetRows as any).length) throw new Error('Asset not found');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    if (!(assetRows as Record<string,unknown>).length) throw new Error('Asset not found');
     const asset = assetRows[0];
 
     // CATEGORY C — Genuine schema mismatch: SQL uses 'employee_id', 'checked_out_at', 'condition_at_checkout' but schema has 'operatedBy', 'usagePeriodStart', 'operatorCertificationVerified' | Cannot convert until schema aligned
@@ -85,7 +84,7 @@ class AssetTrackingService {
     return rows[0];
   }
 
-  async returnAsset(data: AssetReturn): Promise<any> {
+  async returnAsset(data: AssetReturn): Promise<unknown> {
     // CATEGORY C — Genuine schema mismatch: SQL uses 'checked_in_at', 'condition_at_return', 'return_notes' but schema has 'usagePeriodEnd', no condition/return fields | Cannot convert until schema aligned
     await typedPoolExec(
       `UPDATE asset_usage_logs SET checked_in_at=NOW(), condition_at_return=$1, return_notes=$2, updated_at=NOW() WHERE id=$3 AND workspace_id=$4`,
@@ -93,8 +92,7 @@ class AssetTrackingService {
     );
 
     const logRows = await typedPool(`SELECT aul.*, a.asset_name FROM asset_usage_logs aul JOIN assets a ON a.id=aul.asset_id WHERE aul.id=$1`, [data.assetUsageLogId]);
-    if (!(logRows as any).length) throw new Error('Usage log not found');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    if (!(logRows as Record<string,unknown>).length) throw new Error('Usage log not found');
     const logEntry = logRows[0];
 
     const newStatus = data.condition === 'damaged' ? 'needs_maintenance' : 'available';
@@ -142,13 +140,13 @@ class AssetTrackingService {
         id: assetUsageLogs.id,
         workspaceId: assetUsageLogs.workspaceId,
         assetId: assetUsageLogs.assetId,
-        employeeId: (assetUsageLogs as any).employeeId,
-        checkedOutAt: (assetUsageLogs as any).checkedOutAt,
-        checkedInAt: (assetUsageLogs as any).checkedInAt,
-        conditionAtCheckout: (assetUsageLogs as any).conditionAtCheckout,
-        conditionAtReturn: (assetUsageLogs as any).conditionAtReturn,
-        notes: (assetUsageLogs as any).notes,
-        returnNotes: (assetUsageLogs as any).returnNotes,
+        employeeId: (assetUsageLogs as Record<string,unknown>).employeeId,
+        checkedOutAt: (assetUsageLogs as Record<string,unknown>).checkedOutAt,
+        checkedInAt: (assetUsageLogs as Record<string,unknown>).checkedInAt,
+        conditionAtCheckout: (assetUsageLogs as Record<string,unknown>).conditionAtCheckout,
+        conditionAtReturn: (assetUsageLogs as Record<string,unknown>).conditionAtReturn,
+        notes: (assetUsageLogs as Record<string,unknown>).notes,
+        returnNotes: (assetUsageLogs as Record<string,unknown>).returnNotes,
         createdAt: assetUsageLogs.createdAt,
         updatedAt: assetUsageLogs.updatedAt,
         assetName: assets.assetName,
@@ -157,12 +155,11 @@ class AssetTrackingService {
       })
       .from(assetUsageLogs)
       .innerJoin(assets, eq(assets.id, assetUsageLogs.assetId))
-      .leftJoin(employees, eq(employees.id, (assetUsageLogs as any).employeeId))
+      .leftJoin(employees, eq(employees.id, (assetUsageLogs as Record<string,unknown>).employeeId))
       .where(and(
         eq(assetUsageLogs.workspaceId, workspaceId),
-        sql`${(assetUsageLogs as any).checkedInAt} IS NULL`
+        sql`${(assetUsageLogs as Record<string,unknown>).checkedInAt} IS NULL`
       ))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(desc(assetUsageLogs.checkedOutAt));
 
     return result;

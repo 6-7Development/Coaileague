@@ -27,7 +27,7 @@ async function run() {
   `);
 
   let payrollPass = 0, payrollFail = 0;
-  for (const row of empRows.rows as any[]) {
+  for (const row of empRows.rows as unknown[][]) {
     const regularPay = calculateGrossPay(
       toFinancialString(row.regular_hours),
       toFinancialString(row.hourly_rate),
@@ -63,13 +63,13 @@ async function run() {
   `);
 
   let invPass = 0, invFail = 0;
-  for (const inv of invRows.rows as any[]) {
+  for (const inv of invRows.rows as unknown[][]) {
     const lineRows = await db.execute(sql`
       SELECT amount::text 
       FROM invoice_line_items 
       WHERE invoice_id = ${inv.id}
     `);
-    const amounts = (lineRows.rows as any[]).map((l: any) => toFinancialString(l.amount));
+    const amounts = (lineRows.rows as unknown[][]).map((l: unknown) => toFinancialString(l.amount));
     const computedSubtotal = formatCurrency(calculateInvoiceTotal(amounts));
     const storedSubtotal = parseFloat(inv.subtotal).toFixed(2);
     const storedTax = parseFloat(inv.tax_amount).toFixed(2);
@@ -93,7 +93,7 @@ async function run() {
     SELECT COUNT(*) as total, COUNT(calculation_inputs) as with_inputs
     FROM payroll_entries WHERE workspace_id = 'dev-acme-security-ws'
   `);
-  const a = auditRows.rows[0] as any;
+  const a = auditRows.rows[0] as Record<string, unknown>;
   console.log(`Payroll entries: total=${a.total} | with calculation_inputs=${a.with_inputs}`);
   console.log('Pre-Phase-6 seed data has NULL calculation_inputs (expected). New payroll runs will populate the audit trail.');
 

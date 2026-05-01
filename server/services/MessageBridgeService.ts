@@ -35,7 +35,7 @@ interface InboundMessageParams {
   channelType: ChannelType;
   senderIdentity: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   externalMessageId?: string;
   senderDisplayName?: string;
   attachmentUrl?: string;
@@ -66,8 +66,8 @@ interface ProviderAdapter {
     message: string;
     from?: string;
     attachmentUrl?: string;
-    metadata?: Record<string, any>;
-  }): Promise<{ externalMessageId: string; providerResponse: Record<string, any> }>;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ externalMessageId: string; providerResponse: Record<string, unknown> }>;
 }
 
 class MessageBridgeService {
@@ -93,7 +93,7 @@ class MessageBridgeService {
             externalMessageId: result.id || `email-${Date.now()}`,
             providerResponse: result,
           };
-        } catch (error: any) {
+        } catch (error : unknown) {
           log.error('Email send failed', { error: (error instanceof Error ? error.message : String(error)) });
           return {
             externalMessageId: `email-failed-${Date.now()}`,
@@ -131,12 +131,12 @@ class MessageBridgeService {
             },
             body: body.toString(),
           });
-          const data = await response.json() as any;
+          const data = await response.json() as unknown;
           return {
             externalMessageId: data.sid || `sms-${Date.now()}`,
             providerResponse: data,
           };
-        } catch (error: any) {
+        } catch (error : unknown) {
           log.error('SMS send failed', { error: (error instanceof Error ? error.message : String(error)) });
           return {
             externalMessageId: `sms-failed-${Date.now()}`,
@@ -172,12 +172,12 @@ class MessageBridgeService {
             },
             body: body.toString(),
           });
-          const data = await response.json() as any;
+          const data = await response.json() as unknown;
           return {
             externalMessageId: data.sid || `wa-${Date.now()}`,
             providerResponse: data,
           };
-        } catch (error: any) {
+        } catch (error : unknown) {
           log.error('WhatsApp send failed', { error: (error instanceof Error ? error.message : String(error)) });
           return {
             externalMessageId: `wa-failed-${Date.now()}`,
@@ -190,7 +190,7 @@ class MessageBridgeService {
     this.providerAdapters.set('messenger', {
       async send(params) {
         log.warn('Messenger channel not supported — use WhatsApp or SMS for external messaging', {
-          recipient: (params as any).recipientIdentity,
+          recipient: (params as Record<string,unknown>).recipientIdentity,
           channel: 'messenger',
           suggestion: 'Configure a WhatsApp or SMS bridge instead',
         });
@@ -470,7 +470,7 @@ class MessageBridgeService {
 
     let deliveryStatus: DeliveryStatus = 'pending';
     let externalMessageId: string | null = null;
-    let providerResponse: Record<string, any> | null = null;
+    let providerResponse: Record<string, unknown> | null = null;
 
     const adapter = this.providerAdapters.get(channelType);
     if (adapter) {
@@ -490,7 +490,7 @@ class MessageBridgeService {
         externalMessageId = result.externalMessageId;
         providerResponse = result.providerResponse;
         deliveryStatus = providerResponse?.status === 'failed' ? 'failed' : 'sent';
-      } catch (sendError: any) {
+      } catch (sendError : unknown) {
         log.error('Outbound send failed', { channelType, error: sendError.message });
         deliveryStatus = 'failed';
         providerResponse = { error: sendError.message };
@@ -741,9 +741,9 @@ class MessageBridgeService {
   async updateDeliveryStatus(
     bridgeMessageId: string,
     deliveryStatus: DeliveryStatus,
-    providerResponse?: Record<string, any>,
+    providerResponse?: Record<string, unknown>,
   ): Promise<void> {
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       deliveryStatus,
       updatedAt: new Date(),
     };

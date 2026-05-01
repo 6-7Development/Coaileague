@@ -27,7 +27,7 @@ export interface SimulationStep {
   name: string;
   status: 'success' | 'warning' | 'error' | 'skipped';
   durationMs: number;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   warnings: string[];
   errors: string[];
 }
@@ -270,7 +270,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
           seededEntryIds.push(entryId);
           seededEntries++;
           totalHoursSeeded += hours;
-        } catch (err: any) {
+        } catch (err: unknown) {
           step2Warnings.push(`Failed to seed entry for ${employee.firstName} ${employee.lastName}: ${err.message}`);
         }
       }
@@ -310,7 +310,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
 
   console.log('\nSTEP 3: Running Billable Hours Aggregation...');
 
-  let billableResult: any = null;
+  let billableResult: unknown = null;
   try {
     billableResult = await aggregateBillableHours({
       workspaceId: WORKSPACE_ID,
@@ -335,7 +335,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
     if (billableResult.totalBillableAmount === 0 && billableResult.entriesProcessed > 0) {
       criticalIssues.push('Entries exist but total billable amount is $0 - missing billing rates');
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     step3Errors.push(`Billable hours aggregation failed: ${err.message}`);
     criticalIssues.push(`Invoice pipeline broken: ${err.message}`);
     console.error(`  ERROR: ${err.message}`);
@@ -350,7 +350,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       entriesProcessed: billableResult.entriesProcessed,
       clientSummaries: billableResult.clientSummaries.length,
       totalBillableAmount: billableResult.totalBillableAmount,
-      byClient: billableResult.clientSummaries.map((cs: any) => ({
+      byClient: billableResult.clientSummaries.map((cs: unknown) => ({
         clientName: cs.clientName,
         totalHours: cs.totalHours,
         regularHours: cs.totalRegularHours,
@@ -373,7 +373,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
 
   console.log('\nSTEP 4: Running Invoice Generation...');
 
-  let generatedInvoices: any[] = [];
+  let generatedInvoices: (string | number | boolean | null)[] = [];
   try {
     const weeklyResult = await generateWeeklyInvoices(WORKSPACE_ID, periodEnd, 7);
     generatedInvoices = weeklyResult.invoices || [];
@@ -409,7 +409,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
     if (weeklyResult.warnings.length > 0) {
       step4Warnings.push(...weeklyResult.warnings.slice(0, 5));
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     step4Errors.push(`Invoice generation failed: ${err.message}`);
     criticalIssues.push(`Invoice generation broken: ${err.message}`);
     console.error(`  ERROR: ${err.message}`);
@@ -438,7 +438,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
 
   console.log('\nSTEP 5: Running Payroll Hours Aggregation...');
 
-  let payrollAggResult: any = null;
+  let payrollAggResult: unknown = null;
   try {
     payrollAggResult = await aggregatePayrollHours({
       workspaceId: WORKSPACE_ID,
@@ -459,7 +459,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       step5Warnings.push('No entries processed for payroll - entries may already be payrolled or not approved');
       gaps.push('Payroll hours aggregation returned 0 entries');
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     step5Errors.push(`Payroll hours aggregation failed: ${err.message}`);
     criticalIssues.push(`Payroll pipeline broken: ${err.message}`);
     console.error(`  ERROR: ${err.message}`);
@@ -474,7 +474,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       entriesProcessed: payrollAggResult.entriesProcessed,
       employeeSummaries: payrollAggResult.employeeSummaries.length,
       totalPayrollAmount: payrollAggResult.totalPayrollAmount,
-      byEmployee: payrollAggResult.employeeSummaries.map((es: any) => ({
+      byEmployee: payrollAggResult.employeeSummaries.map((es: unknown) => ({
         employeeName: es.employeeName,
         totalHours: es.totalHours,
         regularHours: es.totalRegularHours,
@@ -602,7 +602,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       }
       console.log(`  Cleaned up ${generatedInvoices.length} simulated invoices`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     step7Warnings.push(`Cleanup partially failed: ${err.message}`);
     console.warn(`  WARNING: ${err.message}`);
   }

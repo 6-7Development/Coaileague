@@ -17,10 +17,10 @@ export interface AuditEntry {
   entityId?: string | null;
   entityName?: string | null;
   targetType?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   changeType: 'create' | 'update' | 'delete' | 'read' | 'action';
-  changes?: Record<string, { old: any; new: any }> | null;
-  metadata?: Record<string, any> | null;
+  changes?: Record<string, { old: unknown; new: unknown }> | null;
+  metadata?: Record<string, unknown> | null;
   sourceRoute?: string | null;
   sourcePage?: string | null;
 }
@@ -380,10 +380,10 @@ class UniversalAuditService {
   }
 
   static diffChanges(
-    oldRecord: Record<string, any>,
-    newRecord: Record<string, any>
-  ): Record<string, { old: any; new: any }> | null {
-    const changes: Record<string, { old: any; new: any }> = {};
+    oldRecord: Record<string, unknown>,
+    newRecord: Record<string, unknown>
+  ): Record<string, { old: unknown; new: unknown }> | null {
+    const changes: Record<string, { old: unknown; new: unknown }> = {};
     const ignoreFields = ['updated_at', 'updated_by', 'updated_by_type'];
 
     for (const key of Object.keys(newRecord)) {

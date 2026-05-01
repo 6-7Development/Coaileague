@@ -44,7 +44,6 @@ interface LaborViolation {
 
 type ShiftWithEmployee = {
   shift: Shift;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   employee: Employee | null;
 };
 
@@ -87,12 +86,9 @@ export async function generateLaborLawViolationReport(
   const shiftsByEmployee = new Map<string, ShiftWithEmployee[]>();
   allShifts.forEach(record => {
     const empId = record.shift.employeeId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!shiftsByEmployee.has(empId)) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       shiftsByEmployee.set(empId, []);
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     shiftsByEmployee.get(empId)!.push(record);
   });
 
@@ -148,7 +144,6 @@ export async function generateLaborLawViolationReport(
     violations.push({
       type: 'excessive_overtime',
       severity: durationHours > 16 ? 'critical' : 'high',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       employeeId: shift.employeeId,
       employeeName,
       shiftId: shift.id,
@@ -191,7 +186,7 @@ interface AuditLogEntry {
   userName: string;
   entityType: string;
   entityId: string;
-  changes: any;
+  changes: unknown;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -229,17 +224,16 @@ export async function generateTimeEntryAuditLog(
     )
     .orderBy(desc(auditLogs.createdAt));
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const auditEntries: AuditLogEntry[] = logs.map(log => ({
     timestamp: log.createdAt,
     action: log.action,
     userId: log.userId,
-    userName: (log as any).metadata?.userName || 'Unknown',
+    userName: (log as Record<string,unknown>).metadata?.userName || 'Unknown',
     entityType: log.entityType,
     entityId: log.entityId,
     changes: log.changes,
-    ipAddress: (log as any).metadata?.ipAddress || undefined,
-    userAgent: (log as any).metadata?.userAgent || undefined,
+    ipAddress: (log as Record<string,unknown>).metadata?.ipAddress || undefined,
+    userAgent: (log as Record<string,unknown>).metadata?.userAgent || undefined,
   }));
 
   const uniqueUsers = new Set(auditEntries.map(e => e.userId)).size;
@@ -338,14 +332,12 @@ export async function generateBreakComplianceReport(
     const mealBreaks = breaks.filter(b => b.breakType === 'meal');
     const restBreaks = breaks.filter(b => b.breakType === 'rest');
 
-    const requiredMealBreakMinutes = (laborRules as any)?.mealBreakMinutes || 30;
-    const requiredRestBreakMinutes = (laborRules as any)?.restBreakMinutes || 10;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const mealBreakThresholdHours = (laborRules as any)?.mealBreakAfterHours ? parseFloat(laborRules.mealBreakAfterHours) : 5;
+    const requiredMealBreakMinutes = (laborRules as Record<string,unknown>)?.mealBreakMinutes || 30;
+    const requiredRestBreakMinutes = (laborRules as Record<string,unknown>)?.restBreakMinutes || 10;
+    const mealBreakThresholdHours = (laborRules as Record<string,unknown>)?.mealBreakAfterHours ? parseFloat(laborRules.mealBreakAfterHours) : 5;
 
     if (shiftDurationHours >= mealBreakThresholdHours && mealBreaks.length === 0) {
       violations.push({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         employeeId: shift.employeeId,
         employeeName,
         shiftId: shift.id,
@@ -361,7 +353,6 @@ export async function generateBreakComplianceReport(
 
     if (shiftDurationHours >= 4 && restBreaks.length === 0) {
       violations.push({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         employeeId: shift.employeeId,
         employeeName,
         shiftId: shift.id,
@@ -449,7 +440,6 @@ export async function generateOvertimeSummaryReport(
     );
 
   const employeeWeeklyHours = new Map<string, {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     employee: Employee | null;
     weeks: Map<string, number>;
   }>();
@@ -466,12 +456,9 @@ export async function generateOvertimeSummaryReport(
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     const weekKey = format(weekStart, 'yyyy-MM-dd');
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!employeeWeeklyHours.has(empId)) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       employeeWeeklyHours.set(empId, { employee, weeks: new Map() });
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const empData = employeeWeeklyHours.get(empId)!;
     empData.weeks.set(weekKey, (empData.weeks.get(weekKey) || 0) + hours);
   }
@@ -674,8 +661,8 @@ export async function generateComplianceReport(options: GenerateReportOptions): 
   const report = reportRecord[0];
 
   try {
-    let reportData: any;
-    let summaryStats: any;
+    let reportData: unknown;
+    let summaryStats: unknown;
     let hasViolations = false;
     let violationCount = 0;
     let criticalViolationCount = 0;

@@ -29,11 +29,11 @@ const log = createLogger('TrinityInsightsRoutes');
 // validates the session and sets req.user / req.workspaceId before any route
 // handler runs. These helpers provide a consistent async interface.
 // ---------------------------------------------------------------------------
-async function getAuthenticatedUser(req: AuthenticatedRequest): Promise<any> {
+async function getAuthenticatedUser(req: AuthenticatedRequest): Promise<unknown> {
   return req.user || null;
 }
 
-async function resolveSecureWorkspaceId(user: any, _requestedId?: string): Promise<string> {
+async function resolveSecureWorkspaceId(user: Record<string, unknown>, _requestedId?: string): Promise<string> {
   // requireManager already resolved the workspace securely and stamped it onto
   // req.user?.workspaceId (see auth.ts). For platform staff it has already been
   // overridden with the admin-specified workspace. We simply reflect that value.
@@ -206,7 +206,7 @@ router.post('/cache/clear', async (req: Request, res: Response) => {
  * 
  * Set TRINITY_DIALOGUE_ENABLED=false to disable AI thought generation (saves tokens during testing)
  */
-const trinityContextCache = new Map<string, { data: any; timestamp: number }>();
+const trinityContextCache = new Map<string, { data: Record<string, unknown>; timestamp: number }>();
 const TRINITY_CONTEXT_CACHE_TTL = 15000; // 15 seconds (polled every 20s)
 
 router.get('/context', async (req: Request, res: Response) => {
@@ -425,11 +425,11 @@ router.get('/fixes', async (req: Request, res: Response) => {
         id: f.id,
         title: f.title,
         description: f.description,
-        endUserSummary: (f as any).endUserSummary,
-        affectedFiles: (f as any).affectedFiles,
+        endUserSummary: (f as Record<string, unknown>).endUserSummary,
+        affectedFiles: (f as Record<string, unknown>).affectedFiles,
         riskLevel: f.riskLevel,
         status: f.status,
-        requiredRole: (f as any).requiredRole,
+        requiredRole: (f as Record<string, unknown>).requiredRole,
         createdAt: f.createdAt,
         expiresAt: f.expiresAt,
       })),
@@ -457,7 +457,6 @@ router.post('/fixes/propose', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'findingId is required' });
     }
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const spec = await autonomousFixPipeline.generateFixSpecification(parseInt(findingId));
     
     if (!spec) {
@@ -510,14 +509,14 @@ router.get('/fixes/:id/preview', async (req: Request, res: Response) => {
         id: approval.id,
         title: approval.title,
         description: approval.description,
-        endUserSummary: (approval as any).endUserSummary,
-        affectedFiles: (approval as any).affectedFiles,
-        proposedChanges: (approval as any).proposedChanges,
-        rollbackPlan: (approval as any).rollbackPlan,
+        endUserSummary: (approval as Record<string,unknown>).endUserSummary,
+        affectedFiles: (approval as Record<string,unknown>).affectedFiles,
+        proposedChanges: (approval as Record<string,unknown>).proposedChanges,
+        rollbackPlan: (approval as Record<string,unknown>).rollbackPlan,
         riskLevel: approval.riskLevel,
         impactScope: approval.impactScope,
         status: approval.status,
-        requiredRole: (approval as any).requiredRole,
+        requiredRole: (approval as Record<string,unknown>).requiredRole,
         createdAt: approval.createdAt,
         expiresAt: approval.expiresAt,
       },
@@ -584,7 +583,7 @@ router.post('/fixes/:id/rollback', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Fix approval not found' });
     }
     
-    if (!(approval as any).commitHash) {
+    if (!(approval as Record<string,unknown>).commitHash) {
       return res.status(400).json({ success: false, error: 'No commit hash available for rollback' });
     }
     
@@ -595,8 +594,8 @@ router.post('/fixes/:id/rollback', async (req: Request, res: Response) => {
     res.status(409).json({
       success: false,
       error: 'Automated rollback is disabled for safety — perform git revert manually',
-      commitHash: (approval as any).commitHash,
-      instructions: `git revert ${(approval as any).commitHash} && git push origin development`,
+      commitHash: (approval as Record<string,unknown>).commitHash,
+      instructions: `git revert ${(approval as Record<string,unknown>).commitHash} && git push origin development`,
     });
   } catch (error: unknown) {
     log.error('[Trinity Fixes API] Rollback error:', error);
@@ -718,7 +717,7 @@ router.get('/subagents/:domain', async (req: Request, res: Response) => {
       },
       recentTasks: recentTasks.map(t => ({
         id: t.id,
-        taskType: (t as any).taskType,
+        taskType: (t as Record<string, unknown>).taskType,
         status: t.status,
         durationMs: t.durationMs,
         createdAt: t.createdAt,
@@ -1092,7 +1091,7 @@ router.get('/platform-patterns', async (req: Request, res: Response) => {
  * GET /api/trinity/ai-usage/summary
  * Returns AI usage summary for the authenticated workspace (owner/manager only).
  */
-router.get('/ai-usage/summary', async (req: any, res: Response) => {
+router.get('/ai-usage/summary', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -1196,35 +1195,31 @@ router.get('/ai-usage/summary', async (req: any, res: Response) => {
       success: true,
       period: { days },
       summary: {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         totalCalls: parseInt(totals.total_calls),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         totalTokens: parseInt(totals.total_tokens),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         totalCredits: parseInt(totals.total_credits),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         avgResponseMs: Math.round(parseFloat(totals.avg_response_ms)),
       },
-      byCallType: byTypeResult.rows.map((r: any) => ({
+      byCallType: byTypeResult.rows.map((r: unknown) => ({
         callType: r.call_type,
         calls: parseInt(r.calls),
         tokens: parseInt(r.tokens),
         credits: parseInt(r.credits),
         avgMs: Math.round(parseFloat(r.avg_ms)),
       })),
-      dailyTrend: trendResult.rows.map((r: any) => ({
+      dailyTrend: trendResult.rows.map((r: unknown) => ({
         day: r.day,
         calls: parseInt(r.calls),
         tokens: parseInt(r.tokens),
         credits: parseInt(r.credits),
       })),
-      topUsers: topUsersResult.rows.map((r: any) => ({
+      topUsers: topUsersResult.rows.map((r: unknown) => ({
         userId: r.user_id,
         userRole: r.user_role,
         calls: parseInt(r.calls),
         credits: parseInt(r.credits),
       })),
-      peripheralAwareness: peripheralResult.rows.map((r: any) => ({
+      peripheralAwareness: peripheralResult.rows.map((r: unknown) => ({
         category: r.item_category,
         timesSurfaced: parseInt(r.times_surfaced),
       })),

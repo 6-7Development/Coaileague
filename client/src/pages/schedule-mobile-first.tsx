@@ -5,6 +5,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
@@ -75,7 +76,7 @@ function getShiftStatusStyling(shift: Shift): {
     endTime: shift.endTime,
     officerId: shift.employeeId,
     isPublished: shift.status === 'published' || shift.status === 'scheduled',
-    clockedIn: (shift as any).clockedIn || false,
+    clockedIn: (shift as Record<string,unknown>).clockedIn || false,
     status: shift.status || undefined,
   });
   
@@ -216,7 +217,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
       setCalloffPromptShiftId(null);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({
         title: 'Could not mark shift as calloff',
         description: err?.message || 'Please try again',
@@ -368,7 +369,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
 
   // Mutations
   const createShiftMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       const res = await apiRequest('POST', '/api/shifts', data);
       return res.json();
     },
@@ -380,7 +381,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       setSelectedEmployee(undefined);
       setEditingShift(undefined);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Failed to create shift",
         description: error.message,
@@ -399,7 +400,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'], exact: false });
 
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Failed to delete shift",
         description: error.message,
@@ -446,7 +447,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
     }
   };
 
-  const handleSubmitShift = async (data: any) => {
+  const handleSubmitShift = async (data) => {
     try {
       await createShiftMutation.mutateAsync(data);
     } catch {
@@ -468,7 +469,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
       setDetailSheetOpen(false);
       toast({ title: "Shift claimed", description: "This shift is now yours." });
-    } catch (error: any) {
+    } catch (error : unknown) {
       toast({ title: "Failed to claim shift", description: error?.message || "Please try again", variant: "destructive" });
     } finally {
       setClaimingShiftId(null);
@@ -487,7 +488,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
       const msg = isMyShift ? 'You are confirmed for this shift.' : 'Shift claimed successfully.';
       toast({ title: 'Shift accepted', description: msg });
-    } catch (error: any) {
+    } catch (error : unknown) {
       toast({
         title: 'Failed to accept shift',
         description: error?.message || 'Please try again',
@@ -503,7 +504,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
       toast({ title: 'Shift declined', description: 'Your supervisor has been notified.' });
-    } catch (error: any) {
+    } catch (error : unknown) {
       toast({
         title: 'Failed to decline shift',
         description: error?.message || 'Please try again',
@@ -859,7 +860,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
                   const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                   const emp = employees.find(e => e.id === shift.employeeId);
                   // Use enriched clientName from API response, fallback to client lookup for backwards compatibility
-                  const clientName = (shift as any).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
+                  const clientName = (shift as Record<string,unknown>).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
                   
                   const pendingStatusStyle = getShiftStatusStyling(shift);
                   const positionColor = getPositionColor(shift.title);
@@ -957,7 +958,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
                         const start = new Date(shift.startTime);
                         const end = new Date(shift.endTime);
                         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                        const clientName = (shift as any).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
+                        const clientName = (shift as Record<string,unknown>).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
                         const statusStyle = getShiftStatusStyling(shift);
                         const positionColor = getPositionColor(shift.title);
                         
@@ -1082,7 +1083,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
                           const start = new Date(shift.startTime);
                           const end = new Date(shift.endTime);
                           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                          const clientName = (shift as any).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
+                          const clientName = (shift as Record<string,unknown>).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
                           
                           const isOpenBeingProcessed = isShiftBeingProcessed(shift.id);
                           const wasOpenJustAssigned = wasShiftJustAssigned(shift.id);
@@ -1130,7 +1131,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
                           const end = new Date(shift.endTime);
                           const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                           const emp = employees.find(e => e.id === shift.employeeId);
-                          const clientName = (shift as any).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
+                          const clientName = (shift as Record<string,unknown>).clientName || clients.find(c => c.id === shift.clientId)?.companyName;
                           const statusStyle = getShiftStatusStyling(shift);
                           const positionColor = getPositionColor(shift.title);
                           const isBeingProcessed = isShiftBeingProcessed(shift.id);
@@ -1195,7 +1196,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
 
 
       {/* Manager Tools Drawer */}
-      <UniversalModal open={showManagerTools} onOpenChange={setShowManagerTools} side="bottom" className="h-auto max-h-[65vh]">
+      <UniversalModal open={showManagerTools} onOpenChange={setShowManagerTools} side="bottom" className="h-auto max-max-h-[calc(65dvh-56px)] sm:max-h-[65dvh] overflow-y-auto">
         <UniversalModalHeader>
           <UniversalModalTitle>Schedule Tools</UniversalModalTitle>
         </UniversalModalHeader>
@@ -1280,7 +1281,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
               }}
               data-testid="tool-trinity"
             >
-              <TrinityLogo size={20} />
+              <TrinityAnimatedLogo size={20} />
               <span className="text-sm font-medium">Trinity AI</span>
             </Button>
           </div>
@@ -1375,7 +1376,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
           sessionId: trinityCompletionResult.sessionId,
           executionId: trinityCompletionResult.executionId || '',
           totalMutations: trinityCompletionResult.mutationCount || 0,
-          mutations: (trinityCompletionResult.mutations || []).map((m: any) => ({
+          mutations: (trinityCompletionResult.mutations || []).map((m) => ({
             id: m.id,
             type: m.type || 'fill_open_shift',
             description: m.description,
@@ -1393,7 +1394,7 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
             totalHoursScheduled: trinityCompletionResult.summary?.totalHoursScheduled || 0,
             estimatedLaborCost: trinityCompletionResult.summary?.estimatedLaborCost || 0,
           },
-          aiSummary: (trinityCompletionResult as any).aiSummary || `Trinity filled ${trinityCompletionResult.summary?.openShiftsFilled || 0} shifts.`,
+          aiSummary: (trinityCompletionResult as Record<string,unknown>).aiSummary || `Trinity filled ${trinityCompletionResult.summary?.openShiftsFilled || 0} shifts.`,
           requiresVerification: false,
         } : null}
         workspaceId={workspaceId || ''}

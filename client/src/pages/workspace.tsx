@@ -13,7 +13,7 @@ import { UniversalSpinner } from "@/components/ui/universal-spinner";
 import type { WorkspaceFeature } from "@shared/workspaceFeatures";
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, unknown> = {
   BarChart3, Users, Calendar, Clock, FileText,
   DollarSign, Shield, Headphones, TrendingUp, Building2,
   CheckCircle, Receipt, ShieldCheck, Book, MessageSquare,

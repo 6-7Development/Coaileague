@@ -57,7 +57,8 @@ export interface Anomaly {
   entityType: string;
   entityId: string;
   dedupKey: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
+  description?: string;
 }
 
 export interface AnomalyWatchResult {
@@ -86,7 +87,7 @@ export async function runAnomalyWatchSweep(): Promise<AnomalyWatchResult> {
   let workspaces: string[];
   try {
     workspaces = await listActiveWorkspaces();
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.errors.push(`workspaces:${err?.message}`);
     return result;
   }
@@ -109,7 +110,7 @@ export async function runAnomalyWatchSweep(): Promise<AnomalyWatchResult> {
         if (delivered) result.anomaliesNotified++;
         await recordAnomaly(a);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`${workspaceId}:${err?.message}`);
       log.warn(`[anomalyWatch] workspace ${workspaceId} failed:`, err?.message);
     }
@@ -165,7 +166,7 @@ async function findGpsFraud(workspaceId: string): Promise<Anomaly[]> {
       [workspaceId, GPS_FRAUD_WINDOW_MIN],
     );
     return r.rows
-      .map((row: any) => {
+      .map((row: unknown) => {
         const km = haversineKm(
           Number(row.lat_a),
           Number(row.lng_a),
@@ -187,8 +188,8 @@ async function findGpsFraud(workspaceId: string): Promise<Anomaly[]> {
           details: { pair: [row.id_a, row.id_b], kmApart: km, minutesApart: row.minutes_apart },
         } as Anomaly;
       })
-      .filter((a: any): a is Anomaly => !!a);
-  } catch (err: any) {
+      .filter((a: unknown): a is Anomaly => !!a);
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] gps_fraud lookup failed:', err?.message);
     return [];
   }
@@ -214,7 +215,7 @@ async function findCoverageGaps(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 50`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'coverage_gap' as AnomalyCode,
       severity: 'high' as AnomalySeverity,
@@ -229,7 +230,7 @@ async function findCoverageGaps(workspaceId: string): Promise<Anomaly[]> {
         startTime: row.start_time,
       },
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] coverage_gap lookup failed:', err?.message);
     return [];
   }
@@ -250,7 +251,7 @@ async function findIncidentPatterns(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'incident_pattern' as AnomalyCode,
       severity: 'medium' as AnomalySeverity,
@@ -262,7 +263,7 @@ async function findIncidentPatterns(workspaceId: string): Promise<Anomaly[]> {
       dedupKey: `incident_pattern:${row.client_id}`,
       details: { clientId: row.client_id, incidentCount: row.incident_count },
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] incident_pattern lookup failed:', err?.message);
     return [];
   }
@@ -297,7 +298,7 @@ async function findGhostEmployees(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 30`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'ghost_employee' as AnomalyCode,
       severity: 'low' as AnomalySeverity,
@@ -308,7 +309,7 @@ async function findGhostEmployees(workspaceId: string): Promise<Anomaly[]> {
       dedupKey: `ghost_employee:${row.employee_id}`,
       details: { employeeId: row.employee_id },
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] ghost_employee lookup failed:', err?.message);
     return [];
   }
@@ -346,7 +347,7 @@ async function findBillingAnomalies(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 30`,
       [workspaceId, BILLING_ANOMALY_PCT],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'billing_anomaly' as AnomalyCode,
       severity: 'medium' as AnomalySeverity,
@@ -364,7 +365,7 @@ async function findBillingAnomalies(workspaceId: string): Promise<Anomaly[]> {
         pctDelta: Number(row.pct_delta),
       },
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] billing_anomaly lookup failed:', err?.message);
     return [];
   }
@@ -382,7 +383,9 @@ async function notify(a: Anomaly): Promise<boolean> {
         workspaceId: a.workspaceId,
         recipientUserId,
         channel: 'in_app',
-        subject: `Anomaly: ${a.code.replace(/_/g, ' ')}`,
+        subject: `Anomaly: ${a.code.replace(/_/g, ' ')
+       
+      }`,
         body: {
           summary: a.summary,
           code: a.code,
@@ -400,7 +403,7 @@ async function notify(a: Anomaly): Promise<boolean> {
   const inAppFailed = inAppResults.filter((r) => r.status === 'rejected').length;
   for (const r of inAppResults) {
     if (r.status === 'rejected') {
-      log.warn('[anomalyWatch] in-app notify failed (non-fatal):', (r.reason as any)?.message ?? r.reason);
+      log.warn('[anomalyWatch] in-app notify failed (non-fatal):', (r.reason as unknown)?.message ?? r.reason);
     }
   }
 
@@ -421,13 +424,13 @@ async function notify(a: Anomaly): Promise<boolean> {
         ),
       ),
     );
-    smsDelivered = smsResults.filter((r) => r.status === 'fulfilled' && (r.value as any)?.success).length;
+    smsDelivered = smsResults.filter((r) => r.status === 'fulfilled' && (r.value as unknown)?.success).length;
     smsFailed = smsResults.length - smsDelivered;
     for (const r of smsResults) {
       if (r.status === 'rejected') {
-        log.warn('[anomalyWatch] supervisor SMS threw (non-fatal):', (r.reason as any)?.message ?? r.reason);
-      } else if (!(r.value as any)?.success) {
-        log.info('[anomalyWatch] supervisor SMS not sent:', (r.value as any)?.error);
+        log.warn('[anomalyWatch] supervisor SMS threw (non-fatal):', (r.reason as unknown)?.message ?? r.reason);
+      } else if (!(r.value as unknown)?.success) {
+        log.info('[anomalyWatch] supervisor SMS not sent:', (r.value as unknown)?.error);
       }
     }
   }
@@ -442,8 +445,8 @@ async function notify(a: Anomaly): Promise<boolean> {
       description: a.summary,
       severity: a.severity,
       metadata: { workflow: WORKFLOW_NAME, ...a },
-    } as any);
-  } catch (err: any) {
+    } as unknown);
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] event publish failed (non-fatal):', err?.message);
   }
 
@@ -511,7 +514,7 @@ async function recordAnomaly(a: Anomaly): Promise<void> {
         a.dedupKey,
       ],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[anomalyWatch] audit write failed (non-fatal):', err?.message);
   }
 }
@@ -521,7 +524,7 @@ async function listActiveWorkspaces(): Promise<string[]> {
   const r = await pool.query(
     `SELECT id FROM workspaces WHERE COALESCE(is_active, true) = true LIMIT 5000`,
   );
-  return r.rows.map((row: any) => row.id);
+  return r.rows.map((row: unknown) => row.id);
 }
 
 async function fetchManagers(workspaceId: string): Promise<string[]> {
@@ -536,7 +539,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -556,8 +559,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }
@@ -636,7 +639,7 @@ export async function detectFutureShiftGuardCardExpiry(workspaceId: string): Pro
         },
       });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AnomalyWatch] Future shift guard card check failed:', err?.message);
   }
   return out;
@@ -717,7 +720,7 @@ export async function detectBillRateMismatch(workspaceId: string): Promise<Anoma
         },
       });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AnomalyWatch] Bill rate mismatch check failed:', err?.message);
   }
   return out;

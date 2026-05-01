@@ -105,7 +105,7 @@ export class ComplianceMonitoringService {
     });
 
     // Group by employee and calculate weekly hours
-    const employeeHours = new Map<string, { employee: any; totalHours: number }>();
+    const employeeHours = new Map<string, { employee: Record<string, unknown>; totalHours: number }>();
 
     for (const shift of recentShifts) {
       if (!shift.employee) continue;
@@ -225,9 +225,7 @@ export class ComplianceMonitoringService {
       for (const emp of allEmployees) {
         // Parse certifications from employee metadata if available
         // For now, check for expiration date fields in database
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (emp.certificationExpiresAt) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const expirationDate = new Date(emp.certificationExpiresAt);
           
           if (expirationDate < thirtyDaysFromNow && expirationDate > today) {
@@ -314,9 +312,8 @@ export class ComplianceMonitoringService {
             description: `Only ${restHours.toFixed(1)} hours between shifts. Many states require minimum 8-hour rest periods to prevent fatigue-related incidents.`,
             affectedEntity: {
               type: 'employee',
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               id: currentShift.employeeId,
-              name: (currentShift as any).employee?.name || 'Unknown',
+              name: (currentShift as Record<string,unknown>).employee?.name || 'Unknown',
             },
             regulation: 'State Labor Laws (varies by state) - Generally 8-11 hours rest required',
             detected_at: new Date(),

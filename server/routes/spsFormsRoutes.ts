@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 /**
  * SPS 10-Step Employee Onboarding Routes — /api/sps/forms
  *
@@ -16,6 +18,7 @@
  *   POST   /api/sps/forms/upload              — upload credential/check image to GCS
  */
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
@@ -54,7 +57,7 @@ const upload = multer({
 // ── Encryption helpers (AES-256-CBC) ─────────────────────────────────────────
 // SECURITY: FIELD_ENCRYPTION_KEY is required. Set it in Railway environment variables.
 // Railway UI: Settings → Variables → Add Variable → FIELD_ENCRYPTION_KEY = <32-char random secret>
-// Generate one: node -e "console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))"
+// Generate one: node -e "log.info(require('crypto').randomBytes(32).toString('hex').slice(0,32))"
 const _rawEncKey = process.env.FIELD_ENCRYPTION_KEY;
 if (
   process.env.NODE_ENV === 'production' &&
@@ -64,7 +67,7 @@ if (
   throw new Error(
     'FATAL: FIELD_ENCRYPTION_KEY is not set or is using an insecure placeholder. ' +
     'Set a strong 32-character random secret in Railway environment variables before deploying. ' +
-    'Generate one: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\').slice(0,32))"'
+    'Generate one: node -e "log.info(require(\'crypto\').randomBytes(32).toString(\'hex\').slice(0,32))"'
   );
 }
 // In development/test: use placeholder so local dev works without extra setup.
@@ -91,14 +94,14 @@ function decrypt(ciphertext: string): string {
 }
 
 // ── Workspace resolver ────────────────────────────────────────────────────────
-function resolveWorkspace(req: any): string | null {
+function resolveWorkspace(req: AuthenticatedRequest): string | null {
   return req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId || null;
 }
 
 // ── Audit logger ─────────────────────────────────────────────────────────────
 async function audit(
   onboardingId: string, workspaceId: string,
-  action: string, actorId?: string, step?: number, details?: any,
+  action: string, actorId?: string, step?: number, details?: unknown,
 ) {
   try {
     await db.insert(spsOnboardingAuditLog).values({
@@ -111,7 +114,7 @@ async function audit(
 }
 
 // ── Form-table map: step → Drizzle table ─────────────────────────────────────
-const FORM_TABLES: Record<number, any> = {
+const FORM_TABLES: Record<number, unknown> = {
   1: spsForm1Checklist,
   2: spsForm2OfferLetter,
   3: spsForm3W4,
@@ -127,7 +130,7 @@ const FORM_TABLES: Record<number, any> = {
 // ── Step validators ───────────────────────────────────────────────────────────
 type ValidationError = { field: string; message: string };
 
-function validateStep(step: number, data: Record<string, any>): ValidationError[] {
+function validateStep(step: number, data: Record<string, unknown>): ValidationError[] {
   const errors: ValidationError[] = [];
   const req = (field: string, label: string) => {
     if (!data[field] || String(data[field]).trim() === '') {
@@ -210,7 +213,7 @@ function validateStep(step: number, data: Record<string, any>): ValidationError[
 }
 
 // ── Map raw request body to Drizzle column names ──────────────────────────────
-function mapFormData(step: number, data: Record<string, any>): Record<string, any> {
+function mapFormData(step: number, data: Record<string, unknown>): Record<string, unknown> {
   switch (step) {
     case 1:
       return {
@@ -313,7 +316,7 @@ function mapFormData(step: number, data: Record<string, any>): Record<string, an
 }
 
 // ── Upsert form row helper ────────────────────────────────────────────────────
-async function upsertFormRow(step: number, onboardingId: string, workspaceId: string, data: Record<string, any>) {
+async function upsertFormRow(step: number, onboardingId: string, workspaceId: string, data: Record<string, unknown>) {
   const table = FORM_TABLES[step];
   if (!table) return;
   const mapped = { ...mapFormData(step, data), updatedAt: new Date() };
@@ -356,7 +359,7 @@ spsFormsRouter.get('/:id', async (req, res) => {
       .where(and(eq(spsOnboarding.id, req.params.id), eq(spsOnboarding.workspaceId, workspaceId)));
     if (!session) return res.status(403).json({ error: 'Not found or access denied' });
 
-    const fetchForm = async (table: any) => {
+    const fetchForm = async (table: unknown) => {
       const rows = await db.select().from(table).where(eq(table.onboardingId, session.id));
       return rows[0] ?? null;
     };
@@ -386,7 +389,7 @@ spsFormsRouter.get('/:id', async (req, res) => {
 });
 
 // ── PUT /:id/save-draft ───────────────────────────────────────────────────────
-const saveDraftHandler = async (req: any, res: any) => {
+const saveDraftHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = resolveWorkspace(req);
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -457,7 +460,7 @@ spsFormsRouter.post('/:id/finalize', async (req, res) => {
     if (!session) return res.status(403).json({ error: 'Not found or access denied' });
 
     // Collect all form data for PDF
-    const fetchForm = async (table: any) => {
+    const fetchForm = async (table: unknown) => {
       const rows = await db.select().from(table).where(eq(table.onboardingId, session.id));
       return rows[0] ?? null;
     };
@@ -607,7 +610,7 @@ spsFormsRouter.post('/:id/grant-trinity', async (req, res) => {
 });
 
 // ── POST /upload — credential/check image to GCS ─────────────────────────────
-spsFormsRouter.post('/upload', upload.single('file'), async (req: any, res) => {
+spsFormsRouter.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const workspaceId = resolveWorkspace(req);

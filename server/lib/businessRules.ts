@@ -1,4 +1,5 @@
-import { Decimal } from 'decimal.js';
+import type { Response } from 'express';
+import { Decimal , Response } from 'decimal.js';
 import { WORKSPACE_ROLE_HIERARCHY } from './rbac/roleDefinitions';
 
 // ─── PAY RATE RULES ───────────────────────────────────────────────────────────
@@ -465,7 +466,7 @@ export function validateAdminHourlyRate(
 
 // ─── RESPONSE HELPER ──────────────────────────────────────────────────────────
 export function businessRuleResponse(
-  res: any,
+  res: Response,
   violations: (BusinessRuleViolation | null)[],
 ): boolean {
   const active = violations.filter(Boolean) as BusinessRuleViolation[];

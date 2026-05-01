@@ -50,9 +50,9 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
     onMutate: async (shiftId) => {
       await queryClient.cancelQueries({ queryKey: ['/api/shifts'] });
       const prev = queryClient.getQueryData(['/api/shifts']);
-      queryClient.setQueryData(['/api/shifts'], (old: any) => {
+      queryClient.setQueryData(['/api/shifts'], (old) => {
         if (!old) return old;
-        return old.map((shift: any) => 
+        return old.map((shift) => 
           shift.id === shiftId 
             ? { ...shift, status: 'open' }  // optimistic: approve moves to open/published
             : shift
@@ -65,7 +65,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
       toast({ title: 'Shift approved' });
     },
-    onError: (_err, _vars, context: any) => {
+    onError: (_err, _vars, context: unknown) => {
       if (context?.prev) queryClient.setQueryData(['/api/shifts'], context.prev);
       toast({ 
         title: 'Failed to approve shift',
@@ -107,7 +107,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
       });
       setBulkProgress(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: 'Some shifts failed to approve',
         description: error.message,
@@ -137,7 +137,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
       });
       setBulkProgress(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ 
         title: 'Some shifts failed to deny',
         description: error.message,
@@ -164,7 +164,7 @@ export function ApprovalsDrawer({ open, onOpenChange, pendingShifts, employees }
   return (
     <>
       <UniversalModal open={open} onOpenChange={onOpenChange}>
-        <UniversalModalContent side="bottom" className="h-[90vh] flex flex-col p-0 sm:max-w-3xl" showHomeButton={false}>
+        <UniversalModalContent side="bottom" className="max-h-[calc(80dvh-56px)] sm:max-h-[calc(90dvh-56px)] sm:max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto flex flex-col p-0 sm:max-w-3xl" showHomeButton={false}>
           <UniversalModalHeader className="px-4 pt-4 pb-2 border-b shrink-0">
             <UniversalModalTitle className="flex items-center gap-2">
               <Clock3 className="h-5 w-5 text-orange-600" />

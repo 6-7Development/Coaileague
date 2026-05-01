@@ -13,13 +13,14 @@ import { orchestrationRuns, employees, clients, shifts } from '@shared/schema';
 import { eq, and, sql, gte } from 'drizzle-orm';
 import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityDrugTestingActions');
 
-function mkAction(actionId: string, fn: (params: any, request: ActionRequest) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>, request: ActionRequest) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity drug testing management: ${actionId}`,
     requiredRoles: ['org_owner', 'co_owner', 'manager', 'supervisor'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -33,7 +34,7 @@ function mkAction(actionId: string, fn: (params: any, request: ActionRequest) =>
           data,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return { 
           success: false, 
           actionId, 
@@ -90,9 +91,9 @@ export function registerDrugTestingActions() {
       requiresApproval: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
-    const testId = (run as any).id;
+    const testId = (run as Record<string, unknown>).id;
     if (employee.userId) {
       await notifyUser(
         workspaceId,
@@ -105,7 +106,7 @@ export function registerDrugTestingActions() {
 
     return {
       success: true,
-      testId: (run as any).id,
+      testId: (run as Record<string, unknown>).id,
       employeeName: inputParams.employeeName,
       deadline
     };
@@ -122,7 +123,7 @@ export function registerDrugTestingActions() {
     
     if (!existing) throw new Error(`Drug test record ${testId} not found`);
 
-    const currentParams = (existing as any).inputParams || {};
+    const currentParams = (existing as Record<string,unknown>).inputParams || {};
     const updatedParams = {
       ...currentParams,
       result,
@@ -165,13 +166,13 @@ export function registerDrugTestingActions() {
       .set({ 
         isActive: false, 
         notes: sql`COALESCE(notes, '') || '\nFAILED DRUG TEST - SUSPENDED'` 
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(employees.id, employeeId));
 
     // Cancel all future assigned shifts for the suspended employee
     const now = new Date();
     const cancelResult = await db.update(shifts)
-      .set({ status: 'cancelled' } as any)
+      .set({ status: 'cancelled' } as Record<string, unknown>)
       .where(and(
         eq(shifts.employeeId, employeeId),
         gte(shifts.startTime, now)
@@ -234,7 +235,7 @@ export function registerDrugTestingActions() {
     if (!client) throw new Error(`Client ${clientId} not found`);
 
     // Assuming client has a requirements or notes field to check
-    const requirements = (client as any).notes || (client as any).requirements || '';
+    const requirements = (client as ClientWithExtras).notes || (client as ClientWithExtras).requirements || '';
     const structured = {
       drugTestingRequired: requirements.toLowerCase().includes('drug test'),
       backgroundCheckRequired: requirements.toLowerCase().includes('background'),

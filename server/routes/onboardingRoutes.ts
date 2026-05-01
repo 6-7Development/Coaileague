@@ -15,7 +15,8 @@
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
-import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
+import { Router, Response} from 'express';
 import { onboardingPipelineService, type PipelineStatus } from '../services/onboardingPipelineService';
 import { isFeatureEnabled } from '@shared/platformConfig';
 import { PLATFORM } from '../config/platformConfig';
@@ -43,7 +44,7 @@ function releaseBulkImportLock(workspaceId: string) {
   bulkImportLocks.delete(workspaceId);
 }
 
-const ensureOnboardingEnabled = (req: any, res: any, next: any) => {
+const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: Response, next: unknown) => {
   if (!isFeatureEnabled('enableOnboardingPipeline')) {
     return res.status(403).json({ 
       error: 'Onboarding pipeline feature is not enabled',
@@ -53,7 +54,7 @@ const ensureOnboardingEnabled = (req: any, res: any, next: any) => {
   next();
 };
 
-const requireWorkspace = (req: any, res: any, next: any) => {
+const requireWorkspace = (req: AuthenticatedRequest, res: Response, next: unknown) => {
   const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.workspaceId;
   if (!workspaceId) {
     return res.status(403).json({ error: 'No workspace selected' });
@@ -62,7 +63,7 @@ const requireWorkspace = (req: any, res: any, next: any) => {
   next();
 };
 
-onboardingRouter.get('/progress', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.get('/progress', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const progress = await onboardingPipelineService.getProgress(req.workspaceId);
     
@@ -76,7 +77,7 @@ onboardingRouter.get('/progress', ensureOnboardingEnabled, requireWorkspace, asy
   }
 });
 
-onboardingRouter.get('/tasks', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.get('/tasks', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const tasks = await onboardingPipelineService.getTasks(req.workspaceId);
     
@@ -91,7 +92,7 @@ onboardingRouter.get('/tasks', ensureOnboardingEnabled, requireWorkspace, async 
   }
 });
 
-onboardingRouter.post('/tasks/:taskId/skip', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.post('/tasks/:taskId/skip', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const { taskId } = req.params;
     
@@ -112,7 +113,7 @@ onboardingRouter.post('/tasks/:taskId/skip', ensureOnboardingEnabled, requireWor
 // Applied here (inside the auth-protected onboarding router) because the route itself
 // requires an authenticated session — rate-limiting unauthenticated requests is handled
 // by the auth layer (401 on missing session) which already prevents abuse.
-onboardingRouter.post('/initialize', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.post('/initialize', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const progress = await onboardingPipelineService.initializeOnboarding(req.workspaceId);
     
@@ -131,7 +132,7 @@ const applyRewardSchema = z.object({
   invoiceId: z.string().optional(),
 });
 
-onboardingRouter.post('/ai-tasks/generate', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.post('/ai-tasks/generate', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const tasks = await onboardingPipelineService.generateDynamicTasks(req.workspaceId);
     
@@ -180,7 +181,7 @@ const aiOnboardingSchema = z.object({
   }).optional(),
 });
 
-onboardingRouter.get('/ai/status', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.get('/ai/status', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const status = await onboardingOrchestrator.getOnboardingStatus(req.workspaceId);
 
@@ -207,7 +208,7 @@ const importDataSchema = z.object({
   skipDuplicates: z.boolean().optional(),
 });
 
-onboardingRouter.get('/setup-guide', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+onboardingRouter.get('/setup-guide', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
@@ -345,7 +346,7 @@ const createOrgProgressSchema = z.object({
   skippedSteps: z.array(z.number()),
 });
 
-onboardingRouter.get('/create-org/progress', async (req: any, res) => {
+onboardingRouter.get('/create-org/progress', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     if (!userId) {
@@ -358,7 +359,7 @@ onboardingRouter.get('/create-org/progress', async (req: any, res) => {
     
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     
-    const metadata = (user as any)?.metadata || {};
+    const metadata = (user as Record<string,unknown>)?.metadata || {};
     const progress = metadata[ONBOARDING_PROGRESS_KEY] || null;
 
     res.json({
@@ -371,7 +372,7 @@ onboardingRouter.get('/create-org/progress', async (req: any, res) => {
   }
 });
 
-onboardingRouter.post('/create-org/progress', async (req: any, res) => {
+onboardingRouter.post('/create-org/progress', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     if (!userId) {
@@ -386,7 +387,6 @@ onboardingRouter.post('/create-org/progress', async (req: any, res) => {
 
     await db.update(users)
       .set({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: sql`COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(${ONBOARDING_PROGRESS_KEY}, ${JSON.stringify(progressData)}::jsonb)`
       })
       .where(eq(users.id, userId));
@@ -401,7 +401,7 @@ onboardingRouter.post('/create-org/progress', async (req: any, res) => {
   }
 });
 
-onboardingRouter.delete('/create-org/progress', async (req: any, res) => {
+onboardingRouter.delete('/create-org/progress', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     if (!userId) {
@@ -414,7 +414,6 @@ onboardingRouter.delete('/create-org/progress', async (req: any, res) => {
 
     await db.update(users)
       .set({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: sql`COALESCE(metadata, '{}'::jsonb) - ${ONBOARDING_PROGRESS_KEY}`
       })
       .where(eq(users.id, userId));

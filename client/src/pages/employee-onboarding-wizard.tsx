@@ -107,7 +107,7 @@ function DocSignaturePanel({
     if (atBottom) setHasScrolled(true);
   }, []);
 
-  const iconMap: Record<string, any> = {
+  const iconMap: Record<string, unknown> = {
     employee_contract: ScrollText,
     offer_letter: FileText,
     liability_waiver: Shield,
@@ -229,8 +229,8 @@ declare global {
     Plaid: {
       create: (config: {
         token: string;
-        onSuccess: (publicToken: string, metadata: any) => void;
-        onExit: (err: any, metadata: any) => void;
+        onSuccess: (publicToken: string, metadata: unknown) => void;
+        onExit: (err: unknown, metadata: unknown) => void;
       }) => { open: () => void };
     } | undefined;
   }
@@ -292,7 +292,7 @@ function PayrollStep({
         onExit: () => {},
       });
       handler.open();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ title: 'Bank connection unavailable', description: err?.message || 'Please enter your bank details manually.', variant: 'destructive' });
     } finally {
       setIsLoadingPlaid(false);
@@ -450,7 +450,7 @@ export default function EmployeeOnboardingWizard() {
     onSuccess: (data) => {
       setApplicationId(data.id);
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const updateAppMutation = useMutation({
@@ -464,7 +464,7 @@ export default function EmployeeOnboardingWizard() {
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
-    onError: (e: any) => toast({ title: 'Save failed', description: e.message || 'Failed to save your progress. Please try again.', variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Save failed', description: e.message || 'Failed to save your progress. Please try again.', variant: 'destructive' }),
   });
 
   const fetchContracts = useCallback(async () => {
@@ -509,7 +509,7 @@ export default function EmployeeOnboardingWizard() {
         }
       }
     },
-    onError: (e: any) => toast({ title: 'Signing failed', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Signing failed', description: e.message, variant: 'destructive' }),
   });
 
   const submitMutation = useMutation({
@@ -523,7 +523,7 @@ export default function EmployeeOnboardingWizard() {
       return res.json();
     },
     onSuccess: () => setStep(9),
-    onError: (e: any) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
   });
 
   const handleNext = async () => {
@@ -541,30 +541,30 @@ export default function EmployeeOnboardingWizard() {
         if (!applicationId) {
           await createAppMutation.mutateAsync();
         } else {
-          await updateAppMutation.mutateAsync({ ...form } as any);
+          await updateAppMutation.mutateAsync({ ...form } as unknown);
         }
       } else if (step === 2) {
         await updateAppMutation.mutateAsync({
           emergencyContactName: form.emergencyContactName,
           emergencyContactPhone: form.emergencyContactPhone,
           emergencyContactRelation: form.emergencyContactRelation,
-        } as any);
+        } as unknown);
       } else if (step === 3) {
         await updateAppMutation.mutateAsync({
-          taxClassification: form.taxClassification as any,
+          taxClassification: form.taxClassification as unknown,
           filingStatus: form.filingStatus,
           multipleJobs: form.multipleJobs,
           dependentsAmount: form.dependentsAmount,
           otherIncome: form.otherIncome,
           extraWithholding: form.extraWithholding,
-        } as any);
+        } as unknown);
       } else if (step === 4) {
         await updateAppMutation.mutateAsync({
           bankName: form.bankName,
           routingNumber: form.routingNumber,
           accountNumber: form.accountNumber,
           accountType: form.accountType,
-        } as any);
+        } as unknown);
       } else if (step === 5) {
         // Credentials step — submit to /api/onboarding/certifications.
         // Non-fatal on failure; HR can collect manually later.
@@ -602,7 +602,7 @@ export default function EmployeeOnboardingWizard() {
           maxHoursPerWeek: form.maxHoursPerWeek ? parseInt(form.maxHoursPerWeek) : undefined,
           availabilityNotes: form.availabilityNotes,
           currentStep: 'work_availability',
-        } as any);
+        } as unknown);
       }
     } catch {
       // Error is displayed by mutation's onError callback; do not advance the step

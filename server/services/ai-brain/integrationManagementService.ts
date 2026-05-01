@@ -292,7 +292,6 @@ class IntegrationManagementService {
 
       await db.update(integrationConnections)
         .set({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           encryptedCredentials,
           apiKey: credentials.apiKey ? this.encryptValue(credentials.apiKey) : null,
           accessToken: credentials.accessToken ? this.encryptValue(credentials.accessToken) : null,
@@ -437,7 +436,7 @@ class IntegrationManagementService {
 
       const status: ServiceHealthStatus = {
         integrationId: conn.integrationId,
-        integrationName: conn.integration?.name || (conn as any).displayName,
+        integrationName: conn.integration?.name || (conn as Record<string,unknown>).displayName,
         isHealthy: conn.isHealthy || false,
         lastChecked: new Date(),
         errorMessage: conn.isHealthy ? undefined : 'Service connectivity issue detected',
@@ -547,7 +546,6 @@ class IntegrationManagementService {
     details: Record<string, unknown>
   ): Promise<void> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(systemAuditLogs).values({
         workspaceId: 'system',
         action: `integration.${action}`,

@@ -10,7 +10,7 @@ import { format } from "date-fns";
 /**
  * Convert an array of objects to CSV format
  */
-export function convertToCSV(data: Record<string, any>[], headers?: string[]): string {
+export function convertToCSV(data: Record<string, unknown>[], headers?: string[]): string {
   if (!data || data.length === 0) {
     return '';
   }
@@ -53,7 +53,7 @@ export function convertToCSV(data: Record<string, any>[], headers?: string[]): s
  * Download CSV file to user's computer
  */
 export function downloadCSV(
-  data: Record<string, any>[],
+  data: Record<string, unknown>[],
   filename: string,
   headers?: string[]
 ): void {
@@ -80,7 +80,7 @@ export function downloadCSV(
  */
 export function generatePDF(
   title: string,
-  data: Record<string, any>[],
+  data: Record<string, unknown>[],
   options?: {
     orientation?: 'portrait' | 'landscape';
     columns?: string[];
@@ -252,7 +252,7 @@ export function createReportFilename(baseName: string, extension: 'csv' | 'pdf')
 export function exportReport(
   format: 'csv' | 'pdf',
   title: string,
-  data: Record<string, any>[],
+  data: Record<string, unknown>[],
   options?: {
     filename?: string;
     headers?: string[];

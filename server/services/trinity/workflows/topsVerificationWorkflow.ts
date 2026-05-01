@@ -160,10 +160,10 @@ Return ONLY the JSON object, no other text.`;
       throw new Error(`Anthropic vision API error: ${response.status}`);
     }
 
-    const data: any = await response.json();
+    const data: Record<string, unknown> = await response.json();
     const rawText = data.content?.[0]?.text || '';
     const clean = rawText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    const parsed: unknown = JSON.parse(clean);
 
     const flags: string[] = [...(parsed.suspicionFlags || [])];
 
@@ -271,7 +271,7 @@ Return ONLY the JSON object, no other text.`;
     });
 
     return result;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[TOPSVerification] Vision analysis failed:', err?.message);
     return {
       status: 'suspicious',

@@ -20,6 +20,7 @@ import { db } from '../db';
 import { clients } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('VerifyOnboardingGate');
 
@@ -51,7 +52,7 @@ export async function verifyOnboardingGate(
   if (!userId) return next();
 
   // Only applies to client-role users
-  const userRole = (req as any).user?.role || (req.session as any)?.role;
+  const userRole = req.user?.role || (req.session as any)?.role;
   if (userRole !== 'client') return next();
 
   // Allow exempt routes through
@@ -60,14 +61,14 @@ export async function verifyOnboardingGate(
 
   try {
     const [clientRecord] = await db
-      .select({ id: clients.id, clientOnboardingStatus: (clients as any).clientOnboardingStatus })
+      .select({ id: clients.id, clientOnboardingStatus: (clients as ClientWithExtras).clientOnboardingStatus })
       .from(clients)
       .where(eq(clients.userId, userId))
       .limit(1);
 
     if (!clientRecord) return next(); // No client record — pass through
 
-    const status = (clientRecord as any).clientOnboardingStatus;
+    const status = (clientRecord as Record<string,unknown>).clientOnboardingStatus;
 
     // Gate: INVITED status → block all routes, redirect to verification
     if (status && status !== 'active') {

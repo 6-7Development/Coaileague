@@ -22,6 +22,7 @@ import { platformEventBus } from "../services/platformEventBus";
 import { typedPoolExec } from '../lib/typedSql';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
+import { GeoComplianceService } from '../services/geoCompliance';
 const log = createLogger('TimeEntryRoutes');
 
 
@@ -54,8 +55,7 @@ const router = Router();
       const csvHeader = showPayRates
         ? 'Employee ID,Client ID,Clock In,Clock Out,Total Hours,Hourly Rate,Total Amount,Status,Billable\n'
         : 'Employee ID,Client ID,Clock In,Clock Out,Total Hours,Status,Billable\n';
-      const csvRows = entries.map((e: any) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      const csvRows = entries.map((e: unknown) => {
         const base = `${e.employeeId},${e.clientId || ''},${format(new Date(e.clockIn), 'yyyy-MM-dd HH:mm')},${e.clockOut ? format(new Date(e.clockOut), 'yyyy-MM-dd HH:mm') : ''},${e.totalHours || ''}`;
         if (showPayRates) {
           return `${base},${e.hourlyRate || ''},${e.totalAmount || ''},${e.status || 'pending'},${e.billableToClient ? 'Yes' : 'No'}`;
@@ -64,7 +64,6 @@ const router = Router();
       }).join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       res.setHeader('Content-Disposition', `attachment; filename="time-entries-${format(new Date(), 'yyyy-MM-dd')}.csv"`);
       res.send(csvHeader + csvRows);
     } catch (error: unknown) {
@@ -73,7 +72,7 @@ const router = Router();
     }
   });
 
-  router.get('/', requireAuth, async (req: any, res) => {
+  router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -107,7 +106,7 @@ const router = Router();
     }
   });
 
-  router.post('/', requireAuth, async (req: any, res) => {
+  router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -132,7 +131,7 @@ const router = Router();
           const clockInTime = new Date(validated.clockIn);
           const clockOutTime = validated.clockOut ? new Date(validated.clockOut) : null;
 
-          const overlapConditions: any[] = [
+          const overlapConditions: unknown[] = [
             eq(timeEntriesTable.workspaceId, workspace.id),
             eq(timeEntriesTable.employeeId, validated.employeeId),
           ];
@@ -165,7 +164,7 @@ const router = Router();
         }
 
         const [entry] = await tx.insert(timeEntriesTable)
-          .values(validated as any)
+          .values(validated)
           .returning();
         return { overlapping: false, entry } as const;
       });
@@ -203,17 +202,14 @@ const router = Router();
           workspace.id,
           validated.shiftId || null,
           validated.siteId || null,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           undefined,
           cadLatitude,
           cadLongitude
         );
       } catch (cadErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error("[Clock-In] CAD auto-provision failed:", cadErr.message);
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspace.id, { type: 'time_entries_updated', data: { action: 'updated' } });
       res.json(entry);
     } catch (error: unknown) {
@@ -273,7 +269,6 @@ const router = Router();
         return res.status(409).json({ message: "Time entry was already processed by another request" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
 
       // Fire automation event — triggers invoice creation + payroll processing pipeline
@@ -282,7 +277,7 @@ const router = Router();
         workspaceId,
         payload: { count: 1, entryIds: [updated.id], approvedBy: userId },
         metadata: { source: 'timeEntryRoutes.single_approve' },
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       // Phase 20 — Trinity invoice lifecycle workflow. Scheduled non-blocking
       // so the approval HTTP response doesn't wait on PDF / email dispatch.
@@ -360,7 +355,6 @@ const router = Router();
         return res.status(409).json({ message: "Time entry has already been processed" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
 
       const rejectorName = req.user?.fullName || 'a manager';
@@ -490,7 +484,6 @@ const router = Router();
         )
         .returning();
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
 
       // Audit trail: log bulk approval as a single event with all entry IDs (Phase 10 requirement)
@@ -502,7 +495,6 @@ const router = Router();
             action: 'bulk_approve',
             entityType: 'time_entry',
             entityId: updated[0].id,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             description: `Bulk approved ${updated.length} time entr${updated.length === 1 ? 'y' : 'ies'}`,
             metadata: {
               entryIds: updated.map(e => e.id),
@@ -512,7 +504,6 @@ const router = Router();
             },
           });
         } catch (auditErr: unknown) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           log.warn('[TimeEntry] Bulk approve audit log failed (non-blocking):', auditErr.message);
         }
 
@@ -522,7 +513,7 @@ const router = Router();
           workspaceId,
           payload: { count: updated.length, entryIds: updated.map(e => e.id), approvedBy: userId },
           metadata: { source: 'timeEntryRoutes.bulk_approve' },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
         // Phase 20 — Trinity invoice lifecycle workflow per entry (de-duped
         // inside the workflow if the client is already invoiced for the day).
@@ -562,7 +553,7 @@ const router = Router();
     }
   });
 
-  router.get('/post-order-quiz/:shiftId', requireAuth, async (req: any, res) => {
+  router.get('/post-order-quiz/:shiftId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -583,7 +574,7 @@ const router = Router();
     }
   });
 
-  router.post('/post-order-quiz/:shiftId/submit', requireAuth, async (req: any, res) => {
+  router.post('/post-order-quiz/:shiftId/submit', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -604,7 +595,7 @@ const router = Router();
     }
   });
 
-  router.post('/gps-ping', requireAuth, async (req: any, res) => {
+  router.post('/gps-ping', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -675,7 +666,7 @@ const router = Router();
     }
   });
 
-  router.post('/manual-override', requireAuth, async (req: any, res) => {
+  router.post('/manual-override', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -714,7 +705,7 @@ const router = Router();
         description: `Officer ${employeeName} submitted a manual override: ${reasonCode}`,
         workspaceId: workspace.id,
         metadata: { employeeId: employee.id, employeeName, shiftId, siteId, siteName, reasonCode, reasonDetail }
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       res.status(201).json({ id, message: "Override submitted — supervisor notified." });
     } catch (error: unknown) {
@@ -723,7 +714,7 @@ const router = Router();
     }
   });
 
-  router.patch('/:id/clock-out', requireAuth, async (req: any, res) => {
+  router.patch('/:id/clock-out', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -787,7 +778,6 @@ const router = Router();
 
       // GEO-COMPLIANCE: Detect IP anomaly (different IP between clock-in and clock-out)
       if (timeEntry.clockInIpAddress && ipAddress) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await GeoComplianceService.detectIPAnomaly(
           req.params.id,
           workspace.id,
@@ -797,7 +787,6 @@ const router = Router();
         );
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspace.id, { type: 'time_entries_updated', data: { action: 'updated' } });
 
       // Dual-emit law: clock-out is a significant workforce event Trinity must hear
@@ -817,7 +806,7 @@ const router = Router();
           clockOut: clockOut.toISOString(),
         },
         visibility: 'supervisor',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       res.json(updated);
     } catch (error: unknown) {
@@ -826,7 +815,7 @@ const router = Router();
     }
   });
 
-  router.post('/:id/start-break', requireAuth, async (req: any, res) => {
+  router.post('/:id/start-break', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -853,12 +842,10 @@ const router = Router();
       const { breakType } = breakParsed.data;
       const updated = await storage.updateTimeEntry(req.params.id, workspace.id, {
         status: 'on_break',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         breakStartTime: new Date().toISOString(),
         breakType: breakType || 'rest',
       });
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspace.id, { type: 'time_entries_updated', data: { action: 'updated' } });
       res.json(updated);
     } catch (error: unknown) {
@@ -867,7 +854,7 @@ const router = Router();
     }
   });
 
-  router.post('/:id/end-break', requireAuth, async (req: any, res) => {
+  router.post('/:id/end-break', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = req.workspaceId ? { id: req.workspaceId } : (await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId));
@@ -881,20 +868,16 @@ const router = Router();
       }
 
       const breakEnd = new Date();
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const breakStart = (timeEntry as any).breakStartTime ? new Date(timeEntry.breakStartTime) : breakEnd;
+      const breakStart = (timeEntry as Record<string,unknown>).breakStartTime ? new Date(timeEntry.breakStartTime) : breakEnd;
       const breakMinutes = Math.round((breakEnd.getTime() - breakStart.getTime()) / (1000 * 60));
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const existingBreakMinutes = parseInt(String(timeEntry.totalBreakMinutes || '0'), 10);
 
       const updated = await storage.updateTimeEntry(req.params.id, workspace.id, {
         status: 'active',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         breakEndTime: breakEnd.toISOString(),
         totalBreakMinutes: String(existingBreakMinutes + breakMinutes),
       });
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspace.id, { type: 'time_entries_updated', data: { action: 'updated' } });
       res.json(updated);
     } catch (error: unknown) {
@@ -903,7 +886,7 @@ const router = Router();
     }
   });
 
-  router.get('/unbilled/:clientId', requireAuth, async (req: any, res) => {
+  router.get('/unbilled/:clientId', requireAuth, async (req: AuthenticatedRequest, res) => {
 
 
     try {
@@ -935,7 +918,7 @@ router.post("/calculate-hours", requireAuth, async (req: AuthenticatedRequest, r
 
     // Resolve workspace timezone so day boundaries align with the workspace's
     // local clock — not the host process's. Default to UTC if unknown.
-    const wsId = (req as any).workspaceId || (req.user as any)?.currentWorkspaceId;
+    const wsId = req.workspaceId || (req.user as any)?.currentWorkspaceId;
     let timeZone = 'UTC';
     if (wsId) {
       const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, wsId) });

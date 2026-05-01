@@ -160,7 +160,7 @@ export default function ReviewDisputes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {disputes.map((dispute: any) => (
+                {disputes.map((dispute) => (
                   <TableRow key={dispute.id} data-testid={`row-dispute-${dispute.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function ReviewDisputes() {
             </Table>
             </div>
             <div className="sm:hidden space-y-3">
-              {disputes.map((dispute: any) => (
+              {disputes.map((dispute) => (
                 <div
                   key={dispute.id}
                   className="border rounded-lg p-3 space-y-2 hover-elevate cursor-pointer"
@@ -288,7 +288,7 @@ export default function ReviewDisputes() {
 
       {/* Dispute Review Dialog */}
       <UniversalModal open={!!selectedDispute} onOpenChange={() => setSelectedDispute(null)}>
-        <UniversalModalContent size="full" className="max-h-[90vh] overflow-y-auto">
+        <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
           <UniversalModalHeader>
             <UniversalModalTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />

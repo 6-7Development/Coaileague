@@ -355,7 +355,7 @@ export async function recordCallUsage(params: {
     outcome: params.outcome || 'abandoned',
     aiAttempted: params.aiAttempted ?? false,
     extensionHandled: params.extensionHandled,
-  }).catch((err: any) => {
+  }).catch((err: unknown) => {
     log.warn('[VoiceOrchestrator] Command bus report failed (non-fatal):', err?.message);
   });
 
@@ -407,7 +407,7 @@ export async function handleInbound(params: {
         });
         log.info(`[VoiceOrchestrator] Recording started for call ${callSid}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Non-fatal — call proceeds even if recording fails (e.g. dev env with no Twilio creds)
       log.warn(`[VoiceOrchestrator] Could not start recording for ${callSid}: ${err.message}`);
     }

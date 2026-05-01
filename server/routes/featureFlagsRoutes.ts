@@ -42,7 +42,7 @@ router.get('/api/runtime-flags', requireAuth, requireSysop, async (req, res) => 
 
     const flags = await featureFlagsService.listFlags({
       category: category as string,
-      safetyLevel: safetyLevel as any,
+      safetyLevel: safetyLevel as unknown,
       workspaceId: workspaceId,
       includeDisabled: req.query.includeDisabled === 'true'
     });
@@ -110,7 +110,7 @@ router.post('/api/runtime-flags/update', requireAuth, requireSysop, async (req, 
     const result = await featureFlagsService.updateFlagValue(
       data.key,
       data.newValue,
-      { type: actorType as any, id: actorId },
+      { type: actorType as unknown, id: actorId },
       data.reason,
       data.source
     );
@@ -149,7 +149,7 @@ router.post('/api/runtime-flags/toggle', requireAuth, requireSysop, async (req, 
     
     const result = await featureFlagsService.toggleFlag(
       data.key,
-      { type: actorType as any, id: actorId },
+      { type: actorType as unknown, id: actorId },
       data.reason
     );
     
@@ -199,7 +199,7 @@ router.post('/api/runtime-flags/:key/rollback', requireAuth, requireSysop, async
     
     const result = await featureFlagsService.rollbackFlag(
       req.params.key,
-      { type: actorType as any, id: actorId }
+      { type: actorType as unknown, id: actorId }
     );
     
     if (!result.success) {

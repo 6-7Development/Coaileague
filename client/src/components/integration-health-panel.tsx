@@ -155,7 +155,7 @@ export function IntegrationHealthPanel() {
           </div>
           <Button 
             variant="ghost" 
-            size="icon" 
+            size="icon" aria-label="Refresh Health" 
             onClick={handleRefresh}
             disabled={isFetching}
             data-testid="button-refresh-health"

@@ -138,7 +138,7 @@ router.post("/draft", async (req: AuthenticatedRequest, res) => {
       status: "draft",
       ipAddress: req.ip ?? null,
       userAgent: req.headers["user-agent"] ?? null,
-    } as any;
+    } as Record<string, unknown>;
 
     let record;
     if (existing) {
@@ -291,7 +291,7 @@ router.post("/submit", async (req: AuthenticatedRequest, res) => {
       ipAddress: req.ip ?? null,
       userAgent: req.headers["user-agent"] ?? null,
       status: "completed",
-    } as any;
+    } as Record<string, unknown>;
 
     const [submission] = await db
       .insert(customFormSubmissions)

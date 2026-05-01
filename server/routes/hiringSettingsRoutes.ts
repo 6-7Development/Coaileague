@@ -33,7 +33,7 @@ interface HiringSettings {
   updatedAt: string | null;
 }
 
-function rowToSettings(row: any, workspaceId: string): HiringSettings {
+function rowToSettings(row: unknown, workspaceId: string): HiringSettings {
   if (!row) {
     return {
       workspaceId,

@@ -60,7 +60,7 @@ interface AutomationCheckpoint {
   steps: AutomationStepState[];
   resumable: boolean;
   resumeFromStep?: string;
-  partialResults: Record<string, any>;
+  partialResults: Record<string, unknown>;
 }
 
 interface AutomationHistoryItem {
@@ -76,13 +76,13 @@ interface AutomationHistoryItem {
   pausedAt?: string;
   pausedBy?: string;
   pauseReason?: string;
-  revisedPayload?: Record<string, any> | null;
+  revisedPayload?: Record<string, unknown> | null;
   revisionNotes?: string | null;
   revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string }>;
   trinityReanalysis?: string | null;
   trinityReanalysisAt?: string | null;
-  preview?: any;
-  details?: any;
+  preview?: unknown;
+  details?: unknown;
 }
 
 interface AutomationStatus {
@@ -147,7 +147,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/credits'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       const isInsufficientCredits = error.message?.includes('402') || error.message?.includes('Insufficient credits');
       toast({
         title: isInsufficientCredits ? "Insufficient Credits" : "Scheduling Failed",
@@ -175,7 +175,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/credits'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Invoicing Failed",
         description: error.message || "Failed to generate invoices",
@@ -200,7 +200,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/credits'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Payroll Failed",
         description: error.message || "Failed to process payroll",
@@ -223,7 +223,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/credits'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Compliance Scan Failed",
         description: error.message || "Failed to run compliance scan",
@@ -257,7 +257,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/automation/status'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Resume Failed",
         description: error.message || "Failed to resume automation",
@@ -290,7 +290,7 @@ export default function AutomationControl() {
       toast({ title: "Approved", description: "Automation approved and queued for execution." });
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Approval Failed", description: error.message, variant: "destructive" });
     },
   });
@@ -304,7 +304,7 @@ export default function AutomationControl() {
       toast({ title: "Rejected", description: "Automation request has been rejected." });
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Rejection Failed", description: error.message, variant: "destructive" });
     },
   });
@@ -318,13 +318,13 @@ export default function AutomationControl() {
       toast({ title: "Paused", description: "Automation paused. Checkpoint saved. Resume when ready." });
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Pause Failed", description: error.message, variant: "destructive" });
     },
   });
 
   const reviseMutation = useMutation({
-    mutationFn: async ({ requestId, revisedPayload, notes }: { requestId: string; revisedPayload: Record<string, any>; notes: string }) => {
+    mutationFn: async ({ requestId, revisedPayload, notes }: { requestId: string; revisedPayload: Record<string, unknown>; notes: string }) => {
       const res = await apiRequest('PATCH', `/api/automation/trinity/revise/${requestId}`, { revisedPayload, notes });
       return await res.json();
     },
@@ -335,7 +335,7 @@ export default function AutomationControl() {
       setReviseNotes('');
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Revision Failed", description: error.message, variant: "destructive" });
     },
   });
@@ -350,7 +350,7 @@ export default function AutomationControl() {
       queryClient.invalidateQueries({ queryKey: ['/api/automation/trinity/history'] });
       if (data.requestId) setTrinityAnalysisOpen(data.requestId);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Analysis Failed", description: error.message, variant: "destructive" });
     },
   });
@@ -364,7 +364,7 @@ export default function AutomationControl() {
 
   const submitRevision = () => {
     if (!reviseModalId) return;
-    let parsed: Record<string, any>;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(revisePayloadText);
     } catch {

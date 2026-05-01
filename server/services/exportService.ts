@@ -37,7 +37,7 @@ interface ExportOptions {
 /**
  * Convert array of objects to CSV format
  */
-function convertToCSV(data: any[]): string {
+function convertToCSV(data: unknown[]): string {
   if (data.length === 0) return "";
 
   const headers = Object.keys(data[0]);
@@ -297,7 +297,7 @@ export async function anonymizeEmployeeData(
         routingNumber: '000000000',
         accountNumberLast4: '0000',
         accountHolderName: 'DELETED',
-      } as any)
+      } as Record<string, unknown>)
       .where(and(eq(employeeBankAccounts.employeeId, employeeId), eq(employeeBankAccounts.workspaceId, workspaceId)))
       .catch(() => {}); // non-blocking — bank account fields may differ by schema version
 
@@ -320,8 +320,7 @@ export async function anonymizeEmployeeData(
         actionDescription: `GDPR erasure executed — all PII fields anonymized for employee ${employeeId}`,
         isSensitiveData: true,
         complianceTag: 'gdpr',
-      } as any)
-      .catch(() => {}); // non-blocking — don't fail the anonymization if audit write fails
+      }).catch(() => {}); // non-blocking — don't fail the anonymization if audit write fails
   });
 
   return {
@@ -337,7 +336,7 @@ export async function exportInvoices(
   workspaceId: string,
   options: ExportOptions
 ): Promise<{ data: string; filename: string }> {
-  const filters: any[] = [eq(invoices.workspaceId, workspaceId)];
+  const filters: Record<string, unknown>[] = [eq(invoices.workspaceId, workspaceId)];
   if (options.startDate) filters.push(gte(invoices.issueDate!, options.startDate));
   if (options.endDate) filters.push(lte(invoices.issueDate!, options.endDate));
 
@@ -387,7 +386,7 @@ export async function exportPaymentRecords(
   workspaceId: string,
   options: ExportOptions
 ): Promise<{ data: string; filename: string }> {
-  const filters: any[] = [eq(paymentRecords.workspaceId, workspaceId)];
+  const filters: Record<string, unknown>[] = [eq(paymentRecords.workspaceId, workspaceId)];
   if (options.startDate) filters.push(gte(paymentRecords.paidAt!, options.startDate));
   if (options.endDate) filters.push(lte(paymentRecords.paidAt!, options.endDate));
 
@@ -436,7 +435,7 @@ export async function exportExpenses(
   workspaceId: string,
   options: ExportOptions
 ): Promise<{ data: string; filename: string }> {
-  const filters: any[] = [eq(expenses.workspaceId, workspaceId)];
+  const filters: Record<string, unknown>[] = [eq(expenses.workspaceId, workspaceId)];
   if (options.startDate) filters.push(gte(expenses.expenseDate, options.startDate));
   if (options.endDate) filters.push(lte(expenses.expenseDate, options.endDate));
 
@@ -647,7 +646,7 @@ export async function exportShiftHistory(
   workspaceId: string,
   options: ExportOptions
 ): Promise<{ data: string; filename: string }> {
-  const filters: any[] = [eq(shifts.workspaceId, workspaceId)];
+  const filters: Record<string, unknown>[] = [eq(shifts.workspaceId, workspaceId)];
   if (options.startDate) filters.push(gte(shifts.startTime, options.startDate));
   if (options.endDate) filters.push(lte(shifts.startTime, options.endDate));
 
@@ -659,8 +658,8 @@ export async function exportShiftHistory(
     endTime: shifts.endTime,
     employeeId: shifts.employeeId,
     clientId: shifts.clientId,
-    locationAddress: (shifts as any).locationAddress,
-    notes: (shifts as any).notes,
+    locationAddress: (shifts as Record<string,unknown>).locationAddress,
+    notes: (shifts as Record<string,unknown>).notes,
     createdAt: shifts.createdAt,
   }).from(shifts)
     .where(and(...filters))
@@ -680,7 +679,6 @@ export async function exportShiftHistory(
   if (clientIds.length > 0) {
     const cls = await db.select({ id: clients.id, companyName: clients.companyName })
       .from(clients).where(sql`${clients.id} IN (${sql.join(clientIds.map(id => sql`${id}`), sql`, `)})`);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     cls.forEach(c => clientMap.set(c.id, c.companyName));
   }
 

@@ -83,7 +83,7 @@ export function InitialsField({
   const stop = useCallback(() => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    const data = canvasRef.current!.toDataURL("image/png");
+    const data = canvasRef.current?.toDataURL("image/png");
     onChange(data.length > 100 ? data : null);
   }, [onChange]);
 

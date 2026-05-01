@@ -88,7 +88,7 @@ export class GustoOAuthService {
   async exchangeCodeForTokens(
     code: string,
     state: string
-  ): Promise<{ workspaceId: string; connection: any }> {
+  ): Promise<{ workspaceId: string; connection: unknown }> {
     // Validate state from database
     const [oauthState] = await db.select()
       .from(oauthStates)

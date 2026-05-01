@@ -121,8 +121,8 @@ async function phase2_feature_showcase_sync() {
   const registryFeatureTypes = Object.values(PREMIUM_FEATURES).map(f => f.featureType);
   const registryTierCounts = { core: 0, premium: 0, elite: 0 };
   const showcaseTierCounts = { core: 0, premium: 0, elite: 0 };
-  registryFeatureTypes.forEach(t => (registryTierCounts as any)[t]++);
-  showcaseTiers.forEach(t => (showcaseTierCounts as any)[t]++);
+  registryFeatureTypes.forEach(t => (registryTierCounts as unknown)[t]++);
+  showcaseTiers.forEach(t => (showcaseTierCounts as unknown)[t]++);
 
   record({
     name: 'Showcase Has All 3 Tiers (core/premium/elite)',
@@ -224,7 +224,7 @@ async function phase3_pricing_display_sync() {
   ];
 
   for (const ec of employeeCounts) {
-    const configValue = (BILLING as any).tiers[ec.tier].maxEmployees;
+    const configValue = (BILLING as Record<string,unknown>).tiers[ec.tier].maxEmployees;
     record({
       name: `${ec.tier} Employee Limit Sync`,
       phase: 'PRICE_SYNC',
@@ -271,7 +271,7 @@ async function phase4_credit_cost_every_feature() {
   ];
 
   for (const pair of criticalSyncPairs) {
-    const cmCost = (TOKEN_COSTS as any)[pair.creditKey];
+    const cmCost = (TOKEN_COSTS as unknown)[pair.creditKey];
     const bcCost = billingCreditCosts[pair.creditKey];
     const regCost = PREMIUM_FEATURES[pair.registryField]?.creditCost;
 
@@ -291,7 +291,7 @@ async function phase5_feature_matrix_tier_access() {
   console.log('PHASE 5: Feature Matrix ↔ Registry Tier Access Alignment');
   console.log('='.repeat(70));
 
-  const fm = BILLING.featureMatrix as Record<string, any>;
+  const fm = BILLING.featureMatrix as Record<string, unknown>;
 
   const featureToMatrixMap: Record<string, string> = {
     'basic_scheduling': 'basic_scheduling',
@@ -537,7 +537,7 @@ async function phase8_credit_packages_purchasing_sync() {
   console.log('PHASE 8: Credit Packages - Purchase Flow Sync');
   console.log('='.repeat(70));
 
-  const billingPacks = BILLING.creditPacks as Record<string, any>;
+  const billingPacks = BILLING.creditPacks as Record<string, unknown>;
   const registryPacks = CREDIT_PACKAGES;
 
   record({
@@ -740,7 +740,7 @@ async function phase11_db_reflects_config() {
     WHERE table_schema = 'public'
     ORDER BY table_name
   `);
-  const allTables = (tableCheck as any).rows?.map((r: any) => r.table_name) || [];
+  const allTables = (tableCheck as Record<string,unknown>).rows?.map((r: unknown) => r.table_name) || [];
 
   for (const [feature, table] of Object.entries(featureTables)) {
     const exists = allTables.includes(table);
@@ -774,7 +774,7 @@ async function phase12_stripe_webhook_idempotency() {
   // CATEGORY C — Raw SQL retained: information_schema | Tables: information_schema | Verified: 2026-03-23
   const allTables = (await typedQuery(sql`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
-  `) as any).rows?.map((r: any) => r.table_name) || [];
+  `) as unknown).rows?.map((r: unknown) => r.table_name) || [];
 
   record({
     name: 'processed_stripe_events Table For Idempotency',
@@ -884,7 +884,7 @@ async function phase14_runtime_api_validation() {
 
   const http = await import('http');
 
-  const apiGet = (path: string): Promise<{ status: number; body: any }> => {
+  const apiGet = (path: string): Promise<{ status: number; body: Record<string, unknown> }> => {
     return new Promise((resolve) => {
       const req = http.request({ hostname: '127.0.0.1', port: 5000, path, method: 'GET', timeout: 5000 }, (res) => {
         let data = '';
@@ -951,7 +951,7 @@ async function phase14_runtime_api_validation() {
   });
 
   if (packsResp.status === 200 && Array.isArray(packsResp.body)) {
-    const apiPackCredits = packsResp.body.map((p: any) => p.credits).sort((a: number, b: number) => a - b);
+    const apiPackCredits = packsResp.body.map((p: unknown) => p.credits).sort((a: number, b: number) => a - b);
     const configPackCredits = CREDIT_PACKAGES.map(p => p.credits).sort((a, b) => a - b);
     const packsMatch = JSON.stringify(apiPackCredits) === JSON.stringify(configPackCredits);
     record({
@@ -1085,7 +1085,7 @@ async function phase16_data_path_tracing() {
   });
 
   const allTiersInMatrix = [...matrixFeatureIds].every(id => {
-    const entry = (BILLING as any).featureMatrix[id];
+    const entry = (BILLING as Record<string,unknown>).featureMatrix[id];
     return entry.free !== undefined && entry.starter !== undefined && entry.professional !== undefined && entry.enterprise !== undefined;
   });
 

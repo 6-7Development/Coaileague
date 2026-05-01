@@ -41,7 +41,7 @@ interface GenerateOptions {
     form_id: string;
     submitted_by_name?: string | null;
     submitted_by_email?: string | null;
-    data: Record<string, any>;
+    data: Record<string, unknown>;
     signature_data?: string | null;
     signature_type?: string | null;
     typed_name?: string | null;
@@ -178,7 +178,7 @@ function renderSignatureSection(doc: PDFKit.PDFDocument, submission: GenerateOpt
 }
 
 function renderFooter(doc: PDFKit.PDFDocument, submissionId: string, hash: string) {
-  const pages = (doc as any)._pageBuffer?.length || 1;
+  const pages = (doc as Record<string, unknown>)._pageBuffer?.length || 1;
   for (let i = 0; i < pages; i++) {
     doc.switchToPage(i);
     const footerY = doc.page.height - 40;
@@ -309,12 +309,12 @@ export async function generateAndStorePdf(opts: GenerateOptions): Promise<string
       await pool.query(
         `UPDATE org_documents SET description = description || $1 WHERE id = $2`,
         [` [submission_id:${submission.id}]`, docId]
-      ).catch((err: any) => log.warn('[formsPdfService] org_documents tag failed:', err));
+      ).catch((err: unknown) => log.warn('[formsPdfService] org_documents tag failed:', err));
     }
 
     log.info(`PDF generated for submission ${submission.id} → ${gcsPath} (${pdfBuf.length} bytes)`);
     return gcsPath;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error(`PDF generation failed for submission ${opts.submission.id}:`, err?.message);
     return null;
   }
@@ -384,7 +384,7 @@ export async function generateCustomFormPdf(opts: CustomFormPdfOptions): Promise
   const { form, submission, signatures = [] } = opts;
   const template = form.template as any;
   const fields: Array<{ id?: string; label: string; type: string }> = template?.fields || [];
-  const formData = submission.formData as Record<string, any> || {};
+  const formData = submission.formData as Record<string, unknown> || {};
 
   // Look up workspace name for header
   let workspaceName = 'CoAIleague';
@@ -520,7 +520,7 @@ export async function generateCustomFormPdf(opts: CustomFormPdfOptions): Promise
       .createHash('sha256')
       .update(`${submission.id}:${submission.submittedAt}:${form.id}`)
       .digest('hex');
-    const pages = (doc as any)._pageBuffer?.length || 1;
+    const pages = (doc as Record<string, unknown>)._pageBuffer?.length || 1;
     for (let i = 0; i < pages; i++) {
       doc.switchToPage(i);
       const footerY = doc.page.height - 40;

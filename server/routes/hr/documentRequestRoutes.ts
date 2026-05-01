@@ -14,6 +14,7 @@
  */
 
 import { sanitizeError } from '../../middleware/errorHandler';
+import { AuthenticatedRequest } from '../../rbac';
 import { Router } from 'express';
 import { db } from '../../db';
 import { hrDocumentRequests, employees, workspaces } from '@shared/schema';
@@ -180,7 +181,7 @@ router.get('/types', requireAuth, requireManager, async (_req, res) => {
  * Analyze which employees are missing which documents.
  * Returns a per-employee gap report.
  */
-router.get('/gaps', requireAuth, requireManager, async (req: any, res) => {
+router.get('/gaps', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -251,7 +252,7 @@ router.get('/gaps', requireAuth, requireManager, async (req: any, res) => {
  * GET /api/hr/document-requests
  * List all document requests for workspace with pagination.
  */
-router.get('/', requireAuth, requireManager, async (req: any, res) => {
+router.get('/', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -275,7 +276,7 @@ router.get('/', requireAuth, requireManager, async (req: any, res) => {
  *
  * Body: { employeeIds: string[], documentTypes: HrDocumentTypeKey[], notes?: string, sentVia?: string }
  */
-router.post('/send', requireAuth, requireManager, async (req: any, res) => {
+router.post('/send', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;
     const userId = req.user?.id;
@@ -317,7 +318,6 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
       workspaceId,
       userId,
       featureKey: 'hr_document_request',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       featureName: 'HR Document Request',
       description: `Bulk document request: ${input.employeeIds.length} employees × ${input.documentTypes.length} doc types`,
       amountOverride: totalCredits,
@@ -327,7 +327,7 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
       return res.status(402).json({
         error: 'Insufficient credits',
         creditsRequired: totalCredits,
-        creditsAvailable: (creditCheck as any).remaining ?? 0,
+        creditsAvailable: (creditCheck as Record<string,unknown>).remaining ?? 0,
         message: `Sending ${empList.length} employee(s) × ${input.documentTypes.length} document type(s) requires ${totalCredits} credits.`,
       });
     }
@@ -387,7 +387,7 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
           results.push({ employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, docType, success: true });
         } catch (innerErr: unknown) {
           log.error(`[DocRequests] Send error for ${emp.id}/${docType}:`, innerErr);
-          results.push({ employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, docType, success: false, error: (innerErr as any)?.message });
+          results.push({ employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, docType, success: false, error: (innerErr as Record<string,unknown>)?.message });
         }
       }
     }
@@ -420,7 +420,7 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
  * PATCH /api/hr/document-requests/:id/status
  * Update request status (opened, completed, expired).
  */
-router.patch('/:id/status', requireAuth, async (req: any, res) => {
+router.patch('/:id/status', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const { status } = z.object({ status: z.enum(['opened', 'completed', 'expired']) }).parse(req.body);
@@ -444,7 +444,7 @@ router.patch('/:id/status', requireAuth, async (req: any, res) => {
 
     // Conditional WHERE — only updates if in an expected prior status (race protection)
     const allowedPrior = ALLOWED_TRANSITIONS[status];
-    const updateData: Record<string, any> = { status, updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { status, updatedAt: new Date() };
     if (status === 'opened') updateData.openedAt = new Date();
     if (status === 'completed') updateData.completedAt = new Date();
 
@@ -487,7 +487,7 @@ router.patch('/:id/status', requireAuth, async (req: any, res) => {
                  SET i9_on_file = TRUE, updated_at = NOW()
                WHERE id = ${request.employeeId} AND workspace_id = ${workspaceId}
             `);
-          } catch (colErr: any) {
+          } catch (colErr : unknown) {
             // Column may not exist in this workspace's schema snapshot;
             // fall back silently rather than block the status update.
             log.warn('[DocRequest] i9_on_file update skipped (column may not exist):', colErr?.message);
@@ -503,11 +503,11 @@ router.patch('/:id/status', requireAuth, async (req: any, res) => {
               workspaceId,
               metadata: { employeeId: request.employeeId, documentRequestId: id },
             });
-          } catch (evErr: any) {
+          } catch (evErr : unknown) {
             log.warn('[DocRequest] i9_submitted event publish failed:', evErr?.message);
           }
         }
-      } catch (i9Err: any) {
+      } catch (i9Err : unknown) {
         log.warn('[DocRequest] I-9 compliance hook failed (non-fatal):', i9Err?.message);
       }
     }

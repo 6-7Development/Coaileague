@@ -118,7 +118,7 @@ function RichSignatureEditor({
           <Underline className="w-3.5 h-3.5" />
         </Button>
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <Button variant="ghost" size="icon" className="h-7 w-7" type="button"
+        <Button variant="ghost" size="icon" aria-label="Sig Link" className="h-7 w-7" type="button"
           onClick={handleLink} title="Insert Link" data-testid="button-sig-link">
           <Link className="w-3.5 h-3.5" />
         </Button>
@@ -387,7 +387,7 @@ export default function EmailManagement() {
 
   const activateAllMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/email/activate-all"),
-    onSuccess: (res: any) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["/api/email/management"] });
       queryClient.invalidateQueries({ queryKey: ["/api/email/management/stats"] });
       toast({ title: `Activated ${res.activated} email seats` });

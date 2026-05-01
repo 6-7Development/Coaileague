@@ -54,7 +54,7 @@ interface FormData {
 
 interface SavedProgress {
   currentStep: number;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   completedSteps: number[];
   skippedSteps: number[];
 }
@@ -151,7 +151,7 @@ export default function CreateOrg() {
     setProgressLoaded(true);
   }, [serverProgressQuery.data, progressLoaded, toast]);
 
-  const getFormData = useCallback((): Record<string, any> => ({
+  const getFormData = useCallback((): Record<string, unknown> => ({
     orgName,
     orgCode,
     size,
@@ -740,7 +740,7 @@ export default function CreateOrg() {
                           <Button
                             type="button"
                             variant="outline"
-                            size="icon"
+                            size="icon" aria-label="Validate License"
                             onClick={handleValidateLicense}
                             disabled={!stateLicenseNumber || !stateLicenseState || validateLicenseMutation.isPending}
                             data-testid="button-validate-license"

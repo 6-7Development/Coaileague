@@ -26,7 +26,7 @@ import { z } from 'zod';
 const log = createLogger('OauthIntegrationRoutes');
 
 
-const processingCallbacks = new Map<string, Promise<any>>();
+const processingCallbacks = new Map<string, Promise<unknown>>();
 
 // QuickBooks environment-aware base URL helper using centralized config
 const getQuickBooksApiBase = () => {
@@ -48,7 +48,7 @@ const getQuickBooksApiBase = () => {
 function requireWorkspaceMembership(
   workspaceIdSource: 'body' | 'params' | 'query' = 'body'
 ): RequestHandler {
-  return async (req: any, res: Response, next) => {
+  return async (req: AuthenticatedRequest, res: Response, next) => {
     try {
       const userId = req.session?.userId;
       if (!userId) {
@@ -447,7 +447,7 @@ router.get('/quickbooks/callback', async (req: Request, res: Response) => {
     log.error('QuickBooks callback error:', error);
     const { state } = req.query;
     if (state) {
-      await quickbooksOAuthService.cleanupFailedState(state as string).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      await quickbooksOAuthService.cleanupFailedState(state as string).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
     return sendPopupResponse(false, sanitizeError(error) || 'Failed to connect to QuickBooks');
   }
@@ -612,7 +612,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
     
     log.info('[QuickBooks Preview] Employee response status:', employeeResponse.status);
     
-    let employees: any[] = [];
+    let employees: (string | number | boolean | null)[] = [];
     if (employeeResponse.ok) {
       const empData = await employeeResponse.json();
       log.info('[QuickBooks Preview] Raw employee count:', empData.QueryResponse?.Employee?.length || 0);
@@ -620,7 +620,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
       // Detect sandbox from env var (connection doesn't store environment field)
       const isSandbox = INTEGRATIONS.quickbooks.getEnvironment() === 'sandbox';
       
-      employees = (empData.QueryResponse?.Employee || []).map((e: any, index: number) => {
+      employees = (empData.QueryResponse?.Employee || []).map((e: unknown, index: number) => {
         // Get pay rate from QuickBooks if available
         let payRate = e.BillRate || e.CostRate || null;
         
@@ -666,11 +666,11 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
     
     log.info('[QuickBooks Preview] Customer response status:', customerResponse.status);
 
-    let customers: any[] = [];
+    let customers: (string | number | boolean | null)[] = [];
     if (customerResponse.ok) {
       const custData = await customerResponse.json();
       log.info('[QuickBooks Preview] Raw customer count:', custData.QueryResponse?.Customer?.length || 0);
-      customers = (custData.QueryResponse?.Customer || []).map((c: any) => ({
+      customers = (custData.QueryResponse?.Customer || []).map((c: unknown) => ({
         qboId: c.Id,
         displayName: c.DisplayName,
         companyName: c.CompanyName || c.DisplayName,
@@ -730,7 +730,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
 
     // Fetch payroll items
     const payrollQuery = encodeURIComponent('select * from PayrollItemWage MAXRESULTS 50');
-    let payrollItems: any[] = [];
+    let payrollItems: (string | number | boolean | null)[] = [];
     try {
       const payrollResponse = await fetch(`${apiBase}/${realmId}/query?query=${payrollQuery}`, {
         headers: {
@@ -740,7 +740,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
       });
       if (payrollResponse.ok) {
         const payrollData = await payrollResponse.json();
-        payrollItems = (payrollData.QueryResponse?.PayrollItemWage || []).map((p: any) => ({
+        payrollItems = (payrollData.QueryResponse?.PayrollItemWage || []).map((p: unknown) => ({
           qboId: p.Id,
           name: p.Name,
           type: p.Type || 'wage',
@@ -752,7 +752,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
 
     // Fetch chart of accounts
     const accountQuery = encodeURIComponent('select * from Account MAXRESULTS 100');
-    let chartOfAccounts: any[] = [];
+    let chartOfAccounts: (string | number | boolean | null)[] = [];
     try {
       const accountResponse = await fetch(`${apiBase}/${realmId}/query?query=${accountQuery}`, {
         headers: {
@@ -762,7 +762,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
       });
       if (accountResponse.ok) {
         const accData = await accountResponse.json();
-        chartOfAccounts = (accData.QueryResponse?.Account || []).map((a: any) => ({
+        chartOfAccounts = (accData.QueryResponse?.Account || []).map((a: unknown) => ({
           id: a.Id,
           name: a.Name,
           type: a.AccountType,
@@ -778,7 +778,7 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
       payrollItems,
       chartOfAccounts,
       connectionId: connection.id,
-      companyName: (connection as any).companyName || 'QuickBooks Company',
+      companyName: (connection as unknown).companyName || 'QuickBooks Company',
     });
   } catch (error: unknown) {
     log.error('QuickBooks preview error:', error);
@@ -1234,7 +1234,7 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
           // Use rate limiter from quickbooks integration
           const canProceed = await quickbooksRateLimiter.waitForSlot(
             realmId,
-            (connection as any).environment === 'production' ? 'production' : 'sandbox',
+            (connection as unknown).environment === 'production' ? 'production' : 'sandbox',
             0,
             30000
           );
@@ -1245,7 +1245,7 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
           }
           
           // Build batch request for QuickBooks Batch API
-          const batchItems = batch.items.map((item: any, idx) => ({
+          const batchItems = batch.items.map((item: unknown, idx) => ({
             bId: `${batch.index}-${idx}`,
             operation: 'create',
             [entity]: mapFn(item),
@@ -1263,7 +1263,7 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
           
           quickbooksRateLimiter.completeRequest(
             realmId,
-            (connection as any).environment === 'production' ? 'production' : 'sandbox',
+            (connection as unknown).environment === 'production' ? 'production' : 'sandbox',
             response.ok
           );
           
@@ -1284,7 +1284,7 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
           }
           
           // Track last processed ID for resume capability
-          const lastItem = batch.items[batch.items.length - 1] as any;
+          const lastItem = batch.items[batch.items.length - 1] as unknown;
           lastProcessedId = lastItem?.id;
           
           log.info(`[QuickBooks Push] Batch ${batch.index} complete: ${batchSynced}/${items.length} synced`);
@@ -1310,10 +1310,10 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
         PrimaryEmailAddr: client.email ? { Address: client.email } : undefined,
         PrimaryPhone: client.phone ? { FreeFormNumber: client.phone } : undefined,
         BillAddr: client.address ? {
-          Line1: (client as any).address.street || (client as any).address.line1,
-          City: (client as any).address.city,
-          CountrySubDivisionCode: (client as any).address.state,
-          PostalCode: (client as any).address.zip || (client as any).address.postalCode,
+          Line1: (client as unknown).address.street || (client as unknown).address.line1,
+          City: (client as unknown).address.city,
+          CountrySubDivisionCode: (client as unknown).address.state,
+          PostalCode: (client as unknown).address.zip || (client as unknown).address.postalCode,
         } : undefined,
       }),
       'lastProcessedCustomerId'
@@ -1466,7 +1466,7 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
 
     // For sandbox: auto-assign pay rates to employees missing them (enables e2e testing)
     // For production: validate pay rates and warn user
-    const processedEmployees = (selectedEmployees || []).map((emp: any, index: number) => {
+    const processedEmployees = (selectedEmployees || []).map((emp: unknown, index: number) => {
       let payRate = emp.payRate ? parseFloat(String(emp.payRate)) : null;
       
       // Auto-assign pay rates in sandbox mode for testing
@@ -1513,8 +1513,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     
     const existingByQboIdEmp = new Map(
       existingEmployees
-        .filter(e => (e as any).partnerEmployeeId && (e as any).partnerType === 'quickbooks')
-        .map(e => [(e as any).partnerEmployeeId, e])
+        .filter(e => (e as unknown).partnerEmployeeId && (e as unknown).partnerType === 'quickbooks')
+        .map(e => [(e as unknown).partnerEmployeeId, e])
     );
     const existingByEmailEmp = new Map(
       existingEmployees
@@ -1528,8 +1528,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     
     const existingByQboIdClient = new Map(
       existingClients
-        .filter(c => (c as any).partnerCustomerId && (c as any).partnerType === 'quickbooks')
-        .map(c => [(c as any).partnerCustomerId, c])
+        .filter(c => (c as unknown).partnerCustomerId && (c as unknown).partnerType === 'quickbooks')
+        .map(c => [(c as unknown).partnerCustomerId, c])
     );
     const existingByName = new Map(
       existingClients
@@ -1544,8 +1544,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     const errors: string[] = [];
     let empCounter = existingEmployees.length;
 
-    const employeesToInsert: any[] = [];
-    const clientsToInsert: any[] = [];
+    const employeesToInsert: (string | number | boolean | null)[] = [];
+    const clientsToInsert: (string | number | boolean | null)[] = [];
 
     if (processedEmployees && processedEmployees.length > 0) {
       for (const emp of processedEmployees) {
@@ -1592,8 +1592,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
           payRate: payRate ? String(payRate) : null,
         });
         
-        existingByQboIdEmp.set(qboId, {} as any);
-        if (email) existingByEmailEmp.set(email, {} as any);
+        existingByQboIdEmp.set(qboId, {} as unknown);
+        if (email) existingByEmailEmp.set(email, {} as unknown);
         
         importedEmployees++;
       }
@@ -1642,8 +1642,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
           quickbooksClientId: qboId,
         });
         
-        existingByQboIdClient.set(qboId, {} as any);
-        existingByName.set(companyName.toLowerCase(), {} as any);
+        existingByQboIdClient.set(qboId, {} as unknown);
+        existingByName.set(companyName.toLowerCase(), {} as unknown);
         
         importedClients++;
       }
@@ -2068,7 +2068,6 @@ router.get('/quickbooks/status', requireAuth, requireWorkspaceMembership('query'
     if (isError) {
       status = 'error';
       needsAttention = true;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       canRefresh = hasValidRefreshToken;
       message = hasValidRefreshToken 
         ? 'Connection error. Click "Renew Connection" to try restoring access.'
@@ -2105,7 +2104,6 @@ router.get('/quickbooks/status', requireAuth, requireWorkspaceMembership('query'
       // Handle any other non-connected states
       status = 'disconnected';
       needsAttention = true;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       canRefresh = hasValidRefreshToken;
       message = hasValidRefreshToken 
         ? 'QuickBooks needs attention. Click "Renew Connection" to restore access.'
@@ -2123,7 +2121,7 @@ router.get('/quickbooks/status', requireAuth, requireWorkspaceMembership('query'
     }
 
     // Get company info from metadata
-    const metadata = connection.metadata as any || {};
+    const metadata = connection.metadata as unknown || {};
     const companyName = metadata.companyName || metadata.CompanyName || 'Unknown Company';
 
     return res.json({
@@ -2224,9 +2222,9 @@ router.get('/connections', requireAuth, requireWorkspaceMembership('query'), asy
       partnerType: conn.partnerType,
       status: conn.status,
       companyId: conn.companyId,
-      companyName: (conn as any).metadata?.companyName || null,
+      companyName: (conn as unknown).metadata?.companyName || null,
       lastSyncedAt: conn.lastSyncAt,
-      accessTokenExpiresAt: (conn as any).accessTokenExpiresAt,
+      accessTokenExpiresAt: (conn as unknown).accessTokenExpiresAt,
       refreshTokenExpiresAt: conn.refreshTokenExpiresAt,
     }));
 
@@ -2255,7 +2253,6 @@ router.post('/quickbooks/sync-client', requireAuth, requireWorkspaceMembership()
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const customerId = await quickbooksService.syncClient(workspaceId, clientId, userId);
 
     return res.json({ 
@@ -2283,7 +2280,6 @@ router.post('/quickbooks/create-invoice', requireAuth, requireWorkspaceMembershi
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const qboInvoiceId = await quickbooksService.createInvoice(workspaceId, invoiceId, userId);
 
     return res.json({ 
@@ -2311,7 +2307,6 @@ router.post('/quickbooks/record-payment', requireAuth, requireWorkspaceMembershi
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const paymentId = await quickbooksService.recordPayment(workspaceId, invoiceId, amount, userId);
 
     return res.json({ 
@@ -2343,7 +2338,6 @@ router.post('/gusto/sync-employee', requireAuth, requireWorkspaceMembership(), a
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const gustoEmployeeId = await gustoService.syncEmployee(workspaceId, employeeId, userId);
 
     return res.json({ 
@@ -2371,7 +2365,6 @@ router.post('/gusto/create-payroll', requireAuth, requireWorkspaceMembership(), 
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const gustoPayrollId = await gustoService.createPayrollRun(workspaceId, payrollRunId, userId);
 
     return res.json({ 
@@ -2399,7 +2392,6 @@ router.post('/gusto/submit-time', requireAuth, requireWorkspaceMembership(), asy
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await gustoService.submitTimeActivities(workspaceId, payrollRunId, userId);
 
     return res.json({ 
@@ -2434,7 +2426,6 @@ router.post('/gusto/process-payroll', requireAuth, requireWorkspaceMembership(),
       return res.status(400).json({ error: `Payroll run must be approved before Gusto submission (current status: ${run.status})` });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await gustoService.processPayroll(workspaceId, payrollRunId, userId);
 
     return res.json({ 
@@ -2467,7 +2458,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
     const environment = (req.query.environment as 'production' | 'sandbox') || 'production';
     
     // Get rate limit stats for specific realm or all realms (with null safety)
-    let rateLimitStats: any[] = [];
+    let rateLimitStats: (string | number | boolean | null)[] = [];
     try {
       if (realmId) {
         const stats = quickbooksRateLimiter.getStats(realmId, environment);
@@ -2483,7 +2474,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
     const tokenDaemonStatus = quickbooksTokenRefresh.getStatus();
     
     // Get recent API usage from database
-    let recentUsage: any[] = [];
+    let recentUsage: (string | number | boolean | null)[] = [];
     try {
       // Converted to Drizzle ORM: getRecentUsage → INTERVAL
       const usageResult = await db.execute(
@@ -2497,14 +2488,14 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
         ORDER BY last_request_at DESC
         LIMIT 20`
       );
-      recentUsage = (usageResult.rows || []) as any[];
+      recentUsage = (usageResult.rows || []) as unknown[];
     } catch (e) {
       // Table may not exist in fresh deployments
       log.warn('[QB Telemetry] Could not fetch API usage:', e);
     }
     
     // Get active credentials count and health
-    let credentialsHealth: any[] = [];
+    let credentialsHealth: (string | number | boolean | null)[] = [];
     try {
       // CATEGORY C — Raw SQL retained: ORDER BY | Tables: oauth_states | Verified: 2026-03-23
       const credsResult = await typedQuery(
@@ -2518,7 +2509,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
         WHERE partner_type = 'quickbooks'
         ORDER BY created_at DESC`
       );
-      credentialsHealth = ((credsResult as any).rows || []).map((row: any) => ({
+      credentialsHealth = ((credsResult as unknown).rows || []).map((row: unknown) => ({
         realmId: row.workspaceId,
         isHealthy: !row.expiresAt || new Date(row.expiresAt) > new Date(),
         expiresAt: row.expiresAt,
@@ -2600,7 +2591,7 @@ router.get('/quickbooks/usage-logs/:realmId', requireAuth, requirePlatformStaff,
     
     return res.json({
       success: true,
-      logs: (usageResult as any).rows || [],
+      logs: (usageResult as unknown).rows || [],
       realmId,
     });
   } catch (error: unknown) {
@@ -2625,20 +2616,18 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
     const conditions = [
       eq(systemAuditLogs.workspaceId, workspaceId),
       like(systemAuditLogs.action, 'orchestration.%'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       gte(systemAuditLogs.timestamp, since),
     ];
 
     const logs = await db.select({
       id: systemAuditLogs.id,
       action: systemAuditLogs.action,
-      details: (systemAuditLogs as any).details,
+      details: (systemAuditLogs as unknown).details,
       severity: systemAuditLogs.severity,
-      timestamp: (systemAuditLogs as any).timestamp,
+      timestamp: (systemAuditLogs as unknown).timestamp,
     })
       .from(systemAuditLogs)
       .where(and(...conditions))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(desc(systemAuditLogs.timestamp))
       .limit(limit);
 
@@ -2657,7 +2646,7 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
       }
     });
 
-    const orchestrationMap = new Map<string, any>();
+    const orchestrationMap = new Map<string, unknown>();
 
     for (const log of qbLogs) {
       try {
@@ -2684,7 +2673,6 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
 
         const entry = orchestrationMap.get(orchestrationId)!;
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (log.action.includes('step')) {
           entry.steps.push({
             step: details?.step,
@@ -2696,7 +2684,6 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
           });
         }
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (log.action.includes('completed') || log.action.includes('finished')) {
           entry.completedAt = log.timestamp;
           entry.status = details?.status || 'completed';
@@ -2704,7 +2691,6 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
           entry.recordsProcessed = details?.recordsProcessed;
         }
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (log.action.includes('failed') || log.action.includes('error')) {
           entry.status = 'failed';
           entry.errors.push({
@@ -2720,7 +2706,7 @@ router.get('/quickbooks/execution-history', requireAuth, requireWorkspaceMembers
           Object.assign(entry.metadata, details.metadata);
         }
       } catch (e) {
-        (log as any).error('[QB ExecutionHistory] Parse error:', e);
+        (log as unknown).error('[QB ExecutionHistory] Parse error:', e);
       }
     }
 

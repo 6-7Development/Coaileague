@@ -42,6 +42,7 @@ export const billingRouter = Router();
 
 import { subscriptionTiers, orgSubscriptions, platformInvoices, employees } from '@shared/schema';
 import { createLogger } from '../lib/logger';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('BillingApi');
 
 billingRouter.use((req, res, next) => {
@@ -62,7 +63,6 @@ billingRouter.use(async (req, res, next) => {
     });
 
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (req.requireAuth && req.requireAuth()) {
       if (authReq.user?.currentWorkspaceId) {
         authReq.currentWorkspaceId = authReq.user.currentWorkspaceId;
@@ -369,11 +369,10 @@ billingRouter.get('/credits/balance', async (req: AuthenticatedRequest, res: Res
 
     res.json({
       currentBalance,
-      totalPurchased: (account as any)?.totalPurchased || 0,
-      totalUsed: (account as any)?.totalUsed || 0,
-      monthlyIncludedCredits: (account as any)?.monthlyIncludedCredits || 0,
-      monthlyCreditsUsed: (account as any)?.monthlyCreditsUsed || 0,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      totalPurchased: (account as Record<string,unknown>)?.totalPurchased || 0,
+      totalUsed: (account as Record<string,unknown>)?.totalUsed || 0,
+      monthlyIncludedCredits: (account as Record<string,unknown>)?.monthlyIncludedCredits || 0,
+      monthlyCreditsUsed: (account as Record<string,unknown>)?.monthlyCreditsUsed || 0,
       monthlyCreditsRemaining: Math.max(0, (account?.monthlyIncludedCredits || 0) - (account?.monthlyCreditsUsed || 0)),
     });
   } catch (error: unknown) {
@@ -631,7 +630,7 @@ billingRouter.post('/create-checkout-session', async (req: AuthenticatedRequest,
     // tier is now required — no silent enterprise fallback that would misrepresent the purchase
     const resolvedTier = tier;
 
-    const sessionConfig: any = {
+    const sessionConfig: Record<string, unknown> = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -873,7 +872,7 @@ billingRouter.post('/subscription/cancel', async (req: AuthenticatedRequest, res
       const { workspaces } = await import('../../shared/schema/domains/orgs');
       const { eq } = await import('drizzle-orm');
       await db.update(workspaces)
-        .set({ cancellationReason: reason, updatedAt: new Date() } as any)
+        .set({ cancellationReason: reason, updatedAt: new Date() } as Record<string, unknown>)
         .where(eq(workspaces.id, workspaceId));
     }
 
@@ -1007,7 +1006,6 @@ billingRouter.get('/pricing', async (req, res) => {
  */
 billingRouter.get('/trial', async (req, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspaceId = req.workspaceId || (req.user).workspaceId || (req.user).currentWorkspaceId;
     if (!workspaceId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1028,7 +1026,6 @@ billingRouter.get('/trial', async (req, res) => {
  */
 billingRouter.post('/trial/start', async (req, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspaceId = req.workspaceId || (req.user).workspaceId || (req.user).currentWorkspaceId;
     if (!workspaceId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1053,7 +1050,6 @@ billingRouter.post('/trial/start', async (req, res) => {
  */
 billingRouter.post('/trial/extend', async (req, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspaceId = req.workspaceId || (req.user).workspaceId || (req.user).currentWorkspaceId;
     if (!workspaceId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -1064,7 +1060,7 @@ billingRouter.post('/trial/extend', async (req, res) => {
     if (userId) {
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const adminRoles = ['root_admin', 'deputy_admin', 'sysop', 'owner', 'admin'];
-      if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+      if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
         return res.status(403).json({ error: 'Admin role required to extend trials' });
       }
     }
@@ -1106,7 +1102,7 @@ billingRouter.post('/refunds', async (req: AuthenticatedRequest, res: Response, 
     if (userId) {
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       const adminRoles = ['root_admin', 'deputy_admin', 'sysop', 'owner'];
-      if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+      if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
         return res.status(403).json({ error: 'Admin role required to process refunds' });
       }
     }
@@ -1183,7 +1179,7 @@ billingRouter.get('/trinity-credits/status', async (req: AuthenticatedRequest, r
       .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
     const tier = (ws?.subscriptionTier || 'free').toLowerCase();
     const allowance = (TOKEN_ALLOWANCES as Record<string, number | null>)[tier] ?? 5_000_000;
-    const isUnlimited = allowance === null || !!(ws as any)?.founderExemption;
+    const isUnlimited = allowance === null || !!(ws as Record<string,unknown>)?.founderExemption;
 
     // Read current-month token usage
     const now = new Date();
@@ -1281,7 +1277,7 @@ billingRouter.post('/trinity-credits/redeem-code', async (req: AuthenticatedRequ
       code: z.string().min(4),
     }).parse(req.body);
 
-    const result = await (tokenManager as any).redeemUnlockCode(
+    const result = await (tokenManager as Record<string,unknown>).redeemUnlockCode(
       workspaceId,
       input.code,
       userId
@@ -1409,7 +1405,7 @@ billingRouter.get('/production-readiness', async (req: AuthenticatedRequest, res
       .limit(1);
 
     const adminRoles = ['root_admin', 'deputy_admin', 'sysop'];
-    if (!user || !adminRoles.includes((user as any).platformRole || '')) {
+    if (!user || !adminRoles.includes(req.user?.platformRole || '')) {
       return res.status(403).json({ error: 'Admin role required' });
     }
 
@@ -1422,7 +1418,7 @@ billingRouter.get('/production-readiness', async (req: AuthenticatedRequest, res
     // Check if Stripe is initialized
     try {
       const stripeTest = new (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: '2025-09-30.clover' as any,
+        apiVersion: '2025-09-30.clover',
       });
       await stripeTest.balance.retrieve();
       runtimeChecks.push({ name: 'Stripe API Connection', status: 'pass', message: 'Successfully connected' });
@@ -1459,7 +1455,7 @@ billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRe
       .limit(1);
 
     const supportRoles = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
-    if (!user || !supportRoles.includes((user as any).platformRole || '')) {
+    if (!user || !supportRoles.includes(req.user?.platformRole || '')) {
       return res.status(403).json({ error: 'Forbidden: Support role required' });
     }
 
@@ -1473,7 +1469,7 @@ billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRe
       maxRedemptions: z.number().optional(),
     }).parse(req.body);
 
-    const code = await (tokenManager as any).generateUnlockCode(
+    const code = await (tokenManager as Record<string,unknown>).generateUnlockCode(
       input.codeType,
       userId,
       input
@@ -1530,10 +1526,10 @@ billingRouter.get('/invoice-preview', requireAuth, async (req: AuthenticatedRequ
 
     let upcoming: Stripe.UpcomingInvoice | null = null;
     try {
-      upcoming = await (stripe as any).invoices.retrieveUpcoming({
+      upcoming = await (stripe as Record<string,unknown>).invoices.retrieveUpcoming({
         customer: workspace.stripeCustomerId,
       });
-    } catch (stripeErr: any) {
+    } catch (stripeErr: unknown) {
       // invoice_upcoming_none → no pending invoice; return empty preview gracefully.
       if (stripeErr?.code === 'invoice_upcoming_none') {
         return res.json({
@@ -1565,8 +1561,8 @@ billingRouter.get('/invoice-preview', requireAuth, async (req: AuthenticatedRequ
       quantity: line.quantity || 1,
       periodStart: line.period?.start ? new Date(line.period.start * 1000).toISOString() : null,
       periodEnd: line.period?.end ? new Date(line.period.end * 1000).toISOString() : null,
-      type: (line as any).type,
-      priceId: (line as any).price?.id,
+      type: (line as Record<string,unknown>).type,
+      priceId: (line as Record<string,unknown>).price?.id,
       metadata: line.metadata || {},
     }));
 
@@ -1574,13 +1570,13 @@ billingRouter.get('/invoice-preview', requireAuth, async (req: AuthenticatedRequ
       pendingItems: items,
       totalCents: upcoming.total,
       subtotalCents: upcoming.subtotal,
-      taxCents: (upcoming as any).tax || 0,
+      taxCents: (upcoming as Record<string,unknown>).tax || 0,
       nextPaymentDate: upcoming.next_payment_attempt
         ? new Date(upcoming.next_payment_attempt * 1000).toISOString()
         : null,
       currency: upcoming.currency,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error(`[BillingApi] invoice-preview failed: ${err?.message}`);
     res.status(500).json({ error: 'Failed to fetch invoice preview' });
   }

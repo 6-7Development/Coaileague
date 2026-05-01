@@ -91,7 +91,7 @@ async function test(name: string, fn: () => Promise<void>) {
   try {
     await fn();
     if (!results.find(r => r.name === name)) pass(name);
-  } catch (e: any) {
+  } catch (e: unknown) {
     fail(name, e.message || String(e));
   }
 }
@@ -161,7 +161,7 @@ const emailTemplates = {
     subject: `Important: Offboarding Information`,
     html: `<div><h2>Offboarding Information</h2><p>${data.employeeName}, your ${data.terminationType} effective ${data.terminationDate}. Contact HR: ${data.hrContactEmail}</p></div>`,
   }),
-  reportDelivery: (data: { clientName: string; reportNumber: string; reportName: string; submittedBy: string; submittedDate: string; reportData: Record<string, any>; attachmentCount?: number }) => ({
+  reportDelivery: (data: { clientName: string; reportNumber: string; reportName: string; submittedBy: string; submittedDate: string; reportData: Record<string, unknown>; attachmentCount?: number }) => ({
     subject: `Report Delivery: ${data.reportName} [${data.reportNumber}]`,
     html: `<div><h2>Report Delivered</h2><p>${data.clientName}, report "${data.reportName}" [${data.reportNumber}] submitted by ${data.submittedBy} on ${data.submittedDate}.${data.attachmentCount ? ` Attachments: ${data.attachmentCount}` : ''}</p></div>`,
   }),
@@ -580,7 +580,6 @@ async function suiteInternalNotifications() {
 
   const testNotifId = crypto.randomUUID();
   await test('DB: INSERT notification — schedule_change type', async () => {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id: testNotifId,
       userId: DEV_USER,
@@ -598,7 +597,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — payroll_processed type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -616,7 +614,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — invoice_generated type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -634,7 +631,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — shift_assigned type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -652,7 +648,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — ai_approval_needed type', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -670,7 +665,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — document_expiring type (certification expiry)', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -688,7 +682,6 @@ async function suiteInternalNotifications() {
 
   await test('DB: INSERT notification — document_uploaded type (document signed)', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -756,14 +749,14 @@ async function suiteEmailServiceMethods() {
 
   await test(`emailService has ${expectedMethods.length} expected send methods defined`, async () => {
     const { emailService } = await import('../services/emailService');
-    const missing = expectedMethods.filter(m => typeof (emailService as any)[m] !== 'function');
+    const missing = expectedMethods.filter(m => typeof (emailService as unknown)[m] !== 'function');
     if (missing.length > 0) throw new Error(`Missing methods: ${missing.join(', ')}`);
     pass(`emailService has ${expectedMethods.length} expected send methods defined`, `all ${expectedMethods.length} present`);
   });
 
   await test('emailService.sendVerificationEmail — correct signature (userId, email, token, firstName)', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendVerificationEmail'];
+    const fn = (emailService as unknown)['sendVerificationEmail'];
     if (typeof fn !== 'function') throw new Error('sendVerificationEmail not a function');
     if (fn.length < 3) throw new Error(`Expected ≥3 params, got ${fn.length}`);
     pass('emailService.sendVerificationEmail — correct signature');
@@ -771,21 +764,21 @@ async function suiteEmailServiceMethods() {
 
   await test('emailService.sendPasswordResetEmail — correct signature (userId, email, token, firstName)', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendPasswordResetEmail'];
+    const fn = (emailService as unknown)['sendPasswordResetEmail'];
     if (typeof fn !== 'function') throw new Error('sendPasswordResetEmail not a function');
     pass('emailService.sendPasswordResetEmail — correct signature');
   });
 
   await test('emailService.sendStaffingRequestAcknowledgment — staffing pipeline', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendStaffingRequestAcknowledgment'];
+    const fn = (emailService as unknown)['sendStaffingRequestAcknowledgment'];
     if (typeof fn !== 'function') throw new Error('sendStaffingRequestAcknowledgment not a function');
     pass('emailService.sendStaffingRequestAcknowledgment — staffing pipeline');
   });
 
   await test('emailService.sendClientPortalInvitation — client portal', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendClientPortalInvitation'];
+    const fn = (emailService as unknown)['sendClientPortalInvitation'];
     if (typeof fn !== 'function') throw new Error('sendClientPortalInvitation not a function');
     pass('emailService.sendClientPortalInvitation — client portal');
   });
@@ -826,7 +819,6 @@ async function suiteE2EWorkflows() {
     });
     if (!emailTpl.subject.includes('Perimeter Patrol')) throw new Error('Subject missing shift name');
     const notifInsertId = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id: notifInsertId,
       userId: DEV_USER,
@@ -856,7 +848,6 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Payroll Run Completed → Employee Emails + Manager Notification', async () => {
     const id = crypto.randomUUID();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(notifications).values({
       id,
       userId: DEV_USER,
@@ -910,11 +901,11 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Staffing Request → Acknowledgment + Status Updates chain', async () => {
     const { emailService } = await import('../services/emailService');
-    const ackFn = (emailService as any)['sendStaffingRequestAcknowledgment'];
-    const fulfillFn = (emailService as any)['sendStaffingRequestFulfilled'];
-    const unfulfillFn = (emailService as any)['sendStaffingRequestUnfulfilled'];
-    const statusFn = (emailService as any)['sendStaffingStatusUpdate'];
-    const summaryFn = (emailService as any)['sendStaffingCompletionSummary'];
+    const ackFn = (emailService as unknown)['sendStaffingRequestAcknowledgment'];
+    const fulfillFn = (emailService as unknown)['sendStaffingRequestFulfilled'];
+    const unfulfillFn = (emailService as unknown)['sendStaffingRequestUnfulfilled'];
+    const statusFn = (emailService as unknown)['sendStaffingStatusUpdate'];
+    const summaryFn = (emailService as unknown)['sendStaffingCompletionSummary'];
     if (!ackFn || !fulfillFn || !unfulfillFn || !statusFn || !summaryFn) {
       throw new Error('One or more staffing email methods missing');
     }
@@ -929,7 +920,7 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Client Portal Invitation → sendClientPortalInvitation', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendClientPortalInvitation'];
+    const fn = (emailService as unknown)['sendClientPortalInvitation'];
     if (typeof fn !== 'function') throw new Error('sendClientPortalInvitation missing');
     pass('Workflow: Client Portal Invitation → sendClientPortalInvitation');
   });

@@ -32,7 +32,7 @@ export async function provisionWorkspace(params: {
       await subscriptionManager.ensureStripeCustomer(workspaceId);
     }
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Stripe customer provisioning failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Stripe customer provisioning failed (non-blocking):', (err as Error)?.message);
   }
 
   // ── Step 2: Finance settings ────────────────────────────────────────────
@@ -42,7 +42,7 @@ export async function provisionWorkspace(params: {
       updatedBy: ownerId,
     }).onConflictDoNothing();
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Finance settings init failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Finance settings init failed (non-blocking):', (err as Error)?.message);
   }
 
   // ── Step 3: Payroll cycle default ───────────────────────────────────────
@@ -54,7 +54,7 @@ export async function provisionWorkspace(params: {
     }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
 
     if (workspace) {
-      const currentSettings = (workspace.billingSettingsBlob as Record<string, any>) || {};
+      const currentSettings = (workspace.billingSettingsBlob as Record<string, unknown>) || {};
       if (!currentSettings.payrollCycle) {
         const payrollCycle = workspace.payrollSchedule || workspace.payrollCycle || 'biweekly';
         await db.update(workspaces).set({
@@ -64,7 +64,7 @@ export async function provisionWorkspace(params: {
       }
     }
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Workspace settings init failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Workspace settings init failed (non-blocking):', (err as Error)?.message);
   }
 
   // ── Step 4: Owner workspace membership record ───────────────────────────
@@ -75,9 +75,9 @@ export async function provisionWorkspace(params: {
       workspaceId,
       role: 'org_owner',
       status: 'active',
-    } as any).onConflictDoNothing();
+    } as Record<string, unknown>).onConflictDoNothing();
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Owner membership init failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Owner membership init failed (non-blocking):', (err as Error)?.message);
   }
 
   // ── Step 5: Default HQ site ─────────────────────────────────────────────
@@ -87,9 +87,9 @@ export async function provisionWorkspace(params: {
       workspaceId,
       name: 'HQ',
       status: 'active',
-    } as any).onConflictDoNothing();
+    } as Record<string, unknown>).onConflictDoNothing();
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Default HQ site init failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Default HQ site init failed (non-blocking):', (err as Error)?.message);
   }
 
   // ── Step 6: Audit trail — workspace created ─────────────────────────────
@@ -111,7 +111,7 @@ export async function provisionWorkspace(params: {
       sourceRoute: '/api/workspace',
     } as any);
   } catch (err: unknown) {
-    log.warn('[WorkspaceProvisioning] Audit trail write failed (non-blocking):', (err as any)?.message);
+    log.warn('[WorkspaceProvisioning] Audit trail write failed (non-blocking):', (err as Error)?.message);
   }
 
   log.info('[WorkspaceProvisioning] Day-0 provisioning complete', { workspaceId, ownerId });

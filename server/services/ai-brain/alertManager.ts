@@ -6,11 +6,12 @@
  */
 
 import { db } from '../../db';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { aiProactiveAlerts, aiNotificationHistory, type AiProactiveAlert } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { CreateAlertPayload, AlertAcknowledgment, AlertResolution } from './types';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('alertManager');
 
 export class AlertManager {
   /**
@@ -35,14 +36,14 @@ export class AlertManager {
       .where(
         and(
           eq(aiProactiveAlerts.workspaceId, payload.workspaceId),
-          eq(aiProactiveAlerts.alertType, payload.alertType as any),
+          eq(aiProactiveAlerts.alertType, payload.alertType as string),
           eq(aiProactiveAlerts.dedupeHash, dedupeHash)
         )
       )
       .limit(1);
 
     if (existing && existing.status !== 'resolved') {
-      console.log(`🔄 [AlertManager] Alert already exists: ${existing.id} (${existing.status})`);
+      log.info(`🔄 [AlertManager] Alert already exists: ${existing.id} (${existing.status})`);
       return existing;
     }
 
@@ -52,7 +53,7 @@ export class AlertManager {
       .values({
         workspaceId: payload.workspaceId,
         taskId: payload.taskId || null,
-        alertType: payload.alertType as any,
+        alertType: payload.alertType as string,
         severity: payload.severity,
         status: 'queued',
         dedupeHash,
@@ -62,7 +63,7 @@ export class AlertManager {
       })
       .returning();
 
-    console.log(`🚨 [AlertManager] Created alert ${alert.id}: ${payload.alertType} (${payload.severity})`);
+    log.info(`🚨 [AlertManager] Created alert ${alert.id}: ${payload.alertType} (${payload.severity})`);
     return alert;
   }
 
@@ -85,7 +86,7 @@ export class AlertManager {
       throw new Error(`Alert ${ack.alertId} not found`);
     }
 
-    console.log(`✅ [AlertManager] Alert ${ack.alertId} acknowledged by ${ack.userId}`);
+    log.info(`✅ [AlertManager] Alert ${ack.alertId} acknowledged by ${ack.userId}`);
   }
 
   /**
@@ -108,7 +109,7 @@ export class AlertManager {
       throw new Error(`Alert ${resolution.alertId} not found`);
     }
 
-    console.log(`✅ [AlertManager] Alert ${resolution.alertId} resolved by ${resolution.userId}`);
+    log.info(`✅ [AlertManager] Alert ${resolution.alertId} resolved by ${resolution.userId}`);
   }
 
   /**
@@ -149,7 +150,7 @@ export class AlertManager {
         },
       });
 
-    console.log(`📤 [AlertManager] Dispatched alert ${alertId} to ${channel}`);
+    log.info(`📤 [AlertManager] Dispatched alert ${alertId} to ${channel}`);
   }
 
   /**

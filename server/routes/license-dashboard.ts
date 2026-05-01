@@ -91,7 +91,7 @@ router.get('/dashboard', ensureWorkspaceAccess, async (req: Request, res: Respon
         return (tierOrder[a.alertTier] ?? 9) - (tierOrder[b.alertTier] ?? 9);
       }),
     });
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[LicenseDashboard] Dashboard error:', error);
     return res.status(500).json({ error: 'Failed to load license dashboard' });
   }
@@ -161,7 +161,7 @@ router.get('/export/dps-csv', ensureWorkspaceAccess, async (req: Request, res: R
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-Record-Count', String(certs.length));
     return res.send(csv);
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[LicenseDashboard] CSV export error:', error);
     return res.status(500).json({ error: 'Failed to generate DPS CSV export' });
   }
@@ -220,7 +220,7 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
         previousStatus: cert.status,
         certificationNumber: cert.certificationNumber,
       },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     // Find active/upcoming shifts for this employee and flag them
     const now = new Date();
@@ -232,8 +232,8 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
         eq(shifts.workspaceId, workspaceId),
         gte(shifts.startTime, now),
         or(
-          eq(shifts.status as any, 'scheduled'),
-          eq(shifts.status as any, 'confirmed'),
+          eq(shifts.status, 'scheduled'),
+          eq(shifts.status, 'confirmed'),
         )
       ));
 
@@ -247,11 +247,11 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
           eq(employees.workspaceId, workspaceId),
           eq(employees.isActive, true),
           or(
-            eq(employees.workspaceRole as any, 'org_owner'),
-            eq(employees.workspaceRole as any, 'co_owner'),
-            eq(employees.workspaceRole as any, 'manager'),
-            eq(employees.workspaceRole as any, 'supervisor'),
-            eq(employees.workspaceRole as any, 'compliance_officer'),
+            eq(employees.workspaceRole, 'org_owner'),
+            eq(employees.workspaceRole, 'co_owner'),
+            eq(employees.workspaceRole, 'manager'),
+            eq(employees.workspaceRole, 'supervisor'),
+            eq(employees.workspaceRole, 'compliance_officer'),
           )
         ));
 
@@ -275,7 +275,7 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
             shiftDate: new Date(shift.startTime).toISOString(),
             reason,
           },
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
       shiftsNotified++;
     }
@@ -287,7 +287,7 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
       supervisorsNotified: shiftsNotified > 0,
       message: `License revoked. ${affectedShifts.length} upcoming shift(s) flagged for reassignment.`,
     });
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[LicenseDashboard] Revoke error:', error);
     return res.status(500).json({ error: 'Failed to revoke license' });
   }
@@ -366,7 +366,6 @@ router.get('/export/:stateCode/csv', ensureWorkspaceAccess, async (req: Request,
       .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await universalAudit({
       workspaceId,
       userId: req.user?.id,
@@ -374,7 +373,7 @@ router.get('/export/:stateCode/csv', ensureWorkspaceAccess, async (req: Request,
       entityType: 'compliance',
       entityId: workspaceId,
       metadata: { stateCode: normalizedState, regulatoryBody, recordCount: certs.length },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     const filename = `license-export-${normalizedState}-${new Date().toISOString().slice(0, 10)}.csv`;
 
@@ -384,7 +383,7 @@ router.get('/export/:stateCode/csv', ensureWorkspaceAccess, async (req: Request,
     res.setHeader('X-State-Code', normalizedState);
     res.setHeader('X-Regulatory-Body', regulatoryBody);
     return res.send(csv);
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[LicenseDashboard] State CSV export error:', error);
     return res.status(500).json({ error: 'Failed to generate state license CSV export' });
   }

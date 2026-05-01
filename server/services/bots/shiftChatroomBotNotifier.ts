@@ -41,9 +41,9 @@ export async function notifyManagers(
       .map(mgr => ({
         workspaceId,
         userId: mgr.userId!,
-        type: 'info' as any,
-        scope: 'workspace' as any,
-        category: 'schedule' as any,
+        type: 'info',
+        scope: 'workspace',
+        category: 'schedule',
         title: titles[eventType] || `ReportBot Alert — ${reporterName}`,
         message: message.slice(0, 500),
         relatedEntityType: 'shift_chatroom',
@@ -57,7 +57,7 @@ export async function notifyManagers(
         log.warn('[ShiftChatroomBotNotifier] Bulk manager notification failed:', (err instanceof Error ? err.message : String(err)))
       );
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[ShiftChatroomBotNotifier] Manager notification failed:', (err instanceof Error ? err.message : String(err)));
   }
 }

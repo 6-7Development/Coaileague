@@ -46,7 +46,7 @@ interface ReconciliationIssue {
   suggestedFix: string;
   autoFixable: boolean;
   potentialRevenue?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 interface InvoiceReconciliationResult {
@@ -81,7 +81,6 @@ export class InvoiceReconciliationSkill extends BaseSkill {
       version: '1.0.0',
       description: 'AI-powered invoice validation and revenue gap detection using Gemini 3 Pro',
       author: PLATFORM.name + " AI Brain",
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'invoicing',
       requiredTier: 'professional',
       requiredRole: ['org_owner', 'co_owner', 'manager'],
@@ -140,13 +139,11 @@ export class InvoiceReconciliationSkill extends BaseSkill {
       logs.push(`[InvoiceReconciliation] Found ${issues.length} total issues`);
 
       // Step 3: Calculate summary metrics
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const totalBillableHours = timesheetData.reduce((sum, t) => sum + (t.billableHours || t.hoursWorked || 0), 0);
       const invoicedHours = this.calculateInvoicedHours(invoiceData);
       const unbilledHours = Math.max(0, totalBillableHours - invoicedHours);
       
       const avgRate = timesheetData.length > 0 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? timesheetData.reduce((sum, t) => sum + (t.hourlyRate || 0), 0) / timesheetData.length 
         : 0;
       const unbilledRevenue = unbilledHours * avgRate;
@@ -193,23 +190,21 @@ export class InvoiceReconciliationSkill extends BaseSkill {
         success: true,
         data: result,
         logs,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         tokensUsed: aiInsights ? 500 : 0,
-        executionTimeMs: Date.now() - (context as any).startTime,
+        executionTimeMs: Date.now() - (context as Record<string,unknown>).startTime,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       logs.push(`[InvoiceReconciliation] Error: ${(error instanceof Error ? error.message : String(error))}`);
       return {
         success: false,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         error: {
           code: 'INVOICE_RECONCILIATION_ERROR',
           message: (error instanceof Error ? error.message : String(error)),
         },
         logs,
         tokensUsed: 0,
-        executionTimeMs: Date.now() - (context as any).startTime,
+        executionTimeMs: Date.now() - (context as Record<string,unknown>).startTime,
       };
     }
   }
@@ -286,9 +281,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectUnbilledHours(
-    timesheetData: any[],
-    invoiceData: any[],
-    clientData: any[]
+    timesheetData: unknown[],
+    invoiceData: unknown[],
+    clientData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     
@@ -332,9 +327,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectRateMismatches(
-    timesheetData: any[],
-    contractData: any[],
-    clientData: any[]
+    timesheetData: unknown[],
+    contractData: unknown[],
+    clientData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const contractRates = new Map<string, number>();
@@ -378,7 +373,7 @@ export class InvoiceReconciliationSkill extends BaseSkill {
     return issues;
   }
 
-  private detectOverdueInvoices(invoiceData: any[], clientData: any[]): ReconciliationIssue[] {
+  private detectOverdueInvoices(invoiceData: unknown[], clientData: unknown[]): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const now = new Date();
     const clientMap = new Map(clientData.map(c => [c.id, c.name]));
@@ -405,9 +400,9 @@ export class InvoiceReconciliationSkill extends BaseSkill {
   }
 
   private detectMissingContracts(
-    clientData: any[],
-    contractData: any[],
-    timesheetData: any[]
+    clientData: unknown[],
+    contractData: unknown[],
+    timesheetData: unknown[]
   ): ReconciliationIssue[] {
     const issues: ReconciliationIssue[] = [];
     const clientsWithContracts = new Set(contractData.filter(c => c.isActive).map(c => c.clientId));
@@ -430,13 +425,13 @@ export class InvoiceReconciliationSkill extends BaseSkill {
     return issues;
   }
 
-  private calculateInvoicedHours(invoiceData: any[]): number {
+  private calculateInvoicedHours(invoiceData: unknown[]): number {
     return invoiceData.reduce((sum, inv) => sum + (parseFloat(inv.totalHours) || 0), 0);
   }
 
   private async generateAIInsights(
     issues: ReconciliationIssue[],
-    summary: any,
+    summary: Record<string, unknown>,
     context: SkillContext
   ): Promise<string> {
     try {
@@ -473,9 +468,9 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
   }
 
   private calculateGapAnalysis(
-    clientData: any[],
-    timesheetData: any[],
-    invoiceData: any[]
+    clientData: unknown[],
+    timesheetData: unknown[],
+    invoiceData: unknown[]
   ) {
     const clientsWithWork = new Set(timesheetData.filter(t => t.isBillable !== false).map(t => t.clientId).filter(Boolean));
     const clientsInvoiced = new Set(invoiceData.map(i => i.clientId));
@@ -506,9 +501,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
 
   private generateRecommendations(
     issues: ReconciliationIssue[],
-    summary: any,
-    gapAnalysis: any
-  ): string[] {
+    summary: Record<string, unknown>, gapAnalysis: unknown): string[] {
     const recommendations: string[] = [];
 
     if (summary.unbilledRevenue > 500) {
@@ -537,9 +530,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
 
   private calculateConfidence(
     issues: ReconciliationIssue[],
-    summary: any,
-    gapAnalysis: any
-  ): number {
+    summary: Record<string, unknown>, gapAnalysis: unknown): number {
     let confidence = 1.0;
 
     // Deduct for critical issues
@@ -557,7 +548,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
     return Math.max(0.1, Math.min(1.0, confidence));
   }
 
-  async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
+  async healthCheck(): Promise<{ healthy: boolean; details?: unknown }> {
     return {
       healthy: this.config.enabled,
       details: {
@@ -568,7 +559,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
     };
   }
 
-  async getStats(): Promise<Record<string, any>> {
+  async getStats(): Promise<Record<string, unknown>> {
     return {
       ...await super.getStats(),
       algorithm: 'ai-powered-reconciliation',
@@ -577,5 +568,4 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
   }
 }
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 export const invoiceReconciliationSkill = new InvoiceReconciliationSkill({ enabled: true });

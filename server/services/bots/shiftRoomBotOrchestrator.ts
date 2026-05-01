@@ -64,7 +64,7 @@ export interface BotMessagePayload {
   senderId: string;
   senderName: string;
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // In-memory pending ClockBot confirmation map
@@ -137,7 +137,6 @@ async function sendBotMessage(payload: BotMessagePayload): Promise<void> {
       message: payload.content,
       messageType: 'text',
       isSystemMessage: false,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       metadata: payload.metadata,
     });
 
@@ -210,7 +209,7 @@ async function getShiftRoomContext(conversationId: string): Promise<ShiftRoomCon
       }
     }
 
-    const siteName = (shift as any).siteName || (shift as any).jobSiteName || (shift as any).title || 'the site';
+    const siteName = (shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).jobSiteName || (shift as Record<string,unknown>).title || 'the site';
 
     return {
       conversationId,
@@ -221,9 +220,9 @@ async function getShiftRoomContext(conversationId: string): Promise<ShiftRoomCon
       siteName,
       shiftStart: new Date(shift.startTime),
       shiftEnd: new Date(shift.endTime),
-      siteLatitude: (shift as any).siteLatitude || null,
-      siteLongitude: (shift as any).siteLongitude || null,
-      siteRadius: (shift as any).siteRadius || 200,
+      siteLatitude: (shift as Record<string,unknown>).siteLatitude || null,
+      siteLongitude: (shift as Record<string,unknown>).siteLongitude || null,
+      siteRadius: (shift as Record<string,unknown>).siteRadius || 200,
     };
   } catch (err) {
     log.error('[ShiftBotOrchestrator] Error getting shift room context:', err);
@@ -257,7 +256,6 @@ async function sendManagerEscalation(
           userId: mgr.userId,
           type: 'alert',
           scope: 'workspace',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           category: 'safety',
           title: 'ReportBot — Possible Incident Reported',
           message: `Officer ${officerName} at ${siteName} reported: "${messageExcerpt.slice(0, 120)}". Please review immediately.`,
@@ -352,7 +350,7 @@ async function buildShiftFieldIntel(
           .where(and(eq(employees.workspaceId, workspaceId), eq(employees.userId, uid)))
           .limit(1);
         if (emp) {
-          const e = emp as any;
+          const e = emp as unknown;
           officerRole = e.role || e.position || 'Officer';
           const expDate = e.licenseExpiry || e.licenseExpiryDate || e.guardCardExpiry || e.psbLicenseExpiry;
           if (expDate) {
@@ -449,7 +447,7 @@ async function buildShiftFieldIntel(
       const windowEnd = new Date(ctx.shiftEnd.getTime() + 2 * 60 * 60 * 1000);
       const overlappingShifts = await db.select({
         employeeId: shifts.employeeId,
-        siteName: (shifts as any).siteName,
+        siteName: (shifts as Record<string,unknown>).siteName,
         title: shifts.title,
         shiftId: shifts.id,
       })
@@ -494,13 +492,11 @@ async function buildShiftFieldIntel(
 
       if (allPostOrders.length > 0) {
         const relevant = allPostOrders.find(po =>
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           (po.name || '').toLowerCase().includes(ctx.siteName.toLowerCase()) ||
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           ctx.siteName.toLowerCase().includes((po.name || '').toLowerCase())
         ) || allPostOrders[0];
-        const content = (relevant as any).content || (relevant as any).description || JSON.stringify(relevant);
-        postOrdersText = `POST ORDERS (${(relevant as any).name || ctx.siteName}):\n${content.slice(0, 800)}`;
+        const content = (relevant as Record<string,unknown>).content || (relevant as Record<string,unknown>).description || JSON.stringify(relevant);
+        postOrdersText = `POST ORDERS (${(relevant as Record<string,unknown>).name || ctx.siteName}):\n${content.slice(0, 800)}`;
       }
     } catch {
       // Best-effort
@@ -521,7 +517,6 @@ async function buildShiftFieldIntel(
         .limit(1);
 
       if (lastMsg) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lastCheckInMinutesAgo = Math.floor((now.getTime() - new Date(lastMsg.createdAt).getTime()) / 60000);
       }
 
@@ -537,7 +532,7 @@ async function buildShiftFieldIntel(
         .from(chatMessages)
         .where(and(
           eq(chatMessages.conversationId, conversationId),
-          sql`${(chatMessages as any).metadata}->>'botEvent' = 'incident_ack'`
+          sql`${(chatMessages as Record<string,unknown>).metadata}->>'botEvent' = 'incident_ack'`
         ));
       incidentsFiled = Number(incResult?.count ?? 0);
     } catch {
@@ -701,7 +696,6 @@ class ShiftRoomBotOrchestrator {
 
       // Create the conversation
       const conversationId = randomUUID();
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(chatConversations).values({
         id: conversationId,
         workspaceId: params.workspaceId,
@@ -770,7 +764,7 @@ class ShiftRoomBotOrchestrator {
         await botPool.deployBot('reportbot', conversationId, params.workspaceId);
         await botPool.deployBot('helpai', conversationId, params.workspaceId);
         await botPool.deployBot('clockbot', conversationId, params.workspaceId);
-      } catch (botErr: any) {
+      } catch (botErr: unknown) {
         log.warn('[ShiftBotOrchestrator] Bot deploy error (non-blocking):', botErr.message);
       }
 
@@ -1231,7 +1225,7 @@ class ShiftRoomBotOrchestrator {
             `MEDICAL EMERGENCY: ${question.slice(0, 150)}`,
             params.conversationId
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error(`[ShiftRoomBot] Failed to send manager escalation for medical emergency in workspace ${params.workspaceId}: ${err?.message}`);
         }
       })();
@@ -1363,7 +1357,6 @@ class ShiftRoomBotOrchestrator {
         content: aiResp.success
           ? aiResp.text
           : `I am here to help, ${params.senderName}. For this question, please consult your post orders or contact your supervisor directly.`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: { botEvent: 'helpai_response', question: question.slice(0, 100), hadPostOrders: !!postOrdersContext },
       });
     } catch (err) {
@@ -1463,7 +1456,7 @@ class ShiftRoomBotOrchestrator {
 
         if (empDetail) {
           // Check license expiry — try known field names
-          const emp = empDetail as any;
+          const emp = empDetail as EmployeeWithStatus;
           const expDate = emp.licenseExpiry || emp.licenseExpiryDate || emp.guardCardExpiry || emp.psbLicenseExpiry;
           if (expDate) {
             const expDateObj = new Date(expDate);
@@ -1673,7 +1666,7 @@ class ShiftRoomBotOrchestrator {
           licenseStatus: pending.licenseStatus,
           onboardingStatus: pending.onboardingStatus,
           note: `Clock-in created by supervisor override via ClockBot. Authorized by ${managerName} at ${format(now, 'HH:mm')}. Reason: ${overrideReason}`,
-        } as any,
+        } as unknown,
         notes: `Supervisor override. Authorized by ${managerName}. Reason: ${overrideReason}`,
       });
 
@@ -1713,7 +1706,6 @@ class ShiftRoomBotOrchestrator {
 
       // Audit trail
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { universalAuditService } = await import('../universalAuditService');
         await universalAuditService.log({
           workspaceId: pending.workspaceId,
@@ -1995,7 +1987,6 @@ class ShiftRoomBotOrchestrator {
         .where(
           and(
             eq(employeeDocuments.workspaceId, workspaceId),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             ilike(employeeDocuments.category, '%compliance%')
           )
         )
@@ -2014,7 +2005,6 @@ class ShiftRoomBotOrchestrator {
         return;
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const meetingDate = new Date(lastMeeting.createdAt);
       const daysAgo = Math.floor((Date.now() - meetingDate.getTime()) / (1000 * 60 * 60 * 24));
       const overdue = daysAgo > 365;
@@ -2059,7 +2049,6 @@ class ShiftRoomBotOrchestrator {
     // Mark room so automatic cron doesn't re-fire
     try {
       await db.update(chatConversations)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || '{"endOfShiftFired":true}'::jsonb` })
         .where(eq(chatConversations.id, conversationId));
     } catch {
@@ -2092,7 +2081,7 @@ class ShiftRoomBotOrchestrator {
         .select({
           message: chatMessages.message,
           senderType: chatMessages.senderType,
-          metadata: (chatMessages as any).metadata,
+          metadata: (chatMessages as Record<string,unknown>).metadata,
           createdAt: chatMessages.createdAt,
         })
         .from(chatMessages)
@@ -2103,15 +2092,15 @@ class ShiftRoomBotOrchestrator {
         m.senderType !== 'bot' && m.senderType !== 'system'
       );
       const photoCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'photo_ack' || meta?.botEvent === 'photo_logged';
       }).length;
       const incidentCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'incident_ack' || meta?.botEvent === 'incident_report_complete';
       }).length;
       const checkInCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'checkin_ack';
       }).length;
 
@@ -2265,7 +2254,7 @@ class ShiftRoomBotOrchestrator {
           status: 'open',
           reportedBy: reporterName,
           occurredAt: new Date(),
-        } as any);
+        } as unknown);
       }
     } catch (saveErr) {
       log.warn('[ShiftBotOrchestrator] Incident report DB save failed:', saveErr);
@@ -2344,7 +2333,6 @@ class ShiftRoomBotOrchestrator {
       .select({ userId: platformRoles.userId })
       .from(platformRoles)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(platformRoles.workspaceId, workspaceId),
         sql`${platformRoles.role} IN ('org_owner', 'co_owner')`
       ))
@@ -2355,9 +2343,8 @@ class ShiftRoomBotOrchestrator {
         await storage.createNotification({
           workspaceId,
           userId: owner.userId,
-          type: 'compliance_alert' as any,
+          type: 'compliance_alert',
           scope: 'workspace',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           category: 'alert',
           title,
           message,
@@ -2423,7 +2410,7 @@ class ShiftRoomBotOrchestrator {
       const currentHour = now.getHours();
       const isOvernightHours = currentHour >= 22 || currentHour < 6;
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];
@@ -2468,7 +2455,6 @@ class ShiftRoomBotOrchestrator {
             .orderBy(desc(chatMessages.createdAt))
             .limit(1);
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const lastActivity = lastMsg ? new Date(lastMsg.createdAt) : new Date(0);
           const minutesSilent = (now.getTime() - lastActivity.getTime()) / 60000;
 
@@ -2571,7 +2557,7 @@ class ShiftRoomBotOrchestrator {
       const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
 
       // Find time entries open for 12+ hours
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         isNull(timeEntries.clockOut),
         lte(timeEntries.clockIn, twelveHoursAgo),
       ];
@@ -2595,7 +2581,7 @@ class ShiftRoomBotOrchestrator {
 
         // Find their shift room
         const [room] = await db
-          .select({ id: chatConversations.id, metadata: (chatConversations as any).metadata })
+          .select({ id: chatConversations.id, metadata: (chatConversations as Record<string,unknown>).metadata })
           .from(chatConversations)
           .where(and(
             eq(chatConversations.shiftId, entry.shiftId),
@@ -2607,13 +2593,12 @@ class ShiftRoomBotOrchestrator {
         if (!room) continue;
 
         // Don't spam — check if we already sent a 12h warning this hour
-        const meta = (room as any).metadata || {};
+        const meta = (room as Record<string,unknown>).metadata || {};
         const warningKey = `clockout12h_${format(now, 'yyyy-MM-dd-HH')}`;
         if (meta[warningKey]) continue;
 
         // Mark as sent
         await db.update(chatConversations)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ [warningKey]: true })}::jsonb` })
           .where(eq(chatConversations.id, room.id));
 
@@ -2645,7 +2630,7 @@ class ShiftRoomBotOrchestrator {
       // Only runs during overnight hours
       if (currentHour < 22 && currentHour >= 6) return;
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];
@@ -2665,13 +2650,12 @@ class ShiftRoomBotOrchestrator {
           if (now < shiftStart || now > shiftEnd) continue;
 
           // Only send once per overnight window (check metadata flag)
-          const meta = (room as any).metadata || {};
+          const meta = (room as Record<string,unknown>).metadata || {};
           const briefKey = `overnightBrief_${format(now, 'yyyy-MM-dd-HH')}`;
           if (meta[briefKey]) continue;
 
           // Mark as sent
           await db.update(chatConversations)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({ [briefKey]: true })}::jsonb` })
             .where(eq(chatConversations.id, room.id));
 
@@ -2737,7 +2721,7 @@ class ShiftRoomBotOrchestrator {
       const fiveMinAgo = subMinutes(now, 5);
       const fiveMinFuture = addMinutes(now, 5);
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];
@@ -2756,7 +2740,7 @@ class ShiftRoomBotOrchestrator {
         const shiftEnd = new Date(shift.endTime);
         // Trigger end-of-shift message when shift end is within the 5-minute window
         if (shiftEnd >= fiveMinAgo && shiftEnd <= fiveMinFuture) {
-          const meta = (room as any).metadata || {};
+          const meta = (room as Record<string,unknown>).metadata || {};
           if (meta.endOfShiftFired) continue;
 
           await sendBotMessage({
@@ -2770,7 +2754,6 @@ class ShiftRoomBotOrchestrator {
 
           // Mark so we don't re-fire
           await db.update(chatConversations)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || '{"endOfShiftFired":true}'::jsonb` })
             .where(eq(chatConversations.id, room.id));
 

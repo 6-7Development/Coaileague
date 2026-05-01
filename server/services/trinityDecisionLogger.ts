@@ -35,7 +35,7 @@ interface DecisionLogEntry {
     score?: number;
   }>;
   candidatesEvaluated?: CandidateEvaluation[];
-  contextSnapshot?: Record<string, any>;
+  contextSnapshot?: Record<string, unknown>;
   confidenceScore?: string;
   primaryModel?: string;
   tokensUsed?: number;
@@ -125,7 +125,7 @@ class TrinityDecisionLogger {
     chosenOptionId?: string;
     reasoning: string;
     candidates?: CandidateEvaluation[];
-    contextSnapshot?: Record<string, any>;
+    contextSnapshot?: Record<string, unknown>;
   }): Promise<TriadJusticeResult> {
     try {
       const { claudeService } = await import('./ai-brain/trinity-orchestration/trinityValidationService');
@@ -193,7 +193,7 @@ ESCALATE = Too risky for AI, flag for human review`;
       try {
         const jsonMatch = response.content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           verdict = (['AFFIRM', 'OVERRIDE', 'ESCALATE'].includes(parsed.verdict))
             ? parsed.verdict : 'AFFIRM';
           judgeReasoning = parsed.reasoning || response.content;
@@ -227,7 +227,7 @@ ESCALATE = Too risky for AI, flag for human review`;
         suggestedAlternative: suggestedAlt,
         originalScore: params.originalConfidence,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[TriadJustice] Review failed (non-blocking):', (error instanceof Error ? error.message : String(error)));
 
       try {
@@ -240,7 +240,7 @@ ESCALATE = Too risky for AI, flag for human review`;
             updatedAt: new Date(),
           })
           .where(eq(trinityDecisionLog.id, params.decisionLogId));
-      } catch (updateErr: any) {
+      } catch (updateErr : unknown) {
         log.warn(`[TrinityDecisionLogger] Failed to update decision log ${params.decisionLogId} after triad review failure: ${updateErr?.message}`);
       }
 
@@ -261,7 +261,7 @@ ESCALATE = Too risky for AI, flag for human review`;
       score?: number;
     }>;
     candidatesEvaluated?: CandidateEvaluation[];
-    contextSnapshot?: Record<string, any>;
+    contextSnapshot?: Record<string, unknown>;
     confidenceScore?: string;
     triggerEvent?: string;
   }): Promise<string | null> {
@@ -296,7 +296,7 @@ ESCALATE = Too risky for AI, flag for human review`;
     decisionType: string;
     chosenAction: string;
     reasoning: string;
-    contextSnapshot?: Record<string, any>;
+    contextSnapshot?: Record<string, unknown>;
     triggerEvent?: string;
   }): Promise<string | null> {
     return this.logDecision({
@@ -321,7 +321,7 @@ ESCALATE = Too risky for AI, flag for human review`;
     decisionType: string;
     chosenAction: string;
     reasoning: string;
-    contextSnapshot?: Record<string, any>;
+    contextSnapshot?: Record<string, unknown>;
     confidenceScore?: string;
     triggerEvent?: string;
   }): Promise<string | null> {
@@ -348,7 +348,7 @@ ESCALATE = Too risky for AI, flag for human review`;
     decisionType: string;
     chosenAction: string;
     reasoning: string;
-    contextSnapshot?: Record<string, any>;
+    contextSnapshot?: Record<string, unknown>;
     confidenceScore?: string;
     triggerEvent?: string;
   }): Promise<string | null> {
@@ -380,7 +380,7 @@ ESCALATE = Too risky for AI, flag for human review`;
       const limit = Math.min(filters?.limit || 50, 200);
       const offset = filters?.offset || 0;
 
-      const conditions: any[] = [eq(trinityDecisionLog.workspaceId, workspaceId)];
+      const conditions: unknown[] = [eq(trinityDecisionLog.workspaceId, workspaceId)];
 
       if (filters?.domain) {
         conditions.push(eq(trinityDecisionLog.domain, filters.domain));

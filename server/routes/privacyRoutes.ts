@@ -39,7 +39,6 @@ const ROLE_LEVEL: Record<string, number> = {
 };
 function roleLevel(role?: string) { return ROLE_LEVEL[role ?? ''] ?? 0; }
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthenticatedRequest extends Request {
   user?: { id: string; workspaceId?: string; currentWorkspaceId?: string; role?: string; workspaceRole?: string };
   workspaceId?: string;
@@ -254,7 +253,7 @@ async function generateWorkspaceExport(workspaceId: string): Promise<Buffer> {
 
 // ── Route registration ────────────────────────────────────────────────────────
 
-export function registerPrivacyRoutes(app: Express, requireAuth: any) {
+export function registerPrivacyRoutes(app: Express, requireAuth: unknown) {
   const router = express.Router();
 
   // ── Data subject requests ───────────────────────────────────────────────────
@@ -267,7 +266,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
       const role = userRole(authReq);
 
       let query: string;
-      let params: any[];
+      let params: unknown[];
 
       if (isAtLeast(authReq, 'platform_staff')) {
         // Platform staff sees all DSRs
@@ -329,7 +328,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
       const validStatuses = ['received', 'under_review', 'approved', 'in_progress', 'completed', 'denied', 'partially_fulfilled'];
 
       const updates: string[] = ['updated_at=now()', 'handled_by=$2'];
-      const params: any[] = [id, authReq.user?.id];
+      const params: Record<string, unknown>[] = [id, authReq.user?.id];
 
       if (status && validStatuses.includes(status)) {
         params.push(status);
@@ -515,7 +514,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
       await pool.query(
         `UPDATE export_download_tokens SET downloaded_at=now() WHERE token=$1`,
         [token]
-      ).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      ).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       res.setHeader('Content-Type', entry.contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${entry.filename}"`);
@@ -542,7 +541,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
         data: rows[0] ?? { essential: true, functional: false, analytics: false, consented_at: null },
       });
     } catch (error: unknown) {
-      const msg = (error as any)?.message || '';
+      const msg = (error as Record<string,unknown>)?.message || '';
       if (msg.includes('does not exist') || msg.includes('relation')) {
         return res.json({
           success: true,
@@ -596,7 +595,7 @@ export function registerPrivacyRoutes(app: Express, requireAuth: any) {
         },
       });
     } catch (error: unknown) {
-      const msg = (error as any)?.message || '';
+      const msg = (error as Record<string,unknown>)?.message || '';
       if (msg.includes('does not exist') || msg.includes('relation')) {
         return res.json({
           success: true,

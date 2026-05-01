@@ -85,7 +85,7 @@ function SignaturePad({
   const stop = () => {
     if (!drawing) return;
     setDrawing(false);
-    onChange(canvasRef.current!.toDataURL());
+    onChange(canvasRef.current?.toDataURL());
   };
 
   const clear = () => {
@@ -209,8 +209,8 @@ export default function SpsPacketPortal() {
   const { toast } = useToast();
   
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [signatures, setSignatures] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [signatures, setSignatures] = useState<Record<string, unknown>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [submittedOk, setSubmittedOk] = useState(false);
@@ -240,7 +240,7 @@ export default function SpsPacketPortal() {
 
   // Auto-save mutation
   const saveMutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       apiRequest("PATCH", `/api/public/sps/${token}`, data),
   });
 
@@ -279,7 +279,7 @@ export default function SpsPacketPortal() {
         description: `Your documents have been processed successfully. Ref: ${data.documentNumber}`,
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({
         title: "Error",
         description: err.message,
@@ -288,7 +288,7 @@ export default function SpsPacketPortal() {
     }
   });
 
-  const updateField = (section: string, field: string, value: any) => {
+  const updateField = (section: string, field: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [section]: {

@@ -66,7 +66,7 @@ export async function getUndeliveredInvoices(): Promise<UndeliveredSummary> {
     })
     .from(invoices)
     .where(and(
-      eq(invoices.status as any, 'sent'),
+      eq(invoices.status, 'sent'),
       or(
         eq(invoices.deliveryConfirmed, false),
         isNull(invoices.deliveryConfirmed)
@@ -146,10 +146,9 @@ export async function bulkResendUndeliveredInvoices(
         .set({ resentAfterDeliveryFailure: true })
         .where(eq(invoices.id, inv.id));
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await universalAudit({
         workspaceId: inv.workspaceId,
-        action: 'invoice.resent_after_failure' as any,
+        action: 'invoice.resent_after_failure',
         entityType: 'invoice',
         entityId: inv.id,
         actorId: requestedBy,
@@ -162,7 +161,7 @@ export async function bulkResendUndeliveredInvoices(
       });
 
       result.succeeded++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.failed++;
       result.errors.push({ invoiceId: inv.id, invoiceNumber: inv.invoiceNumber, error: (err instanceof Error ? err.message : String(err)) });
     }

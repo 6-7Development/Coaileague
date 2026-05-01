@@ -74,7 +74,7 @@ export default function OversightHub() {
       });
       handleCloseDialog();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to approve item",
@@ -96,7 +96,7 @@ export default function OversightHub() {
       });
       handleCloseDialog();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to reject item",
@@ -136,7 +136,7 @@ export default function OversightHub() {
   };
 
   const getEntityIcon = (entityType: string) => {
-    const icons: Record<string, any> = {
+    const icons: Record<string, unknown> = {
       invoice: DollarSign,
       expense: FileText,
       timesheet: Clock,

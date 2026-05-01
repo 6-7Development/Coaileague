@@ -67,15 +67,15 @@ interface BudgetLine {
 }
 
 function ForecastDashboard() {
-  const { data, isLoading } = useQuery<{ historical: any[]; projected: any[]; summary: any }>({
+  const { data, isLoading } = useQuery<{ historical: unknown[]; projected: unknown[]; summary: Record<string, unknown> }>({
     queryKey: ['/api/analytics/forecast'],
   });
 
   if (isLoading) return <div className="py-16 text-center text-muted-foreground text-sm">Loading forecast data...</div>;
 
   const allPoints = [
-    ...(data?.historical || []).map((h: any) => ({ ...h, type: 'historical' })),
-    ...(data?.projected || []).map((p: any) => ({ ...p, type: 'projected' })),
+    ...(data?.historical || []).map((h) => ({ ...h, type: 'historical' })),
+    ...(data?.projected || []).map((p) => ({ ...p, type: 'projected' })),
   ];
 
   const fmt = (n: number) => n >= 1000000
@@ -143,7 +143,7 @@ function ForecastDashboard() {
                 <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={fmt} tick={{ fontSize: 11 }} width={60} />
                 <Tooltip
-                  formatter={(v: any, name: string) => [fmt(Number(v)), name === 'revenue' ? 'Revenue' : name === 'laborCost' ? 'Labor Cost' : 'Profit']}
+                  formatter={(v: unknown, name: string) => [fmt(Number(v)), name === 'revenue' ? 'Revenue' : name === 'laborCost' ? 'Labor Cost' : 'Profit']}
                   labelFormatter={fmtMonth}
                   contentStyle={{ fontSize: 12 }}
                 />
@@ -226,7 +226,7 @@ export default function FinancialManagement() {
       setShowCreateDialog(false);
       setNewBudget({ name: "", department: "", totalAmount: 0, period: "Q1 2025" });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create budget",

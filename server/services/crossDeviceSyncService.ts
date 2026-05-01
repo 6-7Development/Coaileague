@@ -35,12 +35,12 @@ interface SyncPayload {
   timestamp: Date;
   version: number;
   changes: {
-    employees?: any[];
-    shifts?: any[];
-    timeEntries?: any[];
-    clients?: any[];
-    notifications?: any[];
-    platformUpdates?: any[];
+    employees?: unknown[];
+    shifts?: unknown[];
+    timeEntries?: unknown[];
+    clients?: unknown[];
+    notifications?: unknown[];
+    platformUpdates?: unknown[];
   };
   deletions?: {
     entity: string;
@@ -51,8 +51,8 @@ interface SyncPayload {
 interface ConflictResolution {
   entityType: string;
   entityId: string;
-  serverVersion: any;
-  clientVersion: any;
+  serverVersion: unknown;
+  clientVersion: unknown;
   resolution: 'server_wins' | 'client_wins' | 'merged';
   resolvedAt: Date;
 }
@@ -244,7 +244,6 @@ class CrossDeviceSyncService {
 
     try {
       const sent = sessionSyncService.broadcastToWorkspace(workspaceId, {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         type: 'sync_update',
         action: 'update',
         resource: 'cross_device_sync',
@@ -312,7 +311,7 @@ class CrossDeviceSyncService {
   async syncOfflineChanges(
     userId: string,
     workspaceId: string,
-    offlineChanges: any[]
+    offlineChanges: unknown[]
   ): Promise<{
     applied: number;
     conflicts: ConflictResolution[];
@@ -330,7 +329,7 @@ class CrossDeviceSyncService {
         } else if (result.conflict) {
           conflicts.push(result.conflict);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         errors.push(`Failed to apply change: ${(error instanceof Error ? error.message : String(error))}`);
       }
     }
@@ -342,9 +341,9 @@ class CrossDeviceSyncService {
 
   private async applyChange(
     workspaceId: string,
-    change: { entity: string; action: 'create' | 'update' | 'delete'; data: any; timestamp: Date }
+    change: { entity: string; action: 'create' | 'update' | 'delete'; data: Record<string, unknown>; timestamp: Date }
   ): Promise<{ success: boolean; conflict?: ConflictResolution }> {
-    const tables: Record<string, any> = {
+    const tables: Record<string, unknown> = {
       employees,
       shifts,
       timeEntries,
@@ -400,7 +399,7 @@ class CrossDeviceSyncService {
     return { success: true };
   }
 
-  private handleEntityChange(entityType: string, data: any): void {
+  private handleEntityChange(entityType: string, data: Record<string, unknown>): void {
     if (!data.workspaceId) return;
     const wid = data.workspaceId;
 
@@ -440,12 +439,12 @@ class CrossDeviceSyncService {
       }
 
       log.info(`[CrossDeviceSync] Batch flush for workspace ${workspaceId}: ${Object.keys(changes).join(', ')} (${workspaceUsers.length} users)`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[CrossDeviceSync] Batch flush failed for workspace ${workspaceId}:`, (err instanceof Error ? err.message : String(err)));
     }
   }
 
-  private async handleRoleChange(data: any): Promise<void> {
+  private async handleRoleChange(data: Record<string, unknown>): Promise<void> {
     if (!data.userId || !data.workspaceId) return;
 
     await this.pushToAllDevices(data.userId, data.workspaceId, {

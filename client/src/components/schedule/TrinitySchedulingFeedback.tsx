@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
@@ -58,7 +59,7 @@ export function TrinityStatusBar({ session, onAbort, onReview, onDismiss }: Trin
             )}
             {onDismiss && (
               <Button
-                size="icon"
+                size="icon" aria-label="Btn Dismiss Trinity"
                 variant="ghost"
                 className="text-white h-6 w-6 hover:bg-white/20"
                 onClick={onDismiss}
@@ -81,7 +82,7 @@ export function TrinityStatusBar({ session, onAbort, onReview, onDismiss }: Trin
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="animate-pulse shrink-0">
-            <TrinityLogo size={16} />
+            <TrinityAnimatedLogo size={16} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
@@ -119,7 +120,7 @@ export function TrinityStatusBar({ session, onAbort, onReview, onDismiss }: Trin
         {onAbort && (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Btn Abort Trinity"
             className="text-primary-foreground h-7 w-7"
             onClick={onAbort}
             data-testid="btn-abort-trinity"
@@ -238,7 +239,7 @@ export function TrinityThinkingPanel({ thoughts, isWorking, onClear, onReviewReq
         data-testid="btn-toggle-thinking"
       >
         <span className="flex items-center gap-1.5 min-w-0">
-          <TrinityLogo size={14} />
+          <TrinityAnimatedLogo size={14} />
           {isWorking ? (
             <Badge variant="secondary" className="h-[18px] px-1.5 text-[9px] no-default-hover-elevate no-default-active-elevate">
               <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" />

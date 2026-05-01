@@ -112,7 +112,6 @@ router.get('/personal-data', async (req: AuthenticatedRequest, res) => {
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const userName = (req.user)?.fullName || (req.user)?.email || 'Admin';
 
     // Count open escalation tickets assigned to this staff member
@@ -198,7 +197,6 @@ router.get('/master-keys/organizations', async (req: AuthenticatedRequest, res) 
     // Combine conditions with AND
     let query = db.select().from(workspaces);
     if (conditions.length > 0) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.where(and(...conditions));
     }
 
@@ -220,7 +218,7 @@ router.get('/master-keys/organizations', async (req: AuthenticatedRequest, res) 
   } catch (error: unknown) {
     log.error("Error fetching organizations:", error);
     if (error instanceof Error && error.name === 'ZodError') {
-      return res.status(400).json({ error: "Invalid query parameters", details: (error as any).errors });
+      return res.status(400).json({ error: "Invalid query parameters", details: (error as Record<string,unknown>).errors });
     }
     res.status(500).json({ error: "Failed to fetch organizations" });
   }
@@ -297,7 +295,7 @@ router.patch('/master-keys/organizations/:id', async (req: AuthenticatedRequest,
       return res.status(404).json({ error: "Organization not found" });
     }
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       lastAdminAction: validated.actionDescription,
       lastAdminActionBy: rootUserId,
       lastAdminActionAt: new Date()
@@ -467,7 +465,7 @@ router.patch('/master-keys/organizations/:id', async (req: AuthenticatedRequest,
   } catch (error: unknown) {
     log.error("Error updating organization:", error);
     if (error instanceof Error && error.name === 'ZodError') {
-      return res.status(400).json({ error: "Invalid request data", details: (error as any).errors });
+      return res.status(400).json({ error: "Invalid request data", details: (error as Record<string,unknown>).errors });
     }
     res.status(500).json({ error: "Failed to update organization" });
   }
@@ -548,7 +546,7 @@ router.post('/master-keys/organizations/:id/reset', async (req: AuthenticatedReq
   } catch (error: unknown) {
     log.error("Error resetting organization:", error);
     if (error instanceof Error && error.name === 'ZodError') {
-      return res.status(400).json({ error: "Invalid request data", details: (error as any).errors });
+      return res.status(400).json({ error: "Invalid request data", details: (error as Record<string,unknown>).errors });
     }
     res.status(500).json({ error: "Failed to reset organization" });
   }
@@ -778,8 +776,8 @@ router.get('/users/:userId', async (req: AuthenticatedRequest, res) => {
         workspaceName: r.workspace?.name,
         companyName: r.workspace?.companyName,
         role: r.employee.workspaceRole,
-        title: (r as any).employee.title,
-        department: (r as any).employee.department,
+        title: (r as Record<string, unknown>).employee.title,
+        department: (r as Record<string, unknown>).employee.department,
       })),
     });
   } catch (error: unknown) {
@@ -835,7 +833,7 @@ router.patch('/users/:userId', async (req: AuthenticatedRequest, res) => {
           .set({ email: email, updatedAt: new Date() })
           .where(eq(clients.userId, userId));
       } catch (syncError) {
-        log.warn('[Auth] Admin email sync failed (non-fatal):', (syncError as any).message);
+        log.warn('[Auth] Admin email sync failed (non-fatal):', (syncError as Record<string,unknown>).message);
       }
     }
 
@@ -930,7 +928,6 @@ router.post('/users/:userId/grant-role', async (req: AuthenticatedRequest, res) 
         action: 'platform_role_removed',
         entityType: 'platform_role',
         entityId: userId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         details: {
           targetUserId: userId,
           targetEmail: user.email,
@@ -947,7 +944,6 @@ router.post('/users/:userId/grant-role', async (req: AuthenticatedRequest, res) 
     const [newRole] = await db
       .insert(platformRoles)
       .values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: PLATFORM_WORKSPACE_ID,
         userId,
         role,
@@ -962,7 +958,6 @@ router.post('/users/:userId/grant-role', async (req: AuthenticatedRequest, res) 
       action: 'platform_role_assigned',
       entityType: 'platform_role',
       entityId: newRole.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       details: {
         targetUserId: userId,
         targetEmail: user.email,
@@ -1011,7 +1006,6 @@ router.post('/users/:userId/revoke-role', async (req: AuthenticatedRequest, res)
       action: 'platform_role_revoked',
       entityType: 'platform_role',
       entityId: userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       details: {
         targetUserId: userId,
         revokedRole: targetPlatformRole,
@@ -1169,7 +1163,6 @@ router.post('/staff/grant-role', async (req: AuthenticatedRequest, res) => {
     const PLATFORM_ROLE_LEVELS: Record<string, number> = {
       root_admin: 5, deputy_admin: 4, sysop: 3, support_manager: 3, compliance_officer: 3, support_agent: 2,
     };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const grantorRole = (req.user)?.platformRole as string | undefined;
     const grantorLevel = grantorRole ? (PLATFORM_ROLE_LEVELS[grantorRole] ?? 0) : 0;
     const targetLevel = PLATFORM_ROLE_LEVELS[role] ?? 0;
@@ -1196,7 +1189,6 @@ router.post('/staff/grant-role', async (req: AuthenticatedRequest, res) => {
     const [newRole] = await db
       .insert(platformRoles)
       .values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: PLATFORM_WORKSPACE_ID,
         userId: user.id,
         role,
@@ -1337,7 +1329,6 @@ router.post('/staff/:userId/change-role', async (req: AuthenticatedRequest, res)
     const [newRoleRecord] = await db
       .insert(platformRoles)
       .values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: PLATFORM_WORKSPACE_ID,
         userId,
         role: newRole,
@@ -1370,19 +1361,18 @@ router.get('/team', async (req: AuthenticatedRequest, res) => {
       .select({
         userId: platformRoles.userId,
         role: platformRoles.role,
-        grantedAt: (platformRoles as any).grantedAt,
+        grantedAt: (platformRoles as Record<string,unknown>).grantedAt,
         grantedBy: platformRoles.grantedBy,
         revokedAt: platformRoles.revokedAt,
         email: users.email,
         firstName: users.firstName,
         lastName: users.lastName,
-        isSuspended: (users as any).isSuspended,
-        lastActiveAt: (users as any).lastActiveAt,
+        isSuspended: (users as Record<string,unknown>).isSuspended,
+        lastActiveAt: (users as Record<string,unknown>).lastActiveAt,
       })
       .from(platformRoles)
       .innerJoin(users, eq(users.id, platformRoles.userId))
       .where(isNull(platformRoles.revokedAt))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(desc(platformRoles.grantedAt));
 
     res.json({ bots, agents: humanAgents });
@@ -1431,7 +1421,7 @@ Keep answers under 200 words unless detail is critical. Today is ${new Date().to
       inputPayload: { question: question.trim() },
       outputPayload: { answer, botName: bot.name },
       success: true,
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({ answer, botName: bot.name, botId: agentId, askedAt: new Date().toISOString() });
   } catch (err: unknown) {
@@ -1467,9 +1457,9 @@ router.post('/team/bots/:agentId/action', async (req: AuthenticatedRequest, res)
       updates.suspensionReason = reason || 'Manually suspended by support team';
     } else if (action === 'activate' || action === 'restart') {
       updates.status = 'active';
-      updates.suspendedAt = null as any;
-      updates.suspendedBy = null as any;
-      updates.suspensionReason = null as any;
+      updates.suspendedAt = null;
+      updates.suspendedBy = null;
+      updates.suspensionReason = null;
     } else if (action === 'reset_stats') {
       updates.tokenCount24h = 0;
       updates.currentMinuteRequests = 0;
@@ -1505,7 +1495,6 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
 
     const [targetRole] = await db.select().from(platformRoles)
       .where(and(eq(platformRoles.userId, userId), isNull(platformRoles.revokedAt)))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(desc(platformRoles.grantedAt)).limit(1);
 
     const { getPlatformRoleLevel } = await import('../rbac');
@@ -1518,7 +1507,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
 
     if (action === 'freeze' || action === 'remove') {
       await db.transaction(async (tx) => {
-        await tx.update(users).set({ isSuspended: true, suspendedAt: new Date() } as any)
+        await tx.update(users).set({ isSuspended: true, suspendedAt: new Date() } as Record<string, unknown>)
           .where(eq(users.id, userId));
         if (action === 'remove' && targetRole) {
           await tx.update(platformRoles).set({
@@ -1529,7 +1518,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
         }
       });
     } else if (action === 'unfreeze' || action === 'reactivate') {
-      await db.update(users).set({ isSuspended: false, suspendedAt: null as any } as any)
+      await db.update(users).set({ isSuspended: false, suspendedAt: null } as Record<string, unknown>)
         .where(eq(users.id, userId));
     } else if (action === 'demote') {
       if (!targetRole) return res.status(400).json({ error: 'User has no platform role to demote' });
@@ -1541,7 +1530,6 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
           revokedReason: reason || 'Demoted',
         }).where(and(eq(platformRoles.userId, userId), isNull(platformRoles.revokedAt)));
         await tx.insert(platformRoles).values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: PLATFORM_WORKSPACE_ID,
           userId,
           role: demotedRole,
@@ -1550,7 +1538,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
         });
       });
     } else if (action === 'change_role') {
-      if (!newRole || !PLATFORM_ROLES_ORDERED.includes(newRole as any)) {
+      if (!newRole || !PLATFORM_ROLES_ORDERED.includes(newRole as string)) {
         return res.status(400).json({ error: 'Valid newRole required' });
       }
       const newRoleLevel = getPlatformRoleLevel(newRole);
@@ -1566,7 +1554,6 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
           }).where(and(eq(platformRoles.userId, userId), isNull(platformRoles.revokedAt)));
         }
         await tx.insert(platformRoles).values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: PLATFORM_WORKSPACE_ID,
           userId,
           role: newRole,
@@ -1645,7 +1632,6 @@ router.post('/team/agents', async (req: AuthenticatedRequest, res) => {
     if (existing) return res.status(409).json({ error: `User already has platform role: ${existing.role}` });
 
     const [newRole] = await db.insert(platformRoles).values({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: PLATFORM_WORKSPACE_ID,
       userId: targetUser.id,
       role,
@@ -1671,7 +1657,6 @@ router.post('/team/agents', async (req: AuthenticatedRequest, res) => {
 // Returns platform pool balance and deposit history from forfeited tenant credits
 router.get('/credits/recycled', async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     // Legacy credit pipeline removed — use tokenManager for usage stats
     const getRecycledCreditsStats = async () => ({ recycled: 0, pending: 0 });
     const stats = await getRecycledCreditsStats();

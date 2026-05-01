@@ -87,7 +87,7 @@ class ConfigRegistry {
   /**
    * Validate a single config change
    */
-  validateChange(scope: string, key: string, value: any): void {
+  validateChange(scope: string, key: string, value: unknown): void {
     // Validate scope
     if (scope !== 'featureToggles') {
       throw new Error(`Invalid scope: ${scope}. Only 'featureToggles' is supported.`);
@@ -106,7 +106,7 @@ class ConfigRegistry {
       throw new Error(`Invalid key format: ${key}. Expected format: 'category.toggle'`);
     }
 
-    const configCategory = (this as any).cache[category];
+    const configCategory = (this as Record<string,unknown>).cache[category];
     if (!configCategory) {
       throw new Error(`Invalid category: ${category}. Must be one of: ${Object.keys(this.cache).join(', ')}`);
     }
@@ -124,11 +124,11 @@ class ConfigRegistry {
   /**
    * Apply a single config change (in-memory)
    */
-  applyChange(scope: string, key: string, value: any): void {
+  applyChange(scope: string, key: string, value: unknown): void {
     this.validateChange(scope, key, value);
 
     const [category, toggle] = key.split('.');
-    (this as any).cache[category][toggle] = value;
+    (this as Record<string,unknown>).cache[category][toggle] = value;
   }
 
   /**
@@ -162,7 +162,7 @@ class ConfigRegistry {
   /**
    * Persist config to TypeScript file
    */
-  async persistConfig(scope: string, config: any): Promise<void> {
+  async persistConfig(scope: string, config: Record<string, unknown>): Promise<void> {
     if (scope !== 'featureToggles') {
       throw new Error(`Unsupported config scope: ${scope}`);
     }

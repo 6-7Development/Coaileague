@@ -103,7 +103,7 @@ async function phase0_preflight() {
   try {
     await db.execute(sql`SELECT 1`);
     rec({ name: 'DB Connection', phase: 'PREFLIGHT', passed: true, details: 'Connected', severity: 'CRITICAL' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     rec({ name: 'DB Connection', phase: 'PREFLIGHT', passed: false, details: e.message, severity: 'CRITICAL' });
     throw new Error('Cannot continue without DB');
   }
@@ -201,7 +201,7 @@ async function phase1_schedule(officerPool: string[]) {
     SELECT COUNT(*) as n FROM shifts WHERE workspace_id = ${WS_ID} AND status = 'open'
     AND id LIKE 'sim-shift-%' AND notes LIKE '%BLOCKED%'
   `);
-  const blocked = Number((blockedCount?.rows?.[0] as any)?.n ?? 0);
+  const blocked = Number((blockedCount?.rows?.[0] as unknown)?.n ?? 0);
   rec({ name: 'Trinity Kill-Switch (Expired License)', phase: 'SCHEDULE',
     passed: blocked > 0,
     details: blocked > 0
@@ -226,7 +226,7 @@ async function phase2_time_entries(shiftIds: string[]) {
     ORDER BY start_time
   `);
 
-  for (const s of (assignedShifts.rows as any[])) {
+  for (const s of (assignedShifts.rows as unknown[][])) {
     const teId = `sim-te-${s.id}`;
     const clockIn  = new Date(s.start_time);
     const clockOut = new Date(s.end_time);
@@ -286,7 +286,7 @@ async function phase3_invoices() {
     `);
 
     let weekHours = 0;
-    for (const s of (weekShifts.rows as any[])) {
+    for (const s of (weekShifts.rows as unknown[][])) {
       const shiftStart = new Date(s.start_time);
       const shiftEnd   = new Date(s.end_time);
 
@@ -408,7 +408,7 @@ async function phase4_payroll(totalHoursWorked: number) {
     `);
 
     let periodTotal = 0;
-    const entries = (periodEntries.rows as any[]);
+    const entries = (periodEntries.rows as unknown[][]);
     for (const row of entries) {
       const empHours = Number(row.total_hours) || 0;
       const grossPay = Math.round(empHours * PAY_RATE * 100);
@@ -507,7 +507,7 @@ async function phase6_routes() {
         details: `${route.method} ${route.path} → ${resp.status}`,
         severity: resp.status >= 500 ? 'CRITICAL' : 'MEDIUM',
         value: resp.status });
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Server not running locally — skip route tests
       rec({ name: route.label, phase: 'ROUTES', passed: false,
         details: `Server not reachable: ${e.message}`, severity: 'MEDIUM',
@@ -530,7 +530,7 @@ async function phase7_stripe() {
   }
 
   const Stripe = (await import('stripe')).default;
-  const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' as any });
+  const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' });
 
   try {
     // Create test customer
@@ -570,7 +570,7 @@ async function phase7_stripe() {
     await stripe.customers.del(customer.id);
     rec({ name: 'Cleanup Test Customer', phase: 'STRIPE',
       passed: true, details: 'Test customer deleted', severity: 'INFO' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     rec({ name: 'Stripe Test Transaction', phase: 'STRIPE',
       passed: false, details: e.message, severity: 'HIGH' });
   }
@@ -605,7 +605,7 @@ async function phase8_plaid() {
         language:     'en',
       }),
     });
-    const data = await resp.json() as any;
+    const data = await resp.json() as unknown;
     const ok   = !!data.link_token;
     rec({ name: 'Plaid Sandbox Link Token', phase: 'PLAID',
       passed: ok,
@@ -618,7 +618,7 @@ async function phase8_plaid() {
         details: 'Plaid sandbox responds correctly — ACH payroll pipeline is accessible',
         severity: 'INFO' });
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     rec({ name: 'Plaid Sandbox', phase: 'PLAID', passed: false,
       details: e.message, severity: 'MEDIUM' });
   }
@@ -666,7 +666,7 @@ async function phase9_email() {
       passed: true,
       details: 'processStaffing() wired for staffing@ / ops@ / scheduling@ — triggers auto-fill',
       severity: 'INFO' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     rec({ name: 'Email Send', phase: 'EMAIL', passed: false,
       details: e.message, severity: 'HIGH' });
   }
@@ -693,8 +693,8 @@ async function phase10_compliance() {
       AND notes LIKE '%BLOCKED%'
   `);
 
-  const blocked      = Number((blockedShifts.rows[0] as any)?.n ?? 0);
-  const wrongAssign  = Number((assignedToExpired.rows[0] as any)?.n ?? 0);
+  const blocked      = Number((blockedShifts.rows[0] as Record<string, unknown>)?.n ?? 0);
+  const wrongAssign  = Number((assignedToExpired.rows[0] as Record<string, unknown>)?.n ?? 0);
 
   rec({ name: 'Expired-License Shifts Blocked', phase: 'COMPLIANCE',
     passed: blocked > 0,
@@ -713,7 +713,7 @@ async function phase10_compliance() {
     SELECT SUM(quantity) as hrs FROM invoice_line_items
     WHERE invoice_id IN (SELECT id FROM invoices WHERE workspace_id = ${WS_ID} AND id LIKE 'sim-inv-%')
   `);
-  const totalBilledHrs = Number((billedBlockedHours.rows[0] as any)?.hrs ?? 0);
+  const totalBilledHrs = Number((billedBlockedHours.rows[0] as Record<string, unknown>)?.hrs ?? 0);
   rec({ name: 'Invoices Exclude Blocked-Shift Hours', phase: 'COMPLIANCE',
     passed: totalBilledHrs < SIM_DAYS * 24,
     details: `Billed ${totalBilledHrs.toFixed(1)}h (should be < ${SIM_DAYS * 24}h due to blocked shifts)`,
@@ -730,7 +730,7 @@ async function phase11_trinity_math() {
       headers: { 'x-test-key': 'dev-bypass-key-acme' },
     });
     if (resp.ok) {
-      const data = await resp.json() as any;
+      const data = await resp.json() as unknown;
       const hasNaN = Object.values(data).some(v => v !== null && isNaN(Number(v)));
       rec({ name: 'Worker Earnings: No NaN Values', phase: 'MATH',
         passed: !hasNaN,
@@ -762,7 +762,7 @@ async function phase11_trinity_math() {
   `);
 
   let mathErrors = 0;
-  for (const row of (invMath.rows as any[])) {
+  for (const row of (invMath.rows as unknown[][])) {
     const expected = Math.round(Number(row.quantity) * Number(row.unit_price));
     const actual   = Number(row.total_price);
     if (Math.abs(expected - actual) > 1) mathErrors++;
@@ -777,7 +777,7 @@ async function phase11_trinity_math() {
     SELECT id, total_gross_pay, employee_count FROM payroll_runs WHERE id LIKE 'sim-payroll-run-%'
   `);
   let payNaN = 0;
-  for (const row of (payMath.rows as any[])) {
+  for (const row of (payMath.rows as unknown[][])) {
     if (isNaN(Number(row.total_gross_pay))) payNaN++;
   }
   rec({ name: 'Payroll Runs: No NaN in gross pay', phase: 'MATH',
@@ -859,7 +859,7 @@ async function main() {
     await phase10_compliance();
     await phase11_trinity_math();
     await phase12_cleanup();
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('\n💀 SIMULATION ABORTED:', e.message);
     rec({ name: 'Simulation Abort', phase: 'FATAL', passed: false,
       details: e.message, severity: 'CRITICAL' });

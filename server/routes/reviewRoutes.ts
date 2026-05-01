@@ -150,12 +150,12 @@ router.get("/api/report-templates", requireAuth, async (req: AuthenticatedReques
   }
 });
 
-router.post("/api/report-templates/:id/toggle", requireOwner, async (req: any, res) => {
+router.post("/api/report-templates/:id/toggle", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     
     const template = await storage.toggleReportTemplateActivation(id, workspaceId);
     res.json(template);
@@ -165,11 +165,11 @@ router.post("/api/report-templates/:id/toggle", requireOwner, async (req: any, r
   }
 });
 
-router.post("/api/report-templates/seed-industry", requireOwner, async (req: any, res) => {
+router.post("/api/report-templates/seed-industry", requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -188,11 +188,11 @@ router.post("/api/report-templates/seed-industry", requireOwner, async (req: any
 });
 
 // === Report Submissions ===
-router.get("/api/report-submissions", requireAuth, async (req: any, res) => {
+router.get("/api/report-submissions", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -209,11 +209,11 @@ router.get("/api/report-submissions", requireAuth, async (req: any, res) => {
   }
 });
 
-router.post("/api/report-submissions", requireAuth, async (req: any, res) => {
+router.post("/api/report-submissions", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -231,10 +231,9 @@ router.post("/api/report-submissions", requireAuth, async (req: any, res) => {
   }
 });
 
-router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) => {
+router.patch("/api/report-submissions/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const subUpdateSchema = z.object({
       content: z.string().max(50000).optional(),
       status: z.string().max(50).optional(),
@@ -251,7 +250,7 @@ router.patch("/api/report-submissions/:id", requireAuth, async (req: any, res) =
   }
 });
 
-router.post("/api/report-submissions/:id/review", requireManager, async (req: any, res) => {
+router.post("/api/report-submissions/:id/review", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const reviewSchema = z.object({
@@ -277,12 +276,12 @@ router.post("/api/report-submissions/:id/review", requireManager, async (req: an
   }
 });
 
-router.post("/api/report-submissions/:id/send-to-client", requireManager, async (req: any, res) => {
+router.post("/api/report-submissions/:id/send-to-client", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
@@ -327,13 +326,12 @@ router.post("/api/report-submissions/:id/send-to-client", requireManager, async 
       reportNumber: submission.reportNumber,
       reportName,
       submittedBy: employeeName,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       submittedDate: new Date(submission.submittedAt || submission.createdAt).toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
       }),
-      reportData: submission.formData as Record<string, any>,
+      reportData: submission.formData as Record<string, unknown>,
       attachmentCount: attachmentCount > 0 ? attachmentCount : undefined,
     });
 
@@ -342,7 +340,6 @@ router.post("/api/report-submissions/:id/send-to-client", requireManager, async 
       return res.status(500).json({ message: "Failed to send email to client" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const updatedSubmission = await storage.updateReportSubmission(id, {
       status: 'sent_to_customer',
     });
@@ -358,15 +355,12 @@ router.post("/api/report-submissions/:id/send-to-client", requireManager, async 
   }
 });
 
-router.post("/api/report-submissions/:id/generate-access", requireAuth, async (req: any, res) => {
+router.post("/api/report-submissions/:id/generate-access", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const generateAccessBodySchema = z.object({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       clientId: z.string().min(1, 'Client ID is required'),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       expirationDays: z.number().int().positive().optional(),
     });
     const generateAccessParsed = generateAccessBodySchema.safeParse(req.body);

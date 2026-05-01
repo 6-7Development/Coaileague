@@ -65,7 +65,7 @@ If ANY criterion is not met, verified must be false. Err on the side of caution 
   try {
     const base64 = documentBuffer.toString('base64');
 
-    const content: any[] = [];
+    const content: (string | number | boolean | null)[] = [];
     if (isImage) {
       const mediaType = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
       content.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
@@ -96,19 +96,19 @@ If ANY criterion is not met, verified must be false. Err on the side of caution 
       return { verified: false, reasoning: `Verification API error: ${response.status}. Please re-submit.` };
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const rawText: string = data?.content?.[0]?.text ?? '{}';
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { verified: false, reasoning: 'Could not parse Trinity verification response.' };
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed: unknown = JSON.parse(jsonMatch[0]);
     return {
       verified: Boolean(parsed.verified),
       reasoning: String(parsed.reasoning || ''),
       agencyName: parsed.agency_name ? String(parsed.agency_name) : undefined,
       authorizationDate: parsed.authorization_date ? String(parsed.authorization_date) : undefined,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[AuditGate] Verification threw:', err?.message);
     return { verified: false, reasoning: `Verification error: ${err?.message}` };
   }
@@ -213,7 +213,7 @@ async function sendTenantSafeUnlockAlerts(params: {
       subject: 'URGENT: Regulatory Auditor Has Accessed Your Document Safe',
       body: alertBody,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AuditGate] In-app alert failed (non-fatal):', err?.message);
   }
 
@@ -239,7 +239,7 @@ async function sendTenantSafeUnlockAlerts(params: {
 <p>You retain full control over what documents are shared. No documents leave your Document Safe without your explicit approval.</p>`,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AuditGate] Email alert failed (non-fatal):', err?.message);
   }
 
@@ -255,7 +255,7 @@ async function sendTenantSafeUnlockAlerts(params: {
         message: 'URGENT: A regulatory auditor has initiated an active review. Your Document Safe is now accessible to the auditor. Please monitor Chatdock immediately. — CoAIleague',
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AuditGate] SMS alert failed (non-fatal):', err?.message);
   }
 
@@ -267,7 +267,7 @@ async function sendTenantSafeUnlockAlerts(params: {
         WHERE id = $1`,
       [params.accessLogId],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AuditGate] Failed to mark alerts sent (non-fatal):', err?.message);
   }
 }
@@ -368,7 +368,7 @@ export async function submitAuditorPaperwork(
         accessLogId,
         ownerUserId,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[AuditGate] Alert dispatch failed (non-fatal):', err?.message);
     }
   } else {

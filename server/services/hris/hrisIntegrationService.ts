@@ -33,7 +33,6 @@ import {
   workspaces,
   InsertPartnerConnection,
   InsertPartnerDataMapping,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   InsertPartnerSyncLog,
 } from '@shared/schema';
 import { eq, and, desc, isNull, or, ilike } from 'drizzle-orm';
@@ -109,8 +108,8 @@ export interface SyncResult {
 export interface SyncConflict {
   entityType: EntityType;
   entityId: string;
-  localValue: any;
-  remoteValue: any;
+  localValue: unknown;
+  remoteValue: unknown;
   field: string;
   resolution?: 'local_wins' | 'remote_wins' | 'merge' | 'manual';
 }
@@ -395,7 +394,7 @@ class HRISIntegrationService {
     const config = this.getProviderConfig(provider);
 
     try {
-      const statePayload = JSON.parse(Buffer.from(state, 'base64url').toString());
+      const statePayload: unknown = JSON.parse(Buffer.from(state, 'base64url').toString());
       const workspaceId = statePayload.workspaceId;
 
       const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`] || '';
@@ -423,7 +422,7 @@ class HRISIntegrationService {
 
       const connectionData: InsertPartnerConnection = {
         workspaceId,
-        partnerType: provider as any,
+        partnerType: provider as unknown,
         partnerName: config.name,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
@@ -472,7 +471,7 @@ class HRISIntegrationService {
 
       return { success: true, connectionId: connection.id };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[HRISIntegration] OAuth callback failed:`, error);
       trinityOrchestration.hris.oauthFailed('unknown', provider, (error instanceof Error ? error.message : String(error)));
       return { success: false, error: (error instanceof Error ? error.message : String(error)) };
@@ -490,7 +489,7 @@ class HRISIntegrationService {
         .where(
           and(
             eq(partnerConnections.workspaceId, workspaceId),
-            eq(partnerConnections.partnerType, provider as any)
+            eq(partnerConnections.partnerType, provider as unknown)
           )
         );
 
@@ -568,7 +567,7 @@ class HRISIntegrationService {
         .where(
           and(
             eq(partnerConnections.workspaceId, workspaceId),
-            eq(partnerConnections.partnerType, provider as any),
+            eq(partnerConnections.partnerType, provider as unknown),
             eq(partnerConnections.status, 'connected')
           )
         )
@@ -581,7 +580,7 @@ class HRISIntegrationService {
       const syncLog: InsertPartnerSyncLog = {
         workspaceId,
         partnerConnectionId: connection.id,
-        partnerType: provider as any,
+        partnerType: provider as unknown,
         syncType: options.fullSync ? 'full' : 'incremental',
         syncDirection: options.direction,
         status: 'running',
@@ -625,7 +624,7 @@ class HRISIntegrationService {
             result.recordsSkipped += outboundResult.skipped;
           }
 
-        } catch (entityError: any) {
+        } catch (entityError : unknown) {
           result.errors.push(`${entityType}: ${entityError.message}`);
         }
       }
@@ -670,7 +669,7 @@ class HRISIntegrationService {
         skipped: result.recordsSkipped,
       });
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       result.errors.push((error instanceof Error ? error.message : String(error)));
       log.error(`[HRISIntegration] Sync failed:`, error);
       trinityOrchestration.hris.syncFailed(workspaceId, provider, correlationId, (error instanceof Error ? error.message : String(error)));
@@ -683,7 +682,7 @@ class HRISIntegrationService {
   }
 
   private async syncInbound(params: {
-    connection: any;
+    connection: unknown;
     entityType: EntityType;
     fullSync?: boolean;
     sinceDate?: Date;
@@ -713,7 +712,7 @@ class HRISIntegrationService {
           .where(
             and(
               eq(partnerDataMappings.workspaceId, connection.workspaceId),
-              eq(partnerDataMappings.partnerType, provider as any),
+              eq(partnerDataMappings.partnerType, provider as unknown),
               eq(partnerDataMappings.entityType, entityType),
               eq(partnerDataMappings.partnerEntityId, this.getRemoteId(remoteRecord, provider))
             )
@@ -770,7 +769,7 @@ class HRISIntegrationService {
   }
 
   private async syncOutbound(params: {
-    connection: any;
+    connection: unknown;
     entityType: EntityType;
     sinceDate?: Date;
     dryRun?: boolean;
@@ -822,7 +821,7 @@ class HRISIntegrationService {
   // HELPER METHODS
   // ============================================================================
 
-  private async fetchRemoteRecords(connection: any, entityType: EntityType): Promise<any[]> {
+  private async fetchRemoteRecords(connection: unknown, entityType: EntityType): Promise<any[]> {
     const provider = connection.partnerType as HRISProvider;
     const config = HRIS_PROVIDERS[provider];
     
@@ -879,8 +878,8 @@ class HRISIntegrationService {
     return [];
   }
 
-  private mapRemoteToLocal(remoteRecord: any, mappings: FieldMapping[], provider: HRISProvider): Record<string, any> {
-    const result: Record<string, any> = {};
+  private mapRemoteToLocal(remoteRecord: unknown, mappings: FieldMapping[], provider: HRISProvider): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
 
     for (const mapping of mappings) {
       const value = this.getNestedValue(remoteRecord, mapping.remoteField);
@@ -892,7 +891,7 @@ class HRISIntegrationService {
     return result;
   }
 
-  private getNestedValue(obj: any, path: string): any {
+  private getNestedValue(obj: unknown, path: string): any {
     const parts = path.split('.');
     let current = obj;
 
@@ -910,7 +909,7 @@ class HRISIntegrationService {
     return current;
   }
 
-  private transformValue(value: any, transform?: string): any {
+  private transformValue(value: unknown, transform?: string): any {
     if (!transform || transform === 'none') return value;
 
     switch (transform) {
@@ -929,7 +928,7 @@ class HRISIntegrationService {
     }
   }
 
-  private getRemoteId(record: any, provider: HRISProvider): string {
+  private getRemoteId(record: unknown, provider: HRISProvider): string {
     const idFields = ['id', 'Id', 'uuid', 'employee_id', 'worker_id'];
     for (const field of idFields) {
       if (record[field]) return String(record[field]);
@@ -940,7 +939,7 @@ class HRISIntegrationService {
   private async findLocalMatch(
     workspaceId: string,
     entityType: EntityType,
-    mappedData: Record<string, any>
+    mappedData: Record<string, unknown>
   ): Promise<{ id: string; confidence: number } | null> {
     if (entityType !== 'employee') return null;
 
@@ -984,7 +983,7 @@ class HRISIntegrationService {
     return null;
   }
 
-  private async createLocalEmployee(workspaceId: string, data: Record<string, any>): Promise<string> {
+  private async createLocalEmployee(workspaceId: string, data: Record<string, unknown>): Promise<string> {
     const [employee] = await db.insert(employees)
       .values({
         workspaceId,
@@ -1015,7 +1014,7 @@ class HRISIntegrationService {
       .values({
         workspaceId: params.workspaceId,
         partnerConnectionId: params.connectionId,
-        partnerType: params.provider as any,
+        partnerType: params.provider as unknown,
         entityType: params.entityType,
         coaileagueEntityId: params.localId,
         partnerEntityId: params.remoteId,
@@ -1028,7 +1027,7 @@ class HRISIntegrationService {
       .onConflictDoNothing();
   }
 
-  private async updateLocalRecord(entityType: EntityType, localId: string, data: Record<string, any>): Promise<void> {
+  private async updateLocalRecord(entityType: EntityType, localId: string, data: Record<string, unknown>): Promise<void> {
     if (entityType === 'employee') {
       await db.update(employees)
         .set({
@@ -1042,7 +1041,7 @@ class HRISIntegrationService {
     }
   }
 
-  private async updateRemoteRecord(connection: any, entityType: EntityType, remoteId: string, localRecord: any): Promise<void> {
+  private async updateRemoteRecord(connection: unknown, entityType: EntityType, remoteId: string, localRecord: unknown): Promise<void> {
     log.info(`[HRISIntegration] Would update remote ${entityType} ${remoteId} with local data`);
   }
 
@@ -1104,7 +1103,7 @@ class HRISIntegrationService {
             .where(
               and(
                 eq(partnerConnections.workspaceId, params.workspaceId),
-                eq(partnerConnections.partnerType, params.provider as any)
+                eq(partnerConnections.partnerType, params.provider as unknown)
               )
             )
             .orderBy(desc(partnerSyncLogs.createdAt))

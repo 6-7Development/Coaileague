@@ -80,7 +80,6 @@ export async function getMeteredOpenAICompletion(
 
   const effectiveWorkspaceId = workspaceId || undefined;
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const authResult = await aiTokenGateway.preAuthorize(effectiveWorkspaceId, userId, featureKey);
   if (!authResult.authorized) {
     log.warn(`[BillingGate] BLOCKED OpenAI ${featureKey}: ${authResult.reason}`);
@@ -117,7 +116,7 @@ export async function getMeteredOpenAICompletion(
   }
 
   try {
-    const completionParams: any = {
+    const completionParams: Record<string, unknown> = {
       model,
       messages,
       max_completion_tokens: maxTokens,
@@ -142,7 +141,6 @@ export async function getMeteredOpenAICompletion(
     const latencyMs = Date.now() - startTime;
 
     await aiTokenGateway.finalizeBilling(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       effectiveWorkspaceId,
       userId,
       featureKey,
@@ -161,7 +159,7 @@ export async function getMeteredOpenAICompletion(
       creditsCharged: authResult.classification.tokenCost,
       model,
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error(`[BillingGate] OpenAI ${featureKey} FAILED: ${(error instanceof Error ? error.message : String(error))}`);
 
     return {

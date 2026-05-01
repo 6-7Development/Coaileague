@@ -114,7 +114,7 @@ class RecurringScheduleTemplateService {
         clientId: shift.clientId,
         position: shift.title || undefined,
         requiredEmployees: 1,
-        notes: (shift as any).notes || undefined,
+        notes: (shift as Record<string,unknown>).notes || undefined,
       };
     });
 
@@ -148,7 +148,7 @@ class RecurringScheduleTemplateService {
     }
 
     const errors: string[] = [];
-    const shiftsToCreate: any[] = [];
+    const shiftsToCreate: (string | number | boolean | null)[] = [];
 
     // Calculate the week's dates
     const weekStart = new Date(targetWeekStart);
@@ -296,7 +296,7 @@ class RecurringScheduleTemplateService {
     templateId: string,
     updates: Partial<Pick<ScheduleTemplate, 'name' | 'description'>>
   ): Promise<ScheduleTemplate | null> {
-    const dbUpdates: Record<string, any> = { updatedAt: new Date() };
+    const dbUpdates: Record<string, unknown> = { updatedAt: new Date() };
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     const [updated] = await db.update(templatesTable)

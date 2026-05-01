@@ -50,11 +50,11 @@ export default function ComplianceDashboard() {
     queryKey: ['/api/security-compliance/states'],
   });
 
-  const { data: approvalsData, isLoading: approvalsLoading } = useQuery<{ success: boolean; approvals: any[]; count: number }>({
+  const { data: approvalsData, isLoading: approvalsLoading } = useQuery<{ success: boolean; approvals: unknown[]; count: number }>({
     queryKey: ['/api/security-compliance/approvals/pending'],
   });
 
-  const { data: recordsData, isLoading: recordsLoading } = useQuery<{ success: boolean; records: any[] }>({
+  const { data: recordsData, isLoading: recordsLoading } = useQuery<{ success: boolean; records: unknown[] }>({
     queryKey: ['/api/security-compliance/records'],
   });
 
@@ -68,12 +68,12 @@ export default function ComplianceDashboard() {
 
   const stats: ComplianceStats = statsData?.stats || {
     totalEmployees: records.length,
-    compliantEmployees: records.filter((r: any) => r.record?.overallStatus === 'complete').length,
-    pendingReview: records.filter((r: any) => r.record?.overallStatus === 'pending_review').length,
+    compliantEmployees: records.filter((r) => r.record?.overallStatus === 'complete').length,
+    pendingReview: records.filter((r) => r.record?.overallStatus === 'pending_review').length,
     expiringWithin30Days: 0,
     expiringWithin90Days: 0,
     documentsUploaded: 0,
-    documentsLocked: records.filter((r: any) => r.record?.vaultLocked).length,
+    documentsLocked: records.filter((r) => r.record?.vaultLocked).length,
     pendingApprovals: pendingApprovals.length
   };
 
@@ -336,7 +336,7 @@ export default function ComplianceDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {records.map((item: any) => (
+                    {records.map((item) => (
                       <div 
                         key={item.record?.id} 
                         className="flex items-center justify-between gap-2 p-4 border rounded-lg hover-elevate"

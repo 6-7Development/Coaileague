@@ -16,7 +16,7 @@ const log = createLogger('TrinitySchedulingRoutes');
 
 const router = Router();
 
-router.get('/insights', async (req: any, res) => {
+router.get('/insights', async (req: AuthenticatedRequest, res) => {
     try {
       const userId: string | undefined = req.user?.id || req.user?.claims?.sub || req.session?.userId;
       
@@ -42,7 +42,7 @@ router.get('/insights', async (req: any, res) => {
           )
         );
       
-      const insights: Array<{id: string; type: string; icon: string; title: string; description: string; actionable?: boolean; actionLabel?: string; actionData?: any}> = [];
+      const insights: Array<{id: string; type: string; icon: string; title: string; description: string; actionable?: boolean; actionLabel?: string; actionData?: unknown }> = [];
       
       const openShifts = weekShifts.filter(s => !s.employeeId);
       if (openShifts.length > 0) {
@@ -104,7 +104,7 @@ router.get('/insights', async (req: any, res) => {
     }
   });
 
-router.post('/auto-fill', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.id;
       // Use middleware-resolved workspaceId first, fall back to DB lookup
@@ -195,7 +195,7 @@ router.post('/auto-fill', requireAuth, async (req: AuthenticatedRequest, res) =>
     }
   });
 
-router.post('/ask', async (req: any, res) => {
+router.post('/ask', async (req: AuthenticatedRequest, res) => {
     try {
       const userId: string | undefined = req.user?.id || req.user?.claims?.sub || req.session?.userId;
       
@@ -279,7 +279,7 @@ router.post('/ask', async (req: any, res) => {
  * created. Returns 409 with conflict details + recommended alternative times
  * when the proposed shift falls within an SLA blackout window.
  */
-router.post('/schedule-shift', async (req: any, res) => {
+router.post('/schedule-shift', async (req: AuthenticatedRequest, res) => {
   try {
     const userId: string | undefined = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     if (!userId) {
@@ -371,13 +371,13 @@ router.get('/pending-approvals', requireAuth, async (req: AuthenticatedRequest, 
     const { eq, and, desc } = await import('drizzle-orm');
     const pending = await db.select().from(trinityProposedActions)
       .where(and(
-        eq((trinityProposedActions as any).workspaceId, workspaceId),
-        eq((trinityProposedActions as any).status, 'pending'),
+        eq((trinityProposedActions as Record<string, unknown>).workspaceId, workspaceId),
+        eq((trinityProposedActions as Record<string, unknown>).status, 'pending'),
       ))
-      .orderBy(desc((trinityProposedActions as any).createdAt))
+      .orderBy(desc((trinityProposedActions as Record<string, unknown>).createdAt))
       .limit(50);
     res.json({ approvals: pending });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[TrinityScheduling] pending-approvals GET failed:', err?.message);
     res.json({ approvals: [] }); // graceful empty on schema miss
   }
@@ -394,12 +394,12 @@ router.post('/pending-approvals/:id/approve', requireManager, async (req: Authen
     if (!trinityProposedActions) return res.status(503).json({ error: 'Schema not available' });
     const { db } = await import('../db');
     const { eq } = await import('drizzle-orm');
-    const [updated] = await db.update(trinityProposedActions as any)
-      .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as any)
-      .where(eq((trinityProposedActions as any).id, id))
+    const [updated] = await db.update(trinityProposedActions as unknown)
+      .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as unknown)
+      .where(eq((trinityProposedActions as Record<string, unknown>).id, id))
       .returning();
     res.json({ success: true, approval: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -416,12 +416,12 @@ router.post('/pending-approvals/:id/reject', requireManager, async (req: Authent
     if (!trinityProposedActions) return res.status(503).json({ error: 'Schema not available' });
     const { db } = await import('../db');
     const { eq } = await import('drizzle-orm');
-    const [updated] = await db.update(trinityProposedActions as any)
-      .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as any)
-      .where(eq((trinityProposedActions as any).id, id))
+    const [updated] = await db.update(trinityProposedActions as unknown)
+      .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as unknown)
+      .where(eq((trinityProposedActions as Record<string, unknown>).id, id))
       .returning();
     res.json({ success: true, approval: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: err.message });
   }
 });

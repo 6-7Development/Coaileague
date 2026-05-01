@@ -60,7 +60,7 @@ class WorkflowLedgerService {
     actionId: string,
     category: string,
     context: WorkflowContext,
-    params?: Record<string, any>,
+    params?: Record<string, unknown>,
     options?: { slaThresholdMs?: number; maxRetries?: number; requiresApproval?: boolean }
   ): Promise<OrchestrationRun> {
     const [run] = await db.insert(orchestrationRuns).values({
@@ -111,7 +111,7 @@ class WorkflowLedgerService {
     }
   }
 
-  async completeRun(runId: string, result?: Record<string, any>): Promise<OrchestrationRun | undefined> {
+  async completeRun(runId: string, result?: Record<string, unknown>): Promise<OrchestrationRun | undefined> {
     const now = new Date();
     const [existingRun] = await db.select().from(orchestrationRuns).where(eq(orchestrationRuns.id, runId));
     
@@ -244,9 +244,9 @@ class WorkflowLedgerService {
     return newStep;
   }
 
-  async updateStepStatus(stepId: string, status: StepStatus, data?: { output?: any; error?: string }): Promise<OrchestrationRunStep | undefined> {
+  async updateStepStatus(stepId: string, status: StepStatus, data?: { output?: unknown; error?: string }): Promise<OrchestrationRunStep | undefined> {
     const now = new Date();
-    const updateData: any = { status };
+    const updateData: Record<string, unknown> = { status };
 
     if (status === 'running') {
       updateData.startedAt = now;

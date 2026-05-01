@@ -29,6 +29,7 @@ import { notificationEngine } from '../services/universalNotificationEngine';
 import { PLATFORM_SUPPORT_ROLES } from '@shared/platformConfig';
 import { PLATFORM } from '../config/platformConfig';
 import { createLogger } from '../lib/logger';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('SupportRoutes');
 
 
@@ -76,10 +77,9 @@ router.post('/create-ticket', async (req, res) => {
       userId = authReq.session.userId;
       workspaceId = authReq.session.workspaceId || null;
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     else if (authReq.requireAuth?.() && authReq.user?.id) {
       userId = authReq.user.id;
-      userEmail = (authReq as any).user?.claims?.email || userEmail;
+      userEmail = (authReq as Record<string,unknown>).user?.claims?.email || userEmail;
     }
 
     const { PLATFORM_WORKSPACE_ID } = await import('../services/billing/billingConstants');
@@ -88,7 +88,7 @@ router.post('/create-ticket', async (req, res) => {
     }
 
     const fullDescription = conversationHistory && Array.isArray(conversationHistory)
-      ? `${description}\n\n--- Conversation History ---\n${conversationHistory.map((m: any) => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}`
+      ? `${description}\n\n--- Conversation History ---\n${conversationHistory.map((m: unknown) => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}`
       : description;
 
     const ticketNumber = `TKT-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -107,7 +107,7 @@ router.post('/create-ticket', async (req, res) => {
     res.json({
       success: true,
       ticketId: ticket.id,
-      ticketNumber: (ticket as any).ticketNumber || ticket.id
+      ticketNumber: (ticket as Record<string,unknown>).ticketNumber || ticket.id
     });
   } catch (error) {
     log.error('[CoAIleague AI] Error creating support ticket:', error);
@@ -140,7 +140,6 @@ router.post('/helpos-chat', async (req, res) => {
       userId = authReq.session.userId;
       requireAuth = true;
     }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     else if (authReq.requireAuth?.() && authReq.user?.id) {
       userId = authReq.user.id;
       requireAuth = true;
@@ -192,12 +191,10 @@ router.post('/helpos-chat', async (req, res) => {
       }
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const user = requireAuth ? await storage.getUser(userId) : null;
     const userName = user?.email || (requireAuth ? 'User' : 'Guest');
     const userEmail = user?.email || '';
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { bubbleAgent_reply } = await import('../helpos-ai');
     const response = await bubbleAgent_reply({
       workspaceId,
@@ -240,7 +237,6 @@ router.post('/helpos-chat', async (req, res) => {
           customerName: userName || 'Guest',
           customerEmail: userEmail || 'guest@anonymous',
           subject: `HelpAI Escalation - ${response.escalationReason}`,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           isActive: true,
           priority: 'medium',
         });
@@ -258,14 +254,12 @@ router.post('/helpos-chat', async (req, res) => {
 
       const escalationData = await helposService.handleEscalation({
         workspaceId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         userId,
         userName,
         userEmail,
         sessionId: response.sessionId,
         escalationReason: response.escalationReason,
         aiSummary,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         storage,
       });
 
@@ -310,7 +304,6 @@ router.post('/helpos-copilot', async (req, res) => {
     const { workspaceId } = await resolveWorkspaceForUser(userId, req.workspaceId);
 
     const suggestion = await helposService.staffCopilot_suggestResponse({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId,
       userMessage: message,
       chatHistory: chatHistory || [],
@@ -484,7 +477,7 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
     });
 
     const platformStaff = await db.query.platformRoles.findMany({
-      where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as any),
+      where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as unknown),
     });
 
     // Use Promise.allSettled so a single failed notification doesn't abort the rest
@@ -526,12 +519,12 @@ router.get('/escalated', requirePlatformStaff, async (req: AuthenticatedRequest,
       orderBy: (tickets, { desc }) => [desc(tickets.escalatedAt)],
     });
 
-    const wsIds = [...new Set(rawTickets.map((t: any) => t.workspaceId).filter(Boolean))];
+    const wsIds = [...new Set(rawTickets.map((t: unknown) => t.workspaceId).filter(Boolean))];
     const wsRows = wsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, wsIds) })
       : [];
-    const wsMap = new Map((wsRows as any[]).map(w => [w.id, w]));
-    const tickets = rawTickets.map((t: any) => ({ ...t, workspace: wsMap.get(t.workspaceId) || null }));
+    const wsMap = new Map((wsRows as unknown[]).map(w => [w.id, w]));
+    const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: wsMap.get(t.workspaceId) || null }));
 
     res.json(tickets);
   } catch (error) {
@@ -550,12 +543,12 @@ router.get('/priority-queue', requirePlatformStaff, async (req: AuthenticatedReq
       orderBy: (tickets, { asc }) => [asc(tickets.createdAt)],
     });
 
-    const pqWsIds = [...new Set(rawTickets.map((t: any) => t.workspaceId).filter(Boolean))];
+    const pqWsIds = [...new Set(rawTickets.map((t: unknown) => t.workspaceId).filter(Boolean))];
     const pqWsRows = pqWsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, pqWsIds) })
       : [];
-    const pqWsMap = new Map((pqWsRows as any[]).map(w => [w.id, w]));
-    const tickets = rawTickets.map((t: any) => ({ ...t, workspace: pqWsMap.get(t.workspaceId) || null }));
+    const pqWsMap = new Map((pqWsRows as unknown[]).map(w => [w.id, w]));
+    const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: pqWsMap.get(t.workspaceId) || null }));
 
     const tierWeights: Record<string, number> = {
       'strategic': 50,
@@ -571,7 +564,7 @@ router.get('/priority-queue', requirePlatformStaff, async (req: AuthenticatedReq
       const workspace = ticket.workspace;
       const tier = (workspace?.subscriptionTier || 'free').toLowerCase();
       const tierWeight = tierWeights[tier] || 10;
-      const isVIP = (workspace as any)?.isVip || false;
+      const isVIP = (workspace as Record<string,unknown>)?.isVip || false;
       const vipBonus = isVIP ? 25 : 0;
 
       const createdAt = new Date(ticket.createdAt);
@@ -789,7 +782,7 @@ router.post('/tickets/:id/generate-summary', requirePlatformStaff, async (req, r
       }
 
       const conversationText = messages
-        .map((m: any) => `${m.senderName || 'Support Agent'}: ${m.message}`)
+        .map((m: unknown) => `${m.senderName || 'Support Agent'}: ${m.message}`)
         .join('\n');
 
       const summaryPrompt = `Please provide a concise executive summary of this support conversation in 2-3 sentences, focusing on:
@@ -803,7 +796,6 @@ ${conversationText}
 Summary:`;
 
       const summary = await generateGeminiResponse({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         model: 'gemini-2.5-flash',
         messages: [{
           role: 'user',
@@ -975,7 +967,6 @@ router.patch('/tickets/:id/status', async (req: AuthenticatedRequest, res) => {
 
     const updatedTicket = await storage.updateSupportTicket(id, {
       status,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       lockVersion: (ticket.lockVersion ?? 0) + 1,
       updatedAt: new Date(),
     }, user.currentWorkspaceId);
@@ -987,14 +978,12 @@ router.patch('/tickets/:id/status', async (req: AuthenticatedRequest, res) => {
     try {
       const { ChatServerHub } = await import('../services/ChatServerHub');
       ChatServerHub.emit({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         type: 'ticket_status_changed',
         title: 'Support Ticket Status Updated',
         description: `Ticket #${ticket.ticketNumber} status changed to ${status}`,
         metadata: {
           ticketId: id,
           ticketNumber: ticket.ticketNumber,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           oldStatus: ticket.status,
           newStatus: status,
           updatedBy: userId,
@@ -1045,11 +1034,9 @@ router.delete('/tickets/:id', async (req: AuthenticatedRequest, res) => {
     try {
       const { ChatServerHub } = await import('../services/ChatServerHub');
       ChatServerHub.emit({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         type: 'ticket_deleted',
         title: 'Support Ticket Deleted',
         description: `Ticket #${ticket.ticketNumber} has been deleted`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         metadata: {
           ticketId: id,
           ticketNumber: ticket.ticketNumber,
@@ -1073,7 +1060,7 @@ router.delete('/tickets/:id', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.delete('/performance-reviews/:id', requirePlatformStaff, async (req: any, res) => {
+router.delete('/performance-reviews/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const workspaceId = req.workspaceId || req.session?.workspaceId;
@@ -1122,7 +1109,7 @@ router.delete('/performance-reviews/:id', requirePlatformStaff, async (req: any,
   }
 });
 
-router.patch('/performance-reviews/:id', requirePlatformStaff, async (req: any, res) => {
+router.patch('/performance-reviews/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const { updates, explanation, notifyUserId } = req.body;
@@ -1136,7 +1123,7 @@ router.patch('/performance-reviews/:id', requirePlatformStaff, async (req: any, 
     }
 
     const { overallRating, comments, strengths, areasForImprovement, goals, status: reviewStatus } = updates;
-    const safeReviewUpdates: Record<string, any> = {};
+    const safeReviewUpdates: Record<string, unknown> = {};
     if (overallRating !== undefined) safeReviewUpdates.overallRating = overallRating;
     if (comments !== undefined) safeReviewUpdates.comments = comments;
     if (strengths !== undefined) safeReviewUpdates.strengths = strengths;
@@ -1186,7 +1173,7 @@ router.patch('/performance-reviews/:id', requirePlatformStaff, async (req: any, 
   }
 });
 
-router.delete('/employer-ratings/:id', requirePlatformStaff, async (req: any, res) => {
+router.delete('/employer-ratings/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const workspaceId = req.workspaceId || req.session?.workspaceId;
@@ -1240,7 +1227,7 @@ router.delete('/employer-ratings/:id', requirePlatformStaff, async (req: any, re
   }
 });
 
-router.patch('/employer-ratings/:id', requirePlatformStaff, async (req: any, res) => {
+router.patch('/employer-ratings/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const { updates, explanation, notifyWorkspaceId } = req.body;
@@ -1254,7 +1241,7 @@ router.patch('/employer-ratings/:id', requirePlatformStaff, async (req: any, res
     }
 
     const { overallRating: ratingScore, communicationScore, paymentReliability, workEnvironment, managementQuality, comments: ratingComments, status: ratingStatus } = updates;
-    const safeRatingUpdates: Record<string, any> = {};
+    const safeRatingUpdates: Record<string, unknown> = {};
     if (ratingScore !== undefined) safeRatingUpdates.overallRating = ratingScore;
     if (communicationScore !== undefined) safeRatingUpdates.communicationScore = communicationScore;
     if (paymentReliability !== undefined) safeRatingUpdates.paymentReliability = paymentReliability;
@@ -1309,7 +1296,7 @@ router.patch('/employer-ratings/:id', requirePlatformStaff, async (req: any, res
   }
 });
 
-router.delete('/report-submissions/:id', requirePlatformStaff, async (req: any, res) => {
+router.delete('/report-submissions/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const workspaceId = req.workspaceId || req.session?.workspaceId;
@@ -1430,7 +1417,6 @@ router.post('/session/elevate', async (req: AuthenticatedRequest, res) => {
     const userId = req.user!;
     const sessionId = req.sessionID;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const eligibility = await elevatedSessionService.canReceiveElevation(userId);
     if (!eligibility.canElevate) {
       return res.status(403).json({
@@ -1441,7 +1427,6 @@ router.post('/session/elevate', async (req: AuthenticatedRequest, res) => {
     }
 
     const result = await elevatedSessionService.issueElevation(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userId,
       sessionId,
       'auto_support_login',
@@ -1487,7 +1472,6 @@ router.post('/session/revoke', async (req: AuthenticatedRequest, res) => {
   try {
     const elevatedSessionService = await import("../services/session/elevatedSessionService");
     const userId = req.user!;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const count = await elevatedSessionService.revokeAllUserElevations(userId, 'manual_logout');
     res.json({ success: true, revokedCount: count });
   } catch (error: unknown) {
@@ -1499,7 +1483,6 @@ router.post('/session/ai-service', async (req: AuthenticatedRequest, res) => {
   try {
     const { aiBrainAuthorizationService } = await import("../services/ai-brain/aiBrainAuthorizationService");
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const authCheck = await aiBrainAuthorizationService.validateSupportStaff(req.user!);
     if (!authCheck.valid || !['root_admin', 'deputy_admin', 'sysop'].includes(authCheck.role || '')) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions to issue AI service elevations' });
@@ -1578,9 +1561,9 @@ router.get('/my-workspace-history', async (req: AuthenticatedRequest, res) => {
       supportActions: actions.rows,
       summary: {
         totalTickets: tickets.rows.length,
-        openTickets: tickets.rows.filter((t: any) => t.status === 'open').length,
-        resolvedByTrinity: tickets.rows.filter((t: any) => t.resolution_method === 'trinity_auto').length,
-        escalated: tickets.rows.filter((t: any) => t.status === 'escalated').length
+        openTickets: tickets.rows.filter((t: unknown) => t.status === 'open').length,
+        resolvedByTrinity: tickets.rows.filter((t: unknown) => t.resolution_method === 'trinity_auto').length,
+        escalated: tickets.rows.filter((t: unknown) => t.status === 'escalated').length
       }
     });
   } catch (err) {

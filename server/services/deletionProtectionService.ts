@@ -168,9 +168,7 @@ class DeletionProtectionService {
     // Check for active billing
     if (config.checkBilling) {
       const billingBlocks = await this.checkActiveBilling(request.entityType, request.entityId);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (billingBlocks.length > 0) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         blockingEntities.push(...billingBlocks);
       }
     }
@@ -269,7 +267,6 @@ class DeletionProtectionService {
           .from(timeEntries)
           .where(and(
             eq(timeEntries.employeeId, entityId),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             eq(timeEntries.approvalStatus, 'pending')
           ));
         
@@ -561,7 +558,7 @@ class DeletionProtectionService {
         }
         // Soft-delete by marking as voided — preserves audit trail.
         await db.update(timeEntries)
-          .set({ status: 'voided' } as any)
+          .set({ status: 'voided' } as Record<string, unknown>)
           .where(eq(timeEntries.id, entityId));
         break;
 
@@ -596,7 +593,7 @@ class DeletionProtectionService {
       case 'client':
         // TRINITY persistence law: clients are never hard-deleted.
         await db.update(clients)
-          .set({ deletedAt: new Date(), isActive: false, deactivatedAt: new Date(), updatedAt: new Date() } as any)
+          .set({ deletedAt: new Date(), isActive: false, deactivatedAt: new Date(), updatedAt: new Date() } as Record<string, unknown>)
           .where(eq(clients.id, entityId));
         break;
       case 'shift':
@@ -636,7 +633,7 @@ class DeletionProtectionService {
 
         case 'client':
           await db.update(clients)
-            .set({ isActive: true, deletedAt: null, deactivatedAt: null, updatedAt: new Date() } as any)
+            .set({ isActive: true, deletedAt: null, deactivatedAt: null, updatedAt: new Date() } as Record<string, unknown>)
             .where(eq(clients.id, entityId));
           break;
 

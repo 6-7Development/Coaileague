@@ -21,6 +21,7 @@ import {
 import { getIntegrationHealthSummary } from "../services/healthCheck";
 import { createLogger } from '../lib/logger';
 import { z } from 'zod';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('IntegrationsInlineRoutes');
 
 
@@ -301,7 +302,7 @@ router.get('/health', requireAuth, async (req: AuthenticatedRequest, res) => {
       // SSRF guard — validate the target URL before persisting it
       try {
         await validateWebhookUrl(targetUrl);
-      } catch (ssrfErr: any) {
+      } catch (ssrfErr : unknown) {
         return res.status(400).json({ message: `Invalid webhook URL: ${ssrfErr.message}` });
       }
       
@@ -417,8 +418,8 @@ router.get('/health', requireAuth, async (req: AuthenticatedRequest, res) => {
       
       res.json({
         quickbooks: {
-          connected: !!(qbConnection?.status === 'connected' || (workspace as any)?.quickbooksRealmId),
-          companyName: (qbConnection?.metadata as any)?.companyName || null,
+          connected: !!(qbConnection?.status === 'connected' || (workspace as Record<string,unknown>)?.quickbooksRealmId),
+          companyName: (qbConnection?.metadata as Record<string,unknown>)?.companyName || null,
         },
         stripe: {
           connected: !!workspace?.stripeAccountId,

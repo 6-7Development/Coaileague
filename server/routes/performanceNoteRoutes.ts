@@ -46,7 +46,6 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!hasManagerAccess(req)) return res.status(403).json({ error: 'Manager access required' });
 
     const parsed = insertPerformanceNoteSchema.safeParse({
@@ -68,7 +67,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
       workspaceId,
       metadata: { noteId: note.id, employeeId: parsed.data.employeeId, noteType: parsed.data.noteType },
       visibility: 'supervisor',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.status(201).json(note);
   } catch (err: unknown) {
@@ -81,7 +80,6 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!hasManagerAccess(req)) return res.status(403).json({ error: 'Manager access required' });
 
     const { id } = req.params;
@@ -110,7 +108,6 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!hasManagerAccess(req)) return res.status(403).json({ error: 'Manager access required' });
 
     const { id } = req.params;

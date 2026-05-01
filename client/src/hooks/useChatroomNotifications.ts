@@ -40,7 +40,7 @@ export function useChatroomNotifications() {
   useEffect(() => {
     if (!user?.id || !bus) return;
 
-    const workspaceId = (user as any)?.currentWorkspaceId || (user as any)?.workspaceId || (user as any)?.defaultWorkspaceId;
+    const workspaceId = (user as Record<string,unknown>)?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || (user as Record<string,unknown>)?.defaultWorkspaceId;
     if (!workspaceId) return;
 
     const sendJoinNotifications = () => {
@@ -121,10 +121,10 @@ export function useChatroomNotifications() {
 
     const unsubs = [
       unsubConnect,
-      bus.subscribe('new_chatroom_message', (data: any) => handleNotification(data)),
-      bus.subscribe('user_added_to_chatroom', (data: any) => handleNotification(data)),
-      bus.subscribe('chatroom_invitation', (data: any) => handleNotification(data)),
-      bus.subscribe('notification_new', (data: any) => handleNotification(data)),
+      bus.subscribe('new_chatroom_message', (data) => handleNotification(data)),
+      bus.subscribe('user_added_to_chatroom', (data) => handleNotification(data)),
+      bus.subscribe('chatroom_invitation', (data) => handleNotification(data)),
+      bus.subscribe('notification_new', (data) => handleNotification(data)),
     ];
 
     return () => {

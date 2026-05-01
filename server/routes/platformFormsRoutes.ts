@@ -52,7 +52,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       [workspaceId]
     );
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to list forms:', err?.message);
     res.status(500).json({ error: 'Failed to list forms' });
   }
@@ -75,7 +75,7 @@ router.get('/invitations', requireAuth, async (req: Request, res: Response) => {
              FROM form_invitations fi
              JOIN platform_forms pf ON pf.id = fi.form_id
              WHERE fi.workspace_id = $1`;
-    const params: any[] = [wid];
+    const params: Record<string, unknown>[] = [wid];
 
     if (status) { q += ` AND fi.status = $${params.length + 1}`; params.push(status); }
     if (formId) { q += ` AND fi.form_id = $${params.length + 1}`; params.push(formId); }
@@ -83,7 +83,7 @@ router.get('/invitations', requireAuth, async (req: Request, res: Response) => {
 
     const result = await pool.query(q, params);
     res.json({ invitations: result.rows, count: result.rowCount });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to list invitations:', err?.message);
     res.status(500).json({ error: 'Failed to list invitations' });
   }
@@ -113,7 +113,7 @@ router.post('/:invId/reminder', requireAuth, async (req: Request, res: Response)
     log.info(`Reminder for invitation ${row.id} → ${row.sent_to_email} url=${formUrl}`);
 
     res.json({ success: true, message: `Reminder logged for ${row.sent_to_email || row.sent_to_name}`, formUrl });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to send reminder:', err?.message);
     res.status(500).json({ error: 'Failed to send reminder' });
   }
@@ -154,7 +154,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       ]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to create form:', err?.message);
     res.status(500).json({ error: 'Failed to create form' });
   }
@@ -213,7 +213,7 @@ router.get('/public/:token', async (req: Request, res: Response) => {
       sentToName: row.sent_to_name,
       branding: row.branding || {},
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to load public form:', err?.message);
     res.status(500).json({ error: 'Failed to load form' });
   }
@@ -332,7 +332,7 @@ router.post('/public/:token/submit', async (req: Request, res: Response) => {
             await pool.query(
               `UPDATE form_submissions SET generated_document_url = $1 WHERE id = $2 AND workspace_id = $3`,
               [pdfUrl, submissionRow.id, workspaceId]
-            ).catch((e: any) => log.warn('Failed to persist PDF URL to form_submissions:', e?.message));
+            ).catch((e: unknown) => log.warn('Failed to persist PDF URL to form_submissions:', e?.message));
           }
 
           // 4. Send confirmation email to submitter via Resend
@@ -371,7 +371,7 @@ router.post('/public/:token/submit', async (req: Request, res: Response) => {
               emailType: 'form_submission_confirmation',
               workspaceId,
               skipUnsubscribeCheck: true,
-            }).catch((e: any) => log.warn('Submitter confirmation email failed:', e?.message));
+            }).catch((e: unknown) => log.warn('Submitter confirmation email failed:', e?.message));
           }
 
           // 5. Notify workspace manager/owner
@@ -415,7 +415,7 @@ router.post('/public/:token/submit', async (req: Request, res: Response) => {
               emailType: 'form_submission_notification',
               workspaceId,
               skipUnsubscribeCheck: true,
-            }).catch((e: any) => log.warn('Manager notification email failed:', e?.message));
+            }).catch((e: unknown) => log.warn('Manager notification email failed:', e?.message));
           }
         }
 
@@ -440,13 +440,13 @@ router.post('/public/:token/submit', async (req: Request, res: Response) => {
             contextId: inv.context_id,
           },
           visibility: 'all'
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-      } catch (e: any) {
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      } catch (e: unknown) {
         log.error('Form submission pipeline error:', e?.message);
         await pool.query(
           `UPDATE form_submissions SET trinity_processing_status = 'failed' WHERE id = $1 AND workspace_id = $2`,
           [submissionRow.id, workspaceId]
-        ).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        ).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
     });
 
@@ -455,7 +455,7 @@ router.post('/public/:token/submit', async (req: Request, res: Response) => {
       submissionId: sub.rows[0].id,
       message: inv.success_message || 'Your form has been submitted successfully.',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to submit public form:', err?.message);
     res.status(500).json({ error: 'Failed to submit form' });
   }
@@ -479,7 +479,7 @@ router.get('/:formId/submissions', requireAuth, async (req: Request, res: Respon
       [req.params.formId, user.workspaceId]
     );
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to get form submissions:', err?.message);
     res.status(500).json({ error: 'Failed to get submissions' });
   }
@@ -551,8 +551,8 @@ router.post('/signing/sequences', requireAuth, async (req: Request, res: Respons
     // Email first signer in the sequence
     const firstToken = tokens.find(t => t.signer_order === 1 || t.status === 'pending');
     if (firstToken?.signer_email && isResendConfigured()) {
-      const senderName = (user as any).first_name
-        ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim()
+      const senderName = req.user?.first_name
+        ? `${req.user?.first_name} ${req.user?.last_name || ''}`.trim()
         : PLATFORM.name;
       const signingUrl = `${baseUrl}/sign/${firstToken.token}`;
       scheduleNonBlocking('platform-forms.signing-request-email', async () => {
@@ -587,12 +587,12 @@ router.post('/signing/sequences', requireAuth, async (req: Request, res: Respons
           emailType: 'document_signing_request',
           workspaceId: user.workspaceId,
           skipUnsubscribeCheck: true,
-        }).catch((e: any) => log.warn(`Signing email failed for ${firstToken.signer_email}:`, e?.message));
+        }).catch((e: unknown) => log.warn(`Signing email failed for ${firstToken.signer_email}:`, e?.message));
       });
     }
 
     res.status(201).json({ sequence, tokens: tokenLinks, firstSignerEmailSent: !!(firstToken?.signer_email && isResendConfigured()) });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to create signing sequence:', err?.message);
     res.status(500).json({ error: 'Failed to create signing sequence' });
   }
@@ -617,7 +617,7 @@ router.get('/signing/sequences', requireAuth, async (req: Request, res: Response
       [user.workspaceId]
     );
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to list signing sequences:', err?.message);
     res.status(500).json({ error: 'Failed to list sequences' });
   }
@@ -648,7 +648,7 @@ router.get('/sign/:token', async (req: Request, res: Response) => {
       sequenceStatus: t.sequence_status,
       expiresAt: t.expires_at,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to load signing token:', err?.message);
     res.status(500).json({ error: 'Failed to load signing request' });
   }
@@ -730,7 +730,7 @@ router.post('/sign/:token', async (req: Request, res: Response) => {
               emailType: 'document_signing_request',
               workspaceId: t.workspace_id,
               skipUnsubscribeCheck: true,
-            }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+            }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
           });
         }
       }
@@ -752,7 +752,7 @@ router.post('/sign/:token', async (req: Request, res: Response) => {
           nextSignerEmail: nextSigner.email
         },
         visibility: 'all'
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     } else {
       // All signed
       await pool.query(
@@ -775,11 +775,11 @@ router.post('/sign/:token', async (req: Request, res: Response) => {
           signerCount: signers.length
         },
         visibility: 'all'
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     res.json({ success: true, message: 'Signature recorded successfully.' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to submit signature:', err?.message);
     res.status(500).json({ error: 'Failed to record signature' });
   }
@@ -811,7 +811,7 @@ router.post('/proposals', requireAuth, async (req: Request, res: Response) => {
     const proposal = result.rows[0];
     const proposalUrl = `${process.env.BASE_URL || 'https://www.coaileague.com'}/proposals/${proposal.token}`;
     res.status(201).json({ proposal, proposalUrl });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to create proposal:', err?.message);
     res.status(500).json({ error: 'Failed to create proposal' });
   }
@@ -840,7 +840,7 @@ router.get('/proposals/public/:token', async (req: Request, res: Response) => {
     }
 
     res.json(p);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to load proposal:', err?.message);
     res.status(500).json({ error: 'Failed to load proposal' });
   }
@@ -885,7 +885,7 @@ router.post('/proposals/public/:token/action', async (req: Request, res: Respons
 
     log.info(`Proposal ${p.id} action=${action} workspace=${p.workspace_id}`);
     res.json({ success: true, status: statusMap[action] });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to process proposal action:', err?.message);
     res.status(500).json({ error: 'Failed to process action' });
   }
@@ -903,7 +903,7 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Form not found' });
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to get form:', err?.message);
     res.status(500).json({ error: 'Failed to get form' });
   }
@@ -933,7 +933,7 @@ router.post('/:formId/invite', requireAuth, async (req: Request, res: Response) 
     const form = formResult.rows[0];
 
     // Build pre-populated data from context
-    let prePopulatedData: Record<string, any> = manualData || {};
+    let prePopulatedData: Record<string, unknown> = manualData || {};
 
     if (contextType === 'employee' && contextId) {
       const emp = await pool.query(
@@ -1016,7 +1016,7 @@ router.post('/:formId/invite', requireAuth, async (req: Request, res: Response) 
 
     // Send invitation email via Resend
     if (email && isResendConfigured()) {
-      const senderName = (user as any).first_name ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim() : `Your ${PLATFORM.name} Team`;
+      const senderName = req.user?.first_name ? `${req.user?.first_name} ${req.user?.last_name || ''}`.trim() : `Your ${PLATFORM.name} Team`;
       scheduleNonBlocking('platform-forms.invitation-email', async () => {
         await sendCanSpamCompliantEmail({
           to: email,
@@ -1052,12 +1052,12 @@ router.post('/:formId/invite', requireAuth, async (req: Request, res: Response) 
           emailType: 'form_invitation',
           workspaceId: user.workspaceId,
           skipUnsubscribeCheck: true,
-        }).catch((e: any) => log.warn(`Invitation email failed for ${email}:`, e?.message));
+        }).catch((e: unknown) => log.warn(`Invitation email failed for ${email}:`, e?.message));
       });
     }
 
     res.json({ invitation, formUrl, formTitle: form.title, emailSent: !!(email && isResendConfigured()) });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to create form invitation:', err?.message);
     res.status(500).json({ error: 'Failed to create invitation' });
   }
@@ -1103,7 +1103,7 @@ router.get('/submissions/:id/pdf', requireAuth, async (req: Request, res: Respon
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Length', pdfBuf.length);
     res.send(pdfBuf);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to serve submission PDF:', err?.message);
     res.status(500).json({ error: 'Failed to generate PDF' });
   }
@@ -1139,8 +1139,8 @@ router.post('/submissions/:id/forward', requireAuth, async (req: Request, res: R
     const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
 
     const fieldRows = fields
-      .filter((f: any) => f.type !== 'signature')
-      .map((f: any) => {
+      .filter((f: unknown) => f.type !== 'signature')
+      .map((f: unknown) => {
         const key = f.name || f.id || f.label;
         const val = data[key] ?? data[f.label] ?? '—';
         return `<tr><td style="padding:6px 12px;background:#f9fafb;font-size:12px;color:#6b7280;width:38%;">${f.label}</td><td style="padding:6px 12px;font-size:13px;color:#111827;">${val}</td></tr>`;
@@ -1179,7 +1179,7 @@ router.post('/submissions/:id/forward', requireAuth, async (req: Request, res: R
 
     log.info(`Submission ${req.params.id} forwarded to ${toEmail} by user ${user.id}`);
     res.json({ success: true, sentTo: toEmail });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Failed to forward submission:', err?.message);
     res.status(500).json({ error: 'Failed to forward submission' });
   }

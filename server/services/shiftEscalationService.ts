@@ -168,7 +168,7 @@ export async function runShiftEscalationScan(): Promise<ShiftEscalationResult> {
         .where(
           and(
             eq(employees.workspaceId, ws.id),
-            inArray(employees.workspaceRole as any, ['org_owner', 'co_owner', 'org_admin', 'manager']),
+            inArray(employees.workspaceRole, ['org_owner', 'co_owner', 'org_admin', 'manager']),
           )
         );
 
@@ -220,7 +220,7 @@ export async function runShiftEscalationScan(): Promise<ShiftEscalationResult> {
               workspaceId: ws.id,
               reason: 'manual',
               reasonDetails: `Shift escalation scanner: critical gap — shift starts in ${hrs}h`,
-            }).catch((e: any) =>
+            }).catch((e: unknown) =>
               log.error(`[ShiftEscalation] Coverage pipeline error for shift ${gap.id}:`, e)
             );
             coveragePipelinesTriggered++;

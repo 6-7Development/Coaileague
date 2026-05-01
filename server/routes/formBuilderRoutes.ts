@@ -54,7 +54,7 @@ registerLegacyBootstrap('form-builder-schema', async (pool) => {
 
 const MANAGER_ROLES = ["org_owner", "co_owner", "manager", "department_manager", "supervisor", "root_admin", "sysop"];
 
-function hasManagerRole(req: any): boolean {
+function hasManagerRole(req: AuthenticatedRequest): boolean {
   const role = req.workspaceRole || req.session?.workspaceRole || req.user?.platformRole;
   if (MANAGER_ROLES.includes(role)) return true;
   if (process.env.NODE_ENV !== 'production' && req.user?.id?.startsWith("dev-owner")) return true;
@@ -193,7 +193,7 @@ router.patch("/forms/:id", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value !== undefined) updateData[key] = value;
     }
@@ -446,7 +446,7 @@ router.patch("/submissions/:id", async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     const { data } = parsed;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.formData !== undefined) updateData.formData = data.formData;
@@ -600,7 +600,7 @@ router.post("/forms/:formId/submissions/:submissionId/submit", async (req: Authe
             submittedBy: req.user?.id,
           },
         });
-      } catch (notifErr: any) {
+      } catch (notifErr : unknown) {
         log.warn('[FormBuilder] Approval notification failed (non-fatal):', notifErr?.message);
       }
     }
@@ -662,7 +662,7 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
     const now = new Date();
     const newStatus = approved ? "approved" : "rejected";
 
-    const updateFields: Record<string, any> = {
+    const updateFields: Record<string, unknown> = {
       status: newStatus,
       approvalNotes: notes || null,
       updatedAt: now,
@@ -695,7 +695,7 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
           signatureData,
           ipAddress: req.ip || null,
         });
-      } catch (sigErr: any) {
+      } catch (sigErr : unknown) {
         log.warn('[FormBuilder] Signature record failed (non-fatal):', sigErr?.message);
       }
     }
@@ -731,7 +731,7 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
             notes,
           },
         });
-      } catch (notifErr: any) {
+      } catch (notifErr : unknown) {
         log.warn('[FormBuilder] Decision notification failed (non-fatal):', notifErr?.message);
       }
     }

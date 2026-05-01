@@ -6,6 +6,7 @@
  * Missing fields show [NOT ON FILE] — no synthetic PII is generated.
  */
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import { db } from '../db';
 import { employeeDocuments, employees, workspaces } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -117,7 +118,7 @@ ${content}
 
 // ── Document template generators ─────────────────────────────────────────────
 
-function genEmploymentApplication(emp: any, ws: any): string {
+function genEmploymentApplication(emp: unknown, ws: unknown): string {
   const street = emp.address || MISSING;
   const city = emp.city || MISSING;
   const state = emp.state || 'TX';
@@ -203,7 +204,7 @@ function genEmploymentApplication(emp: any, ws: any): string {
 </div>`);
 }
 
-function genGovernmentID(emp: any, ws: any): string {
+function genGovernmentID(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const dlNum = MISSING;
@@ -267,7 +268,7 @@ function genGovernmentID(emp: any, ws: any): string {
 </div>`);
 }
 
-function genSSNAcknowledgment(emp: any, ws: any): string {
+function genSSNAcknowledgment(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const ssn4 = emp.ssnLast4 || MISSING;
@@ -323,7 +324,7 @@ function genSSNAcknowledgment(emp: any, ws: any): string {
 </div>`);
 }
 
-function genI9(emp: any, ws: any): string {
+function genI9(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const dob = emp.dateOfBirth ? fmtShort(emp.dateOfBirth) : MISSING;
@@ -397,7 +398,7 @@ function genI9(emp: any, ws: any): string {
 </div>`);
 }
 
-function genW4(emp: any, ws: any): string {
+function genW4(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const ssn4 = emp.ssnLast4 || MISSING;
@@ -501,7 +502,7 @@ function genW4(emp: any, ws: any): string {
 </div>`);
 }
 
-function genDrugFree(emp: any, ws: any): string {
+function genDrugFree(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const effectiveDate = '01/01/2024';
@@ -554,7 +555,7 @@ function genDrugFree(emp: any, ws: any): string {
 </div>`);
 }
 
-function genBackgroundCheck(emp: any, ws: any): string {
+function genBackgroundCheck(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const hireDate = emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024';
   const authDate = subtractDays(emp.hireDate, 7);
@@ -615,7 +616,7 @@ function genBackgroundCheck(emp: any, ws: any): string {
 </div>`);
 }
 
-function genGuardCard(emp: any, ws: any): string {
+function genGuardCard(emp: unknown, ws: unknown): string {
   const name = emp.fullLegalName || `${emp.firstName} ${emp.lastName}`;
   const guardNum = emp.guardCardNumber || MISSING;
   const issueDate = emp.guardCardIssueDate ? fmtShort(emp.guardCardIssueDate) : (emp.hireDate ? fmtShort(emp.hireDate) : '01/10/2024');
@@ -686,7 +687,7 @@ function genGuardCard(emp: any, ws: any): string {
 
 // ── Document type dispatch ────────────────────────────────────────────────────
 
-const DOC_GENERATORS: Record<string, (emp: any, ws: any) => string> = {
+const DOC_GENERATORS: Record<string, (emp: unknown, ws: unknown) => string> = {
   employment_application:     genEmploymentApplication,
   photo_id_copy:              genGovernmentID,
   government_id:              genGovernmentID,
@@ -707,7 +708,7 @@ const DOC_GENERATORS: Record<string, (emp: any, ws: any) => string> = {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-documentViewRouter.get('/view/:docId', async (req: any, res) => {
+documentViewRouter.get('/view/:docId', async (req: AuthenticatedRequest, res) => {
   try {
     const { docId } = req.params;
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;
@@ -743,7 +744,6 @@ documentViewRouter.get('/view/:docId', async (req: any, res) => {
 
     const docType = doc.documentType;
     const generator = DOC_GENERATORS[docType] || DOC_GENERATORS['employment_application'];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const html = generator(emp || { id: doc.employeeId, firstName: 'Employee', lastName: 'Record', ...doc }, ws || {});
 
     res.setHeader('Content-Type', 'text/html');
@@ -754,7 +754,7 @@ documentViewRouter.get('/view/:docId', async (req: any, res) => {
   }
 });
 
-documentViewRouter.get('/download/:docId', async (req: any, res) => {
+documentViewRouter.get('/download/:docId', async (req: AuthenticatedRequest, res) => {
   try {
     const { docId } = req.params;
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId;

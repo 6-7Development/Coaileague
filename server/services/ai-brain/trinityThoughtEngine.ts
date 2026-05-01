@@ -171,7 +171,7 @@ class TrinityThoughtEngine {
           parentThoughtId: context.parentThoughtId || lastThought || null,
           wasActedUpon: false,
         },
-      } as any).returning();
+      }).returning();
 
       this.pushThought(wsKey, thought.id);
       
@@ -195,7 +195,7 @@ class TrinityThoughtEngine {
         confidence,
         wasConfused,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Extract the meaningful error message — PostgreSQL errors bury the cause in .message or .detail
       const errMsg = error?.message || error?.detail || String(error);
       const errCode = error?.code || 'unknown';
@@ -328,7 +328,6 @@ class TrinityThoughtEngine {
     const calibration = await this.calculateConfidenceCalibration(targetId);
     
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [reflection] = await db.insert(trinityThoughtSignatures).values({
         workspaceId,
         thoughtType: 'reflection',
@@ -496,7 +495,6 @@ class TrinityThoughtEngine {
   async getUnacknowledgedChanges(): Promise<PlatformChangeEvent[]> {
     return db.select()
       .from(platformChangeEvents)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(platformChangeEvents.trinityAcknowledged, false))
       .orderBy(desc(platformChangeEvents.createdAt))
       .limit(50);
@@ -507,9 +505,7 @@ class TrinityThoughtEngine {
    */
   async getGovernancePolicy(workspaceId: string): Promise<WorkspaceGovernancePolicy | null> {
     const [policy] = await db.select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(workspaceGovernancePolicies)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(workspaceGovernancePolicies.workspaceId, workspaceId))
       .limit(1);
     
@@ -519,7 +515,7 @@ class TrinityThoughtEngine {
   /**
    * Get recent thoughts for context
    */
-  async getRecentThoughts(limit: number = AI_BRAIN.recentThoughtsDefault, workspaceId?: string): Promise<any[]> {
+  async getRecentThoughts(limit: number = AI_BRAIN.recentThoughtsDefault, workspaceId?: string): Promise<Record<string,unknown>[]> {
     const conditions = workspaceId
       ? eq(trinityThoughtSignatures.workspaceId, workspaceId)
       : undefined;
@@ -555,7 +551,6 @@ class TrinityThoughtEngine {
    */
   startSession(sessionId: string): void {
     this.activeSession = sessionId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     this.thoughtChain = [];
     log.info(`[TrinityThoughtEngine] Started session ${sessionId}`);
   }
@@ -566,7 +561,6 @@ class TrinityThoughtEngine {
   endSession(): void {
     log.info(`[TrinityThoughtEngine] Ended session ${this.activeSession} with ${this.thoughtChain.length} thoughts`);
     this.activeSession = null;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     this.thoughtChain = [];
   }
 
@@ -619,7 +613,7 @@ Example: ["Lesson one here", "Lesson two here"]`,
       });
 
       try {
-        const parsed = JSON.parse(response.content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+        const parsed: unknown = JSON.parse(response.content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(String).slice(0, 5);
       } catch (parseErr) {
         log.warn('[TrinityThoughtEngine] Failed to parse AI response:', parseErr);
@@ -655,7 +649,7 @@ Example: ["Improvement one here", "Improvement two here"]`,
       });
 
       try {
-        const parsed = JSON.parse(response.content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+        const parsed: unknown = JSON.parse(response.content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
         if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(String).slice(0, 5);
       } catch (parseErr) {
         log.warn('[TrinityThoughtEngine] Failed to parse AI response:', parseErr);
@@ -724,14 +718,14 @@ Example: ["Improvement one here", "Improvement two here"]`,
       .limit(limit);
 
     const recentLessons = recentReflections
-      .map(r => (r as any).context?.lessonsLearned)
+      .map(r => (r as Record<string, unknown>).context?.lessonsLearned)
       .filter(Boolean)
       .flatMap((l: string) => l.split('\n'))
       .filter((l: string) => l.trim().length > 0)
       .slice(0, 10);
 
     const scores = recentReflections
-      .map(r => parseFloat((r as any).context?.performanceScore?.toString() || '0'))
+      .map(r => parseFloat((r as Record<string, unknown>).context?.performanceScore?.toString() || '0'))
       .filter(s => s > 0);
     const successRate = scores.length > 0
       ? scores.filter(s => s >= 0.7).length / scores.length
@@ -819,7 +813,7 @@ export function registerThoughtEngineActions() {
       id: 'metacognition.think',
       name: 'Record Thought',
       description: 'Record a thought in Trinity\'s inner monologue',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return trinityThoughtEngine.think(
           params.phase,
           params.thoughtType,
@@ -833,7 +827,7 @@ export function registerThoughtEngineActions() {
       id: 'metacognition.reflect',
       name: 'Reflect on Outcome',
       description: 'Analyze and learn from an action outcome',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return trinityThoughtEngine.reflect(
           params.target,
           params.targetId,
@@ -847,7 +841,7 @@ export function registerThoughtEngineActions() {
       id: 'metacognition.perceive_change',
       name: 'Perceive Platform Change',
       description: 'Record awareness of a platform change',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return trinityThoughtEngine.perceiveChange(
           params.changeType,
           params.details
@@ -866,7 +860,7 @@ export function registerThoughtEngineActions() {
       id: 'metacognition.get_confusion_metrics',
       name: 'Get Confusion Metrics',
       description: 'Get Trinity\'s confusion and confidence metrics',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return trinityThoughtEngine.getConfusionMetrics(params.hours || 24);
       },
     },
@@ -874,7 +868,7 @@ export function registerThoughtEngineActions() {
       id: 'metacognition.get_recent_thoughts',
       name: 'Get Recent Thoughts',
       description: 'Get Trinity\'s recent thoughts for context',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return trinityThoughtEngine.getRecentThoughts(
           params.limit || 20,
           params.workspaceId

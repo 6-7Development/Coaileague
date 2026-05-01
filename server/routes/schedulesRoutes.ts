@@ -93,7 +93,7 @@ router.get('/week/stats', requireAuth, async (req: AuthenticatedRequest, res) =>
   }
 });
 
-router.post('/publish', requireManager, async (req: any, res) => {
+router.post('/publish', requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
@@ -152,7 +152,6 @@ router.post('/publish', requireManager, async (req: any, res) => {
         entityType: 'schedule',
         entityId: published.id,
         userId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         details: {
           title: published.title,
           totalShifts: published.totalShifts,
@@ -176,7 +175,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
         .where(inArray(employees.id, affectedEmployeeIds));
     }
 
-    const broadcastNotification = (bWorkspaceId: string, bUserId: string, _updateType: string, notification?: any) => {
+    const broadcastNotification = (bWorkspaceId: string, bUserId: string, _updateType: string, notification?: unknown) => {
       broadcastNotificationToUser(bWorkspaceId, bUserId, notification);
     };
 
@@ -233,7 +232,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
             const day = start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
             const startT = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             const endT = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${day}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${startT} – ${endT}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${(s as any).location || (s as any).siteName || 'See schedule'}</td></tr>`;
+            return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${day}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${startT} – ${endT}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${(s as Record<string, unknown>).location || (s as Record<string, unknown>).siteName || 'See schedule'}</td></tr>`;
           }).join('');
 
           await emailService.send({
@@ -258,10 +257,10 @@ router.post('/publish', requireManager, async (req: any, res) => {
   <p><a href="${appUrl}/schedule" style="background:#1e3a5f;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:8px;">View Full Schedule</a></p>
   <p style="color:#9ca3af;font-size:12px;margin-top:24px;">You received this because you are an employee at this organization. Log in to view or request changes.</p>
 </div>`,
-          }).catch((emailErr: any) => log.warn(`Schedule email failed for ${emp.email}:`, emailErr?.message));
+          }).catch((emailErr: unknown) => log.warn(`Schedule email failed for ${emp.email}:`, emailErr?.message));
         }
         log.info(`[SchedulePublish] Sent schedule emails to ${empDetails.filter(e => e.email).length} employees for week ${weekStartFormatted}`);
-      } catch (emailErr: any) {
+      } catch (emailErr: unknown) {
         log.warn('[SchedulePublish] Email dispatch failed (non-blocking):', emailErr?.message);
       }
     });
@@ -285,7 +284,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
         publishedBy: userId,
       },
       visibility: 'manager',
-    }).catch((err: any) => log.warn('[EventBus] schedule_published publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] schedule_published publish failed (non-blocking):', err?.message));
 
     res.json({ success: true, published, message: `Schedule published. ${employeesAffected} employees notified.` });
   } catch (error: unknown) {
@@ -293,7 +292,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
   }
 });
 
-router.post('/unpublish', requireManager, async (req: any, res) => {
+router.post('/unpublish', requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
@@ -535,16 +534,12 @@ router.get('/export/csv', requireManager, async (req: AuthenticatedRequest, res)
     const csvRows = allShifts.map(s => {
       const empName = s.employeeId ? (employeeMap.get(s.employeeId) || 'Unknown') : 'Unassigned';
       const date = s.date;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const start = format(new Date(s.startTime), 'HH:mm');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const end = format(new Date(s.endTime), 'HH:mm');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return `"${empName}","${date}","${start}","${end}","${s.title || ''}","${s.status}","${(s.notes || '').replace(/"/g, '""')}"`;
     }).join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     res.setHeader('Content-Disposition', `attachment; filename="schedule-export-${format(new Date(), 'yyyy-MM-dd')}.csv"`);
     res.send(csvHeader + csvRows);
   } catch (error) {
@@ -643,7 +638,7 @@ router.post('/auto-fill/preflight', requireManager, async (req: AuthenticatedReq
         readyToExecute: totalOpenShifts > 0,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[Schedules] Preflight check failed:', err?.message);
     res.status(500).json({ error: 'Failed to run preflight check' });
   }

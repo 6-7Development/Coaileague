@@ -48,7 +48,7 @@ router.post("/workspace", requireManager, async (req: AuthenticatedRequest, res)
 
     const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
       .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
 
     const allowedSettingsFields = [
       'payrollCycle', 'payrollDayOfWeek', 'payrollDayOfMonth', 'payrollSecondDayOfMonth',
@@ -58,7 +58,7 @@ router.post("/workspace", requireManager, async (req: AuthenticatedRequest, res)
       'autoGenerateInvoices', 'invoicePrefix', 'invoiceNumberStart', 'invoiceProvider',
       'payrollProvider', 'qbAutoSync',
     ];
-    const merged: Record<string, any> = { ...current, workspaceId, updatedAt: new Date().toISOString() };
+    const merged: Record<string, unknown> = { ...current, workspaceId, updatedAt: new Date().toISOString() };
     for (const field of allowedSettingsFields) {
       if (req.body[field] !== undefined) merged[field] = req.body[field];
     }
@@ -95,7 +95,7 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
 
     const [ws] = await db.select({ blob: workspaces.billingSettingsBlob })
       .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const current = ((ws?.blob || {}) as Record<string, any>);
+    const current = ((ws?.blob || {}) as Record<string, unknown>);
 
     const allowedFields = [
       // Payroll cycle
@@ -121,7 +121,7 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
       'qbAutoSync',
     ];
 
-    const updates: Record<string, any> = { ...current, updatedAt: new Date().toISOString() };
+    const updates: Record<string, unknown> = { ...current, updatedAt: new Date().toISOString() };
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     }
@@ -169,13 +169,13 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
 
       if (existingPayrollSettings?.id) {
         const [updatedPayrollSettings] = await tx.update(payrollSettings)
-          .set(mergedPayrollSettingsWithoutId as any)
+          .set(mergedPayrollSettingsWithoutId as unknown)
           .where(eq(payrollSettings.id, existingPayrollSettings.id))
           .returning();
-        persistedPayrollSettings = updatedPayrollSettings as any;
+        persistedPayrollSettings = updatedPayrollSettings as unknown;
       } else {
-        const [insertedPayrollSettings] = await tx.insert(payrollSettings).values(mergedPayrollSettingsWithoutId as any).returning();
-        persistedPayrollSettings = insertedPayrollSettings as any;
+        const [insertedPayrollSettings] = await tx.insert(payrollSettings).values(mergedPayrollSettingsWithoutId).returning();
+        persistedPayrollSettings = insertedPayrollSettings as unknown;
       }
 
       await tx.insert(auditLogs).values({
@@ -187,7 +187,7 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
         changesBefore: existingPayrollSettings || null,
         changesAfter: persistedPayrollSettings,
         createdAt: new Date(),
-      } as any);
+      } as Record<string, unknown>);
     });
 
     // Phase 7: audit ALL billing settings changes unconditionally
@@ -334,7 +334,7 @@ router.patch("/clients/:clientId", requireManager, async (req: AuthenticatedRequ
       return res.status(400).json({ message: "paymentTerms cannot be null or undefined" });
     }
 
-    const merged: Record<string, any> = { ...existing[0], updatedAt: new Date() };
+    const merged: Record<string, unknown> = { ...existing[0], updatedAt: new Date() };
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) merged[field] = req.body[field];
     }
@@ -351,7 +351,7 @@ router.patch("/clients/:clientId", requireManager, async (req: AuthenticatedRequ
       changesBefore: existing[0],
       changesAfter: settings,
       createdAt: new Date(),
-    } as any);
+    } as Record<string, unknown>);
 
     res.json({ settings });
   } catch (error: unknown) {
@@ -432,8 +432,7 @@ router.get("/payment-methods", async (req: AuthenticatedRequest, res) => {
     res.json({ paymentMethods: methods, defaultPaymentMethodId: defaultId });
   } catch (error: unknown) {
     // Stripe customer-not-found (invalid dev/test customer ID) → return empty
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (error?.code === "resource_missing" || (error as any)?.statusCode === 404) {
+    if (error?.code === "resource_missing" || (error as Record<string,unknown>)?.statusCode === 404) {
       return res.json({ paymentMethods: [], defaultPaymentMethodId: null });
     }
     log.error("[PaymentMethods] Error listing:", sanitizeError(error));
@@ -530,7 +529,7 @@ router.delete("/payment-methods/:paymentMethodId", requireOwner, async (req: Aut
 });
 
 // ─── GET /api/billing-settings/seat-hard-cap — get current hard cap setting ──
-router.get('/seat-hard-cap', async (req: any, res) => {
+router.get('/seat-hard-cap', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace ID required' });
@@ -553,7 +552,7 @@ router.get('/seat-hard-cap', async (req: any, res) => {
 });
 
 // ─── PATCH /api/billing-settings/seat-hard-cap — toggle hard cap ─────────────
-router.patch('/seat-hard-cap', async (req: any, res) => {
+router.patch('/seat-hard-cap', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.user?.id;
@@ -577,7 +576,6 @@ router.patch('/seat-hard-cap', async (req: any, res) => {
     `);
 
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { universalAuditService } = await import('../services/universalAuditService');
       await universalAuditService.log({
         workspaceId,

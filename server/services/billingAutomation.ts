@@ -98,7 +98,7 @@ export async function generateUsageBasedInvoices(workspaceId: string, generateDa
   
   for (const clientSummary of aggregationResult.clientSummaries) {
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
         clientSummary,
@@ -182,7 +182,7 @@ export async function generateUsageBasedInvoices(workspaceId: string, generateDa
         });
       }
       log.info(`[Billing Platform] Recorded processing fees for ${generatedInvoices.length} invoices`);
-    } catch (feeErr: any) {
+    } catch (feeErr : unknown) {
       log.warn(`[Billing Platform] Processing fee recording for invoice gen failed (non-blocking):`, feeErr.message);
     }
   }
@@ -219,7 +219,7 @@ export async function generateInvoiceForClient(
   for (const clientSummary of aggregationResult.clientSummaries) {
     if (clientSummary.clientId !== clientId) continue;
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       // B1: atomic — invoice + line items + mark-entries in single transaction
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
@@ -301,7 +301,7 @@ export async function generateInvoiceForClient(
           referenceId: inv.invoiceNumber || inv.id,
         });
       }
-    } catch (feeErr: any) {
+    } catch (feeErr : unknown) {
       log.warn(`[Billing] Processing fee recording for per-client invoice failed (non-blocking):`, feeErr.message);
     }
   }
@@ -327,11 +327,11 @@ async function createInvoiceFromBillableSummary(
   // no resolvable rate, refuse to create the invoice so the entries stay
   // claimable on the next run once a rate is configured. Caller treats null as "skipped".
   const allEntriesZeroRate = clientSummary.entries.every(
-    (e: any) => !e.billingRate || Number(e.billingRate) === 0
+    (e: unknown) => !e.billingRate || Number(e.billingRate) === 0
   );
   if (allEntriesZeroRate) {
     const unbilledHours = clientSummary.entries.reduce(
-      (h: number, e: any) => h + (Number(e.totalHours) || 0),
+      (h: number, e: unknown) => h + (Number(e.totalHours) || 0),
       0,
     );
     log.warn(
@@ -339,7 +339,6 @@ async function createInvoiceFromBillableSummary(
       `no billing rate at shift, client, or workspace level (${unbilledHours.toFixed(2)}h held).`,
     );
     publishEvent(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish({
         type: 'billing_rate_missing',
         category: 'billing',
@@ -354,7 +353,7 @@ async function createInvoiceFromBillableSummary(
           clientName: clientSummary.clientName,
           unbilledHours,
           entryCount: clientSummary.entries.length,
-          timeEntryIds: clientSummary.entries.map((e: any) => e.timeEntryId),
+          timeEntryIds: clientSummary.entries.map((e: unknown) => e.timeEntryId),
           // severity moved to metadata for type safety
         },
       }),
@@ -416,25 +415,23 @@ async function createInvoiceFromBillableSummary(
     const employeeName = entries[0].employeeName;
 
     // B4: Guard — employees with $0 billing rate are skipped but managers MUST be alerted
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const hasZeroRate = entries.every(e => !e.billingRate || e.billingRate === 0);
     if (hasZeroRate) {
       log.warn(`[BillingAutomation] REVENUE RISK: Skipping ${employeeName} (${employeeId}) — $0 billing rate. Hours will NOT be invoiced to client.`);
       // Emit platform event so this surfaces in the manager dashboard, not just server logs
       publishEvent(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformEventBus.publish({
           type: 'billing_rate_missing',
           category: 'billing',
           title: `Missing Billing Rate: ${employeeName}`,
-          description: `${employeeName}'s time entries have no billing rate configured — ${entries.reduce((h: number, e: any) => h + (e.totalHours || 0), 0).toFixed(2)} billable hours will NOT appear on the client invoice. Configure a client rate, employee hourly rate, or workspace default rate.`,
+          description: `${employeeName}'s time entries have no billing rate configured — ${entries.reduce((h: number, e: unknown) => h + (e.totalHours || 0), 0).toFixed(2)} billable hours will NOT appear on the client invoice. Configure a client rate, employee hourly rate, or workspace default rate.`,
           workspaceId,
           metadata: {
             employeeId,
             employeeName,
             clientId: entries[0]?.clientId,
-            unbilledHours: entries.reduce((h: number, e: any) => h + (e.totalHours || 0), 0),
-            timeEntryIds: entries.map((e: any) => e.timeEntryId),
+            unbilledHours: entries.reduce((h: number, e: unknown) => h + (e.totalHours || 0), 0),
+            timeEntryIds: entries.map((e: unknown) => e.timeEntryId),
             // severity in event metadata
           },
         }),
@@ -452,9 +449,9 @@ async function createInvoiceFromBillableSummary(
     let holidayAmount = 0;
     const rateSources = new Set<string>();
     // Collect all time entry IDs for this employee's grouped entries
-    const allEntryIds: string[] = entries.map((e: any) => e.timeEntryId).filter(Boolean);
+    const allEntryIds: string[] = entries.map((e: unknown) => e.timeEntryId).filter(Boolean);
     // Use the earliest clock-in date as the service date for these line items
-    const earliestClockIn: Date | null = entries.reduce((earliest: Date | null, e: any) => {
+    const earliestClockIn: Date | null = entries.reduce((earliest: Date | null, e: unknown) => {
       if (!e.clockIn) return earliest;
       const d = new Date(e.clockIn);
       return !earliest || d < earliest ? d : earliest;
@@ -476,20 +473,19 @@ async function createInvoiceFromBillableSummary(
     
     // Detect manually-edited entries — flag them in line items + emit platform event
     // This closes the gap where billing was blind to manager corrections
-    const manuallyEditedEntries = entries.filter((e: any) => e.manuallyEdited);
+    const manuallyEditedEntries = entries.filter((e: unknown) => e.manuallyEdited);
     const hasManualEdits = manuallyEditedEntries.length > 0;
     const manualEditSuffix = hasManualEdits ? ' [MANAGER CORRECTED]' : '';
 
     if (hasManualEdits) {
       const reasons = manuallyEditedEntries
-        .map((e: any) => e.manualEditReason)
+        .map((e: unknown) => e.manualEditReason)
         .filter(Boolean)
         .join('; ');
       const desc = reasons
         ? `${employeeName}: ${manuallyEditedEntries.length} time entr${manuallyEditedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before billing. Reason(s): ${reasons}`
         : `${employeeName}: ${manuallyEditedEntries.length} time entr${manuallyEditedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before billing.`;
       publishEvent(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformEventBus.publish({
           type: 'billing_manual_edit_flagged',
           category: 'billing',
@@ -500,7 +496,7 @@ async function createInvoiceFromBillableSummary(
             employeeId,
             employeeName,
             clientId: entries[0]?.clientId,
-            editedEntryIds: manuallyEditedEntries.map((e: any) => e.timeEntryId),
+            editedEntryIds: manuallyEditedEntries.map((e: unknown) => e.timeEntryId),
             totalEditedEntries: manuallyEditedEntries.length,
             reasons,
             // severity in event metadata
@@ -624,7 +620,7 @@ async function createInvoiceFromBillableSummary(
       eq(clientBillingSettings.isActive, true),
     ))
     .limit(1);
-  const paymentTerms = clientSettings[0]?.paymentTerms || (workspace as any)?.defaultPaymentTerms || 'net_30';
+  const paymentTerms = clientSettings[0]?.paymentTerms || (workspace as Record<string,unknown>)?.defaultPaymentTerms || 'net_30';
   const termsDaysMap: Record<string, number> = {
     'due_on_receipt': 0,
     'net_7': 7,
@@ -866,7 +862,7 @@ async function sendInvoiceEmail(invoice: Invoice, clientEmail: string, portalUrl
     const formattedDue = invoice.dueDate
       ? new Date(invoice.dueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : 'Upon Receipt';
-    const issuedSource = (invoice as any).issueDate || invoice.createdAt;
+    const issuedSource = (invoice as Record<string, unknown>).issueDate || invoice.createdAt;
     const formattedIssued = issuedSource
       ? new Date(issuedSource).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -1016,7 +1012,7 @@ export async function sendInvoiceViaStripe(invoiceId: string): Promise<{ success
 
     return { success: true, stripeInvoiceId: stripeInvoice.id };
 
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Billing Platform] Failed to send invoice via Stripe:', error);
     return { success: false, error: (error instanceof Error ? error.message : String(error)) };
   }
@@ -1155,7 +1151,7 @@ export async function generateWeeklyInvoices(
     }
 
     try {
-      const allTimeEntryIds = clientSummary.entries.map((entry: any) => entry.timeEntryId);
+      const allTimeEntryIds = clientSummary.entries.map((entry: unknown) => entry.timeEntryId);
       // B1: atomic — invoice + line items + mark-entries in single transaction
       const invoice = await createInvoiceFromBillableSummary(
         workspaceId,
@@ -1186,7 +1182,7 @@ export async function generateWeeklyInvoices(
             .where(eq(invoices.id, invoice.id));
           invoice.status = 'sent';
           log.info(`[Billing Platform] Auto-sent invoice ${invoice.invoiceNumber} for ${clientSummary.clientName}`);
-        } catch (sendErr: any) {
+        } catch (sendErr : unknown) {
           log.warn(`[Billing Platform] Auto-send failed for ${invoice.invoiceNumber}:`, sendErr.message);
         }
       }
@@ -1199,7 +1195,7 @@ export async function generateWeeklyInvoices(
         entriesCovered: allTimeEntryIds.length,
         billingCycle: cycle,
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[Billing Platform] Invoice failed for ${clientSummary.clientName}:`, error);
       failedClients.push({
         clientName: clientSummary.clientName,
@@ -1310,7 +1306,6 @@ export async function processDelinquentInvoices(workspaceId: string) {
       await sendInvoiceOverdueReminderEmail(client.email, {
         clientName: client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Valued Customer',
         invoiceNumber: invoice.invoiceNumber,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         total: invoice.total,
         dueDate: invoice.dueDate?.toLocaleDateString('en-US', { dateStyle: 'medium' }) || 'N/A',
         daysOverdue,
@@ -1370,7 +1365,6 @@ export async function processDelinquentInvoices(workspaceId: string) {
       // can react (collections escalation, AI alerts, audit trail). Fires for all milestone reminders
       // (7-day, 14-day, 30-day) — Trinity decides which to act on based on daysOverdue.
       publishEvent(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         platformEventBus.publish({
           type: 'invoice_overdue',
           category: 'automation',
@@ -1501,11 +1495,11 @@ export async function generateAgingReport(workspaceId: string) {
   ));
 
   const buckets = {
-    current: [] as any[],
-    thirtyDay: [] as any[],
-    sixtyDay: [] as any[],
-    ninetyDay: [] as any[],
-    ninetyPlus: [] as any[],
+    current: [],
+    thirtyDay: [],
+    sixtyDay: [],
+    ninetyDay: [],
+    ninetyPlus: [],
   };
 
   for (const inv of unpaidInvoices) {
@@ -1520,7 +1514,7 @@ export async function generateAgingReport(workspaceId: string) {
     else buckets.ninetyPlus.push(entry);
   }
 
-  const sumBucket = (b: any[]) => b.reduce((s, i) => s + parseFloat(i.total || '0'), 0);
+  const sumBucket = (b: unknown[]) => b.reduce((s, i) => s + parseFloat(i.total || '0'), 0);
 
   return {
     workspaceId,

@@ -31,7 +31,43 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { localVirusScan } from '../middleware/virusScan';
 import { typedQuery } from '../lib/typedSql';
+import { googleCalendar } from '../services/oauth/googleCalendar';
 import { createLogger } from '../lib/logger';
+
+// Config helpers — the route handlers below historically called
+// isGoogleCalendarConfigured / getGoogleOAuthUrl / exchangeCodeForTokens /
+// getUserCalendarInfo, but those identifiers were never imported, so the
+// route crashed with ReferenceError at runtime. Wire them to the real
+// googleCalendar service.
+function isGoogleCalendarConfigured(): boolean {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+function getGoogleOAuthUrl(state: string): string {
+  // The googleCalendar.getAuthUrl signature takes userId+workspaceId; we
+  // pre-encode them in the state param the route generated above, so feed
+  // an empty pair here and let the redirect URL carry state.
+  const url = googleCalendar.getAuthUrl('', '');
+  // Replace the auto-generated state with the route-issued one.
+  return url.replace(/state=[^&]*/, `state=${encodeURIComponent(state)}`);
+}
+async function exchangeCodeForTokens(code: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+  const tokens = await googleCalendar.exchangeCode(code);
+  if (!tokens) throw new Error('Google token exchange failed');
+  return {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresIn: tokens.expires_in,
+  };
+}
+async function getUserCalendarInfo(accessToken: string): Promise<{ email: string }> {
+  const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!resp.ok) throw new Error('Failed to fetch Google userinfo');
+  const data: Record<string, unknown> = await resp.json();
+  return { email: data.email ?? '' };
+}
+
 const log = createLogger('CalendarRoutes');
 
 export const calendarRouter = Router();
@@ -75,7 +111,7 @@ calendarRouter.get('/schedule.ics', requireAuth, async (req: AuthenticatedReques
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     if (!workspaceId || !userId) {
       return res.status(400).json({ error: 'No workspace selected' });
@@ -116,7 +152,7 @@ calendarRouter.get('/my-schedule.ics', requireAuth, async (req: AuthenticatedReq
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -149,7 +185,7 @@ calendarRouter.get('/timesheets.ics', requireAuth, async (req: AuthenticatedRequ
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -218,7 +254,7 @@ calendarRouter.post('/subscriptions', requireAuth, async (req: AuthenticatedRequ
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -273,7 +309,7 @@ calendarRouter.post('/subscriptions', requireAuth, async (req: AuthenticatedRequ
 calendarRouter.get('/subscriptions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -368,7 +404,7 @@ calendarRouter.get('/subscription-urls', requireAuth, async (req: AuthenticatedR
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -408,7 +444,7 @@ calendarRouter.post('/import', requireAuth, upload.single('file'), localVirusSca
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -447,7 +483,7 @@ calendarRouter.post('/import', requireAuth, upload.single('file'), localVirusSca
 calendarRouter.get('/import/history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -470,7 +506,7 @@ calendarRouter.get('/import/history', requireAuth, async (req: AuthenticatedRequ
 calendarRouter.get('/sync-events', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
@@ -497,7 +533,7 @@ calendarRouter.get('/sync-events', requireAuth, async (req: AuthenticatedRequest
 calendarRouter.get('/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
 
     let subscriptionCount = 0;
@@ -529,7 +565,7 @@ calendarRouter.get('/export/ical', requireAuth, async (req: AuthenticatedRequest
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -566,7 +602,7 @@ calendarRouter.post('/import/ical', requireAuth, upload.single('file'), localVir
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
     
     if (!workspaceId || !userId) {
@@ -648,7 +684,7 @@ calendarRouter.get('/google/connect', requireAuth, async (req: AuthenticatedRequ
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
 
     if (!workspaceId || !userId) {
@@ -723,7 +759,7 @@ calendarRouter.get('/google/callback', async (req: Request, res: Response) => {
 calendarRouter.post('/google/disconnect', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
 
     if (!workspaceId || !userId) {
@@ -750,7 +786,7 @@ calendarRouter.post('/google/sync', requireAuth, async (req: AuthenticatedReques
     }
 
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     const userId = user?.id;
 
     if (!workspaceId || !userId) {

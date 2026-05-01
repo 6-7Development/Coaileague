@@ -219,10 +219,9 @@ class WeeklyPlatformAuditService {
           triggerSource: 'scheduled',
         });
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (result.analysis?.anomalies) {
-          for (const anomaly of (result as any).analysis.anomalies) {
-            findings.push(this.convertAnomalyToFinding(anomaly, page, (result as any).screenshot?.filePath));
+          for (const anomaly of (result as Record<string, unknown>).analysis.anomalies) {
+            findings.push(this.convertAnomalyToFinding(anomaly, page, (result as Record<string, unknown>).screenshot?.filePath));
           }
         }
 
@@ -230,7 +229,7 @@ class WeeklyPlatformAuditService {
         const placeholderFindings = this.checkForPlaceholderData(pageContent, page);
         findings.push(...placeholderFindings);
 
-      } catch (error: any) {
+      } catch (error : unknown) {
         findings.push({
           id: `vqa_error_${Date.now()}`,
           category: 'ui',
@@ -295,7 +294,7 @@ class WeeklyPlatformAuditService {
           }
         }
 
-      } catch (error: any) {
+      } catch (error : unknown) {
         findings.push({
           id: `api_error_${Date.now()}`,
           category: 'api',
@@ -334,7 +333,7 @@ class WeeklyPlatformAuditService {
         FROM workspaces
       `);
 
-      for (const row of (result as any[]) || []) {
+      for (const row of (result as unknown[]) || []) {
         const testRecords = Number(row.test_records) || 0;
         const testEmails = Number(row.test_emails) || 0;
         
@@ -352,7 +351,7 @@ class WeeklyPlatformAuditService {
           });
         }
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[WeeklyAudit] Data quality check error:', (error instanceof Error ? error.message : String(error)));
     }
 

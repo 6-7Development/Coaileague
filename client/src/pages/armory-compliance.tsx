@@ -10,6 +10,7 @@
  */
 
 import { useState } from "react";
+import { FeatureUnavailable, isFeatureUnavailable } from "@/components/ui/feature-unavailable";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +87,7 @@ function LogInspectionDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       onOpenChange(false);
       setWeaponId(""); setFindings(""); setInspectionType("routine"); setCondition("good");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Failed to log inspection", description: err?.message || "Try again.", variant: "destructive" });
     },
   });
@@ -192,7 +193,7 @@ function RecordQualificationDialog({ open, onOpenChange }: { open: boolean; onOp
       onOpenChange(false);
       setEmployeeId(""); setCaliber(""); setScore(""); setMaxScore(""); setInstructorName("");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Failed to record qualification", description: err?.message || "Try again.", variant: "destructive" });
     },
   });
@@ -319,7 +320,7 @@ function ReceiveAmmoDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       onOpenChange(false);
       setAmmoInventoryId(""); setCaliber(""); setQuantity(""); setReason(""); setManufacturer(""); setReorderThreshold("");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Failed to receive ammo", description: err?.message || "Try again.", variant: "destructive" });
     },
   });
@@ -399,11 +400,11 @@ interface AuditRow {
   entity_id: string | null;
   user_id: string | null;
   success: boolean;
-  changes_after: Record<string, any> | null;
+  changes_after: Record<string, unknown> | null;
 }
 
 function ArmoryAuditTrail(): JSX.Element {
-  const { data, isLoading } = useQuery<{ rows: AuditRow[] }>({
+  const { data, isLoading, error} = useQuery<{ rows: AuditRow[] }>({
     queryKey: ["/api/armory/audit-trail"],
   });
   const rows = data?.rows ?? [];
@@ -468,7 +469,7 @@ export default function ArmoryCompliancePage(): JSX.Element {
     title: "Armory Compliance",
     subtitle:
       "Weapon qualifications, inspections overdue, and ammo reorder alerts",
-    category: "operations" as any,
+    category: "operations",
     showHeader: true,
   };
 
@@ -477,6 +478,10 @@ export default function ArmoryCompliancePage(): JSX.Element {
     inspectionsOverdue: [],
     lowAmmo: [],
   };
+
+  if (isFeatureUnavailable(error)) {
+    return <FeatureUnavailable feature="Armory Compliance" eta="Q4 2026" />;
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

@@ -26,7 +26,7 @@ export interface AgentTask {
   actionId: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   context: ResolvedContext;
-  params: Record<string, any>;
+  params: Record<string, unknown>;
   scheduledFor?: Date;
   maxWaitMs?: number;
 }
@@ -273,7 +273,7 @@ class SchedulerCoordinatorService {
     fromAgent: AgentType,
     toAgent: AgentType,
     actionId: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     context: ResolvedContext,
     options?: { priority?: AgentTask['priority']; waitForResult?: boolean }
   ): Promise<string> {
@@ -323,7 +323,7 @@ class SchedulerCoordinatorService {
   }
 
   getQueueStats(): Record<AgentType, { queued: number; active: number; rateLimitRemaining: number }> {
-    const stats: Record<AgentType, { queued: number; active: number; rateLimitRemaining: number }> = {} as any;
+    const stats: Record<AgentType, { queued: number; active: number; rateLimitRemaining: number }> = {};
 
     for (const agentType of this.agentConfigs.keys()) {
       const config = this.agentConfigs.get(agentType)!;

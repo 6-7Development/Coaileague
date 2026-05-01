@@ -1,3 +1,4 @@
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { SEO, PAGE_SEO } from '@/components/seo';
@@ -78,7 +79,7 @@ export default function TrinityChat() {
 
   useEffect(() => {
     if (!bus) return;
-    const unsub = bus.subscribeAll((data: any) => {
+    const unsub = bus.subscribeAll((data) => {
       if (data.type === 'trinity_thinking' && data.phase) {
         if (data.sessionId && sessionId && data.sessionId !== sessionId) return;
         setThoughtPhase(data.phase);
@@ -118,7 +119,7 @@ export default function TrinityChat() {
       ]);
       queryClient.invalidateQueries({ queryKey: ['/api/trinity/chat/history'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setThoughtPhase(null);
       toast({ title: 'Error', description: error.message || 'Failed to send message', variant: 'destructive' });
     },
@@ -133,7 +134,7 @@ export default function TrinityChat() {
       queryClient.invalidateQueries({ queryKey: ['/api/trinity/chat/settings'] });
       toast({ title: 'Settings Updated', description: 'Your preferences have been saved' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: 'Error', description: error.message || 'Failed to update settings', variant: 'destructive' });
     },
   });
@@ -153,7 +154,7 @@ export default function TrinityChat() {
       const response = await apiRequest('GET', `/api/trinity/chat/session/${session.id}/messages`);
       const data = await response.json();
       setSessionId(session.id);
-      setMessages(data.messages.map((m: any) => ({
+      setMessages(data.messages.map((m) => ({
         id: m.id, role: m.role, content: m.content, createdAt: new Date(m.createdAt),
       })));
       setHistoryOpen(false);
@@ -282,7 +283,7 @@ export default function TrinityChat() {
             <div className="max-w-3xl mx-auto space-y-4">
               {messages.length === 0 ? (
                 <div className="text-center py-12">
-                  <LogoMark size="lg" className="mx-auto mb-4" />
+                  <TrinityAnimatedLogo size={48} className="mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Welcome to Trinity Chat</h3>
                   <p className="text-muted-foreground mb-6">
                     Ask me anything — schedules, reports, team insights, or whatever&#39;s on your mind
@@ -300,7 +301,7 @@ export default function TrinityChat() {
                   <div key={msg.id} className={['flex gap-3', msg.role === 'user' ? 'justify-end' : 'justify-start'].join(' ')}>
                     {msg.role === 'assistant' && (
                       <div className="shrink-0 w-8 h-8 flex items-center justify-center">
-                        <LogoMark size="sm" />
+                        <TrinityAnimatedLogo size={24} />
                       </div>
                     )}
                     <div className={['max-w-[80%] rounded-lg px-3 py-2', msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'].join(' ')}>
@@ -319,7 +320,7 @@ export default function TrinityChat() {
               {chatMutation.isPending && (
                 <div className="flex gap-3 justify-start" data-testid="trinity-thinking-indicator">
                   <div className="shrink-0 w-8 h-8 flex items-center justify-center animate-pulse">
-                    <LogoMark size="sm" />
+                    <TrinityAnimatedLogo size={24} />
                   </div>
                   <div className="bg-muted rounded-lg px-3 py-2">
                     {buddySettings?.showThoughtProcess ? (

@@ -27,13 +27,13 @@ export interface ServiceHealth {
   lastCheck: number;
   consecutiveFailures: number;
   uptime: number; // percentage
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface HealthCheckConfig {
   serviceId: string;
   serviceName: string;
-  checkFn: () => Promise<{ healthy: boolean; responseTime: number; metadata?: Record<string, any> }>;
+  checkFn: () => Promise<{ healthy: boolean; responseTime: number; metadata?: Record<string, unknown> }>;
   intervalMs: number;
   timeout: number;
   degradedThreshold: number; // response time threshold for degraded status
@@ -247,7 +247,7 @@ class HealthCheckAggregationService {
       }
 
       service.metadata = result.metadata;
-    } catch (error: any) {
+    } catch (error : unknown) {
       service.consecutiveFailures++;
       service.lastCheck = Date.now();
       service.uptime = service.uptime * 0.99 + 0 * 0.01;
@@ -386,7 +386,7 @@ class HealthCheckAggregationService {
         },
         createdAt: new Date()
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.warn('[HealthCheck] Failed to log unhealthy service (will retry):', error?.message || 'unknown');
     }
   }

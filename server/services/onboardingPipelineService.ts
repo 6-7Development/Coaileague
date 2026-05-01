@@ -338,9 +338,8 @@ class OnboardingPipelineService {
   /**
    * Update pipeline status
    */
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updatePipelineStatus(workspaceId: string, status: PipelineStatus, reason?: string): Promise<Workspace> {
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       pipelineStatus: status,
       pipelineStatusUpdatedAt: new Date(),
       updatedAt: new Date(),
@@ -430,7 +429,7 @@ class OnboardingPipelineService {
 
         stripePromotionCode = promoCode.code;
         log.info(`[Onboarding] Created Stripe promo code: ${stripePromotionCode}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('[Onboarding] Failed to create Stripe coupon:', (error instanceof Error ? error.message : String(error)));
       }
     }
@@ -438,7 +437,6 @@ class OnboardingPipelineService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + ONBOARDING.REWARD.EXPIRY_DAYS);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [reward] = await db.insert(orgRewards).values({
       workspaceId,
       type: 'onboarding_discount_10',
@@ -525,7 +523,6 @@ class OnboardingPipelineService {
   /**
    * Start trial for a workspace
    */
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async startTrial(workspaceId: string): Promise<Workspace> {
     await this.initializeOnboarding(workspaceId);
     return this.updatePipelineStatus(workspaceId, 'trial_started');
@@ -649,7 +646,7 @@ Generate personalized onboarding tasks for this organization.`;
         maxOutputTokens: 1024,
       });
 
-      let aiTasks: any[] = [];
+      let aiTasks: (string | number | boolean | null)[] = [];
       try {
         const jsonMatch = response.text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
@@ -706,7 +703,7 @@ Generate personalized onboarding tasks for this organization.`;
       log.info(`[Onboarding] AI Brain generated ${insertedTasks.length} personalized tasks for workspace ${workspaceId}`);
       return insertedTasks;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[Onboarding] AI Brain task generation failed:', (error instanceof Error ? error.message : String(error)));
       return [];
     }
@@ -715,7 +712,7 @@ Generate personalized onboarding tasks for this organization.`;
   /**
    * Process system events that may auto-complete onboarding tasks
    */
-  async processSystemEvent(workspaceId: string, eventType: string, eventData?: any): Promise<void> {
+  async processSystemEvent(workspaceId: string, eventType: string, eventData?: unknown): Promise<void> {
     const tasks = await db.query.orgOnboardingTasks.findMany({
       where: and(
         eq(orgOnboardingTasks.workspaceId, workspaceId),
@@ -745,7 +742,7 @@ Generate personalized onboarding tasks for this organization.`;
     }
   }
 
-  private validateRule(rule: string, data?: any): boolean {
+  private validateRule(rule: string, data?: unknown): boolean {
     if (!rule || !data) return true;
 
     const match = rule.match(/(\w+)\s*(>=|<=|==|>|<)\s*(\d+)/);
@@ -828,9 +825,7 @@ Generate personalized onboarding tasks for this organization.`;
       });
 
       const [billingSettings] = await db.select()
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .from(workspaceBillingSettings)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(workspaceBillingSettings.workspaceId, workspaceId))
         .limit(1);
 
@@ -959,7 +954,7 @@ Generate personalized onboarding tasks for this organization.`;
         : `${missingCritical.length} critical item(s) remaining: ${missingCritical.join(', ')}. Complete these to operate without external tools.`;
 
       return { score, totalChecks, passedChecks, checklist, readyForOperation, summary };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[OnboardingPipeline] Readiness score error:', (err instanceof Error ? err.message : String(err)));
       return { score: 0, totalChecks: 0, passedChecks: 0, checklist: [], readyForOperation: false, summary: 'Error calculating readiness score' };
     }

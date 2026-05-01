@@ -1,2 +1,0 @@
-auditor-portal
-compliance/index

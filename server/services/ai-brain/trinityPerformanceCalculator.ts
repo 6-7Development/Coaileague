@@ -21,6 +21,7 @@ import { officerPerformanceScores } from '@shared/schema/domains/workforce/exten
 import { employees } from '@shared/schema/domains/workforce/index';
 import { dailyActivityReports, shifts, timeEntries } from '@shared/schema';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityPerformanceCalculator');
 
 export interface PerformanceScores {
@@ -74,7 +75,7 @@ class TrinityPerformanceCalculator {
       { score: attendance.score, weight: 0.30 },
       { score: reports.qualityScore, weight: 0.10 },
       { score: reports.submissionScore, weight: 0.10 },
-      ...(client !== null ? [{ score: (client as any).score, weight: 0.15 }] : []),
+      ...(client !== null ? [{ score: (client as ClientWithExtras).score, weight: 0.15 }] : []),
       { score: responseTime.score, weight: 0.10 },
     ];
     const totalWeight = weightedScores.reduce((sum, s) => sum + s.weight, 0);
@@ -93,7 +94,7 @@ class TrinityPerformanceCalculator {
       attendanceScore: attendance.score,
       reportQualityScore: reports.qualityScore,
       reportSubmissionScore: reports.submissionScore,
-      clientSatisfactionScore: client !== null ? (client as any).score : null,
+      clientSatisfactionScore: client !== null ? (client as ClientWithExtras).score : null,
       responseTimeScore: responseTime.score,
       supervisorInputScore: null,
       compositeScore: composite,
@@ -125,7 +126,6 @@ class TrinityPerformanceCalculator {
     let calculated = 0, errors = 0;
     for (const emp of employees) {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.calculateForEmployee(workspaceId, emp.id, periodStart, periodEnd, 'weekly');
         calculated++;
       } catch {
@@ -179,7 +179,7 @@ class TrinityPerformanceCalculator {
   private async calcReportScores(workspaceId: string, employeeId: string, start: Date, end: Date) {
     // Converted to Drizzle ORM: CASE WHEN → sql fragment
     const reportStats = await db.select({
-      avgQuality: sql<number>`avg(case when ${(dailyActivityReports as any).qualityScore} is not null then ${(dailyActivityReports as any).qualityScore} else 75 end)`,
+      avgQuality: sql<number>`avg(case when ${(dailyActivityReports as Record<string,unknown>).qualityScore} is not null then ${(dailyActivityReports as Record<string,unknown>).qualityScore} else 75 end)`,
       submitted: sql<number>`count(*)::int`
     })
     .from(dailyActivityReports)
@@ -319,15 +319,10 @@ class TrinityPerformanceCalculator {
     if (!rows.length) return null;
     const r = rows[0];
     return {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       employeeId: r.employee_id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: r.workspace_id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       periodStart: r.period_start,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       periodEnd: r.period_end,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       periodType: r.period_type,
       clockinAccuracyScore: Number(r.clockin_accuracy_score),
       attendanceScore: Number(r.attendance_score),
@@ -337,7 +332,6 @@ class TrinityPerformanceCalculator {
       responseTimeScore: Number(r.response_time_score),
       supervisorInputScore: r.supervisor_input_score ? Number(r.supervisor_input_score) : null,
       compositeScore: Number(r.composite_score),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       trend: r.trend,
       trendVelocity: Number(r.trend_velocity),
       consecutiveDaysOnTime: Number(r.consecutive_days_on_time),

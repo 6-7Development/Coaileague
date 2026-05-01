@@ -315,7 +315,7 @@ function formatUptime(seconds: number): string {
 function ResponseTimeChart({ data }: { data: ResponseTimeMetric[] }) {
   const chartData = data
     .filter((d) => d.service !== "health_check_total")
-    .reduce((acc: Record<string, any>[], metric) => {
+    .reduce((acc: Record<string, unknown>[], metric) => {
       const time = format(new Date(metric.timestamp), "HH:mm");
       const existing = acc.find((item) => item.time === time);
       if (existing) {

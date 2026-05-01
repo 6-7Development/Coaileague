@@ -64,7 +64,7 @@ export async function runWeeklyBriefSweep(): Promise<WeeklyBriefResult> {
   let workspaces: string[];
   try {
     workspaces = await listActiveWorkspaces();
-  } catch (err: any) {
+  } catch (err: unknown) {
     result.errors.push(`workspaces:${err?.message}`);
     return result;
   }
@@ -77,7 +77,7 @@ export async function runWeeklyBriefSweep(): Promise<WeeklyBriefResult> {
       const sent = await sendWeeklyBriefForWorkspace(workspaceId, 'cron');
       result.workspacesBriefed++;
       result.deliveries += sent;
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`${workspaceId}:${err?.message}`);
       log.warn(`[weeklyBrief] workspace ${workspaceId} failed:`, err?.message);
     }
@@ -113,7 +113,7 @@ export async function sendWeeklyBriefForWorkspace(
         idempotencyKey: `weeklybrief-${workspaceId}-${o.userId}-${weekKey}`,
       });
       delivered++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[weeklyBrief] in-app send failed for ${o.userId}:`, err?.message);
     }
 
@@ -133,7 +133,7 @@ export async function sendWeeklyBriefForWorkspace(
           },
           idempotencyKey: `weeklybrief-email-${workspaceId}-${o.userId}-${weekKey}`,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(`[weeklyBrief] email send failed for ${o.userId}:`, err?.message);
       }
     }
@@ -148,7 +148,7 @@ export async function sendWeeklyBriefForWorkspace(
       severity: 'low',
       metadata: { workflow: WORKFLOW_NAME, snapshot: snap, triggerSource },
     } as any);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[weeklyBrief] event publish failed (non-fatal):', err?.message);
   }
 
@@ -239,7 +239,7 @@ async function buildSnapshot(workspaceId: string): Promise<WeeklyBriefSnapshot> 
   const firstUncovered = uncoveredRows.rows[0] ? new Date(uncoveredRows.rows[0].start_time) : null;
   const topDays = uncoveredRows.rows
     .slice(0, 3)
-    .map((r: any) =>
+    .map((r: unknown) =>
       new Date(r.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
     );
 
@@ -354,7 +354,7 @@ async function listActiveWorkspaces(): Promise<string[]> {
   const r = await pool.query(
     `SELECT id FROM workspaces WHERE COALESCE(is_active, true) = true LIMIT 5000`,
   );
-  return r.rows.map((row: any) => row.id);
+  return r.rows.map((row: unknown) => row.id);
 }
 
 interface OwnerRecipient {
@@ -374,8 +374,8 @@ async function fetchOwnerRecipients(workspaceId: string): Promise<OwnerRecipient
         LIMIT 5`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({ userId: row.user_id, email: row.email || null }));
-  } catch (err: any) {
+    return r.rows.map((row: unknown) => ({ userId: row.user_id, email: row.email || null }));
+  } catch (err: unknown) {
     log.warn('[weeklyBrief] owner lookup failed:', err?.message);
     return [];
   }
@@ -423,7 +423,7 @@ async function recordBriefed(
         JSON.stringify(snapshot),
       ],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[weeklyBrief] audit write failed (non-fatal):', err?.message);
   }
 }

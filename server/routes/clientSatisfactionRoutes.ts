@@ -26,7 +26,7 @@ router.get("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN clients c ON c.id = csr.client_id AND c.workspace_id = $1
                  LEFT JOIN employees e ON e.id = csr.conducted_by AND e.workspace_id = $1
                  WHERE csr.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     if (client_id) { query += ` AND csr.client_id = $2`; vals.push(client_id); }
     query += ` ORDER BY csr.check_in_date DESC`;
     const r = await db.$client.query(query, vals);
@@ -74,7 +74,7 @@ router.get("/clients/:clientId/trend", requireAuth, async (req: AuthenticatedReq
       }
     }
 
-    const avg = records.length ? records.reduce((s: number, r: any) => s + parseFloat(r.satisfaction_score || 0), 0) / records.length : null;
+    const avg = records.length ? records.reduce((s: number, r: unknown) => s + parseFloat(r.satisfaction_score || 0), 0) / records.length : null;
     res.json({ records, churnRisk, churnMessage, averageScore: avg ? Math.round(avg * 10) / 10 : null });
   } catch (err: unknown) {
     res.status(500).json({ error: sanitizeError(err) });
@@ -129,7 +129,7 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
       const previous = parseFloat(trend.rows[1].satisfaction_score || '5');
       if (previous - latest >= 0.5) {
         // Tenant isolation: enforce workspace_id (TRINITY.md §1)
-        const clientR = await db.$client.query(`SELECT company_name FROM clients WHERE id = $1 AND workspace_id = $2`, [client_id, wid]).catch(() => ({ rows: [] as any[] }));
+        const clientR = await db.$client.query(`SELECT company_name FROM clients WHERE id = $1 AND workspace_id = $2`, [client_id, wid]).catch(() => ({ rows: [] }));
         const clientName = clientR.rows[0]?.company_name || 'Client';
         platformEventBus.publish({
           type: 'client_satisfaction_decline',
@@ -138,7 +138,7 @@ router.post("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
           description: `Score dropped from ${previous} to ${latest}. Churn risk detected.`,
           workspaceId: wid,
           metadata: { clientId: client_id, previousScore: previous, newScore: latest }
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
       }
     }
 
@@ -190,7 +190,7 @@ router.get("/concerns", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN clients c ON c.id = cc.client_id AND c.workspace_id = $1
                  LEFT JOIN employees e ON e.id = cc.assigned_to AND e.workspace_id = $1
                  WHERE cc.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (client_id) { query += ` AND cc.client_id = $${i++}`; vals.push(client_id); }
     if (status) { query += ` AND cc.status = $${i++}`; vals.push(status); }
@@ -260,7 +260,7 @@ router.get("/dashboard", requireAuth, async (req: AuthenticatedRequest, res) => 
       [wid]
     );
 
-    const churnRisks = clients.rows.filter((c: any) =>
+    const churnRisks = clients.rows.filter((c: unknown) =>
       c.latest_score && c.previous_score &&
       parseFloat(c.previous_score) - parseFloat(c.latest_score) >= 0.5
     );

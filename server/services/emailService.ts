@@ -15,8 +15,7 @@ import { eq } from "drizzle-orm";
 // Reuse existing Resend client from email.ts (no duplication!)
 // CAN-SPAM: Use sendCanSpamCompliantEmail for all outgoing emails
 import { getUncachableResendClient, isResendConfigured, sendCanSpamCompliantEmail, isEmailUnsubscribed } from "./emailCore";
-import { FEATURES, PLATFORM } from "@shared/platformConfig";
-import { EMAIL } from "../config/platformConfig";
+import { PLATFORM } from "@shared/platformConfig";
 import { automationOrchestration } from "./orchestration/automationOrchestration";
 import { getAppBaseUrl } from "../utils/getAppBaseUrl";
 import { isProduction } from "../lib/isProduction";
@@ -76,7 +75,7 @@ import {
     /**
      * SUPPORT TICKET CONFIRMATION
      */
-    supportTicketConfirmation: (data: { name: string; ticketNumber: string; subject: string; ticketUrl?: string }) => ({
+    supportTicketConfirmation: (data: { name: string; ticketNumber: string; subject: string }) => ({
       subject: `Support Ticket Created — ${data.ticketNumber}`,
       html: emailLayout({
         preheader: `Your support request ${data.ticketNumber} has been received.`,
@@ -92,7 +91,6 @@ import {
               { label: 'Status', value: 'Open — Awaiting Review' },
             ],
           }) +
-          (data.ticketUrl ? ctaButton({ text: 'View Your Support Ticket', url: data.ticketUrl, style: 'purple' }) : '') +
           alertBox({ type: 'info', title: 'Save your ticket number', body: `Reference <strong>${data.ticketNumber}</strong> when following up. You can check status via Live Chat in the platform.` }) +
           para('Our support team typically responds within 1 business day.', { muted: true }),
       }),
@@ -101,7 +99,7 @@ import {
     /**
      * SIMPLE REPORT DELIVERY
      */
-    reportDelivery: (data: { clientName: string; reportNumber: string; reportTitle: string; reportUrl?: string }) => ({
+    reportDelivery: (data: { clientName: string; reportNumber: string; reportTitle: string }) => ({
       subject: `Report Ready — ${data.reportNumber}`,
       html: emailLayout({
         preheader: `Your report "${data.reportTitle}" is ready for review.`,
@@ -115,7 +113,6 @@ import {
               { label: 'Title', value: data.reportTitle },
             ],
           }) +
-          (data.reportUrl ? ctaButton({ text: 'View Full Report', url: data.reportUrl }) : '') +
           para(`Please log in to your ${PLATFORM.name} portal to view the full report and download a copy.`, { muted: true }),
       }),
     }),
@@ -161,7 +158,6 @@ import {
       managerName: string;
       employeeName: string;
       workspaceName: string;
-      employeeProfileUrl?: string;
     }) => ({
       subject: `New Employee Added — ${data.employeeName || 'New Hire'}`,
       html: emailLayout({
@@ -177,7 +173,6 @@ import {
               { label: 'Status', value: 'Onboarding Pending' },
             ],
           }) +
-          (data.employeeProfileUrl ? ctaButton({ text: 'View Employee Profile', url: data.employeeProfileUrl }) : '') +
           checkList([
             'Ensure the employee has received their login credentials',
             'Assign the employee to their first shift',
@@ -543,11 +538,9 @@ import {
         header: emailHeader({ title: 'Account Deactivated', subtitle: 'Access to your account has been suspended', badge: 'Account Notice', theme: 'dark' }),
         body:
           greeting(data.firstName) +
-          para(`Your ${PLATFORM.name} account has been deactivated. You will not be able to sign in until the account is reactivated by an administrator.`) +
-          (data.reason ? infoCard({ title: 'Deactivation Details', rows: [{ label: 'Reason', value: data.reason }] }) : '') +
-          alertBox({ type: 'warning', title: 'What this means', body: 'You will not be able to log in or access your account while it is deactivated. Any active sessions have been ended.' }) +
-          alertBox({ type: 'info', title: 'Think this is a mistake?', body: `Contact your administrator or support at <strong>${data.contactEmail}</strong> to request reactivation. Please reference your account email when reaching out.` }) +
-          (data.reactivateUrl ? ctaButton({ text: 'Request Reactivation', url: data.reactivateUrl, style: 'dark' }) : '') +
+          para(`Your ${PLATFORM.name} account has been deactivated. You will not be able to sign in until the account is reactivated.`) +
+          (data.reason ? infoCard({ rows: [{ label: 'Reason', value: data.reason }] }) : '') +
+          alertBox({ type: 'info', title: 'Think this is a mistake?', body: `Contact your administrator or support at <strong>${data.contactEmail}</strong> to request reactivation.` }) +
           para('Your data is retained for 90 days after deactivation. Contact us if you need to export your records.', { muted: true, small: true }),
       }),
     }),
@@ -744,7 +737,7 @@ export class EmailService {
       }).returning();
       
       return event.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[EmailService] Failed to log email event:', (error instanceof Error ? error.message : String(error)));
       throw error;
     }
@@ -768,7 +761,7 @@ export class EmailService {
           sentAt: status === 'sent' ? new Date() : null,
         })
         .where(eq(emailEvents.id, eventId));
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[EmailService] Failed to update email event:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -861,7 +854,7 @@ export class EmailService {
         await this.updateEmailEvent(job.eventId, 'sent', result.data?.id);
         this.retryQueue.delete(job.id);
         log.info(`[EmailService] Retry successful: ${job.emailType} to ${job.recipientEmail}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Schedule next retry
         job.retryCount++;
         job.nextRetryAt = this.getNextRetryTime(job.retryCount);
@@ -904,7 +897,7 @@ export class EmailService {
   async sendTemplatedEmail(
     to: string,
     templateName: string,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     workspaceId?: string
   ): Promise<EmailResult> {
     const subject = data.subject || `${PLATFORM.name}: ${templateName.replace(/_/g, ' ')}`;
@@ -930,7 +923,7 @@ export class EmailService {
     replyTo?: string,
     bcc?: string | string[]
   ): Promise<EmailResult> {
-    const isSimulation = !isProduction() && (FEATURES.emailSimulationMode || process.env.EMAIL_SIMULATION_MODE === 'true');
+    const isSimulation = !isProduction() && (true || process.env.EMAIL_SIMULATION_MODE === 'true');
 
     const result = await automationOrchestration.executeAutomation(
       {
@@ -1084,8 +1077,8 @@ export class EmailService {
       'password_reset',
       undefined,
       userId,
-      EMAIL.senders.support,
-      EMAIL.senders.support
+      (process.env.SUPPORT_EMAIL || "support@coaileague.com").support,
+      (process.env.SUPPORT_EMAIL || "support@coaileague.com").support
     );
   }
 
@@ -1344,7 +1337,7 @@ export class EmailService {
       expiresInDays?: number;
     }
   ): Promise<EmailResult> {
-    const joinUrl = `${getAppBaseUrl()}/accept-invite?code=${inviteToken}`;
+    const joinUrl = `${getAppBaseUrl()}/accept-invite?token=${inviteToken}`;
     
     const template = emailTemplates.employeeInvitation({
       firstName: data.firstName || 'there',
@@ -2438,7 +2431,7 @@ export class EmailService {
           params.workspaceId
         );
         results.push(r);
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.push({ success: false, error: (err instanceof Error ? err.message : String(err)) });
       }
     }
@@ -2605,199 +2598,109 @@ export class EmailService {
     orgEmail: string;
     jobSummary: string;       // AI-generated summary of the request
     portalUrl?: string;
-    language?: 'en' | 'es';   // Response language — defaults to 'en'
   }): Promise<EmailResult> {
-    const lang: 'en' | 'es' = params.language === 'es' ? 'es' : 'en';
-    const recipientName = params.senderName || (lang === 'es' ? 'estimado/a' : 'there');
+    const recipientName = params.senderName || 'there';
     const licLine = params.licenseNumber
-      ? `<p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px;">${lang === 'es' ? 'No. de licencia' : 'License No.'} ${params.licenseNumber}</p>`
+      ? `<p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px;">License No. ${params.licenseNumber}</p>`
       : '';
-
-    // Localized copy
-    const L = lang === 'es'
-      ? {
-          networkTag: `Red de Personal ${PLATFORM.name}`,
-          requestReceived: 'Solicitud de Personal Recibida',
-          hello: 'Hola',
-          intro1A: 'Saludos. Mi nombre es',
-          intro1B: ', soy el sistema coordinador de personal para todos los proveedores de seguridad de',
-          intro1C: '. He recibido su solicitud para cubrir la siguiente asignación:',
-          assignmentSummary: 'Resumen de la Asignación',
-          refNumberLabel: 'Número de referencia:',
-          attempt: 'Intentaré cubrir esto con oficiales de seguridad calificados y verificados. Todos los proveedores de',
-          attempt2: 'operan bajo la misma estructura estandarizada de clasificación de oficiales — el',
-          scoreTerm: 'Puntaje de Preparación del Oficial',
-          attempt3: '— que evalúa a cada oficial según:',
-          scoreCriteria: 'Criterios del Puntaje de Preparación del Oficial',
-          attnReliability: 'Asistencia y Confiabilidad',
-          attnReliabilityDesc: 'Tasa de finalización de turnos, puntualidad e historial de ausencias',
-          fieldBehavior: 'Conducta en Campo',
-          fieldBehaviorDesc: 'Conducta en el sitio, reportes de incidentes y profesionalismo',
-          yearsExp: 'Años de Experiencia',
-          yearsExpDesc: 'Tiempo verificado en la industria de seguridad',
-          certsTraining: 'Certificaciones y Capacitación',
-          certsTrainingDesc: 'Licencias estatales, credenciales armado/desarmado, primeros auxilios, capacitación especializada',
-          clientSupervisorScores: 'Calificaciones de Cliente y Supervisor',
-          clientSupervisorScoresDesc: 'Comentarios de asignaciones pasadas y evaluaciones directas del supervisor',
-          reassurance: 'Tenga la seguridad — cada oficial seleccionado para su asignación será debidamente examinado dentro de esta estructura de puntaje.',
-          whatNext: 'Qué Sigue',
-          whatNext1a: 'Si',
-          whatNext1b: 'puede cumplir con su solicitud, recibirá un segundo correo electrónico mío con:',
-          confirmationLine: 'Una confirmación de su número de asignación',
-          summaryLine: 'Un resumen de su solicitud enviado a usted y al proveedor',
-          portalLine: 'Acceso a su Portal del Cliente dedicado asignado a',
-          portalParagraph: 'Dentro del portal, puede <strong>contactar al proveedor, enviar comentarios, presentar quejas, solicitar nuevo personal, reemplazar personal, cambiar horarios y revisar todos los contratos y documentos</strong> relacionados con su contratación — mediante nuestro sistema integrado de Chat de Ayuda y correo electrónico. Esto elimina las llamadas telefónicas de medianoche o la necesidad de marcar a alguien. Este proceso es automatizado y resuelve los problemas al instante.',
-          caseManagerLine1: 'Un',
-          caseManagerLineStrong: 'gestor de caso dedicado',
-          caseManagerLine2: 'le será asignado por',
-          caseManagerLine3: 'y se comunicará con usted directamente con su información de contacto una vez que se confirme el personal.',
-          signOffIntro: 'Como mencioné — gracias por confiar en',
-          signOffOutro: 'para cubrir sus necesidades. Estaré en contacto en breve.',
-          sincerely: 'Atentamente,',
-          title: 'Coordinadora IA de Personal —',
-          network: 'Red',
-          replyLine: 'Responda a este correo o contacte:',
-          subjectPrefix: 'Solicitud de personal recibida —',
-        }
-      : {
-          networkTag: `${PLATFORM.name} Staffing Network`,
-          requestReceived: 'Staffing Request Received',
-          hello: 'Hello',
-          intro1A: 'Greetings. My name is',
-          intro1B: ', I am the staffing coordinator system for all',
-          intro1C: 'security providers. I have received your request to staff the following assignment:',
-          assignmentSummary: 'Assignment Summary',
-          refNumberLabel: 'Reference Number:',
-          attempt: 'I will attempt to staff this with qualified, vetted security officers. All',
-          attempt2: 'providers operate under the same standardized officer ranking structure — the',
-          scoreTerm: 'Officer Readiness Score',
-          attempt3: '— which evaluates each officer on:',
-          scoreCriteria: 'Officer Readiness Score Criteria',
-          attnReliability: 'Attendance &amp; Reliability',
-          attnReliabilityDesc: 'Shift completion rate, punctuality, and no-call history',
-          fieldBehavior: 'Field Behavior',
-          fieldBehaviorDesc: 'On-site conduct, incident reports, and professionalism',
-          yearsExp: 'Years of Experience',
-          yearsExpDesc: 'Verified security industry tenure',
-          certsTraining: 'Certifications &amp; Training',
-          certsTrainingDesc: 'State licenses, armed/unarmed credentials, first aid, specialized training',
-          clientSupervisorScores: 'Client &amp; Supervisor Scores',
-          clientSupervisorScoresDesc: 'Feedback from past assignments and direct supervisor evaluations',
-          reassurance: 'Rest assured — every officer selected for your assignment will be properly vetted within this scoring structure.',
-          whatNext: 'What Happens Next',
-          whatNext1a: 'If',
-          whatNext1b: 'is able to fulfill your request, you will receive a second email from me with:',
-          confirmationLine: 'A confirmation of your assignment number',
-          summaryLine: 'A summary of your request sent to both you and the provider',
-          portalLine: 'Access to your dedicated Client Portal assigned to',
-          portalParagraph: 'Inside the portal, you can <strong>contact the provider, send feedback, file complaints, request new staff, replace staff, change schedules, and review all contracts and documents</strong> related to your engagement — via our integrated Help Chat and email system. This eliminates midnight phone calls or the need to dial anyone. This process is automated and resolves issues instantly.',
-          caseManagerLine1: 'A',
-          caseManagerLineStrong: 'dedicated case manager',
-          caseManagerLine2: 'will be assigned to you by',
-          caseManagerLine3: 'and will reach out to you directly with their contact information once staffing is confirmed.',
-          signOffIntro: 'As I stated — thank you for trusting',
-          signOffOutro: 'to staff your needs. I will be in touch shortly.',
-          sincerely: 'Sincerely,',
-          title: 'AI Staffing Coordinator —',
-          network: 'Network',
-          replyLine: 'Reply to this email or contact:',
-          subjectPrefix: 'Staffing Request Received —',
-        };
 
     const html = `
       <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;background-color:#e8edf2;">
         <tr><td align="center" style="padding:8px 6px;">
         <div style="max-width:640px;width:100%;margin:0 auto;">
         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%); padding: 28px 20px; border-radius: 12px 12px 0 0; text-align: center;">
-          <p style="color: #93c5fd; margin: 0 0 6px 0; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">${L.networkTag}</p>
+          <p style="color: #93c5fd; margin: 0 0 6px 0; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">${PLATFORM.name} Staffing Network</p>
           <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 700;">${params.workspaceName}</h1>
           ${licLine}
-          <p style="color: #7dd3fc; margin: 12px 0 0 0; font-size: 14px;">${L.requestReceived}</p>
+          <p style="color: #7dd3fc; margin: 12px 0 0 0; font-size: 14px;">Staffing Request Received</p>
         </div>
 
         <div style="padding: 24px 16px; background-color: #f8fafc; border-radius: 0 0 12px 12px;">
 
-          <p style="font-size: 16px; color: #1e293b; margin: 0 0 18px 0;">${L.hello} ${recipientName},</p>
+          <p style="font-size: 16px; color: #1e293b; margin: 0 0 18px 0;">Hello ${recipientName},</p>
 
           <p style="color: #334155; font-size: 14px; line-height: 1.8; margin: 0 0 20px 0;">
-            ${L.intro1A} <strong>Trinity</strong>${L.intro1B} ${PLATFORM.name} ${L.intro1C}
+            Greetings. My name is <strong>Trinity</strong>, I am the staffing coordinator system for all ${PLATFORM.name} security providers.
+            I have received your request to staff the following assignment:
           </p>
 
           <!-- AI-Generated Job Summary -->
           <div style="background-color: white; padding: 22px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 24px; border-left: 4px solid #2563eb;">
-            <p style="color: #1e40af; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 12px 0;">${L.assignmentSummary}</p>
+            <p style="color: #1e40af; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 12px 0;">Assignment Summary</p>
             <div style="color: #334155; font-size: 14px; line-height: 1.8; white-space: pre-line;">${params.jobSummary}</div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 14px 0 0 0;">${L.refNumberLabel} <strong style="color:#1e40af;">${params.referenceNumber}</strong></p>
+            <p style="color: #94a3b8; font-size: 12px; margin: 14px 0 0 0;">Reference Number: <strong style="color:#1e40af;">${params.referenceNumber}</strong></p>
           </div>
 
           <p style="color: #334155; font-size: 14px; line-height: 1.8; margin: 0 0 20px 0;">
-            ${L.attempt} ${PLATFORM.name} ${L.attempt2} <strong>${L.scoreTerm}</strong>${L.attempt3}
+            I will attempt to staff this with qualified, vetted security officers. All ${PLATFORM.name} providers operate under the same standardized officer ranking structure — the <strong>Officer Readiness Score</strong> — which evaluates each officer on:
           </p>
 
           <!-- Scoring Structure -->
           <div style="background-color: white; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
-            <p style="color: #1e293b; font-size: 14px; font-weight: 700; margin: 0 0 14px 0;">${L.scoreCriteria}</p>
+            <p style="color: #1e293b; font-size: 14px; font-weight: 700; margin: 0 0 14px 0;">Officer Readiness Score Criteria</p>
             <table style="width:100%;border-collapse:collapse;">
               <tr style="background-color:#f1f5f9;">
-                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;border-radius:6px 0 0 0;">${L.attnReliability}</td>
-                <td style="padding:10px 14px;font-size:13px;color:#64748b;">${L.attnReliabilityDesc}</td>
+                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;border-radius:6px 0 0 0;">Attendance &amp; Reliability</td>
+                <td style="padding:10px 14px;font-size:13px;color:#64748b;">Shift completion rate, punctuality, and no-call history</td>
               </tr>
               <tr>
-                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">${L.fieldBehavior}</td>
-                <td style="padding:10px 14px;font-size:13px;color:#64748b;">${L.fieldBehaviorDesc}</td>
+                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">Field Behavior</td>
+                <td style="padding:10px 14px;font-size:13px;color:#64748b;">On-site conduct, incident reports, and professionalism</td>
               </tr>
               <tr style="background-color:#f1f5f9;">
-                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">${L.yearsExp}</td>
-                <td style="padding:10px 14px;font-size:13px;color:#64748b;">${L.yearsExpDesc}</td>
+                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">Years of Experience</td>
+                <td style="padding:10px 14px;font-size:13px;color:#64748b;">Verified security industry tenure</td>
               </tr>
               <tr>
-                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">${L.certsTraining}</td>
-                <td style="padding:10px 14px;font-size:13px;color:#64748b;">${L.certsTrainingDesc}</td>
+                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;">Certifications &amp; Training</td>
+                <td style="padding:10px 14px;font-size:13px;color:#64748b;">State licenses, armed/unarmed credentials, first aid, specialized training</td>
               </tr>
               <tr style="background-color:#f1f5f9;">
-                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;border-radius:0 0 0 6px;">${L.clientSupervisorScores}</td>
-                <td style="padding:10px 14px;font-size:13px;color:#64748b;">${L.clientSupervisorScoresDesc}</td>
+                <td style="padding:10px 14px;font-size:13px;color:#334155;font-weight:600;border-radius:0 0 0 6px;">Client &amp; Supervisor Scores</td>
+                <td style="padding:10px 14px;font-size:13px;color:#64748b;">Feedback from past assignments and direct supervisor evaluations</td>
               </tr>
             </table>
-            <p style="color:#64748b;font-size:12px;margin:12px 0 0 0;font-style:italic;">${L.reassurance}</p>
+            <p style="color:#64748b;font-size:12px;margin:12px 0 0 0;font-style:italic;">
+              Rest assured — every officer selected for your assignment will be properly vetted within this scoring structure.
+            </p>
           </div>
 
           <!-- What Happens Next -->
           <div style="background-color: #eff6ff; padding: 20px; border-radius: 10px; border: 1px solid #bfdbfe; margin-bottom: 24px;">
-            <p style="color: #1e40af; font-size: 14px; font-weight: 700; margin: 0 0 12px 0;">${L.whatNext}</p>
+            <p style="color: #1e40af; font-size: 14px; font-weight: 700; margin: 0 0 12px 0;">What Happens Next</p>
             <p style="color: #334155; font-size: 14px; line-height: 1.7; margin: 0 0 10px 0;">
-              ${L.whatNext1a} <strong>${params.workspaceName}</strong> ${L.whatNext1b}
+              If <strong>${params.workspaceName}</strong> is able to fulfill your request, you will receive a second email from me with:
             </p>
             <ul style="color: #334155; font-size: 14px; padding-left: 20px; margin: 0 0 12px 0; line-height: 1.8;">
-              <li>${L.confirmationLine}</li>
-              <li>${L.summaryLine}</li>
-              <li>${L.portalLine} <strong>${params.workspaceName}</strong></li>
+              <li>A confirmation of your assignment number</li>
+              <li>A summary of your request sent to both you and the provider</li>
+              <li>Access to your dedicated <strong>Client Portal</strong> assigned to ${params.workspaceName}</li>
             </ul>
             <p style="color: #334155; font-size: 14px; line-height: 1.7; margin: 0;">
-              ${L.portalParagraph}
+              Inside the portal, you can <strong>contact the provider, send feedback, file complaints, request new staff, replace staff, change schedules, and review all contracts and documents</strong> related to your engagement — via our integrated Help Chat and email system. This eliminates midnight phone calls or the need to dial anyone. This process is automated and resolves issues instantly.
             </p>
           </div>
 
           <!-- Case Manager -->
           <div style="background-color: #f0fdf4; padding: 18px; border-radius: 10px; border: 1px solid #bbf7d0; margin-bottom: 28px;">
             <p style="color: #065f46; font-size: 14px; margin: 0; line-height: 1.7;">
-              ${L.caseManagerLine1} <strong>${L.caseManagerLineStrong}</strong> ${L.caseManagerLine2} ${params.workspaceName} ${L.caseManagerLine3}
+              A <strong>dedicated case manager</strong> will be assigned to you by ${params.workspaceName} and will reach out to you directly with their contact information once staffing is confirmed.
             </p>
           </div>
 
           <!-- Sign Off -->
           <p style="color: #334155; font-size: 14px; line-height: 1.7; margin: 0 0 20px 0;">
-            ${L.signOffIntro} ${PLATFORM.name} ${L.signOffOutro}
+            As I stated — thank you for trusting ${PLATFORM.name} to staff your needs. I will be in touch shortly.
           </p>
 
-          <p style="color: #1e293b; font-size: 14px; margin: 0;">${L.sincerely}</p>
+          <p style="color: #1e293b; font-size: 14px; margin: 0;">Sincerely,</p>
           <p style="color: #1e40af; font-size: 18px; font-weight: 700; margin: 6px 0 2px 0; font-style: italic;">Trinity</p>
-          <p style="color: #64748b; font-size: 12px; margin: 0;">${L.title} ${PLATFORM.name} ${L.network}</p>
-          <p style="color: #94a3b8; font-size: 12px; margin: 4px 0 0 0;">${L.replyLine} ${params.orgEmail}</p>
+          <p style="color: #64748b; font-size: 12px; margin: 0;">AI Staffing Coordinator — ${PLATFORM.name} Network</p>
+          <p style="color: #94a3b8; font-size: 12px; margin: 4px 0 0 0;">Reply to this email or contact: ${params.orgEmail}</p>
 
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0 20px 0;">
           <p style="color: #94a3b8; font-size: 11px; margin: 0; text-align: center;">
-            ${params.workspaceName} | ${L.networkTag} | Ref: ${params.referenceNumber}
+            ${params.workspaceName} | ${PLATFORM.name} Staffing Network | Ref: ${params.referenceNumber}
           </p>
         </div>
         </div>
@@ -2807,7 +2710,7 @@ export class EmailService {
 
     return this._deliver(
       params.senderEmail,
-      `${L.subjectPrefix} ${params.workspaceName} [Ref: ${params.referenceNumber}]`,
+      `Staffing Request Received — ${params.workspaceName} [Ref: ${params.referenceNumber}]`,
       html,
       'trinity_ai_greeting',
       params.workspaceId
@@ -3107,7 +3010,7 @@ const automationEmailTemplates = {
 export async function sendAutomationEmail(params: {
   to: string;
   type: 'approval_required' | 'hotpatch_scheduled';
-  data: any;
+  data: Record<string, unknown>;
 }): Promise<{ success: boolean; error?: string }> {
   const template = automationEmailTemplates[params.type];
   if (!template) {

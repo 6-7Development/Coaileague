@@ -12,6 +12,8 @@
 
 import { helpaiOrchestrator, type ActionRequest, type ActionResult } from '../helpai/platformActionHub';
 import { geminiToolSchemaGenerator } from './geminiToolSchemaGenerator';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('geminiToolExecutionBridge');
 
 export interface ToolExecutionContext {
   workspaceId?: string;
@@ -25,7 +27,7 @@ export interface ToolExecutionResult {
   success: boolean;
   toolName: string;
   actionId: string;
-  result: any;
+  result: unknown;
   error?: string;
   executionTimeMs: number;
   conversationId?: string;
@@ -36,11 +38,11 @@ export interface ToolExecutionResult {
  */
 function transformArgsForAction(
   actionId: string,
-  args: Record<string, any>,
+  args: Record<string, unknown>,
   context: ToolExecutionContext
-): Record<string, any> {
+): Record<string, unknown> {
   // Inject standard context fields that actions expect
-  const transformedArgs: Record<string, any> = {
+  const transformedArgs: Record<string, unknown> = {
     ...args,
     workspaceId: args.workspaceId || context.workspaceId,
     userId: context.userId,
@@ -72,14 +74,14 @@ function transformArgsForAction(
     case 'payroll':
       // Ensure payrollRunId is present for payroll operations
       if (!transformedArgs.payrollRunId && actionId !== 'payroll.bulk_process') {
-        console.warn(`[Tool Bridge] Payroll action ${actionId} may require payrollRunId`);
+        log.warn(`[Tool Bridge] Payroll action ${actionId} may require payrollRunId`);
       }
       break;
       
     case 'compliance':
       // Compliance actions typically need workspace context
       if (!transformedArgs.workspaceId) {
-        console.warn(`[Tool Bridge] Compliance action ${actionId} requires workspaceId`);
+        log.warn(`[Tool Bridge] Compliance action ${actionId} requires workspaceId`);
       }
       break;
       
@@ -100,7 +102,7 @@ function transformArgsForAction(
  */
 export async function executeGeminiToolCall(
   toolName: string,
-  args: Record<string, any>,
+  args: Record<string, unknown>,
   context: ToolExecutionContext
 ): Promise<ToolExecutionResult> {
   const startTime = Date.now();
@@ -109,7 +111,7 @@ export async function executeGeminiToolCall(
   const actionId = toolName.replace(/_/g, '.');
   
   try {
-    console.log(`[Tool Bridge] Executing: ${actionId}`, { 
+    log.info(`[Tool Bridge] Executing: ${actionId}`, { 
       args, 
       context: { ...context, conversationId: context.conversationId } 
     });
@@ -117,7 +119,7 @@ export async function executeGeminiToolCall(
     // Check if action exists and get its definition
     const action = helpaiOrchestrator.getAction(actionId);
     if (!action) {
-      console.warn(`[Tool Bridge] Action not found: ${actionId}`);
+      log.warn(`[Tool Bridge] Action not found: ${actionId}`);
       // Get first 5 action IDs for helpful error message
       const availableActionIds = helpaiOrchestrator.getRegisteredActions()
         .slice(0, 5)
@@ -159,7 +161,7 @@ export async function executeGeminiToolCall(
     const result = await helpaiOrchestrator.executeAction(actionRequest);
 
     // Log execution for analytics/tracing
-    console.log(`[Tool Bridge] Action ${actionId} completed:`, {
+    log.info(`[Tool Bridge] Action ${actionId} completed:`, {
       success: result.success,
       executionMs: Date.now() - startTime,
       conversationId: context.conversationId,
@@ -175,8 +177,8 @@ export async function executeGeminiToolCall(
       conversationId: context.conversationId,
     };
 
-  } catch (error: any) {
-    console.error(`[Tool Bridge] Execution error for ${actionId}:`, error);
+  } catch (error : unknown) {
+    log.error(`[Tool Bridge] Execution error for ${actionId}:`, error);
     
     // Propagate detailed error information back to Gemini
     const errorMessage = error.message || 'Unknown execution error';
@@ -198,10 +200,10 @@ export async function executeGeminiToolCall(
  * Execute multiple Gemini function calls in parallel
  */
 export async function executeGeminiToolCalls(
-  calls: Array<{ name: string; args: Record<string, any> }>,
+  calls: Array<{ name: string; args: Record<string, unknown> }>,
   context: ToolExecutionContext
 ): Promise<ToolExecutionResult[]> {
-  console.log(`[Tool Bridge] Executing ${calls.length} tool calls`, {
+  log.info(`[Tool Bridge] Executing ${calls.length} tool calls`, {
     conversationId: context.conversationId,
     tools: calls.map(c => c.name),
   });
@@ -211,7 +213,7 @@ export async function executeGeminiToolCalls(
   );
 
   const successCount = results.filter(r => r.success).length;
-  console.log(`[Tool Bridge] Completed: ${successCount}/${calls.length} successful`);
+  log.info(`[Tool Bridge] Completed: ${successCount}/${calls.length} successful`);
 
   return results;
 }
@@ -265,7 +267,7 @@ export function getAvailableToolsSummary(): string {
  * Initialize the tool execution bridge
  */
 export async function initializeToolBridge(): Promise<void> {
-  console.log('[Tool Bridge] Initializing...');
+  log.info('[Tool Bridge] Initializing...');
   
   // Generate schemas from registered actions
   await geminiToolSchemaGenerator.generateSchemas();
@@ -273,8 +275,8 @@ export async function initializeToolBridge(): Promise<void> {
   const schemaCount = geminiToolSchemaGenerator.getSchemaCount();
   const summary = getAvailableToolsSummary();
   
-  console.log(`[Tool Bridge] Ready - ${schemaCount} tool schemas`);
-  console.log(`[Tool Bridge] ${summary}`);
+  log.info(`[Tool Bridge] Ready - ${schemaCount} tool schemas`);
+  log.info(`[Tool Bridge] ${summary}`);
 }
 
 export {

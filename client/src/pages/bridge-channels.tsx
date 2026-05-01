@@ -41,7 +41,7 @@ interface ChannelBridge {
   workspaceId: string;
   channelType: string;
   displayName: string;
-  providerConfig: Record<string, any>;
+  providerConfig: Record<string, unknown>;
   webhookUrl: string | null;
   phoneNumber: string | null;
   emailAddress: string | null;
@@ -66,7 +66,7 @@ interface BridgeConversation {
   status: string;
   lastMessageAt: string | null;
   messageCount: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,7 +84,7 @@ interface BridgeMessage {
   messageType: string;
   attachmentUrl: string | null;
   deliveryStatus: string;
-  providerResponse: Record<string, any> | null;
+  providerResponse: Record<string, unknown> | null;
   creditsCost: number;
   createdAt: string;
   updatedAt: string;
@@ -171,7 +171,7 @@ export default function BridgeChannels() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/bridges/channels", data);
       return res.json();
     },
@@ -181,13 +181,13 @@ export default function BridgeChannels() {
       resetForm();
       toast({ title: "Channel Created", description: "Bridge channel has been created." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to create channel", variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest("PATCH", `/api/bridges/channels/${id}`, data);
       return res.json();
     },
@@ -196,7 +196,7 @@ export default function BridgeChannels() {
       setEditBridge(null);
       toast({ title: "Channel Updated", description: "Bridge channel has been updated." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to update channel", variant: "destructive" });
     },
   });
@@ -211,13 +211,13 @@ export default function BridgeChannels() {
       setEditBridge(null);
       toast({ title: "Channel Removed", description: "Bridge channel has been removed or deactivated." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to delete channel", variant: "destructive" });
     },
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/bridges/send", data);
       return res.json();
     },
@@ -228,7 +228,7 @@ export default function BridgeChannels() {
       setSendConversation(null);
       toast({ title: "Message Sent", description: "Outbound message has been sent." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to send message", variant: "destructive" });
     },
   });

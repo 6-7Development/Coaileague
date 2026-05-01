@@ -41,9 +41,10 @@ export function SwipeToDelete({
   const actionTriggered = useRef(false);
   const lastHapticAt = useRef(0);
   
-  // Lower thresholds for more responsive detection
-  const lockThreshold = 8; // Pixels before locking direction (was 15)
-  const minVisualDistance = 5; // Start showing visual feedback early
+  // Tuned thresholds: strong enough to not fire during normal vertical scroll
+  const lockThreshold = 20; // Pixels of horizontal travel before locking direction
+  const verticalCancelThreshold = 12; // If vertical moves > this before lock, cancel
+  const minVisualDistance = 15; // Start showing visual feedback (prevents accidental triggers)
 
   const resetSwipe = useCallback(() => {
     currentDistance.current = 0;
@@ -82,11 +83,20 @@ export function SwipeToDelete({
       const deltaY = Math.abs(touch.clientY - startY.current);
       const absDeltaX = Math.abs(deltaX);
       
+      // Early vertical cancel: if user moves down before horizontal threshold,
+      // immediately release to allow native scrolling
+      if (!directionLocked.current && deltaY > verticalCancelThreshold && absDeltaX < lockThreshold) {
+        directionLocked.current = 'vertical';
+        isTracking.current = false;
+        return;
+      }
+
       // Determine direction lock if not yet locked
       if (!directionLocked.current) {
         // Need to move enough to determine direction
         if (absDeltaX > lockThreshold || deltaY > lockThreshold) {
-          if (deltaY > absDeltaX * 0.8) {
+          // Stricter vertical check: requires clear horizontal dominance
+          if (deltaY > absDeltaX * 0.6) {
             // Vertical - stop tracking completely to allow native scroll
             directionLocked.current = 'vertical';
             isTracking.current = false;

@@ -5,9 +5,9 @@ export class RetryStrategy {
 
   async executeWithRetry<T>(
     fn: () => Promise<T>,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {

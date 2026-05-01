@@ -1,7 +1,9 @@
+import { type Response } from 'express';
 // Domain Billing & Finance — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api/billing/*, /api/finance/*, /api/stripe, /api/credits, /api/invoices, /api/trinity/revenue
 import { sanitizeError } from '../../middleware/errorHandler';
+import { AuthenticatedRequest } from '../../rbac';
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
@@ -58,7 +60,7 @@ export function mountBillingRoutes(app: Express): void {
   app.use(quickbooksSyncRouter);
 
   // Inline billing usage and reconciliation (manager only)
-  app.get("/api/billing/daily-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/daily-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -68,7 +70,7 @@ export function mountBillingRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/billing/monthly-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/monthly-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -79,7 +81,7 @@ export function mountBillingRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/billing/reconcile", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/reconcile", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -88,7 +90,7 @@ export function mountBillingRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/billing/transactions", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/transactions", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -99,7 +101,7 @@ export function mountBillingRoutes(app: Express): void {
   });
 
   // GET /api/billing/org-summary — full billing health for the current workspace
-  app.get("/api/billing/org-summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/org-summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace context required" });
@@ -109,7 +111,7 @@ export function mountBillingRoutes(app: Express): void {
   });
 
   // GET /api/billing/usage-breakdown — AI spend by feature category for current period
-  app.get("/api/billing/usage-breakdown", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/usage-breakdown", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace context required" });
@@ -120,7 +122,7 @@ export function mountBillingRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/billing/ai-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/ai-usage", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -177,7 +179,7 @@ export function mountBillingRoutes(app: Express): void {
 
   // ── Phase 16A: Trinity Token Metering ────────────────────────────────────
   // GET /api/billing/trinity/today — daily token usage report
-  app.get("/api/billing/trinity/today", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/trinity/today", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId as string;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -187,7 +189,7 @@ export function mountBillingRoutes(app: Express): void {
   });
 
   // GET /api/billing/trinity/month/:year/:month — monthly token usage report
-  app.get("/api/billing/trinity/month/:year/:month", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/trinity/month/:year/:month", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId as string;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -202,7 +204,7 @@ export function mountBillingRoutes(app: Express): void {
   });
 
   // GET /api/billing/trinity/unbilled — unbilled usage ready for invoicing
-  app.get("/api/billing/trinity/unbilled", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/billing/trinity/unbilled", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId as string;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });

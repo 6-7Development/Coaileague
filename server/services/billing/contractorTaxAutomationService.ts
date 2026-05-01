@@ -116,7 +116,7 @@ export async function run1099JanuaryScan(taxYear: number): Promise<{
             } else {
               skipped++;
             }
-          } catch (empErr: any) {
+          } catch (empErr: unknown) {
             log.warn('Failed to calculate 1099 total for contractor', { employeeId: contractor.id, error: empErr.message });
           }
         }
@@ -146,15 +146,15 @@ export async function run1099JanuaryScan(taxYear: number): Promise<{
             idempotencyKey: `form_1099_filing_required-${Date.now()}-${ws.ownerId}`,
               contractors: filingCandidates.map(r => ({ id: r.employeeId, name: r.employeeName, total: r.totalPaidInYear })),
             },
-          }).catch((e: any) => log.warn('Failed to send 1099 notification', { error: e.message }));
+          }).catch((e: unknown) => log.warn('Failed to send 1099 notification', { error: e.message }));
 
           log.info('1099 filing notification sent', { workspaceId: ws.id, count: filingCandidates.length });
         }
-      } catch (wsErr: any) {
+      } catch (wsErr: unknown) {
         log.warn('1099 scan failed for workspace', { workspaceId: ws.id, error: wsErr.message });
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('1099 January scan failed', { error: (err instanceof Error ? err.message : String(err)) });
   }
 

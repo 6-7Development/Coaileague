@@ -11,6 +11,7 @@ import { db } from '../db';
 import { clients, employees, shifts, invoices, employeeCertifications } from '@shared/schema';
 import { eq, and, gte, count, sql } from 'drizzle-orm';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('EmailEntityContext');
 const router = Router();
@@ -30,7 +31,7 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
       id: clients.id,
       name: clients.companyName,
       contactEmail: clients.contactEmail,
-      billingRate: (clients as any).billingRate,
+      billingRate: (clients as ClientWithExtras).billingRate,
     })
       .from(clients)
       .where(and(
@@ -65,8 +66,8 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
       })
         .from(invoices)
         .where(and(
-          eq((invoices as any).workspaceId, workspaceId),
-          eq((invoices as any).clientId, client.id),
+          eq((invoices as Record<string,unknown>).workspaceId as string, workspaceId),
+          eq((invoices as Record<string,unknown>).clientId, client.id),
           gte(invoices.createdAt, monthStart)
         ))
         .catch(() => [{ total: 0 }]);
@@ -185,7 +186,7 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
       ],
     });
 
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[EmailEntityContext] Error:', error?.message);
     return res.json({ entity: null, stats: null, suggestedActions: [] });
   }

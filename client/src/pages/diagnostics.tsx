@@ -47,7 +47,7 @@ import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { format } from "date-fns";
 
 function UserSessionsViewer({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery<{ sessions: any[] }>({
+  const { data, isLoading } = useQuery<{ sessions: unknown[] }>({
     queryKey: [`/api/admin/users/${userId}/sessions`],
     enabled: !!userId,
   });
@@ -61,7 +61,7 @@ function UserSessionsViewer({ userId }: { userId: string }) {
   );
   return (
     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-      {sessions.map((s: any) => (
+      {sessions.map((s) => (
         <div key={s.id} className="rounded-md border p-3 text-xs space-y-1" data-testid={`session-row-${s.id}`}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <Badge variant={s.isValid && new Date(s.expiresAt) > new Date() ? 'default' : 'secondary'} className="text-[10px]">
@@ -81,7 +81,7 @@ function UserSessionsViewer({ userId }: { userId: string }) {
 }
 
 function UserAuditLogsViewer({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery<{ logs: any[]; total: number }>({
+  const { data, isLoading } = useQuery<{ logs: unknown[]; total: number }>({
     queryKey: [`/api/admin/users/${userId}/audit-logs`, { limit: 30 }],
     enabled: !!userId,
   });
@@ -96,7 +96,7 @@ function UserAuditLogsViewer({ userId }: { userId: string }) {
   return (
     <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
       <p className="text-xs text-muted-foreground mb-2">Showing last {logs.length} of {data?.total} entries</p>
-      {logs.map((log: any) => (
+      {logs.map((log) => (
         <div key={log.id} className="flex items-start gap-2 rounded-md border px-3 py-2 text-xs" data-testid={`audit-row-${log.id}`}>
           <div className="mt-0.5">
             {log.success === false
@@ -141,7 +141,7 @@ interface AuditLog {
   entityId?: string;
   timestamp: string;
   ipAddress?: string;
-  details?: any;
+  details?: unknown;
 }
 
 interface SessionInfo {
@@ -179,7 +179,7 @@ export default function Diagnostics() {
   }
 
   // GATEKEEPER: Microsoft-style access control
-  const platformRole = (user as any)?.platformRole;
+  const platformRole = (user as Record<string,unknown>)?.platformRole;
   const isAuthorized = platformRole === 'root_admin' || platformRole === 'sysop' || platformRole === 'deputy_admin';
 
   // Search users
@@ -191,9 +191,9 @@ export default function Diagnostics() {
       return res.json();
     },
     enabled: isAuthorized && searchQuery.length > 2,
-    select: (data: any) => {
+    select: (data) => {
       if (!Array.isArray(data)) return [];
-      return data.map((result: any) => ({
+      return data.map((result) => ({
         userId: result.id,
         email: result.email,
         firstName: result.firstName,

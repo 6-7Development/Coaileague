@@ -117,8 +117,8 @@ export interface EvolutionRule {
 export interface EvolutionImprovement {
   id: string;
   parameter: string;
-  currentValue: any;
-  proposedValue: any;
+  currentValue: unknown;
+  proposedValue: unknown;
   expectedImprovementPercent: number;
   riskLevel: EvolutionRiskLevel;
   status: 'proposed' | 'testing' | 'approved' | 'rejected' | 'rolled_back';
@@ -649,7 +649,7 @@ class TrinityGuruMode {
   // 3. SAFE SELF-EVOLUTION FRAMEWORK
   // -------------------------------------------------------------------------
   
-  async proposeEvolution(parameter: string, currentValue: any, proposedValue: any): Promise<EvolutionImprovement | null> {
+  async proposeEvolution(parameter: string, currentValue: any, proposedValue: unknown): Promise<EvolutionImprovement | null> {
     const rule = EVOLUTION_RULES.find(r => r.parameter === parameter);
     if (!rule) {
       log.info(`[Evolution] Unknown parameter: ${parameter}`);
@@ -712,21 +712,19 @@ class TrinityGuruMode {
     let improvementPercent = 0;
 
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (improvement.type === 'prompt_optimization') {
-        improvementPercent = (improvement as any).proposedChanges?.length > 0 ? 25 : 5;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+        improvementPercent = (improvement as Record<string,unknown>).proposedChanges?.length > 0 ? 25 : 5;
       } else if (improvement.type === 'routing_optimization') {
         improvementPercent = 15;
       } else {
         improvementPercent = 10;
       }
 
-      if (!(improvement as any).proposedChanges || (improvement as any).proposedChanges.length === 0) {
+      if (!(improvement as Record<string,unknown>).proposedChanges || (improvement as Record<string,unknown>).proposedChanges.length === 0) {
         errors.push('No proposed changes to validate');
         improvementPercent = 0;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       errors.push((err instanceof Error ? err.message : String(err)) || 'Sandbox validation error');
     }
 
@@ -739,7 +737,7 @@ class TrinityGuruMode {
   }
   
   private async runABTest(improvement: EvolutionImprovement, trafficPercent: number): Promise<ABTestResult> {
-    const hasChanges = (improvement as any).proposedChanges && (improvement as any).proposedChanges.length > 0;
+    const hasChanges = (improvement as Record<string,unknown>).proposedChanges && (improvement as Record<string,unknown>).proposedChanges.length > 0;
     const performanceEstimate = hasChanges ? 1.0 + (trafficPercent / 1000) : 0.98;
 
     return {

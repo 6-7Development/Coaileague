@@ -87,7 +87,7 @@ router.patch("/contracts/:id/renewal", requireAuth, async (req: AuthenticatedReq
     if (!renewalParsed.success) return res.status(400).json({ error: 'Invalid request body', details: renewalParsed.error.issues });
     const { renewal_status, renewal_proposed_at, auto_renew, annual_value, renewal_notice_days } = renewalParsed.data;
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     if (renewal_status !== undefined) { updates.push(`renewal_status = $${i++}`); vals.push(renewal_status); }
     if (renewal_proposed_at !== undefined) { updates.push(`renewal_proposed_at = $${i++}`); vals.push(renewal_proposed_at); }
@@ -163,7 +163,7 @@ router.post("/run-check", requireAuth, async (req: AuthenticatedRequest, res) =>
       [wid]
     )).rows;
 
-    const tasks: any[] = [];
+    const tasks: (string | number | boolean | null)[] = [];
     for (const contract of contracts) {
       const daysLeft = Math.floor((new Date(contract.term_end_date).getTime() - Date.now()) / 86400000);
       for (const [days, taskType] of [[90, 'renewal_alert_90'], [60, 'renewal_alert_60'], [30, 'renewal_alert_30'], [7, 'escalate_owner']]) {
@@ -188,10 +188,10 @@ router.post("/run-check", requireAuth, async (req: AuthenticatedRequest, res) =>
               type: 'contract_renewal_due',
               category: 'automation',
               title: `Contract Renewal Alert — ${contract.resolved_name}`,
-              description: `Contract expires in ${daysLeft} days. ${(taskType as any).replace(/_/g, ' ')}.`,
+              description: `Contract expires in ${daysLeft} days. ${(taskType as string).replace(/_/g, ' ')}.`,
               workspaceId: wid,
               metadata: { contractId: contract.id, daysLeft, taskType }
-            }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+            }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
           }
         }
       }
@@ -247,7 +247,7 @@ router.patch("/contracts/:id", requireAuth, async (req: AuthenticatedRequest, re
     if (!aliasParsed.success) return res.status(400).json({ error: 'Invalid request body', details: aliasParsed.error.issues });
     const { renewal_status, auto_renew, annual_value } = aliasParsed.data;
     const updates: string[] = [];
-    const vals: any[] = [];
+    const vals: (string | number | boolean | null)[] = [];
     let i = 1;
     if (renewal_status !== undefined) { updates.push(`renewal_status = $${i++}`); vals.push(renewal_status); }
     if (auto_renew !== undefined) { updates.push(`auto_renew = $${i++}`); vals.push(auto_renew); }

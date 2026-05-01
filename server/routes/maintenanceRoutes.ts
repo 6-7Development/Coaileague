@@ -10,12 +10,12 @@
  */
 
 import { sanitizeError } from '../middleware/errorHandler';
-import { Router } from 'express';
+import { Router, Response} from 'express';
 import { z } from 'zod';
 import { maintenanceModeService } from '../services/maintenanceModeService';
 import { trinityMaintenanceOrchestrator, DiagnosticsReport } from '../services/trinityMaintenanceOrchestrator';
 import { requireAuth } from '../auth';
-import { requirePlatformAdmin, requirePlatformStaff } from '../rbac';
+import { requirePlatformAdmin, requirePlatformStaff, AuthenticatedRequest} from '../rbac';
 import { createLogger } from '../lib/logger';
 import { db } from '../db';
 import { cronRunLog } from '@shared/schema';
@@ -53,7 +53,7 @@ const diagnosticsReportSchema = z.object({
  * Middleware: accept either a valid DIAG_BYPASS_SECRET header (Trinity internal calls)
  * or a fully authenticated platform admin user. Rejects if neither condition is met.
  */
-function requireTrinityOrAdmin(req: any, res: any, next: any) {
+function requireTrinityOrAdmin(req: AuthenticatedRequest, res: Response, next: unknown) {
   const diagSecret = process.env.DIAG_BYPASS_SECRET;
   const suppliedSecret = req.headers['x-diagnostics-runner'];
   const trinityActor = req.headers['x-trinity-actor'];
@@ -113,10 +113,8 @@ router.post('/api/maintenance/activate', requireAuth, requirePlatformAdmin, asyn
       estimatedDurationMinutes: data.estimatedDurationMinutes,
       activatedBy: {
         type: 'admin',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id: user.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        name: user.email || (user as any).username
+        name: user.email || req.user?.username
       },
       statusMessage: data.statusMessage,
       triadReportId: data.triadReportId
@@ -162,7 +160,6 @@ router.post('/api/maintenance/deactivate', requireAuth, requirePlatformAdmin, as
     if (trinityHeader === 'trinity') {
       deactivatedBy = { type: 'trinity', id: 'trinity-brain', name: 'Trinity AI' };
     } else {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       deactivatedBy = { type: 'admin', id: user.id, name: user.email };
     }
 
@@ -216,7 +213,6 @@ router.post('/api/maintenance/orchestrator/trigger', requireTrinityOrAdmin, asyn
       immediate
     });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     res.json({ success: true, ...result });
   } catch (error: unknown) {
     log.error('[Maintenance] Orchestrator trigger error:', error);
@@ -227,7 +223,6 @@ router.post('/api/maintenance/orchestrator/trigger', requireTrinityOrAdmin, asyn
 router.post('/api/maintenance/orchestrator/complete', requireTrinityOrAdmin, async (req, res) => {
   try {
     const result = await trinityMaintenanceOrchestrator.completeMaintenance();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     res.json({ success: true, ...result });
   } catch (error: unknown) {
     log.error('[Maintenance] Orchestrator complete error:', error);

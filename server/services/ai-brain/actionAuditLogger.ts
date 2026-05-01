@@ -21,9 +21,9 @@ const log = createLogger('actionAuditLogger');
 
 const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'auth', 'credit_card', 'ssn'];
 
-function sanitize<T extends Record<string, any> | undefined | null>(value: T): T {
+function sanitize<T extends Record<string, unknown> | undefined | null>(value: T): T {
   if (!value || typeof value !== 'object') return value;
-  const out: Record<string, any> = Array.isArray(value) ? [...value] : { ...value };
+  const out: Record<string, unknown> = Array.isArray(value) ? [...value] : { ...value };
   for (const k of Object.keys(out)) {
     if (SENSITIVE_KEYS.some(sk => k.toLowerCase().includes(sk))) {
       out[k] = '[REDACTED]';
@@ -44,9 +44,9 @@ export interface ActionAuditInput {
   entityId?: string | null;
   success: boolean;
   message?: string;
-  payload?: Record<string, any> | null;
-  changesBefore?: Record<string, any> | null;
-  changesAfter?: Record<string, any> | null;
+  payload?: Record<string, unknown> | null;
+  changesBefore?: Record<string, unknown> | null;
+  changesAfter?: Record<string, unknown> | null;
   errorMessage?: string | null;
   durationMs?: number;
 }
@@ -68,9 +68,9 @@ export async function logActionAudit(input: ActionAuditInput): Promise<void> {
       entityId: input.entityId ?? null,
       success: input.success,
       errorMessage: input.errorMessage ?? null,
-      payload: sanitize(input.payload ?? null) as any,
-      changesBefore: sanitize(input.changesBefore ?? null) as any,
-      changesAfter: sanitize(input.changesAfter ?? null) as any,
+      payload: sanitize(input.payload ?? null) as unknown,
+      changesBefore: sanitize(input.changesBefore ?? null) as unknown,
+      changesAfter: sanitize(input.changesAfter ?? null) as unknown,
       metadata: {
         source: 'ai-brain',
         durationMs: input.durationMs ?? null,
@@ -82,7 +82,7 @@ export async function logActionAudit(input: ActionAuditInput): Promise<void> {
   } catch (err) {
     log.warn('[actionAuditLogger] Non-fatal: audit write failed', {
       actionId: input.actionId,
-      error: (err as any)?.message,
+      error: (err as Error)?.message,
     });
   }
 }

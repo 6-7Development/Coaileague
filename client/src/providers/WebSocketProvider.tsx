@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
-type MessageHandler = (data: any) => void;
+type MessageHandler = (data) => void;
 
 export interface WebSocketBus {
   subscribe: (type: string, handler: MessageHandler) => () => void;
   subscribeAll: (handler: MessageHandler) => () => void;
-  send: (message: any) => void;
+  send: (message) => void;
   sendChatMessage: (message: Omit<any, 'clientId'>) => string;
   isConnected: () => boolean;
   getSocket: () => WebSocket | null;
@@ -23,7 +23,7 @@ class WebSocketBusImpl implements WebSocketBus {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private isConnectingFlag = false;
-  private sendQueue: any[] = [];
+  private sendQueue: unknown[] = [];
   private disposed = false;
   // Auth is complete only after the server confirms ws_authenticated (or fallback fires).
   // isConnected() gates on this so that join_conversation is never sent before serverAuth is set.
@@ -77,7 +77,7 @@ class WebSocketBusImpl implements WebSocketBus {
         // GET is used: token issuance has no side effects and avoids 415 content-type checks.
         fetch('/api/auth/ws-token', { method: 'GET', credentials: 'include' })
           .then(r => (r.ok ? r.json() : null))
-          .then((data: any) => {
+          .then((data) => {
             if (!data?.token || ws.readyState !== WebSocket.OPEN) {
               // Not authenticated or WS closed — proceed immediately without auth
               flushAndSignal();
@@ -123,7 +123,7 @@ class WebSocketBusImpl implements WebSocketBus {
           if (data.type === 'ws_auth_required') {
             fetch('/api/auth/ws-token', { method: 'GET', credentials: 'include' })
               .then(r => (r.ok ? r.json() : null))
-              .then((tokenData: any) => {
+              .then((tokenData) => {
                 if (tokenData?.token && ws.readyState === WebSocket.OPEN) {
                   ws.send(JSON.stringify({ type: 'ws_authenticate', token: tokenData.token }));
                 }
@@ -170,7 +170,7 @@ class WebSocketBusImpl implements WebSocketBus {
     }
   }
 
-  private dispatch(data: any) {
+  private dispatch(data: unknown) {
     const type = data.type;
     if (type) {
       const typeHandlers = this.handlers.get(type);
@@ -205,7 +205,7 @@ class WebSocketBusImpl implements WebSocketBus {
     };
   }
 
-  send(message: any) {
+  send(message: unknown) {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     } else {
@@ -303,7 +303,7 @@ export function useWsSubscription(type: string | string[], handler: MessageHandl
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
-  const stableHandler = useCallback((data: any) => {
+  const stableHandler = useCallback((data) => {
     handlerRef.current(data);
   }, []);
 
@@ -316,7 +316,7 @@ export function useWsSubscription(type: string | string[], handler: MessageHandl
 
 export function useWsSend() {
   const bus = useWebSocketBus();
-  return useCallback((message: any) => bus.send(message), [bus]);
+  return useCallback((message) => bus.send(message), [bus]);
 }
 
 export function useWsConnected(): boolean {

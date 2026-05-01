@@ -53,8 +53,8 @@ describe('errorTracker adapter', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(fetchSpy).toHaveBeenCalled();
     const [, init] = fetchSpy.mock.calls[0];
-    expect((init as any).method).toBe('POST');
-    expect((init as any).headers['content-type']).toBe('application/json');
+    expect((init as Record<string, unknown>).method).toBe('POST');
+    expect((init as Record<string, unknown>).headers['content-type']).toBe('application/json');
   });
 
   it('capture never throws even when the fetch itself throws', async () => {

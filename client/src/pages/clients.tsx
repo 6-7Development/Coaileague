@@ -107,7 +107,6 @@ function DeactivatedClientsView({ workspaceId }: { workspaceId?: string }) {
     },
   });
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const isAnyClientMutationPending = createMutation.isPending || reactivateMutation.isPending || deleteClientMutation.isPending;
 
   if (isLoading) {
@@ -126,7 +125,7 @@ function DeactivatedClientsView({ workspaceId }: { workspaceId?: string }) {
 
   return (
     <div className="grid gap-4" data-testid="deactivated-clients-list">
-      {deactivated.map((client: any) => (
+      {deactivated.map((client) => (
         <Card key={client.id} data-testid={`card-deactivated-${client.id}`} className="opacity-90 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -163,7 +162,7 @@ function DeactivatedClientsView({ workspaceId }: { workspaceId?: string }) {
                       disabled={isAnyClientMutationPending}
                       data-testid={`button-reactivate-${client.id}`}
                     >
-                      {(reactivateMutation as any).isPending && reactivatingId === (client as any).id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                      {(reactivateMutation as Record<string,unknown>).isPending && reactivatingId === (client as Record<string,unknown>).id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                       {reactivateMutation.isPending && reactivatingId === client.id ? 'Reactivating...' : 'Reactivate'}
                     </Button>
                   </AlertDialogTrigger>
@@ -287,12 +286,12 @@ export default function Clients() {
     isError: orgsError,
     isLoading: orgsLoading,
     isEmpty: isOrgsEmpty,
-  } = useAsyncData(orgsQuery, (d: any) => !d?.length);
+  } = useAsyncData(orgsQuery, (d) => !d?.length);
 
   useEffect(() => {
     if (orgs?.length && orgs.length > 0) {
       const currentWs = user?.currentWorkspaceId;
-      const matchingOrg = currentWs && (orgs ?? []).find((o: any) => o.id === currentWs);
+      const matchingOrg = currentWs && (orgs ?? []).find((o) => o.id === currentWs);
       if (!selectedWorkspaceId || (currentWs && matchingOrg && selectedWorkspaceId !== currentWs)) {
         setSelectedWorkspaceId(matchingOrg ? matchingOrg.id : (orgs ?? [])[0].id);
       }
@@ -316,7 +315,7 @@ export default function Clients() {
   });
 
   const filteredClients = useMemo(() => {
-    return clients.filter((client: any) => {
+    return clients.filter((client) => {
       const name = `${client.firstName} ${client.lastName} ${client.companyName || ''}`.toLowerCase();
       return name.includes(searchQuery.toLowerCase());
     });
@@ -467,7 +466,7 @@ export default function Clients() {
         <UniversalModalTrigger asChild>
           <span className="hidden" />
         </UniversalModalTrigger>
-            <UniversalModalContent size="xl" className="max-h-[90vh] overflow-y-auto">
+            <UniversalModalContent size="xl" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
               <UniversalModalHeader>
                 <UniversalModalTitle>Add New {qb.entity('client')}</UniversalModalTitle>
                 <UniversalModalDescription>
@@ -1044,7 +1043,7 @@ export default function Clients() {
                   disabled={isAnyClientMutationPending}
                   data-testid="button-save-client"
                 >
-                  {(createMutation as any).isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  {(createMutation as Record<string,unknown>).isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                   {createMutation.isPending ? "Saving..." : `Save ${qb.entity('client')}`}
                 </Button>
               </UniversalModalFooter>
@@ -1059,7 +1058,7 @@ export default function Clients() {
               <SelectValue placeholder="Select organization..." />
             </SelectTrigger>
             <SelectContent>
-              {(orgs ?? []).map((org: any) => (
+              {(orgs ?? []).map((org) => (
                 <SelectItem key={org.id} value={org.id} data-testid={`select-org-${org.id}`}>
                   {org.name}
                 </SelectItem>

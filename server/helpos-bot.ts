@@ -3,6 +3,7 @@ import { supportTickets, helposFaqs, users } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { usageMeteringService } from './services/billing/usageMetering';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 
 // Bot conversation states
 export enum BotState {
@@ -243,7 +244,7 @@ async function searchFaqsForBot(
       LIMIT ${limit}
     `);
     
-    return results.rows.map((row: any) => ({
+    return results.rows.map((row: unknown) => ({
       id: row.id,
       question: row.question,
       answer: row.answer,
@@ -566,7 +567,7 @@ export async function processBotMessage(
 export async function closeBotTicketSuccess(
   ticketId: string,
   userId: string
-): Promise<{ faqSuggestion: any | null; conversationSummary: string }> {
+): Promise<{ faqSuggestion: unknown | null; conversationSummary: string }> {
   
   const conversation = activeBotConversations.get(ticketId);
   
@@ -709,7 +710,7 @@ export async function notifySupportStaffOfEscalation(
     `);
     
     // Create notification for each support staff member
-    for (const staff of supportStaff.rows as any[]) {
+    for (const staff of supportStaff.rows as unknown[][]) {
       await storage.createNotification({
         workspaceId: staff.current_workspace_id || 'platform-external',
         userId: staff.id,

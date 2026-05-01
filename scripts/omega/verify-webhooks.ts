@@ -76,7 +76,7 @@ async function verifyStripe(secretKey: string, label: string): Promise<void> {
       row('Stripe', `${label} webhook events (9)`, 'MISMATCH',
         `Missing: ${missingEvents.join(', ')}`);
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     row('Stripe', `${label} webhook URL`, 'MISSING', `API error: ${err.message}`);
     row('Stripe', `${label} webhook events (9)`, 'MISSING', `API error: ${err.message}`);
   }
@@ -106,7 +106,7 @@ async function verifyResend(): Promise<void> {
     }
 
     const data = await resp.json() as { data?: Array<{ url: string }> };
-    const registeredUrls = (data.data || []).map((w: any) => w.url);
+    const registeredUrls = (data.data || []).map((w: unknown) => w.url);
 
     const outboundFound = registeredUrls.includes(outboundUrl);
     const inboundFound  = registeredUrls.includes(inboundUrl);
@@ -115,7 +115,7 @@ async function verifyResend(): Promise<void> {
       outboundFound ? outboundUrl : `Not registered: ${outboundUrl}`);
     row('Resend', 'Inbound webhook', inboundFound ? 'VERIFIED' : 'MISSING',
       inboundFound ? inboundUrl : `Not registered: ${inboundUrl}`);
-  } catch (err: any) {
+  } catch (err : unknown) {
     row('Resend', 'Outbound webhook', 'MISSING', `Network error: ${err.message}`);
     row('Resend', 'Inbound webhook',  'MISSING', `Network error: ${err.message}`);
   }
@@ -154,16 +154,16 @@ async function verifyTwilio(): Promise<void> {
     const twilio = (await import('twilio')).default;
     const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     const phoneNumber = await client.incomingPhoneNumbers(TWILIO_PHONE_SID).fetch();
-    const pn = phoneNumber as any;
+    const pn = phoneNumber as unknown;
 
     for (const c of checks) {
       const actual   = pn[c.field] || '';
-      const expected_val = (expected as any)[c.field];
+      const expected_val = (expected as unknown)[c.field];
       const match    = actual === expected_val;
       row('Twilio', c.label, match ? 'VERIFIED' : 'MISMATCH',
         match ? actual : `Expected: ${expected_val} | Got: ${actual}`);
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     for (const c of checks) {
       row('Twilio', c.label, 'MISSING', `SDK error: ${err.message}`);
     }
@@ -192,7 +192,7 @@ async function verifyPlaid(): Promise<void> {
     });
     row('Plaid', 'API connectivity', resp.ok ? 'VERIFIED' : 'MISSING',
       resp.ok ? 'Plaid sandbox reachable — keys valid' : `HTTP ${resp.status}`);
-  } catch (err: any) {
+  } catch (err : unknown) {
     row('Plaid', 'API connectivity', 'MISSING', `Network error: ${err.message}`);
   }
 }

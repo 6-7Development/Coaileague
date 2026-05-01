@@ -1,5 +1,5 @@
 /**
- * CoAIleague Service Worker v4.8.0
+ * CoAIleague Service Worker v4.10.0
  * APK-ready with IndexedDB offline queue, SW update prompts, and enhanced caching.
  *
  * Canonical registration: navigator.serviceWorker.register('/sw.js').
@@ -22,7 +22,7 @@
  */
 
 const CACHE_VERSION = 13;
-const CACHE_NAME = 'coaileague-v4.9';
+const CACHE_NAME = 'coaileague-v4.10';
 const STATIC_CACHE = 'coaileague-static-v4.9';
 const API_CACHE = 'coaileague-api-v' + CACHE_VERSION;
 const offlineFallbackPage = '/offline.html';
@@ -105,7 +105,7 @@ function openDB() {
 }
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v4.8.0');
+  console.log('[SW] Installing service worker v4.10.0');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[SW] Caching app shell');
@@ -116,7 +116,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v4.8.0 — purging ALL old caches + standalone HTML bypass');
+  console.log('[SW] Activating service worker v4.10.0 — purging ALL old caches + standalone HTML bypass');
   event.waitUntil(
     Promise.all([
       // Delete ALL caches that aren't the current valid set — this purges any stale Vite module caches
@@ -155,7 +155,7 @@ self.addEventListener('activate', (event) => {
           // navigate() forces a full reload, bypassing any stale in-memory modules
           c.navigate(c.url).catch(() => {
             // fallback: postMessage if navigate fails
-            c.postMessage({ type: 'SW_UPDATED', version: 'v4.8.0' });
+            c.postMessage({ type: 'SW_UPDATED', version: 'v4.10.0' });
           });
         });
       });
@@ -501,8 +501,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body || data.message,
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: data.badge || '/icons/icon-72x72.png',
+    icon: data.icon || '/icons/notification-icon-192x192.png',
+    badge: data.badge || '/icons/badge-72.png',
     image: data.image || undefined,
     vibrate: data.vibrate || getVibrationPattern(data.type),
     data: {
@@ -737,14 +737,49 @@ self.addEventListener('notificationclose', (event) => {
 
 self.addEventListener('periodicsync', (event) => {
   console.log('[SW] Periodic sync:', event.tag);
-  
+
   if (event.tag === 'refresh-schedule') {
     event.waitUntil(refreshScheduleData());
   }
   if (event.tag === 'refresh-notifications') {
     event.waitUntil(refreshNotifications());
   }
+  // D4 — keep ChatDock unread badges current while the app is backgrounded.
+  // Browsers only fire periodicsync at intervals (typically 12h+) so this
+  // complements (does not replace) the WebSocket unread sync that runs when
+  // the app is foregrounded.  When the badge count changes, the next
+  // foregrounded reconciliation will pick it up via /api/chat/rooms.
+  if (event.tag === 'refresh-chat-unread') {
+    event.waitUntil(refreshChatUnread());
+  }
 });
+
+async function refreshChatUnread() {
+  try {
+    const response = await fetch('/api/chat/unread-count');
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put('/api/chat/unread-count', response.clone());
+      try {
+        const data = await response.json();
+        const total = typeof data?.total === 'number' ? data.total : (data?.count || 0);
+        if (total > 0 && self.registration?.showNotification) {
+          await self.registration.showNotification('CoAIleague Messages', {
+            body: total === 1 ? 'You have 1 unread message' : `You have ${total} unread messages`,
+            badge: '/icons/badge-72.png',
+            icon: '/icons/notification-icon-192x192.png',
+            tag: 'chatdock-unread',
+            renotify: false,
+            silent: true,
+            data: { url: '/chatrooms' },
+          });
+        }
+      } catch { /* json parse failure — non-fatal */ }
+    }
+  } catch (e) {
+    console.log('[SW] Background chat unread refresh failed (offline)');
+  }
+}
 
 async function refreshScheduleData() {
   console.log('[SW] Refreshing schedule data in background');
@@ -788,7 +823,7 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data?.type === 'GET_VERSION') {
-    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.8.0' });
+    event.source?.postMessage({ type: 'SW_VERSION', version: 'v4.10.0' });
   }
 
   if (event.data?.type === 'CLEAR_ALL_CACHES') {
@@ -825,4 +860,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Service Worker loaded - v4.8.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');
+console.log('[SW] Service Worker loaded - v4.10.0 (Unified sw.js + accept/decline/sign/clock_in handlers for NOTIFICATION_ACTION_MAP)');

@@ -10,6 +10,7 @@ import { employeeDocumentOnboardingService } from "../services/employeeDocumentO
 import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
 import { z } from 'zod';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('HireosRoutes');
 
 
@@ -37,7 +38,6 @@ router.get('/documents/me', requireAuth, async (req: AuthenticatedRequest, res) 
   try {
     const userId = req.user?.id || req.user?.id;
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const employee = await storage.getEmployeeByUserId(userId);
     
     if (!employee) {
@@ -150,7 +150,6 @@ router.post('/documents/:documentId/approve', requireAuth, requireHRManager, asy
       return res.status(403).json({ message: "Document not found or access denied" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const document = await storage.approveEmployeeDocument(documentId, userId, approvalNotes);
     res.json(document);
   } catch (error: unknown) {
@@ -180,7 +179,6 @@ router.post('/documents/:documentId/reject', requireAuth, requireHRManager, asyn
       return res.status(403).json({ message: "Document not found or access denied" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const document = await storage.rejectEmployeeDocument(documentId, userId, rejectionReason);
     res.json(document);
   } catch (error: unknown) {
@@ -213,7 +211,6 @@ router.post('/documents/:documentId/access', requireAuth, async (req: Authentica
     const accessLog = await storage.logDocumentAccess({
       workspaceId: document.workspaceId,
       documentId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       accessedBy: userId,
       accessedByEmail: userEmail,
       accessedByRole: userRole,
@@ -304,7 +301,6 @@ router.post('/checklists', requireManager, async (req: AuthenticatedRequest, res
       return res.status(404).json({ message: "Workspace not found" });
     }
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const application = await storage.getOnboardingApplication(applicationId);
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
@@ -320,9 +316,9 @@ router.post('/checklists', requireManager, async (req: AuthenticatedRequest, res
       return res.status(403).json({ message: "Template not found or access denied" });
     }
     
-    let checklistItems: any[] = [];
+    let checklistItems: (string | number | boolean | null)[] = [];
     if (template) {
-      checklistItems = template.steps.map((step: any) => ({
+      checklistItems = template.steps.map((step: unknown) => ({
         itemId: step.stepId,
         itemName: step.stepName,
         itemType: step.stepType,
@@ -369,12 +365,12 @@ router.patch('/checklists/:checklistId', requireAuth, async (req: AuthenticatedR
     }
 
     const totalItems = checklistItems.length;
-    const completedItems = checklistItems.filter((item: any) => item.isCompleted).length;
+    const completedItems = checklistItems.filter((item: unknown) => item.isCompleted).length;
     const overallProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
     const allRequiredCompleted = checklistItems
-      .filter((item: any) => item.isRequired)
-      .every((item: any) => item.isCompleted);
+      .filter((item: unknown) => item.isRequired)
+      .every((item: unknown) => item.isCompleted);
 
     const onboardingCompletedAt = allRequiredCompleted ? new Date() : null;
 
@@ -426,7 +422,6 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
       return res.status(403).json({ message: "Employee not found or access denied" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const documents = await storage.getEmployeeDocuments(workspace.id, employeeId, {
       status: 'approved'
     });
@@ -438,9 +433,9 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
     const fetchFileAsBuffer = (url: string): Promise<Buffer> => {
       return new Promise((resolve, reject) => {
         const protocol = url.startsWith('https') ? https : http;
-        protocol.get(url, (response: any) => {
-          const chunks: any[] = [];
-          response.on('data', (chunk: any) => chunks.push(chunk));
+        protocol.get(url, (response: unknown) => {
+          const chunks: (string | number | boolean | null)[] = [];
+          response.on('data', (chunk: unknown) => chunks.push(chunk));
           response.on('end', () => resolve(Buffer.concat(chunks)));
           response.on('error', reject);
         }).on('error', reject);
@@ -469,7 +464,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
     doc.text(`Name: ${employee.firstName} ${employee.lastName}`);
     doc.text(`Email: ${employee.email}`);
     doc.text(`Position: ${employee.position || 'N/A'}`);
-    doc.text(`Department: ${(employee as any).department || 'N/A'}`);
+    doc.text(`Department: ${(employee as EmployeeWithStatus).department || 'N/A'}`);
     doc.text(`Employee ID: ${employee.id}`);
     doc.moveDown();
 
@@ -483,7 +478,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
     doc.moveDown();
     doc.fontSize(11).font('Helvetica');
 
-    documents.forEach((document: any, index: number) => {
+    documents.forEach((document: unknown, index: number) => {
       doc.text(`${index + 1}. ${document.documentName} (${document.documentType})`);
       doc.fontSize(9).fillColor('#666666');
       doc.text(`   Status: ${document.status} | Uploaded: ${new Date(document.uploadedAt).toLocaleDateString()}`, { indent: 20 });
@@ -491,7 +486,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
       doc.moveDown(0.5);
     });
 
-    documents.forEach((document: any, index: number) => {
+    documents.forEach((document: unknown, index: number) => {
       doc.addPage();
       
       doc.fontSize(16).font('Helvetica-Bold').text(`Document ${index + 1}: ${document.documentName}`, { underline: true });
@@ -606,7 +601,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
           const documentPDF = await PDFLib.load(documentBuffer);
           const copiedPages = await masterPDF.copyPages(documentPDF, documentPDF.getPageIndices());
           
-          copiedPages.forEach((page: any) => {
+          copiedPages.forEach((page: unknown) => {
             masterPDF.addPage(page);
           });
         } else if (document.fileType?.startsWith('image/')) {
@@ -646,7 +641,6 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
           log.warn(`Unsupported file type ${document.fileType} for document ${document.id}, skipping merge`);
         }
       } catch (docError: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error(`Error merging document ${document.id}:`, docError.message);
       }
     }
@@ -663,7 +657,6 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
       await storage.logDocumentAccess({
         documentId: document.id,
         workspaceId: workspace.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         accessedBy: userId,
         accessedByEmail: req.user?.email || "",
         accessType: 'download',
@@ -700,7 +693,6 @@ router.post('/auditor-access/grant', requireManager, async (req: AuthenticatedRe
       entityType: 'workspace',
       entityId: workspace.id,
       userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       details: {
         auditorEmail,
         auditorName,
@@ -743,7 +735,6 @@ router.post('/auditor-access/revoke', requireManager, async (req: AuthenticatedR
       entityType: 'workspace',
       entityId: workspace.id,
       userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       details: { auditorEmail, reason: reason || 'Manual revocation', revokedAt: new Date().toISOString() },
     });
 
@@ -786,13 +777,12 @@ router.post('/documents/purge-request', requireManager, async (req: Authenticate
       entityType: 'document',
       entityId: documentId,
       userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       details: {
         employeeId,
         reason,
         requestType,
         documentType: document.documentType,
-        documentName: (document as any).title || (document as any).fileName,
+        documentName: (document as Record<string,unknown>).title || (document as Record<string,unknown>).fileName,
         requiresSupportReview: isUnderRetention,
         retentionEnd: retentionEnd?.toISOString() || null,
         requestedAt: new Date().toISOString(),
@@ -841,13 +831,11 @@ router.get('/employee/:employeeId/hiring-score', requireManager, async (req: Aut
     const onboardingStatus = await employeeDocumentOnboardingService.checkWorkEligibility(employeeId);
 
     const behaviorScore = {
-      reliabilityScore: (employee as any).reliabilityScore ?? 100,
-      attendanceRate: (employee as any).attendanceRate ?? 100,
+      reliabilityScore: (employee as EmployeeWithStatus).reliabilityScore ?? 100,
+      attendanceRate: (employee as EmployeeWithStatus).attendanceRate ?? 100,
       complianceScore: onboardingStatus.eligible ? 100 : Math.max(0, 50 - (onboardingStatus.reasons?.length || 0) * 10),
       overallScore: Math.round(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ((employee.reliabilityScore ?? 100) * 0.4) +
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ((employee.attendanceRate ?? 100) * 0.3) +
         (onboardingStatus.eligible ? 100 : 50) * 0.3
       ),

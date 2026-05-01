@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { AuthenticatedRequest } from '../rbac';
 import { Router } from 'express';
 import { db } from '../db';
 import { documentSignatures } from '@shared/schema';
@@ -22,7 +23,7 @@ const PACKET_DISPLAY: Record<PacketType, string> = {
 };
 
 // POST /api/employee-packets — Create and send a new onboarding packet
-employeePacketRouter.post('/', async (req: any, res) => {
+employeePacketRouter.post('/', async (req: AuthenticatedRequest, res) => {
   try {
     const input = z.object({
       packetType: z.enum(['unarmed', 'armed', 'ppo', 'contractor']),
@@ -73,7 +74,7 @@ employeePacketRouter.post('/', async (req: any, res) => {
 });
 
 // GET /api/employee-packets — List all packets for workspace
-employeePacketRouter.get('/', async (req: any, res) => {
+employeePacketRouter.get('/', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
@@ -97,7 +98,7 @@ employeePacketRouter.get('/', async (req: any, res) => {
 });
 
 // GET /api/employee-packets/:id — Single packet detail
-employeePacketRouter.get('/:id', async (req: any, res) => {
+employeePacketRouter.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -115,7 +116,7 @@ employeePacketRouter.get('/:id', async (req: any, res) => {
 });
 
 // DELETE /api/employee-packets/:id — Void a packet
-employeePacketRouter.delete('/:id', async (req: any, res) => {
+employeePacketRouter.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req.user)?.currentWorkspaceId;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
@@ -153,7 +154,7 @@ employeePacketPublicRouter.get('/:token', async (req, res) => {
       updatedAt: new Date(),
     }).where(eq(documentSignatures.applicationId, req.params.token));
 
-    const data = JSON.parse(packet.documentContent || '{}');
+    const data: unknown = JSON.parse(packet.documentContent || '{}');
     res.json({
       id: packet.id,
       packetType: data.packetType,
@@ -183,7 +184,7 @@ employeePacketPublicRouter.post('/:token/save', async (req, res) => {
     if (!packet) return res.status(404).json({ error: 'Packet not found' });
     if (packet.status === 'signed') return res.status(409).json({ error: 'Already completed' });
 
-    const existing = JSON.parse(packet.documentContent || '{}');
+    const existing: unknown = JSON.parse(packet.documentContent || '{}');
     await db.update(documentSignatures).set({
       documentContent: JSON.stringify({ ...existing, formData, sectionInitials }),
       updatedAt: new Date(),
@@ -211,7 +212,7 @@ employeePacketPublicRouter.post('/:token/submit', async (req, res) => {
     if (!packet) return res.status(404).json({ error: 'Packet not found' });
     if (packet.status === 'signed') return res.status(409).json({ error: 'Already completed' });
 
-    const existing = JSON.parse(packet.documentContent || '{}');
+    const existing: unknown = JSON.parse(packet.documentContent || '{}');
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
 
     await db.update(documentSignatures).set({

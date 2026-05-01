@@ -21,7 +21,7 @@ const createRecordSchema = z.object({
   notes: z.string().optional(),
 });
 
-const q = (text: string, params?: any[]) => typedPool(text, params);
+const q = (text: string, params?: unknown[]) => typedPool(text, params);
 
 const router = Router();
 
@@ -93,7 +93,6 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) =
       [id, workspaceId, employeeId, requirementId || null, requirementType, notes || null]
     );
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     res.json({ success: true, record: rows[0] });
   } catch (error) {
     log.error("[Compliance Records] Error creating record:", error);
@@ -181,11 +180,9 @@ router.get("/stats", requireAuth, async (req: AuthenticatedRequest, res: Respons
     ).length;
 
     const stats = {
-      totalEmployees: (records as any).length,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      compliantEmployees: records.filter((r: any) => r.status === 'verified').length,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      pendingReview: records.filter((r: any) => r.status === 'pending').length,
+      totalEmployees: (records as Record<string,unknown>).length,
+      compliantEmployees: records.filter((r: unknown) => r.status === 'verified').length,
+      pendingReview: records.filter((r: unknown) => r.status === 'pending').length,
       expiringWithin30Days,
       expiringWithin90Days,
       documentsUploaded: documents.length,

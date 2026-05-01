@@ -40,7 +40,6 @@ export async function auditContextMiddleware(req: Request, res: Response, next: 
       try {
         // Load user to get their current workspace
         const user = await storage.getUser(userId);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId = user?.currentWorkspaceId;
       } catch (error) {
         log.warn('Failed to load user workspace for audit context:', error);
@@ -72,11 +71,11 @@ export async function createAuditLog(
   action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'clock_in' | 'clock_out' | 'generate_invoice' | 'payment_received' | 'assign_manager' | 'remove_manager',
   entityType: string,
   entityId: string,
-  changes?: Record<string, any>,
+  changes?: Record<string, unknown>,
   options?: {
     isSensitiveData?: boolean;
     complianceTag?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }
 ): Promise<void> {
   // Require audit context from middleware
@@ -143,11 +142,11 @@ export async function createAuditLog(
       action: `${entityType}.${action}`,
       entityType,
       entityId,
-      changeType: (changeTypeMap[action] || 'action') as any,
+      changeType: (changeTypeMap[action] || 'action') as unknown,
       changes: changes ? { data: { old: null, new: changes } } : null,
       metadata: { endpoint: `${req.method} ${req.path}`, requestId: requestId || req.requestId, ...(options?.metadata || {}) },
       sourceRoute: `${req.method} ${req.path}`,
-    }).catch((err: any) => log.warn('[AuditLog] Async write failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[AuditLog] Async write failed (non-blocking):', err?.message));
   } catch (error) {
     log.error('Failed to create audit log:', error);
   }
@@ -169,11 +168,11 @@ export async function createAuditLogFromContext(
   action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'clock_in' | 'clock_out' | 'generate_invoice' | 'payment_received' | 'assign_manager' | 'remove_manager',
   entityType: string,
   entityId: string,
-  changes?: Record<string, any>,
+  changes?: Record<string, unknown>,
   options?: {
     isSensitiveData?: boolean;
     complianceTag?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }
 ): Promise<void> {
   try {
@@ -203,10 +202,10 @@ export async function createAuditLogFromContext(
       action: `${entityType}.${action}`,
       entityType,
       entityId,
-      changeType: (['create', 'update', 'delete'].includes(action) ? action : 'action') as any,
+      changeType: (['create', 'update', 'delete'].includes(action) ? action : 'action') as unknown,
       changes: changes ? { data: { old: null, new: changes } } : null,
       metadata: options?.metadata || {},
-    }).catch((err: any) => log.warn('[AuditLog] Async write failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[AuditLog] Async write failed (non-blocking):', err?.message));
   } catch (error) {
     log.error('Failed to create audit log from context:', error);
   }
@@ -232,13 +231,13 @@ export const auditHelpers = {
    * the fact of change is recorded but the raw values are never written to
    * audit_logs.metadata, preventing exfiltration via the audit trail.
    */
-  async employeeUpdated(req: Request, employeeId: string, before: any, after: any) {
+  async employeeUpdated(req: Request, employeeId: string, before: any, after: unknown) {
     // FIX [AUDIT LOG PII]: Scrub sensitive financial/identity fields before writing
     // to audit_logs. Without this, a manager updating payroll info would cause the
     // raw SSN and bank account number to be stored in the audit_logs.metadata JSONB
     // column, creating a secondary exfiltration path beyond the masked API response.
     const PII_FIELDS = ['ssn', 'taxId', 'bankAccountNumber', 'bankRoutingNumber', 'bankAccountType'];
-    const scrub = (obj: any): any => {
+    const scrub = (obj: unknown): any => {
       if (!obj || typeof obj !== 'object') return obj;
       const clean = { ...obj };
       for (const field of PII_FIELDS) {
@@ -257,7 +256,7 @@ export const auditHelpers = {
   /**
    * Log employee deletion
    */
-  async employeeDeleted(req: Request, employeeId: string, employeeData: any) {
+  async employeeDeleted(req: Request, employeeId: string, employeeData: unknown) {
     await createAuditLog(req, 'delete', 'employee', employeeId, { deleted: employeeData }, {
       isSensitiveData: true,
       complianceTag: 'gdpr',

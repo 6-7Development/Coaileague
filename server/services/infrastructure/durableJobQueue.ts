@@ -34,7 +34,7 @@ export type JobPriority = 'critical' | 'high' | 'normal' | 'low';
 
 export interface JobDefinition {
   type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   workspaceId?: string;
   priority?: JobPriority;
   maxRetries?: number;
@@ -51,12 +51,12 @@ export interface Job extends JobDefinition {
   nextAttemptAt?: Date;
   completedAt?: Date;
   error?: string;
-  result?: Record<string, any>;
+  result?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type JobHandler = (job: Job) => Promise<{ success: boolean; result?: any; error?: string }>;
+export type JobHandler = (job: Job) => Promise<{ success: boolean; result?: unknown; error?: string }>;
 
 // ============================================================================
 // JOB QUEUE SERVICE
@@ -207,7 +207,7 @@ class DurableJobQueueService {
         `);
         
         if (existing.length > 0) {
-          const existingJob = existing[0] as any;
+          const existingJob = existing[0] as unknown;
           log.info(`[DurableJobQueue] Job with idempotency key already exists: ${existingJob.id}`);
           return existingJob.id;
         }
@@ -232,7 +232,7 @@ class DurableJobQueueService {
 
       log.info(`[DurableJobQueue] Enqueued job ${jobId} of type ${definition.type}`);
       return jobId;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[DurableJobQueue] Failed to enqueue job:', error);
       throw error;
     }
@@ -285,7 +285,7 @@ class DurableJobQueueService {
         log.error('[DurableJobQueue] OMEGA-L8 DLQ ALERT: Stale dead-letter jobs detected (>4 hours unresolved)', {
           count: staleJobs.length,
           oldestJobId: staleJobs[0]?.id,
-          types: [...new Set(staleJobs.map((j: any) => j.type))],
+          types: [...new Set(staleJobs.map((j: unknown) => j.type))],
           alertTarget: 'support@coaileague.com',
         });
         // Best-effort structured alert via trinityAutonomousNotifier (non-blocking)
@@ -296,15 +296,15 @@ class DurableJobQueueService {
             severity: 'critical',
             category: 'performance',
             title: `DLQ Sentinel: ${staleJobs.length} stale dead-letter job(s) — unresolved >4 hours`,
-            description: `Job types affected: ${[...new Set(staleJobs.map((j: any) => j.type))].join(', ')}. Oldest job ID: ${staleJobs[0]?.id}. Immediate ops review required.`,
+            description: `Job types affected: ${[...new Set(staleJobs.map((j: unknown) => j.type))].join(', ')}. Oldest job ID: ${staleJobs[0]?.id}. Immediate ops review required.`,
             suggestedAction: 'Review dead-letter jobs in the DLQ dashboard. Retry or escalate as appropriate.',
             autoFixAvailable: false,
             autoFixRisk: 'low',
             metadata: {
               staleJobCount: staleJobs.length,
-              jobTypes: [...new Set(staleJobs.map((j: any) => j.type))],
+              jobTypes: [...new Set(staleJobs.map((j: unknown) => j.type))],
               oldestJobId: staleJobs[0]?.id,
-              sampleJobs: staleJobs.slice(0, 5).map((j: any) => ({ id: j.id, type: j.type, error: j.error })),
+              sampleJobs: staleJobs.slice(0, 5).map((j: unknown) => ({ id: j.id, type: j.type, error: j.error })),
             },
           });
         });
@@ -331,7 +331,7 @@ class DurableJobQueueService {
       this.isProcessing = true;
       try {
         await this.processNextBatch();
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[DurableJobQueue] Processing loop error (will retry):', error?.message || 'unknown');
       } finally {
         this.isProcessing = false;
@@ -373,7 +373,7 @@ class DurableJobQueueService {
         FOR UPDATE SKIP LOCKED
       `);
 
-      const jobs = ((result as any).rows as any[]) || [];
+      const jobs = ((result as Record<string, unknown>).rows as unknown[][]) || [];
       
       if (jobs.length === 0) return;
 
@@ -385,7 +385,7 @@ class DurableJobQueueService {
     }
   }
 
-  private async processJob(jobRow: any): Promise<void> {
+  private async processJob(jobRow: unknown): Promise<void> {
     const jobId = jobRow.id;
     const jobType = jobRow.type;
     const now = new Date();
@@ -427,12 +427,12 @@ class DurableJobQueueService {
       } else {
         await this.handleJobFailure(jobId, result.error || 'Unknown error', jobRow);
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       await this.handleJobFailure(jobId, (error instanceof Error ? error.message : String(error)), jobRow);
     }
   }
 
-  private async markJobCompleted(jobId: string, result?: any): Promise<void> {
+  private async markJobCompleted(jobId: string, result?: unknown): Promise<void> {
     const now = new Date();
     // CATEGORY C — Raw SQL retained: ::jsonb | Tables: durable_job_queue | Verified: 2026-03-23
     await typedExec(sql`
@@ -447,7 +447,7 @@ class DurableJobQueueService {
     log.info(`[DurableJobQueue] Job ${jobId} completed`);
   }
 
-  private async markJobFailed(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async markJobFailed(jobId: string, error: string, jobRow: unknown): Promise<void> {
     const now = new Date();
     const attempts = (jobRow.attempts || 0) + 1;
     const maxRetries = jobRow.max_retries || this.DEFAULT_MAX_RETRIES;
@@ -471,11 +471,11 @@ class DurableJobQueueService {
     }
   }
 
-  private async handleJobFailure(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async handleJobFailure(jobId: string, error: string, jobRow: unknown): Promise<void> {
     await this.markJobFailed(jobId, error, jobRow);
   }
 
-  private async scheduleRetry(jobId: string, error: string, jobRow: any): Promise<void> {
+  private async scheduleRetry(jobId: string, error: string, jobRow: unknown): Promise<void> {
     const now = new Date();
     const attempts = (jobRow.attempts || 0) + 1;
     const retryDelayMs = jobRow.retry_delay_ms || this.DEFAULT_RETRY_DELAY_MS;
@@ -508,9 +508,9 @@ class DurableJobQueueService {
     const row = result[0];
     return {
       id: row.id,
-      workspaceId: (row as any).workspaceId,
+      workspaceId: (row as Record<string, unknown>).workspaceId,
       type: row.type,
-      payload: row.payload as Record<string, any>,
+      payload: row.payload as Record<string, unknown>,
       priority: row.priority as JobPriority,
       status: row.status as JobStatus,
       attempts: row.attempts,
@@ -520,10 +520,8 @@ class DurableJobQueueService {
       nextAttemptAt: row.nextAttemptAt ? new Date(row.nextAttemptAt) : undefined,
       completedAt: row.completedAt ? new Date(row.completedAt) : undefined,
       error: row.error || undefined,
-      result: row.result as Record<string, any> | undefined,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      result: row.result as Record<string, unknown> | undefined,
       createdAt: new Date(row.createdAt),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       updatedAt: new Date(row.updatedAt),
     };
   }
@@ -553,7 +551,7 @@ class DurableJobQueueService {
       deadLetter: 0,
     };
     
-    for (const row of (result as any[]) || []) {
+    for (const row of (result as unknown[]) || []) {
       switch (row.status) {
         case 'pending': stats.pending = row.count; break;
         case 'processing': stats.processing = row.count; break;
@@ -587,7 +585,7 @@ class DurableJobQueueService {
     
     // CATEGORY C — Raw SQL retained: Infrastructure job queue dead letter retry UPDATE | Tables: durable_job_queue | Verified: 2026-03-23
     const result = await typedQuery(query);
-    const count = (result as any).rowCount || 0;
+    const count = (result as Record<string, unknown>).rowCount || 0;
     
     log.info(`[DurableJobQueue] Retried ${count} dead letter jobs`);
     return count;

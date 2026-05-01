@@ -82,7 +82,6 @@ class HistoricalScheduleImporterService {
           success: false,
           shiftsImported: 0,
           errors: ['CSV file exceeds maximum allowed size of 5 MB'],
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           warnings: [],
           patterns: [],
         };
@@ -98,11 +97,10 @@ class HistoricalScheduleImporterService {
       log.info(`[HistoricalImporter] Parsed ${records.length} records from CSV`);
 
       // Map column names (flexible matching)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const mappedRecords: ImportedShift[] = records.map((record: any, index: number) => {
+      const mappedRecords: ImportedShift[] = records.map((record: unknown, index: number) => {
         try {
           return this.mapCSVRecord(record, options);
-        } catch (e: any) {
+        } catch (e: unknown) {
           errors.push(`Row ${index + 1}: ${e.message}`);
           return null;
         }
@@ -122,7 +120,7 @@ class HistoricalScheduleImporterService {
       );
 
       // Process each record
-      const importedShifts: any[] = [];
+      const importedShifts: (string | number | boolean | null)[] = [];
 
       for (const record of mappedRecords) {
         if (!record) continue;
@@ -141,9 +139,7 @@ class HistoricalScheduleImporterService {
 
         // Parse date and times
         const shiftDate = this.parseDate(record.date, options.dateFormat);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const startTime = this.parseTime(record.startTime, shiftDate, options.timeFormat);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const endTime = this.parseTime(record.endTime, shiftDate, options.timeFormat);
 
         if (!shiftDate || !startTime || !endTime) {
@@ -185,7 +181,7 @@ class HistoricalScheduleImporterService {
         patterns,
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[HistoricalImporter] Import failed:', error);
       return {
         success: false,
@@ -200,7 +196,7 @@ class HistoricalScheduleImporterService {
   /**
    * Map CSV record to ImportedShift
    */
-  private mapCSVRecord(record: any, options: any): ImportedShift {
+  private mapCSVRecord(record: unknown, options: Record<string, unknown>): ImportedShift {
     // Flexible column name matching
     const getField = (names: string[]): string => {
       for (const name of names) {
@@ -297,7 +293,7 @@ class HistoricalScheduleImporterService {
   /**
    * Analyze patterns from imported shifts
    */
-  private analyzePatterns(importedShifts: any[]): LearnedPattern[] {
+  private analyzePatterns(importedShifts: unknown[]): LearnedPattern[] {
     const patternMap = new Map<string, {
       count: number;
       totalDuration: number;
@@ -330,9 +326,7 @@ class HistoricalScheduleImporterService {
 
       existing.count++;
       existing.totalDuration += duration;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (shift.title && !existing.positions.includes(shift.title)) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         existing.positions.push(shift.title);
       }
 
@@ -378,7 +372,6 @@ class HistoricalScheduleImporterService {
       description: `Learned pattern: ${p.frequency} occurrences, avg ${p.avgDuration.toFixed(1)}h`,
     }));
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [template] = await db.insert(scheduleTemplates).values({
       workspaceId,
       name: templateName,

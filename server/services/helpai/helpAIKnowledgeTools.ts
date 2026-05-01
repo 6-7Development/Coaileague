@@ -82,7 +82,7 @@ export async function searchTrinityKnowledge(
       log.info(`[KnowledgeTools] Trinity knowledge found for query: "${query.substring(0, 60)}"`);
     }
     return context;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[KnowledgeTools] Trinity knowledge search failed:', err.message);
     return '';
   }
@@ -139,7 +139,7 @@ export async function searchKnowledgeStructured(
         category: org.knowledge_type,
       });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[KnowledgeTools] Structured knowledge search failed:', err.message);
   }
 
@@ -191,7 +191,7 @@ export async function searchPlatformFAQs(
       .filter(f => f.score > 0 || terms.length === 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[KnowledgeTools] FAQ search failed:', err.message);
     return [];
   }
@@ -274,7 +274,7 @@ export async function getUserCrossChannelContext(
     `, [workspaceId]),
   ]).then(([e, v, t]) => [e.rows, v.rows, t.rows]).catch(() => [[], [], []]);
 
-  const recentEmails = (emailRows as any[]).map(r => ({
+  const recentEmails = (emailRows as unknown[]).map(r => ({
     id: r.id,
     subject: r.subject || '(no subject)',
     folderType: r.folder_type,
@@ -283,7 +283,7 @@ export async function getUserCrossChannelContext(
     isRead: r.is_read,
   }));
 
-  const recentVoiceCalls = (voiceRows as any[]).map(r => ({
+  const recentVoiceCalls = (voiceRows as unknown[]).map(r => ({
     id: r.id,
     callerNumber: r.caller_number,
     status: r.status,
@@ -292,7 +292,7 @@ export async function getUserCrossChannelContext(
     trinityResolved: r.ai_resolved,
   }));
 
-  const openTickets = (ticketRows as any[]).map(r => ({
+  const openTickets = (ticketRows as unknown[]).map(r => ({
     id: r.id,
     subject: r.subject,
     status: r.status,
@@ -377,7 +377,7 @@ export async function buildCrossChannelContextBlock(
     }
 
     return parts.join('\n');
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[KnowledgeTools] Cross-channel context build failed:', err.message);
     return '';
   }
@@ -398,15 +398,14 @@ export async function executeSupportAction(payload: {
   actorId: string;
   actorType: 'system' | 'support_agent' | 'trinity';
   ticketId?: string;
-  correctionData?: Record<string, any>;
-}): Promise<{ success: boolean; result?: any; error?: string }> {
+  correctionData?: Record<string, unknown>;
+}): Promise<{ success: boolean; result?: unknown; error?: string }> {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { supportActionRegistry } = await import('./supportActionRegistry');
-    const result = await supportActionRegistry.execute(payload as any);
+    const result = await supportActionRegistry.execute(payload as unknown);
     log.info(`[KnowledgeTools] Support action executed: ${payload.actionType} → success=${result.success}`);
     return { success: result.success, result };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[KnowledgeTools] Support action failed:', err.message);
     return { success: false, error: err.message };
   }

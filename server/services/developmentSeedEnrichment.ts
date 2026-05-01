@@ -23,6 +23,8 @@ import { db } from "../db";
 import { sql, eq } from "drizzle-orm";
 import { typedExec, typedQuery } from '../lib/typedSql';
 import { clients, employeeAvailability, shifts, timeEntries, invoices, invoiceLineItems, payrollRuns, payrollEntries, employeeCertifications, employeeSkills, workspaceMembers } from '@shared/schema';
+import { createLogger } from '../lib/logger';
+const log = createLogger('developmentSeedEnrichment');
 
 const WS = 'dev-acme-security-ws';
 
@@ -48,13 +50,13 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     return { success: true, message: 'Already enriched' };
   }
 
-  console.log('[DevEnrich] Enriching dev sandbox with comprehensive data...');
+  log.info('[DevEnrich] Enriching dev sandbox with comprehensive data...');
 
   try {
     // =====================================================================
     // 1. UPDATE EMPLOYEES — Addresses, GPS, Worker Types, Hire Dates, Scores
     // =====================================================================
-    console.log('[DevEnrich] Updating employee profiles...');
+    log.info('[DevEnrich] Updating employee profiles...');
 
     const employeeProfiles: Array<{
       id: string; addr: string; city: string; state: string; zip: string;
@@ -94,7 +96,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 2. CLIENT GPS COORDINATES — Real DFW area locations
     // =====================================================================
-    console.log('[DevEnrich] Adding client GPS coordinates...');
+    log.info('[DevEnrich] Adding client GPS coordinates...');
 
     const clientCoords: Array<{ id: string; lat: string; lng: string }> = [
       { id: 'dev-client-001', lat: '32.8143', lng: '-96.8738' },
@@ -119,7 +121,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 3. EMPLOYEE METRICS — Reliability, attendance, performance scores
     // =====================================================================
-    console.log('[DevEnrich] Creating employee metrics...');
+    log.info('[DevEnrich] Creating employee metrics...');
 
     const metrics: Array<{
       id: string; empId: string; reliability: string; tardiness: number; noShow: number;
@@ -145,12 +147,12 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
 
     // NOTE: employee_metrics table was merged into coaileagueEmployeeProfiles (Mar 2026).
     // Fields are stored in JSONB blobs on the coaileagueEmployeeProfiles table.
-    console.log('[DevEnrich] Skipping employee_metrics INSERT (table merged into coaileagueEmployeeProfiles)');
+    log.info('[DevEnrich] Skipping employee_metrics INSERT (table merged into coaileagueEmployeeProfiles)');
 
     // =====================================================================
     // 4. EMPLOYEE AVAILABILITY — Weekly schedules (broad windows for scheduling)
     // =====================================================================
-    console.log('[DevEnrich] Creating employee availability records...');
+    log.info('[DevEnrich] Creating employee availability records...');
 
     const empIds = employeeProfiles.map(e => e.id);
     const availabilityPatterns: Record<string, Array<{ day: number; start: string; end: string }>> = {
@@ -193,7 +195,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 5. OPEN SHIFTS — 40 unfilled shifts across next 2 weeks for Trinity auto-fill
     // =====================================================================
-    console.log('[DevEnrich] Creating open shifts for Trinity to fill...');
+    log.info('[DevEnrich] Creating open shifts for Trinity to fill...');
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -250,11 +252,11 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
         employeeId: null,
         clientId: shift.clientId,
         title: shift.title,
-        category: shift.category as any,
+        category: shift.category as unknown,
         startTime: new Date(startDate.toISOString()),
         endTime: new Date(endDate.toISOString()),
         date: dateStr,
-        status: 'published' as any,
+        status: 'published',
         contractRate: shift.contractRate,
         billableToClient: true,
         createdAt: sql`now()`,
@@ -265,7 +267,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 6. HISTORICAL TIME ENTRIES — Past 4 weeks of clock records
     // =====================================================================
-    console.log('[DevEnrich] Creating historical time entries...');
+    log.info('[DevEnrich] Creating historical time entries...');
 
     const activeEmpIds = empIds.filter(id => !['dev-acme-emp-001'].includes(id));
     let teIdx = 0;
@@ -321,7 +323,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 7. INVOICES — COAI-ACME-2026-XXXXXXXXXX format, realistic billing
     // =====================================================================
-    console.log('[DevEnrich] Creating invoices...');
+    log.info('[DevEnrich] Creating invoices...');
 
     const currentYear = now.getFullYear();
 
@@ -363,7 +365,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
         platformFeePercentage: '5.00',
         platformFeeAmount: platformFee,
         businessAmount: businessAmount,
-        status: inv.status as any,
+        status: inv.status as unknown,
         paidAt: paidAt ? new Date(paidAt) : null,
         amountPaid: inv.status === 'paid' ? inv.total : '0.00',
         notes: inv.notes,
@@ -409,7 +411,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 8. PAYROLL RUNS — 3 completed biweekly runs + 1 draft current
     // =====================================================================
-    console.log('[DevEnrich] Creating payroll runs...');
+    log.info('[DevEnrich] Creating payroll runs...');
 
     const payrollRuns: Array<{
       id: string; periodStartOffset: number; periodEndOffset: number;
@@ -429,13 +431,12 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
       periodEnd.setHours(23, 59, 59, 999);
 
       // Converted to Drizzle ORM: ON CONFLICT
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(payrollRuns).values({
         id: pr.id,
         workspaceId: WS,
         periodStart: new Date(periodStart.toISOString()),
         periodEnd: new Date(periodEnd.toISOString()),
-        status: pr.status as any,
+        status: pr.status as unknown,
         totalGrossPay: pr.grossPay,
         totalTaxes: pr.taxes,
         totalNetPay: pr.netPay,
@@ -490,7 +491,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 9. EMPLOYEE CERTIFICATIONS — Security industry certs Trinity checks
     // =====================================================================
-    console.log('[DevEnrich] Creating employee certifications...');
+    log.info('[DevEnrich] Creating employee certifications...');
 
     const certData: Array<{
       empId: string; certType: string; certName: string; certNum: string;
@@ -553,7 +554,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
         issuingAuthority: c.issuer,
         issuedDate: new Date(c.issued),
         expirationDate: new Date(c.expires),
-        status: c.status as any,
+        status: c.status as unknown,
         isRequired: c.required,
         createdAt: sql`now()`,
       }).onConflictDoNothing();
@@ -562,7 +563,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 10. EMPLOYEE SKILLS — Certification-category skills (Trinity cross-checks these)
     // =====================================================================
-    console.log('[DevEnrich] Creating employee skills...');
+    log.info('[DevEnrich] Creating employee skills...');
 
     const skillData: Array<{
       empId: string; skillName: string; category: string; proficiency: number;
@@ -646,7 +647,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 11. UPDATE EMPLOYEE METRICS — Add maxWeeklyHours, overtimeEligible, preferredMaxDistance
     // =====================================================================
-    console.log('[DevEnrich] Updating employee metrics with scheduling fields...');
+    log.info('[DevEnrich] Updating employee metrics with scheduling fields...');
 
     const metricsUpdates: Array<{
       empId: string; maxWeekly: number; otEligible: boolean; maxDist: number;
@@ -669,12 +670,12 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
 
     // NOTE: employee_metrics table was merged into coaileagueEmployeeProfiles (Mar 2026).
     // The UPDATE below is dead code — skipping to avoid table-not-found errors.
-    console.log('[DevEnrich] Skipping employee_metrics UPDATE (table merged into coaileagueEmployeeProfiles)');
+    log.info('[DevEnrich] Skipping employee_metrics UPDATE (table merged into coaileagueEmployeeProfiles)');
 
     // =====================================================================
     // 12. CLIENT REQUIRED CERTIFICATIONS — Sites that demand specific certs
     // =====================================================================
-    console.log('[DevEnrich] Setting client certification requirements...');
+    log.info('[DevEnrich] Setting client certification requirements...');
 
     const clientCertReqs: Array<{ id: string; certs: string[] }> = [
       { id: 'dev-client-001', certs: ['Armed Guard', 'CPR'] },         // Mall — armed + CPR
@@ -698,7 +699,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 13. UPDATE SHIFTS — Add requiredCertifications to open shifts
     // =====================================================================
-    console.log('[DevEnrich] Adding certification requirements to open shifts...');
+    log.info('[DevEnrich] Adding certification requirements to open shifts...');
 
     // Set shift cert requirements based on their assigned client
     for (const shift of openShifts) {
@@ -717,7 +718,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 14. REST TIME STRESS TEST — Back-to-back shifts with tight 8hr gaps
     // =====================================================================
-    console.log('[DevEnrich] Creating rest-time stress test shifts...');
+    log.info('[DevEnrich] Creating rest-time stress test shifts...');
 
     // These are ALREADY-ASSIGNED shifts that create tight rest windows.
     // Trinity should detect these when scheduling new shifts and avoid double-booking.
@@ -754,11 +755,11 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
         employeeId: rs.empId,
         clientId: rs.clientId,
         title: rs.title,
-        category: 'security' as any,
+        category: 'security',
         startTime: new Date(startDate.toISOString()),
         endTime: new Date(endDate.toISOString()),
         date: dateStr,
-        status: 'scheduled' as any,
+        status: 'scheduled',
         contractRate: contractRates[(parseInt(rs.clientId.slice(-1)) - 1) % contractRates.length],
         requiredCertifications: clientCert ? clientCert.certs : [],
         billableToClient: true,
@@ -770,7 +771,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 15. OVERTIME EDGE CASE — Pre-load employees near 40hr weekly cap
     // =====================================================================
-    console.log('[DevEnrich] Creating overtime stress test shifts...');
+    log.info('[DevEnrich] Creating overtime stress test shifts...');
 
     // These ASSIGNED shifts push employees close to weekly hour limits.
     // W-2 employees near 40hrs should trigger Trinity's OT avoidance.
@@ -823,11 +824,11 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
         employeeId: ot.empId,
         clientId: ot.clientId,
         title: ot.title,
-        category: 'security' as any,
+        category: 'security',
         startTime: new Date(startDate.toISOString()),
         endTime: new Date(endDate.toISOString()),
         date: dateStr,
-        status: 'scheduled' as any,
+        status: 'scheduled',
         contractRate: contractRates[(parseInt(ot.clientId.slice(-1)) - 1) % contractRates.length],
         billableToClient: true,
         createdAt: sql`now()`,
@@ -838,7 +839,7 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
     // =====================================================================
     // 16. WORKSPACE MEMBERS — Ensure all employees have workspace_members rows
     // =====================================================================
-    console.log('[DevEnrich] Ensuring workspace membership records...');
+    log.info('[DevEnrich] Ensuring workspace membership records...');
 
     const memberRoles: Record<string, string> = {
       'dev-owner-001': 'org_owner',
@@ -864,37 +865,37 @@ export async function runDevDataEnrichment(): Promise<{ success: boolean; messag
       }).onConflictDoNothing();
     }
 
-    console.log('[DevEnrich] Development data enrichment complete!');
-    console.log('   - Employee profiles: 13 updated (addresses, GPS, W-2/1099 mix, scores)');
-    console.log('   - Employee metrics: 13 created + updated (reliability, attendance, OT eligibility, weekly caps)');
-    console.log(`   - Availability records: ${availIdx} weekly schedule slots`);
-    console.log(`   - Open shifts: ${openShifts.length} for Trinity auto-fill (with cert requirements)`);
-    console.log(`   - Rest-time stress shifts: ${restTestShifts.length} (back-to-back 8hr gaps)`);
-    console.log(`   - Overtime edge case shifts: ${otShifts.length} (employees near weekly caps)`);
-    console.log(`   - Employee certifications: ${certIdx} (armed/unarmed/CPR/first aid + expired/expiring edge cases)`);
-    console.log(`   - Employee skills: ${skillIdx} (certification-category + technical + language)`);
-    console.log('   - Client cert requirements: 8 sites (armed/unarmed/CPR/first aid combos)');
-    console.log(`   - Time entries: ${teIdx} historical clock records`);
-    console.log('   - Invoices: 8 (COAI-ACME format, paid/sent/overdue/draft mix)');
-    console.log('   - Payroll runs: 4 (3 completed + 1 draft)');
-    console.log('   - W-2 employees: 10, 1099 contractors: 3');
-    console.log('   CERT STATUS (advisory, not scheduling blockers):');
-    console.log('     - emp-004: Unarmed only, NO CPR → flagged for manager review');
-    console.log('     - emp-006: 1099 Armed, NO CPR → flagged for medical-site clients');
-    console.log('     - emp-008: CPR expiring in ~20 days → expiring-soon warning');
-    console.log('     - emp-010: EXPIRED armed license → renewal pending, manager notified');
-    console.log('     - emp-012: Unarmed only, NO CPR/First Aid → weakest cert profile, flagged');
-    console.log('   OVERTIME EDGE CASES:');
-    console.log('     - emp-004: W-2 at 32hrs → 8hrs from OT cap');
-    console.log('     - emp-009: W-2 at 36hrs → 4hrs from OT cap');
-    console.log('     - emp-010: 1099 at 44hrs → over W-2 cap but 1099 rules allow it');
-    console.log('     - emp-013: W-2 at 38hrs → 2hrs from OT cap');
-    console.log('     - Rest-time: emp-002,005,007,008 have back-to-back shifts with exactly 8hr gaps');
+    log.info('[DevEnrich] Development data enrichment complete!');
+    log.info('   - Employee profiles: 13 updated (addresses, GPS, W-2/1099 mix, scores)');
+    log.info('   - Employee metrics: 13 created + updated (reliability, attendance, OT eligibility, weekly caps)');
+    log.info(`   - Availability records: ${availIdx} weekly schedule slots`);
+    log.info(`   - Open shifts: ${openShifts.length} for Trinity auto-fill (with cert requirements)`);
+    log.info(`   - Rest-time stress shifts: ${restTestShifts.length} (back-to-back 8hr gaps)`);
+    log.info(`   - Overtime edge case shifts: ${otShifts.length} (employees near weekly caps)`);
+    log.info(`   - Employee certifications: ${certIdx} (armed/unarmed/CPR/first aid + expired/expiring edge cases)`);
+    log.info(`   - Employee skills: ${skillIdx} (certification-category + technical + language)`);
+    log.info('   - Client cert requirements: 8 sites (armed/unarmed/CPR/first aid combos)');
+    log.info(`   - Time entries: ${teIdx} historical clock records`);
+    log.info('   - Invoices: 8 (COAI-ACME format, paid/sent/overdue/draft mix)');
+    log.info('   - Payroll runs: 4 (3 completed + 1 draft)');
+    log.info('   - W-2 employees: 10, 1099 contractors: 3');
+    log.info('   CERT STATUS (advisory, not scheduling blockers):');
+    log.info('     - emp-004: Unarmed only, NO CPR → flagged for manager review');
+    log.info('     - emp-006: 1099 Armed, NO CPR → flagged for medical-site clients');
+    log.info('     - emp-008: CPR expiring in ~20 days → expiring-soon warning');
+    log.info('     - emp-010: EXPIRED armed license → renewal pending, manager notified');
+    log.info('     - emp-012: Unarmed only, NO CPR/First Aid → weakest cert profile, flagged');
+    log.info('   OVERTIME EDGE CASES:');
+    log.info('     - emp-004: W-2 at 32hrs → 8hrs from OT cap');
+    log.info('     - emp-009: W-2 at 36hrs → 4hrs from OT cap');
+    log.info('     - emp-010: 1099 at 44hrs → over W-2 cap but 1099 rules allow it');
+    log.info('     - emp-013: W-2 at 38hrs → 2hrs from OT cap');
+    log.info('     - Rest-time: emp-002,005,007,008 have back-to-back shifts with exactly 8hr gaps');
 
     return { success: true, message: 'Dev data enrichment complete' };
 
   } catch (error) {
-    console.error('[DevEnrich] Enrichment failed:', error);
+    log.error('[DevEnrich] Enrichment failed:', error);
     return { success: false, message: `Enrichment failed: ${error}` };
   }
 }

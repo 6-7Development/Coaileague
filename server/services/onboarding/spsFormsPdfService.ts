@@ -24,8 +24,8 @@ interface PdfOptions {
   session: { id: string; workspaceId: string; currentStep: number; completedSteps: any };
   workspaceId: string;
   forms: {
-    f1: any; f2: any; f3: any; f4: any; f5: any;
-    f6: any; f7: any; f8: any; f9: any; f10: any;
+    f1: unknown; f2: unknown; f3: unknown; f4: unknown; f5: unknown;
+    f6: unknown; f7: unknown; f8: unknown; f9: unknown; f10: unknown;
   };
   companyName?: string;
   licenseNumber?: string;
@@ -42,7 +42,7 @@ export async function generateSpsOnboardingPdf(opts: PdfOptions): Promise<string
     const { db } = await import('../../db');
     const { workspaces } = await import('@shared/schema');
     const { eq } = await import('drizzle-orm');
-    const [ws] = await db.select({ name: workspaces.name, licenseNumber: (workspaces as any).licenseNumber })
+    const [ws] = await db.select({ name: workspaces.name, licenseNumber: (workspaces as Record<string,unknown>).licenseNumber })
       .from(workspaces).where(eq(workspaces.id, workspaceId));
     if (ws?.name) companyName = ws.name;
     if (ws?.licenseNumber) licenseNumber = ws.licenseNumber;

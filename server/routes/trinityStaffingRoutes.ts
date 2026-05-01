@@ -38,13 +38,13 @@ async function persistWebhookConfig(workspaceId: string, token: string, secret: 
 async function restoreWebhookConfigFromDb(token: string): Promise<boolean> {
   try {
     const [ws] = await db.select({ id: workspaces.id, blob: workspaces.automationPolicyBlob }).from(workspaces)
-      .where(eq((workspaces as any).automationPolicyBlob['staffingWebhookToken'], token))
+      .where(eq((workspaces as Record<string,unknown>).automationPolicyBlob['staffingWebhookToken'], token))
       .limit(1).catch(() => []);
     if (!ws) {
       // Fallback: scan all workspaces for a matching token in their blob
       const all = await db.select({ id: workspaces.id, blob: workspaces.automationPolicyBlob }).from(workspaces).limit(500);
       for (const row of all) {
-        const blob = row.blob as Record<string, any> || {};
+        const blob = row.blob as Record<string, unknown> || {};
         if (blob.staffingWebhookToken === token) {
           trinityStaffingOrchestrator.registerWebhookToken(row.id, token, blob.staffingWebhookSecret || undefined, blob.staffingWebhookSystemUserId || undefined);
           return true;
@@ -52,7 +52,7 @@ async function restoreWebhookConfigFromDb(token: string): Promise<boolean> {
       }
       return false;
     }
-    const blob = ws.blob as Record<string, any> || {};
+    const blob = ws.blob as Record<string, unknown> || {};
     trinityStaffingOrchestrator.registerWebhookToken(ws.id, token, blob.staffingWebhookSecret || undefined, blob.staffingWebhookSystemUserId || undefined);
     return true;
   } catch {
@@ -349,7 +349,7 @@ router.post('/webhook-token', async (req: AuthenticatedRequest, res) => {
     const config = trinityStaffingOrchestrator.generateWebhookToken(workspaceId, userId);
 
     // Persist to DB so token survives server restarts
-    persistWebhookConfig(workspaceId, config.webhookToken, config.webhookSecret, userId).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    persistWebhookConfig(workspaceId, config.webhookToken, config.webhookSecret, userId).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     
     res.json({
       success: true,

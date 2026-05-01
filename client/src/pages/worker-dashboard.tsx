@@ -428,7 +428,7 @@ function QuickActionStrip({ isClockedIn, onClockAction, clockingIn, navigate, on
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-      {actions.map((action: any) => (
+      {actions.map((action) => (
         <button
           key={action.testId}
           onClick={action.onClick}
@@ -552,7 +552,7 @@ function EmployeePinCard() {
       setPinInput("");
       qc.invalidateQueries({ queryKey: ["/api/identity/pin/employee/self/status"] });
     },
-    onError: (err: any) => toast({
+    onError: (err) => toast({
       title: "Could not save PIN",
       description: err?.message || "Please try again",
       variant: "destructive",
@@ -564,7 +564,7 @@ function EmployeePinCard() {
       toast({ title: "Clock-in PIN cleared" });
       qc.invalidateQueries({ queryKey: ["/api/identity/pin/employee/self/status"] });
     },
-    onError: (err: any) => toast({
+    onError: (err) => toast({
       title: "Could not clear PIN",
       description: err?.message || "Please try again",
       variant: "destructive",
@@ -757,19 +757,29 @@ function WorkerDashboardInner() {
   const { data: authUser, isError: authUserIsError, error: authUserError, refetch: refetchAuthUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
   const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<ClockStatus>({
     queryKey: ["/api/time-entries/status"],
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
     refetchInterval: 30000,
   });
   const { data: todayShifts, isLoading: shiftsLoading, isError: todayShiftsIsError, error: todayShiftsError, refetch: refetchTodayShifts } = useQuery<TodayShift[]>({
     queryKey: ["/api/shifts/today"],
+    staleTime: 2 * 60_000,
+    gcTime: 10 * 60_000,
   });
   const { data: upcomingShifts, isError: upcomingShiftsIsError, error: upcomingShiftsError, refetch: refetchUpcomingShifts } = useQuery<UpcomingShift[]>({
     queryKey: ["/api/shifts/upcoming"],
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
   });
   const { data: earnings, isLoading: earningsLoading, isError: earningsIsError, error: earningsError, refetch: refetchEarnings } = useQuery<EarningsSummary>({
     queryKey: ["/api/dashboard/worker-earnings"],
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
   const { data: notificationsData, isError: notificationsIsError, error: notificationsError, refetch: refetchNotifications } = useQuery<{ notifications?: Notification[]; items?: Notification[] } | Notification[]>({
     queryKey: ["/api/notifications"],
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
   const { data: pendingHandoff, isError: pendingHandoffIsError, error: pendingHandoffError, refetch: refetchPendingHandoff } = useQuery<PendingHandoff | null>({
     queryKey: ["/api/shift-handoff/pending"],
@@ -779,7 +789,7 @@ function WorkerDashboardInner() {
 
   const notifications: Notification[] = Array.isArray(notificationsData)
     ? notificationsData
-    : (notificationsData as any)?.notifications || (notificationsData as any)?.items || [];
+    : (notificationsData as Record<string,unknown>)?.notifications || (notificationsData as Record<string,unknown>)?.items || [];
   const isDashboardError =
     authUserIsError ||
     clockIsError ||
@@ -829,7 +839,7 @@ function WorkerDashboardInner() {
       }
       return { queued: false, action };
     },
-    onSuccess: (result: any, action) => {
+    onSuccess: (result: unknown, action) => {
       if (result?.queued) {
         toast({
           title: "Saved Offline",
@@ -845,7 +855,7 @@ function WorkerDashboardInner() {
       }
       if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to clock in/out", variant: "destructive" });
     },
     onSettled: () => setClockingIn(false),
@@ -865,7 +875,7 @@ function WorkerDashboardInner() {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["/api/schedules/week/stats"] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({
         title: "Could not confirm shift",
         description: err?.message || "Please try again",
@@ -881,7 +891,7 @@ function WorkerDashboardInner() {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({
         title: "Could not decline shift",
         description: err?.message || "Please try again",

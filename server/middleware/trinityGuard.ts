@@ -41,7 +41,7 @@ async function logInjectionAttempt(
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
       [eventType, severity, ip, path, method, description, JSON.stringify({ threats })]
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[TrinityGuard] security_audit_log write failed:', err?.message);
   }
 }
@@ -125,7 +125,7 @@ function isContentRoute(path: string): boolean {
  * Extracts only short identifier-like fields from a request body for threat scanning.
  * Explicitly skips long-form text fields where SQL/XSS keywords appear legitimately.
  */
-function extractScannableText(obj: Record<string, any>, depth = 0): string {
+function extractScannableText(obj: Record<string, unknown>, depth = 0): string {
   if (depth > 3) return '';
   const SKIP_CONTENT_KEYS = new Set([
     'message', 'content', 'description', 'body', 'text', 'notes', 'comments',
@@ -247,7 +247,7 @@ export function trinityGuardMiddleware(req: Request, res: Response, next: NextFu
   }
 
   // Persist to security_audit_log for SOC2 / audit trail (Rule 9 compliance)
-  logInjectionAttempt(mostSevere.type, mostSevere.severity, ip, path, method, mostSevere.description, threats).catch((err: any) => log.warn('[TrinityGuard] logInjectionAttempt failed (non-blocking):', err?.message));
+  logInjectionAttempt(mostSevere.type, mostSevere.severity, ip, path, method, mostSevere.description, threats).catch((err: unknown) => log.warn('[TrinityGuard] logInjectionAttempt failed (non-blocking):', err?.message));
 
   // Fire internal lightweight event — Trinity's subagents subscribe to this
   platformEventBus.emit('security_threat_detected', {
@@ -288,7 +288,7 @@ export function trinityGuardMiddleware(req: Request, res: Response, next: NextFu
         blockedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       },
       visibility: 'platform_staff',
-    }).catch((err: any) => log.warn('[TrinityGuard] EventBus publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[TrinityGuard] EventBus publish failed (non-blocking):', err?.message));
 
     res.status(403).json({ error: 'Request blocked: security violation detected' });
     return;

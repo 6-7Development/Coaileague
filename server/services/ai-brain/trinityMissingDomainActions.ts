@@ -18,7 +18,7 @@ import { pool } from '../../db';
 
 const log = createLogger('TrinityMissingDomainActions');
 
-function ok(actionId: string, message: string, data: any, start: number): ActionResult {
+function ok(actionId: string, message: string, data: Record<string, unknown>, start: number): ActionResult {
   return { success: true, actionId, message, data, executionTimeMs: Date.now() - start };
 }
 function fail(actionId: string, message: string, start: number): ActionResult {
@@ -50,7 +50,7 @@ const voiceGetCallLog: ActionHandler = {
         LIMIT $2
       `, [workspaceId, limit]);
       return ok(request.actionId, `Retrieved ${result.rows.length} recent call sessions`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed to fetch call log: ${err.message}`, start);
     }
   },
@@ -73,7 +73,7 @@ const voiceGetActiveSessions: ActionHandler = {
         ORDER BY created_at ASC
       `, [request.workspaceId]);
       return ok(request.actionId, `${result.rows.length} active call(s) in progress`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -97,7 +97,7 @@ const voiceGetSupportCases: ActionHandler = {
         LIMIT $2
       `, [request.workspaceId, request.payload?.limit || 20]);
       return ok(request.actionId, `${result.rows.length} voice support case(s) found`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -125,14 +125,14 @@ const formsListSubmissions: ActionHandler = {
         LEFT JOIN platform_forms pf ON pf.id = fs.form_id
         WHERE fs.workspace_id = $1
       `;
-      const params: any[] = [request.workspaceId];
+      const params: Record<string, unknown>[] = [request.workspaceId];
       if (formId) { params.push(formId); query += ` AND fs.form_id = $${params.length}`; }
       if (status) { params.push(status); query += ` AND fs.status = $${params.length}`; }
       params.push(Math.min(limit, 100));
       query += ` ORDER BY fs.created_at DESC LIMIT $${params.length}`;
       const result = await pool.query(query, params);
       return ok(request.actionId, `${result.rows.length} submission(s) found`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -155,7 +155,7 @@ const formsGetPendingReview: ActionHandler = {
         ORDER BY created_at ASC
       `, [request.workspaceId]);
       return ok(request.actionId, `${result.rows.length} form submission(s) pending review`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -193,7 +193,7 @@ const formsGetOnboardingStatus: ActionHandler = {
         submittedAt: sub.submitted_at,
         signerName: sub.signer_name,
       }, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -225,7 +225,7 @@ const esignatureListPending: ActionHandler = {
         LIMIT 50
       `, [request.workspaceId]);
       return ok(request.actionId, `${result.rows.length} signature(s) still pending`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -265,7 +265,7 @@ const esignatureGetStatus: ActionHandler = {
         completedCount: doc.signatures_completed,
         signers: { signed, pending },
       }, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -315,7 +315,7 @@ const esignatureRemind: ActionHandler = {
       }
 
       return ok(request.actionId, `Reminder sent to ${reminded} pending signer(s)`, { reminded, documentId }, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -341,13 +341,13 @@ const proposalList: ActionHandler = {
         FROM proposals
         WHERE workspace_id = $1
       `;
-      const params: any[] = [request.workspaceId];
+      const params: Record<string, unknown>[] = [request.workspaceId];
       if (status) { params.push(status); query += ` AND status = $${params.length}`; }
       params.push(Math.min(limit, 100));
       query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
       const result = await pool.query(query, params);
       return ok(request.actionId, `${result.rows.length} proposal(s) found`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -381,7 +381,7 @@ const proposalGetStatus: ActionHandler = {
       return ok(request.actionId, `Pipeline: ${row.total_count} proposals, ${winRate}% win rate`, {
         ...row, winRate,
       }, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -414,7 +414,7 @@ const hrDocsListPendingSignatures: ActionHandler = {
         LIMIT 50
       `, [request.workspaceId]);
       return ok(request.actionId, `${result.rows.length} HR document(s) awaiting signature`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -442,7 +442,7 @@ const hrDocsGetEmployeeFileCabinet: ActionHandler = {
         ORDER BY ed.created_at DESC
       `, [employeeId, request.workspaceId]);
       return ok(request.actionId, `${result.rows.length} document(s) on file for employee ${employeeId}`, result.rows, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed: ${err.message}`, start);
     }
   },
@@ -486,7 +486,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: {} },
     output_schema: { type: 'object', properties: { status: { type: 'string' } } },
     handler: async () => ({ status: 'not_implemented' }),
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'insurance.expiry',
@@ -497,7 +497,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: {} },
     output_schema: { type: 'object', properties: { expiringPolicies: { type: 'array' } } },
     handler: async () => ({ expiringPolicies: [] }),
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'insurance.state_compliance',
@@ -508,7 +508,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: { state: { type: 'string' } } },
     output_schema: { type: 'object', properties: { compliant: { type: 'boolean' } } },
     handler: async () => ({ compliant: false }),
-  } as any);
+  } as unknown);
 
 
 
@@ -538,10 +538,10 @@ export function registerMissingDomainActions(): void {
         coverageQueued: { type: 'boolean' },
       },
     },
-    handler: async (params: any, ctx: any) => {
+    handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: 'stub', shiftStatus: 'open', coverageQueued: true };
     },
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'calloff.resolve',
@@ -565,10 +565,10 @@ export function registerMissingDomainActions(): void {
         status:    { type: 'string', enum: ['resolved'] },
       },
     },
-    handler: async (params: any, ctx: any) => {
+    handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: params.callOffId, status: 'resolved' };
     },
-  } as any);
+  } as unknown);
 
   log.info('[TrinityMissingDomainActions] Registered 18 missing domain actions: voice (3), forms (3), esignature (3), proposals (2), hr_docs (2), insurance (3), calloff (2)');
 }

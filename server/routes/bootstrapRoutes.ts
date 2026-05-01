@@ -113,7 +113,7 @@ router.post('/dev-seed', async (req: Request, res: Response) => {
            VALUES (gen_random_uuid(),'platform-workspace-00000',$1,'org_owner',NOW())
            ON CONFLICT DO NOTHING`,
           [acc.id]
-        ).catch(() => null);
+        ).catch((e: unknown) => log.warn('[bootstrapRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       }
     }
 
@@ -129,7 +129,7 @@ router.post('/dev-seed', async (req: Request, res: Response) => {
         `INSERT INTO workspace_members (id, workspace_id, user_id, role, created_at)
          VALUES (gen_random_uuid(),$1,$2,$3,NOW()) ON CONFLICT DO NOTHING`,
         [m.wsId, m.userId, m.role]
-      ).catch(() => null);
+      ).catch((e: unknown) => log.warn('[bootstrapRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     }
 
     log.info(`[Bootstrap] Done — created: ${created.length}, skipped: ${skipped.length}, errors: ${errors.length}`);
@@ -182,7 +182,7 @@ router.get('/status', async (_req: Request, res: Response) => {
         ? 'Run POST /api/bootstrap/dev-seed with X-Bootstrap-Key header'
         : 'Ready — log in with owner@acme-security.test / admin123',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return res.status(500).json({ error: e?.message });
   }
 });
@@ -267,7 +267,7 @@ router.get('/dev-seed', async (req: Request, res: Response) => {
       await pool.query(
         `INSERT INTO workspace_members (id,workspace_id,user_id,role,created_at) VALUES (gen_random_uuid(),$1,$2,$3,NOW()) ON CONFLICT DO NOTHING`,
         [acc.wsId, acc.id, acc.id.includes('manager') ? 'manager' : acc.role === 'root_admin' ? 'org_owner' : 'org_owner']
-      ).catch(() => null);
+      ).catch((e: unknown) => log.warn('[bootstrapRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     }
 
     const status = errors.length === 0 ? '✅' : '⚠️';

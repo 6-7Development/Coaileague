@@ -54,7 +54,7 @@ export default function SupportConsoleTicketsPage() {
     refetchInterval: 60000,
   });
 
-  const tickets: any[] = data?.tickets ?? data?.data ?? [];
+  const tickets: unknown[] = data?.tickets ?? data?.data ?? [];
   const totalCount = data?.total ?? tickets.length;
 
   const filtered = tickets.filter(t => {
@@ -80,7 +80,7 @@ export default function SupportConsoleTicketsPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Back Console"
             data-testid="button-back-console"
             onClick={() => setLocation("/admin/support-console")}
           >
@@ -131,7 +131,7 @@ export default function SupportConsoleTicketsPage() {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {queueData.queue.slice(0, 5).map((item: any) => (
+              {queueData.queue.slice(0, 5).map((item) => (
                 <Badge
                   key={item.id}
                   className={PRIORITY_BADGE[item.priority] || PRIORITY_BADGE.normal}
@@ -216,7 +216,7 @@ export default function SupportConsoleTicketsPage() {
             </div>
           ) : (
             <div className="divide-y">
-              {filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((ticket: any) => (
+              {filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((ticket) => (
                 <div
                   key={ticket.id}
                   data-testid={`row-ticket-${ticket.id}`}

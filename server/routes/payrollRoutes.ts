@@ -73,6 +73,7 @@ import {
 import { rateLimitMiddleware } from "../services/infrastructure/rateLimiting";
 import { idempotencyMiddleware } from "../middleware/idempotency";
 import { createLogger } from '../lib/logger';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -80,12 +81,12 @@ const router = Router();
 // Apply rate limiting to all payroll routes
 // Payroll operations are sensitive and can be expensive (tax calculations, exports)
 router.use(rateLimitMiddleware(
-  (req: any) => {
+  (req: AuthenticatedRequest) => {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     if (workspaceId) return `payroll-${workspaceId}`;
     return `payroll-ip-${req.ip}`;
   },
-  (req: any) => (req.session?.plan || 'free') as any
+  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as unknown
 ));
 
 function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?: string; status?: number } {
@@ -152,14 +153,14 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       // Generate CSV
       const csvHeader = 'Employee Name,Period Start,Period End,Regular Hours,Overtime Hours,Hourly Rate,Gross Pay,Deductions,Federal Tax,State Tax,Social Security,Medicare,Net Pay,Date\n';
       
-      const employeeIds = [...new Set(entries.map((e: any) => e.employeeId))];
+      const employeeIds = [...new Set(entries.map((e: unknown) => e.employeeId))];
       const employeeMap = new Map();
       if (employeeIds.length > 0) {
         const emps = await db.select().from(employees).where(inArray(employees.id, employeeIds));
         emps.forEach(emp => employeeMap.set(emp.id, `${emp.firstName} ${emp.lastName}`));
       }
 
-      const csvRows = entries.map((e: any) => {
+      const csvRows = entries.map((e: unknown) => {
         const employeeName = employeeMap.get(e.employeeId) || e.employeeId;
         // RC4 (Phase 2): sumFinancialValues uses Decimal.js — eliminates 4-field floating-point accumulation.
         const deductions = formatCurrency(sumFinancialValues([e.federalTax || '0', e.stateTax || '0', e.socialSecurity || '0', e.medicare || '0']));
@@ -234,8 +235,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       // Phase 29 / Phase 27 guard: SELECT FOR UPDATE inside a transaction prevents
       // two concurrent managers from approving the same payroll proposal simultaneously.
-      let proposal: any;
-      let approvedProposal: any;
+      let proposal: unknown;
+      let approvedProposal: unknown;
       try {
         ({ proposal, approvedProposal } = await db.transaction(async (tx) => {
           // Lock the row — concurrent requests wait here instead of racing
@@ -292,7 +293,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
           return { proposal: locked, approvedProposal: approved };
         }));
-      } catch (txErr: any) {
+      } catch (txErr: unknown) {
         const status = txErr?.status || 500;
         if (status === 404) return res.status(404).json({ message: "Proposal not found" });
         if (status === 409 && txErr?.message === 'ALREADY_PROCESSED') return res.status(409).json({ message: "Proposal was already processed by another user" });
@@ -307,7 +308,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       // FIX 7: Financial anomaly check on payroll approval — non-blocking warning
       let payrollAnomalyWarning: string | null = null;
-      const proposalData = (proposal as any).data ?? {};
+      const proposalData = (proposal as unknown).data ?? {};
       const payrollTotal = parseFloat(proposalData.totalGross ?? proposalData.totalAmount ?? proposalData.total ?? 0);
       const PAYROLL_ANOMALY_THRESHOLD = 100000;
       const PAYROLL_EXTREME_THRESHOLD = 500000;
@@ -331,7 +332,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'pending' }, after: { status: 'approved', approvedBy: userId } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal approval', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal approval', { error: err instanceof Error ? err.message : String(err) }));
 
       // Webhook Emission
       try {
@@ -339,10 +340,10 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         deliverWebhookEvent(userWorkspace.workspaceId, 'payroll.run_completed', {
           proposalId: id,
           approvedBy: userId,
-          totalGross: (proposal as any).data?.totalGross,
+          totalGross: (proposal as unknown).data?.totalGross,
           approvedAt: new Date().toISOString()
         });
-      } catch (webhookErr: any) {
+      } catch (webhookErr: unknown) {
         log.warn('[Payroll] Failed to log webhook error to audit log', { error: webhookErr.message });
       }
 
@@ -360,7 +361,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
           approvedBy: userId,
           source: 'proposal_approve',
         },
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       // Notify managers about payroll approval
       const { universalNotificationEngine } = await import('../services/universalNotificationEngine');
@@ -433,7 +434,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'pending' }, after: { status: 'rejected', rejectedBy: userId, reason: reason || 'No reason provided' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll proposal rejection', { error: err instanceof Error ? err.message : String(err) }));
 
       // broadcastToWorkspace imported statically
       broadcastToWorkspace(userWorkspace.workspaceId, { type: 'payroll_updated', action: 'proposal_rejected', proposalId: id });
@@ -645,12 +646,12 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         userRole: req.user?.role || 'user',
         action: 'create',
         entityType: 'payroll_run',
-        entityId: (payrollRun as any).id,
+        entityId: payrollRun?.id,
         actionDescription: `Payroll run created for period ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
-        changes: { after: { payrollRunId: (payrollRun as any).id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
+        changes: { after: { payrollRunId: payrollRun?.id, periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString(), status: 'pending' } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll run creation', { error: err instanceof Error ? err.message : String(err) }));
 
       const periodStartStr = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const periodEndStr = periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -659,7 +660,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         {
           workspaceId,
           userId,
-          payrollRunId: (payrollRun as any).id,
+          payrollRunId: payrollRun?.id,
           periodStart: periodStartStr,
           periodEnd: periodEndStr,
           createdBy: userId,
@@ -667,7 +668,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       ).catch(err => log.error('Failed to create payroll notification:', err));
 
       // broadcastToWorkspace imported statically
-      broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: (payrollRun as any).id });
+      broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'run_created', runId: payrollRun?.id });
       platformEventBus.publish({
         type: 'payroll_run_created',
         category: 'automation',
@@ -676,12 +677,12 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         workspaceId,
         userId,
         metadata: {
-          payrollRunId: (payrollRun as any).id,
+          payrollRunId: payrollRun?.id,
           periodStart: periodStart.toISOString(),
           periodEnd: periodEnd.toISOString(),
           createdBy: userId,
         },
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
 
       // FIX-2: Financial audit log for payroll run creation
@@ -694,19 +695,19 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         actorEmail: req.user?.email || null,
         description: `Payroll run created for period ${periodStartStr} to ${periodEndStr}`,
         relatedEntityType: 'payroll_run',
-        relatedEntityId: (payrollRun as any).id,
-        newState: { status: (payrollRun as any).status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
+        relatedEntityId: payrollRun?.id,
+        newState: { status: payrollRun?.status, periodStart, periodEnd, totalGross: payrollRun.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err instanceof Error ? err.message : String(err) }));
       res.json({ ...payrollRun, complianceWarnings });
     } catch (error: unknown) {
-      if (error instanceof Error && (error as any).code === 'DUPLICATE_PAYROLL_RUN') {
+      if (error instanceof Error && (error as unknown).code === 'DUPLICATE_PAYROLL_RUN') {
         return res.status(409).json({
           message: sanitizeError(error),
-          code: (error as any).code,
-          existingRunId: (error as any).existingRunId,
-          existingRunStatus: (error as any).existingRunStatus,
+          code: (error as unknown).code,
+          existingRunId: (error as unknown).existingRunId,
+          existingRunStatus: (error as unknown).existingRunStatus,
         });
       }
       log.error("Error creating payroll run:", error);
@@ -858,7 +859,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         newState: { status: 'approved', approvedBy: userId, approvedAt: new Date().toISOString() },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll approval', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll approval', { error: err instanceof Error ? err.message : String(err) }));
 
       let qbSyncResult = null;
       try {
@@ -873,7 +874,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       try {
         // broadcastToWorkspace imported statically
         broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'approved', runId: run.id });
-      } catch (_wsErr: any) {
+      } catch (_wsErr: unknown) {
         log.warn('[Payroll] Failed to broadcast WebSocket update', { error: _wsErr.message });
       }
 
@@ -886,7 +887,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         userId,
         metadata: { payrollRunId: run.id, approvedBy: userId, runPeriod: run.periodStart + ' – ' + run.periodEnd },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       res.json({ ...updated, qbSync: qbSyncResult ? { synced: qbSyncResult.success, details: qbSyncResult.details } : undefined });
     } catch (error: unknown) {
@@ -1029,7 +1030,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         changes: { before: { status: 'approved' }, after: { status: 'processed', processedBy: userId } },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll processing', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll processing', { error: err instanceof Error ? err.message : String(err) }));
 
       // Non-blocking: notify each employee their pay stub is available
       (async () => {
@@ -1055,7 +1056,6 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
           const empUserMap = new Map(empRows.map(e => [e.id, e.userId]));
 
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const { une } = await import('../services/universalNotificationEngine');
           await Promise.allSettled(stubs.map(stub => {
             const targetUserId = empUserMap.get(stub.employeeId);
@@ -1066,7 +1066,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
             const net = parseFloat(String(stub.netPay || 0)).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
             return une.send({
               workspaceId,
-              type: 'pay_stub_available' as any,
+              type: 'pay_stub_available' as unknown,
               title: 'Your Pay Stub is Ready',
               message: `Your pay stub for ${periodLabel} is available. Net pay: ${net}.`,
               severity: 'info',
@@ -1100,7 +1100,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
               const periodLabel = stub.payPeriodStart && stub.payPeriodEnd
                 ? `${new Date(stub.payPeriodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(stub.payPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
                 : 'This Pay Period';
-              const gross = parseFloat(String((stub as any).grossPay || stub.netPay || 0)).toFixed(2);
+              const gross = parseFloat(String((stub as unknown).grossPay || stub.netPay || 0)).toFixed(2);
               const net = parseFloat(String(stub.netPay || 0)).toFixed(2);
               const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
               await sendPayStubEmail(user.email, {
@@ -1125,7 +1125,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       try {
         // broadcastToWorkspace imported statically
         broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'processed', runId: id });
-      } catch (_wsErr: any) {
+      } catch (_wsErr: unknown) {
         log.warn('[Payroll] Failed to broadcast WebSocket update', { error: _wsErr.message });
       }
 
@@ -1140,11 +1140,11 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
           payrollRunId: id,
           processedBy: userId,
           totalGrossPay: updated.totalGrossPay,
-          totalNetPay: (updated as any).totalNet,
+          totalNetPay: (updated as unknown).totalNet,
           employeeCount,
         },
         visibility: 'manager',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       // FIX-2: Financial audit log for payroll processing
       await db.insert(billingAuditLog).values({
@@ -1154,16 +1154,14 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         actorType: 'user',
         actorId: userId,
         actorEmail: req.user?.email || null,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         description: `Payroll run processed - ${stubs.length} pay stubs generated`,
         relatedEntityType: 'payroll_run',
         relatedEntityId: id,
         previousState: { status: 'approved' },
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         newState: { status: 'processed', payStubsGenerated: stubs.length, totalNet: run.totalNetPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll process', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll process', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json(updated);
     } catch (error: unknown) {
@@ -1203,7 +1201,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         entityId: id,
         changes: { before: { status: run.status, payPeriodStart: run.periodStart, payPeriodEnd: run.periodEnd }, after: { status: 'deleted' } },
         metadata: { isSensitiveData: true, complianceTag: 'soc2' },
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll delete', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll delete', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json({ message: "Payroll run deleted successfully" });
     } catch (error: unknown) {
@@ -1295,7 +1293,7 @@ router.patch('/my-payroll-info', async (req: AuthenticatedRequest, res) => {
       ),
     });
 
-    const updateFields: Record<string, any> = {};
+    const updateFields: Record<string, unknown> = {};
     if (bankAccountType !== undefined) updateFields.bankAccountType = bankAccountType;
     if (directDepositEnabled !== undefined) updateFields.directDepositEnabled = directDepositEnabled;
     if (preferredPayoutMethod !== undefined) updateFields.preferredPayoutMethod = preferredPayoutMethod;
@@ -1397,7 +1395,7 @@ router.get('/my-tax-forms', async (req: AuthenticatedRequest, res) => {
 
     res.json({
       employeeId: employee.id,
-      employeeName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
+      employeeName: `${(employee as unknown).firstName || ''} ${(employee as unknown).lastName || ''}`.trim(),
       forms: forms.map(f => ({
         id: f.id,
         formType: f.formType,
@@ -1582,7 +1580,7 @@ router.post("/calculate-taxes", async (req, res) => {
 
 router.get("/entries", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const entries = await db.select().from(payrollEntries).where(eq(payrollEntries.workspaceId, workspaceId));
@@ -1595,7 +1593,7 @@ router.get("/entries", async (req: AuthenticatedRequest, res) => {
 
 router.get("/deductions", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const payrollEntryId = req.query.payrollEntryId as string | undefined;
@@ -1613,7 +1611,7 @@ router.get("/deductions", async (req: AuthenticatedRequest, res) => {
 
 router.get("/garnishments", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const payrollEntryId = req.query.payrollEntryId as string | undefined;
@@ -1696,7 +1694,7 @@ router.post("/deductions/:payrollEntryId", async (req: AuthenticatedRequest, res
     if (!parsed.success) return res.status(400).json({ error: 'Invalid deduction data', details: parsed.error.flatten() });
     const { employeeId, deductionType, amount, isPreTax, description } = parsed.data;
     if (businessRuleResponse(res, [validateDeductionAmount(amount, undefined, 'amount')])) return;
-    const workspaceId = (req as any).workspaceId?.id;
+    const workspaceId = req.workspaceId?.id;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const deduction = await addDeduction(
@@ -1721,7 +1719,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
     const parsed = payrollGarnishmentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid garnishment data', details: parsed.error.flatten() });
     const { employeeId, garnishmentType, amount, priority, caseNumber, description } = parsed.data;
-    const workspaceId = (req as any).workspaceId?.id;
+    const workspaceId = req.workspaceId?.id;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const garnishment = await addGarnishment(
@@ -1771,8 +1769,8 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
           new Decimal('0')
         );
 
-        const preTax  = new Decimal(String((entry as any).preTaxDeductions  || '0'));
-        const postTax = new Decimal(String((entry as any).postTaxDeductions || '0'));
+        const preTax  = new Decimal(String((entry as unknown).preTaxDeductions  || '0'));
+        const postTax = new Decimal(String((entry as unknown).postTaxDeductions || '0'));
         const totalTaxes = fedTax.plus(stateTax).plus(socialSec).plus(medicare);
 
         // Net = Gross − PreTax − Taxes − PostTax − Garnishments (floor: $0)
@@ -1780,7 +1778,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
         if (newNetPay.lessThan(0)) newNetPay = new Decimal('0'); // Hard floor
 
         await db.update(payrollEntries)
-          .set({ netPay: newNetPay.toFixed(2) as any, updatedAt: new Date() })
+          .set({ netPay: newNetPay.toFixed(2) as unknown, updatedAt: new Date() })
           .where(eq(payrollEntries.id, payrollEntryId));
 
         // Re-aggregate run totals so the payroll run header stays correct
@@ -1791,7 +1789,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
           const runTotalNet   = runEntries.reduce((s, e) => s + parseFloat(String(e.netPay   || '0')), 0);
           const runTotalGross = runEntries.reduce((s, e) => s + parseFloat(String(e.grossPay || '0')), 0);
           await db.update(payrollRuns)
-            .set({ totalNetPay: runTotalNet.toFixed(2) as any, totalGrossPay: runTotalGross.toFixed(2) as any, updatedAt: new Date() })
+            .set({ totalNetPay: runTotalNet.toFixed(2) as unknown, totalGrossPay: runTotalGross.toFixed(2) as unknown, updatedAt: new Date() })
             .where(eq(payrollRuns.id, entry.payrollRunId));
         }
 
@@ -1808,7 +1806,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
           complianceTag: 'soc2',
         }).catch(err => log.error('[FinancialAudit] Garnishment audit log failed:', err?.message));
       }
-    } catch (garnishNetPayErr: any) {
+    } catch (garnishNetPayErr: unknown) {
       log.error('[Payroll] WARNING: Failed to recalculate netPay after garnishment add:', garnishNetPayErr?.message);
     }
 
@@ -1913,7 +1911,7 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated Form 941 for Q${quarterNum} ${yearNum}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 941 generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 941 generation', { error: err instanceof Error ? err.message : String(err) }));
 
     if (result.pdfBuffer) {
       res.setHeader('Content-Type', 'application/pdf');
@@ -2024,7 +2022,7 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated ${formType.toUpperCase()} for employee ${employeeId} for tax year ${taxYear}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for tax form generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for tax form generation', { error: err instanceof Error ? err.message : String(err) }));
 
     // ── GAP 16: W-2 / 1099 limitation notice ─────────────────────────────────
     // These are system-generated estimates for record-keeping and early review.
@@ -2104,7 +2102,7 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
       actionDescription: `Generated Form 940 (FUTA) for tax year ${year}`,
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 940 generation', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for 940 generation', { error: err instanceof Error ? err.message : String(err) }));
 
     if (result.pdfBuffer) {
       res.setHeader('Content-Type', 'application/pdf');
@@ -2254,7 +2252,7 @@ router.post('/runs/:id/execute-internal', async (req: AuthenticatedRequest, res)
         },
         isSensitiveData: true,
         complianceTag: 'soc2',
-      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for internal payroll execution', { error: err?.message }));
+      }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for internal payroll execution', { error: err instanceof Error ? err.message : String(err) }));
 
       res.json({
         ...result,
@@ -2299,9 +2297,8 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
       changes: { after: { status: 'voided', reason, voidedBy: userId } },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll void', { error: err instanceof Error ? err.message : String(err) }));
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     // broadcastToWorkspace already imported at top
     broadcastToWorkspace(workspaceId, { type: 'payroll_updated', action: 'voided', runId });
     platformEventBus.publish({
@@ -2317,7 +2314,7 @@ router.post('/:runId/void', async (req: AuthenticatedRequest, res) => {
         reason,
         source: 'payroll_void',
       },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({ success: true, message: 'Payroll run voided successfully' });
   } catch (error: unknown) {
@@ -2407,7 +2404,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
       changes: { before: { status: 'processed' }, after: { status: 'paid', disbursementMethod, confirmedBy: userId } },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll mark-paid', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll mark-paid', { error: err instanceof Error ? err.message : String(err) }));
 
       // FIX-2: Financial audit log for payroll disbursement
       await db.insert(billingAuditLog).values({
@@ -2425,7 +2422,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
         metadata: { notes, totalNetPay: run.totalNetPay, totalGrossPay: run.totalGrossPay },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null,
-      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err?.message }));
+      }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll mark-paid', { error: err instanceof Error ? err.message : String(err) }));
 
     try {
       // broadcastToWorkspace imported statically
@@ -2435,7 +2432,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
         runId,
         disbursementMethod,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[Payroll] Failed to process batch completion', { error: err.message });
     }
 
@@ -2448,7 +2445,7 @@ router.post('/runs/:id/mark-paid', async (req: AuthenticatedRequest, res) => {
       userId,
       metadata: { payrollRunId: runId, disbursementMethod, confirmedBy: userId, paidAt: new Date().toISOString() },
       visibility: 'manager',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({
       success: true,
@@ -2547,7 +2544,7 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
           await db.update(payStubs).set({
             plaidTransferStatus: 'payment_held',
             updatedAt: new Date(),
-          } as any).where(eq(payStubs.id, stub.id)).catch((dbErr: unknown) => {
+          } as unknown).where(eq(payStubs.id, stub.id)).catch((dbErr: unknown) => {
             log.error('[PayrollRoute] Failed to stamp PAYMENT_HELD on pay stub:', { stubId: stub.id, error: dbErr });
           });
           results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: `PAYMENT_HELD — bank account not Plaid-verified: ${verification.status}` });
@@ -2584,17 +2581,17 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
             plaidTransferId: transfer.transferId,
             plaidTransferStatus: 'pending',
             updatedAt: new Date(),
-          } as any).where(eq(payStubs.id, stub.id));
+          } as unknown).where(eq(payStubs.id, stub.id));
         } catch (dbErr: unknown) {
           log.error(
             '[FinancialAudit] CRITICAL: Plaid transfer initiated but pay stub DB update failed — transfer ID may be orphaned. Manual reconciliation required.',
-            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, amount: netPay, runId, error: (dbErr as any)?.message }
+            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, amount: netPay, runId, error: (dbErr as unknown)?.message }
           );
           // Fall through: transfer IS in flight, we report it as retried despite tracking failure
         }
 
         platformEventBus.publish({
-          type: 'payroll_transfer_initiated' as any,
+          type: 'payroll_transfer_initiated' as unknown,
           category: 'payroll',
           title: 'ACH Transfer Retry Initiated',
           description: `Retry transfer ${transfer.transferId} initiated for employee ${empId}`,
@@ -2602,7 +2599,7 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
           userId,
           metadata: { payrollRunId: runId, employeeId: empId, transferId: transfer.transferId, amount: netPay, isRetry: true },
           visibility: 'manager',
-        }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+        }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
         results.push({ stubId: stub.id, employeeId: empId, status: 'retried', transferId: transfer.transferId });
       } catch (err: unknown) {
@@ -2668,7 +2665,6 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
     // ─────────────────────────────────────────────────────────────────────────────
 
     const { amendPayrollEntry } = await import('../services/payrollAutomation');
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await amendPayrollEntry(entryId, workspaceId, userId, { ...amendments, reason: reason.trim() });
 
     if (!result.success) {
@@ -2687,7 +2683,7 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
       changes: { before: result.originalEntry, after: result.amendedEntry },
       isSensitiveData: true,
       complianceTag: 'soc2',
-    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll amendment', { error: err?.message }));
+    }).catch(err => log.error('[FinancialAudit] CRITICAL: SOC2 audit log write failed for payroll amendment', { error: err instanceof Error ? err.message : String(err) }));
 
     res.json({
       success: true,
@@ -2834,7 +2830,7 @@ router.get('/pre-run-checklist', async (req: AuthenticatedRequest, res) => {
     const { eq: eqI, and: andI, inArray: inArrayI, sql: sqlI } = await import('drizzle-orm');
 
     const workspace = await storage.getWorkspace(workspaceId);
-    const blob = (workspace?.billingSettingsBlob as any) || {};
+    const blob = (workspace?.billingSettingsBlob as unknown) || {};
     const cycle = blob.payrollCycle || 'bi-weekly';
 
     const { startOfWeek, endOfWeek, subDays: subDaysI, startOfMonth, endOfMonth } = await import('date-fns');
@@ -2974,7 +2970,6 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
 
     const run = await storage.getPayrollRun(runId, workspaceId);
     if (!run) return res.status(404).json({ message: 'Payroll run not found' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!['processed', 'paid'].includes(run.status)) {
       return res.status(400).json({ message: 'NACHA file is only available for processed or paid payroll runs' });
     }
@@ -2982,10 +2977,10 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     const { workspaces: wsTable } = await import('@shared/schema');
     const [ws] = await db.select({
       name: wsTable.name,
-      companyName: (wsTable as any).companyName,
-      payrollBankRouting: (wsTable as any).payrollBankRouting,
-      payrollBankAccount: (wsTable as any).payrollBankAccount,
-      payrollBankName: (wsTable as any).payrollBankName,
+      companyName: (wsTable as unknown).companyName,
+      payrollBankRouting: (wsTable as unknown).payrollBankRouting,
+      payrollBankAccount: (wsTable as unknown).payrollBankAccount,
+      payrollBankName: (wsTable as unknown).payrollBankName,
     }).from(wsTable).where(eq(wsTable.id, workspaceId)).limit(1);
 
     const entries = await db.select({
@@ -3011,7 +3006,7 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     }
 
     // For each entry, prefer the canonical employee_bank_accounts record (encrypted), then fall back to employee_payroll_info
-    const employeeIds = entries.map(e => (e as any).employeeId).filter(Boolean);
+    const employeeIds = entries.map(e => (e as unknown).employeeId).filter(Boolean);
     const bankAccountRows = employeeIds.length > 0
       ? await db.select().from(employeeBankAccounts)
           .where(and(
@@ -3023,7 +3018,7 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     const bankAccountMap = new Map(bankAccountRows.map(r => [r.employeeId, r]));
 
     const decryptedEntries = entries.map(e => {
-      const canonical = bankAccountMap.get((e as any).employeeId);
+      const canonical = bankAccountMap.get((e as unknown).employeeId);
       if (canonical?.routingNumberEncrypted && canonical?.accountNumberEncrypted) {
         return {
           ...e,
@@ -3051,11 +3046,11 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     }
 
     // Build a proper NACHA ACH PPD file
-    const companyName = ((ws as any)?.companyName || (ws as any)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
-    const originRoutingRaw = (ws as any)?.payrollBankRouting || '000000000';
+    const companyName = ((ws as unknown)?.companyName || (ws as unknown)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
+    const originRoutingRaw = (ws as unknown)?.payrollBankRouting || '000000000';
     // NACHA routing number: leading digit '1' + 8-digit bank routing = 9 chars
     const originRouting = `1${originRoutingRaw.replace(/\D/g, '').substring(0, 8).padEnd(8, '0')}`;
-    const originAccount = ((ws as any)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
+    const originAccount = ((ws as unknown)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
     const now = new Date();
     const fileDate = now.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
     const fileTime = now.toTimeString().slice(0, 5).replace(':', ''); // HHMM
@@ -3203,7 +3198,7 @@ function requireManagerOrOwn(req: AuthenticatedRequest, employeeOwnerId: string 
   return req.user?.id === employeeOwnerId;
 }
 
-function maskBankAccount(row: any) {
+function maskBankAccount(row: unknown) {
   return {
     id: row.id,
     workspaceId: row.workspaceId,
@@ -3287,7 +3282,7 @@ router.post('/employees/:employeeId/bank-accounts', async (req: AuthenticatedReq
       actionDescription: `Bank account (****${accountLast4}) added for employee ${employeeId}`,
       changes: { routing_last4: routingLast4, account_last4: accountLast4, accountType },
       isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.status(201).json({ success: true, bankAccount: maskBankAccount(created) });
   } catch (error: unknown) {
@@ -3311,7 +3306,7 @@ router.patch('/employees/:employeeId/bank-accounts/:accountId', async (req: Auth
     const parsed = employeeBankAccountUpdateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid bank account update data', details: parsed.error.flatten() });
     const { bankName, routingNumber, accountNumber, accountType, depositType, depositAmount, depositPercent, isPrimary, notes } = parsed.data;
-    const updateFields: Record<string, any> = { updatedAt: new Date() };
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() };
 
     if (bankName !== undefined) updateFields.bankName = bankName;
     if (accountType !== undefined) updateFields.accountType = accountType;
@@ -3348,7 +3343,7 @@ router.patch('/employees/:employeeId/bank-accounts/:accountId', async (req: Auth
       actionDescription: `Bank account (****${updated.accountNumberLast4}) updated for employee ${employeeId}`,
       changes: { updatedFields: Object.keys(updateFields) },
       isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     // Non-blocking: security alert to org owner + managers when bank info changes
     const changedSensitive = routingNumber || accountNumber;
@@ -3398,7 +3393,7 @@ router.delete('/employees/:employeeId/bank-accounts/:accountId', async (req: Aut
       actionDescription: `Bank account (****${deactivated.accountNumberLast4}) deactivated for employee ${employeeId}`,
       changes: { before: { isActive: true }, after: { isActive: false } },
       isSensitiveData: true, complianceTag: 'soc2',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({ success: true, message: 'Bank account deactivated' });
   } catch (error: unknown) {
@@ -3508,7 +3503,7 @@ router.post('/period/close', requireAuth, requireManager, async (req: Authentica
       periodStart,
       periodEnd,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[Payroll] Period close failed:', err?.message);
     res.status(500).json({ error: 'Failed to close period' });
   }
@@ -3523,7 +3518,7 @@ router.get('/period/status', requireAuth, async (req: AuthenticatedRequest, res)
     const { periodStart, periodEnd } = req.query;
     const { pool } = await import('../db');
 
-    const result = await pool.query<{ id: string; created_at: string; metadata: any }>(
+    const result = await pool.query<{ id: string; created_at: string; metadata: Record<string, unknown> }>(
       `SELECT id, created_at, metadata FROM universal_audit_trail
         WHERE workspace_id = $1
           AND action = 'payroll.period_closed'
@@ -3538,7 +3533,7 @@ router.get('/period/status', requireAuth, async (req: AuthenticatedRequest, res)
       closedAt: isClosed ? result.rows[0].created_at : null,
       closedBy: isClosed ? result.rows[0].metadata?.closedBy : null,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to check period status' });
   }
 });

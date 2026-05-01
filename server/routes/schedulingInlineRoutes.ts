@@ -9,6 +9,7 @@ import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { requireAuth, requireManager, type AuthenticatedRequest } from "../rbac";
 import { schedulingEnhancementsService } from "../services/scheduling/schedulingEnhancementsService";
 import { createLogger } from '../lib/logger';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('SchedulingInlineRoutes');
 
 
@@ -38,9 +39,9 @@ router.post('/generate-alerts', requireManager, async (req: AuthenticatedRequest
     const allEmployees = await db
       .select()
       .from(employees as any)
-      .where(eq((employees as any).workspaceId, workspaceId));
+      .where(eq((employees as EmployeeWithStatus).workspaceId, workspaceId));
 
-    const alerts: any[] = [];
+    const alerts: (string | number | boolean | null)[] = [];
 
     for (const employee of allEmployees) {
       const nextWeekEnd = new Date(nextWeekStart);
@@ -72,7 +73,6 @@ router.post('/generate-alerts', requireManager, async (req: AuthenticatedRequest
       if (overageHours > 0) {
         const [alert] = await db
           .insert(capacityAlerts)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .values({
             workspaceId,
             employeeId: employee.id,

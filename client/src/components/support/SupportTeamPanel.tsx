@@ -224,7 +224,7 @@ function BotQueryDialog({ bot, open, onClose }: { bot: SystemBot | null; open: b
     onSuccess: (data) => {
       setConversation(prev => [...prev, { role: "bot", text: data.answer, time: new Date().toLocaleTimeString() }]);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Query failed", description: err.message, variant: "destructive" });
     },
   });
@@ -308,7 +308,7 @@ function BotQueryDialog({ bot, open, onClose }: { bot: SystemBot | null; open: b
             disabled={queryMut.isPending}
             data-testid="input-bot-question"
           />
-          <Button size="icon" onClick={handleSend} disabled={!question.trim() || queryMut.isPending} data-testid="button-send-question">
+          <Button size="icon" aria-label="Send Question" onClick={handleSend} disabled={!question.trim() || queryMut.isPending} data-testid="button-send-question">
             {queryMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
@@ -334,7 +334,7 @@ function AddAgentDialog({ open, onClose, onSuccess }: { open: boolean; onClose: 
       onSuccess();
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
   });
 
   return (
@@ -392,7 +392,7 @@ function RegisterBotDialog({ open, onClose, onSuccess }: { open: boolean; onClos
       onSuccess();
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
   });
 
   return (
@@ -451,7 +451,7 @@ function ChangeRoleDialog({ agent, open, onClose, onSuccess }: {
       onSuccess();
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Failed", description: err.message, variant: "destructive" }),
   });
 
   if (!agent) return null;
@@ -528,7 +528,7 @@ export function SupportTeamPanel() {
   const [changeRoleAgent, setChangeRoleAgent] = useState<SupportAgent | null>(null);
   const [pendingAgentAction, setPendingAgentAction] = useState<{ agent: SupportAgent; action: string; message: string } | null>(null);
 
-  const platformRole = (user as any)?.platformRole as string;
+  const platformRole = (user as Record<string,unknown>)?.platformRole as string;
   const isRootAdmin = platformRole === 'root_admin';
   const canManage = ['root_admin', 'deputy_admin', 'sysop', 'support_manager'].includes(platformRole);
 
@@ -543,7 +543,7 @@ export function SupportTeamPanel() {
       toast({ title: "Bot action applied", description: `${vars.action} applied successfully` });
       refetch();
     },
-    onError: (err: any) => toast({ title: "Action failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Action failed", description: err.message, variant: "destructive" }),
   });
 
   const agentActionMut = useMutation({
@@ -553,7 +553,7 @@ export function SupportTeamPanel() {
       toast({ title: "Done", description: `${data.targetName}: ${data.action} applied` });
       refetch();
     },
-    onError: (err: any) => toast({ title: "Action failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Action failed", description: err.message, variant: "destructive" }),
   });
 
   const handleBotAction = (bot: SystemBot, action: string) => {
@@ -711,7 +711,7 @@ export function SupportTeamPanel() {
 
         <div className="space-y-2">
           {agents.map((agent) => {
-            const isSelf = agent.userId === (user as any)?.id;
+            const isSelf = agent.userId === (user as Record<string,unknown>)?.id;
             const initials = `${agent.firstName?.[0] || ''}${agent.lastName?.[0] || ''}`.toUpperCase() || '?';
             return (
               <div key={agent.userId}

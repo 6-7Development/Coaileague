@@ -13,7 +13,7 @@ import { CheckCircle, XCircle, Clock, Activity } from "lucide-react";
 interface PendingApproval {
   id: string;
   action_type: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   reason: string;
   created_at: string;
   expires_at: string;
@@ -81,7 +81,7 @@ export function TrinityApprovalQueue() {
     onError: () => toast({ title: "Rejection failed", variant: "destructive" }),
   });
 
-  const approvals: PendingApproval[] = (data as any)?.approvals || [];
+  const approvals: PendingApproval[] = (data as Record<string,unknown>)?.approvals || [];
 
   if (isLoading) {
     return (

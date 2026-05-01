@@ -53,6 +53,7 @@ import { eq, sql, and, inArray } from 'drizzle-orm';
 import { NotificationDeliveryService } from '../notificationDeliveryService';
 import { MANAGER_ROLES, OWNER_ROLES } from '@shared/lib/rbac/roleDefinitions';
 import { isDeliverableEmployee } from '../../lib/isDeliverableEmployee';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 
 /**
  * Canonical liability notice returned with every panic API response and
@@ -203,7 +204,7 @@ class PanicAlertService {
       const [existing] = await db.select().from(panicAlerts)
         .where(and(eq(panicAlerts.id, alertId), eq(panicAlerts.workspaceId, workspaceId))).limit(1);
       if (!existing) throw Object.assign(new Error('Alert not found'), { code: 'NOT_FOUND' });
-      throw Object.assign(new Error(`Alert already ${(existing as any).status}`), { code: 'CONFLICT' });
+      throw Object.assign(new Error(`Alert already ${(existing as Record<string,unknown>).status}`), { code: 'CONFLICT' });
     }
     const alert = updated as unknown as PanicAlert;
 
@@ -235,8 +236,8 @@ class PanicAlertService {
       const [existing] = await db.select().from(panicAlerts)
         .where(and(eq(panicAlerts.id, alertId), eq(panicAlerts.workspaceId, workspaceId))).limit(1);
       if (!existing) throw Object.assign(new Error('Alert not found'), { code: 'NOT_FOUND' });
-      if ((existing as any).status === 'resolved') return existing as unknown as PanicAlert; // idempotent
-      throw Object.assign(new Error(`Cannot resolve alert with status: ${(existing as any).status}`), { code: 'CONFLICT' });
+      if ((existing as Record<string,unknown>).status === 'resolved') return existing as unknown as PanicAlert; // idempotent
+      throw Object.assign(new Error(`Cannot resolve alert with status: ${(existing as Record<string,unknown>).status}`), { code: 'CONFLICT' });
     }
     const alert = updated as unknown as PanicAlert;
 
@@ -255,13 +256,12 @@ class PanicAlertService {
 
   async listAlerts(workspaceId: string, status?: string, limit = 50): Promise<PanicAlert[]> {
     let query = `SELECT * FROM panic_alerts WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     if (status) { query += ` AND status=$2`; params.push(status); }
     const clampedLimit = Math.min(Math.max(1, Number(limit) || 50), 200);
     query += ` ORDER BY triggered_at DESC LIMIT $${params.length + 1}`;
     params.push(clampedLimit);
     const rows = await typedPool(query, params);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return rows.rows;
   }
 
@@ -280,7 +280,7 @@ class PanicAlertService {
         firstName: employees.firstName,
         lastName: employees.lastName,
         isActive: employees.isActive,
-        status: (employees as any).status,
+        status: (employees as EmployeeWithStatus).status,
       })
       .from(employees)
       .where(
@@ -320,7 +320,7 @@ class PanicAlertService {
           idempotencyKey: `panic_sms_${alert.id}_${recipient.id}`,
         });
         reachableCount++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(
           `[PanicAlert] SMS dispatch failed for ${recipient.firstName} ${recipient.lastName} (non-fatal):`,
           err?.message,
@@ -352,7 +352,7 @@ class PanicAlertService {
           alert.longitude,
         ]
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('Auto CAD call creation failed (non-critical)', { error: (err instanceof Error ? err.message : String(err)) });
     }
   }

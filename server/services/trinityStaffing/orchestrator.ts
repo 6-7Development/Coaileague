@@ -218,7 +218,6 @@ class TrinityStaffingOrchestrator {
         const deductResult = await premiumFeatureGating.recordUsage(
           workspaceId,
           'trinity_staffing_request_parse',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           userId,
           1,
           { emailId: emailData.id }
@@ -316,7 +315,7 @@ class TrinityStaffingOrchestrator {
 
       this.updateWorkflow(workflow);
       return workflow;
-    } catch (error: any) {
+    } catch (error : unknown) {
       workflow.status = 'failed';
       workflow.error = (error instanceof Error ? error.message : String(error));
       this.updateWorkflow(workflow);
@@ -381,7 +380,6 @@ class TrinityStaffingOrchestrator {
     const deductResult = await premiumFeatureGating.recordUsage(
       workflow.workspaceId,
       'trinity_staffing_auto_assign',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userId,
       1,
       { workflowId: workflow.id }
@@ -450,7 +448,7 @@ class TrinityStaffingOrchestrator {
               officerPayRate: emp.hourlyRate ? parseFloat(emp.hourlyRate) : undefined,
               replyEmail: ctx?.senderEmail || `staffing@coaileague.com`,
             });
-          } catch (offerErr: any) {
+          } catch (offerErr : unknown) {
             log.error(`[TrinityStaffing] Failed to send offer email to ${emp.email}:`, offerErr.message);
           }
         }
@@ -470,7 +468,7 @@ class TrinityStaffingOrchestrator {
               officerPayRate: emp.hourlyRate ? parseFloat(emp.hourlyRate) : undefined,
               offerId,
             });
-          } catch (smsErr: any) {
+          } catch (smsErr : unknown) {
             log.warn(`[TrinityStaffing] SMS offer skipped for ${emp.id}:`, smsErr.message);
           }
         }
@@ -497,10 +495,10 @@ class TrinityStaffingOrchestrator {
               startTime: req.startTime,
               endTime: req.endTime,
               positionType: req.positionType,
-              officerPayRate: (emp as any).defaultHourlyRate,
+              officerPayRate: (emp as EmployeeWithStatus).defaultHourlyRate,
             },
           });
-        } catch (notifErr: any) {
+        } catch (notifErr : unknown) {
           log.error(`[TrinityStaffing] Failed to insert UNS offer notification for ${emp.id}:`, notifErr.message);
         }
       }
@@ -575,7 +573,6 @@ class TrinityStaffingOrchestrator {
     const deductResult = await premiumFeatureGating.recordUsage(
       workflow.workspaceId,
       'trinity_staffing_confirmation',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userId,
       1,
       { workflowId: workflow.id }
@@ -728,7 +725,7 @@ class TrinityStaffingOrchestrator {
           shiftsFilled: workflow.assignedEmployees.length,
         });
         log.info(`[TrinityStaffing] Client portal invitation sent to ${ctx.senderEmail} (prospect: ${prospect.id}, code: ${tempCode})`);
-      } catch (portalErr: any) {
+      } catch (portalErr : unknown) {
         log.error('[TrinityStaffing] Failed to send client portal invitation:', portalErr.message);
       }
     }
@@ -747,7 +744,6 @@ class TrinityStaffingOrchestrator {
           and(
             eq(employees.workspaceId, workflow.workspaceId),
             eq(employees.isActive, true),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             inArray(employees.workspaceRole, [...MANAGER_ROLES])
           )
         )
@@ -797,7 +793,7 @@ class TrinityStaffingOrchestrator {
         });
         log.info(`[TrinityStaffing] Org summary sent to ${managerEmails.length} manager(s)`);
       }
-    } catch (orgSummaryErr: any) {
+    } catch (orgSummaryErr : unknown) {
       log.error('[TrinityStaffing] Failed to send org summary:', orgSummaryErr.message);
     }
   }

@@ -25,20 +25,17 @@ import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityShiftConfirmationActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity shift confirmation: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -46,8 +43,8 @@ function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHa
 }
 
 async function getEmployeeUserId(employeeId: string): Promise<string | null> {
-  const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
-  return (emp as any)?.userId || null;
+  const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
+  return (emp as EmployeeWithStatus)?.userId || null;
 }
 
 export function registerShiftConfirmationActions() {
@@ -59,42 +56,42 @@ export function registerShiftConfirmationActions() {
       where: workspaceId
         ? and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))
         : eq(shifts.id, shiftId),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!shift) return { error: `Shift ${shiftId} not found` };
-    if (!(shift as any).employeeId) return { error: 'Shift has no assigned officer — cannot send confirmation', shiftId };
-    if ((shift as any).acknowledgedAt) return { alreadyConfirmed: true, shiftId, confirmedAt: (shift as any).acknowledgedAt };
+    if (!(shift as Record<string,unknown>).employeeId) return { error: 'Shift has no assigned officer — cannot send confirmation', shiftId };
+    if ((shift as Record<string,unknown>).acknowledgedAt) return { alreadyConfirmed: true, shiftId, confirmedAt: (shift as Record<string,unknown>).acknowledgedAt };
 
     await db.update(shifts)
-      .set({ requiresAcknowledgment: true, updatedAt: new Date() } as any)
+      .set({ requiresAcknowledgment: true, updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(shifts.id, shiftId));
 
-    const clientData = (shift as any).clientId
-      ? await db.query.clients?.findFirst({ where: eq(clients.id, (shift as any).clientId) } as any).catch(() => null)
+    const clientData = (shift as Record<string,unknown>).clientId
+      ? await db.query.clients?.findFirst({ where: eq(clients.id, (shift as Record<string,unknown>).clientId) }).catch(() => null)
       : null;
-    const siteName = (clientData as any)?.name || 'your assigned site';
-    const startTime = new Date((shift as any).startTime);
+    const siteName = (clientData as Record<string,unknown>)?.name || 'your assigned site';
+    const startTime = new Date((shift as Record<string,unknown>).startTime);
     const timeStr = startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     const dateStr = startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
-    const userId = await getEmployeeUserId((shift as any).employeeId);
+    const userId = await getEmployeeUserId((shift as Record<string,unknown>).employeeId);
     if (userId) {
       await createNotification({
-        workspaceId: (shift as any).workspaceId,
+        workspaceId: (shift as Record<string,unknown>).workspaceId,
         userId,
         type: 'shift_confirmation',
         title: `Shift Confirmation Needed — ${dateStr}`,
         message: `You're scheduled at ${siteName} ${dateStr} at ${timeStr}. Please confirm your attendance or let us know if you cannot make it so we can arrange coverage.`,
         priority: 'high',
-        metadata: { shiftId, startTime: (shift as any).startTime, site: siteName, action: 'confirm_shift' },
+        metadata: { shiftId, startTime: (shift as Record<string,unknown>).startTime, site: siteName, action: 'confirm_shift' },
         idempotencyKey: `shift_confirmation-${String(Date.now())}-${'system'}`,
         }).catch(() => null);
     }
 
-    log.info(`[TrinityShiftConfirmation] Confirmation request sent: shiftId=${shiftId}, officerId=${(shift as any).employeeId}`);
+    log.info(`[TrinityShiftConfirmation] Confirmation request sent: shiftId=${shiftId}, officerId=${(shift as Record<string,unknown>).employeeId}`);
     return {
       sent: true,
       shiftId,
-      officerId: (shift as any).employeeId,
+      officerId: (shift as Record<string,unknown>).employeeId,
       shiftDate: dateStr,
       shiftTime: timeStr,
       site: siteName,
@@ -106,14 +103,14 @@ export function registerShiftConfirmationActions() {
     if (!shiftId || !officerId || confirmed === undefined) {
       return { error: 'shiftId, officerId, confirmed (true/false) required' };
     }
-    const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) } as any).catch(() => null);
+    const shift = await db.query.shifts?.findFirst({ where: eq(shifts.id, shiftId) }).catch(() => null);
     if (!shift) return { error: `Shift ${shiftId} not found` };
-    const ws = workspaceId || (shift as any).workspaceId;
+    const ws = workspaceId || (shift as Record<string,unknown>).workspaceId;
     const now = new Date();
 
     if (confirmed) {
       await db.update(shifts)
-        .set({ acknowledgedAt: now, updatedAt: now } as any)
+        .set({ acknowledgedAt: now, updatedAt: now } as Record<string, unknown>)
         .where(eq(shifts.id, shiftId));
 
       const managers = await db.select({ userId: workspaceMembers.userId })
@@ -124,7 +121,7 @@ export function registerShiftConfirmationActions() {
         await createNotification({
           workspaceId: ws, userId: mgr.userId, type: 'shift_confirmed',
           title: 'Shift Confirmed',
-          message: `Officer confirmed their shift on ${new Date((shift as any).startTime).toLocaleDateString()}. Coverage is locked.`,
+          message: `Officer confirmed their shift on ${new Date((shift as Record<string,unknown>).startTime).toLocaleDateString()}. Coverage is locked.`,
           priority: 'normal',
           metadata: { shiftId, officerId },
           idempotencyKey: `shift_confirmed-${String(Date.now())}-${mgr.userId}`,
@@ -135,21 +132,21 @@ export function registerShiftConfirmationActions() {
       return { confirmed: true, shiftId, officerId, confirmedAt: now.toISOString() };
     } else {
       await db.update(shifts)
-        .set({ deniedAt: now, denialReason: reason || 'Officer declined', updatedAt: now } as any)
+        .set({ deniedAt: now, denialReason: reason || 'Officer declined', updatedAt: now } as Record<string, unknown>)
         .where(eq(shifts.id, shiftId));
 
       const [replacementShift] = await db.insert(shifts).values({
         workspaceId: ws,
-        clientId: (shift as any).clientId || null,
-        startTime: (shift as any).startTime,
-        endTime: (shift as any).endTime,
-        title: `[COVERAGE NEEDED] ${(shift as any).title || 'Shift'}`,
+        clientId: (shift as Record<string,unknown>).clientId || null,
+        startTime: (shift as Record<string,unknown>).startTime,
+        endTime: (shift as Record<string,unknown>).endTime,
+        title: `[COVERAGE NEEDED] ${(shift as Record<string,unknown>).title || 'Shift'}`,
         status: 'open',
         employeeId: null,
         notes: `Replacement needed — original officer declined. Reason: ${reason || 'Not provided'}`,
         createdAt: now,
         updatedAt: now,
-      } as any).returning().catch(() => [null]);
+      }).returning().catch(() => [null]);
 
       const managers = await db.select({ userId: workspaceMembers.userId })
         .from(workspaceMembers)
@@ -159,22 +156,22 @@ export function registerShiftConfirmationActions() {
         await createNotification({
           workspaceId: ws, userId: mgr.userId, type: 'shift_declined_alert',
           title: 'Officer Declined Shift — Coverage Needed',
-          message: `An officer declined their shift on ${new Date((shift as any).startTime).toLocaleDateString()}. Reason: ${reason || 'Not provided'}. Trinity has created an open replacement shift.`,
+          message: `An officer declined their shift on ${new Date((shift as Record<string,unknown>).startTime).toLocaleDateString()}. Reason: ${reason || 'Not provided'}. Trinity has created an open replacement shift.`,
           priority: 'urgent',
-          metadata: { originalShiftId: shiftId, officerId, replacementShiftId: (replacementShift as any)?.id },
+          metadata: { originalShiftId: shiftId, officerId, replacementShiftId: (replacementShift as Record<string,unknown>)?.id },
           idempotencyKey: `shift_declined_alert-${String(Date.now())}-${mgr.userId}`,
         }).catch(() => null);
       }
 
-      log.info(`[TrinityShiftConfirmation] Shift declined + replacement created: shiftId=${shiftId}, replacementId=${(replacementShift as any)?.id}`);
+      log.info(`[TrinityShiftConfirmation] Shift declined + replacement created: shiftId=${shiftId}, replacementId=${(replacementShift as Record<string,unknown>)?.id}`);
       return {
         confirmed: false,
         shiftId,
         officerId,
         deniedAt: now.toISOString(),
         denialReason: reason || 'Officer declined',
-        replacementShiftCreated: !!(replacementShift as any)?.id,
-        replacementShiftId: (replacementShift as any)?.id || null,
+        replacementShiftCreated: !!(replacementShift as Record<string,unknown>)?.id,
+        replacementShiftId: (replacementShift as Record<string,unknown>)?.id || null,
       };
     }   // close else block
   }));
@@ -197,14 +194,12 @@ export function registerShiftConfirmationActions() {
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         eq(shifts.requiresAcknowledgment, true),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        isNull(shifts as any).acknowledgedAt,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        isNull(shifts as any).deniedAt,
+        isNull(shifts.acknowledgedAt),
+        isNull(shifts.deniedAt),
         ne(shifts.status, 'cancelled'),
         gte(shifts.startTime, now),
         lt(shifts.startTime, threshold),
-        ne(shifts.employeeId, null as any),
+        ne(shifts.employeeId, null),
       ))
       .catch(() => []);
 
@@ -265,7 +260,7 @@ export function registerShiftConfirmationActions() {
         ne(shifts.status, 'cancelled'),
         gte(shifts.startTime, tomorrowStart),
         lte(shifts.startTime, tomorrowEnd),
-        ne(shifts.employeeId, null as any),
+        ne(shifts.employeeId, null),
       ))
       .catch(() => []);
 
@@ -280,7 +275,7 @@ export function registerShiftConfirmationActions() {
       const dateStr = new Date(shift.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
       await db.update(shifts)
-        .set({ requiresAcknowledgment: true, updatedAt: new Date() } as any)
+        .set({ requiresAcknowledgment: true, updatedAt: new Date() } as Record<string, unknown>)
         .where(eq(shifts.id, shift.id)).catch(() => null);
 
       if (shift.employeeId) {

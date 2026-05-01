@@ -155,7 +155,7 @@ async function generateEomClosePlan(workspaceId: string): Promise<ExecutionPlan>
     const result = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status NOT IN ('approved', 'billed', 'payrolled') AND deleted_at IS NULL`
     );
-    unapprovedCount = parseInt((result.rows[0] as any)?.cnt ?? '0', 10);
+    unapprovedCount = parseInt((result.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
   } catch { unapprovedCount = 0; }
 
   steps.push({
@@ -178,7 +178,7 @@ async function generateEomClosePlan(workspaceId: string): Promise<ExecutionPlan>
     const result = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status = 'approved' AND payrolled_at IS NULL`
     );
-    unpayrolledCount = parseInt((result.rows[0] as any)?.cnt ?? '0', 10);
+    unpayrolledCount = parseInt((result.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
   } catch { unpayrolledCount = 0; }
 
   steps.push({
@@ -199,7 +199,7 @@ async function generateEomClosePlan(workspaceId: string): Promise<ExecutionPlan>
     const result = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status = 'approved' AND billed_at IS NULL`
     );
-    unbilledCount = parseInt((result.rows[0] as any)?.cnt ?? '0', 10);
+    unbilledCount = parseInt((result.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
   } catch { unbilledCount = 0; }
 
   steps.push({
@@ -220,7 +220,7 @@ async function generateEomClosePlan(workspaceId: string): Promise<ExecutionPlan>
       sql`SELECT last_sync_at FROM quickbooks_tokens WHERE workspace_id = ${workspaceId} LIMIT 1`
     );
     if (result.rows[0]) {
-      const lastSync = new Date((result.rows[0] as any).last_sync_at);
+      const lastSync = new Date((result.rows[0] as Record<string, unknown>).last_sync_at);
       lastSyncAge = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60); // hours
     }
   } catch { lastSyncAge = 999; }
@@ -276,12 +276,12 @@ async function generatePayrollBatchPlan(workspaceId: string): Promise<ExecutionP
     const r1 = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status NOT IN ('approved', 'billed', 'payrolled')`
     );
-    unapprovedCount = parseInt((r1.rows[0] as any)?.cnt ?? '0', 10);
+    unapprovedCount = parseInt((r1.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
 
     const r2 = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status = 'approved' AND payrolled_at IS NULL`
     );
-    unpayrolledCount = parseInt((r2.rows[0] as any)?.cnt ?? '0', 10);
+    unpayrolledCount = parseInt((r2.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
   } catch { /* non-fatal */ }
 
   const steps: PlanStep[] = [
@@ -374,7 +374,7 @@ async function generateInvoiceBatchPlan(workspaceId: string): Promise<ExecutionP
     const result = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM time_entries WHERE workspace_id = ${workspaceId} AND status = 'approved' AND billed_at IS NULL`
     );
-    unbilledCount = parseInt((result.rows[0] as any)?.cnt ?? '0', 10);
+    unbilledCount = parseInt((result.rows[0] as Record<string, unknown>)?.cnt ?? '0', 10);
   } catch { /* non-fatal */ }
 
   const steps: PlanStep[] = [

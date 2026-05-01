@@ -55,7 +55,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
           setIsLoading(false);
         };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsLoading(false);
       let errorMessage = "Failed to access camera.";
       
@@ -215,7 +215,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
       />
 
       <UniversalModal open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); else setIsOpen(true); }}>
-        <UniversalModalContent size="xl" className="p-0 max-h-[95vh]">
+        <UniversalModalContent size="xl" className="p-0 max-h-[80dvh] sm:max-h-[95vh]">
           <UniversalModalHeader className="p-4 pb-0">
             <UniversalModalTitle>Take Photo</UniversalModalTitle>
           </UniversalModalHeader>
@@ -267,7 +267,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
                   {cameraSupported && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Switch Camera"
                       onClick={switchCamera}
                       data-testid="button-switch-camera"
                       title="Switch camera"
@@ -298,7 +298,7 @@ export function CameraCapture({ onCapture, onCancel, preferredFacing = "environm
                   
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Cancel Camera"
                     onClick={handleClose}
                     data-testid="button-cancel-camera"
                   >

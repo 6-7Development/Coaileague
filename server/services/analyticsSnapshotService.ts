@@ -450,7 +450,7 @@ export function registerAnalyticsBIActions(): void {
         )
         ORDER BY hs.composite_score ASC
       `, [workspaceId]).catch(() => null);
-      const highRisk = (data?.rows ?? []).filter((r: any) => r.churn_risk === 'high').length;
+      const highRisk = (data?.rows ?? []).filter((r: unknown) => r.churn_risk === 'high').length;
       return { success: true, actionId: request.actionId, message: `${highRisk} high-churn-risk client(s)`, data: { clients: data?.rows ?? [], highRiskCount: highRisk } };
     },
   });
@@ -508,7 +508,6 @@ export function registerAnalyticsBIActions(): void {
   platformActionHub.registerAction({
     actionId: 'search.query',
     name: 'Global Search',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     category: 'search',
     description: 'Search across officers, clients, shifts, invoices, incidents and documents. Returns grouped results with deep links.',
     requiredRoles: ['owner', 'co_owner', 'manager', 'supervisor', 'officer'],
@@ -540,7 +539,7 @@ export function registerAnalyticsBIActions(): void {
       const filterTypes = types ? String(types).split(',').map((t: string) => t.trim()) : null;
       const filtered = filterTypes ? tables.filter(t => filterTypes.includes(t.label)) : tables;
 
-      const allRows: any[] = [];
+      const allRows: (string | number | boolean | null)[] = [];
       for (const t of filtered) {
         const { rows } = await pool.query(t.sql).catch(() => ({ rows: [] }));
         allRows.push(...rows);
@@ -559,7 +558,6 @@ export function registerAnalyticsBIActions(): void {
   platformActionHub.registerAction({
     actionId: 'privacy.dsr_create',
     name: 'Submit Data Subject Request',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     category: 'privacy',
     description: 'Submit a GDPR/CCPA data subject request (access, portability, erasure, correction, restriction, objection).',
     requiredRoles: ['owner', 'co_owner', 'manager', 'supervisor', 'officer'],
@@ -581,7 +579,6 @@ export function registerAnalyticsBIActions(): void {
   platformActionHub.registerAction({
     actionId: 'privacy.data_export',
     name: 'Request Personal Data Export',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     category: 'privacy',
     description: 'Generate a 48-hour download link for an officer personal data export (all 10 data categories).',
     requiredRoles: ['owner', 'co_owner', 'manager'],
@@ -598,7 +595,6 @@ export function registerAnalyticsBIActions(): void {
   platformActionHub.registerAction({
     actionId: 'privacy.anonymize',
     name: 'Anonymize Officer PII',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     category: 'privacy',
     description: 'Irreversibly anonymize all PII for a former officer (GDPR erasure). Payroll, time, and compliance records are retained. Requires platform_staff role.',
     requiredRoles: ['owner'],

@@ -56,9 +56,9 @@ export async function flipInvitedToActive(payload: HandshakePayload): Promise<Ha
   if (new Date() > new Date(invite.expiresAt)) throw new Error('Invitation expired.');
 
   // 3. Load org code from workspace
-  const [workspace] = await db.select({ orgCode: (workspaces as any).orgCode })
+  const [workspace] = await db.select({ orgCode: (workspaces as Record<string,unknown>).orgCode })
     .from(workspaces)
-    .where(eq((workspaces as any).id, invite.workspaceId))
+    .where(eq(((workspaces as {id?: string}).id), invite.workspaceId))
     .limit(1);
 
   const orgCode = workspace?.orgCode || 'ORG';
@@ -67,7 +67,6 @@ export async function flipInvitedToActive(payload: HandshakePayload): Promise<Ha
   await db.transaction(async (tx) => {
     // Flip client status to ACTIVE + persist verified POC data
     await tx.update(clients).set({
-      // @ts-expect-error — TS migration: schema columns added progressively
       clientOnboardingStatus: 'active',
       pocEmail: payload.pocEmail,
       updatedAt: new Date(),
@@ -83,7 +82,7 @@ export async function flipInvitedToActive(payload: HandshakePayload): Promise<Ha
       workspaceId: invite.workspaceId,
       userId: payload.userId,
       userEmail: payload.pocEmail,
-      action: 'onboarding_handshake_complete' as any,
+      action: 'onboarding_handshake_complete',
       entityType: 'client',
       entityId: invite.clientId,
       changes: {

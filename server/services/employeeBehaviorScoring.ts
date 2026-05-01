@@ -204,7 +204,7 @@ export class EmployeeBehaviorScoringService {
   /**
    * Handle shift completed event
    */
-  private async handleShiftCompleted(employeeId: string, data?: any): Promise<void> {
+  private async handleShiftCompleted(employeeId: string, data?: unknown): Promise<void> {
     const [current] = await db.select()
       .from(employeeBehaviorScores)
       .where(eq(employeeBehaviorScores.employeeId, employeeId))
@@ -222,7 +222,6 @@ export class EmployeeBehaviorScoringService {
       shiftCompletionRate: newCompletionRate.toString(),
       dataPointsCount: (current.dataPointsCount || 0) + 1,
       lastModelUpdate: new Date(),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       updatedAt: new Date(),
     };
     
@@ -241,7 +240,6 @@ export class EmployeeBehaviorScoringService {
     }
     
     await db.update(employeeBehaviorScores)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set(updates)
       .where(eq(employeeBehaviorScores.employeeId, employeeId));
   }
@@ -325,7 +323,7 @@ export class EmployeeBehaviorScoringService {
   /**
    * Handle offer accepted event
    */
-  private async handleOfferAccepted(employeeId: string, data?: any): Promise<void> {
+  private async handleOfferAccepted(employeeId: string, data?: unknown): Promise<void> {
     const [current] = await db.select()
       .from(employeeBehaviorScores)
       .where(eq(employeeBehaviorScores.employeeId, employeeId))

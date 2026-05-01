@@ -78,13 +78,13 @@ export interface BusinessInsightRecommendation {
 }
 
 interface OrgRawData {
-  workspace: any;
-  context: any;
-  employeeList: any[];
-  clientList: any[];
-  invoiceList: any[];
+  workspace: unknown;
+  context: Record<string, unknown>;
+  employeeList: unknown[];
+  clientList: unknown[];
+  invoiceList: unknown[];
   openShiftsCount: number;
-  recentPayroll: any[];
+  recentPayroll: unknown[];
   overtimeHours: number;
   unpaidTotal: number;
   totalRevenue: number;
@@ -178,7 +178,7 @@ async function fetchOrgData(workspaceId: string): Promise<OrgRawData> {
   const totalRevenue = paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || '0'), 0);
   const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || '0'), 0);
 
-  const overtimeHours = (context as any)?.overtimeHoursThisMonth || 0;
+  const overtimeHours = (context as Record<string,unknown>)?.overtimeHoursThisMonth || 0;
   const openShiftsCount = Number(openShiftsResult[0]?.count || 0);
 
   return {
@@ -252,7 +252,6 @@ Write in a warm, direct, human voice. Use real numbers from the data. Avoid gene
       userId,
       featureKey: 'business_health_scan',
       prompt,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       model: 'gemini-3-pro-preview',
       temperature: 0.7,
       maxOutputTokens: 2048,
@@ -261,7 +260,7 @@ Write in a warm, direct, human voice. Use real numbers from the data. Avoid gene
     if (result.success && result.text) {
       return result.text;
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[BusinessInsights] AI narrative generation failed:', (err instanceof Error ? err.message : String(err)));
   }
 
@@ -436,7 +435,6 @@ function buildScan(raw: OrgRawData, aiNarrative: string): BusinessHealthScan {
   }
 
   // Available execution actions
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const availableActions: BusinessInsightAction[] = [
     {
       actionId: 'send_invoice_reminders',

@@ -34,7 +34,7 @@ export default function SRAOfficers() {
     queryFn: () => sraFetch("/api/sra/data/officers"),
   });
 
-  const officers: any[] = data?.data || [];
+  const officers: unknown[] = data?.data || [];
   const stateReq = data?.stateRequirements;
 
   const now = new Date();
@@ -137,7 +137,7 @@ export default function SRAOfficers() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((officer: any) => {
+                    {filtered.map((officer) => {
                       const expired = officer.guardCardExpiryDate && new Date(officer.guardCardExpiryDate) < now;
                       const expiringSoon = officer.guardCardExpiryDate && !expired && new Date(officer.guardCardExpiryDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
                       return (

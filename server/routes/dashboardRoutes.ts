@@ -20,9 +20,8 @@ const router = Router();
 router.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       if (isPlatformAdmin) {
@@ -58,12 +57,11 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
 router.get("/summary", requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
     // SECURITY: query param workspaceId is only honoured for platform admins.
     // Non-admin users are always scoped to their session workspace to prevent
     // cross-tenant data leakage via query param injection.
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || req.workspaceId;
 
     if (!workspaceId) return res.status(400).json({ error: "workspaceId required" });
 
@@ -90,7 +88,7 @@ router.get("/summary", requireAuth, async (req: Request, res: Response) => {
              COUNT(*) AS total
       FROM employee_certifications
       WHERE workspace_id = ${workspaceId}
-    `).catch(() => null);
+    `).catch((e: unknown) => log.warn('[dashboardRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
 
     const expired = Number(complianceResp?.rows?.[0]?.expired || 0);
     const expiringSoon = Number(complianceResp?.rows?.[0]?.expiring_soon || 0);
@@ -119,9 +117,8 @@ router.get("/metrics", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     
     // Platform admins can view any workspace via query param, or their own if set
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       // For platform admins without a workspace context, return aggregate or empty data
@@ -280,7 +277,7 @@ router.get("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || req.user?.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const [saved] = await db
@@ -306,7 +303,7 @@ router.post("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || req.user?.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const { widgets } = req.body;
@@ -334,7 +331,7 @@ router.get("/worker-earnings", requireAuth, async (req: Request, res: Response) 
     // currentWorkspaceId is the canonical field on the DB user object (set by real login);
     // workspaceId is set on the x-test-key dev bypass user object.
     // req.workspaceId is set by ensureWorkspaceAccess when mounted at /api/dashboard.
-    const workspaceId = user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = user?.currentWorkspaceId || (user as Record<string,unknown>)?.workspaceId || req.workspaceId;
     const userId = user?.id;
 
     if (!userId || !workspaceId) {

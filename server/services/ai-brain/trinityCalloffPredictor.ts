@@ -131,7 +131,7 @@ class TrinityCalloffPredictor {
       `, [workspaceId, horizonHours]);
 
       return (result as unknown as any[]).map(row => this.scoreCalloffRisk(row));
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[CalloffPredictor] Failed to compute calloff risks: ${(err instanceof Error ? err.message : String(err))}`);
       return [];
     }
@@ -140,7 +140,7 @@ class TrinityCalloffPredictor {
   /**
    * Score a single officer-shift combination for calloff risk.
    */
-  private scoreCalloffRisk(row: any): CalloffRisk {
+  private scoreCalloffRisk(row: unknown): CalloffRisk {
     const factors: string[] = [];
     let riskScore = 0.10; // baseline
 
@@ -244,7 +244,7 @@ class TrinityCalloffPredictor {
       `, [workspaceId]);
 
       return (result as unknown as any[]).map(row => this.scoreSiteRisk(row));
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[CalloffPredictor] Failed to compute site risks: ${(err instanceof Error ? err.message : String(err))}`);
       return [];
     }
@@ -253,7 +253,7 @@ class TrinityCalloffPredictor {
   /**
    * Score a single site for overall operational risk.
    */
-  private scoreSiteRisk(row: any): SiteRiskScore {
+  private scoreSiteRisk(row: unknown): SiteRiskScore {
     const factors: string[] = [];
     let riskScore = 0.10;
 

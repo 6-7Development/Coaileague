@@ -101,7 +101,6 @@ async function requireSubagentAccess(req: AuthenticatedRequest, res: Response, n
   }
 
   req.platformRole = platformRole;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   req.user = userId;
   next();
 }
@@ -134,7 +133,7 @@ router.get('/subagents/:id', requireSubagentAccess, async (req: Request, res: Re
 
 router.get('/subagents/domain/:domain', requireSubagentAccess, async (req: Request, res: Response) => {
   try {
-    const subagents = await subagentSupervisor.getSubagentsByDomain(req.params.domain as any);
+    const subagents = await subagentSupervisor.getSubagentsByDomain(req.params.domain as unknown);
     res.json({ success: true, subagents });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: sanitizeError(error) });
@@ -218,10 +217,10 @@ router.get('/telemetry', requireSubagentAccess, async (req: Request, res: Respon
     let query = db.select().from(subagentTelemetry);
     
     if (subagentId) {
-      query = query.where(eq(subagentTelemetry.subagentId, subagentId as string)) as any;
+      query = query.where(eq(subagentTelemetry.subagentId, subagentId as string)) as unknown;
     }
     if (workspaceId) {
-      query = query.where(eq(subagentTelemetry.workspaceId, workspaceId as string)) as any;
+      query = query.where(eq(subagentTelemetry.workspaceId, workspaceId as string)) as unknown;
     }
     
     const telemetry = await query
@@ -475,10 +474,10 @@ router.get('/access-control', requireSubagentAccess, async (req: Request, res: R
     let query = db.select().from(trinityAccessControl);
     
     if (workspaceId) {
-      query = query.where(eq(trinityAccessControl.workspaceId, workspaceId as string)) as any;
+      query = query.where(eq(trinityAccessControl.workspaceId, workspaceId as string)) as unknown;
     }
     if (resourceType) {
-      query = query.where(eq(trinityAccessControl.resourceType, resourceType as string)) as any;
+      query = query.where(eq(trinityAccessControl.resourceType, resourceType as string)) as unknown;
     }
     
     const controls = await query;
@@ -614,7 +613,7 @@ router.post('/execute', requireSubagentAccess, async (req: Request, res: Respons
     const { domain, actionId, parameters, workspaceId } = validation.data;
     
     // Simple test handler for debugging
-    const testHandler = async (params: Record<string, any>) => {
+    const testHandler = async (params: Record<string, unknown>) => {
       return { executed: true, params, timestamp: new Date().toISOString() };
     };
     

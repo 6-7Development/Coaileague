@@ -24,14 +24,14 @@ interface ResearchFinding {
   insight: string;
   confidence: number;
   dataPoints: number;
-  evidence: any;
+  evidence: unknown;
   severity?: 'info' | 'low' | 'medium' | 'high' | 'critical';
 }
 
 interface ResearchResult {
   query: string;
   findings: ResearchFinding[];
-  dataSummary: Record<string, any>;
+  dataSummary: Record<string, unknown>;
   recommendations: string[];
   methodology: string[];
   totalDataPointsAnalyzed: number;
@@ -73,7 +73,7 @@ class DataResearchSkill extends BaseSkill {
       logs.push(`Research initiated: "${params.query}" [depth: ${params.researchDepth}]`);
 
       const sources = params.dataSources || ['employees', 'clients', 'sites', 'shifts', 'invoices'];
-      const dataSummary: Record<string, any> = {};
+      const dataSummary: Record<string, unknown> = {};
 
       for (const source of sources) {
         const sourceData = await this.querySource(source, params, logs);
@@ -128,7 +128,7 @@ class DataResearchSkill extends BaseSkill {
           findingsCount: findings.length,
         },
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       logs.push(`Research failed: ${(error instanceof Error ? error.message : String(error))}`);
       return { success: false, error: (error instanceof Error ? error.message : String(error)), logs };
     }
@@ -138,7 +138,7 @@ class DataResearchSkill extends BaseSkill {
     source: string,
     params: ResearchParams,
     logs: string[]
-  ): Promise<{ data: any[]; summary: any; dataPoints: number }> {
+  ): Promise<{ data: unknown[]; summary: unknown; dataPoints: number }> {
     const wsId = params.workspaceId;
 
     try {
@@ -146,7 +146,6 @@ class DataResearchSkill extends BaseSkill {
         case 'employees': {
           const data = await db.select().from(employees).where(eq(employees.workspaceId, wsId)).limit(500);
           const active = data.filter(e => e.isActive).length;
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const rates = data.map(e => parseFloat(e.payRate?.toString() || '0')).filter(r => r > 0);
           const avgRate = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0;
           const summary = {
@@ -172,7 +171,7 @@ class DataResearchSkill extends BaseSkill {
 
         case 'sites': {
           const data = await db.select().from(sites).where(eq(sites.workspaceId, wsId)).limit(200);
-          const active = data.filter(s => (s as any).isActive).length;
+          const active = data.filter(s => (s as Record<string, unknown>).isActive).length;
           const summary = { total: data.length, active, inactive: data.length - active };
           logs.push(`Sites: ${data.length} records queried`);
           return { data, summary, dataPoints: data.length };
@@ -201,7 +200,7 @@ class DataResearchSkill extends BaseSkill {
         default:
           return { data: [], summary: {}, dataPoints: 0 };
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       logs.push(`Failed to query ${source}: ${(error instanceof Error ? error.message : String(error))}`);
       return { data: [], summary: { error: (error instanceof Error ? error.message : String(error)) }, dataPoints: 0 };
     }
@@ -209,7 +208,7 @@ class DataResearchSkill extends BaseSkill {
 
   private async analyzeSource(
     source: string,
-    sourceData: { data: any[]; summary: any; dataPoints: number },
+    sourceData: { data: unknown[]; summary: unknown; dataPoints: number },
     params: ResearchParams,
     logs: string[]
   ): Promise<ResearchFinding[]> {
@@ -248,9 +247,9 @@ class DataResearchSkill extends BaseSkill {
 
       case 'invoices': {
         const { summary, data } = sourceData;
-        const overdue = data.filter((i: any) => i.status === 'overdue' || i.status === 'past_due');
+        const overdue = data.filter((i: unknown) => i.status === 'overdue' || i.status === 'past_due');
         if (overdue.length > 0) {
-          const overdueAmount = overdue.reduce((sum: number, inv: any) =>
+          const overdueAmount = overdue.reduce((sum: number, inv: unknown) =>
             sum + (parseFloat(inv.total?.toString() || '0') || 0), 0);
           findings.push({
             category: 'finance',
@@ -267,7 +266,7 @@ class DataResearchSkill extends BaseSkill {
 
       case 'shifts': {
         const { summary, data } = sourceData;
-        const unassigned = data.filter((s: any) => !s.employeeId && s.status !== 'completed' && s.status !== 'cancelled');
+        const unassigned = data.filter((s: unknown) => !s.employeeId && s.status !== 'completed' && s.status !== 'cancelled');
         if (unassigned.length > 0) {
           findings.push({
             category: 'operations',
@@ -287,7 +286,7 @@ class DataResearchSkill extends BaseSkill {
   }
 
   private async crossSourceAnalysis(
-    dataSummary: Record<string, any>,
+    dataSummary: Record<string, unknown>,
     params: ResearchParams,
     logs: string[]
   ): Promise<ResearchFinding[]> {
@@ -328,7 +327,7 @@ class DataResearchSkill extends BaseSkill {
   }
 
   private async detectAnomalies(
-    dataSummary: Record<string, any>,
+    dataSummary: Record<string, unknown>,
     params: ResearchParams,
     logs: string[]
   ): Promise<ResearchFinding[]> {
@@ -393,7 +392,7 @@ class DataResearchSkill extends BaseSkill {
     return [...new Set(recs)];
   }
 
-  private countBy(items: any[], key: string): Record<string, number> {
+  private countBy(items: unknown[], key: string): Record<string, number> {
     const counts: Record<string, number> = {};
     for (const item of items) {
       const val = (item[key] || 'unspecified').toString();

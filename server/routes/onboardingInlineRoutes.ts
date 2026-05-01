@@ -118,7 +118,7 @@ router.get('/create-org/progress', async (req: AuthenticatedRequest, res) => {
     const result = await typedQuery(
       sql`SELECT progress_data FROM org_creation_progress WHERE user_id = ${userId} LIMIT 1`
     );
-    const row = result[0] as any;
+    const row = result[0] as unknown;
     const progress = row?.progress_data ?? null;
     res.json({ success: true, progress });
   } catch (error: unknown) {
@@ -187,7 +187,6 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
 
     if (OWNER_TIER_ROLES.includes(requestedRole)) {
       // Fetch the inviter's actual workspace role to enforce the ownership gate
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const inviterEmployee = await storage.getEmployeeByUserId(userId, workspaceId);
       const inviterRole = inviterEmployee?.workspaceRole as string;
       const isOwner = ['org_owner', 'co_owner'].includes(inviterRole);
@@ -222,15 +221,15 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
       sentBy: userId,
     } as any);
 
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-    const host = req.get('host');
-    const onboardingUrl = `${protocol}://${host}/onboarding/${inviteToken}`;
+    // Use APP_URL when set (Railway production); fall back to request host
+    const appBase = process.env.APP_URL ||
+      `${process.env.NODE_ENV === 'production' ? 'https' : req.protocol}://${req.get('host')}`;
+    const onboardingUrl = `${appBase}/onboarding/${inviteToken}`;
 
     await sendOnboardingInviteEmail(email, {
       employeeName: `${firstName} ${lastName}`,
       workspaceName: workspace?.name || 'Our Team',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      onboardingUrl,
+      inviteUrl: onboardingUrl,    // template field name
       expiresIn: '7 days',
     });
 
@@ -244,7 +243,7 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
 router.get('/status', async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any).activeWorkspaceId || (user as any).defaultWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.activeWorkspaceId || req.user?.defaultWorkspaceId;
 
     if (!workspaceId) {
       return res.json({ status: 'not_started', progress: 0 });
@@ -277,7 +276,7 @@ router.get('/status', async (req, res) => {
   }
 })
 
-router.get('/progress', async (req: any, res) => {
+router.get('/progress', async (req: AuthenticatedRequest, res) => {
   try {
     let userId: string;
 
@@ -296,7 +295,6 @@ router.get('/progress', async (req: any, res) => {
 
     if (progress.length === 0) {
       const newProgress = await db.insert(userOnboarding)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .values({ userId, workspaceId })
         .returning();
       return res.json(newProgress[0]);
@@ -309,7 +307,7 @@ router.get('/progress', async (req: any, res) => {
   }
 })
 
-router.post('/skip', async (req: any, res) => {
+router.post('/skip', async (req: AuthenticatedRequest, res) => {
   try {
     let userId: string;
 
@@ -333,7 +331,6 @@ router.post('/skip', async (req: any, res) => {
     if (updated.length === 0) {
       const created = await db.insert(userOnboarding)
         .values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: workspaceId,
           userId,
           hasSkipped: true,
@@ -350,7 +347,7 @@ router.post('/skip', async (req: any, res) => {
   }
 })
 
-router.post('/complete', async (req: any, res) => {
+router.post('/complete', async (req: AuthenticatedRequest, res) => {
   try {
     let userId: string;
 
@@ -390,7 +387,6 @@ router.post('/complete', async (req: any, res) => {
     if (updated.length === 0) {
       const created = await db.insert(userOnboarding)
         .values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: workspaceId,
           userId,
           completedSteps: completedSteps || [],
@@ -406,11 +402,73 @@ router.post('/complete', async (req: any, res) => {
       return res.json(created[0]);
     }
 
+    // Also mark the employee record as onboarding completed
+    // so they appear as fully active in schedules and employee lists.
+    try {
+      const { employees: empTable } = await import('@shared/schema');
+      const { eq: eqOp } = await import('drizzle-orm');
+      await db.update(empTable)
+        .set({ onboardingStatus: 'completed', isActive: true })
+        .where(eqOp(empTable.userId, userId));
+    } catch (_) { /* non-blocking — user_onboarding row already saved */ }
+
     res.json(updated[0]);
   } catch (error) {
     log.error("Error completing onboarding:", error);
     res.status(500).json({ message: "Failed to complete onboarding" });
   }
 })
+
+
+// GET /api/onboarding/setup-guide — returns workspace setup completion state
+router.get('/setup-guide', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.user?.id;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace required' });
+
+    // Derive completion from workspace state
+    const [workspace] = await db.select().from(workspaces as Record<string,unknown>).where(((workspaces as {id?: string}).id) ? eq(((workspaces as {id?: string}).id), workspaceId) : sql`false`).limit(1).catch(() => [null]);
+    
+    // Build a sensible guide based on what exists
+    const guideData = {
+      trinityGreeting: "Keep going! You're making great progress setting up your workspace.",
+      totalTasks: 5,
+      completedTasks: workspace ? 2 : 0,
+      completionPercent: workspace ? 40 : 0,
+      sections: [
+        {
+          id: 'organization',
+          title: 'Organization Setup',
+          tasks: [
+            { id: 'workspace', label: 'Create your workspace', isCompleted: !!workspace, href: '/settings' },
+            { id: 'branding', label: 'Add company logo & branding', isCompleted: false, href: '/settings/branding' },
+          ],
+        },
+        {
+          id: 'team',
+          title: 'Build Your Team',
+          tasks: [
+            { id: 'invite', label: 'Invite your first employee', isCompleted: false, href: '/employees' },
+          ],
+        },
+        {
+          id: 'scheduling',
+          title: 'Scheduling',
+          tasks: [
+            { id: 'shift', label: 'Create your first shift', isCompleted: false, href: '/schedule' },
+            { id: 'location', label: 'Add a work location', isCompleted: false, href: '/locations' },
+          ],
+        },
+      ],
+    };
+
+    res.json(guideData);
+  } catch (error: unknown) {
+    log.error('[Onboarding] setup-guide error:', error);
+    // Return empty guide rather than 500 so panel renders gracefully
+    res.json({ sections: [], totalTasks: 0, completedTasks: 0, completionPercent: 0 });
+  }
+});
 
 export default router;

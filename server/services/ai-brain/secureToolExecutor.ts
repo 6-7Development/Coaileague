@@ -34,7 +34,7 @@ export interface ToolExecutionRequest {
   toolId: string;
   toolName: string;
   action: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   callerContext: {
     userId: string;
     workspaceId: string;
@@ -74,15 +74,15 @@ export interface DryRunChange {
   entityId?: string;
   changeType: 'create' | 'update' | 'delete' | 'read' | 'invoke';
   field?: string;
-  currentValue?: any;
-  newValue?: any;
+  currentValue?: unknown;
+  newValue?: unknown;
   diffPreview?: string;
 }
 
 export interface ToolExecutionResult {
   success: boolean;
   authorized: boolean;
-  result?: any;
+  result?: unknown;
   error?: string;
   durationMs: number;
   toolCall: TrinityToolCall;
@@ -297,7 +297,7 @@ class SecureToolExecutor {
     // Check workspace access if required
     if (policy.requiresWorkspaceAccess && callerContext.workspaceId) {
       try {
-        const hasAccess = await (aiBrainAuthorizationService as any).canAccessWorkspace(
+        const hasAccess = await (aiBrainAuthorizationService as Record<string, unknown>).canAccessWorkspace(
           callerContext.userId,
           callerContext.workspaceId,
           callerRole
@@ -403,7 +403,6 @@ class SecureToolExecutor {
       await this.logToolCallSuccess(request, callId, Date.now() - startTime);
 
       // Publish event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'tool_executed',
         toolId: request.toolId,
@@ -422,7 +421,7 @@ class SecureToolExecutor {
         durationMs: Date.now() - startTime,
         toolCall,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       toolCall.error = (error instanceof Error ? error.message : String(error));
       toolCall.durationMs = Date.now() - startTime;
 
@@ -441,16 +440,15 @@ class SecureToolExecutor {
   /**
    * Delegate to tool capability registry for actual execution
    */
-  private async delegateToToolRegistry(request: ToolExecutionRequest): Promise<any> {
+  private async delegateToToolRegistry(request: ToolExecutionRequest): Promise<unknown> {
     const { toolId, action, parameters, callerContext } = request;
 
     // Try to find and execute through registry
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const tool = await toolCapabilityRegistry.getTool(callerContext.workspaceId, toolId);
       
-      if (tool && typeof (tool as any).execute === 'function') {
-        return await (tool as any).execute(action, parameters, callerContext);
+      if (tool && typeof (tool as Record<string,unknown>).execute === 'function') {
+        return await (tool as Record<string,unknown>).execute(action, parameters, callerContext);
       }
 
       // SECURITY: Only allow simulation for bypass-eligible roles
@@ -461,7 +459,7 @@ class SecureToolExecutor {
 
       log.warn(`[SecureToolExecutor] BYPASS: Tool ${toolId} not found in registry. Elevated role ${callerContext.platformRole} attempted execution.`);
       throw new Error(`Tool '${toolId}' is not registered. Cannot execute unregistered tools even with elevated privileges.`);
-    } catch (error: any) {
+    } catch (error : unknown) {
       // If registry lookup fails, re-throw
       throw new Error(`Tool execution failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -752,7 +750,7 @@ class SecureToolExecutor {
   /**
    * Generate a human-readable diff preview
    */
-  private generateDiffPreview(changeType: DryRunChange['changeType'], params: Record<string, any>): string {
+  private generateDiffPreview(changeType: DryRunChange['changeType'], params: Record<string, unknown>): string {
     switch (changeType) {
       case 'create':
         return `+ CREATE new record with: ${JSON.stringify(params, null, 2).slice(0, 200)}...`;

@@ -13,7 +13,6 @@ import {
   clients,
   shifts,
   shiftTemplates,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   timeEntries,
   mileageLogs,
   invoices,
@@ -256,7 +255,6 @@ import {
   employeeCertifications,
   employeeBehaviorScores,
   clientBillingSettings,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   timeEntries,
   employeeInvitations,
   invoicePayments,
@@ -682,7 +680,7 @@ export interface IStorage {
   
   // Billing Platform operations (Financial Automation - extends existing invoice/payroll)
   // Client billing rates
-  getClientRates(workspaceId: string, clientId: string): Promise<any[]>;
+  getClientRates(workspaceId: string, clientId: string): Promise<Record<string,unknown>[]>;
   
   // ========================================================================
   // EXPENSEOS™ - EXPENSE MANAGEMENT
@@ -713,86 +711,86 @@ export interface IStorage {
   // ========================================================================
   // I-9 RE-VERIFICATION & COMPLIANCE
   // ========================================================================
-  getI9RecordsByWorkspace(workspaceId: string): Promise<any[]>;
-  getI9RecordByEmployee(employeeId: string, workspaceId: string): Promise<any | undefined>;
-  getExpiringI9Authorizations(workspaceId: string, daysAhead: number): Promise<any[]>;
+  getI9RecordsByWorkspace(workspaceId: string): Promise<Record<string,unknown>[]>;
+  getI9RecordByEmployee(employeeId: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getExpiringI9Authorizations(workspaceId: string, daysAhead: number): Promise<Record<string,unknown>[]>;
   
   // ========================================================================
   // POLICIOS™ - POLICY & HANDBOOK MANAGEMENT
   // ========================================================================
-  createCompanyPolicy(policy: any): Promise<any>;
-  getCompanyPolicy(id: string, workspaceId: string): Promise<any | undefined>;
-  getCompanyPolicies(workspaceId: string): Promise<any[]>;
-  updateCompanyPolicy(id: string, workspaceId: string, data: any): Promise<any | undefined>;
-  publishPolicy(id: string, workspaceId: string, publishedBy: string): Promise<any | undefined>;
-  getPolicyAcknowledgments(policyId: string, workspaceId: string): Promise<any[]>;
-  createPolicyAcknowledgment(ack: any): Promise<any>;
+  createCompanyPolicy(policy: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getCompanyPolicy(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getCompanyPolicies(workspaceId: string): Promise<Record<string,unknown>[]>;
+  updateCompanyPolicy(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
+  publishPolicy(id: string, workspaceId: string, publishedBy: string): Promise<Record<string,unknown> | undefined>;
+  getPolicyAcknowledgments(policyId: string, workspaceId: string): Promise<Record<string,unknown>[]>;
+  createPolicyAcknowledgment(ack: Record<string, unknown>): Promise<Record<string,unknown>>;
   
   // ReportOS™ Monopolistic Features
   // KPI Alerts
-  createKpiAlert(alert: any): Promise<any>;
-  getKpiAlerts(workspaceId: string): Promise<any[]>;
-  updateKpiAlert(id: string, workspaceId: string, data: any): Promise<any>;
+  createKpiAlert(alert: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getKpiAlerts(workspaceId: string): Promise<Record<string,unknown>[]>;
+  updateKpiAlert(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown>>;
   deleteKpiAlert(id: string, workspaceId: string): Promise<boolean>;
-  triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<any>;
-  getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<any[]>;
-  acknowledgeAlert(triggerId: string, userId: string): Promise<any>;
+  triggerKpiAlert(alertId: string, metricValue: number, entityData: unknown): Promise<Record<string,unknown>>;
+  getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<Record<string,unknown>[]>;
+  acknowledgeAlert(triggerId: string, userId: string): Promise<Record<string,unknown>>;
   
   // Benchmark Metrics
-  createBenchmarkMetric(metric: any): Promise<any>;
-  getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<any[]>;
+  createBenchmarkMetric(metric: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<Record<string,unknown>[]>;
   
   // ========================================================================
   // TALENTOS™ - INTERNAL TALENT MARKETPLACE
   // ========================================================================
-  createInternalBid(bid: any): Promise<any>;
-  getInternalBidById(id: string): Promise<any | undefined>;
-  getInternalBids(workspaceId: string, filters?: { status?: string }): Promise<any[]>;
-  updateInternalBid(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createInternalBid(bid: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getInternalBidById(id: string): Promise<Record<string,unknown> | undefined>;
+  getInternalBids(workspaceId: string, filters?: { status?: string }): Promise<Record<string,unknown>[]>;
+  updateInternalBid(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
-  createBidApplication(application: any): Promise<any>;
-  getBidApplication(id: string): Promise<any | undefined>;
-  getBidApplicationsByBid(bidId: string, workspaceId?: string): Promise<any[]>;
-  getBidApplicationsByEmployee(employeeId: string, workspaceId: string): Promise<any[]>;
-  updateBidApplication(id: string, data: any): Promise<any | undefined>;
+  createBidApplication(application: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getBidApplication(id: string): Promise<Record<string,unknown> | undefined>;
+  getBidApplicationsByBid(bidId: string, workspaceId?: string): Promise<Record<string,unknown>[]>;
+  getBidApplicationsByEmployee(employeeId: string, workspaceId: string): Promise<Record<string,unknown>[]>;
+  updateBidApplication(id: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
   // ========================================================================
   // TALENTOS™ - PERFORMANCE REVIEWS & CAREER PATHING
   // ========================================================================
-  createPerformanceReview(review: any): Promise<any>;
-  getPerformanceReview(id: string, workspaceId: string): Promise<any | undefined>;
-  getPerformanceReviewsByEmployee(employeeId: string, workspaceId: string): Promise<any[]>;
-  updatePerformanceReview(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createPerformanceReview(review: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getPerformanceReview(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getPerformanceReviewsByEmployee(employeeId: string, workspaceId: string): Promise<Record<string,unknown>[]>;
+  updatePerformanceReview(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
-  createRoleTemplate(template: any): Promise<any>;
-  getRoleTemplate(id: string, workspaceId: string): Promise<any | undefined>;
-  getRoleTemplates(workspaceId: string): Promise<any[]>;
-  updateRoleTemplate(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createRoleTemplate(template: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getRoleTemplate(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getRoleTemplates(workspaceId: string): Promise<Record<string,unknown>[]>;
+  updateRoleTemplate(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
-  createSkillGapAnalysis(analysis: any): Promise<any>;
-  getSkillGapAnalysis(id: string, workspaceId: string): Promise<any | undefined>;
-  getSkillGapAnalysesByEmployee(workspaceId: string, employeeId: string): Promise<any[]>;
-  updateSkillGapAnalysis(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createSkillGapAnalysis(analysis: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getSkillGapAnalysis(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getSkillGapAnalysesByEmployee(workspaceId: string, employeeId: string): Promise<Record<string,unknown>[]>;
+  updateSkillGapAnalysis(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
   // ========================================================================
   // ASSETOS™ - PHYSICAL RESOURCE ALLOCATION
   // ========================================================================
-  createAsset(asset: any): Promise<any>;
-  getAsset(id: string, workspaceId: string): Promise<any | undefined>;
-  getAssets(workspaceId: string, filters?: { status?: string }): Promise<any[]>;
-  updateAsset(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createAsset(asset: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getAsset(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getAssets(workspaceId: string, filters?: { status?: string }): Promise<Record<string,unknown>[]>;
+  updateAsset(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
-  createAssetSchedule(schedule: any): Promise<any>;
-  getAssetSchedule(id: string, workspaceId: string): Promise<any | undefined>;
-  getAssetSchedulesByAsset(assetId: string, workspaceId: string, startTime?: Date, endTime?: Date): Promise<any[]>;
-  getAssetSchedulesByAssetAndDateRange(assetId: string, workspaceId: string, startDate: Date, endDate: Date): Promise<any[]>;
-  updateAssetSchedule(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createAssetSchedule(schedule: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getAssetSchedule(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getAssetSchedulesByAsset(assetId: string, workspaceId: string, startTime?: Date, endTime?: Date): Promise<Record<string,unknown>[]>;
+  getAssetSchedulesByAssetAndDateRange(assetId: string, workspaceId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]>;
+  updateAssetSchedule(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
-  createAssetUsageLog(log: any): Promise<any>;
-  getAssetUsageLog(id: string, workspaceId: string): Promise<any | undefined>;
-  getAssetUsageLogsByClient(workspaceId: string, clientId: string, startDate: Date, endDate: Date, status?: string): Promise<any[]>;
-  getAssetUsageLogsByDateRange(workspaceId: string, startDate: Date, endDate: Date): Promise<any[]>;
-  updateAssetUsageLog(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createAssetUsageLog(log: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getAssetUsageLog(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  getAssetUsageLogsByClient(workspaceId: string, clientId: string, startDate: Date, endDate: Date, status?: string): Promise<Record<string,unknown>[]>;
+  getAssetUsageLogsByDateRange(workspaceId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]>;
+  updateAssetUsageLog(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
   // ========================================================================
   // HIREOS™ - DIGITAL FILE CABINET & COMPLIANCE WORKFLOW
@@ -816,50 +814,50 @@ export interface IStorage {
   getOnboardingChecklistByApplication(applicationId: string): Promise<OnboardingChecklist | undefined>;
   updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
   
-  getHiringComplianceReport(workspaceId: string): Promise<any>;
+  getHiringComplianceReport(workspaceId: string): Promise<Record<string,unknown>>;
   
   // ========================================================================
   // SECURITY INCIDENTS - Mobile Worker Incident Reporting
   // ========================================================================
-  createSecurityIncident(incident: any): Promise<any>;
-  getSecurityIncident(id: string): Promise<any | undefined>;
-  getSecurityIncidentsByWorkspace(workspaceId: string): Promise<any[]>;
-  getSecurityIncidentsByEmployee(workspaceId: string, employeeId: string): Promise<any[]>;
-  updateSecurityIncident(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  createSecurityIncident(incident: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getSecurityIncident(id: string): Promise<Record<string,unknown> | undefined>;
+  getSecurityIncidentsByWorkspace(workspaceId: string): Promise<Record<string,unknown>[]>;
+  getSecurityIncidentsByEmployee(workspaceId: string, employeeId: string): Promise<Record<string,unknown>[]>;
+  updateSecurityIncident(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
   // ========================================================================
   // HELPER METHODS FOR UNIFIED DATA NEXUS
   // ========================================================================
-  getShiftsByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]>;
-  getTimeEntriesByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]>;
-  getReportSubmissionsByEmployee(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]>;
-  getTimeEntryDiscrepancies(workspaceId: string, filters?: { employeeId?: string; startDate?: Date; endDate?: Date }): Promise<any[]>;
-  getTurnoverPredictions(workspaceId: string, filters?: { employeeId?: string; limit?: number }): Promise<any[]>;
-  getInvoices(workspaceId: string): Promise<any[]>;
+  getShiftsByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]>;
+  getTimeEntriesByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]>;
+  getReportSubmissionsByEmployee(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]>;
+  getTimeEntryDiscrepancies(workspaceId: string, filters?: { employeeId?: string; startDate?: Date; endDate?: Date }): Promise<Record<string,unknown>[]>;
+  getTurnoverPredictions(workspaceId: string, filters?: { employeeId?: string; limit?: number }): Promise<Record<string,unknown>[]>;
+  getInvoices(workspaceId: string): Promise<Record<string,unknown>[]>;
   
   // ========================================================================
   // COMMOS™ - ORGANIZATION CHAT ROOMS & CHANNELS
   // ========================================================================
-  createOrganizationChatRoom(room: any): Promise<any>;
-  getOrganizationChatRoom(id: string): Promise<any | undefined>;
-  getOrganizationChatRoomsByWorkspace(workspaceId: string): Promise<any[]>;
-  getAllOrganizationChatRooms(): Promise<any[]>; // Support staff only
-  updateOrganizationChatRoom(id: string, data: any): Promise<any | undefined>;
-  suspendOrganizationChatRoom(id: string, suspendedBy: string, reason: string): Promise<any | undefined>;
-  liftOrganizationChatRoomSuspension(id: string): Promise<any | undefined>;
+  createOrganizationChatRoom(room: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getOrganizationChatRoom(id: string): Promise<Record<string,unknown> | undefined>;
+  getOrganizationChatRoomsByWorkspace(workspaceId: string): Promise<Record<string,unknown>[]>;
+  getAllOrganizationChatRooms(): Promise<Record<string,unknown>[]>; // Support staff only
+  updateOrganizationChatRoom(id: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
+  suspendOrganizationChatRoom(id: string, suspendedBy: string, reason: string): Promise<Record<string,unknown> | undefined>;
+  liftOrganizationChatRoomSuspension(id: string): Promise<Record<string,unknown> | undefined>;
   
   // Channel operations
-  createOrganizationChatChannel(channel: any): Promise<any>;
-  getOrganizationChatChannelsByRoom(roomId: string): Promise<any[]>;
+  createOrganizationChatChannel(channel: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getOrganizationChatChannelsByRoom(roomId: string): Promise<Record<string,unknown>[]>;
   
   // Room member operations
-  addOrganizationRoomMember(member: any): Promise<any>;
-  getOrganizationRoomMembers(roomId: string): Promise<any[]>;
+  addOrganizationRoomMember(member: Record<string, unknown>): Promise<Record<string,unknown>>;
+  getOrganizationRoomMembers(roomId: string): Promise<Record<string,unknown>[]>;
   removeOrganizationRoomMember(roomId: string, userId: string): Promise<boolean>;
   
   // Onboarding operations
-  getOrganizationRoomOnboarding(workspaceId: string): Promise<any | undefined>;
-  updateOrganizationRoomOnboarding(workspaceId: string, data: any): Promise<any | undefined>;
+  getOrganizationRoomOnboarding(workspaceId: string): Promise<Record<string,unknown> | undefined>;
+  updateOrganizationRoomOnboarding(workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined>;
   
   // ========================================================================
   // CHAT EXPORT METHODS - SUPPORT STAFF ONLY
@@ -868,16 +866,16 @@ export interface IStorage {
   getSupportConversationForExport(conversationId: string, workspaceId?: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date } | null>;
   
   // Export AI Communications room with messages and members
-  getCommRoomForExport(roomId: string): Promise<{ room: any; messages: ChatMessage[]; members: any[]; exportedAt: Date } | null>;
+  getCommRoomForExport(roomId: string): Promise<{ room: unknown; messages: ChatMessage[]; members: unknown[]; exportedAt: Date } | null>;
   
   // Export private DM conversation with DECRYPTED messages (requires authorization)
-  getPrivateConversationForExport(conversationId: string, userId: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date; auditInfo: any } | null>;
+  getPrivateConversationForExport(conversationId: string, userId: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date; auditInfo: unknown } | null>;
   
   // ========================================================================
   // NOTIFICATIONS - REAL-TIME USER NOTIFICATIONS (Dual-Scope Model)
   // ========================================================================
   createNotification(notification: InsertNotification & { idempotencyKey?: string; targetRole?: string }): Promise<Notification>;
-  createUserScopedNotification(userId: string, type: string, title: string, message: string, metadata?: any): Promise<Notification>;
+  createUserScopedNotification(userId: string, type: string, title: string, message: string, metadata?: unknown): Promise<Notification>;
   getNotificationsByUser(userId: string, workspaceId: string, limit?: number, offset?: number): Promise<Notification[]>;
   getAllNotificationsForUser(userId: string, workspaceId?: string, limit?: number, offset?: number): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string, workspaceId: string): Promise<number>;
@@ -900,7 +898,6 @@ export interface IStorage {
   
   // Notification Preferences - User notification settings
   getNotificationPreferences(userId: string, workspaceId: string): Promise<UserNotificationPreferences | undefined>;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   createOrUpdateNotificationPreferences(userId: string, workspaceId: string, data: Partial<InsertUserNotificationPreferences>): Promise<UserNotificationPreferences>;
 
   // ========================================================================
@@ -1018,7 +1015,7 @@ export interface IStorage {
   getSupportSession(id: string): Promise<SupportSession | undefined>;
   getActiveSupportSessionForWorkspace(workspaceId: string): Promise<SupportSession | undefined>;
   getActiveSupportSessionByAdmin(adminUserId: string): Promise<SupportSession | undefined>;
-  endSupportSession(id: string, actionsSummary?: any[]): Promise<SupportSession | undefined>;
+  endSupportSession(id: string, actionsSummary?: unknown[]): Promise<SupportSession | undefined>;
   setOrgFrozen(workspaceId: string, frozen: boolean, reason?: string): Promise<boolean>;
   isOrgFrozen(workspaceId: string): Promise<{ frozen: boolean; reason?: string; sessionId?: string }>;
 
@@ -1272,7 +1269,6 @@ export class DatabaseStorage implements IStorage {
 
     const user = await this.getUser(userId);
     if (user && user.email) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { sendPasswordResetEmail } = await import('./services/emailService');
       await sendPasswordResetEmail(user.email, token);
     }
@@ -1288,12 +1284,12 @@ export class DatabaseStorage implements IStorage {
         SELECT sess FROM sessions WHERE sid = ${sessionId} AND expire > NOW()
       `);
       
-      if (!(result as any).rows || (result as any).rows.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         return null;
       }
       
       // The sess column contains the session data as JSON
-      const sessionData = (result as any).rows[0].sess as {passport?: {user?: string}};
+      const sessionData = result.rows[0].sess as {passport?: {user?: string}};
       return sessionData;
     } catch (error) {
       log.error('[SECURITY] Failed to fetch session:', error);
@@ -1393,7 +1389,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Helper method to seed default expense categories — accepts optional tx for atomic workspace creation
-  private async seedDefaultExpenseCategories(workspaceId: string, tx?: any): Promise<void> {
+  private async seedDefaultExpenseCategories(workspaceId: string, tx?: unknown): Promise<void> {
     const dbHandle = tx || db;
     const defaultCategories = [
       { name: 'Mileage', description: 'Vehicle mileage reimbursement' },
@@ -1453,7 +1449,7 @@ export class DatabaseStorage implements IStorage {
       .select({ blob: workspaces.themeConfigBlob })
       .from(workspaces)
       .where(eq(workspaces.id, workspaceId));
-    const blob = (ws?.blob || {}) as Record<string, any>;
+    const blob = (ws?.blob || {}) as Record<string, unknown>;
     if (!blob.mode && !blob.primaryColor) return null;
     return { ...blob, workspaceId } as WorkspaceTheme;
   }
@@ -1465,7 +1461,6 @@ export class DatabaseStorage implements IStorage {
   async createEmployee(employeeData: InsertEmployee): Promise<Employee> {
     const [employee] = await db
       .insert(employees)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(employeeData)
       .returning();
     return employee;
@@ -1508,7 +1503,6 @@ export class DatabaseStorage implements IStorage {
   async updateEmployee(id: string, workspaceId: string, data: Partial<InsertEmployee>): Promise<Employee | undefined> {
     const [employee] = await db
       .update(employees)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ ...data, updatedAt: new Date() })
       .where(and(
         eq(employees.id, id),
@@ -1535,7 +1529,7 @@ export class DatabaseStorage implements IStorage {
     if (result.length > 0) {
       // Cascade: cancel all future shifts for the deactivated employee
       await db.update(shifts)
-        .set({ status: 'cancelled' } as any)
+        .set({ status: 'cancelled' } as unknown)
         .where(and(
           eq(shifts.employeeId, id),
           eq(shifts.workspaceId, workspaceId),
@@ -1617,7 +1611,7 @@ export class DatabaseStorage implements IStorage {
           paymentTerms: "net_30",
           taxRate: "0.0000",
           roundHoursTo: "0.25",
-        } as any)
+        } as unknown)
         .onConflictDoNothing();
 
       return [createdClient];
@@ -1696,7 +1690,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Build sort column
-    let sortColumn: any;
+    let sortColumn: unknown;
     switch (sort) {
       case 'firstName':
         sortColumn = clients.firstName;
@@ -1805,7 +1799,6 @@ export class DatabaseStorage implements IStorage {
     const hasPrev = page > 1;
 
     return {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       data: clientsData,
       total,
       page,
@@ -1817,10 +1810,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateClient(id: string, workspaceId: string, data: Partial<InsertClient>): Promise<Client | undefined> {
-    if ('billableHourlyRate' in data && (data as any).billableHourlyRate === null) {
+    if ('billableHourlyRate' in data && (data as unknown).billableHourlyRate === null) {
       throw new Error(`billableHourlyRate cannot be null or undefined for client ${id}`);
     }
-    if ('paymentTerms' in (data as any) && (data as any).paymentTerms === null) {
+    if ('paymentTerms' in (data as unknown) && (data as unknown).paymentTerms === null) {
       throw new Error(`paymentTerms cannot be null or undefined for client ${id}`);
     }
 
@@ -1843,7 +1836,7 @@ export class DatabaseStorage implements IStorage {
 
     const [client] = await db
       .update(clients)
-      .set(mergedRecord as any)
+      .set(mergedRecord as unknown)
       .where(and(
         eq(clients.id, id),
         eq(clients.workspaceId, workspaceId)
@@ -1855,7 +1848,7 @@ export class DatabaseStorage implements IStorage {
   async deleteClient(id: string, workspaceId: string): Promise<boolean> {
     // Cascade: cancel all future open/assigned shifts for this client before deletion
     await db.update(shifts)
-      .set({ status: 'cancelled' } as any)
+      .set({ status: 'cancelled' } as unknown)
       .where(and(
         eq(shifts.clientId, id),
         eq(shifts.workspaceId, workspaceId),
@@ -1872,7 +1865,7 @@ export class DatabaseStorage implements IStorage {
         isActive: false,
         deactivatedAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      } as unknown)
       .where(and(
         eq(clients.id, id),
         eq(clients.workspaceId, workspaceId),
@@ -1890,7 +1883,6 @@ export class DatabaseStorage implements IStorage {
   async createShift(shiftData: InsertShift): Promise<Shift> {
     const [shift] = await db
       .insert(shifts)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(shiftData)
       .returning();
     return shift;
@@ -1930,7 +1922,6 @@ export class DatabaseStorage implements IStorage {
   async updateShift(id: string, workspaceId: string, data: Partial<InsertShift>): Promise<Shift | undefined> {
     const [shift] = await db
       .update(shifts)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ ...data, updatedAt: new Date() })
       .where(and(
         eq(shifts.id, id),
@@ -2012,7 +2003,6 @@ export class DatabaseStorage implements IStorage {
   async createTimeEntry(entryData: InsertTimeEntry): Promise<TimeEntry> {
     const [entry] = await db
       .insert(timeEntries)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(entryData)
       .returning();
     return entry;
@@ -2071,7 +2061,6 @@ export class DatabaseStorage implements IStorage {
   async updateTimeEntry(id: string, workspaceId: string, data: Partial<InsertTimeEntry>): Promise<TimeEntry | undefined> {
     const [entry] = await db
       .update(timeEntries)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ ...data, updatedAt: new Date() })
       .where(and(
         eq(timeEntries.id, id),
@@ -2088,7 +2077,6 @@ export class DatabaseStorage implements IStorage {
   async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
     const [invoice] = await db
       .insert(invoices)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(invoiceData)
       .returning();
     return invoice;
@@ -2142,7 +2130,6 @@ export class DatabaseStorage implements IStorage {
           throw new Error(`Invoice is in dispute. Cannot modify: ${blockedFields.join(', ')}. Resolve the dispute first.`);
         }
       }
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (current.status === 'void' || current.status === 'voided') {
         throw new Error('Voided invoices cannot be modified.');
       }
@@ -2166,7 +2153,6 @@ export class DatabaseStorage implements IStorage {
   async createInvoiceLineItem(itemData: InsertInvoiceLineItem): Promise<InvoiceLineItem> {
     const [item] = await db
       .insert(invoiceLineItems)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(itemData)
       .returning();
     return item;
@@ -2208,7 +2194,6 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(invoices.clientId, clientId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(invoices.status, status),
           eq(invoices.workspaceId, workspaceId)
         )
@@ -2382,7 +2367,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'opened' as any,
+        status: 'opened' as unknown,
         openedAt: new Date(),
         updatedAt: new Date()
       })
@@ -2395,7 +2380,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'accepted' as any,
+        status: 'accepted' as unknown,
         acceptedAt: new Date(),
         isUsed: true,
         updatedAt: new Date()
@@ -2414,7 +2399,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         inviteToken: newToken,
         expiresAt: newExpiresAt,
-        status: 'sent' as any,
+        status: 'sent' as unknown,
         resentCount: (invite.resentCount || 0) + 1,
         lastResentAt: new Date(),
         updatedAt: new Date()
@@ -2428,7 +2413,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'revoked' as any,
+        status: 'revoked' as unknown,
         updatedAt: new Date()
       })
       .where(eq(onboardingInvites.id, id))
@@ -2443,7 +2428,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingInvites.workspaceId, workspaceId),
-          eq(onboardingInvites.status, status as any)
+          eq(onboardingInvites.status, status as unknown)
         )
       )
       .orderBy(desc(onboardingInvites.createdAt));
@@ -2455,7 +2440,7 @@ export class DatabaseStorage implements IStorage {
       .from(onboardingInvites)
       .where(
         and(
-          eq(onboardingInvites.status, 'sent' as any),
+          eq(onboardingInvites.status, 'sent' as unknown),
           sql`${onboardingInvites.expiresAt} < NOW()`
         )
       );
@@ -2465,14 +2450,14 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'expired' as any,
+        status: 'expired' as unknown,
         updatedAt: new Date()
       })
       .where(
         and(
           or(
-            eq(onboardingInvites.status, 'sent' as any),
-            eq(onboardingInvites.status, 'opened' as any)
+            eq(onboardingInvites.status, 'sent' as unknown),
+            eq(onboardingInvites.status, 'opened' as unknown)
           ),
           sql`${onboardingInvites.expiresAt} < NOW()`
         )
@@ -2655,14 +2640,11 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async createEmployeeCertification(certification: InsertEmployeeCertification): Promise<EmployeeCertification> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [newCertification] = await db.insert(employeeCertifications).values(certification).returning();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return newCertification;
   }
   
   async getEmployeeCertificationsByEmployee(employeeId: string, workspaceId: string): Promise<EmployeeCertification[]> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return await db
       .select()
       .from(employeeCertifications)
@@ -2676,13 +2658,11 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getEmployeeCertificationsByApplication(applicationId: string, workspaceId: string): Promise<EmployeeCertification[]> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return await db
       .select()
       .from(employeeCertifications)
       .where(
         and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(employeeCertifications.applicationId, applicationId),
           eq(employeeCertifications.workspaceId, workspaceId)
         )
@@ -2705,7 +2685,6 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .returning();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return updated;
   }
   
@@ -3037,7 +3016,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(auditLogs.entityType, filters.entityType));
     }
     if (filters?.action) {
-      conditions.push(eq(auditLogs.action, filters.action as any));
+      conditions.push(eq(auditLogs.action, filters.action as unknown));
     }
     if (filters?.startDate) {
       conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);
@@ -3068,15 +3047,15 @@ export class DatabaseStorage implements IStorage {
       .insert(auditLogs)
       .values({
         workspaceId: event.workspaceId,
-        rawAction: (event as any).eventType,
-        actorType: (event as any).actorType,
-        entityId: (event as any).aggregateId,
-        entityType: (event as any).aggregateType,
-        payload: (event as any).payload,
-        actionHash: (event as any).actionHash,
-        metadata: (event as any).metadata,
-        ipAddress: (event as any).ipAddress,
-        userAgent: (event as any).userAgent,
+        rawAction: (event as unknown).eventType,
+        actorType: (event as unknown).actorType,
+        entityId: (event as unknown).aggregateId,
+        entityType: (event as unknown).aggregateType,
+        payload: (event as unknown).payload,
+        actionHash: (event as unknown).actionHash,
+        metadata: (event as unknown).metadata,
+        ipAddress: (event as unknown).ipAddress,
+        userAgent: (event as unknown).userAgent,
       })
       .returning();
     
@@ -3112,13 +3091,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+      query = query.where(and(...conditions)) as unknown;
     }
 
-    query = query.orderBy(desc(auditLogs.createdAt)) as any;
+    query = query.orderBy(desc(auditLogs.createdAt)) as unknown;
 
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
 
     return await query;
@@ -3168,12 +3147,12 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         preparedAt: new Date(),
-        status: 'pending' as any, // Status remains pending, preparedAt!=null indicates prepared
+        status: 'pending' as unknown, // Status remains pending, preparedAt!=null indicates prepared
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any)
+        eq(writeAheadLog.status, 'pending' as unknown)
       ))
       .returning();
     
@@ -3196,12 +3175,12 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         committedAt: new Date(),
-        status: 'completed' as any,
+        status: 'completed' as unknown,
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any), // Must be in pending state (prepared has preparedAt)
+        eq(writeAheadLog.status, 'pending' as unknown), // Must be in pending state (prepared has preparedAt)
         isNotNull(writeAheadLog.preparedAt) // Must have been prepared
       ))
       .returning();
@@ -3225,14 +3204,14 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         rolledBackAt: new Date(),
-        status: 'rolled_back' as any,
+        status: 'rolled_back' as unknown,
         errorMessage,
         retryCount: sql`${writeAheadLog.retryCount} + 1`,
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any) // Can rollback from pending (before or after prepare)
+        eq(writeAheadLog.status, 'pending' as unknown) // Can rollback from pending (before or after prepare)
       ))
       .returning();
     
@@ -3385,7 +3364,6 @@ export class DatabaseStorage implements IStorage {
 
     // Check platform roles / membership
     const role = await db.select({ id: platformRoles.id }).from(platformRoles)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(and(eq(platformRoles.userId, userId), eq(platformRoles.workspaceId, workspaceId)))
       .limit(1);
     return role.length > 0;
@@ -3465,7 +3443,6 @@ export class DatabaseStorage implements IStorage {
   async createPerformanceReview(review: InsertPerformanceReview): Promise<PerformanceReview> {
     const [newReview] = await db
       .insert(performanceReviews)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(review)
       .returning();
     
@@ -3509,7 +3486,6 @@ export class DatabaseStorage implements IStorage {
   ): Promise<PerformanceReview | undefined> {
     const [updated] = await db
       .update(performanceReviews)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)))
       .returning();
@@ -3705,7 +3681,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(ptoRequests.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(ptoRequests.status, filters.status as any));
+      conditions.push(eq(ptoRequests.status, filters.status as unknown));
     }
     
     return await db
@@ -3832,7 +3808,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMileageLog(id: string, workspaceId: string, data: Partial<InsertMileageLog>): Promise<MileageLog | undefined> {
-    const updateData: any = { ...data, updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { ...data, updatedAt: new Date() };
     if (data.miles || data.ratePerMile) {
       const existing = await this.getMileageLog(id, workspaceId);
       const miles = parseFloat(String(data.miles || existing?.miles || 0));
@@ -4060,7 +4036,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(chatConversations.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(chatConversations.status, filters.status as any));
+      conditions.push(eq(chatConversations.status, filters.status as unknown));
     }
     
     return await db
@@ -4074,7 +4050,7 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(chatConversations).where(eq(chatConversations.workspaceId, workspaceId));
     
     if (filters?.status) {
-      query = (query as any).where(and(eq(chatConversations.workspaceId, workspaceId), eq(chatConversations.status, filters.status as any))) as any;
+      query = (query as unknown).where(and(eq(chatConversations.workspaceId, workspaceId), eq(chatConversations.status, filters.status as unknown))) as unknown;
     }
     
     return await query.orderBy(desc(chatConversations.lastMessageAt));
@@ -4159,7 +4135,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getChatMessagesByConversation(conversationId: string, workspaceId: string, since?: Date): Promise<ChatMessage[]> {
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(chatMessages.conversationId, conversationId),
       eq(chatMessages.workspaceId, workspaceId),
       eq(chatMessages.isDeletedForEveryone, false),
@@ -4191,7 +4167,6 @@ export class DatabaseStorage implements IStorage {
     
     return results.map(r => ({
       ...r,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       createdAt: new Date(r.createdAt),
     }));
   }
@@ -4339,7 +4314,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async closeShiftChatroom(shiftId: string, timeEntryId: string): Promise<ChatConversation | undefined> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const conversation = await this.getShiftChatroom(shiftId, timeEntryId);
     
     if (!conversation) {
@@ -4576,7 +4550,6 @@ export class DatabaseStorage implements IStorage {
   async getCustomForm(id: string, organizationId?: string): Promise<CustomForm | undefined> {
     const conditions = [eq(customForms.id, id)];
     if (organizationId) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       conditions.push(eq(customForms.organizationId, organizationId));
     }
     const [form] = await db
@@ -4612,7 +4585,6 @@ export class DatabaseStorage implements IStorage {
   
   async deleteCustomForm(id: string, workspaceId?: string): Promise<boolean> {
     const condition = workspaceId
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       ? and(eq(customForms.id, id), eq(customForms.organizationId, workspaceId))
       : eq(customForms.id, id);
     const result = await db
@@ -4653,7 +4625,6 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(customFormSubmissions)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(customFormSubmissions.organizationId, organizationId))
       .orderBy(desc(customFormSubmissions.submittedAt));
   }
@@ -4746,7 +4717,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
       return Number(logs[0]?.count || 0);
-    } catch (error: any) {
+    } catch (error : unknown) {
       if (error.code === '42P01') {
         return 0;
       }
@@ -4839,12 +4810,12 @@ export class DatabaseStorage implements IStorage {
       ? and(eq(payrollRuns.id, id), eq(payrollRuns.workspaceId, workspaceId))
       : eq(payrollRuns.id, id);
     const condition = requiredPriorStatus
-      ? and(idCondition, eq(payrollRuns.status, requiredPriorStatus as any))
+      ? and(idCondition, eq(payrollRuns.status, requiredPriorStatus as unknown))
       : idCondition;
     const [updated] = await db
       .update(payrollRuns)
       .set({
-        status: status as any,
+        status: status as unknown,
         processedBy,
         processedAt: new Date(),
         updatedAt: new Date()
@@ -4854,7 +4825,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  async getPayrollEntriesByRun(payrollRunId: string): Promise<any[]> {
+  async getPayrollEntriesByRun(payrollRunId: string): Promise<Record<string,unknown>[]> {
     const entries = await db
       .select({
         id: payrollEntries.id,
@@ -4886,7 +4857,6 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getPayrollEntriesByEmployee(employeeId: string, workspaceId: string): Promise<PayrollEntry[]> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return await db
       .select({
         id: payrollEntries.id,
@@ -5041,11 +5011,9 @@ export class DatabaseStorage implements IStorage {
   async getServiceIncidentReportsByService(serviceKey: string, workspaceId?: string, limit: number = 100): Promise<ServiceIncidentReport[]> {
     const conditions = workspaceId
       ? and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(serviceIncidentReports.serviceKey, serviceKey),
           eq(serviceIncidentReports.workspaceId, workspaceId)
         )
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       : eq(serviceIncidentReports.serviceKey, serviceKey);
 
     return await db
@@ -5138,8 +5106,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEscalationTicketStatus(id: string, status: string, resolvedBy?: string): Promise<EscalationTicket | undefined> {
-    const updateData: any = {
-      status: status as any,
+    const updateData: Record<string, unknown> = {
+      status: status as unknown,
       updatedAt: new Date()
     };
 
@@ -5280,7 +5248,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(expenses.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(expenses.status, filters.status as any));
+      conditions.push(eq(expenses.status, filters.status as unknown));
     }
     if (filters?.employeeId) {
       conditions.push(eq(expenses.employeeId, filters.employeeId));
@@ -5465,7 +5433,6 @@ export class DatabaseStorage implements IStorage {
       .from(employeeI9Records)
       .where(and(
         eq(employeeI9Records.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         lte(employeeI9Records.expirationDate, futureDate),
         eq(employeeI9Records.reverificationCompleted, false)
       ))
@@ -5476,7 +5443,7 @@ export class DatabaseStorage implements IStorage {
   // POLICIOS™ - POLICY & HANDBOOK MANAGEMENT
   // ============================================================================
   
-  async createCompanyPolicy(policy: any) {
+  async createCompanyPolicy(policy: Record<string, unknown>) {
     const { companyPolicies } = await import("@shared/schema");
     const [created] = await db.insert(companyPolicies).values(policy).returning();
     return created;
@@ -5504,7 +5471,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(companyPolicies.createdAt));
   }
   
-  async updateCompanyPolicy(id: string, workspaceId: string, data: any) {
+  async updateCompanyPolicy(id: string, workspaceId: string, data: Record<string, unknown>) {
     const { companyPolicies } = await import("@shared/schema");
     const [updated] = await db
       .update(companyPolicies)
@@ -5535,7 +5502,7 @@ export class DatabaseStorage implements IStorage {
     return published;
   }
   
-  async getPolicyAcknowledgments(policyId: string, workspaceId: string): Promise<any[]> {
+  async getPolicyAcknowledgments(policyId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     const { policyAcknowledgments } = await import("@shared/schema");
     return await db
       .select()
@@ -5549,7 +5516,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(policyAcknowledgments.acknowledgedAt));
   }
   
-  async createPolicyAcknowledgment(ack: any) {
+  async createPolicyAcknowledgment(ack: Record<string, unknown>) {
     const { policyAcknowledgments } = await import("@shared/schema");
     const [created] = await db.insert(policyAcknowledgments).values(ack).returning();
     return created;
@@ -5560,13 +5527,13 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   // KPI Alerts
-  async createKpiAlert(alert: any): Promise<any> {
+  async createKpiAlert(alert: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { kpiAlerts } = await import("@shared/schema");
     const [created] = await db.insert(kpiAlerts).values(alert).returning();
     return created;
   }
   
-  async getKpiAlerts(workspaceId: string): Promise<any[]> {
+  async getKpiAlerts(workspaceId: string): Promise<Record<string,unknown>[]> {
     const { kpiAlerts } = await import("@shared/schema");
     return await db
       .select()
@@ -5575,7 +5542,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(kpiAlerts.createdAt));
   }
   
-  async updateKpiAlert(id: string, workspaceId: string, data: any): Promise<any> {
+  async updateKpiAlert(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { kpiAlerts } = await import("@shared/schema");
     const [updated] = await db
       .update(kpiAlerts)
@@ -5599,7 +5566,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
   
-  async triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<any> {
+  async triggerKpiAlert(alertId: string, metricValue: number, entityData: unknown): Promise<Record<string,unknown>> {
     const { kpiAlerts, kpiAlertTriggers } = await import("@shared/schema");
     
     // Get the alert
@@ -5639,7 +5606,7 @@ export class DatabaseStorage implements IStorage {
     return trigger;
   }
   
-  async getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<any[]> {
+  async getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<Record<string,unknown>[]> {
     const { kpiAlertTriggers } = await import("@shared/schema");
     const conditions = [eq(kpiAlertTriggers.workspaceId, workspaceId)];
     
@@ -5654,7 +5621,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(kpiAlertTriggers.createdAt));
   }
   
-  async acknowledgeAlert(triggerId: string, userId: string): Promise<any> {
+  async acknowledgeAlert(triggerId: string, userId: string): Promise<Record<string,unknown>> {
     const { kpiAlertTriggers } = await import("@shared/schema");
     const [updated] = await db
       .update(kpiAlertTriggers)
@@ -5669,13 +5636,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Benchmark Metrics
-  async createBenchmarkMetric(metric: any): Promise<any> {
+  async createBenchmarkMetric(metric: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { benchmarkMetrics } = await import("@shared/schema");
     const [created] = await db.insert(benchmarkMetrics).values(metric).returning();
     return created;
   }
   
-  async getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<any[]> {
+  async getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<Record<string,unknown>[]> {
     const { benchmarkMetrics } = await import("@shared/schema");
     const conditions = [eq(benchmarkMetrics.workspaceId, workspaceId)];
     
@@ -5695,13 +5662,13 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   // Workflow Configurations
-  async createWorkflowConfig(config: any): Promise<any> {
+  async createWorkflowConfig(config: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { reportWorkflowConfigs } = await import("@shared/schema");
     const [created] = await db.insert(reportWorkflowConfigs).values(config).returning();
     return created;
   }
   
-  async getWorkflowConfigByTemplate(templateId: string, workspaceId: string): Promise<any> {
+  async getWorkflowConfigByTemplate(templateId: string, workspaceId: string): Promise<Record<string,unknown>> {
     const { reportWorkflowConfigs } = await import("@shared/schema");
     const [config] = await db
       .select()
@@ -5715,7 +5682,7 @@ export class DatabaseStorage implements IStorage {
     return config;
   }
   
-  async getWorkflowConfigs(workspaceId: string): Promise<any[]> {
+  async getWorkflowConfigs(workspaceId: string): Promise<Record<string,unknown>[]> {
     const { reportWorkflowConfigs } = await import("@shared/schema");
     return await db
       .select()
@@ -5724,7 +5691,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(reportWorkflowConfigs.createdAt));
   }
   
-  async updateWorkflowConfig(id: string, workspaceId: string, data: any): Promise<any> {
+  async updateWorkflowConfig(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { reportWorkflowConfigs } = await import("@shared/schema");
     const [updated] = await db
       .update(reportWorkflowConfigs)
@@ -5749,13 +5716,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Approval Steps
-  async createApprovalStep(step: any): Promise<any> {
+  async createApprovalStep(step: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { reportApprovalSteps } = await import("@shared/schema");
     const [created] = await db.insert(reportApprovalSteps).values(step).returning();
     return created;
   }
   
-  async getApprovalStepById(id: string): Promise<any> {
+  async getApprovalStepById(id: string): Promise<Record<string,unknown>> {
     const { reportApprovalSteps } = await import("@shared/schema");
     const [step] = await db
       .select()
@@ -5765,7 +5732,7 @@ export class DatabaseStorage implements IStorage {
     return step;
   }
   
-  async getApprovalStepsBySubmission(submissionId: string, workspaceId: string): Promise<any[]> {
+  async getApprovalStepsBySubmission(submissionId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     const { reportApprovalSteps } = await import("@shared/schema");
     return await db
       .select()
@@ -5779,7 +5746,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(reportApprovalSteps.stepNumber);
   }
   
-  async getPendingApprovalsByUser(userId: string, workspaceId: string): Promise<any[]> {
+  async getPendingApprovalsByUser(userId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     const { reportApprovalSteps, reportSubmissions, reportTemplates } = await import("@shared/schema");
     
     return await db
@@ -5802,7 +5769,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(reportApprovalSteps.createdAt);
   }
   
-  async updateApprovalStep(id: string, data: any): Promise<any> {
+  async updateApprovalStep(id: string, data: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { reportApprovalSteps } = await import("@shared/schema");
     const [updated] = await db
       .update(reportApprovalSteps)
@@ -5813,13 +5780,13 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Locked Report Records
-  async createLockedReportRecord(record: any): Promise<any> {
+  async createLockedReportRecord(record: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { lockedReportRecords } = await import("@shared/schema");
     const [created] = await db.insert(lockedReportRecords).values(record).returning();
     return created;
   }
   
-  async getLockedReportRecords(workspaceId: string, filters?: any): Promise<any[]> {
+  async getLockedReportRecords(workspaceId: string, filters?: unknown): Promise<Record<string,unknown>[]> {
     const { lockedReportRecords } = await import("@shared/schema");
     const conditions = [eq(lockedReportRecords.workspaceId, workspaceId)];
     
@@ -5843,7 +5810,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(lockedReportRecords.lockedAt));
   }
   
-  async getLockedReportBySubmission(submissionId: string): Promise<any> {
+  async getLockedReportBySubmission(submissionId: string): Promise<Record<string,unknown>> {
     const { lockedReportRecords } = await import("@shared/schema");
     const [record] = await db
       .select()
@@ -5854,7 +5821,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Report Template helpers
-  async getReportTemplateById(id: string): Promise<any> {
+  async getReportTemplateById(id: string): Promise<Record<string,unknown>> {
     const { reportTemplates } = await import("@shared/schema");
     const [template] = await db
       .select()
@@ -5868,13 +5835,13 @@ export class DatabaseStorage implements IStorage {
   // TALENTOS™ - INTERNAL TALENT MARKETPLACE
   // ============================================================================
   
-  async createInternalBid(bid: any): Promise<any> {
+  async createInternalBid(bid: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(internalBids).values(bid).returning();
     return created;
   }
   
-  async getInternalBidById(id: string, workspaceId?: string): Promise<any | undefined> {
-    const conditions: any[] = [eq(internalBids.id, id)];
+  async getInternalBidById(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
+    const conditions: unknown[] = [eq(internalBids.id, id)];
     if (workspaceId) {
       conditions.push(eq(internalBids.workspaceId, workspaceId));
     }
@@ -5886,7 +5853,7 @@ export class DatabaseStorage implements IStorage {
     return bid;
   }
   
-  async getInternalBids(workspaceId: string, filters?: { status?: string }): Promise<any[]> {
+  async getInternalBids(workspaceId: string, filters?: { status?: string }): Promise<Record<string,unknown>[]> {
     const conditions = [eq(internalBids.workspaceId, workspaceId)];
     if (filters?.status) {
       conditions.push(eq(internalBids.status, filters.status));
@@ -5898,7 +5865,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(internalBids.createdAt));
   }
   
-  async updateInternalBid(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateInternalBid(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(internalBids)
       .set({ ...data, updatedAt: new Date() })
@@ -5907,12 +5874,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  async createBidApplication(application: any): Promise<any> {
+  async createBidApplication(application: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(bidApplications).values(application).returning();
     return created;
   }
   
-  async getBidApplication(id: string): Promise<any | undefined> {
+  async getBidApplication(id: string): Promise<Record<string,unknown> | undefined> {
     const [application] = await db
       .select()
       .from(bidApplications)
@@ -5921,7 +5888,7 @@ export class DatabaseStorage implements IStorage {
     return application;
   }
   
-  async getBidApplicationsByBid(bidId: string, workspaceId: string): Promise<any[]> {
+  async getBidApplicationsByBid(bidId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(bidApplications)
@@ -5934,7 +5901,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bidApplications.appliedAt));
   }
   
-  async getBidApplicationsByEmployee(employeeId: string, workspaceId: string): Promise<any[]> {
+  async getBidApplicationsByEmployee(employeeId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(bidApplications)
@@ -5945,7 +5912,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bidApplications.appliedAt));
   }
   
-  async updateBidApplication(id: string, data: any): Promise<any | undefined> {
+  async updateBidApplication(id: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(bidApplications)
       .set({ ...data, updatedAt: new Date() })
@@ -5958,12 +5925,12 @@ export class DatabaseStorage implements IStorage {
   // TALENTOS™ - ROLE TEMPLATES & CAREER PATHING
   // ============================================================================
   
-  async createRoleTemplate(template: any): Promise<any> {
+  async createRoleTemplate(template: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(roleTemplates).values(template).returning();
     return created;
   }
   
-  async getRoleTemplate(id: string, workspaceId: string): Promise<any | undefined> {
+  async getRoleTemplate(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [template] = await db
       .select()
       .from(roleTemplates)
@@ -5972,7 +5939,7 @@ export class DatabaseStorage implements IStorage {
     return template;
   }
   
-  async getRoleTemplates(workspaceId: string): Promise<any[]> {
+  async getRoleTemplates(workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(roleTemplates)
@@ -5980,7 +5947,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(roleTemplates.roleLevel, roleTemplates.roleName);
   }
   
-  async updateRoleTemplate(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateRoleTemplate(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(roleTemplates)
       .set({ ...data, updatedAt: new Date() })
@@ -5989,12 +5956,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  async createSkillGapAnalysis(analysis: any): Promise<any> {
+  async createSkillGapAnalysis(analysis: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(skillGapAnalyses).values(analysis).returning();
     return created;
   }
   
-  async getSkillGapAnalysis(id: string, workspaceId: string): Promise<any | undefined> {
+  async getSkillGapAnalysis(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [analysis] = await db
       .select()
       .from(skillGapAnalyses)
@@ -6003,7 +5970,7 @@ export class DatabaseStorage implements IStorage {
     return analysis;
   }
   
-  async getSkillGapAnalysesByEmployee(workspaceId: string, employeeId: string): Promise<any[]> {
+  async getSkillGapAnalysesByEmployee(workspaceId: string, employeeId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(skillGapAnalyses)
@@ -6014,7 +5981,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(skillGapAnalyses.generatedAt));
   }
   
-  async updateSkillGapAnalysis(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateSkillGapAnalysis(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(skillGapAnalyses)
       .set({ ...data, updatedAt: new Date() })
@@ -6027,12 +5994,12 @@ export class DatabaseStorage implements IStorage {
   // ASSETOS™ - PHYSICAL RESOURCE ALLOCATION
   // ============================================================================
   
-  async createAsset(asset: any): Promise<any> {
+  async createAsset(asset: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(assets).values(asset).returning();
     return created;
   }
   
-  async getAsset(id: string, workspaceId: string): Promise<any | undefined> {
+  async getAsset(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [asset] = await db
       .select()
       .from(assets)
@@ -6041,7 +6008,7 @@ export class DatabaseStorage implements IStorage {
     return asset;
   }
   
-  async getAssets(workspaceId: string, filters?: { status?: string }): Promise<any[]> {
+  async getAssets(workspaceId: string, filters?: { status?: string }): Promise<Record<string,unknown>[]> {
     const conditions = [eq(assets.workspaceId, workspaceId)];
     if (filters?.status) {
       conditions.push(eq(assets.status, filters.status));
@@ -6053,7 +6020,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(assets.assetName);
   }
   
-  async updateAsset(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateAsset(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(assets)
       .set({ ...data, updatedAt: new Date() })
@@ -6062,12 +6029,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  async createAssetSchedule(schedule: any): Promise<any> {
+  async createAssetSchedule(schedule: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(assetSchedules).values(schedule).returning();
     return created;
   }
   
-  async getAssetSchedule(id: string, workspaceId: string): Promise<any | undefined> {
+  async getAssetSchedule(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [schedule] = await db
       .select()
       .from(assetSchedules)
@@ -6076,7 +6043,7 @@ export class DatabaseStorage implements IStorage {
     return schedule;
   }
   
-  async getAssetSchedulesByAsset(assetId: string, workspaceId: string, startTime?: Date, endTime?: Date): Promise<any[]> {
+  async getAssetSchedulesByAsset(assetId: string, workspaceId: string, startTime?: Date, endTime?: Date): Promise<Record<string,unknown>[]> {
     const conditions = [
       eq(assetSchedules.assetId, assetId),
       eq(assetSchedules.workspaceId, workspaceId)
@@ -6094,11 +6061,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(assetSchedules.startTime);
   }
   
-  async getAssetSchedulesByAssetAndDateRange(assetId: string, workspaceId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getAssetSchedulesByAssetAndDateRange(assetId: string, workspaceId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]> {
     return this.getAssetSchedulesByAsset(assetId, workspaceId, startDate, endDate);
   }
   
-  async updateAssetSchedule(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateAssetSchedule(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(assetSchedules)
       .set({ ...data, updatedAt: new Date() })
@@ -6107,12 +6074,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
   
-  async createAssetUsageLog(log: any): Promise<any> {
+  async createAssetUsageLog(log: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [created] = await db.insert(assetUsageLogs).values(log).returning();
     return created;
   }
   
-  async getAssetUsageLog(id: string, workspaceId: string): Promise<any | undefined> {
+  async getAssetUsageLog(id: string, workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [log] = await db
       .select()
       .from(assetUsageLogs)
@@ -6121,7 +6088,7 @@ export class DatabaseStorage implements IStorage {
     return log;
   }
   
-  async getAssetUsageLogsByClient(workspaceId: string, clientId: string, startDate: Date, endDate: Date, status?: string): Promise<any[]> {
+  async getAssetUsageLogsByClient(workspaceId: string, clientId: string, startDate: Date, endDate: Date, status?: string): Promise<Record<string,unknown>[]> {
     const conditions = [
       eq(assetUsageLogs.workspaceId, workspaceId),
       eq(assetUsageLogs.clientId, clientId),
@@ -6140,7 +6107,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(assetUsageLogs.usagePeriodStart);
   }
   
-  async getAssetUsageLogsByDateRange(workspaceId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getAssetUsageLogsByDateRange(workspaceId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(assetUsageLogs)
@@ -6152,7 +6119,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(assetUsageLogs.usagePeriodStart);
   }
   
-  async updateAssetUsageLog(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateAssetUsageLog(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [updated] = await db
       .update(assetUsageLogs)
       .set(data)
@@ -6165,7 +6132,7 @@ export class DatabaseStorage implements IStorage {
   // SECURITY INCIDENTS - Mobile Worker Incident Reporting
   // ============================================================================
   
-  async createSecurityIncident(incident: any): Promise<any> {
+  async createSecurityIncident(incident: Record<string, unknown>): Promise<Record<string,unknown>> {
     const { securityIncidents } = await import("@shared/schema");
     const [created] = await db
       .insert(securityIncidents)
@@ -6174,9 +6141,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
   
-  async getSecurityIncident(id: string, workspaceId?: string): Promise<any | undefined> {
+  async getSecurityIncident(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
     const { securityIncidents } = await import("@shared/schema");
-    const conditions: any[] = [eq(securityIncidents.id, id)];
+    const conditions: unknown[] = [eq(securityIncidents.id, id)];
     if (workspaceId) {
       conditions.push(eq(securityIncidents.workspaceId, workspaceId));
     }
@@ -6187,7 +6154,7 @@ export class DatabaseStorage implements IStorage {
     return incident;
   }
   
-  async getSecurityIncidentsByWorkspace(workspaceId: string): Promise<any[]> {
+  async getSecurityIncidentsByWorkspace(workspaceId: string): Promise<Record<string,unknown>[]> {
     const { securityIncidents } = await import("@shared/schema");
     return await db
       .select()
@@ -6196,7 +6163,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(securityIncidents.reportedAt));
   }
   
-  async getSecurityIncidentsByEmployee(workspaceId: string, employeeId: string): Promise<any[]> {
+  async getSecurityIncidentsByEmployee(workspaceId: string, employeeId: string): Promise<Record<string,unknown>[]> {
     const { securityIncidents } = await import("@shared/schema");
     return await db
       .select()
@@ -6208,7 +6175,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(securityIncidents.reportedAt));
   }
   
-  async updateSecurityIncident(id: string, workspaceId: string, data: any): Promise<any | undefined> {
+  async updateSecurityIncident(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const { securityIncidents } = await import("@shared/schema");
     const [updated] = await db
       .update(securityIncidents)
@@ -6222,7 +6189,7 @@ export class DatabaseStorage implements IStorage {
   // HELPER METHODS FOR UNIFIED DATA NEXUS
   // ============================================================================
   
-  async getShiftsByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getShiftsByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(shifts)
@@ -6236,7 +6203,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(shifts.startTime);
   }
   
-  async getTimeEntriesByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getTimeEntriesByEmployeeAndDateRange(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(timeEntries)
@@ -6249,7 +6216,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(timeEntries.clockIn);
   }
   
-  async getReportSubmissionsByEmployee(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getReportSubmissionsByEmployee(workspaceId: string, employeeId: string, startDate: Date, endDate: Date): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(reportSubmissions)
@@ -6262,7 +6229,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(reportSubmissions.createdAt);
   }
   
-  async getTimeEntryDiscrepancies(workspaceId: string, filters?: { employeeId?: string; startDate?: Date; endDate?: Date }): Promise<any[]> {
+  async getTimeEntryDiscrepancies(workspaceId: string, filters?: { employeeId?: string; startDate?: Date; endDate?: Date }): Promise<Record<string,unknown>[]> {
     const conditions = [eq(timeEntryDiscrepancies.workspaceId, workspaceId)];
     
     if (filters?.employeeId) {
@@ -6282,7 +6249,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(timeEntryDiscrepancies.detectedAt));
   }
   
-  async getTurnoverPredictions(workspaceId: string, filters?: { employeeId?: string; limit?: number }): Promise<any[]> {
+  async getTurnoverPredictions(workspaceId: string, filters?: { employeeId?: string; limit?: number }): Promise<Record<string,unknown>[]> {
     const { turnoverRiskScores } = await import("@shared/schema");
     const conditions = [eq(turnoverRiskScores.workspaceId, workspaceId)];
     
@@ -6297,13 +6264,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(turnoverRiskScores.predictedTurnoverDate));
     
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
     
     return await query;
   }
   
-  async getInvoices(workspaceId: string): Promise<any[]> {
+  async getInvoices(workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(invoices)
@@ -6342,11 +6309,11 @@ export class DatabaseStorage implements IStorage {
     ];
     
     if (documentType) {
-      conditions.push(eq(employeeDocuments.documentType, documentType as any));
+      conditions.push(eq(employeeDocuments.documentType, documentType as unknown));
     }
     
     if (status) {
-      conditions.push(eq(employeeDocuments.status, status as any));
+      conditions.push(eq(employeeDocuments.status, status as unknown));
     }
     
     return await db
@@ -6403,7 +6370,6 @@ export class DatabaseStorage implements IStorage {
   async createOnboardingWorkflowTemplate(templateData: InsertOnboardingWorkflowTemplate): Promise<OnboardingWorkflowTemplate> {
     const [template] = await db
       .insert(onboardingWorkflowTemplates)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(templateData)
       .returning();
     return template;
@@ -6428,7 +6394,6 @@ export class DatabaseStorage implements IStorage {
   async updateOnboardingWorkflowTemplate(id: string, data: Partial<InsertOnboardingWorkflowTemplate>): Promise<OnboardingWorkflowTemplate | undefined> {
     const [template] = await db
       .update(onboardingWorkflowTemplates)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set(data)
       .where(eq(onboardingWorkflowTemplates.id, id))
       .returning();
@@ -6438,7 +6403,6 @@ export class DatabaseStorage implements IStorage {
   async createOnboardingChecklist(checklistData: InsertOnboardingChecklist): Promise<OnboardingChecklist> {
     const [checklist] = await db
       .insert(onboardingChecklists)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .values(checklistData)
       .returning();
     return checklist;
@@ -6467,14 +6431,13 @@ export class DatabaseStorage implements IStorage {
   async updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined> {
     const [checklist] = await db
       .update(onboardingChecklists)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set(data)
       .where(eq(onboardingChecklists.id, id))
       .returning();
     return checklist;
   }
   
-  async getHiringComplianceReport(workspaceId: string): Promise<any> {
+  async getHiringComplianceReport(workspaceId: string): Promise<Record<string,unknown>> {
     // Get all employees
     const allEmployees = await this.getEmployeesByWorkspace(workspaceId);
     
@@ -6543,13 +6506,13 @@ export class DatabaseStorage implements IStorage {
   // COMMOS™ - ORGANIZATION CHAT ROOMS & CHANNELS
   // ============================================================================
   
-  async createOrganizationChatRoom(room: any): Promise<any> {
+  async createOrganizationChatRoom(room: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [result] = await db.insert(organizationChatRooms).values(room).returning();
     return result;
   }
   
-  async getOrganizationChatRoom(id: string, workspaceId?: string): Promise<any | undefined> {
-    const conditions: any[] = [eq(organizationChatRooms.id, id)];
+  async getOrganizationChatRoom(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
+    const conditions: unknown[] = [eq(organizationChatRooms.id, id)];
     if (workspaceId) {
       conditions.push(eq(organizationChatRooms.workspaceId, workspaceId));
     }
@@ -6557,15 +6520,15 @@ export class DatabaseStorage implements IStorage {
     return room;
   }
   
-  async getOrganizationChatRoomsByWorkspace(workspaceId: string): Promise<any[]> {
+  async getOrganizationChatRoomsByWorkspace(workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db.select().from(organizationChatRooms).where(eq(organizationChatRooms.workspaceId, workspaceId));
   }
   
-  async getAllOrganizationChatRooms(): Promise<any[]> {
+  async getAllOrganizationChatRooms(): Promise<Record<string,unknown>[]> {
     return await db.select().from(organizationChatRooms);
   }
   
-  async updateOrganizationChatRoom(id: string, data: any): Promise<any | undefined> {
+  async updateOrganizationChatRoom(id: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [room] = await db
       .update(organizationChatRooms)
       .set(data)
@@ -6574,7 +6537,7 @@ export class DatabaseStorage implements IStorage {
     return room;
   }
   
-  async suspendOrganizationChatRoom(id: string, suspendedBy: string, reason: string): Promise<any | undefined> {
+  async suspendOrganizationChatRoom(id: string, suspendedBy: string, reason: string): Promise<Record<string,unknown> | undefined> {
     const [room] = await db
       .update(organizationChatRooms)
       .set({
@@ -6588,7 +6551,7 @@ export class DatabaseStorage implements IStorage {
     return room;
   }
   
-  async liftOrganizationChatRoomSuspension(id: string): Promise<any | undefined> {
+  async liftOrganizationChatRoomSuspension(id: string): Promise<Record<string,unknown> | undefined> {
     const [room] = await db
       .update(organizationChatRooms)
       .set({
@@ -6602,21 +6565,21 @@ export class DatabaseStorage implements IStorage {
     return room;
   }
   
-  async createOrganizationChatChannel(channel: any): Promise<any> {
+  async createOrganizationChatChannel(channel: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [result] = await db.insert(organizationChatChannels).values(channel).returning();
     return result;
   }
   
-  async getOrganizationChatChannelsByRoom(roomId: string): Promise<any[]> {
+  async getOrganizationChatChannelsByRoom(roomId: string): Promise<Record<string,unknown>[]> {
     return await db.select().from(organizationChatChannels).where(eq(organizationChatChannels.roomId, roomId));
   }
   
-  async addOrganizationRoomMember(member: any): Promise<any> {
+  async addOrganizationRoomMember(member: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [result] = await db.insert(organizationRoomMembers).values(member).returning();
     return result;
   }
   
-  async getOrganizationRoomMembers(roomId: string): Promise<any[]> {
+  async getOrganizationRoomMembers(roomId: string): Promise<Record<string,unknown>[]> {
     return await db.select().from(organizationRoomMembers).where(eq(organizationRoomMembers.roomId, roomId));
   }
   
@@ -6630,12 +6593,12 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
   
-  async getOrganizationRoomOnboarding(workspaceId: string): Promise<any | undefined> {
+  async getOrganizationRoomOnboarding(workspaceId: string): Promise<Record<string,unknown> | undefined> {
     const [result] = await db.select().from(organizationRoomOnboarding).where(eq(organizationRoomOnboarding.workspaceId, workspaceId));
     return result;
   }
   
-  async updateOrganizationRoomOnboarding(workspaceId: string, data: any): Promise<any | undefined> {
+  async updateOrganizationRoomOnboarding(workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown> | undefined> {
     const [result] = await db
       .update(organizationRoomOnboarding)
       .set(data)
@@ -6644,7 +6607,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
   
-  async createOrganizationRoomOnboarding(data: any): Promise<any> {
+  async createOrganizationRoomOnboarding(data: Record<string, unknown>): Promise<Record<string,unknown>> {
     const [result] = await db.insert(organizationRoomOnboarding).values(data).returning();
     return result;
   }
@@ -6654,7 +6617,7 @@ export class DatabaseStorage implements IStorage {
     roomDescription?: string;
     channels: string[];
     allowGuests: boolean;
-  }): Promise<any> {
+  }): Promise<Record<string,unknown>> {
     return await db.transaction(async (tx) => {
       const roomId = `room_${Date.now()}_${crypto.randomUUID().slice(0, 9)}`;
       
@@ -6670,7 +6633,6 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       
       for (const channelName of roomData.channels) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await tx.insert(organizationChatChannels).values({
           roomId,
           workspaceId,
@@ -6717,7 +6679,7 @@ export class DatabaseStorage implements IStorage {
   // PRIVATE MESSAGES / DM OPERATIONS
   // ============================================================================
   
-  async getPrivateMessageConversations(userId: string, workspaceId: string): Promise<any[]> {
+  async getPrivateMessageConversations(userId: string, workspaceId: string): Promise<Record<string,unknown>[]> {
     const conversations = await db
       .select({
         conversationId: chatConversations.id,
@@ -6782,7 +6744,7 @@ export class DatabaseStorage implements IStorage {
     return formattedConversations;
   }
   
-  async getPrivateMessages(userId: string, conversationId: string): Promise<any[]> {
+  async getPrivateMessages(userId: string, conversationId: string): Promise<Record<string,unknown>[]> {
     const conversation = await db
       .select()
       .from(chatConversations)
@@ -6823,7 +6785,6 @@ export class DatabaseStorage implements IStorage {
       const decryptedMessages = await Promise.all(messages.map(async (msg) => {
         if (msg.isEncrypted && msg.encryptionIv) {
           try {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const decrypted = await decryptMessage(msg.message, msg.encryptionIv, conv.encryptionKeyId);
             return { ...msg, message: decrypted };
           } catch (error) {
@@ -6850,7 +6811,7 @@ export class DatabaseStorage implements IStorage {
     accessedByRole: string;
     ipAddress?: string;
     userAgent?: string;
-  }): Promise<any[]> {
+  }): Promise<Record<string,unknown>[]> {
     const conversation = await db
       .select()
       .from(chatConversations)
@@ -6906,7 +6867,6 @@ export class DatabaseStorage implements IStorage {
       const decryptedMessages = await Promise.all(messages.map(async (msg) => {
         if (msg.isEncrypted && msg.encryptionIv) {
           try {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const decrypted = await decryptMessage(msg.message, msg.encryptionIv, conv.encryptionKeyId);
             return { ...msg, message: decrypted };
           } catch (error) {
@@ -6932,7 +6892,7 @@ export class DatabaseStorage implements IStorage {
     message: string;
     attachmentUrl?: string;
     attachmentName?: string;
-  }): Promise<any> {
+  }): Promise<Record<string,unknown>> {
     // Get conversation to check if encryption is enabled
     const [conversation] = await db
       .select()
@@ -6976,7 +6936,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
   
-  async getOrCreatePrivateConversation(workspaceId: string, user1Id: string, user2Id: string): Promise<any> {
+  async getOrCreatePrivateConversation(workspaceId: string, user1Id: string, user2Id: string): Promise<Record<string,unknown>> {
     const existing = await db
       .select()
       .from(chatConversations)
@@ -7067,7 +7027,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
   
-  async searchUsers(workspaceId: string, query: string): Promise<any[]> {
+  async searchUsers(workspaceId: string, query: string): Promise<Record<string,unknown>[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
     const userRows = await db
       .select({
@@ -7094,7 +7054,6 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(20);
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return users;
   }
 
@@ -7110,7 +7069,7 @@ export class DatabaseStorage implements IStorage {
     requestedBy: string;
     requestedByName: string;
     requestedByEmail: string;
-  }): Promise<any> {
+  }): Promise<Record<string,unknown>> {
     const result = await db
       .insert(dmAuditRequests)
       .values({
@@ -7129,7 +7088,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getDmAuditRequests(workspaceId: string): Promise<any[]> {
+  async getDmAuditRequests(workspaceId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(dmAuditRequests)
@@ -7152,7 +7111,7 @@ export class DatabaseStorage implements IStorage {
     approvedBy: string;
     approvedByName: string;
     expiresAt?: Date;
-  }): Promise<any> {
+  }): Promise<Record<string,unknown>> {
     const result = await db
       .update(dmAuditRequests)
       .set({
@@ -7169,7 +7128,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async denyDmAuditRequest(requestId: string, deniedReason: string): Promise<any> {
+  async denyDmAuditRequest(requestId: string, deniedReason: string): Promise<Record<string,unknown>> {
     const result = await db
       .update(dmAuditRequests)
       .set({
@@ -7195,7 +7154,7 @@ export class DatabaseStorage implements IStorage {
     userAgent?: string;
     messagesViewed?: number;
     filesAccessed?: number;
-  }): Promise<any> {
+  }): Promise<Record<string,unknown>> {
     const result = await db
       .insert(dmAccessLogs)
       .values({
@@ -7216,7 +7175,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getDmAccessLogs(conversationId: string): Promise<any[]> {
+  async getDmAccessLogs(conversationId: string): Promise<Record<string,unknown>[]> {
     return await db
       .select()
       .from(dmAccessLogs)
@@ -7226,7 +7185,7 @@ export class DatabaseStorage implements IStorage {
 
   async checkDmAccessAuthorization(conversationId: string, userId: string): Promise<{
     authorized: boolean;
-    auditRequest?: any;
+    auditRequest?: unknown;
     reason?: string;
   }> {
     const activeRequest = await db
@@ -7321,7 +7280,6 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Sort all messages by timestamp
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     allMessages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     
     // Get room members
@@ -7376,7 +7334,6 @@ export class DatabaseStorage implements IStorage {
       decryptedMessages = await Promise.all(messages.map(async (msg) => {
         if (msg.isEncrypted && msg.encryptionIv) {
           try {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             const decrypted = await decryptMessage(msg.message, msg.encryptionIv, conv.encryptionKeyId);
             return { ...msg, message: decrypted };
           } catch (error) {
@@ -7441,15 +7398,15 @@ export class DatabaseStorage implements IStorage {
     type: string,
     title: string,
     message: string,
-    metadata?: any
+    metadata?: unknown
   ): Promise<Notification> {
     const [notification] = await db
       .insert(notifications)
       .values({
         userId,
-        scope: 'user' as any,
-        workspaceId: null as any,
-        type: type as any,
+        scope: 'user' as unknown,
+        workspaceId: null as unknown,
+        type: type as unknown,
         title,
         message,
         metadata,
@@ -7485,7 +7442,7 @@ export class DatabaseStorage implements IStorage {
           or(
             eq(notifications.workspaceId, workspaceId),
             isNull(notifications.workspaceId),
-            eq(notifications.scope, 'user' as any)
+            eq(notifications.scope, 'user' as unknown)
           )
         ))
         .orderBy(desc(notifications.createdAt))
@@ -7497,7 +7454,7 @@ export class DatabaseStorage implements IStorage {
         .from(notifications)
         .where(and(
           eq(notifications.userId, userId),
-          eq(notifications.scope, 'user' as any),
+          eq(notifications.scope, 'user' as unknown),
         ))
         .orderBy(desc(notifications.createdAt))
         .limit(limit)
@@ -7514,7 +7471,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         ),
         eq(notifications.isRead, false),
         isNull(notifications.clearedAt),
@@ -7535,7 +7492,7 @@ export class DatabaseStorage implements IStorage {
           eq(notifications.userId, userId),
           or(
             eq(notifications.workspaceId, workspaceId),
-            eq(notifications.scope, 'user' as any)
+            eq(notifications.scope, 'user' as unknown)
           ),
           eq(notifications.isRead, false),
           sql`${notifications.type} !== 'platform_update'`,
@@ -7547,7 +7504,7 @@ export class DatabaseStorage implements IStorage {
         .from(notifications)
         .where(and(
           eq(notifications.userId, userId),
-          eq(notifications.scope, 'user' as any),
+          eq(notifications.scope, 'user' as unknown),
           eq(notifications.isRead, false),
           sql`${notifications.type} !== 'platform_update'`,
         ));
@@ -7611,7 +7568,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
@@ -7644,7 +7601,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )
       );
     } else {
@@ -7714,13 +7671,13 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const result = await db
@@ -7759,9 +7716,9 @@ export class DatabaseStorage implements IStorage {
     const conditions = [
       eq(notifications.userId, userId),
       isNull(notifications.clearedAt),
-      not(eq(notifications.category, 'system_fix' as any)),
-      not(eq(notifications.category, 'hotpatch' as any)),
-      not(eq(notifications.category, 'admin_action' as any)),
+      not(eq(notifications.category, 'system_fix' as unknown)),
+      not(eq(notifications.category, 'hotpatch' as unknown)),
+      not(eq(notifications.category, 'admin_action' as unknown)),
     ];
     
     if (workspaceId) {
@@ -7769,13 +7726,13 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const result = await db
@@ -7802,7 +7759,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const results = await db
@@ -7852,7 +7809,6 @@ export class DatabaseStorage implements IStorage {
   async createOrUpdateNotificationPreferences(
     userId: string,
     workspaceId: string,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     data: Partial<InsertUserNotificationPreferences>
   ): Promise<UserNotificationPreferences> {
     const existing = await db.select().from(userNotificationPreferences)
@@ -7874,7 +7830,6 @@ export class DatabaseStorage implements IStorage {
         userId,
         workspaceId,
         ...data,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } as InsertUserNotificationPreferences)
       .returning();
     return prefs;
@@ -8001,7 +7956,6 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
     
     // Map Drizzle result to typed objects - isViewed = true if viewId exists
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return updates.map(row => ({
       ...row,
       isViewed: row.viewId !== null && row.viewId !== undefined && row.viewId !== '',
@@ -8099,7 +8053,6 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           isNull(userPlatformUpdateViews.viewedAt),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           inArray(platformUpdates.category, categories),
           // Visibility filter: global updates (visibility='all' or no workspace) or user's workspace
           workspaceId 
@@ -8140,7 +8093,6 @@ export class DatabaseStorage implements IStorage {
       .from(platformUpdates)
       .where(
         and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           inArray(platformUpdates.category, categories),
           // Visibility filter: global updates (visibility=all or no workspace) or users workspace
           workspaceId 
@@ -8198,7 +8150,6 @@ export class DatabaseStorage implements IStorage {
 
   async createAiResponse(response: InsertAiResponse): Promise<AiResponse> {
     const [result] = await db
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .insert(aiResponses)
       .values(response)
       .returning();
@@ -8208,9 +8159,7 @@ export class DatabaseStorage implements IStorage {
   async getAiResponse(id: string): Promise<AiResponse | undefined> {
     const [response] = await db
       .select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiResponses)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(aiResponses.id, id));
     return response;
   }
@@ -8221,29 +8170,22 @@ export class DatabaseStorage implements IStorage {
   ): Promise<AiResponse[]> {
     let query = db
       .select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiResponses)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(aiResponses.workspaceId, workspaceId));
 
     if (filters?.sourceType) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      query = (query as any).where(eq(aiResponses.sourceType, filters.sourceType));
+      query = (query as unknown).where(eq(aiResponses.sourceType, filters.sourceType));
     }
     if (filters?.feature) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      query = (query as any).where(eq(aiResponses.feature, filters.feature));
+      query = (query as unknown).where(eq(aiResponses.feature, filters.feature));
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     query = query.orderBy(desc(aiResponses.createdAt));
 
     if (filters?.limit) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.limit(filters.limit);
     }
     if (filters?.offset) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.offset(filters.offset);
     }
 
@@ -8257,31 +8199,22 @@ export class DatabaseStorage implements IStorage {
   ): Promise<AiResponse[]> {
     return await db
       .select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiResponses)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiResponses.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiResponses.sourceType, sourceType),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiResponses.sourceId, sourceId)
       ))
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .orderBy(desc(aiResponses.createdAt));
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updateAiResponse(id: string, workspaceId: string, data: Partial<InsertAiResponse>): Promise<AiResponse | undefined> {
     const [response] = await db
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .update(aiResponses)
       .set({ ...data, updatedAt: new Date() })
       .where(
         and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(aiResponses.id, id),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(aiResponses.workspaceId, workspaceId)
         )
       )
@@ -8289,10 +8222,8 @@ export class DatabaseStorage implements IStorage {
     return response;
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async rateAiResponse(id: string, workspaceId: string, rating: number, feedback?: string): Promise<AiResponse | undefined> {
     const [response] = await db
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .update(aiResponses)
       .set({
         userRating: rating,
@@ -8303,9 +8234,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(
         and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(aiResponses.id, id),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(aiResponses.workspaceId, workspaceId)
         )
       )
@@ -8343,24 +8272,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(aiSuggestions.workspaceId, workspaceId));
 
     if (filters?.status) {
-      query = (query as any).where(eq(aiSuggestions.status, filters.status));
+      query = (query as unknown).where(eq(aiSuggestions.status, filters.status));
     }
     if (filters?.priority) {
-      query = (query as any).where(eq(aiSuggestions.priority, filters.priority));
+      query = (query as unknown).where(eq(aiSuggestions.priority, filters.priority));
     }
     if (filters?.type) {
-      query = (query as any).where(eq(aiSuggestions.suggestionType, filters.type));
+      query = (query as unknown).where(eq(aiSuggestions.suggestionType, filters.type));
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     query = query.orderBy(desc(aiSuggestions.createdAt));
 
     if (filters?.limit) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.limit(filters.limit);
     }
     if (filters?.offset) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       query = query.offset(filters.offset);
     }
 
@@ -8382,7 +8308,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(aiSuggestions.priority), desc(aiSuggestions.createdAt));
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updateAiSuggestion(id: string, workspaceId: string, data: Partial<InsertAiSuggestion>): Promise<AiSuggestion | undefined> {
     const [suggestion] = await db
       .update(aiSuggestions)
@@ -8485,16 +8410,16 @@ export class DatabaseStorage implements IStorage {
     limit?: number; 
     offset?: number 
   }): Promise<UserFeedback[]> {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     
     if (filters?.type) {
-      conditions.push(eq(userFeedback.type, filters.type as any));
+      conditions.push(eq(userFeedback.type, filters.type as unknown));
     }
     if (filters?.status) {
-      conditions.push(eq(userFeedback.status, filters.status as any));
+      conditions.push(eq(userFeedback.status, filters.status as unknown));
     }
     if (filters?.priority) {
-      conditions.push(eq(userFeedback.priority, filters.priority as any));
+      conditions.push(eq(userFeedback.priority, filters.priority as unknown));
     }
     if (filters?.workspaceId) {
       conditions.push(eq(userFeedback.workspaceId, filters.workspaceId));
@@ -8506,33 +8431,32 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(userFeedback);
     
     if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+      query = query.where(and(...conditions)) as unknown;
     }
     
     const sortOrder = filters?.sortOrder === 'asc' ? 'asc' : 'desc';
     if (filters?.sortBy === 'votes') {
       query = sortOrder === 'desc' 
-        ? query.orderBy(desc(userFeedback.upvoteCount)) as any
-        : query.orderBy(userFeedback.upvoteCount) as any;
+        ? query.orderBy(desc(userFeedback.upvoteCount)) as unknown
+        : query.orderBy(userFeedback.upvoteCount) as unknown;
     } else if (filters?.sortBy === 'createdAt') {
       query = sortOrder === 'desc'
-        ? query.orderBy(desc(userFeedback.createdAt)) as any
-        : query.orderBy(userFeedback.createdAt) as any;
+        ? query.orderBy(desc(userFeedback.createdAt)) as unknown
+        : query.orderBy(userFeedback.createdAt) as unknown;
     } else {
-      query = query.orderBy(desc(userFeedback.createdAt)) as any;
+      query = query.orderBy(desc(userFeedback.createdAt)) as unknown;
     }
     
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
     if (filters?.offset) {
-      query = query.offset(filters.offset) as any;
+      query = query.offset(filters.offset) as unknown;
     }
     
     return await query;
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updateFeedback(id: string, workspaceId: string, data: Partial<InsertUserFeedback>): Promise<UserFeedback | undefined> {
     const [result] = await db
       .update(userFeedback)
@@ -8551,7 +8475,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(userFeedback)
       .set({
-        status: status as any,
+        status: status as unknown,
         statusUpdatedBy: updatedBy,
         statusUpdatedAt: new Date(),
         statusNote: note,
@@ -8735,7 +8659,6 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(mascotMotionProfiles).where(eq(mascotMotionProfiles.isActive, true)).orderBy(mascotMotionProfiles.name);
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updateMascotMotionProfile(id: string, workspaceId: string, data: Partial<InsertMascotMotionProfile>): Promise<MascotMotionProfile | undefined> {
     const [updated] = await db
       .update(mascotMotionProfiles)
@@ -8850,7 +8773,6 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
 
   async createAiBrainActionLog(log: InsertAiBrainActionLog): Promise<AiBrainActionLog> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [created] = await db.insert(aiBrainActionLogs).values(log).returning();
     return created;
   }
@@ -8908,14 +8830,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(aiBrainActionLogs.createdAt));
   }
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   async updateAiBrainActionLog(id: string, workspaceId: string, data: Partial<InsertAiBrainActionLog>): Promise<AiBrainActionLog | undefined> {
-    const safeData: Record<string, any> = {};
+    const safeData: Record<string, unknown> = {};
     if (data.actorType !== undefined) safeData.actionType = data.actorType;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (data.actionData !== undefined) safeData.actionData = (data as any).actionData;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (data.result !== undefined) safeData.result = (data as any).result;
+    if (data.actionData !== undefined) safeData.actionData = (data as unknown).actionData;
+    if (data.result !== undefined) safeData.result = (data as unknown).result;
     if (Object.keys(safeData).length === 0) return this.getAiBrainActionLog(id);
     const [updated] = await db
       .update(aiBrainActionLogs)
@@ -8988,7 +8907,7 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async endSupportSession(id: string, actionsSummary?: any[]): Promise<SupportSession | undefined> {
+  async endSupportSession(id: string, actionsSummary?: unknown[]): Promise<SupportSession | undefined> {
     const [updated] = await db
       .update(supportSessions)
       .set({
@@ -9035,12 +8954,12 @@ export class DatabaseStorage implements IStorage {
     // Redirected: support_audit_logs merged into audit_logs with metadata
     const [created] = await db.insert(auditLogs).values({
       workspaceId: log.workspaceId || 'system',
-      userId: (log as any).adminUserId,
-      action: 'support_action' as any,
+      userId: (log as unknown).adminUserId,
+      action: 'support_action' as unknown,
       entityType: 'support_audit',
       metadata: { ...log, logType: 'support_audit' },
     }).returning();
-    return { ...created, adminUserId: (log as any).adminUserId, sessionId: log.sessionId, action: log.action, severity: log.severity, timestamp: created.createdAt } as any;
+    return { ...created, adminUserId: (log as unknown).adminUserId, sessionId: log.sessionId, action: log.action, severity: log.severity, timestamp: created.createdAt } as unknown;
   }
 
   async getSupportAuditLogs(filters?: {
@@ -9055,25 +8974,25 @@ export class DatabaseStorage implements IStorage {
     offset?: number;
   }): Promise<SupportAuditLog[]> {
     // Redirected: support_audit_logs merged into audit_logs
-    const conditions: any[] = [eq(auditLogs.entityType, 'support_audit')];
+    const conditions: unknown[] = [eq(auditLogs.entityType, 'support_audit')];
     if (filters?.workspaceId) conditions.push(eq(auditLogs.workspaceId, filters.workspaceId));
     if (filters?.adminUserId) conditions.push(eq(auditLogs.userId, filters.adminUserId));
     if (filters?.startDate) conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);
     if (filters?.endDate) conditions.push(sql`${auditLogs.createdAt} <= ${filters.endDate}`);
     
     let query = db.select().from(auditLogs).where(and(...conditions)).orderBy(desc(auditLogs.createdAt));
-    if (filters?.limit) query = query.limit(filters.limit) as any;
-    if (filters?.offset) query = query.offset(filters.offset) as any;
+    if (filters?.limit) query = query.limit(filters.limit) as unknown;
+    if (filters?.offset) query = query.offset(filters.offset) as unknown;
     
     const rows = await query;
     return rows.map(r => ({
       ...r,
       adminUserId: r.userId,
-      sessionId: (r as any).metadata?.sessionId,
-      severity: (r as any).metadata?.severity,
-      action: (r as any).metadata?.action,
+      sessionId: (r as Record<string, unknown>).metadata?.sessionId,
+      severity: (r as Record<string, unknown>).metadata?.severity,
+      action: (r as Record<string, unknown>).metadata?.action,
       timestamp: r.createdAt,
-    })) as any[];
+    })) as unknown[];
   }
 
   async createEmployeeInvitation(data: InsertEmployeeInvitation): Promise<EmployeeInvitation> {
@@ -9081,7 +9000,7 @@ export class DatabaseStorage implements IStorage {
     const [invitation] = await db.insert(employeeInvitations).values({
       ...data,
       inviteToken: token,
-    } as any).returning();
+    } as unknown).returning();
     return invitation;
   }
 
@@ -9092,7 +9011,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEmployeeInvitation(id: string, data: Partial<InsertEmployeeInvitation>): Promise<EmployeeInvitation | undefined> {
     const [updated] = await db.update(employeeInvitations)
-      .set({ ...data, updatedAt: new Date() } as any)
+      .set({ ...data, updatedAt: new Date() } as unknown)
       .where(eq(employeeInvitations.id, id))
       .returning();
     return updated;

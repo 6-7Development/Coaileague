@@ -51,7 +51,6 @@ export class DispatchService {
    */
   async recordGPSLocation(data: GPSLocationUpdate) {
     // Record GPS location for both time tracking AND dispatch unit tracking
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [location] = await db.insert(gpsLocations).values({
       employeeId: data.employeeId,
       workspaceId: data.workspaceId,
@@ -385,7 +384,7 @@ export class DispatchService {
     }
 
     const now = new Date();
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       status: newStatus,
       updatedAt: now,
     };
@@ -436,7 +435,7 @@ export class DispatchService {
     incidentId: string | null, 
     dispatcherId: string | null | undefined, 
     action: string, 
-    details: any
+    details: Record<string, unknown>
   ) {
     await db.insert(dispatchLogs).values({
       workspaceId,

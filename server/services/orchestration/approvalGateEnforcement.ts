@@ -54,7 +54,7 @@ export interface ApprovalGate {
   expiresAt: Date;
   riskScore: number;
   riskFactors: string[];
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   impactSummary: string;
   requiredApproverRole: string;
   escalationLevel: number;
@@ -166,7 +166,7 @@ class ApprovalGateEnforcementService {
    */
   computeRiskScore(
     category: ApprovalCategory,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
     requestedBy?: string,
   ): { score: number; factors: string[] } {
     const factors: string[] = [];
@@ -251,7 +251,7 @@ class ApprovalGateEnforcementService {
    */
   private async reasonAboutRisk(
     category: ApprovalCategory,
-    payload: Record<string, any>,
+    payload: Record<string, unknown>,
     workspaceId: string,
     heuristicScore: number,
     heuristicFactors: string[]
@@ -316,7 +316,7 @@ class ApprovalGateEnforcementService {
     actionId: string;
     actionName: string;
     requestedBy: string;
-    payload: Record<string, any>;
+    payload: Record<string, unknown>;
     riskScore?: number;
     riskFactors?: string[];
     impactSummary?: string;
@@ -663,8 +663,8 @@ class ApprovalGateEnforcementService {
     return `gate-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`;
   }
 
-  private generateImpactSummary(category: ApprovalCategory, payload: Record<string, any>): string {
-    const summaries: Record<ApprovalCategory, (p: Record<string, any>) => string> = {
+  private generateImpactSummary(category: ApprovalCategory, payload: Record<string, unknown>): string {
+    const summaries: Record<ApprovalCategory, (p: Record<string, unknown>) => string> = {
       payroll: (p) => `Process payroll for ${p.employeeCount || 'all'} employees totaling $${p.totalAmount || 'TBD'}`,
       invoicing: (p) => `Generate ${p.invoiceCount || 1} invoice(s) totaling $${p.totalAmount || 'TBD'}`,
       scheduling: (p) => `Publish schedule affecting ${p.employeeCount || 'multiple'} employees for ${p.period || 'upcoming period'}`,
@@ -692,7 +692,7 @@ class ApprovalGateEnforcementService {
         target: approvalGates.id,
         set: { gateData: gateJson, updatedAt: sql`now()` },
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[ApprovalGate] Failed to persist gate:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -728,7 +728,7 @@ class ApprovalGateEnforcementService {
         log.info(`[ApprovalGate] Recovered ${gates.length} pending gate(s) from DB on startup`);
       }
       return gates;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.warn('[ApprovalGate] Could not load pending gates from DB:', (error instanceof Error ? error.message : String(error)));
       return [];
     }

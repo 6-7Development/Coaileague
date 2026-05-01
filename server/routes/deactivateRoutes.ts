@@ -40,10 +40,10 @@ router.post('/employees/:id/deactivate', async (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'No workspace context' });
 
-    const workspaceRole = (user as any).workspaceRole || 'employee';
+    const workspaceRole = req.user?.workspaceRole || 'employee';
     if (!hasManagerAccess(workspaceRole)) {
       return res.status(403).json({ message: 'Manager access required' });
     }
@@ -72,12 +72,12 @@ router.post('/employees/:id/reactivate', async (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const workspaceRole = (user as any).workspaceRole || 'employee';
+    const workspaceRole = req.user?.workspaceRole || 'employee';
     if (!hasManagerAccess(workspaceRole)) {
       return res.status(403).json({ message: 'Manager access required' });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || user.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'No workspace context' });
 
     // ── Phase 30: Seat limit enforcement ──────────────────────────────────────
@@ -108,7 +108,7 @@ router.post('/employees/:id/reactivate', async (req, res) => {
         workspaceId,
         metadata: { seatUsed: usedAfter, seatMax: seatCheck.max, usagePct: Math.round(usagePct * 100) },
         visibility: 'org_leadership',
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     res.json({ success: true, employee: result, message: `${result.firstName} ${result.lastName} has been reactivated` });
@@ -135,7 +135,7 @@ router.post('/workspaces/:id/deactivate', async (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const platformRole = (user as any).platformRole || 'user';
+    const platformRole = req.user?.platformRole || 'user';
     if (!hasPlatformSupportAccess(platformRole)) {
       return res.status(403).json({ message: 'Support staff access required' });
     }
@@ -154,7 +154,7 @@ router.post('/workspaces/:id/reactivate', async (req, res) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const platformRole = (user as any).platformRole || 'user';
+    const platformRole = req.user?.platformRole || 'user';
     if (!hasPlatformSupportAccess(platformRole)) {
       return res.status(403).json({ message: 'Support staff access required' });
     }

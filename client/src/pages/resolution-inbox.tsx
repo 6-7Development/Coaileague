@@ -70,7 +70,7 @@ interface AutomationHealth {
   message: string;
 }
 
-const ERROR_TYPE_ICONS: Record<string, any> = {
+const ERROR_TYPE_ICONS: Record<string, unknown> = {
   mapping_ambiguous: Users,
   mapping_missing: Link2,
   amount_spike: DollarSign,

@@ -12,7 +12,6 @@ import {
   users,
   billingServices,
   InsertPartnerDataMapping,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   InsertPartnerSyncLog,
 } from '@shared/schema';
 import { createNotification } from '../notificationService';
@@ -174,7 +173,7 @@ export class QuickBooksSyncService {
     endpoint: string,
     realmId: string,
     accessToken: string,
-    body?: any,
+    body?: unknown,
     priority: number = 0
   ): Promise<T> {
     const environment = INTEGRATIONS.quickbooks.getEnvironment();
@@ -252,7 +251,6 @@ export class QuickBooksSyncService {
   private async createSyncLog(
     data: Omit<InsertPartnerSyncLog, 'id' | 'createdAt'>
   ): Promise<string> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [log] = await db.insert(partnerSyncLogs).values({
       workspaceId: 'system',
       ...data,
@@ -413,7 +411,7 @@ export class QuickBooksSyncService {
         errors,
         durationMs: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Use intelligent error analysis to determine next action
       const errorAnalysis = await this.analyzeAndHandleSyncError(
         workspaceId,
@@ -476,7 +474,7 @@ export class QuickBooksSyncService {
               idempotencyKey: `system-${Date.now()}-`
             }).catch(() => null)
           ));
-        } catch (notifyErr: any) {
+        } catch (notifyErr : unknown) {
           log.error('[QuickBooksSyncService] Failed to notify org owner on ABORT/ESCALATE:', notifyErr.message);
         }
       }
@@ -562,7 +560,7 @@ export class QuickBooksSyncService {
           );
           reviewRequired++;
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         errors.push(`Customer ${qboCustomer.DisplayName}: ${(error instanceof Error ? error.message : String(error))}`);
       }
     }
@@ -644,7 +642,6 @@ export class QuickBooksSyncService {
           // a partial write leaves an employee with no QB mapping (sync gap).
           const newEmployee = await db.transaction(async (tx) => {
             const [newEmp] = await tx.insert(employees)
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               .values({
                 workspaceId,
                 userId: userInfo.userId, // Link to existing user
@@ -718,7 +715,6 @@ export class QuickBooksSyncService {
             await this.createOrUpdateMapping(
               workspaceId, connectionId, 'employee',
               newEmp.id, qboEmployee.Id, qboEmployee.DisplayName,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               qboEmployee.SyncToken, email, 1.0, userId, tx
             );
             return newEmp;
@@ -736,7 +732,7 @@ export class QuickBooksSyncService {
           
           created++;
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         errors.push(`Employee ${qboEmployee.DisplayName}: ${(error instanceof Error ? error.message : String(error))}`);
       }
     }
@@ -769,7 +765,7 @@ export class QuickBooksSyncService {
       }
       
       const workspaceName = workspace.name || 'Your Organization';
-      const inviterName = (inviter as any)?.fullName || inviter?.email || 'Your Admin';
+      const inviterName = (inviter as Record<string,unknown>)?.fullName || inviter?.email || 'Your Admin';
       
       for (const emp of employeesToInvite) {
         try {
@@ -786,7 +782,7 @@ export class QuickBooksSyncService {
             lastName: emp.lastName,
             inviteToken,
             expiresAt,
-            status: 'sent' as any,
+            status: 'sent',
             sendEmailOnCreate: true, // email-tracked
             sentBy: invitedByUserId,
           }).returning();
@@ -806,13 +802,13 @@ export class QuickBooksSyncService {
           );
           
           log.info(`[QuickBooksSyncService] Sent invite to ${emp.email} for employee ${emp.employeeId}`);
-        } catch (inviteError: any) {
+        } catch (inviteError : unknown) {
           log.error(`[QuickBooksSyncService] Failed to invite ${emp.email}: ${inviteError.message}`);
         }
       }
       
       log.info(`[QuickBooksSyncService] Sent ${employeesToInvite.length} employee invitations`);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[QuickBooksSyncService] Error sending employee invitations:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -919,7 +915,7 @@ export class QuickBooksSyncService {
 
             created++;
           }
-        } catch (itemError: any) {
+        } catch (itemError : unknown) {
           errors.push(`Item ${qboItem.Name}: ${itemError.message}`);
         }
       }
@@ -927,7 +923,7 @@ export class QuickBooksSyncService {
       log.info(`[QuickBooksSyncService] Items sync: ${qboItems.length} processed, ${matched} matched, ${created} created`);
       
       return { processed: qboItems.length, matched, created, reviewRequired, errors };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[QuickBooksSyncService] Items sync failed:', (error instanceof Error ? error.message : String(error)));
       return { processed: 0, matched: 0, created: 0, reviewRequired: 0, errors: [(error instanceof Error ? error.message : String(error))] };
     }
@@ -1043,7 +1039,7 @@ export class QuickBooksSyncService {
           });
           created++;
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         errors.push(`Vendor/Contractor ${qboVendor.DisplayName}: ${(error instanceof Error ? error.message : String(error))}`);
       }
     }
@@ -1056,7 +1052,7 @@ export class QuickBooksSyncService {
    */
   private findBestContractorMatch(
     qboVendor: QBOVendor,
-    coaileagueContractors: any[]
+    coaileagueContractors: unknown[]
   ): EntityMatch {
     const qboEmail = qboVendor.PrimaryEmailAddr?.Address?.toLowerCase();
     const qboName = (qboVendor.DisplayName || '').toLowerCase();
@@ -1154,7 +1150,7 @@ export class QuickBooksSyncService {
 
   private findBestClientMatch(
     qboCustomer: QBOCustomer,
-    coaileagueClients: any[]
+    coaileagueClients: unknown[]
   ): EntityMatch {
     const qboEmail = qboCustomer.PrimaryEmailAddr?.Address?.toLowerCase();
     const qboName = (qboCustomer.DisplayName || '').toLowerCase();
@@ -1177,7 +1173,7 @@ export class QuickBooksSyncService {
       }
     }
 
-    const getClientDisplayName = (c: any) => c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unknown';
+    const getClientDisplayName = (c: Record<string,unknown>) => c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unknown';
 
     const nameMatches = coaileagueClients.filter(c => 
       getClientDisplayName(c).toLowerCase() === qboName ||
@@ -1256,7 +1252,7 @@ export class QuickBooksSyncService {
     // Prefer ShipAddr (service location) over BillAddr for scheduling
     const addr = qboCustomer.ShipAddr || qboCustomer.BillAddr;
     
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       quickbooksClientId: qboCustomer.Id,
       qboSyncToken: qboCustomer.SyncToken,
       lastQboSyncAt: new Date(),
@@ -1305,7 +1301,7 @@ export class QuickBooksSyncService {
 
   private async findBestEmployeeMatch(
     qboEmployee: QBOEmployee,
-    coaileagueEmployees: any[],
+    coaileagueEmployees: unknown[],
     workspaceId: string
   ): Promise<EntityMatch> {
     const qboEmail = qboEmployee.PrimaryEmailAddr?.Address?.toLowerCase();
@@ -1502,12 +1498,12 @@ export class QuickBooksSyncService {
     
     // Map the result to the expected format
     const result = {
-      created: (syncResult as any).created.length,
-      linked: (syncResult as any).linked.length,
-      alreadyExist: (syncResult as any).skipped.length,
+      created: (syncResult as Record<string,unknown>).created.length,
+      linked: (syncResult as Record<string,unknown>).linked.length,
+      alreadyExist: (syncResult as Record<string,unknown>).skipped.length,
       details: [
-        ...(syncResult as any).created.map((e: any) => `Created employee record for ${e.role}: ${e.email} (${e.id})`),
-        ...(syncResult as any).linked.map((e: any) => `Linked user ${e.email} to existing employee record (${e.firstName} ${e.lastName})`),
+        ...(syncResult as Record<string,unknown>).created.map((e: unknown) => `Created employee record for ${e.role}: ${e.email} (${e.id})`),
+        ...(syncResult as Record<string,unknown>).linked.map((e: unknown) => `Linked user ${e.email} to existing employee record (${e.firstName} ${e.lastName})`),
       ]
     };
     
@@ -1526,7 +1522,7 @@ export class QuickBooksSyncService {
     
     for (const user of workspaceUsers) {
       const userRole = user.role?.toLowerCase();
-      if (!userRole || !ROLE_HOLDER_ROLES.includes(userRole as any)) {
+      if (!userRole || !ROLE_HOLDER_ROLES.includes(userRole as string)) {
         continue;
       }
       
@@ -1553,7 +1549,6 @@ export class QuickBooksSyncService {
           await db.update(employees)
             .set({ 
               userId: user.id,
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               workspaceRole: this.mapUserRoleToWorkspaceRole(userRole),
               organizationalTitle: this.mapRoleToOrgTitle(userRole),
             })
@@ -1569,7 +1564,7 @@ export class QuickBooksSyncService {
   }
 
   private mapUserRoleToWorkspaceRole(userRole: string): 'org_owner' | 'co_owner' | 'manager' | 'department_manager' | 'supervisor' | 'staff' | 'employee' | 'contractor' | 'viewer' {
-    const roleMap: Record<string, any> = {
+    const roleMap: Record<string, unknown> = {
       'org_owner': 'org_owner',
       'co_owner': 'co_owner',
       'manager': 'manager',
@@ -1643,7 +1638,6 @@ export class QuickBooksSyncService {
           partnerEntityName,
           syncToken,
           matchEmail,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           matchConfidence: confidence,
           syncStatus: 'synced',
           lastSyncAt: new Date(),
@@ -1651,7 +1645,6 @@ export class QuickBooksSyncService {
         })
         .where(eq(partnerDataMappings.id, existing.id));
     } else {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await client.insert(partnerDataMappings).values({
         workspaceId,
         partnerConnectionId: connectionId,
@@ -1689,7 +1682,6 @@ export class QuickBooksSyncService {
       .where(
         and(
           eq(partnerManualReviewQueue.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(partnerManualReviewQueue.partnerEntityId, partnerEntityId),
           eq(partnerManualReviewQueue.status, 'pending')
         )
@@ -1788,7 +1780,6 @@ export class QuickBooksSyncService {
     const requestId = this.generateInvoiceRequestId(
       realmId,
       weekEnding,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       clientMapping.partnerEntityId,
       lineItems
     );
@@ -1815,7 +1806,6 @@ export class QuickBooksSyncService {
 
     const [idempotencyRecord] = existingRequest 
       ? [existingRequest]
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       : await db.insert(partnerInvoiceIdempotency).values({
           workspaceId,
           partnerConnectionId: connection.id,
@@ -1832,12 +1822,12 @@ export class QuickBooksSyncService {
       const totalAmount = lineItems.reduce((sum, l) => sum + l.amount, 0);
 
       const { generateTrinityInvoiceNumber } = await import('../trinityInvoiceNumbering');
-      const trinityDocNumber = (idempotencyRecord as any).partnerInvoiceNumber 
+      const trinityDocNumber = (idempotencyRecord as Record<string,unknown>).partnerInvoiceNumber 
         || await generateTrinityInvoiceNumber(workspaceId, 'client', { date: weekEnding });
 
-      if (!(idempotencyRecord as any).partnerInvoiceNumber) {
+      if (!(idempotencyRecord as Record<string,unknown>).partnerInvoiceNumber) {
         await db.update(partnerInvoiceIdempotency)
-          .set({ partnerInvoiceNumber: trinityDocNumber } as any)
+          .set({ partnerInvoiceNumber: trinityDocNumber } as Record<string, unknown>)
           .where(eq(partnerInvoiceIdempotency.id, idempotencyRecord.id));
       }
 
@@ -1871,7 +1861,6 @@ export class QuickBooksSyncService {
           status: 'completed',
           partnerInvoiceId: response.Invoice.Id,
           partnerInvoiceNumber: trinityDocNumber,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           responsePayload: { syncToken: response.Invoice.SyncToken },
           updatedAt: new Date(),
         })
@@ -1879,13 +1868,11 @@ export class QuickBooksSyncService {
 
       return { invoiceId: response.Invoice.Id, wasCreated: true };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       await db.update(partnerInvoiceIdempotency)
         .set({
           status: 'failed',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           lastError: (error instanceof Error ? error.message : String(error)),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           attempts: (existingRequest?.attempts || 0) + 1,
           lastAttemptAt: new Date(),
           updatedAt: new Date(),
@@ -1910,7 +1897,7 @@ export class QuickBooksSyncService {
       throw new Error('Invalid webhook signature');
     }
 
-    let event: any;
+    let event: unknown;
     try {
       event = JSON.parse(payload);
     } catch {
@@ -2014,10 +2001,10 @@ export class QuickBooksSyncService {
 
     if (!result.success) {
       const error = new Error(result.error || 'CDC poll failed');
-      (error as any).orchestrationId = result.orchestrationId;
-      (error as any).errorCode = result.errorCode;
-      (error as any).remediation = result.remediation;
-      (error as any).retryable = result.retryable;
+      (error as Record<string,unknown>).orchestrationId = result.orchestrationId;
+      (error as Record<string,unknown>).errorCode = result.errorCode;
+      (error as Record<string,unknown>).remediation = result.remediation;
+      (error as Record<string,unknown>).retryable = result.retryable;
       throw error;
     }
     return result.data!;
@@ -2046,7 +2033,7 @@ export class QuickBooksSyncService {
     });
 
     try {
-      const response = await this.makeRequest<{ CDCResponse: any[] }>(
+      const response = await this.makeRequest<{ CDCResponse: unknown[] }>(
         'GET',
         `/cdc?changedSince=${sinceStr}&entities=Customer,Employee,Invoice`,
         realmId,
@@ -2056,12 +2043,12 @@ export class QuickBooksSyncService {
       let recordsProcessed = 0;
 
       for (const queryResponse of response.CDCResponse || []) {
-        const customers: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Customer)
-          .flatMap((q: any) => q.Customer) || [];
-        const employees: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Employee)
-          .flatMap((q: any) => q.Employee) || [];
-        const invoiceEntities: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Invoice)
-          .flatMap((q: any) => q.Invoice) || [];
+        const customers: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Customer)
+          .flatMap((q: unknown) => q.Customer) || [];
+        const employees: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Employee)
+          .flatMap((q: unknown) => q.Employee) || [];
+        const invoiceEntities: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Invoice)
+          .flatMap((q: unknown) => q.Invoice) || [];
 
         recordsProcessed += customers.length + employees.length + invoiceEntities.length;
 
@@ -2113,7 +2100,7 @@ export class QuickBooksSyncService {
         durationMs: Date.now() - startTime,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       await this.updateSyncLog(jobId, {
         status: 'failed',
         errorDetails: { message: (error instanceof Error ? error.message : String(error)) },
@@ -2163,16 +2150,15 @@ export class QuickBooksSyncService {
     }
 
     if (resolution === 'linked_existing' && selectedCoaileagueEntityId) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const [mapping] = await db.insert(partnerDataMappings).values({
         workspaceId: item.workspaceId,
         partnerConnectionId: item.partnerConnectionId,
         partnerType: 'quickbooks',
         entityType: item.entityType,
         coaileagueEntityId: selectedCoaileagueEntityId,
-        partnerEntityId: (item as any).partnerEntityId,
-        partnerEntityName: (item as any).partnerEntityName,
-        matchEmail: (item as any).partnerEmail,
+        partnerEntityId: (item as Record<string,unknown>).partnerEntityId,
+        partnerEntityName: (item as Record<string,unknown>).partnerEntityName,
+        matchEmail: (item as Record<string,unknown>).partnerEmail,
         matchConfidence: 1.0,
         syncStatus: 'synced',
         lastSyncAt: new Date(),
@@ -2207,7 +2193,7 @@ export class QuickBooksSyncService {
 
   async snapshotManuallyEditedTimeEntries(
     workspaceId: string
-  ): Promise<{ snapshotId: string; entries: any[]; timestamp: Date }> {
+  ): Promise<{ snapshotId: string; entries: unknown[]; timestamp: Date }> {
     const manuallyEditedEntries = await db.select({
       id: timeEntries.id,
       employeeId: timeEntries.employeeId,
@@ -2269,9 +2255,9 @@ export class QuickBooksSyncService {
 
   async reconcileManualEditsAfterSync(
     workspaceId: string,
-    preSnapshot: { snapshotId: string; entries: any[]; timestamp: Date }
-  ): Promise<{ preserved: number; overwritten: number; discrepancies: any[] }> {
-    const discrepancies: any[] = [];
+    preSnapshot: { snapshotId: string; entries: unknown[]; timestamp: Date }
+  ): Promise<{ preserved: number; overwritten: number; discrepancies: unknown[] }> {
+    const discrepancies: (string | number | boolean | null)[] = [];
     let preserved = 0;
     let overwritten = 0;
 
@@ -2393,13 +2379,13 @@ export class QuickBooksSyncService {
     context: {
       operation: string;
       entityType?: string;
-      payload?: any;
+      payload?: unknown;
       retryCount: number;
     }
   ): Promise<{
     action: 'RETRY' | 'FIX_DATA' | 'ESCALATE' | 'ABORT';
     reasoning: string;
-    modifications?: Record<string, any>;
+    modifications?: Record<string, unknown>;
     suggestedFix?: string;
     shouldRetry: boolean;
     retryDelayMs?: number;
@@ -2458,7 +2444,7 @@ Respond in JSON format:
       
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         
         // LLM Judge validation for retry decisions
         if (parsed.action === 'RETRY' && context.retryCount >= 2) {
@@ -2501,7 +2487,7 @@ Respond in JSON format:
           retryDelayMs: parsed.retryDelayMs || 2000,
         };
       }
-    } catch (aiError: any) {
+    } catch (aiError : unknown) {
       log.error('[QuickBooksSyncService] Gemini analysis failed:', aiError.message);
     }
 

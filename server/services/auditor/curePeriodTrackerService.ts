@@ -208,7 +208,7 @@ async function sendReminderStrike(
       subject:         config.subject,
       body,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn(`[CurePeriod] In-app ${strike} alert failed (non-fatal):`, err?.message);
   }
 
@@ -222,7 +222,7 @@ async function sendReminderStrike(
         subject:         config.subject,
         body: { ...body, html: `<p style="font-weight:bold;color:#e74c3c;">${config.message}</p>` },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[CurePeriod] Email ${strike} alert failed (non-fatal):`, err?.message);
     }
   }
@@ -237,7 +237,7 @@ async function sendReminderStrike(
         subject:         config.subject,
         body:            { message: config.message },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn(`[CurePeriod] SMS ${strike} alert failed (non-fatal):`, err?.message);
     }
   }
@@ -245,7 +245,7 @@ async function sendReminderStrike(
 
 // ─── Auto-FAIL conversion ─────────────────────────────────────────────────────
 
-async function convertToAutoFail(timer: any): Promise<void> {
+async function convertToAutoFail(timer: unknown): Promise<void> {
   const { pool } = await import('../../db');
 
   // Convert verdict
@@ -304,7 +304,7 @@ async function convertToAutoFail(timer: any): Promise<void> {
             actionUrl: `/citation-resolve/${cr.rows[0]?.id}`,
           },
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(`[CurePeriod] Auto-FAIL ${channel} alert failed (non-fatal):`, err?.message);
       }
     }
@@ -321,7 +321,7 @@ async function convertToAutoFail(timer: any): Promise<void> {
         html:      `<p>The cure period for audit <strong>${timer.audit_id}</strong> has expired without verified corrections being submitted. The audit has been automatically converted to <strong>FAIL</strong> status. A default fine of $${DEFAULT_EXPIRY_FINE.toFixed(2)} has been assessed per the audit terms.</p>`,
         emailType: 'compliance_alert',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[CurePeriod] Auditor auto-FAIL email failed (non-fatal):', err?.message);
     }
   }
@@ -377,7 +377,7 @@ export async function runCureHeartbeat(): Promise<{
       try {
         await convertToAutoFail(timer);
         autoFailed++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[CurePeriod] Auto-FAIL conversion error:', err?.message);
       }
       continue;
@@ -392,7 +392,7 @@ export async function runCureHeartbeat(): Promise<{
           [timer.id],
         );
         reminders24h++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[CurePeriod] 24h reminder failed (non-fatal):', err?.message);
       }
       continue;
@@ -407,7 +407,7 @@ export async function runCureHeartbeat(): Promise<{
           [timer.id],
         );
         reminders72h++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[CurePeriod] 72h reminder failed (non-fatal):', err?.message);
       }
       continue;
@@ -422,7 +422,7 @@ export async function runCureHeartbeat(): Promise<{
           [timer.id],
         );
         reminders7d++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[CurePeriod] 7d reminder failed (non-fatal):', err?.message);
       }
     }
@@ -524,7 +524,7 @@ async function trinityVerifyCorrections(buffer: Buffer, mimeType: string): Promi
   const base64 = buffer.toString('base64');
   const isImage = mimeType.startsWith('image/');
 
-  const content: any[] = [];
+  const content: (string | number | boolean | null)[] = [];
   if (isImage) {
     content.push({ type: 'image', source: { type: 'base64', media_type: mimeType === 'image/png' ? 'image/png' : 'image/jpeg', data: base64 } });
   }
@@ -537,7 +537,7 @@ async function trinityVerifyCorrections(buffer: Buffer, mimeType: string): Promi
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 128, messages: [{ role: 'user', content }] }),
     });
     if (!response.ok) return false;
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const text = data?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return false;

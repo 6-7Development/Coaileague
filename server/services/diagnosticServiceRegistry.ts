@@ -79,7 +79,7 @@ function createQuickCheck(
   id: ServiceKey,
   name: string,
   domain: DiagnosticDomain,
-  checkLogic: () => Promise<{ ok: boolean; message: string; latencyMs?: number; metadata?: any }>,
+  checkLogic: () => Promise<{ ok: boolean; message: string; latencyMs?: number; metadata?: unknown }>,
   options: { isCritical?: boolean; tier?: 'core' | 'essential' | 'extended'; description?: string } = {}
 ): DiagnosticService {
   return {
@@ -102,7 +102,7 @@ function createQuickCheck(
           latencyMs: result.latencyMs ?? (Date.now() - startTime),
           metadata: result.metadata,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           service: id,
           status: 'down',
@@ -232,7 +232,6 @@ export const DIAGNOSTIC_SERVICE_REGISTRY: DiagnosticService[] = [
     };
   }, { tier: 'essential', description: 'AI mascot with contextual thoughts' }),
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   createQuickCheck('platform_action_hub', 'Platform Action Hub (Trinity)', 'ai_brain', async () => {
     const start = Date.now();
     try {
@@ -483,7 +482,7 @@ export const DIAGNOSTIC_SERVICE_REGISTRY: DiagnosticService[] = [
              COALESCE(SUM(total_tokens_used), 0)::bigint AS tokens
       FROM token_usage_monthly
       WHERE month_year = TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM')
-    `) as any;
+    `) as unknown;
     const workspacesActive = Number(row?.workspaces ?? 0);
     const tokensUsed = Number(row?.tokens ?? 0);
     return {
@@ -527,7 +526,7 @@ export const DIAGNOSTIC_SERVICE_REGISTRY: DiagnosticService[] = [
     const [result] = await db
       .select({ logCount: sql<number>`count(*)::int` })
       .from(auditLogs)
-      .where(sql`${auditLogs.source} = 'system' AND ${(auditLogs as any).timestamp} > NOW() - INTERVAL '24 hours'`);
+      .where(sql`${auditLogs.source} = 'system' AND ${(auditLogs as Record<string,unknown>).timestamp} > NOW() - INTERVAL '24 hours'`);
     const recentLogs = Number(result?.logCount || 0);
     return { 
       ok: true, 
@@ -748,7 +747,7 @@ export const DIAGNOSTIC_SERVICE_REGISTRY: DiagnosticService[] = [
     const [pointsResult] = await db
       .select({ 
         count: sql<number>`count(*)::int`, 
-        total: sql<number>`coalesce(sum(${(employeePoints as any).points}), 0)::int` 
+        total: sql<number>`coalesce(sum(${(employeePoints as Record<string,unknown>).points}), 0)::int` 
       })
       .from(employeePoints);
     // Converted to Drizzle ORM: COUNT/GROUP BY → sql<number>`count(*)::int`
@@ -825,7 +824,7 @@ export async function runComprehensiveDiagnostics(): Promise<ComprehensiveDiagno
   const startTime = Date.now();
   const allResults = await runParallelDiagnostics();
   
-  const byDomain: Record<DiagnosticDomain, { status: ServiceStatus; services: ServiceHealth[] }> = {} as any;
+  const byDomain: Record<DiagnosticDomain, { status: ServiceStatus; services: ServiceHealth[] }> = {};
   const domains = getAllDomains();
   
   for (const domain of domains) {
@@ -876,7 +875,7 @@ export async function runFastModeBatchDiagnostics(batchSize: number = 10): Promi
     allResults.push(...batchResults);
   }
   
-  const byDomain: Record<DiagnosticDomain, { status: ServiceStatus; services: ServiceHealth[] }> = {} as any;
+  const byDomain: Record<DiagnosticDomain, { status: ServiceStatus; services: ServiceHealth[] }> = {};
   const domains = getAllDomains();
   
   for (const domain of domains) {

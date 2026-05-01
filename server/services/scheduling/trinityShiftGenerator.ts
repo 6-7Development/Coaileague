@@ -64,7 +64,7 @@ function parseHourFromTime(timeStr: string | null | undefined): number | null {
   return h;
 }
 
-function buildCoverageProfile(client: any): ClientCoverageProfile {
+function buildCoverageProfile(client: unknown): ClientCoverageProfile {
   const contractRate = parseFloat(client.contractRate || '0');
   const clientName = client.companyName || `${client.firstName} ${client.lastName}`;
   const guardsPerShift = Math.max(1, client.minimumStaffing || DEFAULT_GUARDS_PER_SHIFT);
@@ -254,7 +254,7 @@ export async function generateWeeklyShifts(
 
       const existingCounts = await getExistingShiftCounts(workspaceId, client.id, weekStart, weekEnd);
 
-      const shiftsToInsert: any[] = [];
+      const shiftsToInsert: (string | number | boolean | null)[] = [];
 
       for (const dayOffset of [0, 1, 2, 3, 4, 5, 6]) {
         const shiftDate = new Date(weekStart);
@@ -321,7 +321,7 @@ export async function generateWeeklyShifts(
       log.info(
         `[TrinityShiftGenerator] Created ${shiftsToInsert.length} shifts for ${profile.clientName} (${profile.guardsPerShift} guard(s) × ${profile.shiftStartHours.length} window(s) × ${profile.daysPerWeek.length} day(s))`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       skippedClients.push({
         clientId: client.id,
         clientName: client.companyName || client.firstName,

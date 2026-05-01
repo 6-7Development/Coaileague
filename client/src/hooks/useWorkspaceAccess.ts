@@ -87,9 +87,10 @@ export function useWorkspaceAccess() {
     enabled: !authLoading && isAuthenticated,
     retry: 2,
     retryDelay: 500,
+    gcTime: 10 * 60 * 1000, // keep workspace role in cache 10 min
   });
 
-  const employeePosition = data?.employeePosition || (user as any)?.position as string | undefined;
+  const employeePosition = data?.employeePosition || (user as Record<string,unknown>)?.position as string | undefined;
   const positionCapabilities = deriveCapabilitiesFromPosition(employeePosition);
 
   return {

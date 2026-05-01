@@ -37,7 +37,7 @@ async function run() {
   try {
     const dbModule = await import('../../server/db');
     db = dbModule.db;
-  } catch (err: any) {
+  } catch (err : unknown) {
     console.error('Cannot connect to DB:', err.message);
     process.exit(1);
   }
@@ -64,7 +64,7 @@ async function run() {
         WHERE id = ${SPS_ID}
         LIMIT 1
       `);
-      const ws = (rows.rows || rows)[0] as any;
+      const ws = (rows.rows || rows)[0] as unknown;
       const notLocked = !ws.is_suspended && !ws.is_frozen && !ws.is_locked;
       check('SPS:exists', true,
         `Found: ${ws.name || ws.id} | tier=${ws.subscription_tier} | status=${ws.subscription_status}`);
@@ -73,7 +73,7 @@ async function run() {
       check('SPS:not-locked', notLocked,
         notLocked ? 'SPS is not suspended/frozen/locked' :
           `SPS is locked! suspended=${ws.is_suspended}, frozen=${ws.is_frozen}, locked=${ws.is_locked}`);
-    } catch (err: any) {
+    } catch (err : unknown) {
       check('SPS:exists', false, `Query failed: ${err.message}`);
     }
   } else if (IS_DEV) {
@@ -99,7 +99,7 @@ async function run() {
         WHERE workspace_id = ${SPS_ID}
         ORDER BY address
       `);
-      const emails: string[] = (rows.rows || rows).map((r: any) => r.address);
+      const emails: string[] = (rows.rows || rows).map((r: unknown) => r.address);
       check('SPS:email-count', emails.length === 6,
         `Has ${emails.length}/6 emails: ${emails.slice(0, 4).join(', ')}${emails.length > 4 ? '...' : ''}`);
       const hasDocs = emails.some(e => e.includes('docs@') || e.startsWith('docs.') || e.includes('.docs.'));
@@ -108,7 +108,7 @@ async function run() {
         hasDocs ? 'docs@ address exists' : `docs@ absent — emails: ${emails.join(', ')}`);
       check('SPS:no-trinity-system-email', !hasTrinitySystem,
         hasTrinitySystem ? 'trinity-system@ INCORRECTLY present' : 'trinity-system@ correctly absent');
-    } catch (err: any) {
+    } catch (err : unknown) {
       check('SPS:email-count', false, `Query failed: ${err.message}`);
       devSkip('SPS:docs-email-present');
       devSkip('SPS:no-trinity-system-email');
@@ -128,7 +128,7 @@ async function run() {
       const rows = await db.execute(sql`
         SELECT subscription_status, subscription_tier FROM workspaces WHERE id = ${SPS_ID} LIMIT 1
       `);
-      const ws = (rows.rows || rows)[0] as any;
+      const ws = (rows.rows || rows)[0] as unknown;
       if (ws) {
         const notBillingLocked = ws.subscription_status !== 'locked' &&
           ws.subscription_status !== 'suspended' &&
@@ -140,7 +140,7 @@ async function run() {
       } else {
         check('SPS:billing-not-locked', false, 'SPS workspace not found');
       }
-    } catch (err: any) {
+    } catch (err : unknown) {
       check('SPS:billing-exemption', false, `Query failed: ${err.message}`);
     }
   } else {
@@ -159,7 +159,7 @@ async function run() {
         const rows = await db.execute(sql.raw(
           `SELECT COUNT(*) as cnt FROM ${table} WHERE workspace_id = '${SPS_ID}'`
         ));
-        const cnt = (rows.rows || rows)[0] as any;
+        const cnt = (rows.rows || rows)[0] as unknown;
         check('SPS:audit-log-exists', (parseInt(cnt?.cnt) || 0) >= 0,
           `SPS has ${cnt?.cnt || 0} records in ${table} (read-only count)`);
         auditFound = true;
@@ -182,7 +182,7 @@ async function run() {
       const rows = await db.execute(sql`
         SELECT COUNT(*) as cnt FROM employees WHERE workspace_id = ${SPS_ID}
       `);
-      const cnt = (rows.rows || rows)[0] as any;
+      const cnt = (rows.rows || rows)[0] as unknown;
       check('SPS:contamination-employees', true,
         `SPS has ${cnt?.cnt || 0} employees — read-only count (app-layer isolation enforced)`);
     } catch {

@@ -25,11 +25,16 @@ import { diagnoseBusinessArtifactCoverage } from '../documents/businessArtifactD
 import { invoiceService } from '../billing/invoice';
 import { generateTimesheetSupportPackage } from '../documents/timesheetSupportPackageGenerator';
 import { scoreRfpComplexity, buildRfpExtractionPrompt, type RfpScoringInputs } from '../billing/rfpComplexityScorer';
+import { generateProofOfEmployment, generateDirectDepositConfirmation, generatePayrollRunSummary, generateW3Transmittal } from '../documents/businessFormsGenerators';
+
+function mkAction(actionDef: Record<string, unknown>) {
+  return actionDef;
+}
 const log = createLogger('trinityDocumentActions');
 const I9_COMPLIANCE_WINDOW_DAYS = 90;
 const I9_DEADLINE_DAYS = 3;
 
-export function registerTrinityDocumentActions(orchestrator: any): void {
+export function registerTrinityDocumentActions(orchestrator: { registerAction: (action: unknown) => void }): void {
   log.info('[TrinityDocumentActions] Registering 7 document orchestration actions...');
 
   // ─────────────────────────────────────────────────────
@@ -82,7 +87,6 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           actorId: request.userId || 'trinity',
           changeType: 'action',
           targetType: 'document',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           targetId: documentId,
           description: `Trinity generated document from template ${templateId} for ${recipientType} ${recipientId}`,
           metadata: { templateId, recipientId, recipientType, mergeData },
@@ -102,7 +106,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -152,7 +156,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
             signerName: signer.name,
             verificationToken: token,
             expiresAt,
-          } as any);
+          } as Record<string, unknown>);
           results.push({
             signerEmail: signer.email,
             signerName: signer.name,
@@ -175,7 +179,6 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           actorId: request.userId || 'trinity',
           changeType: 'action',
           targetType: 'document',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           targetId: documentId,
           description: `Trinity sent document ${documentId} for signature to ${signers.length} signer(s)`,
           metadata: { documentId, signerCount: signers.length, message },
@@ -188,7 +191,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           data: { documentId, signingRequests: results },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -286,7 +289,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -355,7 +358,6 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           actorId: 'trinity',
           changeType: 'action',
           targetType: 'document',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           targetId: workspaceId,
           description: `Trinity escalated ${pendingSignatures.length} overdue signature request(s) pending more than ${overdueThresholdDays} days`,
           metadata: { overdueCount: pendingSignatures.length, thresholdDays: overdueThresholdDays },
@@ -376,7 +378,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -441,7 +443,6 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           actorId: 'trinity',
           changeType: 'action',
           targetType: 'workspace',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           targetId: workspaceId,
           description: `Trinity compliance scan: ${docsNeedingSig.length} signature-required documents scanned, ${incomplete.length} incomplete`,
           metadata: { total: docsNeedingSig.length, complete: complete.length, incomplete: incomplete.length },
@@ -467,7 +468,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -548,7 +549,6 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
             actorId: 'trinity',
             changeType: 'action',
             targetType: 'workspace',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             targetId: workspaceId,
             description: `Trinity license expiry scan: ${results.length} certification(s) expiring within ${daysThreshold} days`,
             metadata: { threshold: daysThreshold, expiringCount: results.length },
@@ -575,7 +575,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -626,7 +626,7 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
           },
           executionTimeMs: Date.now() - startTime,
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           success: false,
           actionId: request.actionId,
@@ -638,11 +638,11 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
   });
   // ── Elite AI Actions — Per-Use Pricing ($89-199 range) ──────────────────
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.contract_analysis',
     description: 'Line-by-line liability flagging, missing-protection callouts, and auto-redlines against PSB requirements. Cites exact statute violations.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, documentId, documentText, contractType } = request.parameters || {};
       if (!workspaceId || (!documentId && !documentText)) {
         return { success: false, message: 'workspaceId and (documentId or documentText) required' };
@@ -674,13 +674,13 @@ Return structured JSON with fields: liabilityFlags[], missingProtections[], stat
         featureKey: 'contract_analysis',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.compliance_audit_report',
     description: 'Full audit-readiness report with compliance score, findings categorized by severity, and auditor-ready exhibit index.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, auditType, periodStart, periodEnd, includeExhibits } = request.parameters || {};
       if (!workspaceId) {
         return { success: false, message: 'workspaceId required' };
@@ -745,13 +745,13 @@ Return structured JSON.`;
         featureKey: 'compliance_audit_report',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.incident_investigation_report',
     description: 'Court-ready incident investigation narrative with timeline, root cause analysis, and officer conduct assessment for insurance and litigation.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager', 'supervisor'],
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, incidentId, incidentData } = request.parameters || {};
       if (!workspaceId || (!incidentId && !incidentData)) {
         return { success: false, message: 'workspaceId and (incidentId or incidentData) required' };
@@ -802,13 +802,13 @@ Write in formal investigative report style. Use passive voice for officer action
         featureKey: 'incident_investigation_report',
       };
     },
-  }));
+  });
 
-  helpaiOrchestrator.registerAction(mkAction({
+  orchestrator.registerAction({
     actionId: 'document.officer_performance_review',
     description: 'Structured performance review narrative from 12 months of shift, attendance, incident, and compliance data.',
     requiredRoles: ['system', 'org_owner', 'co_owner', 'org_admin', 'manager'],
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, employeeId, reviewPeriodMonths = 12 } = request.parameters || {};
       if (!workspaceId || !employeeId) {
         return { success: false, message: 'workspaceId and employeeId required' };
@@ -874,7 +874,7 @@ Write in professional HR review style. Be specific and evidence-based. Avoid vag
         featureKey: 'officer_performance_review',
       };
     },
-  }));
+  });
 
 }
 
@@ -894,7 +894,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
       AND e.hire_date < ${i9DeadlineCutoff}
   `);
 
-  const rows = (overdue as any).rows || [];
+  const rows = (overdue as Record<string,unknown>).rows || [];
   for (const emp of rows) {
     const title = `I-9 Overdue: ${emp.first_name} ${emp.last_name}`;
     const [existing] = await db.select({ id: aiApprovals.id })
@@ -935,7 +935,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.proof_of_employment',
     description: 'Generate a branded Proof of Employment letter for an employee and save to tenant vault',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, employeeId, requestedBy, employerNote } = request.parameters || {};
       if (!workspaceId || !employeeId) {
         return { actionId: request.actionId, success: false, error: 'workspaceId and employeeId required' };
@@ -948,7 +948,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.direct_deposit_confirmation',
     description: 'Generate a Direct Deposit Confirmation PDF for a payroll disbursement and save to vault',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, employeeId, payrollRunId, netPay, payDate, bankRoutingLast4, bankAccountLast4, accountType } = request.parameters || {};
       if (!workspaceId || !employeeId || !payrollRunId) {
         return { actionId: request.actionId, success: false, error: 'workspaceId, employeeId, payrollRunId required' };
@@ -966,7 +966,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.payroll_run_summary',
     description: 'Generate a branded Payroll Run Summary report for the employer and save to vault',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, payrollRunId, generatedBy } = request.parameters || {};
       if (!workspaceId || !payrollRunId) {
         return { actionId: request.actionId, success: false, error: 'workspaceId and payrollRunId required' };
@@ -979,7 +979,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.w3_transmittal',
     description: 'Generate a W-3 Transmittal summary for a given tax year and save to vault',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, taxYear, generatedBy } = request.parameters || {};
       if (!workspaceId || !taxYear) {
         return { actionId: request.actionId, success: false, error: 'workspaceId and taxYear required' };
@@ -992,7 +992,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.business_artifact_diagnostics',
     description: 'Read-only diagnostic: returns coverage summary and gaps for all business artifact types. Support/admin use only.',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const result = diagnoseBusinessArtifactCoverage();
       return { actionId: request.actionId, success: true, ...result };
     },
@@ -1001,7 +1001,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.generate_invoice_pdf',
     description: 'Generate a branded per-invoice PDF and save to tenant vault. Returns vaultId and documentNumber.',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { invoiceId, workspaceId } = request.parameters || {};
       if (!invoiceId || !workspaceId) {
         return { actionId: request.actionId, success: false, error: 'invoiceId and workspaceId required' };
@@ -1014,7 +1014,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.timesheet_support_package',
     description: 'Generate a branded timesheet support package PDF for payroll/invoice/audit reconciliation. Saves to vault.',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, periodStart, periodEnd, clientId, status, generatedBy } = request.parameters || {};
       if (!workspaceId || !periodStart || !periodEnd) {
         return { actionId: request.actionId, success: false, error: 'workspaceId, periodStart, and periodEnd required' };
@@ -1038,7 +1038,7 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
   orchestrator.registerAction({
     actionId: 'document.analyze_rfp',
     description: 'Analyze an RFP document or URL to determine complexity score and per-occurrence price before the tenant commits. Returns tier, price, and factor breakdown.',
-    async execute(request: any) {
+    async execute(request: unknown) {
       const { workspaceId, rfpInputs, extractionNotes } = request.parameters || {};
       if (!workspaceId || !rfpInputs) {
         return {

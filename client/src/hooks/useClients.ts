@@ -48,7 +48,7 @@ export function useClientLookup(): UseQueryResult<Client[]> {
 
 export function useCreateClient() {
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data) => {
       return await apiRequest("POST", "/api/clients", data);
     },
     onSuccess: () => {
@@ -60,7 +60,7 @@ export function useCreateClient() {
 
 export function useUpdateClient() {
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
       return await apiRequest("PATCH", `/api/clients/${id}`, data);
     },
     onSuccess: () => {

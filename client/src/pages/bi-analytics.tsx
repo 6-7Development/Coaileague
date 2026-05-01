@@ -143,7 +143,7 @@ export default function BIAnalytics() {
   });
 
   const scheduledReportMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/analytics/bi/scheduled-report", data),
+    mutationFn: (data) => apiRequest("POST", "/api/analytics/bi/scheduled-report", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/analytics/bi/scheduled-report"] });
       toast({ title: "Report schedule saved." });
@@ -163,8 +163,8 @@ export default function BIAnalytics() {
   const snapshots = snapshotQuery.data?.data || [];
 
   // Group snapshots by date for trend chart
-  const trendData = snapshots.reduce((acc: any, row: any) => {
-    const existing = acc.find((d: any) => d.date === row.snapshot_date);
+  const trendData = snapshots.reduce((acc: unknown, row: unknown) => {
+    const existing = acc.find((d) => d.date === row.snapshot_date);
     if (existing) {
       existing[row.metric_name] = parseFloat(row.value);
     } else {
@@ -288,7 +288,7 @@ export default function BIAnalytics() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
-                    <Tooltip formatter={(v: any) => formatCurrency(v)} />
+                    <Tooltip formatter={(v) => formatCurrency(v)} />
                     <Line type="monotone" dataKey="revenue.paid" stroke={GOLD} strokeWidth={2} name="Revenue" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -306,7 +306,7 @@ export default function BIAnalytics() {
               <CardContent>
                 {financialQuery.isLoading ? <Skeleton className="h-40 w-full" /> : (
                   <div className="space-y-2" data-testid="revenue-by-client-list">
-                    {(financial?.revenueByClient ?? []).slice(0, 8).map((c: any, i: number) => (
+                    {(financial?.revenueByClient ?? []).slice(0, 8).map((c: unknown, i: number) => (
                       <div key={i} className="flex items-center justify-between gap-2 text-sm" data-testid={`revenue-client-${i}`}>
                         <span className="truncate text-muted-foreground">{c.client_name}</span>
                         <span className="font-medium shrink-0">{formatCurrency(c.revenue)}</span>
@@ -328,7 +328,7 @@ export default function BIAnalytics() {
               <CardContent>
                 {financialQuery.isLoading ? <Skeleton className="h-40 w-full" /> : (
                   <div className="space-y-3" data-testid="overdue-aging-list">
-                    {(financial?.overdueAging ?? []).map((bucket: any, i: number) => (
+                    {(financial?.overdueAging ?? []).map((bucket: unknown, i: number) => (
                       <div key={i} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{bucket.age_bucket}</span>
@@ -440,7 +440,7 @@ export default function BIAnalytics() {
               <CardContent>
                 {calloffQuery.isLoading ? <Skeleton className="h-48 w-full" /> : (
                   <div className="space-y-2 max-h-64 overflow-y-auto" data-testid="calloff-by-officer-list">
-                    {(calloff?.byOfficer ?? []).slice(0, 10).map((o: any, i: number) => (
+                    {(calloff?.byOfficer ?? []).slice(0, 10).map((o: unknown, i: number) => (
                       <div key={i} className="flex items-center gap-2" data-testid={`calloff-officer-${i}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between text-sm">
@@ -522,11 +522,11 @@ export default function BIAnalytics() {
             <CardContent>
               {licenseExpiryQuery.isLoading ? <Skeleton className="h-32 w-full" /> : (
                 <div className="space-y-2 max-h-48 overflow-y-auto" data-testid="license-expiry-list">
-                  {[...(licenseExpiry?.expired ?? []).map((e: any) => ({ ...e, urgency: "expired" })),
-                    ...(licenseExpiry?.expiring30d ?? []).map((e: any) => ({ ...e, urgency: "30d" })),
-                    ...(licenseExpiry?.expiring60d ?? []).map((e: any) => ({ ...e, urgency: "60d" })),
-                    ...(licenseExpiry?.expiring90d ?? []).map((e: any) => ({ ...e, urgency: "90d" })),
-                  ].slice(0, 15).map((e: any, i: number) => (
+                  {[...(licenseExpiry?.expired ?? []).map((e) => ({ ...e, urgency: "expired" })),
+                    ...(licenseExpiry?.expiring30d ?? []).map((e) => ({ ...e, urgency: "30d" })),
+                    ...(licenseExpiry?.expiring60d ?? []).map((e) => ({ ...e, urgency: "60d" })),
+                    ...(licenseExpiry?.expiring90d ?? []).map((e) => ({ ...e, urgency: "90d" })),
+                  ].slice(0, 15).map((e: unknown, i: number) => (
                     <div key={i} className="flex items-center justify-between text-sm gap-2" data-testid={`license-expiry-row-${i}`}>
                       <span className="truncate text-muted-foreground">{e.officer_name}</span>
                       <span className="truncate text-muted-foreground">{e.license_type}</span>
@@ -595,7 +595,7 @@ export default function BIAnalytics() {
             <CardContent>
               {clientHealthQuery.isLoading ? <Skeleton className="h-64 w-full" /> : (
                 <div className="space-y-3" data-testid="client-health-list">
-                  {(clientHealth?.clients ?? []).map((c: any, i: number) => (
+                  {(clientHealth?.clients ?? []).map((c: unknown, i: number) => (
                     <div key={i} className="space-y-1.5" data-testid={`client-health-row-${i}`}>
                       <div className="flex items-center justify-between gap-2 text-sm">
                         <span className="font-medium truncate">{c.client_name}</span>
@@ -635,9 +635,9 @@ export default function BIAnalytics() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="client_name" tick={{ fontSize: 10 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: any) => `${Math.round(v)}%`} />
+                    <Tooltip formatter={(v) => `${Math.round(v)}%`} />
                     <Bar dataKey="composite_score" name="Health Score" radius={[3, 3, 0, 0]}>
-                      {clientHealth.clients.slice(0, 12).map((c: any, i: number) => (
+                      {clientHealth.clients.slice(0, 12).map((c: unknown, i: number) => (
                         <Cell key={i} fill={c.churn_risk === "high" ? ACCENT_RED : c.churn_risk === "medium" ? GOLD : ACCENT_GREEN} />
                       ))}
                     </Bar>

@@ -19,7 +19,7 @@ export interface FormSubmission {
   templateCategory: string;
   submittedBy: string;
   submitterName: string;
-  formData: Record<string, any>;
+  formData: Record<string, unknown>;
   photos: string[];
   signatureData?: string;
   status: 'draft' | 'submitted' | 'pending_review' | 'approved' | 'rejected' | 'completed';
@@ -33,9 +33,9 @@ export interface FormSubmission {
 }
 
 function rowToSubmission(row: typeof customFormSubmissions.$inferSelect): FormSubmission {
-  const raw = (row as any).formData || {};
+  const raw = (row as Record<string, unknown>).formData || {};
   const meta = raw._meta || {};
-  const cleanFormData: Record<string, any> = {};
+  const cleanFormData: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (k !== '_meta') cleanFormData[k] = v;
   }
@@ -67,7 +67,7 @@ class FormWorkflowService {
     templateId: string;
     submittedBy: string;
     submitterName: string;
-    formData: Record<string, any>;
+    formData: Record<string, unknown>;
     photos?: string[];
     signatureData?: string;
   }): Promise<{ submissionId: string; pipelineDocId: string; status: string }> {
@@ -212,7 +212,7 @@ class FormWorkflowService {
     notes?: string,
     workspaceId?: string
   ): Promise<FormSubmission | null> {
-    const conditions: any[] = [eq(customFormSubmissions.id, submissionId)];
+    const conditions: unknown[] = [eq(customFormSubmissions.id, submissionId)];
     if (workspaceId) conditions.push(eq(customFormSubmissions.workspaceId, workspaceId));
 
     const rows = await db
@@ -231,7 +231,7 @@ class FormWorkflowService {
       return rowToSubmission(row);
     }
 
-    const raw = (row as any).formData || {};
+    const raw = (row as Record<string, unknown>).formData || {};
     const existingMeta = raw._meta || {};
     const now = new Date();
 
@@ -306,8 +306,8 @@ class FormWorkflowService {
     return rows.map(rowToSubmission);
   }
 
-  getAvailableTemplates(businessCategory?: string): any[] {
-    const templates: any[] = [];
+  getAvailableTemplates(businessCategory?: string): unknown[] {
+    const templates: (string | number | boolean | null)[] = [];
 
     const securityTemplates = systemFormTemplates.security || [];
     for (const t of securityTemplates) {
@@ -318,14 +318,14 @@ class FormWorkflowService {
         category: t.category || 'security',
         isSystem: true,
         fields: t.fields,
-        requiresPhotos: (t as any).requiresPhotos || false,
-        photoInstructions: (t as any).photoInstructions || '',
-        minPhotos: (t as any).minPhotos || 0,
-        maxPhotos: (t as any).maxPhotos || 0,
+        requiresPhotos: (t as Record<string, unknown>).requiresPhotos || false,
+        photoInstructions: (t as Record<string, unknown>).photoInstructions || '',
+        minPhotos: (t as Record<string, unknown>).minPhotos || 0,
+        maxPhotos: (t as Record<string, unknown>).maxPhotos || 0,
       });
     }
 
-    const generalTemplates = (systemFormTemplates as any).general || [];
+    const generalTemplates = (systemFormTemplates as Record<string,unknown>).general || [];
     for (const t of generalTemplates) {
       templates.push({
         id: `system-general-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
@@ -334,10 +334,10 @@ class FormWorkflowService {
         category: t.category || 'general',
         isSystem: true,
         fields: t.fields,
-        requiresPhotos: (t as any).requiresPhotos || false,
-        photoInstructions: (t as any).photoInstructions || '',
-        minPhotos: (t as any).minPhotos || 0,
-        maxPhotos: (t as any).maxPhotos || 0,
+        requiresPhotos: (t as Record<string, unknown>).requiresPhotos || false,
+        photoInstructions: (t as Record<string, unknown>).photoInstructions || '',
+        minPhotos: (t as Record<string, unknown>).minPhotos || 0,
+        maxPhotos: (t as Record<string, unknown>).maxPhotos || 0,
       });
     }
 
@@ -381,7 +381,6 @@ class FormWorkflowService {
 
       if (employees.length > 0) {
         const emp = employees[0];
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(employeeDocuments).values({
           workspaceId: submission.workspaceId,
           employeeId: emp.id,
@@ -424,7 +423,7 @@ class FormWorkflowService {
     for (const category of allCategories) {
       if (Array.isArray(category)) {
         for (const t of category) {
-          const generatedId = `system-${(t as any).category || 'general'}-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          const generatedId = `system-${(t as Record<string, unknown>).category || 'general'}-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
           if (generatedId === templateId || t.name === templateId) {
             return t;
           }

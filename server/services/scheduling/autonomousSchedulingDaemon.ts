@@ -246,7 +246,7 @@ class AutonomousSchedulingDaemonService {
 
       log.info(`[SchedulingDaemon] Cycle completed: ${result.shiftsAutoFilled} shifts filled, ${result.templatesApplied} templates applied`);
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       result.errors.push(`Critical error: ${(error instanceof Error ? error.message : String(error))}`);
       log.error('[SchedulingDaemon] Critical error:', error);
     } finally {
@@ -278,7 +278,7 @@ class AutonomousSchedulingDaemonService {
   /**
    * Process a single workspace
    */
-  private async processWorkspace(workspace: any, windowCtx?: ShiftWindowContext): Promise<{
+  private async processWorkspace(workspace: unknown, windowCtx?: ShiftWindowContext): Promise<{
     shiftsAutoFilled: number;
     templatesApplied: number;
     alertsSent: number;
@@ -314,7 +314,7 @@ class AutonomousSchedulingDaemonService {
           } else {
             log.info(`[SchedulingDaemon] No shifts generated for ${workspace.id} (no clients with contract rates, or all slots already filled)`);
           }
-        } catch (genErr: any) {
+        } catch (genErr : unknown) {
           log.error(`[SchedulingDaemon] Shift generation failed for ${workspace.id}:`, genErr.message);
         }
       }
@@ -382,7 +382,7 @@ class AutonomousSchedulingDaemonService {
               log.warn(`[SchedulingDaemon] schedule_published event publish failed for ${workspace.id}:`, err instanceof Error ? err.message : String(err));
             });
           }
-        } catch (error: any) {
+        } catch (error : unknown) {
           log.error(`[SchedulingDaemon] Auto-fill error for ${workspace.id}:`, error);
           // Notify org owner that the scheduling daemon failed for this workspace
           import('../orchestration/pipelineErrorHandler').then(({ notifyWorkspaceFailure }) => {
@@ -418,7 +418,7 @@ class AutonomousSchedulingDaemonService {
         try {
           const templateResult = await recurringScheduleTemplates.generateNextWeek(workspace.id);
           templatesApplied = templateResult.templatesApplied;
-        } catch (error: any) {
+        } catch (error : unknown) {
           log.error(`[SchedulingDaemon] Template generation error for ${workspace.id}:`, error);
         }
       }
@@ -481,7 +481,7 @@ class AutonomousSchedulingDaemonService {
   /**
    * Send urgent alerts for unfilled shifts
    */
-  private async sendUrgentAlerts(workspaceId: string, urgentShifts: any[]): Promise<void> {
+  private async sendUrgentAlerts(workspaceId: string, urgentShifts: unknown[]): Promise<void> {
     // Broadcast alert to workspace
     broadcastToWorkspace(workspaceId, {
       type: 'trinity_urgent_alert',
@@ -532,7 +532,7 @@ class AutonomousSchedulingDaemonService {
    */
   async triggerManualRun(workspaceId: string, mode: 'current_day' | 'current_week' | 'next_week'): Promise<{
     success: boolean;
-    result: any;
+    result: unknown;
   }> {
     try {
       const result = await trinityAutonomousScheduler.executeAutonomousScheduling({
@@ -546,7 +546,7 @@ class AutonomousSchedulingDaemonService {
       });
 
       return { success: true, result };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return { success: false, result: { error: (error instanceof Error ? error.message : String(error)) } };
     }
   }

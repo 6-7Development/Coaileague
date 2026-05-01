@@ -62,14 +62,14 @@ export interface AgentExecutionContext {
   // Context from codebase
   relevantFiles: string[];
   relevantComponents: string[];
-  specContext: any;
+  specContext: unknown;
 }
 
 export interface ExecutedStepResult {
   stepId: string;
   action: string;
-  input: Record<string, any>;
-  output: any;
+  input: Record<string, unknown>;
+  output: unknown;
   success: boolean;
   confidence: number;
   durationMs: number;
@@ -198,7 +198,6 @@ class TrinityAgentParityLayer {
       await this.logExecution(context, result);
       
       // Publish event
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       platformEventBus.publish('ai_brain_action', {
         action: 'agent_execution_complete',
         executionId,
@@ -209,7 +208,7 @@ class TrinityAgentParityLayer {
       
       return result;
       
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.log.error(`Execution failed:`, error);
       return {
         executionId,
@@ -236,7 +235,7 @@ class TrinityAgentParityLayer {
     this.log.info('Phase 1: Gathering context...');
     
     // Get spec-index components related to the goal
-    const components = (specIndex as any).components || {};
+    const components = (specIndex as Record<string,unknown>).components || {};
     const relevantComponents: string[] = [];
     const relevantFiles: string[] = [];
     
@@ -263,14 +262,14 @@ class TrinityAgentParityLayer {
     context.relevantComponents = relevantComponents;
     context.relevantFiles = [...new Set(relevantFiles)];
     context.specContext = {
-      tiers: (specIndex as any).tiers,
-      editingRules: (specIndex as any).aiEditingRules,
-      secretsMap: (specIndex as any).secretsMap,
+      tiers: (specIndex as Record<string,unknown>).tiers,
+      editingRules: (specIndex as Record<string,unknown>).aiEditingRules,
+      secretsMap: (specIndex as Record<string,unknown>).secretsMap,
     };
     
     // Get memory context from Trinity (using memory service directly)
     try {
-      const userProfile = await (trinityMemoryService as any).getUserProfile(context.userId, context.workspaceId);
+      const userProfile = await (trinityMemoryService as Record<string,unknown>).getUserProfile(context.userId, context.workspaceId);
       context.specContext.memoryContext = userProfile;
     } catch (error) {
       this.log.warn('Memory context unavailable:', error);
@@ -316,7 +315,7 @@ class TrinityAgentParityLayer {
     
     // Route through adaptive supervisor for complexity assessment
     try {
-      const routingResult = await (adaptiveSupervisionRouter as any).routeRequest({
+      const routingResult = await (adaptiveSupervisionRouter as Record<string,unknown>).routeRequest({
         workspaceId: context.workspaceId,
         userId: context.userId,
         intent: context.goal,
@@ -417,7 +416,7 @@ class TrinityAgentParityLayer {
   private async preFlightCheck(step: PlanStep, context: AgentExecutionContext): Promise<{ safe: boolean; reason?: string }> {
     // Check if step affects tier-0 components (require human approval)
     const tier0Components = context.relevantComponents.filter(id => {
-      const comp = ((specIndex as any).components || {})[id];
+      const comp = ((specIndex as Record<string,unknown>).components || {})[id];
       return comp?.tier === 'tier0';
     });
     
@@ -448,11 +447,10 @@ class TrinityAgentParityLayer {
     const startTime = Date.now();
     
     try {
-      let output: any;
+      let output: unknown;
       
       switch (step.action) {
         case 'search_code':
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           output = await trinityCodeOps.searchCode(step.parameters);
           break;
         case 'read_file':
@@ -485,7 +483,7 @@ class TrinityAgentParityLayer {
         verified: false,
       };
       
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         stepId: step.stepId,
         action: step.action,
@@ -506,7 +504,7 @@ class TrinityAgentParityLayer {
     }
   }
 
-  private async executeFileOperation(action: string, params: Record<string, any>): Promise<any> {
+  private async executeFileOperation(action: string, params: Record<string, unknown>): Promise<unknown> {
     const filePath = params.path || params.filePath;
     const fs = await import('fs/promises');
     
@@ -527,7 +525,7 @@ class TrinityAgentParityLayer {
     }
   }
 
-  private async executeTestRun(params: Record<string, any>): Promise<any> {
+  private async executeTestRun(params: Record<string, unknown>): Promise<unknown> {
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
@@ -542,7 +540,7 @@ class TrinityAgentParityLayer {
         summary: result.stdout.substring(0, 500),
         exitCode: 0,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Test command failed - this indicates actual test failures
       return {
         success: false,
@@ -746,8 +744,8 @@ class TrinityAgentParityLayer {
       const output = result.stdout.trim();
       
       if (output && output.startsWith('[')) {
-        const parsed = JSON.parse(output);
-        const errors = parsed.flatMap((f: any) => f.messages.filter((m: any) => m.severity === 2).map((m: any) => `${m.line}:${m.column} ${m.message}`));
+        const parsed: unknown = JSON.parse(output);
+        const errors = parsed.flatMap((f: unknown) => f.messages.filter((m: unknown) => m.severity === 2).map((m: unknown) => `${m.line}:${m.column} ${m.message}`));
         return { valid: errors.length === 0, errors };
       }
       
@@ -823,7 +821,7 @@ class TrinityAgentParityLayer {
     
     // Store learning in memory
     try {
-      await (trinityMemoryService as any).storeExecution({
+      await (trinityMemoryService as Record<string,unknown>).storeExecution({
         executionId: context.executionId,
         goal: context.goal,
         success: context.executedSteps.every(s => s.success),
@@ -889,7 +887,7 @@ class TrinityAgentParityLayer {
     
     // Add tier-based constraints
     const tier0Components = context.relevantComponents.filter(id => {
-      const comp = ((specIndex as any).components || {})[id];
+      const comp = ((specIndex as Record<string,unknown>).components || {})[id];
       return comp?.tier === 'tier0';
     });
     
@@ -898,7 +896,7 @@ class TrinityAgentParityLayer {
     }
     
     // Add editing rules
-    const editingRules = (specIndex as any).aiEditingRules || {};
+    const editingRules = (specIndex as Record<string,unknown>).aiEditingRules || {};
     constraints.push(`Tier-0 files: ${editingRules.tier0?.description || 'Human approval required'}`);
     constraints.push(`Tier-1 files: ${editingRules.tier1?.description || 'LLM-as-Judge validation required'}`);
     
@@ -937,7 +935,6 @@ class TrinityAgentParityLayer {
         workspaceId: context.workspaceId,
         userId: context.userId,
         goal: `Recover from pre-flight failure: ${preFlightResult.reason}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         executedSteps: context.executedSteps.map(s => ({
           action: s.action,
           input: s.input,
@@ -947,12 +944,10 @@ class TrinityAgentParityLayer {
         currentOutput: { failedStep: step.action, reason: preFlightResult.reason },
         verificationResult: { passed: false, errors: [preFlightResult.reason || 'Pre-flight check failed'] },
       });
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      if (reflection.suggestedActions && (reflection as any).suggestedActions.length > 0) {
-        this.log.info(`[AgentParity] Self-reflection suggests: ${(reflection as any).suggestedActions[0]}`);
+      if (reflection.suggestedActions && (reflection as Record<string,unknown>).suggestedActions.length > 0) {
+        this.log.info(`[AgentParity] Self-reflection suggests: ${(reflection as Record<string,unknown>).suggestedActions[0]}`);
         // Apply first suggested action if it's a parameter modification
-        const suggestion = (reflection as any).suggestedActions[0];
+        const suggestion = (reflection as Record<string,unknown>).suggestedActions[0];
         if (suggestion.includes('skip') || suggestion.includes('alternative')) {
           return false; // Skip this step
         }
@@ -969,7 +964,7 @@ class TrinityAgentParityLayer {
     
     try {
       // Route to adaptive supervision for human handoff
-      const handoffResult = await (adaptiveSupervisionRouter as any).requestHandoff({
+      const handoffResult = await (adaptiveSupervisionRouter as Record<string,unknown>).requestHandoff({
         handoffId: `escalation-${context.executionId}`,
         sourceSubagent: 'agent-parity-layer',
         targetSubagent: 'human-supervisor',
@@ -1008,7 +1003,6 @@ class TrinityAgentParityLayer {
           goal: context.goal,
           confidence: context.overallConfidence,
           handoffId: handoffResult.handoffId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity,
         },
       }).catch((err) => this.log.warn('[trinityAgentParityLayer] Fire-and-forget failed:', err));
@@ -1052,7 +1046,7 @@ class TrinityAgentParityLayer {
     }
   }
 
-  private async analyzeCode(params: any, context: AgentExecutionContext): Promise<any> {
+  private async analyzeCode(params: Record<string, unknown>, context: AgentExecutionContext): Promise<unknown> {
     const files = params.files || context.relevantFiles || [];
     const stepResults = context.executedSteps.filter(s => s.success);
     return {
@@ -1064,7 +1058,7 @@ class TrinityAgentParityLayer {
     };
   }
 
-  private async validateChanges(context: AgentExecutionContext): Promise<any> {
+  private async validateChanges(context: AgentExecutionContext): Promise<unknown> {
     const successCount = context.executedSteps.filter(s => s.success).length;
     const failCount = context.executedSteps.filter(s => !s.success).length;
     return {
@@ -1163,5 +1157,4 @@ class TrinityAgentParityLayer {
 export const trinityAgentParityLayer = TrinityAgentParityLayer.getInstance();
 
 // Export types for use elsewhere
-// @ts-expect-error — TS migration: fix in refactoring sprint
 export type { AgentExecutionContext, ExecutedStepResult, VerificationResult, AgentExecutionResult, ChangeRecord };

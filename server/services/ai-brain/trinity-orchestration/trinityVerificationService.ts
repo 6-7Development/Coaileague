@@ -20,7 +20,7 @@ const log = createLogger('trinityVerificationService');
 export interface VerificationRequest {
   operation: TrinityOperation;
   trinityConfidence: ConfidenceScore;
-  trinityProposedAction: any;
+  trinityProposedAction: unknown;
   context: AIActionContext;
 }
 
@@ -28,7 +28,7 @@ export interface VerificationResult {
   approved: boolean;
   boostedConfidence: number;
   criticalIssues: string[];
-  suggestedModifications: any | null;
+  suggestedModifications: unknown | null;
   rejectionReason: string | null;
   reasoning: string;
   creditsUsed: number;
@@ -66,7 +66,6 @@ class ClaudeVerificationService {
     const creditsForVerification = 15;
 
     const preAuth = await aiTokenGateway.preAuthorize(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       params.context.workspaceId,
       params.context.userId,
       featureKey
@@ -114,7 +113,6 @@ class ClaudeVerificationService {
       const creditsUsed = creditsForVerification;
 
       await aiTokenGateway.finalizeBilling(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         params.context.workspaceId,
         params.context.userId,
         featureKey,
@@ -147,7 +145,7 @@ class ClaudeVerificationService {
         ...verification,
         creditsUsed,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[ClaudeVerificationService] Verification failed:', error);
 
       return {
@@ -223,7 +221,7 @@ Trinity trusts your reasoning - don't let errors through.`;
         throw new Error('No JSON found in verification response');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
 
       return {
         approved: parsed.approved === true,

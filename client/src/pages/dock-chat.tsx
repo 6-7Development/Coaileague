@@ -166,7 +166,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" data-testid="button-create-room">
+        <Button size="icon" aria-label="Create Room" variant="ghost" data-testid="button-create-room">
           <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -292,7 +292,7 @@ export default function DockChatPage() {
   // Subscribe to trinity_intake_widget WebSocket events
   useEffect(() => {
     if (!bus) return;
-    const unsub = bus.subscribe('trinity_intake_widget', (data: any) => {
+    const unsub = bus.subscribe('trinity_intake_widget', (data) => {
       const { messageType, step, stepIndex, totalSteps, greeting,
               flowTitle, completionMessage, sessionId, chatRoomId } = data;
 
@@ -550,7 +550,7 @@ export default function DockChatPage() {
                   disabled={!!activeIntakeSession || startIntakeMutation.isPending}
                 />
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Send Message"
                   onClick={handleSend}
                   disabled={!messageInput.trim() || sendMutation.isPending || !!activeIntakeSession || startIntakeMutation.isPending}
                   data-testid="button-send-message"

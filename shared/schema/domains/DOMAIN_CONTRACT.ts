@@ -215,7 +215,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/engagementRoutes.ts',
       'server/routes/feedbackRoutes.ts',
       'server/routes/flexStaffingRoutes.ts',
-      'server/routes/gamificationRoutes.ts',
       'server/routes/hrInlineRoutes.ts',
       'server/routes/hrisRoutes.ts',
       'server/routes/leaderRoutes.ts',
@@ -223,7 +222,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/owner-employee.ts',
       'server/routes/reviewRoutes.ts',
       'server/routes/terminationRoutes.ts',
-      'server/routes/trainingRoutes.ts',
     ],
     services: [
       'server/services/assistedOnboardingService.ts',
@@ -366,7 +364,6 @@ export const DOMAIN_CONTRACT = {
     ],
     routes: [
       'server/routes/breakRoutes.ts',
-      'server/routes/gpsRoutes.ts',
       'server/routes/timeEntryRoutes.ts',
       'server/routes/timeOffRoutes.ts',
       'server/routes/timesheetReportRoutes.ts',
@@ -705,7 +702,6 @@ export const DOMAIN_CONTRACT = {
       'server/routes/vqaRoutes.ts',
       'server/routes/workboardRoutes.ts',
       'server/routes/workflowConfigRoutes.ts',
-      'server/routes/workflowRoutes.ts',
     ],
     services: [
       'server/services/ai-brain/actionRegistry.ts',

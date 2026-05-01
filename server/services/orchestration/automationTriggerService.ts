@@ -115,37 +115,32 @@ class AutomationTriggerService {
   private subscribeToEvents() {
     platformEventBus.subscribe('quickbooks_connected', { name: 'AutomationTrigger-QBConnected', handler: async (event) => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.handleIntegrationConnected(event.workspaceId, 'quickbooks');
-      } catch (e: any) { log.warn('[AutomationTrigger] quickbooks_connected handler error:', e?.message); }
+      } catch (e: unknown) { log.warn('[AutomationTrigger] quickbooks_connected handler error:', e?.message); }
     }});
 
     platformEventBus.subscribe('quickbooks_flow_complete', { name: 'AutomationTrigger-QBFlowComplete', handler: async (event) => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.handleDataSyncComplete(event.workspaceId, event.payload);
-      } catch (e: any) { log.warn('[AutomationTrigger] quickbooks_flow_complete handler error:', e?.message); }
+      } catch (e: unknown) { log.warn('[AutomationTrigger] quickbooks_flow_complete handler error:', e?.message); }
     }});
 
     platformEventBus.subscribe('employees_imported', { name: 'AutomationTrigger-EmployeesImported', handler: async (event) => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.handleEmployeeImportComplete(event.workspaceId, event.payload);
-      } catch (e: any) { log.warn('[AutomationTrigger] employees_imported handler error:', e?.message); }
+      } catch (e: unknown) { log.warn('[AutomationTrigger] employees_imported handler error:', e?.message); }
     }});
 
     platformEventBus.subscribe('schedule_published', { name: 'AutomationTrigger-SchedulePublished', handler: async (event) => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.handleSchedulePublished(event.workspaceId, event.payload);
-      } catch (e: any) { log.warn('[AutomationTrigger] schedule_published handler error:', e?.message); }
+      } catch (e: unknown) { log.warn('[AutomationTrigger] schedule_published handler error:', e?.message); }
     }});
 
     platformEventBus.subscribe('time_entries_approved', { name: 'AutomationTrigger-TimeEntriesApproved', handler: async (event) => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await this.handleTimeEntriesApproved(event.workspaceId, event.payload);
-      } catch (e: any) { log.warn('[AutomationTrigger] time_entries_approved handler error:', e?.message); }
+      } catch (e: unknown) { log.warn('[AutomationTrigger] time_entries_approved handler error:', e?.message); }
     }});
 
     // ── Financial lifecycle automation triggers ──────────────────────────────
@@ -161,9 +156,9 @@ class AutomationTriggerService {
       // must remain in 'refunded' state. Forcing it back to 'paid' would erase the
       // refund record and cause the org ledger to overstate revenue.
       await db.update(invoices)
-        .set({ status: 'paid', updatedAt: new Date() } as any)
+        .set({ status: 'paid', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} NOT IN ('void', 'cancelled', 'refunded')`))
-        .catch((e: any) => log.warn('[AutomationTrigger] invoice_paid DB update skipped:', e?.message));
+        .catch((e: unknown) => log.warn('[AutomationTrigger] invoice_paid DB update skipped:', e?.message));
       log.info(`[AutomationTrigger] invoice_paid — AR close-out complete for invoice ${invoiceId}`);
     }});
 
@@ -214,7 +209,7 @@ class AutomationTriggerService {
           notified++;
         }
         log.info(`[AutomationTrigger] payroll_run_paid — notified ${notified}/${entries.length} employee(s)`);
-      } catch (e: any) {
+      } catch (e: unknown) {
         log.warn('[AutomationTrigger] payroll_run_paid employee notification error:', e?.message);
       }
     }});
@@ -228,13 +223,12 @@ class AutomationTriggerService {
       if (!invoiceId) return;
       // Mark invoice status 'overdue' in DB (skip if already paid/void/cancelled)
       await db.update(invoices)
-        .set({ status: 'overdue', updatedAt: new Date() } as any)
+        .set({ status: 'overdue', updatedAt: new Date() } as Record<string, unknown>)
         .where(and(eq(invoices.id, invoiceId), sql`${invoices.status} NOT IN ('paid', 'void', 'cancelled')`))
-        .catch((e: any) => log.warn('[AutomationTrigger] invoice_overdue status update skipped:', e?.message));
+        .catch((e: unknown) => log.warn('[AutomationTrigger] invoice_overdue status update skipped:', e?.message));
       // Trigger the automated collections sweep for this workspace
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await runOverdueCollectionsSweep(workspaceId)
-        .catch((e: any) => log.warn('[AutomationTrigger] invoice_overdue collections sweep error:', e?.message));
+        .catch((e: unknown) => log.warn('[AutomationTrigger] invoice_overdue collections sweep error:', e?.message));
       log.info(`[AutomationTrigger] invoice_overdue — status updated + collections sweep triggered for ${workspaceId}`);
     }});
 
@@ -250,7 +244,7 @@ class AutomationTriggerService {
           .set({
             onboardingStatus: 'completed',
             updatedAt: new Date(),
-          } as any)
+          } as Record<string, unknown>)
           .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)));
 
         const managers = await db.select({
@@ -335,9 +329,7 @@ class AutomationTriggerService {
         },
         required: ['workspaceId', 'automationType', 'triggerType'],
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async (params) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await this.configureTrigger(params);
       },
     });
@@ -354,9 +346,7 @@ class AutomationTriggerService {
         },
         required: ['workspaceId'],
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async (params) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return this.getWorkspaceTriggers(params.workspaceId);
       },
     });
@@ -374,10 +364,8 @@ class AutomationTriggerService {
         },
         required: ['triggerId'],
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async (params) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        return await this.executeTrigger(params.triggerId, (params as any).force);
+        return await this.executeTrigger(params.triggerId, (params as Record<string,unknown>).force);
       },
     });
 
@@ -393,9 +381,8 @@ class AutomationTriggerService {
           limit: { type: 'number', description: 'Number of records to return' },
         },
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async (params) => {
-        return this.getExecutionHistory(params.workspaceId, (params as any).limit || 50);
+        return this.getExecutionHistory(params.workspaceId, (params as Record<string,unknown>).limit || 50);
       },
     });
 
@@ -412,14 +399,12 @@ class AutomationTriggerService {
         },
         required: ['triggerId', 'enabled'],
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async (params) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const trigger = this.triggers.get(params.triggerId);
         if (!trigger) {
           return { success: false, message: 'Trigger not found' };
         }
-        trigger.enabled = (params as any).enabled;
+        trigger.enabled = (params as Record<string,unknown>).enabled;
         trigger.updatedAt = new Date();
         await this.persistTrigger(trigger);
         return { success: true, trigger };
@@ -435,7 +420,6 @@ class AutomationTriggerService {
         type: 'object',
         properties: {},
       },
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       handler: async () => {
         return this.getStats();
       },
@@ -532,7 +516,6 @@ class AutomationTriggerService {
         result = await this.executePayrollProcessing(trigger);
         break;
       case 'employee_sync':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         result = {
           triggerId,
           automationType: trigger.automationType,
@@ -545,7 +528,6 @@ class AutomationTriggerService {
         log.info(`[AutomationTriggerService] employee_sync trigger acknowledged for workspace ${trigger.workspaceId} — sync is handled by the HRIS integration service`);
         break;
       case 'client_sync':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         result = {
           triggerId,
           automationType: trigger.automationType,
@@ -558,7 +540,6 @@ class AutomationTriggerService {
         log.info(`[AutomationTriggerService] client_sync trigger acknowledged for workspace ${trigger.workspaceId} — sync is handled by the integration service`);
         break;
       case 'time_entry_sync':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         result = {
           triggerId,
           automationType: trigger.automationType,
@@ -688,7 +669,7 @@ class AutomationTriggerService {
         affectedRecords: daemonResult.shiftsAutoFilled + daemonResult.templatesApplied,
         durationMs: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         triggerId: trigger.id,
         automationType: 'schedule_generation',
@@ -748,7 +729,7 @@ class AutomationTriggerService {
         affectedRecords: result.invoicesGenerated,
         durationMs: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         triggerId: trigger.id,
         automationType: 'invoice_creation',
@@ -797,7 +778,7 @@ class AutomationTriggerService {
         affectedRecords: 0,
         durationMs: Date.now() - startTime,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         triggerId: trigger.id,
         automationType: 'payroll_processing',
@@ -827,7 +808,7 @@ class AutomationTriggerService {
           metadata: { source: 'AutomationTriggerService.executeApprovedScheduleGeneration' },
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[AutomationTriggerService] Schedule generation failed for ${workspaceId}:`, (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -856,7 +837,7 @@ class AutomationTriggerService {
         }),
         '[AutomationTriggerService] event publish',
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[AutomationTriggerService] Payroll execution failed for ${workspaceId}:`, (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -898,7 +879,7 @@ class AutomationTriggerService {
     );
   }
 
-  private async handleDataSyncComplete(workspaceId: string, payload: any): Promise<void> {
+  private async handleDataSyncComplete(workspaceId: string, payload: Record<string, unknown>): Promise<void> {
     log.info(`[AutomationTriggerService] Data sync complete for workspace ${workspaceId}`);
     
     const trigger = this.findTrigger(workspaceId, 'employee_sync', 'data_sync_complete');
@@ -907,7 +888,7 @@ class AutomationTriggerService {
     }
   }
 
-  private async handleEmployeeImportComplete(workspaceId: string, payload: any): Promise<void> {
+  private async handleEmployeeImportComplete(workspaceId: string, payload: Record<string, unknown>): Promise<void> {
     log.info(`[AutomationTriggerService] Employee import complete for workspace ${workspaceId}`);
     
     const trigger = this.findTrigger(workspaceId, 'schedule_generation', 'employee_import_complete');
@@ -916,7 +897,7 @@ class AutomationTriggerService {
     }
   }
 
-  private async handleSchedulePublished(workspaceId: string, payload: any): Promise<void> {
+  private async handleSchedulePublished(workspaceId: string, payload: Record<string, unknown>): Promise<void> {
     log.info(`[AutomationTriggerService] Schedule published for workspace ${workspaceId}`, payload);
 
     // GAP-C FIX: Ensure invoice + payroll triggers exist for this workspace
@@ -949,12 +930,12 @@ class AutomationTriggerService {
       } else {
         log.info(`[AutomationTriggerService] No unbilled approved time entries — triggers are ready for next approval batch`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`[AutomationTriggerService] Error checking unbilled entries on schedule publish:`, (error instanceof Error ? error.message : String(error)));
     }
   }
 
-  private async handleTimeEntriesApproved(workspaceId: string, payload: any): Promise<void> {
+  private async handleTimeEntriesApproved(workspaceId: string, payload: Record<string, unknown>): Promise<void> {
     log.info(`[AutomationTriggerService] Time entries approved for workspace ${workspaceId}`);
     
     // Trigger invoice creation automation — auto-create trigger if it was never configured
@@ -1067,7 +1048,7 @@ class AutomationTriggerService {
         target: automationTriggers.id,
         set: { triggerData: triggerJson, updatedAt: sql`now()` },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[AutomationTriggerService] Trigger persistence failed:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -1092,7 +1073,7 @@ class AutomationTriggerService {
       }
       
       log.info(`[AutomationTriggerService] Loaded ${this.triggers.size} triggers from DB`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('[AutomationTriggerService] Failed to load triggers:', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -1149,7 +1130,7 @@ class AutomationTriggerService {
       // GAP-F FIX: Recover pending approval gates from DB in case server restarted
       // while gates were waiting for manager approval.
       await this.recoverPendingApprovalGates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[AutomationTriggerService] Bootstrap failed (non-critical):', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -1165,7 +1146,7 @@ class AutomationTriggerService {
       let scheduleRecovered = 0;
 
       for (const gate of pendingGates) {
-        const triggerId = (gate.payload?.triggerId ?? (gate as any).metadata?.triggerId) as string | undefined;
+        const triggerId = (gate.payload?.triggerId ?? (gate as Record<string,unknown>).metadata?.triggerId) as string | undefined;
         if (gate.category === 'payroll' && gate.workspaceId) {
           this.pendingPayrollGates.set(gate.id, { workspaceId: gate.workspaceId, triggerId: triggerId ?? '' });
           payrollRecovered++;
@@ -1178,7 +1159,7 @@ class AutomationTriggerService {
       if (payrollRecovered + scheduleRecovered > 0) {
         log.info(`[AutomationTriggerService] Recovered ${payrollRecovered} payroll gate(s) and ${scheduleRecovered} schedule gate(s) from DB`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('[AutomationTriggerService] Gate recovery failed (non-critical):', (error instanceof Error ? error.message : String(error)));
     }
   }
@@ -1189,7 +1170,6 @@ class AutomationTriggerService {
    * isDue checks internally — no double-invoicing). Also runs delinquency sweep.
    */
   async runDailyBillingCycle(): Promise<void> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return withDistributedLock(LOCK_KEYS.DAILY_BILLING, 'Daily Billing Cycle', async () => {
       log.info('[AutomationTriggerService] Daily billing cycle starting...');
       try {
@@ -1220,11 +1200,11 @@ class AutomationTriggerService {
                   platformBillsGenerated++;
                   log.info(`[AutomationTriggerService] Platform bill generated for ${ws.id}: $${(billResult.totalCents / 100).toFixed(2)}`);
                 }
-              } catch (billError: any) {
+              } catch (billError: unknown) {
                 log.error(`[AutomationTriggerService] Platform bill failed for ${ws.id}:`, billError.message);
               }
             }
-          } catch (wsError: any) {
+          } catch (wsError: unknown) {
             log.error(`[AutomationTriggerService] Billing cycle failed for workspace ${ws.id}:`, wsError.message);
           }
         }
@@ -1237,7 +1217,7 @@ class AutomationTriggerService {
               log.info(`[AutomationTriggerService] Collections sweep — tier1:${collectionsResult.tier1Sent}, tier2:${collectionsResult.tier2Sent}, tier3:${collectionsResult.tier3Sent}`);
             }
           });
-        } catch (collectionsErr: any) {
+        } catch (collectionsErr: unknown) {
           log.error('[AutomationTriggerService] Collections sweep failed (non-blocking):', collectionsErr.message);
         }
 
@@ -1248,7 +1228,7 @@ class AutomationTriggerService {
           if (draftResult.autoSent + draftResult.nudgesSent > 0) {
             log.info(`[AutomationTriggerService] Draft invoice sweep — auto-sent:${draftResult.autoSent}, nudges:${draftResult.nudgesSent}`);
           }
-        } catch (draftErr: any) {
+        } catch (draftErr: unknown) {
           log.error('[AutomationTriggerService] Draft invoice sweep failed (non-blocking):', draftErr.message);
         }
 
@@ -1259,7 +1239,7 @@ class AutomationTriggerService {
           if (timesheetResult.submissionReminders + timesheetResult.approvalReminders > 0) {
             log.info(`[AutomationTriggerService] Timesheet reminders — employee:${timesheetResult.submissionReminders}, manager:${timesheetResult.approvalReminders}`);
           }
-        } catch (tsErr: any) {
+        } catch (tsErr: unknown) {
           log.error('[AutomationTriggerService] Timesheet reminder scan failed (non-blocking):', tsErr.message);
         }
 
@@ -1271,7 +1251,7 @@ class AutomationTriggerService {
             log.info(`[AutomationTriggerService] Payroll auto-close — drafts generated:${payrollResult.draftsGenerated}`);
           }
           await detectOrphanedPayrollRuns();
-        } catch (payrollErr: any) {
+        } catch (payrollErr: unknown) {
           log.error('[AutomationTriggerService] Payroll auto-close failed (non-blocking):', payrollErr.message);
         }
 
@@ -1283,7 +1263,7 @@ class AutomationTriggerService {
             if (briefingResult.briefingsSent > 0) {
               log.info(`[AutomationTriggerService] Trinity financial briefing — sent to ${briefingResult.briefingsSent} org owners`);
             }
-          } catch (briefingErr: any) {
+          } catch (briefingErr: unknown) {
             log.error('[AutomationTriggerService] Trinity financial briefing failed (non-blocking):', briefingErr.message);
           }
         }
@@ -1293,7 +1273,7 @@ class AutomationTriggerService {
         try {
           const { sendEmployeePaymentMethodNotifications } = await import('../billing/employeePaymentNotificationService');
           await sendEmployeePaymentMethodNotifications();
-        } catch (pmErr: any) {
+        } catch (pmErr: unknown) {
           log.error('[AutomationTriggerService] Employee payment method notifications failed (non-blocking):', pmErr.message);
         }
 
@@ -1304,7 +1284,7 @@ class AutomationTriggerService {
           if (nudgeResult.nudgesSent > 0) {
             log.info(`[AutomationTriggerService] Payroll deadline nudge — sent ${nudgeResult.nudgesSent} alert(s) across ${nudgeResult.workspacesChecked} workspace(s)`);
           }
-        } catch (nudgeErr: any) {
+        } catch (nudgeErr: unknown) {
           log.error('[AutomationTriggerService] Payroll deadline nudge failed (non-blocking):', nudgeErr.message);
         }
 
@@ -1316,7 +1296,7 @@ class AutomationTriggerService {
             if (result1099.flagged > 0) {
               log.info(`[AutomationTriggerService] 1099 January scan — flagged:${result1099.flagged} contractors`);
             }
-          } catch (taxErr: any) {
+          } catch (taxErr: unknown) {
             log.error('[AutomationTriggerService] 1099 January scan failed (non-blocking):', taxErr.message);
           }
         }
@@ -1329,7 +1309,7 @@ class AutomationTriggerService {
           payload: { invoicesGenerated: totalGenerated, workspacesProcessed: totalDelinquencyChecked, platformBillsGenerated },
           metadata: { source: 'DailyBillingCron' },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('[AutomationTriggerService] Daily billing cycle error:', (error instanceof Error ? error.message : String(error)));
       }
     });
@@ -1392,7 +1372,7 @@ class AutomationTriggerService {
           if (!ws || ws.isSuspended) continue;
 
           await this.executeTrigger(trigger.id);
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error(`[AutomationTriggerService] week_end trigger failed for workspace ${trigger.workspaceId}:`, (err instanceof Error ? err.message : String(err)));
         }
       }
@@ -1417,7 +1397,7 @@ class AutomationTriggerService {
           if (!ws || ws.isSuspended) continue;
 
           await this.executeTrigger(trigger.id);
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error(`[AutomationTriggerService] month_end trigger failed for workspace ${trigger.workspaceId}:`, (err instanceof Error ? err.message : String(err)));
         }
       }

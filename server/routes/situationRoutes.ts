@@ -1,4 +1,6 @@
+import { type Response } from 'express';
 import { Router } from "express";
+import { AuthenticatedRequest } from '../rbac';
 import { pool } from "../db";
 import { requireAuth } from "../auth";
 import { ensureWorkspaceAccess } from "../middleware/workspaceScope";
@@ -9,16 +11,16 @@ const log = createLogger('SituationRoutes');
 
 export const situationRouter = Router();
 
-function wid(req: any): string {
+function wid(req: AuthenticatedRequest): string {
   return req.workspaceId || req.session?.workspaceId;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
 
-situationRouter.get("/guards", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+situationRouter.get("/guards", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const guards = await q(
@@ -39,7 +41,7 @@ situationRouter.get("/guards", requireAuth as any, ensureWorkspaceAccess as any,
       [workspaceId]
     );
 
-    const mapped = guards.map((g: any) => ({
+    const mapped = guards.map((g: unknown) => ({
       id: g.id,
       name: g.name,
       role: g.role || "guard",
@@ -55,7 +57,7 @@ situationRouter.get("/guards", requireAuth as any, ensureWorkspaceAccess as any,
   }
 });
 
-situationRouter.get("/incidents", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+situationRouter.get("/incidents", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const incidents = await q(
@@ -76,7 +78,7 @@ situationRouter.get("/incidents", requireAuth as any, ensureWorkspaceAccess as a
   }
 });
 
-situationRouter.get("/open-shifts", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+situationRouter.get("/open-shifts", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const shifts = await q(
@@ -100,7 +102,7 @@ situationRouter.get("/open-shifts", requireAuth as any, ensureWorkspaceAccess as
   }
 });
 
-situationRouter.get("/summary", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+situationRouter.get("/summary", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
 
@@ -140,17 +142,11 @@ situationRouter.get("/summary", requireAuth as any, ensureWorkspaceAccess as any
     );
 
     res.json({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       totalGuards: parseInt(guardCounts?.total_active || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       onDuty: parseInt(guardCounts?.on_duty || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       activeIncidents: parseInt(incidentCounts?.active_incidents || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       criticalIncidents: parseInt(incidentCounts?.critical_incidents || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       openShifts: parseInt(shiftCounts?.open_shifts || "0"),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       totalUpcomingShifts: parseInt(shiftCounts?.total_upcoming || "0"),
     });
   } catch (err: unknown) {

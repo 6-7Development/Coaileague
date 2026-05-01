@@ -7,22 +7,20 @@ import { incidentRoutingService } from '../incidentRoutingService';
 import { getComplianceReport } from '../timesheetReportService';
 import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityComplianceIncidentActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -67,7 +65,7 @@ export function registerComplianceIncidentActions() {
       .from(employeeDocuments)
       .where(and(
         eq(employeeDocuments.workspaceId, workspaceId),
-        eq(employeeDocuments.status as any, 'approved'),
+        eq(employeeDocuments.status, 'approved'),
         lte(employeeDocuments.expirationDate, cutoffDate),
         gte(employeeDocuments.expirationDate, new Date())
       ))
@@ -87,9 +85,9 @@ export function registerComplianceIncidentActions() {
   helpaiOrchestrator.registerAction(mkAction('compliance.request_document', async (params) => {
     const { workspaceId, officerId, docType, message } = params;
     if (!workspaceId || !officerId || !docType) return { error: 'workspaceId, officerId, docType required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
     if (!emp) return { error: 'Officer not found' };
-    const memberId = (emp as any).userId || officerId;
+    const memberId = (emp as EmployeeWithStatus).userId || officerId;
     await createNotification({
       workspaceId,
       userId: memberId,
@@ -117,7 +115,7 @@ export function registerComplianceIncidentActions() {
       ));
     if (futureShifts.length === 0) return { removed: 0, message: 'No future shifts found for this officer' };
     await db.update(shifts)
-      .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: `[AUTO_REMOVED_NONCOMPLIANT] ${reason || 'Compliance violation'}` } as any)
+      .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: `[AUTO_REMOVED_NONCOMPLIANT] ${reason || 'Compliance violation'}` } as unknown)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         eq(shifts.employeeId, officerId),
@@ -146,14 +144,14 @@ export function registerComplianceIncidentActions() {
       severity: severity || 'low',
       description,
       location: location || null,
-    } as any);
+    } as unknown);
     return result;
   }));
 
   helpaiOrchestrator.registerAction(mkAction('incident.escalate', async (params) => {
     const { incidentId, escalatedBy, reason } = params;
     if (!incidentId) return { error: 'incidentId required' };
-    const result = await incidentRoutingService.updateIncidentStatus(incidentId, 'escalated' as any, escalatedBy, reason);
+    const result = await incidentRoutingService.updateIncidentStatus(incidentId, 'escalated', escalatedBy, reason);
     return result;
   }));
 
@@ -161,9 +159,9 @@ export function registerComplianceIncidentActions() {
     const { workspaceId, incidentId, clientId, message } = params;
     if (!workspaceId || !incidentId) return { error: 'workspaceId and incidentId required' };
     if (clientId) {
-      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) } as any).catch(() => null);
-      const clientUserId = typeof (client as any)?.userId === 'string' ? (client as any).userId : undefined;
-      if (client && (client as any).email && clientUserId) {
+      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) }).catch(() => null);
+      const clientUserId = typeof (client as Record<string,unknown>)?.userId === 'string' ? (client as ClientWithExtras).userId : undefined;
+      if (client && (client as ClientWithExtras).email && clientUserId) {
         await createNotification({
           workspaceId,
           userId: clientUserId,
@@ -171,7 +169,7 @@ export function registerComplianceIncidentActions() {
           title: 'Incident Report Filed at Your Site',
           message: message || `An incident has been filed and routed to your assigned supervisor. Incident ID: ${incidentId}`,
           priority: 'high',
-          metadata: { incidentId, clientId, clientEmail: (client as any).email },
+          metadata: { incidentId, clientId, clientEmail: (client as ClientWithExtras).email },
           idempotencyKey: `incident-${String(Date.now())}-${clientUserId}`,
         }).catch(() => null);
       }
@@ -188,7 +186,7 @@ export function registerComplianceIncidentActions() {
         entityId: officerId,
         workspaceId: workspaceId || '',
         windowType: flagType || 'incident_review',
-      } as any).catch(() => null);
+      }).catch(() => null);
     }
     return { flagged: true, incidentId, officerId, complianceWindowCreated: !!officerId };
   }));
@@ -202,8 +200,8 @@ export function registerComplianceIncidentActions() {
       clientId,
       limit,
       severity,
-    } as any).catch(() => []);
-    return { incidents, count: (incidents as any[]).length };
+    }).catch(() => []);
+    return { incidents, count: (incidents as unknown[]).length };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('client.get_full_profile', async (params) => {
@@ -211,7 +209,7 @@ export function registerComplianceIncidentActions() {
     if (!workspaceId || !clientId) return { error: 'workspaceId and clientId required' };
     const client = await db.query.clients?.findFirst({
       where: and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!client) return { error: 'Client not found' };
     const recentShifts = await db.select({ id: shifts.id, status: shifts.status, startTime: shifts.startTime })
       .from(shifts)
@@ -226,25 +224,25 @@ export function registerComplianceIncidentActions() {
     if (!clientId) return { error: 'clientId required' };
     const client = await db.query.clients?.findFirst({
       where: eq(clients.id, clientId),
-    } as any).catch(() => null);
+    }).catch(() => null);
     if (!client) return { error: 'Client/site not found' };
     return {
       clientId,
-      name: (client as any).companyName || `${(client as any).firstName} ${(client as any).lastName}`,
-      address: (client as any).address,
-      latitude: (client as any).latitude,
-      longitude: (client as any).longitude,
-      geofenceRadius: (client as any).geofenceRadius || 200,
-      billingRate: (client as any).hourlyBillingRate,
-      minimumCoverage: (client as any).minimumCoverage,
-      postOrders: (client as any).postOrders,
+      name: (client as ClientWithExtras).companyName || `${(client as ClientWithExtras).firstName} ${(client as ClientWithExtras).lastName}`,
+      address: (client as ClientWithExtras).address,
+      latitude: (client as ClientWithExtras).latitude,
+      longitude: (client as ClientWithExtras).longitude,
+      geofenceRadius: (client as ClientWithExtras).geofenceRadius || 200,
+      billingRate: (client as ClientWithExtras).hourlyBillingRate,
+      minimumCoverage: (client as ClientWithExtras).minimumCoverage,
+      postOrders: (client as ClientWithExtras).postOrders,
     };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('client.update_billing_settings', async (params) => {
     const { workspaceId, clientId, hourlyBillingRate, invoiceDueNet, invoiceCycle, poNumber } = params;
     if (!clientId) return { error: 'clientId required' };
-    const updates: any = { updatedAt: new Date() };
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (hourlyBillingRate !== undefined) updates.hourlyBillingRate = hourlyBillingRate;
     if (invoiceDueNet !== undefined) updates.invoiceDueNet = invoiceDueNet;
     if (invoiceCycle !== undefined) updates.invoiceCycle = invoiceCycle;
@@ -266,7 +264,7 @@ export function registerComplianceIncidentActions() {
     const overdueResult = await db.select({ amount: sql`SUM(amount)` })
       .from(sql`invoices WHERE workspace_id = ${workspaceId} AND client_id = ${clientId} AND status = 'overdue'`)
       .catch(() => [{ amount: 0 }]);
-    const overdueAmount = parseFloat(String((overdueResult[0] as any)?.amount || 0));
+    const overdueAmount = parseFloat(String((overdueResult[0] as unknown)?.amount || 0));
     const score = Math.round(coverageRate * 0.6 + (overdueAmount === 0 ? 40 : 0));
     return { clientId, score, coverageRate: +coverageRate.toFixed(1), overdueAmount, totalShifts30d: total, health: score >= 80 ? 'healthy' : score >= 60 ? 'at_risk' : 'critical' };
   }));
@@ -297,9 +295,9 @@ export function registerComplianceIncidentActions() {
     const { clientContracts } = await import('../../../shared/schema').catch(() => ({ clientContracts: null }));
     if (!clientContracts) return { error: 'Client contracts schema not available' };
     const where = clientId
-      ? and(eq((clientContracts as any).workspaceId, workspaceId), eq((clientContracts as any).clientId, clientId))
-      : eq((clientContracts as any).workspaceId, workspaceId);
-    const contracts = await db.select().from(clientContracts as any).where(where).limit(50).catch(() => []);
+      ? and(eq((clientContracts as Record<string,unknown>).workspaceId as string, workspaceId), eq((clientContracts as Record<string,unknown>).clientId, clientId))
+      : eq((clientContracts as Record<string,unknown>).workspaceId as string, workspaceId);
+    const contracts = await db.select().from(clientContracts as Record<string,unknown>).where(where).limit(50).catch(() => []);
     return { clientId: clientId ?? 'all', contractCount: contracts.length, contracts };
   }));
 
@@ -318,14 +316,14 @@ export function registerComplianceIncidentActions() {
     }).from(invoices).where(
       and(eq(invoices.workspaceId, workspaceId), eq(invoices.clientId, clientId))
     ).orderBy(invoices.createdAt).limit(Number(limit)).catch(() => []);
-    const totalBilled = history.reduce((s: number, i: any) => s + parseFloat(i.totalAmount || '0'), 0);
+    const totalBilled = history.reduce((s: number, i: unknown) => s + parseFloat(i.totalAmount || '0'), 0);
     return { clientId, historyCount: history.length, totalBilled: Math.round(totalBilled * 100) / 100, history };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('employee.get_full_profile', async (params) => {
     const { workspaceId, employeeId } = params;
     if (!employeeId) return { error: 'employeeId required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
     if (!emp) return { error: 'Employee not found' };
     const docs = await db.select({ documentType: employeeDocuments.documentType, status: employeeDocuments.status, expirationDate: employeeDocuments.expirationDate })
       .from(employeeDocuments)
@@ -339,7 +337,7 @@ export function registerComplianceIncidentActions() {
     return {
       employee: emp,
       documents: docs,
-      hoursLast30d: Math.round(parseFloat(String((recentHours[0] as any)?.total || 0)) / 60),
+      hoursLast30d: Math.round(parseFloat(String((recentHours[0] as unknown)?.total || 0)) / 60),
     };
   }));
 
@@ -347,17 +345,16 @@ export function registerComplianceIncidentActions() {
     const { workspaceId, employeeId, newRole, userId } = params;
     if (!workspaceId || !employeeId || !newRole) return { error: 'workspaceId, employeeId, newRole required' };
     await db.update(workspaceMembers)
-      .set({ role: newRole as any, updatedAt: new Date() } as any)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId as any, employeeId)));
+      .set({ role: newRole as unknown, updatedAt: new Date() } as Record<string, unknown>)
+      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId, employeeId)));
     return { updated: true, employeeId, newRole };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('employee.initiate_onboarding', async (params) => {
     const { workspaceId, employeeId, startDate } = params;
     if (!workspaceId || !employeeId) return { error: 'workspaceId and employeeId required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) } as any).catch(() => null);
-    const memberId = (emp as any)?.userId || employeeId;
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, employeeId) }).catch(() => null);
+    const memberId = (emp as EmployeeWithStatus)?.userId || employeeId;
     await createNotification({
       workspaceId,
       userId: memberId,
@@ -376,7 +373,7 @@ export function registerComplianceIncidentActions() {
     if (lastDay) {
       const lastDayDate = new Date(lastDay);
       await db.update(shifts)
-        .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: '[OFFBOARDING] Shift opened due to employee offboarding' } as any)
+        .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: '[OFFBOARDING] Shift opened due to employee offboarding' } as Record<string, unknown>)
         .where(and(
           eq(shifts.workspaceId, workspaceId),
           eq(shifts.employeeId, employeeId),
@@ -384,7 +381,7 @@ export function registerComplianceIncidentActions() {
         ));
     }
     await db.update(employees)
-      .set({ status: 'offboarding', updatedAt: new Date() } as any)
+      .set({ status: 'offboarding', updatedAt: new Date() } as Record<string, unknown>)
       .where(eq(employees.id, employeeId));
     return { initiated: true, employeeId, lastDay, futureShiftsCleared: !!lastDay, checklistItems: ['final_timesheet_approval', 'equipment_return', 'exit_interview', 'final_paycheck', 'benefits_termination'] };
   }));
@@ -479,7 +476,7 @@ export function registerComplianceIncidentActions() {
       priority: severity === 'critical' ? 'urgent' : 'high',
       targetRole: 'compliance_officer',
       metadata: { violationType, severity, officerId, detectedAt: detectedAt || new Date().toISOString() },
-    } as any).catch(() => null);
+    }).catch(() => null);
     await db.insert(auditLogs).values({
       workspaceId,
       userId: officerId || null,
@@ -527,7 +524,7 @@ export function registerComplianceIncidentActions() {
       .from(sql`workspaces`)
       .where(sql`id = ${workspaceId}`)
       .limit(1)
-      .then(r => r[0] as any)
+      .then(r => r[0] as unknown)
       .catch(() => null);
     const activeStates: string[] = wsRow?.operatingStates?.length
       ? wsRow.operatingStates
@@ -549,10 +546,10 @@ export function registerComplianceIncidentActions() {
         return {
           stateCode: sc,
           regulatoryBody: config?.regulatoryBody || 'Unknown',
-          licenseTypes: config?.licenseTypes?.map((lt: any) => lt.code) || [],
+          licenseTypes: config?.licenseTypes?.map((lt: unknown) => lt.code) || [],
           renewalPeriodMonths: config?.licenseRenewalPeriodMonths || 24,
           expiringDocumentsNext60Days: expiringInState,
-          armedRequiresSeparateLicense: config?.licenseTypes?.some((lt: any) => lt.armedAllowed && lt.code !== 'GUARD_CARD') ?? true,
+          armedRequiresSeparateLicense: config?.licenseTypes?.some((lt: unknown) => lt.armedAllowed && lt.code !== 'GUARD_CARD') ?? true,
         };
       })
     );

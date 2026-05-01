@@ -51,7 +51,7 @@ interface AccountSupportPanelProps {
   onClose: () => void;
   accountInfo?: AccountInfo;
   isStaff?: boolean;
-  onAction?: (action: string, data?: any) => void;
+  onAction?: (action: string, data?: unknown) => void;
 }
 
 const DialogStyledHeader = ({ children, ...props }: any) => <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-4" {...props}>{children}</div>;
@@ -123,8 +123,7 @@ export function AccountSupportPanel({
 
   return (
     <UniversalModal open={isOpen} onOpenChange={onClose}>
-      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[90vh] p-0 overflow-hidden">
-        {/* @ts-ignore */}
+      <UniversalModalContent size="full" hideBuiltInClose className="max-h-[80dvh] sm:max-h-[90vh] p-0 overflow-y-auto">
         <DialogStyledHeader variant="info" className="p-5 sm:p-6">
           <UniversalModalTitle className="flex items-center gap-3 text-xl sm:text-2xl text-inherit">
             <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -133,10 +132,9 @@ export function AccountSupportPanel({
             Account Support Tools
           </UniversalModalTitle>
           <p className="text-white/80 text-xs sm:text-sm mt-2">Manage account details, security, and support actions</p>
-        {/* @ts-ignore */}
         </DialogStyledHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)]">
+        <ScrollArea className="max-h-[calc(80dvh-120px)] sm:max-h-[calc(90vh-120px)]">
           <div className="p-6 space-y-6">
             {/* Account Overview Card */}
             <Card>

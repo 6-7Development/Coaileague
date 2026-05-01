@@ -77,7 +77,7 @@ async function seedOnly() {
   const allClients = await db.select().from(clients).where(eq(clients.workspaceId, WORKSPACE_ID));
   console.log(`Employees: ${allEmployees.length}, Clients: ${allClients.length}`);
 
-  const shiftRecords: any[] = [];
+  const shiftRecords: (string | number | boolean | null)[] = [];
   const startDate = new Date(now);
   startDate.setHours(0, 0, 0, 0);
   startDate.setDate(startDate.getDate() + 1);
@@ -146,7 +146,7 @@ async function runScheduler() {
   return { result, elapsed: Date.now() - t0 };
 }
 
-async function printResults(totalGenerated: number, elapsed: number, result: any) {
+async function printResults(totalGenerated: number, elapsed: number, result: unknown) {
   const now = new Date();
   const assigned = result.summary?.totalAssigned || 0;
   const failed = result.summary?.totalFailed || 0;

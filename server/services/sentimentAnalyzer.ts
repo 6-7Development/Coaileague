@@ -72,7 +72,6 @@ Rules:
 - Action: Specific next step (e.g., "Route to manager", "Create urgent ticket", "Immediate callback required")`;
 
     const aiResult = await meteredGemini.generate({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: workspaceId,
       userId: userId || 'system',
       featureKey: 'ai_sentiment_analysis',
@@ -109,7 +108,7 @@ Rules:
       }
     }
 
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(jsonText);
     } catch {

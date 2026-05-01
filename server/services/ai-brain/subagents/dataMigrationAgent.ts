@@ -127,7 +127,7 @@ class DataMigrationAgent {
       });
 
       return this.parseExtractionResponse(response.text, extractionType);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[DataMigrationAgent] PDF extraction failed:', error);
       return {
         confidence: 0,
@@ -142,7 +142,7 @@ class DataMigrationAgent {
    */
   async extractFromSpreadsheet(params: {
     workspaceId: string;
-    data: Record<string, any>[];
+    data: Record<string, unknown>[];
     headers: string[];
     extractionType: 'employees' | 'teams' | 'schedules' | 'auto';
   }): Promise<ExtractedData> {
@@ -205,7 +205,7 @@ Respond with JSON only:
         throw new Error('Failed to parse column mapping');
       }
 
-      const mapping = JSON.parse(jsonMatch[0]);
+      const mapping: unknown = JSON.parse(jsonMatch[0]);
       const detectedType = extractionType === 'auto' ? mapping.detectedType : extractionType;
       
       const transformedData = this.applyColumnMapping(data, mapping.columnMapping, detectedType);
@@ -216,7 +216,7 @@ Respond with JSON only:
         warnings: mapping.warnings || [],
         errors: [],
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[DataMigrationAgent] Spreadsheet extraction failed:', error);
       return {
         confidence: 0,
@@ -231,7 +231,7 @@ Respond with JSON only:
    */
   async parseManualEntry(params: {
     workspaceId: string;
-    formData: Record<string, any>;
+    formData: Record<string, unknown>;
     entryType: 'employee' | 'team' | 'schedule' | 'bulk_text';
   }): Promise<ExtractedData> {
     const { workspaceId, formData, entryType } = params;
@@ -273,17 +273,17 @@ Respond with JSON:
           throw new Error('Failed to parse extracted data');
         }
 
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return {
-          employees: parsed.employees?.filter((e: any) => e.firstName || e.lastName) || [],
-          teams: parsed.teams?.filter((d: any) => d.name) || [],
-          schedules: parsed.schedules?.filter((s: any) => s.date && s.employeeName) || [],
+          employees: parsed.employees?.filter((e: unknown) => e.firstName || e.lastName) || [],
+          teams: parsed.teams?.filter((d: unknown) => d.name) || [],
+          schedules: parsed.schedules?.filter((s: unknown) => s.date && s.employeeName) || [],
           rawText: formData.text,
           confidence: parsed.confidence || 0.5,
           warnings: parsed.warnings || [],
           errors: [],
         };
-      } catch (error: any) {
+      } catch (error : unknown) {
         return {
           confidence: 0,
           warnings: [],
@@ -445,7 +445,7 @@ Respond with JSON:
             isActive: true,
           });
           result.importedCounts.employees++;
-        } catch (error: any) {
+        } catch (error : unknown) {
           result.errors.push(`Failed to import employee "${emp.firstName} ${emp.lastName}": ${(error instanceof Error ? error.message : String(error))}`);
         }
       }
@@ -503,7 +503,7 @@ Only include arrays that have data. If no data found for a category, omit that a
         return { confidence: 0, warnings: [], errors: ['No valid JSON found in response'] };
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       return {
         employees: parsed.employees || [],
         teams: parsed.teams || [],
@@ -512,20 +512,20 @@ Only include arrays that have data. If no data found for a category, omit that a
         warnings: parsed.warnings || [],
         errors: [],
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return { confidence: 0, warnings: [], errors: [`Parse error: ${(error instanceof Error ? error.message : String(error))}`] };
     }
   }
 
   private applyColumnMapping(
-    data: Record<string, any>[],
+    data: Record<string, unknown>[],
     mapping: Record<string, string>,
     dataType: string
   ): Partial<ExtractedData> {
     const result: Partial<ExtractedData> = {};
 
     const transformedRows = data.map(row => {
-      const transformed: Record<string, any> = {};
+      const transformed: Record<string, unknown> = {};
       for (const [source, target] of Object.entries(mapping)) {
         if (row[source] !== undefined) {
           transformed[target] = row[source];
@@ -665,7 +665,7 @@ Only include arrays that have data. If no data found for a category, omit that a
           estimatedCredits,
         };
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[DataMigrationAgent] TAS check failed:', error);
       checks.push({
         name: 'tas_verification',
@@ -698,7 +698,7 @@ Only include arrays that have data. If no data found for a category, omit that a
       .where(eq(users.id, userId))
       .limit(1);
     
-    const hasPermission = user && ['root_admin', 'deputy_admin', 'sysop', 'org_owner', 'co_owner'].includes((user as any).platformRole || '');
+    const hasPermission = user && ['root_admin', 'deputy_admin', 'sysop', 'org_owner', 'co_owner'].includes(req.user?.platformRole || '');
     checks.push({
       name: 'user_permission',
       passed: hasPermission,
@@ -768,9 +768,9 @@ Only include arrays that have data. If no data found for a category, omit that a
     rawData: {
       fileContent?: string; // base64 for PDF
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
-      manualData?: Record<string, any>;
+      manualData?: Record<string, unknown>;
     };
   }): Promise<{
     success: boolean;
@@ -817,7 +817,7 @@ Only include arrays that have data. If no data found for a category, omit that a
         detectedType,
         preview,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[DataMigrationAgent] Ingestion failed:', error);
       return {
         success: false,
@@ -839,9 +839,9 @@ Only include arrays that have data. If no data found for a category, omit that a
     rawData: {
       fileContent?: string;
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
-      manualData?: Record<string, any>;
+      manualData?: Record<string, unknown>;
       entryType?: 'employee' | 'team' | 'schedule' | 'bulk_text';
     };
     extractionType: 'employees' | 'teams' | 'schedules' | 'auto';
@@ -867,7 +867,7 @@ Only include arrays that have data. If no data found for a category, omit that a
         });
       
       case 'manual':
-        return (this as any).extractFromManualEntry({
+        return (this as Record<string,unknown>).extractFromManualEntry({
           workspaceId,
           entryType: rawData.entryType || 'employee',
           formData: rawData.manualData || {},
@@ -989,10 +989,10 @@ Respond with JSON only:
 
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           complianceStatus = parsed.status || 'passed';
           if (parsed.checks) {
-            parsed.checks.forEach((check: any) => {
+            parsed.checks.forEach((check: unknown) => {
               if (!check.passed) {
                 complianceNotes.push(`${check.rule}: ${check.note}`);
               }
@@ -1004,7 +1004,7 @@ Respond with JSON only:
         }
         
         log.info(`[DataMigrationAgent] Compliance check: ${complianceStatus} (${complianceNotes.length} issues)`);
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[DataMigrationAgent] Compliance check failed, continuing with basic validation:', (error instanceof Error ? error.message : String(error)));
         complianceNotes.push('AI compliance check unavailable - using basic validation only');
       }
@@ -1100,9 +1100,9 @@ Respond with JSON only:
     rawData: {
       fileContent?: string;
       fileName?: string;
-      spreadsheetData?: Record<string, any>[];
+      spreadsheetData?: Record<string, unknown>[];
       spreadsheetHeaders?: string[];
-      manualData?: Record<string, any>;
+      manualData?: Record<string, unknown>;
       entryType?: 'employee' | 'team' | 'schedule' | 'bulk_text';
     };
     extractionType: 'employees' | 'teams' | 'schedules' | 'auto';
@@ -1119,13 +1119,13 @@ Respond with JSON only:
       step: string;
       status: 'completed' | 'failed' | 'skipped';
       duration: number;
-      result?: any;
+      result?: unknown;
     }[];
     finalResult?: MigrationResult;
     error?: string;
   }> {
     const workflowId = `wf-${randomUUID()}`;
-    const steps: { step: string; status: 'completed' | 'failed' | 'skipped'; duration: number; result?: any }[] = [];
+    const steps: { step: string; status: 'completed' | 'failed' | 'skipped'; duration: number; result?: unknown }[] = [];
     
     log.info(`[DataMigrationAgent] Starting 5-step workflow: ${workflowId}`);
 
@@ -1233,7 +1233,7 @@ Respond with JSON only:
         steps,
         finalResult,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[DataMigrationAgent] Workflow ${workflowId} failed:`, error);
       return {
         success: false,

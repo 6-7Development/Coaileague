@@ -68,7 +68,7 @@ interface TeamMemberAvailability {
   employeeId: string;
   employeeName: string;
   availability: EmployeeAvailability[];
-  timeOffRequests: any[];
+  timeOffRequests: unknown[];
   totalAvailableHours: number;
 }
 
@@ -233,7 +233,7 @@ export default function AvailabilityPage() {
           dayOfWeek: a.dayOfWeek,
           startTime: a.startTime,
           endTime: a.endTime,
-          status: (a.status as any) || "available",
+          status: (a.status as unknown) || "available",
           isRecurring: a.isRecurring ?? true,
           notes: a.notes || undefined,
         }))
@@ -250,7 +250,7 @@ export default function AvailabilityPage() {
           dayOfWeek: a.dayOfWeek,
           startTime: a.startTime,
           endTime: a.endTime,
-          status: (a.status as any) || "available",
+          status: (a.status as unknown) || "available",
           isRecurring: a.isRecurring ?? true,
           notes: a.notes || undefined,
         }))

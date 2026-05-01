@@ -156,7 +156,7 @@ export default function Help() {
     setRatingGiven(false);
 
     try {
-      const body: any = {
+      const body: Record<string, unknown> = {
         workspaceId: currentUser?.workspaceId || 'platform',
       };
 
@@ -172,7 +172,7 @@ export default function Help() {
       setSession(sessionData);
       setChatState(data.queuePosition > 0 ? "queued" : "active");
       addMessage("bot", `Hello! I'm HelpAI. I've opened ticket ${data.ticketNumber} for you. How can I help?`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ title: "Could not start chat", description: err.message, variant: "destructive" });
       setChatState("idle");
     }
@@ -205,7 +205,7 @@ export default function Help() {
       } else {
         setChatState("active");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       addMessage("system", "Connection error. Please try again.");
     } finally {
       setIsSending(false);
@@ -220,7 +220,7 @@ export default function Help() {
       });
       addMessage("system", "Escalating to a human agent...");
       setChatState("queued");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ title: "Escalation failed", description: err.message, variant: "destructive" });
     }
   }, [session, addMessage, toast]);
@@ -484,7 +484,7 @@ export default function Help() {
                         className="flex-1"
                       />
                       <Button
-                        size="icon"
+                        size="icon" aria-label="Send Message"
                         onClick={sendMessage}
                         disabled={isSending || !inputMessage.trim() || chatState === "queued"}
                         data-testid="button-send-message"

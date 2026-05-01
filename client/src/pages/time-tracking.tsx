@@ -256,7 +256,7 @@ export default function TimeTracking() {
       }
       return result.response ? await result.response.json() : {};
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       markCoreActionPerformed();
       if (result?.queued) {
         trinity.info("You're offline. Your clock-in has been saved and will sync when connected.", "Queued Offline");
@@ -280,7 +280,7 @@ export default function TimeTracking() {
       setCameraSupported(true);
       stopCamera();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to clock in. Please try again.", "Clock In Failed");
     },
   });
@@ -306,7 +306,7 @@ export default function TimeTracking() {
       }
       return result.response ? await result.response.json() : {};
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result) => {
       if (result?.queued) {
         trinity.info("You're offline. Your clock-out has been saved and will sync when connected.", "Queued Offline");
       } else {
@@ -322,7 +322,7 @@ export default function TimeTracking() {
       setCameraSupported(true);
       stopCamera();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to clock out. Please try again.", "Clock Out Failed");
     },
   });
@@ -336,7 +336,7 @@ export default function TimeTracking() {
       queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       trinity.info(`Enjoy your ${variables.breakType === 'meal' ? 'meal' : 'rest'} break! Take your time.`, "Break Started");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to start break. Please try again.", "Break Start Failed");
     },
   });
@@ -350,7 +350,7 @@ export default function TimeTracking() {
       queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       trinity.info("Welcome back! You're now on the clock again.", "Break Ended");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to end break. Please try again.", "Break End Failed");
     },
   });
@@ -361,7 +361,7 @@ export default function TimeTracking() {
       queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       trinity.success("Time entry approved successfully!", "Entry Approved");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to approve entry. Please try again.", "Approval Failed");
     },
   });
@@ -375,7 +375,7 @@ export default function TimeTracking() {
       setRejectingEntryId(null);
       setRejectReason("");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to reject entry. Please try again.", "Rejection Failed");
     },
   });
@@ -475,7 +475,7 @@ export default function TimeTracking() {
         videoRef.current.onloadedmetadata = () => setIsCameraLoading(false);
         setIsCameraActive(true);
       }
-    } catch (error: any) {
+    } catch (error : unknown) {
       setIsCameraLoading(false);
 
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
@@ -493,7 +493,7 @@ export default function TimeTracking() {
             videoRef.current.onloadedmetadata = () => setIsCameraLoading(false);
             setIsCameraActive(true);
           }
-        } catch (fallbackErr: any) {
+        } catch (fallbackErr : unknown) {
           if (fallbackErr.name === "NotAllowedError" || fallbackErr.name === "PermissionDeniedError") {
             setCameraPermissionDenied(true);
           } else {
@@ -889,7 +889,7 @@ export default function TimeTracking() {
       trinity.success(`Successfully approved ${count} time entries!`, "Bulk Approval Complete");
       setBulkSelectedEmployees(new Set());
     },
-    onError: (error: any) => {
+    onError: (error) => {
       trinity.error(error.message || "Failed to approve entries", "Bulk Approval Failed");
     },
   });
@@ -2035,7 +2035,7 @@ export default function TimeTracking() {
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground uppercase font-medium">Clock In</p>
                               <p className="font-bold">{format(clockInTime, 'h:mm a')}</p>
-                              {(entry as any).clockInGpsLatitude && (
+                              {(entry as Record<string,unknown>).clockInGpsLatitude && (
                                 <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                   <MapPin className="w-3 h-3" />
                                   <span>GPS Verified</span>
@@ -2053,7 +2053,7 @@ export default function TimeTracking() {
                               {clockOutTime ? (
                                 <>
                                   <p className="font-bold">{format(clockOutTime, 'h:mm a')}</p>
-                                  {(entry as any).clockOutGpsLatitude && (
+                                  {(entry as Record<string,unknown>).clockOutGpsLatitude && (
                                     <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                       <MapPin className="w-3 h-3" />
                                       <span>GPS Verified</span>
@@ -2682,7 +2682,7 @@ export default function TimeTracking() {
 
         {/* Clock In Dialog */}
         <UniversalModal open={clockInDialogOpen} onOpenChange={setClockInDialogOpen}>
-          <UniversalModalContent size="xl" hideBuiltInClose className="max-h-[90vh] p-0">
+          <UniversalModalContent size="xl" hideBuiltInClose className="max-h-[80dvh] sm:max-h-[90dvh] p-0">
             <DialogStyledHeader variant="info">
               <UniversalModalTitle className="text-inherit">Clock In</UniversalModalTitle>
               <UniversalModalDescription className="text-white/80">

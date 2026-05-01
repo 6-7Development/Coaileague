@@ -31,10 +31,9 @@ router.get("/suggestions", async (req: Request, res: Response) => {
     }
     
     // Platform admins can view any workspace via query param, or their own if set
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = ['root_admin', 'deputy_admin', 'sysop'].includes(user?.platformRole);
     const queryWorkspaceId = req.query.workspaceId as string;
-    const workspaceId = (isPlatformAdmin && queryWorkspaceId) || req.workspaceId || (user as any)?.workspaceId;
+    const workspaceId = (isPlatformAdmin && queryWorkspaceId) || req.workspaceId || (user as Record<string,unknown>)?.workspaceId;
     
     if (workspaceId && workspaceId !== req.workspaceId && !isPlatformAdmin) {
       return res.status(403).json({ error: "Unauthorized workspace access" });
@@ -112,9 +111,7 @@ router.get("/suggestions", async (req: Request, res: Response) => {
 
     // Check for coverage gaps
     const shiftsByDate = upcomingShifts.reduce((acc, shift) => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (!acc[shift.date]) acc[shift.date] = 0;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       acc[shift.date]++;
       return acc;
     }, {} as Record<string, number>);
@@ -184,7 +181,7 @@ router.get("/suggestions", async (req: Request, res: Response) => {
 router.post("/apply-suggestion", async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    if (!(user as any)?.workspaceId) {
+    if (!(user as Record<string,unknown>)?.workspaceId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -192,9 +189,7 @@ router.post("/apply-suggestion", async (req: Request, res: Response) => {
     if (!suggestionId) {
       return res.status(400).json({ error: "suggestionId is required" });
     }
-    
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    log.info(`[AI Scheduling] User ${user.id} acknowledged suggestion: ${suggestionId} in workspace ${(user as any).workspaceId}`);
+    log.info(`[AI Scheduling] User ${user.id} acknowledged suggestion: ${suggestionId} in workspace ${req.user?.workspaceId}`);
 
     res.json({ 
       success: true, 
@@ -212,11 +207,11 @@ router.post("/apply-suggestion", async (req: Request, res: Response) => {
 router.get("/optimization-report", async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    if (!(user as any)?.workspaceId) {
+    if (!(user as Record<string,unknown>)?.workspaceId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const workspaceId = (user as any).workspaceId;
+    const workspaceId = req.user?.workspaceId;
     const now = new Date();
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);

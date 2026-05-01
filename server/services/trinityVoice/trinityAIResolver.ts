@@ -72,11 +72,11 @@ export interface AIResolverResult {
 async function parseResolverJSON(text: string): Promise<{ canResolve: boolean; answer: string; escalationReason?: string } | null> {
   try {
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed: unknown = JSON.parse(cleaned);
     if (typeof parsed.canResolve === 'boolean' && typeof parsed.answer === 'string') {
       return parsed;
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[TrinityAIResolver] Non-critical error in AI resolution', { error: err.message });
   }
 
@@ -84,11 +84,11 @@ async function parseResolverJSON(text: string): Promise<{ canResolve: boolean; a
   const jsonMatch = text.match(/\{[\s\S]*"canResolve"[\s\S]*"answer"[\s\S]*\}/);
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       if (typeof parsed.canResolve === 'boolean' && typeof parsed.answer === 'string') {
         return parsed;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
     log.warn('[TrinityAIResolver] Non-critical error in AI resolution', { error: err.message });
   }
   }
@@ -137,7 +137,7 @@ async function tryGemini(issue: string, workspaceId: string, language?: string, 
     if (!parsed) return null;
 
     return { ...parsed, modelUsed: 'gemini', responseTimeMs: 0 };
-  } catch (e: any) {
+  } catch (e: unknown) {
     log.warn('[TrinityAIResolver] Gemini failed:', e?.message);
     return null;
   }
@@ -182,7 +182,7 @@ async function tryClaude(issue: string, workspaceId: string, tier: string, langu
     const parsed = await parseResolverJSON(text);
     if (!parsed) return null;
     return { ...parsed, modelUsed: 'claude', responseTimeMs: 0 };
-  } catch (e: any) {
+  } catch (e: unknown) {
     log.warn('[TrinityAIResolver] Claude failed:', e?.message);
     return null;
   }
@@ -227,7 +227,7 @@ async function tryOpenAI(issue: string, workspaceId: string, tier: string, langu
     const parsed = await parseResolverJSON(text);
     if (!parsed) return null;
     return { ...parsed, modelUsed: 'openai', responseTimeMs: 0 };
-  } catch (e: any) {
+  } catch (e: unknown) {
     log.warn('[TrinityAIResolver] OpenAI failed:', e?.message);
     return null;
   }
@@ -272,7 +272,7 @@ export async function resolveWithTrinityBrain(params: {
           language: language ?? 'auto',
         },
       });
-    } catch (auditErr: any) {
+    } catch (auditErr: unknown) {
       log.warn('[TrinityAIResolver] Gate audit failed (non-fatal):', auditErr?.message);
     }
     // Return canResolve:false with empty answer so callers fall through to
@@ -292,7 +292,7 @@ export async function resolveWithTrinityBrain(params: {
   try {
     const tierRow = await pool.query('SELECT subscription_tier FROM workspaces WHERE id = $1 LIMIT 1', [workspaceId]);
     workspaceTier = tierRow.rows[0]?.subscription_tier ?? 'starter';
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[TrinityAIResolver] Non-critical error in AI resolution', { error: err.message });
   }
 

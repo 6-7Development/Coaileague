@@ -12,6 +12,8 @@ import path from 'path';
 import { sharedKnowledgeGraph, KnowledgeEntity, EntityType, RelationshipType } from './sharedKnowledgeGraph';
 import { aiBrainService } from './aiBrainService';
 import crypto from 'crypto';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('codebaseAwareness');
 
 // ============================================================================
 // TYPES
@@ -115,7 +117,7 @@ class CodebaseAwareness {
     duration: number;
   }> {
     if (this.scanning) {
-      console.log('[CodebaseAwareness] Scan already in progress');
+      log.info('[CodebaseAwareness] Scan already in progress');
       return { filesScanned: 0, entitiesFound: 0, duration: 0 };
     }
 
@@ -123,7 +125,7 @@ class CodebaseAwareness {
     this.scanning = true;
     const opts = { ...this.DEFAULT_SCAN_OPTIONS, ...options };
     
-    console.log(`[CodebaseAwareness] Starting codebase scan from ${opts.rootDir}`);
+    log.info(`[CodebaseAwareness] Starting codebase scan from ${opts.rootDir}`);
     
     try {
       // Clear previous index
@@ -164,7 +166,7 @@ class CodebaseAwareness {
       this.lastScanAt = new Date();
       const duration = Date.now() - startTime;
       
-      console.log(`[CodebaseAwareness] Scan complete: ${files.length} files, ${entitiesFound} entities in ${duration}ms`);
+      log.info(`[CodebaseAwareness] Scan complete: ${files.length} files, ${entitiesFound} entities in ${duration}ms`);
       
       return {
         filesScanned: files.length,
@@ -203,7 +205,7 @@ class CodebaseAwareness {
         }
       }
     } catch (error) {
-      console.error(`[CodebaseAwareness] Error reading directory ${dir}:`, error);
+      log.error(`[CodebaseAwareness] Error reading directory ${dir}:`, error);
     }
     
     return files;
@@ -240,7 +242,7 @@ class CodebaseAwareness {
       entities.push(...extractedEntities);
       
     } catch (error) {
-      console.error(`[CodebaseAwareness] Error parsing file ${filePath}:`, error);
+      log.error(`[CodebaseAwareness] Error parsing file ${filePath}:`, error);
     }
     
     return entities;
@@ -417,7 +419,7 @@ class CodebaseAwareness {
    */
   private async buildRelationships(): Promise<void> {
     // This is a simplified version - in production you'd use a proper AST parser
-    console.log('[CodebaseAwareness] Building code relationships...');
+    log.info('[CodebaseAwareness] Building code relationships...');
     
     // For now, we build basic import relationships based on file names
     for (const [filePath, entityIds] of this.fileIndex.entries()) {
@@ -453,7 +455,7 @@ class CodebaseAwareness {
       }
     }
     
-    console.log(`[CodebaseAwareness] Built ${this.codeRelationships.size} relationships`);
+    log.info(`[CodebaseAwareness] Built ${this.codeRelationships.size} relationships`);
   }
 
   /**
@@ -498,7 +500,7 @@ class CodebaseAwareness {
    * Query the codebase using natural language
    */
   async queryCode(question: string): Promise<CodeQueryResult> {
-    console.log(`[CodebaseAwareness] Query: "${question}"`);
+    log.info(`[CodebaseAwareness] Query: "${question}"`);
     
     // First, try keyword-based search
     const keywordResults = this.keywordSearch(question);
@@ -660,7 +662,7 @@ Provide a helpful, conversational answer pointing to the relevant files and comp
       }
     }
     
-    console.log(`[CodebaseAwareness] Refreshed ${changedFiles.length} files, ${updatedCount} entities`);
+    log.info(`[CodebaseAwareness] Refreshed ${changedFiles.length} files, ${updatedCount} entities`);
     return updatedCount;
   }
 }

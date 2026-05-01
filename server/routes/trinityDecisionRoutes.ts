@@ -1,13 +1,13 @@
 import { Router, type Request, type Response } from 'express';
 import { trinityDecisionLogger } from '../services/trinityDecisionLogger';
 import { requireAuth } from '../auth';
-import { hasManagerAccess } from '../rbac';
+import { hasManagerAccess, AuthenticatedRequest} from '../rbac';
 import { createLogger } from '../lib/logger';
 const log = createLogger('TrinityDecisionRoutes');
 
 const router = Router();
 
-function sanitizeDecision(d: Record<string, any>): Record<string, any> {
+function sanitizeDecision(d: Record<string, unknown>): Record<string, unknown> {
   const { claudeVerdict, claudeReasoning, claudeSuggestedAlternative, judgeModel, primaryModel, ...rest } = d;
   return {
     ...rest,
@@ -17,11 +17,11 @@ function sanitizeDecision(d: Record<string, any>): Record<string, any> {
   };
 }
 
-function sanitizeDecisions(result: { decisions: Record<string, any>[]; total: number }) {
+function sanitizeDecisions(result: { decisions: Record<string, unknown>[]; total: number }) {
   return { ...result, decisions: result.decisions.map(sanitizeDecision) };
 }
 
-router.get('/decisions', requireAuth, async (req: any, res: Response) => {
+router.get('/decisions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
     const workspaceRole = req.workspaceRole;
@@ -57,7 +57,7 @@ router.get('/decisions', requireAuth, async (req: any, res: Response) => {
   }
 });
 
-router.get('/decisions/:entityType/:entityId', requireAuth, async (req: any, res: Response) => {
+router.get('/decisions/:entityType/:entityId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
     const workspaceRole = req.workspaceRole;
@@ -84,7 +84,7 @@ router.get('/decisions/:entityType/:entityId', requireAuth, async (req: any, res
   }
 });
 
-router.post('/decisions/:decisionId/override', requireAuth, async (req: any, res: Response) => {
+router.post('/decisions/:decisionId/override', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
     const workspaceRole = req.workspaceRole;

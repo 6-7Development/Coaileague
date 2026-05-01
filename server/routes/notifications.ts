@@ -27,7 +27,7 @@ function broadcastNotification(
   workspaceId: string,
   userId: string,
   updateType: string,
-  notification?: any,
+  notification?: unknown,
   unreadCount?: number
 ) {
   try {
@@ -133,20 +133,20 @@ router.get('/api/notifications/combined', requireAuth, async (req, res) => {
       // Filter out cleared notifications AND platform_update type notifications.
       // platform_update notifications duplicate the platform_updates entries already
       // returned separately - showing both causes users to see the same update twice.
-      const notifications = allNotifications.filter((n: any) => !n.clearedAt && n.type !== 'platform_update');
-      const trueUnreadNotifications = notifications.filter((n: any) => !n.isRead).length;
+      const notifications = allNotifications.filter((n: unknown) => !n.clearedAt && n.type !== 'platform_update');
+      const trueUnreadNotifications = notifications.filter((n: unknown) => !n.isRead).length;
       
       // Filter out viewed/cleared platform updates - once user clicks "Clear All",
       // platform updates marked as viewed should not reappear
-      const platformUpdatesData = platformUpdatesDataRaw.filter((u: any) => !u.isViewed);
+      const platformUpdatesData = platformUpdatesDataRaw.filter((u: unknown) => !u.isViewed);
       
       // Filter out acknowledged maintenance alerts
-      const unreadAlerts = maintenanceAlerts.filter((a: any) => !a.isAcknowledged).length;
-      const activeMaintenanceAlerts = maintenanceAlerts.filter((a: any) => !a.isAcknowledged);
+      const unreadAlerts = maintenanceAlerts.filter((a: unknown) => !a.isAcknowledged).length;
+      const activeMaintenanceAlerts = maintenanceAlerts.filter((a: unknown) => !a.isAcknowledged);
       
       // Get gap intelligence findings for PLATFORM SUPPORT ROLES ONLY
       // SECURITY: Explicitly deny gap findings to workspace/org roles
-      let gapFindings: any[] = [];
+      let gapFindings: (string | number | boolean | null)[] = [];
       
       // Check if user has a workspace role - if so, they are NOT platform support
       const userHasWorkspaceRole = !!(workspace || member);
@@ -235,7 +235,6 @@ router.post('/api/notifications/mark-all-read', requireAuth, async (req: Authent
   // Batch mark-read endpoint for mobile notification hub
 router.post('/api/notifications/mark-read-batch', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userId = req.user.id;
       const { ids } = req.body as { ids: string[] };
       
@@ -262,7 +261,6 @@ router.post('/api/notifications/mark-read-batch', requireAuth, async (req: Authe
       }
       
       // Recalculate unread counts after batch operation
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const unreadNotifications = await storage.getUnreadNotificationCount(workspaceId);
       
       broadcastNotification(workspaceId, userId, 'notification_count_updated', {
@@ -281,7 +279,6 @@ router.post('/api/notifications/mark-read-batch', requireAuth, async (req: Authe
   // Alias route for acknowledge-all (frontend uses this endpoint)
 router.post('/api/notifications/acknowledge-all', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userId = req.user.id;
       
       // Get user's workspace
@@ -373,7 +370,7 @@ router.post("/api/notifications/clear-all", requireAuth, async (req: Authenticat
         for (const mailboxId of mailboxIds) {
           await db
             .update(internalEmailRecipients)
-            .set({ isRead: true, readAt: new Date() } as any)
+            .set({ isRead: true, readAt: new Date() } as Record<string, unknown>)
             .where(and(
               eq(internalEmailRecipients.mailboxId, mailboxId),
               eq(internalEmailRecipients.isRead, false)
@@ -535,7 +532,6 @@ router.get("/api/notifications/diagnostics", requireAuth, async (req: Authentica
       const workspaceId = authReq.workspaceId || authReq.user?.currentWorkspaceId || authReq.user?.workspaceId;
 
       const { notificationDiagnostics } = await import("../services/ai-brain/notificationDiagnostics");
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await notificationDiagnostics.handleRequest(userId, workspaceId);
 
       log.info(`[NotificationDiagnostics] Diagnostic run for user ${userId}:`, result.diagnostic.overallHealth);
@@ -566,7 +562,7 @@ router.get("/api/platform/diagnostics", requireAuth, async (req: AuthenticatedRe
       const { universalDiagnosticOrchestrator } = await import("../services/ai-brain/universalDiagnosticOrchestrator");
       
       if (domain) {
-        const issues = await universalDiagnosticOrchestrator.runDomainDiagnostic(domain as any);
+        const issues = await universalDiagnosticOrchestrator.runDomainDiagnostic(domain as unknown);
         return res.json({ success: true, domain, issues });
       } else {
         const report = await universalDiagnosticOrchestrator.runFullDiagnostic(userId || "system", platformRole);
@@ -761,9 +757,9 @@ router.get('/api/notifications/unread-count', requireAuth, async (req: Authentic
       // Platform staff (no workspace) — skip workspace-scoped storage queries entirely.
       // NOTE: req.platformRole is only set by ensureWorkspaceAccess middleware, which this
       // route does NOT use. Check the user's role directly from the auth object instead.
-      const isPlatformUser = !!(req as any).platformRole ||
-        (req.user as any)?.role === 'platform_staff' ||
-        (req.user as any)?.isPlatformStaff === true;
+      const isPlatformUser = !!req.platformRole ||
+        (req.user as unknown)?.role === 'platform_staff' ||
+        (req.user as unknown)?.isPlatformStaff === true;
       
       try {
         if (isPlatformUser) {
@@ -811,7 +807,6 @@ router.get('/api/notifications/unread-count', requireAuth, async (req: Authentic
   // Mark individual notification as read
 router.post('/api/notifications/:id/mark-read', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userId = req.user.id;
       const { id: notificationId } = req.params;
       
@@ -847,7 +842,6 @@ router.post('/api/notifications/:id/mark-read', requireAuth, async (req: Authent
   // Mark platform update as viewed
 router.post('/api/platform-updates/:id/mark-viewed', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userId = req.user.id;
       const { id: updateId } = req.params;
       
@@ -877,7 +871,6 @@ router.post('/api/platform-updates/:id/mark-viewed', requireAuth, async (req: Au
   // Sync notification counts (force refresh from database)
 router.post('/api/notifications/sync-counts', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userId = req.user.id;
       
       const workspace = await storage.getWorkspaceByOwnerId(userId);
@@ -1047,7 +1040,7 @@ router.post('/api/notifications/:id/action', requireAuth, async (req: Authentica
         return res.status(400).json({ message: 'Action is required' });
       }
       
-      let actionResult: any = { success: true };
+      let actionResult: Record<string, unknown> = { success: true };
       
       switch (action) {
         case 'approve':

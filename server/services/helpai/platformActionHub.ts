@@ -120,7 +120,7 @@ export interface ActionRequest {
   category: ActionCategory;
   name: string;
   description?: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   workspaceId?: string;
   userId: string;
   userRole: string;
@@ -133,7 +133,7 @@ export interface ActionRequest {
     conversationId?: string;
     sessionId?: string;
     originalToolName?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -141,7 +141,7 @@ export interface ActionResult {
   success: boolean;
   actionId?: string;
   message: string;
-  data?: any;
+  data?: unknown;
   error?: string;
   executionTimeMs?: number;
   notificationSent?: boolean;
@@ -190,7 +190,7 @@ const log = createLogger('PlatformActionHub');
 class PlatformActionHub {
   private serviceHealth: Map<string, ServiceHealthStatus> = new Map();
   private healthCheckInterval: NodeJS.Timeout | null = null;
-  private wsBroadcaster: ((message: any) => void) | null = null;
+  private wsBroadcaster: ((message: unknown) => void) | null = null;
   private initialized = false;
 
   constructor() {
@@ -211,7 +211,7 @@ class PlatformActionHub {
   /**
    * Initialize the orchestrator with WebSocket broadcaster
    */
-  initialize(wsBroadcaster?: (message: any) => void): void {
+  initialize(wsBroadcaster?: (message: unknown) => void): void {
     if (this.initialized) return;
     
     if (wsBroadcaster) {
@@ -415,7 +415,6 @@ class PlatformActionHub {
           type: type || 'system',
           title,
           message,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: request.workspaceId || undefined,
           targetUserIds: [targetUserId],
           severity: 'warning',
@@ -709,7 +708,7 @@ class PlatformActionHub {
             data: { workspaceId: targetWorkspace, status: deactivationStatus, reason },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -752,7 +751,7 @@ class PlatformActionHub {
             data: { workspaceId: targetWorkspace, status: "active" },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -800,7 +799,7 @@ class PlatformActionHub {
             },
             executionTimeMs: Date.now() - startTime
           };
-        } catch (err: any) {
+        } catch (err: unknown) {
           return {
             success: false,
             actionId: request.actionId,
@@ -969,8 +968,8 @@ class PlatformActionHub {
           return { success: false, actionId: request.actionId, message: 'clientId required', executionTimeMs: Date.now() - startTime };
         }
         const entities = await knowledgeGraphRepository.getEntitiesByType('client_preference', workspaceId || request.workspaceId);
-        const clientEntities = entities.filter((e: any) => {
-          const attrs = e.attributes as any;
+        const clientEntities = entities.filter((e: unknown) => {
+          const attrs = e.attributes as unknown;
           return attrs?.clientId === clientId;
         });
         return { success: true, actionId: request.actionId, message: `Found ${clientEntities.length} intelligence entries for client`, data: clientEntities, executionTimeMs: Date.now() - startTime };
@@ -1048,7 +1047,7 @@ class PlatformActionHub {
           .from(cadUnits)
           .where(and(
             eq(cadUnits.workspaceId, workspaceId),
-            notInArray(cadUnits.currentStatus, ['off_duty', 'out_of_service'] as any[]),
+            notInArray(cadUnits.currentStatus, ['off_duty', 'out_of_service'] as string[]),
           ))
           .orderBy(asc(cadUnits.employeeName));
 
@@ -1069,7 +1068,7 @@ class PlatformActionHub {
         const { latitude, longitude } = request.payload || {};
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
         let query = `SELECT id, unit_identifier, employee_name, current_status, latitude, longitude, last_ping_at FROM cad_units WHERE workspace_id=$1 AND current_status='available'`;
-        const params: any[] = [workspaceId];
+        const params: Record<string, unknown>[] = [workspaceId];
         if (latitude && longitude) {
           const lat = Number(latitude);
           const lng = Number(longitude);
@@ -1079,7 +1078,7 @@ class PlatformActionHub {
         }
         query += ` LIMIT 5`;
         const result = await typedPool(query, params);
-        const nearest = (result as unknown as any[])[0];
+        const nearest = (result as unknown[])[0];
         return { success: true, actionId: request.actionId, message: nearest ? `Nearest available unit: ${nearest.unit_identifier} (${nearest.employee_name})` : 'No available units on duty', data: result, executionTimeMs: Date.now() - startTime };
       }
     });
@@ -1097,8 +1096,8 @@ class PlatformActionHub {
         const workspaceId = request.workspaceId;
         if (!unitId || !callId || !workspaceId) return { success: false, actionId: request.actionId, message: 'unitId, callId, and workspaceId required', executionTimeMs: Date.now() - startTime };
         const callRows = await typedPool(`SELECT * FROM cad_calls WHERE id=$1 AND workspace_id=$2`, [callId, workspaceId]);
-        if (!(callRows as unknown as any[]).length) return { success: false, actionId: request.actionId, message: 'Call not found', executionTimeMs: Date.now() - startTime };
-        const call = (callRows as unknown as any[])[0];
+        if (!(callRows as unknown[]).length) return { success: false, actionId: request.actionId, message: 'Call not found', executionTimeMs: Date.now() - startTime };
+        const call = (callRows as unknown[])[0];
         const currentUnits = Array.isArray(call.dispatched_units) ? call.dispatched_units : [];
         if (!currentUnits.includes(unitId)) currentUnits.push(unitId);
         // CATEGORY C — Genuine complex: multi-table CAD dispatch (cad_calls + cad_units + cad_dispatch_log in single operation)
@@ -1123,12 +1122,12 @@ class PlatformActionHub {
         const workspaceId = request.workspaceId;
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
         let query = `SELECT id, report_number, category, priority, title, status, occurred_at, reported_by_name, site_name FROM incident_reports WHERE workspace_id=$1`;
-        const params: any[] = [workspaceId];
+        const params: Record<string, unknown>[] = [workspaceId];
         if (siteId) { query += ` AND site_id=$2`; params.push(siteId); }
         else if (siteName) { query += ` AND site_name ILIKE $2`; params.push(`%${siteName}%`); }
         query += ` ORDER BY occurred_at DESC LIMIT ${Number(limit)}`;
         const result = await typedPool(query, params);
-        return { success: true, actionId: request.actionId, message: `Found ${(result as unknown as any[]).length} incidents`, data: result, executionTimeMs: Date.now() - startTime };
+        return { success: true, actionId: request.actionId, message: `Found ${(result as unknown[]).length} incidents`, data: result, executionTimeMs: Date.now() - startTime };
       }
     });
 
@@ -1145,12 +1144,12 @@ class PlatformActionHub {
         const workspaceId = request.workspaceId;
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
         let unitQuery = `SELECT u.*, e.first_name, e.last_name FROM cad_units u LEFT JOIN employees e ON e.id = u.employee_id WHERE u.workspace_id=$1`;
-        const params: any[] = [workspaceId];
+        const params: Record<string, unknown>[] = [workspaceId];
         if (employeeId) { unitQuery += ` AND u.employee_id=$2`; params.push(employeeId); }
         else if (employeeName) { unitQuery += ` AND u.employee_name ILIKE $2`; params.push(`%${employeeName}%`); }
         unitQuery += ` LIMIT 1`;
         const result = await typedPool(unitQuery, params);
-        const unit = (result as unknown as any[])[0];
+        const unit = (result as unknown[])[0];
         if (!unit) return { success: true, actionId: request.actionId, message: 'Officer not found in active duty', data: null, executionTimeMs: Date.now() - startTime };
         return { success: true, actionId: request.actionId, message: `Officer ${unit.employee_name}: ${unit.current_status}`, data: { unitId: unit.id, employeeName: unit.employee_name, status: unit.current_status, lastPing: unit.last_ping_at, latitude: unit.latitude, longitude: unit.longitude, currentCallId: unit.current_call_id }, executionTimeMs: Date.now() - startTime };
       }
@@ -1170,7 +1169,7 @@ class PlatformActionHub {
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
         // CATEGORY C — Raw SQL retained: ORDER BY | Tables: panic_alerts | Verified: 2026-03-23
         const result = await typedPool(`SELECT id, alert_number, employee_name, site_name, status, triggered_at, acknowledged_at, resolved_at FROM panic_alerts WHERE workspace_id=$1 ORDER BY triggered_at DESC LIMIT ${Number(limit)}`, [workspaceId]);
-        return { success: true, actionId: request.actionId, message: `Found ${(result as unknown as any[]).length} panic alerts`, data: result, executionTimeMs: Date.now() - startTime };
+        return { success: true, actionId: request.actionId, message: `Found ${(result as unknown[]).length} panic alerts`, data: result, executionTimeMs: Date.now() - startTime };
       }
     });
 
@@ -1187,9 +1186,8 @@ class PlatformActionHub {
         const workspaceId = request.workspaceId;
         if (!workspaceId) return { success: false, actionId: request.actionId, message: 'workspaceId required', executionTimeMs: Date.now() - startTime };
 
-        let callRows: any[] = [];
+        let callRows: (string | number | boolean | null)[] = [];
         if (callId) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           callRows = await typedPool(
             `SELECT id, call_number, call_type, priority, location, site_name, latitude, longitude FROM cad_calls WHERE id=$1 AND workspace_id=$2`,
             [callId, workspaceId]
@@ -1211,9 +1209,9 @@ class PlatformActionHub {
           return { success: true, actionId: request.actionId, message: 'No available units on duty', data: { call, availableUnits: [], suggestion: null }, executionTimeMs: Date.now() - startTime };
         }
 
-        let suggestion: any = availableUnitsArr[0];
+        let suggestion: unknown = availableUnitsArr[0];
         if (call?.latitude && call?.longitude) {
-          suggestion = availableUnitsArr.sort((a: any, b: any) => {
+          suggestion = availableUnitsArr.sort((a: unknown, b: unknown) => {
             const distA = Math.pow((a.latitude || 0) - call.latitude, 2) + Math.pow((a.longitude || 0) - call.longitude, 2);
             const distB = Math.pow((b.latitude || 0) - call.latitude, 2) + Math.pow((b.longitude || 0) - call.longitude, 2);
             return distA - distB;
@@ -1257,7 +1255,7 @@ class PlatformActionHub {
           WHERE workspace_id=$1
             AND occurred_at >= NOW() - make_interval(days => $${paramIdx})
         `;
-        const params: any[] = [workspaceId, daysNum];
+        const params: Record<string, unknown>[] = [workspaceId, daysNum];
         paramIdx++;
 
         if (employeeId) {
@@ -1273,10 +1271,10 @@ class PlatformActionHub {
         params.push(limitNum);
 
         const result = await typedPool(query, params).catch(() => []);
-        const resultRows = result as any[];
+        const resultRows = result as unknown[];
 
         const categoryCounts: Record<string, number> = {};
-        resultRows.forEach((r: any) => { categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1; });
+        resultRows.forEach((r: unknown) => { categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1; });
         const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
 
         return {
@@ -1290,7 +1288,7 @@ class PlatformActionHub {
               days,
               topCategory,
               categoryCounts,
-              criticalCount: resultRows.filter((r: any) => r.priority === 'critical').length,
+              criticalCount: resultRows.filter((r: unknown) => r.priority === 'critical').length,
             }
           },
           executionTimeMs: Date.now() - startTime,
@@ -1322,7 +1320,7 @@ class PlatformActionHub {
           'INSERT INTO incident_reports (workspace_id, category, priority, status, description, reported_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
           [workspaceId, incidentCategory || 'general', priority || 'medium', 'open', incidentDescription, reportedBy || 'trinity-ai']
         );
-        const insertedId = (result as unknown as any[])[0]?.id;
+        const insertedId = (result as unknown[])[0]?.id;
         return {
           success: true,
           actionId: request.actionId,
@@ -1355,7 +1353,7 @@ class PlatformActionHub {
         return {
           success: true,
           actionId: request.actionId,
-          message: `Found ${(result as unknown as any[]).length} incidents`,
+          message: `Found ${(result as unknown[]).length} incidents`,
           data: { incidents: result },
           executionTimeMs: Date.now() - startTime
         };
@@ -1424,8 +1422,8 @@ class PlatformActionHub {
            AND DATE(clock_in) BETWEEN $2 AND $3`,
           [workspaceId, start, end]
         );
-        const totalHours = parseFloat((preCheckResult as unknown as any[])[0]?.total_hours || '0');
-        const entryCount = parseInt((preCheckResult as unknown as any[])[0]?.entry_count || '0');
+        const totalHours = parseFloat((preCheckResult as unknown as string[])[0]?.total_hours || '0');
+        const entryCount = parseInt((preCheckResult as unknown as string[])[0]?.entry_count || '0');
 
         if (entryCount === 0 || totalHours === 0) {
           return {
@@ -1444,7 +1442,7 @@ class PlatformActionHub {
             workspaceId,
             periodStart: new Date(start),
             periodEnd: new Date(end),
-            status: 'pending' as any,
+            status: 'pending',
             processedBy: request.userId,
           })
           .returning({ id: payrollRuns.id });
@@ -1922,7 +1920,6 @@ class PlatformActionHub {
     this.registerAction({
       actionId: 'trinity.select_cognitive_layer',
       name: 'Trinity: Select Cognitive Layer',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'ai_brain',
       description: 'Select the optimal Trinity cognitive layer (Claude=ethics, Gemini=vision/data, GPT=execution) for a given task',
       requiredRoles: [],
@@ -1950,7 +1947,6 @@ class PlatformActionHub {
     this.registerAction({
       actionId: 'trinity.parallel_monitor',
       name: 'Trinity: Parallel ADHD Monitor',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'ai_brain',
       description: 'Run 8-thread parallel monitoring loop for simultaneous workspace supervision and cross-workspace pattern detection',
       requiredRoles: ['platform_admin', 'root_admin', 'sysop'],
@@ -1976,7 +1972,6 @@ class PlatformActionHub {
     this.registerAction({
       actionId: 'trinity.status_broadcast',
       name: 'Trinity: Status Broadcast',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'ai_brain',
       description: 'Get the next Trinity status phrase for streaming broadcast (purple vocabulary pool)',
       requiredRoles: [],
@@ -1997,7 +1992,6 @@ class PlatformActionHub {
     this.registerAction({
       actionId: 'trinity.priority_interrupt',
       name: 'Trinity: Priority Interrupt',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'ai_brain',
       description: 'Interrupt Trinity\'s current task queue to process a critical priority item from HelpAI command bus immediately',
       requiredRoles: [],
@@ -2022,7 +2016,6 @@ class PlatformActionHub {
     this.registerAction({
       actionId: 'trinity.hyperfocus_mode',
       name: 'Trinity: Hyperfocus Mode',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       category: 'ai_brain',
       description: 'Activate Trinity Hyperfocus Mode — dedicate full cognitive bandwidth to a single workspace emergency for up to 15 minutes',
       requiredRoles: ['org_owner', 'co_owner', 'platform_admin', 'root_admin'],
@@ -2082,7 +2075,7 @@ class PlatformActionHub {
             data: { draft, threadId, subject: thread.subject, lastMessagePreview: lastMsg?.body?.slice(0, 100) },
             executionTimeMs: Date.now() - startTime,
           };
-        } catch (err: any) {
+        } catch (err: unknown) {
           return { success: false, actionId: request.actionId, message: err?.message || 'Failed to draft reply', executionTimeMs: Date.now() - startTime };
         }
       },
@@ -2124,7 +2117,7 @@ class PlatformActionHub {
             summary: `Thread "${thread.subject}" has ${messages.length} messages (${staffCount} from staff, ${clientCount} from client). Status: ${thread.status}. SLA: ${thread.slaStatus}.`,
           };
           return { success: true, actionId: request.actionId, message: 'Thread summary generated', data: summary, executionTimeMs: Date.now() - startTime };
-        } catch (err: any) {
+        } catch (err: unknown) {
           return { success: false, actionId: request.actionId, message: err?.message || 'Failed to summarize thread', executionTimeMs: Date.now() - startTime };
         }
       },
@@ -2171,7 +2164,7 @@ class PlatformActionHub {
             data: { totalChecked: threads.length, amberThreadIds: amber, redThreadIds: red, amberCount: amber.length, redCount: red.length },
             executionTimeMs: Date.now() - startTime,
           };
-        } catch (err: any) {
+        } catch (err: unknown) {
           return { success: false, actionId: request.actionId, message: err?.message || 'Failed to check SLA', executionTimeMs: Date.now() - startTime };
         }
       },
@@ -2308,13 +2301,11 @@ class PlatformActionHub {
     }
 
     // Check authorization
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!this.isAuthorized(request.userRole, handler.requiredRoles)) {
       log.warn(`[Platform Action Hub] Unauthorized: ${request.userId} with role ${request.userRole} tried to execute ${request.actionId}`);
       return {
         success: false,
         actionId: request.actionId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         message: `Unauthorized: requires one of roles [${handler.requiredRoles.join(', ')}]`,
         executionTimeMs: Date.now() - startTime
       };
@@ -2398,7 +2389,7 @@ class PlatformActionHub {
       } catch (preExecErr) {
         // Validator threw — fail CLOSED for mutating/high-risk categories
         const HIGH_RISK = ['payroll','invoicing','billing','scheduling','admin','compliance','tax'];
-        const cat = (handler as any)?.category ?? '';
+        const cat = (handler as Record<string,unknown>)?.category ?? '';
         log.error('[Platform Action Hub] Pre-execution validator threw:', preExecErr);
         if (HIGH_RISK.includes(cat)) {
           return {
@@ -2622,7 +2613,7 @@ class PlatformActionHub {
       
       if (aiAnalyticsEngine.isAvailable() && !request.isTestMode) {
         const actionContext = {
-          category: handler.category as any,
+          category: handler.category as unknown,
           workspaceId: request.workspaceId,
           userId: request.userId,
           actionName: handler.name,
@@ -2689,7 +2680,7 @@ class PlatformActionHub {
           missingDataPoints: 0,
           edgeCasesDetected: [],
           hasHistoricalPrecedent: true,
-          financialImpact: (request as any).payload?.amount ?? 0,
+          financialImpact: (request as Record<string,unknown>).payload?.amount ?? 0,
           hasRegulatoryImplications: DUAL_AI_REQUIRED_CATEGORIES.has(handler.category),
           anomalyScore: 0,
           affectsMultipleUsers: 1,
@@ -2753,7 +2744,7 @@ class PlatformActionHub {
           const skipPostAction = ['test', 'health_check'].includes(handler.category);
           if (!skipPostAction) {
             const actionContext = {
-              category: handler.category as any,
+              category: handler.category as unknown,
               workspaceId: request.workspaceId,
               userId: request.userId,
               actionName: handler.name,
@@ -2773,8 +2764,7 @@ class PlatformActionHub {
             const { trinityActionReasoner } = await import('../ai-brain/trinityActionReasoner');
             trinityActionReasoner.reflect(
               {
-                domain: handler.category as any,
-                // @ts-expect-error — TS migration: fix in refactoring sprint
+                domain: handler.category as unknown,
                 workspaceId: request.workspaceId,
                 userId: request.userId,
               },
@@ -2849,7 +2839,7 @@ class PlatformActionHub {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorResult: ActionResult = {
         success: false,
         actionId: request.actionId,
@@ -2889,7 +2879,6 @@ class PlatformActionHub {
   getAvailableActions(userRole: string, options: ActionCatalogOptions = {}): ActionHandler[] {
     const authorizedActions: ActionHandler[] = [];
     ACTION_REGISTRY.forEach((handler) => {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (this.isAuthorized(userRole, handler.requiredRoles)) {
         authorizedActions.push(handler);
       }
@@ -3143,7 +3132,6 @@ class PlatformActionHub {
     }
 
     // Map action categories to user-friendly event types and visibility
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const EVENT_POLICY: Record<ActionCategory, { 
       eventType: 'feature_released' | 'feature_updated' | 'automation_completed' | 'announcement';
       category: 'feature' | 'improvement' | 'announcement';
@@ -3286,7 +3274,7 @@ class PlatformActionHub {
           lastCheck: new Date(),
           responseTimeMs: Date.now() - startTime
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.serviceHealth.set(service.name, {
           serviceName: service.name,
           isHealthy: false,
@@ -3355,7 +3343,7 @@ class PlatformActionHub {
         errorMessage: result.success ? null : (result.message || null),
         createdAt: sql`now()`,
       });
-    } catch (telErr: any) {
+    } catch (telErr: unknown) {
       log.warn('[Trinity Telemetry] Invocation log failed (non-blocking):', telErr?.message);
     }
   }

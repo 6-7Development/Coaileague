@@ -13,6 +13,7 @@ import { eq, and } from 'drizzle-orm';
 import { calculateDistance, GPSLocation } from './gpsGeofenceService';
 import { platformEventBus } from './platformEventBus';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('photoGeofenceService');
 
 
@@ -64,8 +65,8 @@ class PhotoGeofenceService {
           });
 
           if (client) {
-            const lat = (client as any).latitude || (client as any).siteLatitude;
-            const lon = (client as any).longitude || (client as any).siteLongitude;
+            const lat = (client as ClientWithExtras).latitude || (client as ClientWithExtras).siteLatitude;
+            const lon = (client as ClientWithExtras).longitude || (client as ClientWithExtras).siteLongitude;
             
             if (lat && lon) {
               siteLocation = {
@@ -96,8 +97,8 @@ class PhotoGeofenceService {
           });
 
           if (client) {
-            const lat = (client as any).latitude || (client as any).siteLatitude;
-            const lon = (client as any).longitude || (client as any).siteLongitude;
+            const lat = (client as ClientWithExtras).latitude || (client as ClientWithExtras).siteLatitude;
+            const lon = (client as ClientWithExtras).longitude || (client as ClientWithExtras).siteLongitude;
             
             if (lat && lon) {
               siteLocation = {

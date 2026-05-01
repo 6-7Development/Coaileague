@@ -23,6 +23,8 @@ import Stripe from 'stripe';
 import { typedExec, typedQuery } from '../lib/typedSql';
 import { clients, invoices, payrollRuns, quickbooksSyncReceipts, employees, employeePayrollInfo, payrollEntries } from '@shared/schema';
 import { getStripe, isStripeConfigured } from './billing/stripeClient';
+import { createLogger } from '../lib/logger';
+const log = createLogger('developmentSeedFinancialIntegrations');
 
 const ACME = 'dev-acme-security-ws';
 const ANVIL = 'dev-anvil-security-ws';
@@ -61,7 +63,7 @@ async function alreadySeeded(): Promise<boolean> {
 }
 
 // ─── QB payload builders ──────────────────────────────────────────────────────
-function buildQBInvoicePayload(inv: any, qbCustomerId: string): object {
+function buildQBInvoicePayload(inv: unknown, qbCustomerId: string): object {
   const amount = Number(inv.total ?? 0);
   return {
     CustomerRef: { value: qbCustomerId },
@@ -82,7 +84,7 @@ function buildQBInvoicePayload(inv: any, qbCustomerId: string): object {
   };
 }
 
-function buildQBTimeActivityPayload(entry: any): object {
+function buildQBTimeActivityPayload(entry: unknown): object {
   return {
     NameOf: 'Employee',
     EmployeeRef: { value: entry.qb_employee_ref ?? '1', name: `${entry.first_name} ${entry.last_name}` },
@@ -142,7 +144,7 @@ async function qbPush(
     const text = await resp.text();
     let qbId: string | null = null;
     if (resp.ok) {
-      const data = JSON.parse(text).catch?.(() => ({})) ?? JSON.parse(text);
+      const data: unknown = JSON.parse(text).catch?.(() => ({})) ?? JSON.parse(text);
       qbId = data?.Invoice?.Id ?? data?.TimeActivity?.Id ?? null;
     }
     // Converted to Drizzle ORM: ON CONFLICT
@@ -165,7 +167,7 @@ async function qbPush(
       createdAt: sql`now()`,
     }).onConflictDoNothing().catch(() => {});
     return { qbId, success: resp.ok };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { qbId: null, success: false };
   }
 }
@@ -174,7 +176,7 @@ async function qbPush(
 // SECTION 1 — ACME: QuickBooks Sandbox
 // ═══════════════════════════════════════════════════════════════════════════════
 async function seedAcmeQBMode() {
-  console.log('[FinancialSeed] Acme: Setting up QuickBooks sandbox mode...');
+  log.info('[FinancialSeed] Acme: Setting up QuickBooks sandbox mode...');
 
   // 1a. Set billing provider to QB
   // CATEGORY C — Raw SQL retained: jsonb_build_object | Tables: workspaces | Verified: 2026-03-23
@@ -189,7 +191,7 @@ async function seedAcmeQBMode() {
       )
     WHERE id = ${ACME}
   `);
-  console.log('[FinancialSeed] Acme: billing_settings_blob → QB mode');
+  log.info('[FinancialSeed] Acme: billing_settings_blob → QB mode');
 
   // 1b. Update QB partner_connection to connected + simulation mode
   const qbApiBase = `${QB_SANDBOX_BASE}/${QB_SANDBOX_REALM}`;
@@ -216,7 +218,7 @@ async function seedAcmeQBMode() {
       updated_at = NOW()
     WHERE workspace_id = ${ACME} AND partner_type = 'quickbooks'
   `);
-  console.log('[FinancialSeed] Acme: QB partner_connection → connected (realm ' + QB_SANDBOX_REALM + ')');
+  log.info('[FinancialSeed] Acme: QB partner_connection → connected (realm ' + QB_SANDBOX_REALM + ')');
 
   // 1c. Assign QB Customer IDs to Acme clients (using quickbooks_client_id column)
   // Converted to Drizzle ORM: IS NULL
@@ -237,7 +239,7 @@ async function seedAcmeQBMode() {
       quickbooksLastSync: sql`now()`,
     }).where(eq(clients.id, c.id));
   }
-  console.log(`[FinancialSeed] Acme: ${acmeClientsRows.length} clients assigned QB Customer IDs`);
+  log.info(`[FinancialSeed] Acme: ${acmeClientsRows.length} clients assigned QB Customer IDs`);
 
   // 1d. Assign QB Employee refs to Acme employees via employee_payroll_info bank_details
   // Converted to Drizzle ORM: LEFT JOIN → db.leftJoin()
@@ -269,15 +271,15 @@ async function seedAcmeQBMode() {
       `).catch(() => {});
     }
   }
-  console.log(`[FinancialSeed] Acme: ${acmeEmployeesRows.length} employees assigned QB IDs via payroll_info`);
+  log.info(`[FinancialSeed] Acme: ${acmeEmployeesRows.length} employees assigned QB IDs via payroll_info`);
 
   // 1e. Push Acme invoices to QB sandbox (real or simulated)
   const liveToken = process.env.QB_SANDBOX_ACCESS_TOKEN ?? null;
   const isSim = !liveToken;
   if (isSim) {
-    console.log('[FinancialSeed] Acme QB: No QB_SANDBOX_ACCESS_TOKEN — simulation mode (payloads stored as receipts)');
+    log.info('[FinancialSeed] Acme QB: No QB_SANDBOX_ACCESS_TOKEN — simulation mode (payloads stored as receipts)');
   } else {
-    console.log('[FinancialSeed] Acme QB: QB_SANDBOX_ACCESS_TOKEN found — pushing LIVE to QB sandbox');
+    log.info('[FinancialSeed] Acme QB: QB_SANDBOX_ACCESS_TOKEN found — pushing LIVE to QB sandbox');
   }
 
   // Converted to Drizzle ORM: IS NULL
@@ -316,7 +318,7 @@ async function seedAcmeQBMode() {
       invPushed++;
     }
   }
-  console.log(`[FinancialSeed] Acme: ${invPushed}/${acmeInvoicesRows.length} invoices pushed to QB sandbox`);
+  log.info(`[FinancialSeed] Acme: ${invPushed}/${acmeInvoicesRows.length} invoices pushed to QB sandbox`);
 
   // 1f. Push Acme payroll entries to QB as TimeActivities
   // Converted to Drizzle ORM: LEFT JOIN → db.leftJoin()
@@ -357,16 +359,16 @@ async function seedAcmeQBMode() {
       payPushed++;
     }
   }
-  console.log(`[FinancialSeed] Acme: ${payPushed}/${acmePayrollEntriesRows.length} payroll entries pushed to QB`);
+  log.info(`[FinancialSeed] Acme: ${payPushed}/${acmePayrollEntriesRows.length} payroll entries pushed to QB`);
 
-  console.log('[FinancialSeed] Acme: QuickBooks sandbox mode seeding complete');
+  log.info('[FinancialSeed] Acme: QuickBooks sandbox mode seeding complete');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 2 — ANVIL: Stripe-Local
 // ═══════════════════════════════════════════════════════════════════════════════
 async function seedAnvilStripeMode() {
-  console.log('[FinancialSeed] Anvil: Setting up Stripe-local mode...');
+  log.info('[FinancialSeed] Anvil: Setting up Stripe-local mode...');
 
   // 2a. Set billing provider to Stripe
   // CATEGORY C — Raw SQL retained: jsonb_build_object | Tables: workspaces | Verified: 2026-03-23
@@ -381,10 +383,10 @@ async function seedAnvilStripeMode() {
       )
     WHERE id = ${ANVIL}
   `);
-  console.log('[FinancialSeed] Anvil: billing_settings_blob → Stripe-local mode');
+  log.info('[FinancialSeed] Anvil: billing_settings_blob → Stripe-local mode');
 
   if (!isStripeConfigured()) {
-    console.warn('[FinancialSeed] Anvil: STRIPE_SECRET_KEY not set — seeding simulated Stripe IDs only');
+    log.warn('[FinancialSeed] Anvil: STRIPE_SECRET_KEY not set — seeding simulated Stripe IDs only');
     await seedAnvilStripeFallback();
     return;
   }
@@ -410,7 +412,6 @@ async function seedAnvilStripeMode() {
   for (const c of anvilClientsRows) {
     try {
       const customer = await stripe!.customers.create({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         name: c.companyName,
         email: c.email ?? `billing+${c.id}@anvilsecurity.test`,
         phone: c.phone ?? undefined,
@@ -418,15 +419,15 @@ async function seedAnvilStripeMode() {
         metadata: { coaileague_client_id: c.id, coaileague_workspace_id: ANVIL, environment: 'test' },
       });
       await db.update(clients).set({ stripeCustomerId: customer.id }).where(eq(clients.id, c.id));
-      console.log(`[FinancialSeed] Anvil: Stripe customer ${customer.id} → ${c.companyName}`);
+      log.info(`[FinancialSeed] Anvil: Stripe customer ${customer.id} → ${c.companyName}`);
       stripeCustomersCreated++;
-    } catch (err: any) {
-      console.warn(`[FinancialSeed] Anvil: Customer creation failed for ${c.companyName}: ${(err instanceof Error ? err.message : String(err))}`);
+    } catch (err: unknown) {
+      log.warn(`[FinancialSeed] Anvil: Customer creation failed for ${c.companyName}: ${(err instanceof Error ? err.message : String(err))}`);
       const simId = `cus_SIM_${c.id.slice(0, 10)}`;
       await db.update(clients).set({ stripeCustomerId: simId }).where(eq(clients.id, c.id)).catch(() => {});
     }
   }
-  console.log(`[FinancialSeed] Anvil: ${stripeCustomersCreated} Stripe customers created`);
+  log.info(`[FinancialSeed] Anvil: ${stripeCustomersCreated} Stripe customers created`);
 
   // 2c. Create Stripe Connect accounts for Anvil employees
   // Converted to Drizzle ORM: LEFT JOIN → db.leftJoin()
@@ -446,7 +447,7 @@ async function seedAnvilStripeMode() {
   let connectsCreated = 0;
   for (const emp of anvilEmployeesRows) {
     if (emp.stripeConnectAccountId?.startsWith('acct_')) {
-      console.log(`[FinancialSeed] Anvil: ${emp.firstName} already has Connect acct ${emp.stripeConnectAccountId}`);
+      log.info(`[FinancialSeed] Anvil: ${emp.firstName} already has Connect acct ${emp.stripeConnectAccountId}`);
       continue;
     }
     if (!emp.piId) continue; // No payroll_info record
@@ -471,10 +472,10 @@ async function seedAnvilStripeMode() {
           stripe_connect_onboarding_complete = false
         WHERE id = ${emp.piId}
       `);
-      console.log(`[FinancialSeed] Anvil: Connect account ${account.id} → ${emp.firstName} ${emp.lastName}`);
+      log.info(`[FinancialSeed] Anvil: Connect account ${account.id} → ${emp.firstName} ${emp.lastName}`);
       connectsCreated++;
-    } catch (err: any) {
-      console.warn(`[FinancialSeed] Anvil: Connect account failed for ${emp.firstName}: ${(err instanceof Error ? err.message : String(err))}`);
+    } catch (err: unknown) {
+      log.warn(`[FinancialSeed] Anvil: Connect account failed for ${emp.firstName}: ${(err instanceof Error ? err.message : String(err))}`);
       const simId = `acct_SIM_${emp.id.slice(0, 8)}`;
       // CATEGORY C — Raw SQL retained: Seed data UPDATE (fallback simulation) | Tables: employee_payroll_info | Verified: 2026-03-23
       await typedExec(sql`
@@ -487,7 +488,7 @@ async function seedAnvilStripeMode() {
       `).catch(() => {});
     }
   }
-  console.log(`[FinancialSeed] Anvil: ${connectsCreated} Stripe Connect accounts created`);
+  log.info(`[FinancialSeed] Anvil: ${connectsCreated} Stripe Connect accounts created`);
 
   // 2d. Create Stripe PaymentIntents for Anvil invoices
   await seedAnvilInvoicePaymentIntents();
@@ -495,7 +496,7 @@ async function seedAnvilStripeMode() {
   // 2e. Mark Anvil payroll runs as Stripe-disbursed
   await seedAnvilPayrollStripeRecords();
 
-  console.log('[FinancialSeed] Anvil: Stripe-local mode seeding complete');
+  log.info('[FinancialSeed] Anvil: Stripe-local mode seeding complete');
 }
 
 async function seedAnvilInvoicePaymentIntents() {
@@ -547,13 +548,13 @@ async function seedAnvilInvoicePaymentIntents() {
 
       const pi = await stripe!.paymentIntents.create(piParams);
       await db.update(invoices).set({ paymentIntentId: pi.id, stripeInvoiceId: pi.id }).where(eq(invoices.id, inv.id));
-      console.log(`[FinancialSeed] Anvil: PaymentIntent ${pi.id} ($${(amountCents / 100).toFixed(2)}) for invoice ${inv.invoiceNumber}`);
+      log.info(`[FinancialSeed] Anvil: PaymentIntent ${pi.id} ($${(amountCents / 100).toFixed(2)}) for invoice ${inv.invoiceNumber}`);
       pisCreated++;
-    } catch (err: any) {
-      console.warn(`[FinancialSeed] Anvil: PI failed for invoice ${inv.invoiceNumber}: ${(err instanceof Error ? err.message : String(err))}`);
+    } catch (err: unknown) {
+      log.warn(`[FinancialSeed] Anvil: PI failed for invoice ${inv.invoiceNumber}: ${(err instanceof Error ? err.message : String(err))}`);
     }
   }
-  console.log(`[FinancialSeed] Anvil: ${pisCreated} PaymentIntents created for invoices`);
+  log.info(`[FinancialSeed] Anvil: ${pisCreated} PaymentIntents created for invoices`);
 }
 
 async function seedAnvilPayrollStripeRecords() {
@@ -607,10 +608,10 @@ async function seedAnvilPayrollStripeRecords() {
             },
           });
           transferId = transfer.id;
-          console.log(`[FinancialSeed] Anvil: Stripe transfer ${transfer.id} ($${(netCents / 100).toFixed(2)}) → ${connectId}`);
-        } catch (err: any) {
+          log.info(`[FinancialSeed] Anvil: Stripe transfer ${transfer.id} ($${(netCents / 100).toFixed(2)}) → ${connectId}`);
+        } catch (err: unknown) {
           transferId = `tr_SIM_${entry.id.slice(0, 8)}`;
-          console.warn(`[FinancialSeed] Anvil: Transfer failed (${(err instanceof Error ? err.message : String(err))}) — sim ID ${transferId}`);
+          log.warn(`[FinancialSeed] Anvil: Transfer failed (${(err instanceof Error ? err.message : String(err))}) — sim ID ${transferId}`);
         }
       } else {
         transferId = connectId ? `tr_SIM_${entry.id.slice(0, 8)}` : null;
@@ -626,7 +627,7 @@ async function seedAnvilPayrollStripeRecords() {
       `).catch(() => {});
     }
 
-    console.log(`[FinancialSeed] Anvil: Payroll run ${run.id.slice(0, 8)} → Stripe disbursement recorded`);
+    log.info(`[FinancialSeed] Anvil: Payroll run ${run.id.slice(0, 8)} → Stripe disbursement recorded`);
   }
 }
 
@@ -664,7 +665,7 @@ async function seedAnvilStripeFallback() {
       WHERE id = ${pi.id}
     `).catch(() => {});
   }
-  console.log(`[FinancialSeed] Anvil fallback: ${idx} clients, ${empInfosRows.length} employees — simulated Stripe IDs`);
+  log.info(`[FinancialSeed] Anvil fallback: ${idx} clients, ${empInfosRows.length} employees — simulated Stripe IDs`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -680,15 +681,15 @@ export async function runFinancialIntegrationsSeed(): Promise<{ message: string 
       return { message: '[FinancialSeed] Already seeded — skipping' };
     }
 
-    console.log('[FinancialSeed] Starting financial integrations seed (Acme=QB, Anvil=Stripe)...');
+    log.info('[FinancialSeed] Starting financial integrations seed (Acme=QB, Anvil=Stripe)...');
 
     await seedAcmeQBMode();
     await seedAnvilStripeMode();
 
-    console.log('[FinancialSeed] Financial integrations seed complete');
+    log.info('[FinancialSeed] Financial integrations seed complete');
     return { message: 'Financial integrations seed complete (Acme→QB sandbox, Anvil→Stripe-local)' };
-  } catch (err: any) {
-    console.error('[FinancialSeed] Seed failed:', (err instanceof Error ? err.message : String(err)));
+  } catch (err: unknown) {
+    log.error('[FinancialSeed] Seed failed:', (err instanceof Error ? err.message : String(err)));
     return { message: `Financial integrations seed failed: ${(err instanceof Error ? err.message : String(err))}` };
   }
 }

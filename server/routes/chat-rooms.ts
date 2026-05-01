@@ -35,8 +35,8 @@ const router = Router();
 
 // ── Shared Room Lifecycle Helper (Codex: deduplicated close/reopen) ─────────
 async function handleRoomLifecycleAction(
-  req: any,
-  res: any,
+  req: AuthenticatedRequest,
+  res: Response,
   action: 'close' | 'reopen',
 ): Promise<void> {
   try {
@@ -171,7 +171,7 @@ async function createRoomEvent(
   actorRole: string,
   eventType: string,
   description: string,
-  eventPayload?: Record<string, any>,
+  eventPayload?: Record<string, unknown>,
   ipAddress?: string,
   userAgent?: string
 ) {
@@ -436,7 +436,7 @@ router.post(
       }
 
       // Pre-resolve additional participant users OUTSIDE the transaction (read-only).
-      let additionalParticipantRecords: any[] = [];
+      let additionalParticipantRecords: (string | number | boolean | null)[] = [];
       if (participants && Array.isArray(participants) && participants.length > 0) {
         const participantRecords = await Promise.all(
           participants.map(async (participantId: string) => {
@@ -449,7 +449,7 @@ router.post(
             return user;
           })
         );
-        additionalParticipantRecords = participantRecords.filter((u: any) => u !== null);
+        additionalParticipantRecords = participantRecords.filter((u: unknown) => u !== null);
       }
 
       // D04: Atomic room creation — conversation + wrapper + creator-owner participant
@@ -501,7 +501,7 @@ router.post(
         });
 
         if (additionalParticipantRecords.length > 0) {
-          const validParticipants = additionalParticipantRecords.map((user: any) => ({
+          const validParticipants = additionalParticipantRecords.map((user: unknown) => ({
             conversationId: conv.id,
             workspaceId,
             participantId: user.id,
@@ -526,7 +526,6 @@ router.post(
       const roomTypeLabel = conversation.conversationType === 'shift_chat' ? 'shift' : 'team';
       const welcomeText = `Welcome to ${roomDisplayName}! This ${roomTypeLabel} chat was created by ${userName}. Invite your team members and start collaborating.`;
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await storage.createChatMessage({
         conversationId: conversation.id,
         senderId: null,
@@ -548,7 +547,6 @@ router.post(
         if (isMeetingRoom) {
           await botPool.deployBot('meetingbot', conversation.id, workspaceId);
           activeBots.push('meetingbot');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await storage.createChatMessage({
             conversationId: conversation.id,
             senderId: 'meetingbot',
@@ -565,7 +563,6 @@ router.post(
           activeBots.push('reportbot');
           await botPool.deployBot('clockbot', conversation.id, workspaceId);
           activeBots.push('clockbot');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await storage.createChatMessage({
             conversationId: conversation.id,
             senderId: 'reportbot',
@@ -581,12 +578,11 @@ router.post(
         if (activeBots.length > 0) {
           const botMetaPatch = JSON.stringify({ activeBots, botDeployedAt: new Date().toISOString() });
           await db.update(chatConversations)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${botMetaPatch}::jsonb` })
             .where(eq(chatConversations.id, conversation.id));
         }
       } catch (botErr: unknown) {
-        log.error('[BotDeploy] Auto-deploy failed (non-blocking):', (botErr as any)?.message);
+        log.error('[BotDeploy] Auto-deploy failed (non-blocking):', (botErr as Record<string,unknown>)?.message);
       }
 
       // Summon HelpAI bot for conversations where Trinity assistance is appropriate
@@ -598,7 +594,7 @@ router.post(
           userId
         );
       } catch (summonErr: unknown) {
-        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as Record<string,unknown>)?.message);
       }
 
       // Create audit event
@@ -659,7 +655,7 @@ router.get(
 
       const leftConversationIds = requireAuth ? await getLeftConversationIds(userId!) : new Set<string>();
 
-      const rooms: any[] = [];
+      const rooms: (string | number | boolean | null)[] = [];
 
       // ========================================================================
       // 1. SUPPORT ROOMS (type: 'support') - Always include platform-wide rooms
@@ -910,7 +906,6 @@ router.get(
               supportConvIds.length > 0 ? notInArray(chatConversations.id, supportConvIds) : undefined,
               or(
                 and(
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   eq(chatParticipants.participantId, userId),
                   eq(chatParticipants.isActive, true)
                 ),
@@ -928,7 +923,6 @@ router.get(
             chatParticipants,
             and(
               eq(chatConversations.id, chatParticipants.conversationId),
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               eq(chatParticipants.participantId, userId),
               eq(chatParticipants.isActive, true)
             )
@@ -1250,19 +1244,16 @@ router.post(
       // Add participants — batched: 2 queries total regardless of participant count
       const addedParticipants: string[] = [];
       if (participantIds.length > 0) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const [existingRows, userRows] = await Promise.all([
           db.select({ participantId: chatParticipants.participantId })
             .from(chatParticipants)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .where(and(eq(chatParticipants.conversationId, roomId), inArray(chatParticipants.participantId, participantIds))),
           db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
             .from(users)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .where(inArray(users.id, participantIds)),
         ]);
-        const alreadyIn = new Set(existingRows.map((r: any) => r.participantId));
-        const userMap = new Map(userRows.map((u: any) => [u.id, u]));
+        const alreadyIn = new Set(existingRows.map((r: unknown) => r.participantId));
+        const userMap = new Map(userRows.map((u: unknown) => [u.id, u]));
         const canInvite = role === 'org_admin' || role === 'org_owner' || role === 'co_owner';
         const toInsert = participantIds
           .filter((pid: string) => !alreadyIn.has(pid) && userMap.has(pid))
@@ -1278,7 +1269,7 @@ router.post(
           });
         if (toInsert.length > 0) {
           await db.insert(chatParticipants).values(toInsert);
-          addedParticipants.push(...toInsert.map((r: any) => r.participantId));
+          addedParticipants.push(...toInsert.map((r: unknown) => r.participantId));
         }
       }
 
@@ -1800,7 +1791,7 @@ router.patch(
       }
 
       // Build update object
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       const changes: string[] = [];
 
       if (subject !== undefined && subject !== null && subject !== conversation.subject) {
@@ -1901,8 +1892,7 @@ router.delete(
 
       const isWorkspaceAdmin = (ADMIN_ROLES as readonly string[]).includes(authReq.workspaceRole || "");
       const user = authReq.user;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (!conversation) {
@@ -2060,7 +2050,7 @@ router.get(
 
       const { orgFilter, categoryFilter, search, status: statusFilter } = req.query;
 
-      const rooms: any[] = [];
+      const rooms: (string | number | boolean | null)[] = [];
 
       // Get all active conversations across all workspaces
       let query = db
@@ -2303,10 +2293,8 @@ router.post(
 
       const user = authReq.user;
       const { hasManagerAccess } = await import('../rbac');
-      const workspaceRole = (authReq as any).workspaceRole || (user as any).workspaceRole || 'employee';
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const workspaceRole = (authReq as Record<string,unknown>).workspaceRole || req.user?.workspaceRole || 'employee';
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (resolved.roomType === 'support') {
@@ -2317,11 +2305,8 @@ router.post(
         return res.status(403).json({ error: "Manager or higher role required to close rooms" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userName = user.firstName && user.lastName
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? `${user.firstName} ${user.lastName}`
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         : user.email || "Manager";
 
       const { closeRoom } = await import('../services/roomLifecycleService');
@@ -2390,10 +2375,8 @@ router.post(
 
       const user = authReq.user;
       const { hasManagerAccess } = await import('../rbac');
-      const workspaceRole = (authReq as any).workspaceRole || (user as any).workspaceRole || 'employee';
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const platformRole = (user as any).platformRole || user.role;
+      const workspaceRole = (authReq as Record<string,unknown>).workspaceRole || req.user?.workspaceRole || 'employee';
+      const platformRole = req.user?.platformRole || user.role;
       const { hasPlatformWideAccess } = await import('../rbac');
 
       if (resolved.roomType === 'support') {
@@ -2404,11 +2387,8 @@ router.post(
         return res.status(403).json({ error: "Manager or higher role required to reopen rooms" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const userName = user.firstName && user.lastName
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         ? `${user.firstName} ${user.lastName}`
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         : user.email || "Manager";
 
       const { reopenRoom } = await import('../services/roomLifecycleService');
@@ -2501,9 +2481,9 @@ router.get(
       const rooms = await db
         .select({
           id: organizationChatRooms.id,
-          name: (organizationChatRooms as any).name,
+          name: (organizationChatRooms as Record<string,unknown>).name,
           workspaceId: organizationChatRooms.workspaceId,
-          roomType: (organizationChatRooms as any).roomType,
+          roomType: (organizationChatRooms as Record<string,unknown>).roomType,
           createdAt: organizationChatRooms.createdAt,
         })
         .from(organizationChatRooms)
@@ -2557,7 +2537,6 @@ router.get(
       const { helpAIBotService } = await import("../services/helpai/helpAIBotService");
       
       const workspaceId = authReq.workspaceId;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const ticketResult = await helpAIBotService.checkOpenTicketsForUser(userId, workspaceId);
       
       res.json({
@@ -2598,7 +2577,6 @@ router.get(
       if (!workspaceId) {
         return res.status(400).json({ success: false, error: 'workspaceId required for role verification' });
       }
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const roleResult = await helpAIBotService.verifyUserOrgRole(userId, workspaceId);
       
       res.json({
@@ -2652,13 +2630,13 @@ router.get(
         exportedAt: new Date().toISOString(),
         exportedBy: authReq.user,
         roomId,
-        roomName: (room as any)?.name || 'Unknown Room',
+        roomName: (room as Record<string,unknown>)?.name || 'Unknown Room',
         messageCount: messages.length,
         messages: messages.map(m => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
-          content: (m as any).content,
+          content: (m as Record<string, unknown>).content,
           messageType: m.messageType,
           createdAt: m.createdAt,
         })),
@@ -2712,7 +2690,6 @@ router.post(
 
       const { chatParityService } = await import('../services/chatParityService');
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const nukeResult = await chatParityService.nukeRoom(roomId, room.workspaceId, userId, reason);
 
       if (nukeResult.success) {
@@ -2759,7 +2736,6 @@ router.post(
       const [user] = await db
         .select({ firstName: users.firstName, lastName: users.lastName })
         .from(users)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(users.id, userId))
         .limit(1);
 
@@ -2767,7 +2743,6 @@ router.post(
 
       const { chatParityService } = await import('../services/chatParityService');
       const result = await chatParityService.closeConversationWithMute(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         roomId, room.workspaceId, userId, actorName, reason
       );
 
@@ -2808,7 +2783,6 @@ router.post(
       const [user] = await db
         .select({ firstName: users.firstName, lastName: users.lastName })
         .from(users)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(users.id, userId))
         .limit(1);
 
@@ -2817,7 +2791,6 @@ router.post(
       const { chatParityService } = await import('../services/chatParityService');
       const result = await chatParityService.escalateSystemBug({
         workspaceId,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         reportedBy: userId,
         reportedByName: userName,
         description,

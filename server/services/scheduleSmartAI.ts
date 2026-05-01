@@ -50,7 +50,7 @@ export interface ScheduleSmartRequest {
       considerAbsenteeismRisk?: boolean;
     };
   };
-  scoringContext?: Record<string, any>;
+  scoringContext?: Record<string, unknown>;
 }
 
 export interface ScheduleSmartResponse {
@@ -237,14 +237,14 @@ Assign employees to shifts. Return valid JSON only.`;
     let parsedResponse: unknown;
     try {
       parsedResponse = JSON.parse(cleanedResponse);
-    } catch (parseError: any) {
+    } catch (parseError : unknown) {
       // Attempt to repair truncated JSON by extracting valid assignments array
       const assignmentsMatch = cleanedResponse.match(/"assignments"\s*:\s*(\[[\s\S]*)/);
       if (assignmentsMatch) {
         try {
           // Try to extract complete assignment objects before truncation
           const rawArray = assignmentsMatch[1];
-          const completeObjects: any[] = [];
+          const completeObjects: (string | number | boolean | null)[] = [];
           const objRegex = /\{\s*"shiftId"\s*:\s*"([^"]+)"\s*,\s*"employeeId"\s*:\s*"([^"]+)"\s*,\s*"confidence"\s*:\s*([\d.]+)\s*,\s*"reasoning"\s*:\s*"([^"]+)"\s*\}/g;
           let match;
           while ((match = objRegex.exec(rawArray)) !== null) {
@@ -290,7 +290,7 @@ Assign employees to shifts. Return valid JSON only.`;
     }
     
     return validationResult.data;
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error("AI Scheduling™ AI error:", error);
     // Don't leak raw prompts to users - provide clean error message
     const userMessage = error.status === 400 

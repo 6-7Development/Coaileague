@@ -1,3 +1,4 @@
+import type { Response, Request } from 'express';
 /**
  * CDN/Edge Caching Service - Q4 2026 Infrastructure
  * ==================================================
@@ -18,7 +19,7 @@ const log = createLogger('cdnCachingService');
 
 interface CacheEntry {
   key: string;
-  value: any;
+  value: unknown;
   contentType: string;
   size: number;
   hash: string;
@@ -225,7 +226,7 @@ class CDNCachingService {
   /**
    * Warm cache with pre-computed values
    */
-  async warmCache(entries: Array<{ key: string; value: any; ttl?: number }>): Promise<number> {
+  async warmCache(entries: Array<{ key: string; value: unknown; ttl?: number }>): Promise<number> {
     let warmed = 0;
     
     for (const entry of entries) {
@@ -332,7 +333,7 @@ class CDNCachingService {
    * Cache middleware for Express routes
    */
   cacheMiddleware(ttl?: number) {
-    return (req: any, res: any, next: any) => {
+    return (req: Request, res: Response, next: unknown) => {
       const cacheKey = `route:${req.method}:${req.originalUrl}`;
       const cached = this.get(cacheKey);
       
@@ -343,7 +344,7 @@ class CDNCachingService {
       // Store original json method
       const originalJson = res.json.bind(res);
       
-      res.json = (data: any) => {
+      res.json = (data: Record<string, unknown>) => {
         this.set(cacheKey, data, { ttl: ttl || this.config.defaultTTL, tags: ['api'] });
         return originalJson(data);
       };

@@ -89,7 +89,7 @@ function ExpiryUpdateDialog({
       onOpenChange(false);
       setExpiry("");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Update failed", description: err?.message, variant: "destructive" });
     },
   });
@@ -143,7 +143,7 @@ export default function FleetCompliancePage(): JSX.Element {
     id: 'fleet-compliance',
     title: 'Fleet Compliance',
     subtitle: 'Vehicle registration + insurance expiry alerts',
-    category: 'operations' as any,
+    category: 'operations',
     showHeader: true,
   };
 

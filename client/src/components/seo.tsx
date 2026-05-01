@@ -11,7 +11,7 @@ interface SEOProps {
   url?: string;
   type?: 'website' | 'article' | 'product';
   noindex?: boolean;
-  structuredData?: Record<string, any> | Record<string, any>[];
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
   canonical?: string;
 }
 

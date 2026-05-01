@@ -51,7 +51,7 @@ export interface OrgPattern {
   workspaceId: string;
   patternType: OrgPatternType;
   patternKey: string;
-  value: Record<string, any>;
+  value: Record<string, unknown>;
   confidence: number;
   learnedAt: Date;
   lastConfirmedAt: Date;
@@ -142,14 +142,14 @@ class TrinityOrgIntelligenceService {
   }
 
   private subscribeToEvents() {
-    platformEventBus.subscribe('bot_command_executed' as any, {
+    platformEventBus.subscribe('bot_command_executed', {
       name: 'TrinityOrgIntel-BotResult',
       handler: async (event) => {
         await this.handleBotResult(event.metadata || {});
       },
     });
 
-    platformEventBus.subscribe('schedule_published' as any, {
+    platformEventBus.subscribe('schedule_published', {
       name: 'TrinityOrgIntel-SchedulePublished',
       handler: async (event) => {
         if (event.workspaceId) {
@@ -221,7 +221,7 @@ class TrinityOrgIntelligenceService {
       log.info(`[TrinityOrgIntel] Learned ${patterns.length} patterns for workspace ${workspaceId}`);
 
       return patterns;
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[TrinityOrgIntel] Pattern learning failed for ${workspaceId}:`, (err instanceof Error ? err.message : String(err)));
       return this.orgPatterns.get(workspaceId) || [];
     }
@@ -366,7 +366,7 @@ class TrinityOrgIntelligenceService {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const sessions = await db.select({
-        subject: (helpaiSessions as any).subject,
+        subject: (helpaiSessions as Record<string,unknown>).subject,
         wasResolved: helpaiSessions.wasResolved,
         wasEscalated: helpaiSessions.wasEscalated,
       })
@@ -902,7 +902,7 @@ class TrinityOrgIntelligenceService {
         SELECT payroll_schedule, payroll_day_of_week, payroll_day_of_month, payroll_cutoff_day
         FROM workspaces WHERE id = ${workspaceId} LIMIT 1
       `);
-      const wsPayroll = wsResult[0] as any;
+      const wsPayroll = wsResult[0] as unknown;
 
       if (wsPayroll) {
         patterns.push({
@@ -1036,7 +1036,7 @@ class TrinityOrgIntelligenceService {
           });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[TrinityOrgIntel] Financial config pattern detection failed:`, (err instanceof Error ? err.message : String(err)));
     }
     return patterns;
@@ -1108,7 +1108,7 @@ class TrinityOrgIntelligenceService {
     return patterns;
   }
 
-  private async learnSchedulingPattern(workspaceId: string, data: any): Promise<void> {
+  private async learnSchedulingPattern(workspaceId: string, data: Record<string, unknown>): Promise<void> {
     const existing = this.orgPatterns.get(workspaceId) || [];
     const idx = existing.findIndex(p => p.patternType === 'scheduling_rhythm');
     const pattern: OrgPattern = {
@@ -1126,7 +1126,7 @@ class TrinityOrgIntelligenceService {
     this.orgPatterns.set(workspaceId, existing);
   }
 
-  private async learnPayrollCycle(workspaceId: string, data: any): Promise<void> {
+  private async learnPayrollCycle(workspaceId: string, data: Record<string, unknown>): Promise<void> {
     const existing = this.orgPatterns.get(workspaceId) || [];
     const idx = existing.findIndex(p => p.patternType === 'payroll_cycle');
     const pattern: OrgPattern = {
@@ -1213,7 +1213,7 @@ class TrinityOrgIntelligenceService {
       }
 
       this.activeTasks.set(task.id, task);
-    } catch (err: any) {
+    } catch (err: unknown) {
       task.error = (err instanceof Error ? err.message : String(err));
       if (task.attempts < task.maxAttempts) {
         task.status = 'retrying';
@@ -1226,7 +1226,7 @@ class TrinityOrgIntelligenceService {
     }
   }
 
-  private async handleBotResult(data: any): Promise<void> {
+  private async handleBotResult(data: Record<string, unknown>): Promise<void> {
     if (!data?.sessionId) return;
 
     const matchingTask = Array.from(this.activeTasks.values())
@@ -1477,7 +1477,7 @@ class TrinityOrgIntelligenceService {
           lines.push(`Report pattern "${p.value.category}": ${p.value.totalReports} reports, ${p.value.resolutionRate}% resolved, ${p.value.escalationRate}% escalated${p.value.recurringThemes?.length ? ', themes: ' + p.value.recurringThemes.join(', ') : ''}`);
           break;
         case 'conversation_learning':
-          lines.push(`Conversation insights: ${p.value.totalSessionsAnalyzed} sessions analyzed, ${p.value.businessModeRatio}% business mode${p.value.topConcerns?.length ? ', top concerns: ' + p.value.topConcerns.map((c: any) => c.topic).join(', ') : ''}${p.value.topDecisions?.length ? ', decisions: ' + p.value.topDecisions.map((d: any) => d.action).join(', ') : ''}`);
+          lines.push(`Conversation insights: ${p.value.totalSessionsAnalyzed} sessions analyzed, ${p.value.businessModeRatio}% business mode${p.value.topConcerns?.length ? ', top concerns: ' + p.value.topConcerns.map((c: unknown) => c.topic).join(', ') : ''}${p.value.topDecisions?.length ? ', decisions: ' + p.value.topDecisions.map((d: unknown) => d.action).join(', ') : ''}`);
           break;
       }
     }
@@ -1760,7 +1760,7 @@ class TrinityOrgIntelligenceService {
             activeIssues: issues.length,
             activeTasks: tasks.length,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error(`[TrinityOrgIntel] Platform scan: skipped workspace ${ws.id}:`, (err instanceof Error ? err.message : String(err)));
           workspaceSummaries.push({
             workspaceId: ws.id,
@@ -1785,7 +1785,7 @@ class TrinityOrgIntelligenceService {
         platformIssues: allPlatformIssues,
         scannedAt: new Date().toISOString(),
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[TrinityOrgIntel] Platform-wide scan failed:', (err instanceof Error ? err.message : String(err)));
       return {
         totalWorkspaces: 0,
@@ -1913,7 +1913,7 @@ class TrinityOrgIntelligenceService {
             detectedAt: new Date(),
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error(`[TrinityOrgIntel] Sub-org scan failed for ${sub.id}:`, (err instanceof Error ? err.message : String(err)));
       }
     }

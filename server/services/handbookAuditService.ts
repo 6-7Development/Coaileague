@@ -245,15 +245,14 @@ export async function auditWorkspaceHandbooks(workspaceId: string): Promise<Hand
   // Converted to Drizzle ORM: IN subquery → inArray()
   const resultRows = await db.select({
     id: complianceDocuments.id,
-    title: (complianceDocuments as any).title,
-    content: (complianceDocuments as any).content,
+    title: (complianceDocuments as Record<string,unknown>).title,
+    content: (complianceDocuments as Record<string,unknown>).content,
     documentType: complianceDocuments.documentTypeId,
   })
     .from(complianceDocuments)
     .where(and(
       eq(complianceDocuments.workspaceId, workspaceId),
       inArray(complianceDocuments.documentTypeId, ['employee_handbook', 'handbook', 'policy']),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       ne(complianceDocuments.status, 'archived')
     ))
     .orderBy(desc(complianceDocuments.createdAt))

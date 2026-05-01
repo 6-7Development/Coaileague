@@ -333,7 +333,7 @@ router.post("/employees", async (req: Request, res: Response) => {
     const importErrors: string[] = [];
     const missingEmailRows: number[] = [];
 
-    const workspace = await storage.getWorkspace(workspaceId).catch(() => null);
+    const workspace = await storage.getWorkspace(workspaceId).catch((e: unknown) => log.warn('[importRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     const workspaceName = workspace?.name || 'Your Organization';
     const inviterUserId = userId || 'system';
 
@@ -366,7 +366,7 @@ router.post("/employees", async (req: Request, res: Response) => {
           hourlyRate: emp.hourlyRate?.toString() || null,
           isActive: true,
           onboardingStatus,
-        } as any);
+        } as Record<string, unknown>);
         imported++;
 
         // For employees with email, create a workspace invite and send onboarding email
@@ -385,7 +385,7 @@ router.post("/employees", async (req: Request, res: Response) => {
               inviteeRole: 'employee',
               status: 'pending',
               expiresAt,
-            } as any);
+            } as Record<string, unknown>);
 
             await emailService.sendEmployeeInvitation(workspaceId, emp.email, inviteCode, {
               firstName: emp.firstName || 'there',
@@ -396,7 +396,7 @@ router.post("/employees", async (req: Request, res: Response) => {
             });
 
             invited++;
-          } catch (inviteErr: any) {
+          } catch (inviteErr : unknown) {
             log.warn(`[ImportRoutes] Invite/email failed for row ${emp.rowNumber}:`, inviteErr?.message);
           }
         }
@@ -423,7 +423,6 @@ router.post("/employees", async (req: Request, res: Response) => {
       })),
     });
   } catch (error: unknown) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     releaseImportLock(workspaceId);
     log.error("[ImportRoutes] Import failed:", error);
     return res.status(500).json({
@@ -672,7 +671,7 @@ router.post("/clients", async (req: Request, res: Response) => {
           pocPhone: client.pocPhone || null,
           pocEmail: client.pocEmail || null,
           isActive: true,
-        } as any);
+        } as Record<string, unknown>);
         imported++;
       } catch (error: unknown) {
         importErrors.push(`Row ${client.rowNumber}: ${sanitizeError(error)}`);

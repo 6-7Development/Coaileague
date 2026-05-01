@@ -259,21 +259,21 @@ async function runTrinityVisionAnalysis(
       return { status: 'flagged', confidenceScore: 0, reasoningText: `Vision API error: ${response.status}` };
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const rawText: string = data?.content?.[0]?.text ?? '{}';
 
     // Parse JSON from Trinity's response (handle markdown code fences)
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { status: 'flagged', confidenceScore: 0, reasoningText: 'Unparseable Trinity response.' };
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed: unknown = JSON.parse(jsonMatch[0]);
     return {
       status: parsed.status === 'passed' ? 'passed' : 'flagged',
       confidenceScore: parseFloat(parsed.confidence_score) || 0,
       reasoningText: String(parsed.reasoning || ''),
       ocrText: parsed.ocr_text ? String(parsed.ocr_text) : undefined,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[VisualCompliance] Vision analysis threw:', err?.message);
     return { status: 'flagged', confidenceScore: 0, reasoningText: `Analysis error: ${err?.message}` };
   }

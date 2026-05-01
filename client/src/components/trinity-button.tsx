@@ -5,6 +5,7 @@
  */
 
 import { Button } from '@/components/ui/button';
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { cn } from '@/lib/utils';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
 
@@ -20,7 +21,7 @@ interface AskTrinityButtonProps {
 }
 
 export function TrinityIconStatic({ size = 16, className }: { size?: number; className?: string }) {
-  return <TrinityLogo size={size} className={className} />;
+  return <TrinityAnimatedLogo size={size} className={className} />;
 }
 
 export function AskTrinityButton({
@@ -51,7 +52,7 @@ export function AskTrinityButton({
         className
       )}
     >
-      <TrinityLogo size={size === 'sm' ? 14 : size === 'lg' ? 20 : 16} className="mr-2" />
+      <TrinityAnimatedLogo size={size === 'sm' ? 14 : size === 'lg' ? 20 : 16} className="mr-2" />
       {showLabel && <span>{label}</span>}
     </Button>
   );
@@ -80,7 +81,7 @@ export function TrinityMiniButton({
         className
       )}
     >
-      <TrinityLogo size={28} className="text-cyan-400" />
+      <TrinityAnimatedLogo size={28} className="text-cyan-400" />
     </Button>
   );
 }

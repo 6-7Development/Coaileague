@@ -399,15 +399,10 @@ function SubmitTaskDialog({ isMobile }: { isMobile: boolean }) {
     }
   };
   
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const DialogWrapper = isMobile ? Sheet : Dialog;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const ContentWrapper = isMobile ? SheetContent : DialogContent;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const HeaderWrapper = isMobile ? SheetHeader : DialogHeader;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const TitleWrapper = isMobile ? SheetTitle : DialogTitle;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const DescWrapper = isMobile ? SheetDescription : DialogDescription;
   
   return (
@@ -661,7 +656,6 @@ export default function WorkboardDashboard() {
                       }, {} as Record<string, number>) || {}).map(([status, count]) => (
                         <div key={status} className="flex items-center justify-between gap-2 text-sm">
                           <StatusBadge status={status} />
-                          {/* @ts-ignore */}
                           <span className="font-medium">{count}</span>
                         </div>
                       ))}
@@ -681,7 +675,6 @@ export default function WorkboardDashboard() {
                             <Bot className="h-3 w-3" />
                             {agent}
                           </span>
-                          {/* @ts-ignore */}
                           <span className="font-medium">{count}</span>
                         </div>
                       ))}

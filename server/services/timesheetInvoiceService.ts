@@ -402,7 +402,7 @@ export async function markInvoicePaid(
   workspaceId: string,
   amountPaid?: number,
   paymentIntentId?: string
-): Promise<{ success: boolean; invoice: any }> {
+): Promise<{ success: boolean; invoice: unknown }> {
   const invoice = await db.query.invoices.findFirst({
     where: and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)),
   });
@@ -444,7 +444,7 @@ export async function markInvoicePaid(
       paymentIntentId: paymentIntentId || null,
       total: Number(invoice.total),
     },
-  }).catch((err: any) => log.warn('[EventBus] invoice_paid publish failed (non-blocking):', err?.message));
+  }).catch((err: unknown) => log.warn('[EventBus] invoice_paid publish failed (non-blocking):', err?.message));
 
   return {
     success: true,
@@ -752,7 +752,6 @@ export async function sendInvoiceWithEmail(input: SendInvoiceEmailInput): Promis
       amount: pdfData.total,
       metadata: {
         sentTo: invoice.client.email,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         emailId: emailResult.data?.id,
       },
     });
@@ -760,11 +759,10 @@ export async function sendInvoiceWithEmail(input: SendInvoiceEmailInput): Promis
     return {
       success: true,
       message: `Invoice ${invoice.invoiceNumber} sent to ${invoice.client.email}`,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       emailId: emailResult.data?.id,
       emailEventId: emailEvent.id,
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     // Log failed email attempt
     await db.insert(emailEvents).values({
       workspaceId,
@@ -789,7 +787,7 @@ interface InvoiceEventData {
   invoiceNumber: string;
   clientId: string;
   amount: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 async function emitInvoiceEvent(data: InvoiceEventData): Promise<void> {
@@ -1259,7 +1257,6 @@ export async function runScheduledClientInvoiceAutoGeneration(): Promise<void> {
 
         let isDue = !lastInvoice;
         if (lastInvoice) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const daysSince = differenceInDays(now, new Date(lastInvoice.createdAt));
           isDue = daysSince >= 7; // Weekly billing check; contract cycle enforced at route level
         }

@@ -105,7 +105,6 @@ class ApprovalResumeOrchestrator {
       .limit(1);
 
     if (existingApproval.length === 0) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(aiWorkflowApprovals).values({
         workspaceId: 'system',
         id: approvalId,
@@ -127,7 +126,6 @@ class ApprovalResumeOrchestrator {
     for (const approver of approvers) {
       if (approver.email) {
         try {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await sendAutomationEmail('approval_required', approver.email, {
             userName: approver.firstName || 'Admin',
             automationType: domain,
@@ -149,7 +147,7 @@ class ApprovalResumeOrchestrator {
         await createNotification({
           workspaceId,
           userId: approver.userId,
-          type: 'approval_required' as any,
+          type: 'approval_required',
           title: `Approval Required: ${domain} Automation`,
           message: description,
           actionUrl: approvalUrl,
@@ -234,10 +232,9 @@ class ApprovalResumeOrchestrator {
         metadata: {
           approvalId,
           approvedBy: userId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           audience: 'manager',
         },
-      }).catch((err: any) => log.warn('[ApprovalResumeOrchestrator] Failed to publish approval_approved:', err.message));
+      }).catch((err: unknown) => log.warn('[ApprovalResumeOrchestrator] Failed to publish approval_approved:', err.message));
 
       return { approved: true, approvedBy: userId, executedAt: now };
     } else {
@@ -288,7 +285,6 @@ class ApprovalResumeOrchestrator {
         // Update status to allow retry
         await db.update(idempotencyKeys)
           .set({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             status: 'retry_approved',
             resultMetadata: {
               ...metadata,
@@ -312,10 +308,9 @@ class ApprovalResumeOrchestrator {
             idempotencyKeyId: key.id,
             operationType: key.operationType,
             approvalId,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             audience: 'manager',
           },
-        }).catch((err: any) => log.warn('[ApprovalResumeOrchestrator] Failed to publish job_resume_approved:', err.message));
+        }).catch((err: unknown) => log.warn('[ApprovalResumeOrchestrator] Failed to publish job_resume_approved:', err.message));
       }
     }
   }
@@ -333,7 +328,6 @@ class ApprovalResumeOrchestrator {
       if (metadata?.governanceApprovalId === approvalId) {
         await db.update(idempotencyKeys)
           .set({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             status: 'rejected',
             errorMessage: reason,
             resultMetadata: {
@@ -383,7 +377,7 @@ class ApprovalResumeOrchestrator {
   /**
    * Get pending approvals for a workspace
    */
-  async getPendingApprovals(workspaceId?: string): Promise<any[]> {
+  async getPendingApprovals(workspaceId?: string): Promise<Record<string,unknown>[]> {
     const conditions = workspaceId
       ? and(
           eq(aiWorkflowApprovals.status, 'pending'),
@@ -446,7 +440,7 @@ export function registerApprovalResumeActions() {
       id: 'resume_approval.request',
       name: 'Request Resume Approval',
       description: 'Request human approval for resuming an interrupted automation workflow',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return approvalResumeOrchestrator.requestApproval(params);
       },
     },
@@ -454,7 +448,7 @@ export function registerApprovalResumeActions() {
       id: 'resume_approval.decide',
       name: 'Process Resume Decision',
       description: 'Process an approval or rejection decision for workflow resumption',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return approvalResumeOrchestrator.processDecision(
           params.approvalId,
           params.approved,
@@ -467,7 +461,7 @@ export function registerApprovalResumeActions() {
       id: 'resume_approval.get_pending',
       name: 'Get Pending Resume Approvals',
       description: 'Get list of pending workflow resume approvals',
-      handler: async (params: any) => {
+      handler: async (params: Record<string, unknown>) => {
         return approvalResumeOrchestrator.getPendingApprovals(params.workspaceId);
       },
     },

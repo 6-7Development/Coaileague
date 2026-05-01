@@ -19,7 +19,7 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('OrchestrationBridge');
 
 let isInitialized = false;
-let wssBroadcaster: ((workspaceId: string, data: any) => void) | null = null;
+let wssBroadcaster: ((workspaceId: string, data: Record<string, unknown>) => void) | null = null;
 
 /**
  * Load persisted service states from database
@@ -42,7 +42,7 @@ async function loadPersistedServiceStates(): Promise<string[]> {
 /**
  * Set the WebSocket broadcaster function from the main websocket.ts
  */
-export function setOrchestrationWebSocketBroadcaster(broadcaster: (workspaceId: string, data: any) => void) {
+export function setOrchestrationWebSocketBroadcaster(broadcaster: (workspaceId: string, data: Record<string, unknown>) => void) {
   wssBroadcaster = broadcaster;
   log.info('[OrchestrationBridge] WebSocket broadcaster registered');
 }
@@ -306,7 +306,6 @@ function setupWebSocketBridge() {
 
     try {
       const { helpaiOrchestrator } = await import('../helpai/platformActionHub');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await helpaiOrchestrator.executeAction({
         actionId: data.actionId,
         userId: data.userId || 'trinity-ai',
@@ -326,7 +325,7 @@ function setupWebSocketBridge() {
         executionTimeMs: result.executionTimeMs,
         timestamp: new Date().toISOString(),
       }, data.workspaceId);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OrchestrationBridge] Action ${data.actionId} execution error:`, (error instanceof Error ? error.message : String(error)));
       broadcastOrchestrationEvent('action_result', {
         actionId: data.actionId,
@@ -454,7 +453,7 @@ function connectRealTimeBridgeToWebSocket() {
 /**
  * Broadcast an orchestration event to all clients (or specific workspace)
  */
-function broadcastOrchestrationEvent(type: string, data: any, workspaceId?: string) {
+function broadcastOrchestrationEvent(type: string, data: Record<string, unknown>, workspaceId?: string) {
   const message = {
     type: 'orchestration',
     event: type,

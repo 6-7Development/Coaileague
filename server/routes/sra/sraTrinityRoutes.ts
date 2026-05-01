@@ -107,7 +107,7 @@ router.post('/chat', requireSRAAuth, async (req: SRARequest, res: Response) => {
     if (!session) return res.status(404).json({ success: false, error: 'Session not found.' });
 
     // Load workspace and findings for context
-    const [workspace] = await db.select({ name: workspaces.name, stateCode: (workspaces as any).stateCode })
+    const [workspace] = await db.select({ name: workspaces.name, stateCode: (workspaces as Record<string,unknown>).stateCode })
       .from(workspaces).where(eq(workspaces.id, sraSession.workspaceId)).limit(1);
 
     const findings = await db.select({
@@ -403,13 +403,13 @@ router.get('/download/:docId', requireSRAAuth, async (req: SRARequest, res: Resp
         )
       );
 
-    const doc = docs.find(d => (d.metadata as any)?.docId === docId);
+    const doc = docs.find(d => (d.metadata as Record<string,unknown>)?.docId === docId);
 
     if (!doc) {
       return res.status(404).json({ success: false, error: 'Document not found.' });
     }
 
-    const pdfBase64 = (doc.metadata as any)?.pdfBase64 as string | undefined;
+    const pdfBase64 = (doc.metadata as Record<string,unknown>)?.pdfBase64 as string | undefined;
     if (!pdfBase64) {
       return res.status(404).json({ success: false, error: 'PDF data is not available for this document.' });
     }

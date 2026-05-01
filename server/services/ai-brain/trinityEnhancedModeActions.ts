@@ -26,7 +26,7 @@ import type { ActionRequest, ActionResult } from '../helpai/platformActionHub';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityEnhancedModeActions');
 
-export function registerTrinityEnhancedModeActions(orchestrator: any): void {
+export function registerTrinityEnhancedModeActions(orchestrator: unknown): void {
   log.info('[TrinityEnhanced] Registering Enhanced Guru Mode + Business Pro Mode actions...');
 
   // -------------------------------------------------------------------------
@@ -152,11 +152,11 @@ export function registerTrinityEnhancedModeActions(orchestrator: any): void {
           actionId: request.actionId,
           message: result.autoExecuted 
             ? `Scenario simulated, mitigation auto-executed (ROI: ${result.roi}x)`
-            : `Scenario simulated: $${result.revenueAtRisk} at risk, ${(result as any).mitigation || 'needs approval'}`,
+            : `Scenario simulated: $${result.revenueAtRisk} at risk, ${(result as Record<string, unknown>).mitigation || 'needs approval'}`,
           data: result,
           executionTimeMs: Date.now() - startTime
         };
-      } catch (e: any) {
+      } catch (e: unknown) {
         return {
           success: false,
           actionId: request.actionId,

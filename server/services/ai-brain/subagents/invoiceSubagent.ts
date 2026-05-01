@@ -79,7 +79,7 @@ interface AuditEntry {
   traceId: string;
   action: string;
   status: 'started' | 'completed' | 'failed';
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   durationMs?: number;
 }
 
@@ -249,7 +249,7 @@ class InvoiceSubagentService {
 
       for (const entry of billableEntries) {
         const hours = parseFloat(entry.totalHours?.toString() || '0');
-        const rate = parseFloat(entry.hourlyRate?.toString() || (clientData as any).defaultHourlyRate?.toString() || '100');
+        const rate = parseFloat(entry.hourlyRate?.toString() || (clientData as Record<string,unknown>).defaultHourlyRate?.toString() || '100');
         // Integer-cent arithmetic: hundredths_of_hour × cents_per_hour ÷ 100 = cents
         const amountCents = Math.round(Math.round(hours * 100) * Math.round(rate * 100) / 100);
         const amount = amountCents / 100;
@@ -266,13 +266,11 @@ class InvoiceSubagentService {
         });
 
         // Check for rate discrepancies
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (Math.abs(rate - parseFloat(clientData.defaultHourlyRate?.toString() || '0')) > 5) {
           issues.push({
             severity: 'warning',
             type: 'rate',
-            description: `Rate variance detected: $${rate}/hr vs contract rate $${(clientData as any).defaultHourlyRate}/hr`,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
+            description: `Rate variance detected: $${rate}/hr vs contract rate $${(clientData as Record<string,unknown>).defaultHourlyRate}/hr`,
             potentialRevenue: Math.abs(amount - hours * parseFloat(clientData.defaultHourlyRate?.toString() || '0')),
           });
         }
@@ -301,7 +299,7 @@ class InvoiceSubagentService {
             zeroRateEntries: zeroRateCount,
             zeroHourEntries: zeroHourCount,
             rateVariances: rateVarianceCount,
-            contractRate: (clientData as any).defaultHourlyRate,
+            contractRate: (clientData as Record<string,unknown>).defaultHourlyRate,
             periodStart: billingPeriodStart.toISOString(),
             periodEnd: billingPeriodEnd.toISOString(),
           },
@@ -374,7 +372,6 @@ class InvoiceSubagentService {
         }).returning();
 
         for (const item of lineItems) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await tx.insert(invoiceLineItems).values({
             workspaceId,
             invoiceId: inv.id,
@@ -442,7 +439,7 @@ class InvoiceSubagentService {
 
       return result;
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       this.logAudit(traceId, 'invoice.generate', 'failed', { error: (error instanceof Error ? error.message : String(error)) });
 
       return {
@@ -487,14 +484,12 @@ class InvoiceSubagentService {
         workspaceId,
         userId: 'invoice-subagent',
         featureKey: 'invoicing_session_fee',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         featureName: 'Invoicing Processing Fee',
         description: `Invoice batch ${traceId.substring(0, 16)} — processing fee (line item calculation, gap analysis, formatting)`,
       });
       log.info(`[InvoiceSubagent] Session fee charged: ${sessionFee} credits for workspace ${workspaceId}`);
-    } catch (feeErr: any) {
+    } catch (feeErr : unknown) {
       log.error(`[InvoiceSubagent] Session fee deduction failed for workspace ${workspaceId}:`, feeErr.message);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       this.logAudit(traceId, 'invoice.batch_generate', 'billing_failed', { error: feeErr.message });
       return {
         totalGenerated: 0,
@@ -544,19 +539,18 @@ class InvoiceSubagentService {
             await tokenManager.recordUsage({
               workspaceId,
               featureKey: 'ai_invoice_generation',
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               featureName: 'Per-Invoice AI Generation',
               description: `Invoice ${result.invoiceId || 'unknown'} — per-occurrence fee (${perInvoiceFee}cr) for client ${clientId.substring(0, 12)}`,
               quantity: 1,
             });
             log.info(`[InvoiceSubagent] Per-invoice fee charged: ${perInvoiceFee}cr for invoice ${result.invoiceId}`);
-          } catch (invoiceErr: any) {
+          } catch (invoiceErr : unknown) {
             log.warn(`[InvoiceSubagent] Per-invoice billing error (non-blocking):`, invoiceErr.message);
           }
         } else {
           failedClients.push(clientId);
         }
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.error(`[InvoiceSubagent] Failed to generate invoice for client ${clientId}:`, (error instanceof Error ? error.message : String(error)));
         failedClients.push(clientId);
       }
@@ -772,7 +766,6 @@ class InvoiceSubagentService {
     try {
       const [existing] = await db.select()
         .from(idempotencyKeys)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(idempotencyKeys.key, key))
         .limit(1);
 
@@ -785,17 +778,15 @@ class InvoiceSubagentService {
     return null;
   }
 
-  private async storeIdempotencyResult(key: string, result: any): Promise<void> {
+  private async storeIdempotencyResult(key: string, result: unknown): Promise<void> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.insert(idempotencyKeys).values({
         workspaceId: 'system',
         key,
         result,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       }).onConflictDoUpdate({
-        target: (idempotencyKeys as any).key,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+        target: (idempotencyKeys as Record<string,unknown>).key,
         set: { result, updatedAt: new Date() },
       });
     } catch (error) {
@@ -833,7 +824,7 @@ class InvoiceSubagentService {
   }
 
   private async generateReconciliationRecommendations(
-    discrepancies: any[],
+    discrepancies: unknown[],
     revenueAtRisk: number
   ): Promise<string[]> {
     const recommendations: string[] = [];
@@ -862,7 +853,7 @@ class InvoiceSubagentService {
     return recommendations;
   }
 
-  private async generateGapInsights(workspaceId: string, clientGaps: any[], totalRevenue: number): Promise<string> {
+  private async generateGapInsights(workspaceId: string, clientGaps: unknown[], totalRevenue: number): Promise<string> {
     if (clientGaps.length === 0) {
       return 'No unbilled revenue gaps detected. All approved work has been invoiced.';
     }
@@ -895,7 +886,7 @@ Provide 2-3 sentences of executive-level recommendations to recover this revenue
     }
   }
 
-  private logAudit(traceId: string, action: string, status: 'started' | 'completed' | 'failed', details: Record<string, any>): void {
+  private logAudit(traceId: string, action: string, status: 'started' | 'completed' | 'failed', details: Record<string, unknown>): void {
     this.auditLog.push({
       timestamp: new Date(),
       traceId,
@@ -914,8 +905,8 @@ Provide 2-3 sentences of executive-level recommendations to recover this revenue
     // (TRINITY.md Section L). 'started' rows are skipped to avoid 2× write
     // amplification; only the terminal state is persisted.
     if (status !== 'started') {
-      const wsId = (details as any)?.workspaceId ?? null;
-      const entityId = (details as any)?.invoiceId ?? null;
+      const wsId = (details as Record<string,unknown>)?.workspaceId ?? null;
+      const entityId = (details as Record<string,unknown>)?.invoiceId ?? null;
       void logActionAudit({
         actionId: action,
         workspaceId: wsId,
@@ -924,7 +915,7 @@ Provide 2-3 sentences of executive-level recommendations to recover this revenue
         success: status === 'completed',
         message: `subagent.${action}.${status}`,
         payload: { traceId, ...details },
-        errorMessage: status === 'failed' ? ((details as any)?.error ?? null) : null,
+        errorMessage: status === 'failed' ? ((details as Record<string,unknown>)?.error ?? null) : null,
       });
     }
   }

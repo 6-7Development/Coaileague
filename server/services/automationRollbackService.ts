@@ -10,7 +10,7 @@ export interface RollbackableAction {
   entityType: string | null;
   entityId: string | null;
   actionDescription: string | null;
-  changes: { before?: Record<string, any>; after?: Record<string, any> } | null;
+  changes: { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
   userId: string;
   userEmail: string;
   createdAt: Date;
@@ -89,10 +89,8 @@ class AutomationRollbackService {
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return logs.map((log) => {
-      const changes = log.changes as { before?: Record<string, any>; after?: Record<string, any> } | null;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
       const canRollback = this.canRollbackAction(log.entityType, log.action, changes);
 
       return {
@@ -114,7 +112,7 @@ class AutomationRollbackService {
   private canRollbackAction(
     entityType: string | null,
     action: string,
-    changes: { before?: Record<string, any>; after?: Record<string, any> } | null
+    changes: { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
   ): { canRollback: boolean; reason?: string } {
     if (!entityType) {
       return { canRollback: false, reason: 'No entity type recorded' };
@@ -135,7 +133,7 @@ class AutomationRollbackService {
     return { canRollback: true };
   }
 
-  private getSafeFields(entityType: string, beforeState: Record<string, any>): string[] {
+  private getSafeFields(entityType: string, beforeState: Record<string, unknown>): string[] {
     const allowedFields = ALLOWED_FIELDS_PER_ENTITY[entityType];
     if (!allowedFields) return [];
 
@@ -159,8 +157,7 @@ class AutomationRollbackService {
       return { success: false, auditLogId, entityType: '', entityId: '', restoredFields: [], error: 'Audit log entry not found in this workspace' };
     }
 
-    const changes = log.changes as { before?: Record<string, any>; after?: Record<string, any> } | null;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const changes = log.changes as { before?: Record<string, unknown>; after?: Record<string, unknown> } | null;
     const canRollback = this.canRollbackAction(log.entityType, log.action, changes);
 
     if (!canRollback.canRollback) {
@@ -219,7 +216,7 @@ class AutomationRollbackService {
         sql`SELECT id, workspace_id FROM ${table} WHERE id = ${entityId} LIMIT 1`
       );
 
-      const existingRow = (existingRows as any).rows?.[0] || (existingRows as any)[0];
+      const existingRow = (existingRows as Record<string,unknown>).rows?.[0] || (existingRows as Record<string,unknown>[])[0];
       if (!existingRow) {
         return {
           success: false,
@@ -272,7 +269,7 @@ class AutomationRollbackService {
         userId: performedBy.userId,
         userEmail: performedBy.userEmail,
         userRole: performedBy.userRole,
-        action: 'update' as any,
+        action: 'update',
         actionDescription: `Rollback of ${log.action} on ${entityType} ${entityId} (original action at ${log.createdAt.toISOString()})`,
         entityType,
         entityId,
@@ -297,13 +294,13 @@ class AutomationRollbackService {
         entityId,
         restoredFields: safeFields,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       await db.insert(auditLogs).values({
         workspaceId,
         userId: performedBy.userId,
         userEmail: performedBy.userEmail,
         userRole: performedBy.userRole,
-        action: 'update' as any,
+        action: 'update',
         actionDescription: `Failed rollback attempt of ${log.action} on ${entityType} ${entityId}`,
         entityType,
         entityId,

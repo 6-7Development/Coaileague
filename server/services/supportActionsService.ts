@@ -108,7 +108,7 @@ export interface SupportActionResult {
   targetUserId?: string;
   message: string;
   messageKind: MessageKind;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   requiresConfirmation?: boolean;
   confirmationToken?: string;
 }
@@ -139,7 +139,7 @@ const CONFIRMATION_REQUIRED: SupportActionType[] = ['lock_account', 'reset_passw
 class SupportActionsService {
   private pendingConfirmations = new Map<string, {
     action: SupportActionType;
-    params: any;
+    params: Record<string, unknown>;
     executorId: string;
     expiresAt: Date;
   }>();
@@ -507,7 +507,7 @@ class SupportActionsService {
     action: SupportActionType,
     executorId: string,
     targetUserId: string | null,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     success: boolean
   ): Promise<void> {
     try {
@@ -522,7 +522,6 @@ class SupportActionsService {
           ...details,
           success,
           timestamp: new Date().toISOString(),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           severity: ELEVATED_ACTIONS.includes(action) ? 'critical' : 'info',
         },
       });
@@ -604,7 +603,6 @@ class SupportActionsService {
       // CATEGORY C — Raw SQL retained: ::jsonb | Tables: sessions | Verified: 2026-03-23
       await typedExec(
         `DELETE FROM sessions WHERE sess::jsonb->>'userId' = $1`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         [targetUserId]
       );
 
@@ -730,9 +728,9 @@ class SupportActionsService {
       }
 
       // Get workspace info
-      const workspace = (targetUser as any).workspaceId
+      const workspace = (targetUser as Record<string,unknown>).workspaceId
         ? await db.query.workspaces.findFirst({
-            where: eq(workspaces.id, (targetUser as any).workspaceId),
+            where: eq(workspaces.id, (targetUser as Record<string,unknown>).workspaceId),
           })
         : null;
 
@@ -742,10 +740,10 @@ class SupportActionsService {
         userId: targetUser.id,
         email: targetUser.email,
         name: `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || 'N/A',
-        isActive: (targetUser as any).isActive,
-        lockedAt: (targetUser as any).lockedAt,
-        lockReason: (targetUser as any).lockReason,
-        workspaceId: (targetUser as any).workspaceId,
+        isActive: (targetUser as Record<string,unknown>).isActive,
+        lockedAt: (targetUser as Record<string,unknown>).lockedAt,
+        lockReason: (targetUser as Record<string,unknown>).lockReason,
+        workspaceId: (targetUser as Record<string,unknown>).workspaceId,
         workspaceName: workspace?.name || 'N/A',
         createdAt: targetUser.createdAt,
         lastLoginAt: targetUser.lastLoginAt,
@@ -883,11 +881,10 @@ class SupportActionsService {
         await emailService.sendPasswordResetEmail( // infra
           targetEmail,
           resetToken,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           targetUser.currentWorkspaceId || undefined
         );
         emailSent = true;
-      } catch (emailErr: any) {
+      } catch (emailErr : unknown) {
         emailError = emailErr?.message || 'Unknown email error';
         log.error('[SupportActions] Password reset email failed:', emailErr);
       }
@@ -1126,7 +1123,6 @@ class SupportActionsService {
       // CATEGORY C — Raw SQL retained: ::jsonb | Tables: sessions | Verified: 2026-03-23
       const result = await typedExec(
         `DELETE FROM sessions WHERE sess::jsonb->>'userId' = $1`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         [targetUserId]
       );
 

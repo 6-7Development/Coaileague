@@ -21,7 +21,7 @@ interface CreateApprovalRequest {
   requestType: string;
   title: string;
   description?: string;
-  requestPayload?: Record<string, any>;
+  requestPayload?: Record<string, unknown>;
   priority?: RequestPriority;
   expiresAt?: Date;
   estimatedTokens?: number;
@@ -63,8 +63,7 @@ class ApprovalRequestService {
       await db.update(aiWorkboardTasks)
         .set({
           status: 'awaiting_approval',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: 'awaiting_approval',
             timestamp: new Date().toISOString(),
             actor: 'system',
@@ -85,7 +84,7 @@ class ApprovalRequestService {
   ) {
     const { decision, limit = 50, offset = 0, scope = 'employee' } = options;
 
-    const conditions: any[] = [eq(aiApprovalRequests.workspaceId, workspaceId)];
+    const conditions: unknown[] = [eq(aiApprovalRequests.workspaceId, workspaceId)];
 
     if (decision && decision.length > 0) {
       conditions.push(inArray(aiApprovalRequests.status, decision as any));
@@ -127,7 +126,7 @@ class ApprovalRequestService {
   }
 
   async getPendingCount(userId: string, workspaceId: string, scope: 'admin' | 'manager' | 'employee' = 'employee'): Promise<number> {
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(aiApprovalRequests.workspaceId, workspaceId),
       eq(aiApprovalRequests.status, 'pending')
     ];
@@ -160,7 +159,7 @@ class ApprovalRequestService {
     }
 
     const now = new Date();
-    const updateFields: any = {
+    const updateFields: Record<string, unknown> = {
       status: decision,
       approverId,
       statusHistory: sql`${aiApprovalRequests.statusHistory} || ${JSON.stringify([{
@@ -192,8 +191,7 @@ class ApprovalRequestService {
       await db.update(aiWorkboardTasks)
         .set({
           status: newStatus,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          statusHistory: sql`${(aiWorkboardTasks as any).statusHistory} || ${JSON.stringify([{
+          statusHistory: sql`${(aiWorkboardTasks as Record<string,unknown>).statusHistory} || ${JSON.stringify([{
             status: newStatus,
             timestamp: new Date().toISOString(),
             actor: approverId,

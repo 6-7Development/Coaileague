@@ -86,7 +86,7 @@ export function PushNotificationPrompt() {
             </div>
           </div>
           <Button
-            size="icon"
+            size="icon" aria-label="Close Push Prompt"
             variant="ghost"
             className="shrink-0"
             onClick={handleDismiss}

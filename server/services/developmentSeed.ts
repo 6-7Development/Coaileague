@@ -14,6 +14,9 @@ import { isProduction } from '../lib/isProduction';
 import { db } from "../db";
 import { and, eq, inArray, notExists, sql } from 'drizzle-orm';
 import { typedExec, typedQuery } from '../lib/typedSql';
+import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
+const log = createLogger('developmentSeed');
 import {
   workspaceMembers,
   users, employees, clients, shifts, invoices, payStubs,
@@ -27,7 +30,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
     return { success: true, message: 'Skipped - production environment' };
   }
 
-  console.log('[DevSeed] Checking development database...');
+  log.info('[DevSeed] Checking development database...');
 
   try {
     // Converted to Drizzle ORM: LIMIT
@@ -37,17 +40,17 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       .limit(1);
 
     if (existing.length > 0) {
-      console.log('[DevSeed] Development data already exists. Skipping.');
+      log.info('[DevSeed] Development data already exists. Skipping.');
       return { success: true, message: 'Already seeded' };
     }
 
-    console.log('[DevSeed] Seeding development data...');
+    log.info('[DevSeed] Seeding development data...');
 
     await db.transaction(async (tx) => {
       // =====================================================================
       // 1. DEV USERS - Test accounts for different roles
       // =====================================================================
-      console.log('[DevSeed] Creating test users...');
+      log.info('[DevSeed] Creating test users...');
 
       const devUsers = [
         { id: 'dev-owner-001', email: 'owner@acme-security.test', firstName: 'Marcus', lastName: 'Rivera', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
@@ -99,7 +102,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 2. DEV WORKSPACES - Two test companies + demo workspace
       // =====================================================================
-      console.log('[DevSeed] Creating test workspaces...');
+      log.info('[DevSeed] Creating test workspaces...');
 
       const devWorkspaces = [
         { id: DEV_SENTINEL_WORKSPACE, name: 'Acme Security Services', ownerId: 'dev-owner-001', tier: 'enterprise', status: 'active', category: 'security', maxEmp: 50, maxClients: 25 },
@@ -123,7 +126,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 3. DEV PLATFORM ROLES - Test admin roles
       // =====================================================================
-      console.log('[DevSeed] Creating test platform roles...');
+      log.info('[DevSeed] Creating test platform roles...');
 
       // IMPORTANT: dev-owner-001 (Marcus Rivera) is an org_owner of Acme Security - NOT a platform admin.
       // Only actual platform staff (root-admin-workfos, root-user-00000000) get platform roles.
@@ -132,7 +135,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 4. DEV EMPLOYEES - Acme Security team (13 employees)
       // =====================================================================
-      console.log('[DevSeed] Creating test employees...');
+      log.info('[DevSeed] Creating test employees...');
 
       const acmeEmployees = [
         { id: 'dev-acme-emp-001', userId: 'dev-owner-001', firstName: 'Marcus', lastName: 'Rivera', email: 'owner@acme-security.test', hourlyRate: '45.00', role: 'Operations Director', workspaceRole: 'org_owner', empNum: 'EMP-ACME-00001' },
@@ -195,7 +198,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 5. DEV CLIENTS - Realistic client accounts
       // =====================================================================
-      console.log('[DevSeed] Creating test clients...');
+      log.info('[DevSeed] Creating test clients...');
 
       const acmeClients = [
         { id: 'dev-client-001', firstName: 'Riverside', lastName: 'Mall Management', companyName: 'Riverside Shopping Center', email: 'security@riverside-mall.test', phone: '555-100-2001', address: '4500 Riverside Blvd', city: 'Dallas', state: 'TX', postalCode: '75201', contractRate: '28.00', pocName: 'Tom Bradley', pocPhone: '555-100-2002', pocEmail: 'tbradley@riverside-mall.test', pocTitle: 'Facilities Manager' },
@@ -211,7 +214,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       for (const client of acmeClients) {
         await tx.execute(sql`
           INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, email, phone, address, city, state, postal_code, country, contract_rate, contract_rate_type, poc_name, poc_phone, poc_email, poc_title, is_agency, created_at, updated_at)
-          VALUES (${client.id}, ${DEV_SENTINEL_WORKSPACE}, ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, ${(client as any).isAgency || false}, NOW(), NOW())
+          VALUES (${client.id}, ${DEV_SENTINEL_WORKSPACE}, ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, ${(client as ClientWithExtras).isAgency || false}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }
@@ -233,7 +236,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 6. DEV SHIFTS - Sample shifts for the current week
       // =====================================================================
-      console.log('[DevSeed] Creating test shifts...');
+      log.info('[DevSeed] Creating test shifts...');
 
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -284,7 +287,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // 6b. OPEN SHIFTS — Unassigned shifts for Trinity to fill
       //     These have no employee_id so they appear as "open" in the schedule
       // =====================================================================
-      console.log('[DevSeed] Creating open shifts for Trinity auto-fill testing...');
+      log.info('[DevSeed] Creating open shifts for Trinity auto-fill testing...');
 
       const openShiftTemplates = [
         { clientId: 'dev-client-001', title: 'Mall Patrol - Open Day Shift', category: 'security', dayOffset: 0, startHour: 6, endHour: 14 },
@@ -334,7 +337,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       // =====================================================================
       // 7. DEV WORKSPACE CREDITS - Give test workspaces credits
       // =====================================================================
-      console.log('[DevSeed] Setting up workspace credits...');
+      log.info('[DevSeed] Setting up workspace credits...');
 
       try {
         const creditWorkspaces = [
@@ -351,14 +354,14 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
           `);
         }
       } catch (err) {
-        console.log('[DevSeed] Workspace credits setup skipped:', (err as Error).message);
+        log.info('[DevSeed] Workspace credits setup skipped:', (err as Error).message);
       }
 
       // =====================================================================
       // 8. MARCUS TIME ENTRIES — Realistic March 1-15 shifts for earnings widget
       //    Marcus Rivera (dev-acme-emp-001) @ $45/hr — 10 weekday shifts, ~80 hrs
       // =====================================================================
-      console.log('[DevSeed] Setting up Marcus time entries for pay period...');
+      log.info('[DevSeed] Setting up Marcus time entries for pay period...');
       const marcusShifts = [
         { date: '2026-03-02', start: '06:00', end: '14:00', hours: 8.0 },
         { date: '2026-03-03', start: '06:00', end: '14:00', hours: 8.0 },
@@ -386,14 +389,14 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
           `);
         }
       } catch (err) {
-        console.log('[DevSeed] Marcus time entries setup skipped:', (err as Error).message);
+        log.info('[DevSeed] Marcus time entries setup skipped:', (err as Error).message);
       }
 
       // =====================================================================
       // 9. MARCUS PAYROLL RUNS — Two processed pay periods so my-paychecks
       //    widget shows real data (Feb 16-28 and Mar 1-15, 2026)
       // =====================================================================
-      console.log('[DevSeed] Setting up Marcus payroll runs...');
+      log.info('[DevSeed] Setting up Marcus payroll runs...');
       try {
         const DEV_RUN_FEB = 'dev-payrun-marcus-feb-2026';
         const DEV_RUN_MAR = 'dev-payrun-marcus-mar-2026';
@@ -435,7 +438,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
           ON CONFLICT (id) DO NOTHING
         `);
       } catch (err) {
-        console.log('[DevSeed] Marcus payroll runs setup skipped:', (err as Error).message);
+        log.info('[DevSeed] Marcus payroll runs setup skipped:', (err as Error).message);
       }
     });
 
@@ -481,9 +484,9 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
           notes: 'Lone Star Medical Center — partial payment received $500 of $1200',
         },
       ]).onConflictDoNothing();
-      console.log('[DevSeed] Acme invoices seeded (5 invoices)');
+      log.info('[DevSeed] Acme invoices seeded (5 invoices)');
     } catch (err) {
-      console.log('[DevSeed] Acme invoices skipped:', (err as Error).message.slice(0, 100));
+      log.info('[DevSeed] Acme invoices skipped:', (err as Error).message.slice(0, 100));
     }
 
     // ── ACME PAY STUBS for Officers 1-3 (Marcus Feb run) ─────────────────────
@@ -518,9 +521,9 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
           status: 'generated',
         },
       ]).onConflictDoNothing();
-      console.log('[DevSeed] Acme pay stubs seeded (3 officer stubs)');
+      log.info('[DevSeed] Acme pay stubs seeded (3 officer stubs)');
     } catch (err) {
-      console.log('[DevSeed] Acme pay stubs skipped:', (err as Error).message.slice(0, 100));
+      log.info('[DevSeed] Acme pay stubs skipped:', (err as Error).message.slice(0, 100));
     }
 
     // ── PHASE 0: Marcus Rodriguez + Downtown Mall Security (ReportBot demo shift) ──
@@ -593,7 +596,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         employeeId: 'dev-acme-emp-marcus',
         clientId: 'dev-client-downtown-mall',
         title: 'Downtown Mall — Day Security',
-        category: 'security' as any,
+        category: 'security',
         startTime: shiftStart0,
         endTime: shiftEnd0,
         date: today0.toISOString().split('T')[0],
@@ -695,30 +698,30 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         }).onConflictDoNothing();
       }
 
-      console.log('[DevSeed] Phase 0 data seeded: Marcus Rodriguez + Downtown Mall + today\'s shift + 15 messages');
-    } catch (phaseErr: any) {
-      console.log('[DevSeed] Phase 0 seed skipped:', phaseErr.message?.slice(0, 150));
+      log.info('[DevSeed] Phase 0 data seeded: Marcus Rodriguez + Downtown Mall + today\'s shift + 15 messages');
+    } catch (phaseErr: unknown) {
+      log.info('[DevSeed] Phase 0 seed skipped:', phaseErr.message?.slice(0, 150));
     }
 
-    console.log('[DevSeed] Development data seeded successfully!');
-    console.log('   - Users: 36 test accounts (inc. Marcus Rodriguez)');
-    console.log('   - Workspaces: 3 organizations (Acme Security, Lone Star Security, Demo)');
-    console.log('   - Employees: 35 across workspaces (29 Acme + 5 Lone Star + Marcus Rodriguez)');
-    console.log('     Acme roles: 1 org_owner, 2 managers, 2 department_managers, 2 supervisors, 5 contractors, 17 employees');
-    console.log('   - Clients: 12 client accounts (inc. Downtown Mall Security)');
-    console.log('   - Shifts: 18 assigned + 20 open (Trinity fill targets) + Phase 0 today shift');
-    console.log('   - Invoices: 5 Acme invoices (draft/sent/overdue/paid/partial)');
-    console.log('   - Pay Stubs: 3 Acme officer stubs + 2 Marcus stubs');
-    console.log('   - AI Credits: Allocated to all workspaces');
-    console.log('');
-    console.log('   Phase 0 officer: rodriguez@acme-security.test (Marcus Rodriguez, GC-2024-001)');
-    console.log('   Test login: owner@acme-security.test');
-    console.log('   Demo login: demo@coaileague.test');
+    log.info('[DevSeed] Development data seeded successfully!');
+    log.info('   - Users: 36 test accounts (inc. Marcus Rodriguez)');
+    log.info('   - Workspaces: 3 organizations (Acme Security, Lone Star Security, Demo)');
+    log.info('   - Employees: 35 across workspaces (29 Acme + 5 Lone Star + Marcus Rodriguez)');
+    log.info('     Acme roles: 1 org_owner, 2 managers, 2 department_managers, 2 supervisors, 5 contractors, 17 employees');
+    log.info('   - Clients: 12 client accounts (inc. Downtown Mall Security)');
+    log.info('   - Shifts: 18 assigned + 20 open (Trinity fill targets) + Phase 0 today shift');
+    log.info('   - Invoices: 5 Acme invoices (draft/sent/overdue/paid/partial)');
+    log.info('   - Pay Stubs: 3 Acme officer stubs + 2 Marcus stubs');
+    log.info('   - AI Credits: Allocated to all workspaces');
+    log.info('');
+    log.info('   Phase 0 officer: rodriguez@acme-security.test (Marcus Rodriguez, GC-2024-001)');
+    log.info('   Test login: owner@acme-security.test');
+    log.info('   Demo login: demo@coaileague.test');
 
     return { success: true, message: 'Development data seeded successfully' };
 
   } catch (error) {
-    console.error('[DevSeed] Failed to seed development data:', error);
+    log.error('[DevSeed] Failed to seed development data:', error);
     return { success: false, message: `Dev seed failed: ${error}` };
   }
 }
@@ -744,11 +747,11 @@ export async function ensurePhase0Seed(): Promise<void> {
       SELECT id FROM employees WHERE id = 'dev-acme-emp-marcus' LIMIT 1
     `);
     if (existing.length > 0) {
-      console.log('[Phase0Seed] Already seeded — skipping');
+      log.info('[Phase0Seed] Already seeded — skipping');
       return;
     }
 
-    console.log('[Phase0Seed] Seeding Marcus Rodriguez + Downtown Mall + shift chatroom...');
+    log.info('[Phase0Seed] Seeding Marcus Rodriguez + Downtown Mall + shift chatroom...');
 
     const now0       = new Date();
     const today0     = new Date(now0.getFullYear(), now0.getMonth(), now0.getDate());
@@ -938,9 +941,9 @@ export async function ensurePhase0Seed(): Promise<void> {
       }).onConflictDoNothing();
     }
 
-    console.log('[Phase0Seed] Done — Marcus Rodriguez + Downtown Mall + chatroom + 15 messages seeded');
-  } catch (err: any) {
-    console.error('[Phase0Seed] Error:', (err instanceof Error ? err.message : String(err))?.slice(0, 200));
+    log.info('[Phase0Seed] Done — Marcus Rodriguez + Downtown Mall + chatroom + 15 messages seeded');
+  } catch (err: unknown) {
+    log.error('[Phase0Seed] Error:', (err instanceof Error ? err.message : String(err))?.slice(0, 200));
   }
 }
 
@@ -970,11 +973,11 @@ export async function ensurePhase0ExtendedSeed(): Promise<void> {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      console.log('[Phase0ExtSeed] Already seeded — skipping');
+      log.info('[Phase0ExtSeed] Already seeded — skipping');
       return;
     }
 
-    console.log('[Phase0ExtSeed] Seeding routine / photo-only / abandoned shift variants...');
+    log.info('[Phase0ExtSeed] Seeding routine / photo-only / abandoned shift variants...');
 
     const now = new Date();
 
@@ -1316,8 +1319,8 @@ export async function ensurePhase0ExtendedSeed(): Promise<void> {
       }).onConflictDoNothing();
     }
 
-    console.log('[Phase0ExtSeed] Done — routine + photo-only + abandoned shift variants seeded');
-  } catch (err: any) {
-    console.error('[Phase0ExtSeed] Error:', (err instanceof Error ? err.message : String(err))?.slice(0, 200));
+    log.info('[Phase0ExtSeed] Done — routine + photo-only + abandoned shift variants seeded');
+  } catch (err: unknown) {
+    log.error('[Phase0ExtSeed] Error:', (err instanceof Error ? err.message : String(err))?.slice(0, 200));
   }
 }

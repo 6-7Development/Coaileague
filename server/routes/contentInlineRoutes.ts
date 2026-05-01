@@ -26,6 +26,7 @@ import { ObjectStorageService, objectStorageClient } from "../objectStorage";
 import { randomUUID } from "crypto";
 import { createLogger } from '../lib/logger';
 import { contractDocuments } from '@shared/schema';
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('ContentInlineRoutes');
 
 
@@ -54,11 +55,11 @@ router.get("/customer-reports/:token", async (req, res) => {
   }
 });
 
-router.get("/client-reports", requireAuth, async (req: any, res) => {
+router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
@@ -87,7 +88,6 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
     const reports = await Promise.all(reportsForClient.map(async (report) => {
       let employeeName = 'Employee';
       if (report.employeeId) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const employee = await storage.getEmployee(report.employeeId);
         if (employee) {
           employeeName = `${employee.firstName} ${employee.lastName}`.trim() || 'Employee';
@@ -103,7 +103,7 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
        WHERE workspace_id = ${workspaceId}
          AND client_id = ${clientId}
     `);
-    const clientSiteIds: string[] = ((siteRows as any).rows || []).map((r: any) => r.id);
+    const clientSiteIds: string[] = ((siteRows as Record<string,unknown>).rows || []).map((r: unknown) => r.id);
 
     // Helper: produce a SQL array literal for inArray-style filters without
     // dropping down to the dynamic drizzle `inArray` builder.
@@ -132,7 +132,7 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY pt.completed_at DESC NULLS LAST
            LIMIT 50
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 3. Approved DARs for this client's sites — includes pdf_url.
@@ -156,7 +156,7 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY dar.created_at DESC
            LIMIT 100
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 4. Incidents — client-safe subset only (no internal investigation notes).
@@ -178,7 +178,7 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
              AND ir.site_id::text = ANY(${sitesLiteral})
            ORDER BY ir.occurred_at DESC NULLS LAST
            LIMIT 50
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 5. Shift transparency PDFs — the client's primary proof-of-service.
@@ -200,7 +200,7 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY dar.created_at DESC
            LIMIT 30
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     res.json({ reports, guardTours, dars, incidents, transparencyPdfs });
@@ -210,18 +210,18 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
   }
 });
 
-router.get("/locked-reports", requireAuth, async (req: any, res) => {
+router.get("/locked-reports", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
 
     const { employeeId, clientId, startDate, endDate } = req.query;
     
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
     if (employeeId) filters.employeeId = employeeId;
     if (clientId) filters.clientId = clientId;
     if (startDate) filters.startDate = new Date(startDate as string);
@@ -235,7 +235,7 @@ router.get("/locked-reports", requireAuth, async (req: any, res) => {
   }
 });
 
-router.get("/locked-reports/:id", requireAuth, async (req: any, res) => {
+router.get("/locked-reports/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     
@@ -251,18 +251,18 @@ router.get("/locked-reports/:id", requireAuth, async (req: any, res) => {
   }
 });
 
-router.get("/report-analytics", requireAuth, async (req: any, res) => {
+router.get("/report-analytics", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
 
     const { employeeId, clientId, startDate, endDate, templateId } = req.query;
     
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
     if (employeeId) filters.employeeId = employeeId;
     if (clientId) filters.clientId = clientId;
     if (templateId) filters.templateId = templateId;
@@ -289,7 +289,6 @@ router.post("/contract-documents", requireOwner, async (req: AuthenticatedReques
       workspaceId,
     });
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { employeeId, documentType, signedAt, fileUrl, metadata } = validated;
 
     if (!['i9', 'w9', 'w4'].includes(documentType)) {
@@ -421,7 +420,7 @@ router.patch("/custom-rules/:id", requireOwner, async (req: AuthenticatedRequest
     }
     
     const { name, description, category, severity, conditions, actions, isActive, priority } = req.body;
-    const safeRuleUpdates: Record<string, any> = { updatedBy: userId, updatedAt: new Date() };
+    const safeRuleUpdates: Record<string, unknown> = { updatedBy: userId, updatedAt: new Date() };
     if (name !== undefined) safeRuleUpdates.name = name;
     if (description !== undefined) safeRuleUpdates.description = description;
     if (category !== undefined) safeRuleUpdates.category = category;

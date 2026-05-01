@@ -179,7 +179,7 @@ router.post("/api/documents/batch-extract", requireAuth, async (req: Authenticat
 
     const results = await documentExtractionService.batchExtractDocuments(
       workspaceId,
-      documents.map((doc: any) => ({
+      documents.map((doc: unknown) => ({
         workspaceId,
         documentName: doc.documentName,
         documentType: doc.documentType,
@@ -192,8 +192,8 @@ router.post("/api/documents/batch-extract", requireAuth, async (req: Authenticat
       success: true,
       data: results,
       total: results.length,
-      successful: results.filter((r: any) => r.status === "success").length,
-      failed: results.filter((r: any) => r.status !== "success").length,
+      successful: results.filter((r: unknown) => r.status === "success").length,
+      failed: results.filter((r: unknown) => r.status !== "success").length,
     });
   } catch (error: unknown) {
     log.error("Error batch extracting documents:", error);
@@ -211,7 +211,7 @@ router.post("/api/documents/validate", requireAuth, readLimiter, async (req: Aut
       });
     }
 
-    const validationResults = (documentExtractionService as any).validateExtractedData(entityType, mappedData);
+    const validationResults = (documentExtractionService as Record<string,unknown>).validateExtractedData(entityType, mappedData);
 
     res.json({
       success: true,

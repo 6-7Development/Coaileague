@@ -36,7 +36,7 @@ import { requireTrinityAccess } from '../rbac';
 interface MascotActionResult {
   success: boolean;
   action: string;
-  data?: any;
+  data?: unknown;
   error?: string;
   reportedToSupport?: boolean;
 }
@@ -48,7 +48,7 @@ const AI_BRAIN_AUTHORITIES = ['gemini', 'helpai', 'mascot', 'bot', 'root_admin']
 async function reportMascotError(
   action: string, 
   error: string, 
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): Promise<void> {
   const errorId = `mascot-error-${Date.now()}`;
   
@@ -88,7 +88,7 @@ async function reportMascotError(
 async function executeMascotAction<T>(
   action: string,
   executor: () => Promise<T>,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): Promise<MascotActionResult> {
   try {
     const result = await executor();
@@ -196,7 +196,7 @@ async function executeSeasonalCommand(command: SeasonalCommand): Promise<Seasona
         : { success: false, message: `Holiday '${command.holidayId}' not found` };
     }
     default:
-      return { success: false, message: `Unknown action: ${(command as any).action}` };
+      return { success: false, message: `Unknown action: ${(command as Record<string,unknown>).action}` };
   }
 }
 
@@ -840,7 +840,7 @@ router.get('/personalized-greeting', requireTrinityAccess, async (req, res) => {
   
   const result = await executeMascotAction('mascot.personalized_greeting', async () => {
     // Gather comprehensive user and org context
-    let context: Record<string, any> = {
+    let context: Record<string, unknown> = {
       user: null,
       workspace: null,
       pendingIssues: [],
@@ -860,7 +860,6 @@ router.get('/personalized-greeting', requireTrinityAccess, async (req, res) => {
         firstName: users.firstName,
         lastName: users.lastName,
         role: users.role
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       }).from(users).where(eq(users.id, userId)).limit(1);
       context.user = user;
       
@@ -873,7 +872,6 @@ router.get('/personalized-greeting', requireTrinityAccess, async (req, res) => {
         const unreadResult = await db.select({ count: count() })
           .from(notifications)
           .where(and(
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             eq(notifications.userId, userId),
             eq(notifications.isRead, false)
           ));
@@ -996,7 +994,7 @@ Be concise, friendly, and genuinely helpful.`;
       
       const jsonMatch = response.text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const aiResponse = JSON.parse(jsonMatch[0]);
+        const aiResponse: unknown = JSON.parse(jsonMatch[0]);
         return {
           ...aiResponse,
           context: {
@@ -1194,7 +1192,7 @@ router.get('/preferences', requireTrinityAccess, async (req, res) => {
   const result = await executeMascotAction('mascot.get_preferences', async () => {
     const dbResult = await db.select().from(userMascotPreferences).where(eq(userMascotPreferences.userId, userId));
     
-    const prefs = (dbResult as any).rows?.[0];
+    const prefs = (dbResult as Record<string,unknown>).rows?.[0];
     
     if (!prefs) {
       // Return default preferences
@@ -1431,7 +1429,7 @@ router.delete('/preferences', requireTrinityAccess, async (req, res) => {
  * Get current seasonal profile with theme, effects, and mascot hints
  * Public endpoint - no auth required for theme detection
  */
-let seasonalCache: { data: any; timestamp: number } | null = null;
+let seasonalCache: { data: Record<string, unknown>; timestamp: number } | null = null;
 const SEASONAL_CACHE_TTL = 60000; // 60 seconds (seasonal state changes rarely)
 
 router.get('/seasonal/state', async (req, res) => {
@@ -1833,12 +1831,12 @@ router.get('/holiday/directives', requireTrinityAccess, async (req, res) => {
         startDay: null,
         endMonth: null,
         endDay: null,
-      } as any;
+      } as Record<string, unknown>;
     }
     
     // Ensure starDecorations has required fields for frontend
     if (holidayDecor?.starDecorations) {
-      const starDecor = holidayDecor.starDecorations as Record<string, any>;
+      const starDecor = holidayDecor.starDecorations as Record<string, unknown>;
       for (const key of ['co', 'ai', 'nx']) {
         if (!starDecor[key]) {
           starDecor[key] = { attachments: ['led_wrap'], glowPalette: ['#ff0000', '#00ff00', '#ffffff'], ledCount: 6, ledSpeed: 0.5 };
@@ -1998,7 +1996,6 @@ router.patch('/holiday/profiles/:id', requireTrinityAccess, async (req, res) => 
     const { id } = req.params;
     const updateData = req.body;
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const profile = await storage.updateMascotMotionProfile(id, updateData);
     
     if (!profile) {
@@ -2123,10 +2120,10 @@ router.post('/sessions', requireTrinityAccess, async (req, res) => {
       LIMIT 1
     `);
     
-    if ((existingSession as any).rows?.length > 0) {
+    if ((existingSession as Record<string,unknown>).rows?.length > 0) {
       return res.json({ 
         success: true, 
-        session: (existingSession as any).rows[0],
+        session: (existingSession as Record<string,unknown>).rows[0],
         isNew: false
       });
     }
@@ -2178,11 +2175,11 @@ router.get('/sessions/active', requireTrinityAccess, async (req, res) => {
       LIMIT 1
     `);
     
-    if (!(result as any).rows?.length) {
+    if (!(result as Record<string, unknown>).rows?.length) {
       return res.json({ session: null });
     }
     
-    res.json({ session: (result as any).rows[0] });
+    res.json({ session: (result as Record<string, unknown>).rows[0] });
   } catch (error) {
     log.error('[Mascot Sessions] Get active session error:', error);
     res.status(500).json({ error: 'Failed to get session' });
@@ -2431,7 +2428,7 @@ ${context ? `Context: ${context}` : ''}`;
     });
     
     // Parse tasks from AI response
-    let tasks: any[] = [];
+    let tasks: (string | number | boolean | null)[] = [];
     try {
       const jsonMatch = response.text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
@@ -2512,7 +2509,7 @@ router.get('/generated-tasks', requireTrinityAccess, async (req, res) => {
       LIMIT 20
     `);
     
-    res.json({ tasks: (result as any).rows || [] });
+    res.json({ tasks: (result as Record<string, unknown>).rows || [] });
   } catch (error) {
     log.error('[Mascot Tasks] Get tasks error:', error);
     res.status(500).json({ error: 'Failed to get tasks' });
@@ -2570,7 +2567,7 @@ router.get('/sessions/query', requireTrinityAccess, async (req, res) => {
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     
@@ -2591,7 +2588,7 @@ router.get('/sessions/query', requireTrinityAccess, async (req, res) => {
       id: mascotSessions.id,
       startedAt: mascotSessions.startedAt,
       totalInteractions: mascotSessions.totalInteractions,
-      userName: (users as any).fullName,
+      userName: (users as Record<string,unknown>).fullName,
       workspaceName: workspaces.name
     })
       .from(mascotSessions)
@@ -2622,7 +2619,7 @@ router.get('/sessions/:id/interactions', requireTrinityAccess, async (req, res) 
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     
@@ -2639,7 +2636,7 @@ router.get('/sessions/:id/interactions', requireTrinityAccess, async (req, res) 
     
     res.json({ 
       success: true,
-      interactions: (result as any).rows || [] 
+      interactions: (result as Record<string, unknown>).rows || [] 
     });
   } catch (error) {
     log.error('[Mascot Sessions] Get interactions error:', error);
@@ -2657,7 +2654,7 @@ router.get('/analytics', requireTrinityAccess, async (req, res) => {
     const user = req.user;
     const staffRoles = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
     
-    if (!(user as any)?.platformRole || !staffRoles.includes((user as any).platformRole)) {
+    if (!(user as Record<string,unknown>)?.platformRole || !staffRoles.includes(req.user?.platformRole)) {
       return res.status(403).json({ error: 'Staff access required' });
     }
     

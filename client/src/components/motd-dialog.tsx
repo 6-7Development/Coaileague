@@ -7,6 +7,7 @@
  */
 
 import { ResponsiveDialog } from "@/components/canvas-hub";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
@@ -36,7 +37,7 @@ interface MotdDialogProps {
 }
 
 // Icon mapping
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, unknown> = {
   bell: Bell,
   alert: AlertCircle,
   info: Info,
@@ -72,7 +73,7 @@ export function MotdDialog({
     <div className="flex items-start gap-4">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center">
-          <TrinityLogo size={24} />
+          <TrinityAnimatedLogo size={24} />
         </div>
         <div 
           className="p-3 rounded-lg backdrop-blur-sm animate-pulse"

@@ -25,17 +25,16 @@ import { z } from 'zod';
 const log = createLogger('Workspace');
 
 
-// @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     workspaceId?: string;
     currentWorkspaceId?: string;
     platformRole?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   workspaceId?: string;
-  session?: any;
+  session?: unknown;
   rawBody?: Buffer;
 }
 
@@ -46,7 +45,6 @@ const router = Router();
 // ============================================================================
 
 // Get all workspaces for current user
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/all', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -67,7 +65,6 @@ router.get('/all', requireAuth, async (req: AuthenticatedRequest, res: Response)
 });
 
 // Create a new workspace/organization
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -150,10 +147,10 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       import('../services/email/emailProvisioningService').then(({ emailProvisioningService }) =>
         emailProvisioningService.provisionWorkspaceAddresses(workspace.id, emailSlug)
           .then(() => log.info(`[Workspace Create] Email addresses provisioned for workspace ${workspace.id}`))
-          .catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning failed (non-blocking):`, (err as any)?.message))
-      ).catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning import failed:`, (err as any)?.message));
+          .catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning failed (non-blocking):`, (err as Error)?.message))
+      ).catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning import failed:`, (err as Error)?.message));
     } catch (slugErr: unknown) {
-      log.warn(`[Workspace Create] Email slug setup failed (non-blocking):`, (slugErr as any)?.message);
+      log.warn(`[Workspace Create] Email slug setup failed (non-blocking):`, (slugErr as Record<string,unknown>)?.message);
     }
 
     // Atomically create owner employee record and link workspace to user.
@@ -182,7 +179,6 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       const { attachEmployeeExternalId } = await import('../services/identityService');
       await attachEmployeeExternalId(employee.id, workspace.id);
     } catch (extIdError: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error(`[Workspace Create] Failed to attach external ID:`, extIdError.message);
     }
 
@@ -201,7 +197,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       }).onConflictDoNothing();
       log.info(`[Workspace Create] Trial subscription record created for workspace ${workspace.id}, expires ${trialEndsAt.toISOString()}`);
     } catch (subErr: unknown) {
-      log.error(`[Workspace Create] Trial subscription record creation failed (non-blocking):`, (subErr as any)?.message);
+      log.error(`[Workspace Create] Trial subscription record creation failed (non-blocking):`, (subErr as Record<string,unknown>)?.message);
     }
 
     // Initialize interaction tracking row for new workspace (2026 fair-use billing)
@@ -222,7 +218,6 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         billingPeriodEnd: periodEnd,
       }).onConflictDoNothing();
     } catch (usageErr: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error(`[Workspace Create] Usage tracking init failed (non-blocking):`, usageErr.message);
     }
 
@@ -243,7 +238,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         // Token balance managed by tokenManager — no manual credit_balances insert needed
       }
     } catch (provError: unknown) {
-      log.warn(`[Workspace Create] Provisioning failed (non-blocking):`, (provError as any)?.message);
+      log.warn(`[Workspace Create] Provisioning failed (non-blocking):`, (provError as Record<string,unknown>)?.message);
     }
 
     try {
@@ -253,7 +248,6 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         action: 'workspace_created',
         entityType: 'workspace',
         entityId: workspace.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         details: {
           name: workspace.name,
           industry,
@@ -266,7 +260,6 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         ipAddress: req.ip || req.socket.remoteAddress,
       });
     } catch (auditError: unknown) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.error(`[Workspace Create] Audit log failed (non-blocking):`, auditError.message);
     }
 
@@ -286,7 +279,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
           size,
         },
       }).catch((eventError: unknown) => {
-        log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as any)?.message);
+        log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as Record<string,unknown>)?.message);
       });
 
       // D2-GAP-FIX: Publish onboarding_completed so Trinity can start the post-onboarding
@@ -303,17 +296,17 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
           completedAt: new Date().toISOString(),
         },
       }).catch((eventError: unknown) => {
-        log.error(`[Workspace Create] onboarding_completed event failed (non-blocking):`, (eventError as any)?.message);
+        log.error(`[Workspace Create] onboarding_completed event failed (non-blocking):`, (eventError as Record<string,unknown>)?.message);
       });
     } catch (eventError: unknown) {
-      log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as any)?.message);
+      log.error(`[Workspace Create] Event publish failed (non-blocking):`, (eventError as Record<string,unknown>)?.message);
     }
 
     // Welcome notification bundle (in-platform) — fires immediately on workspace creation
     try {
       await sendWelcomeOrgNotification(workspace.id, userId, workspace.name);
     } catch (notifError: unknown) {
-      log.error(`[Workspace Create] Welcome notification failed (non-blocking):`, (notifError as any)?.message);
+      log.error(`[Workspace Create] Welcome notification failed (non-blocking):`, (notifError as Record<string,unknown>)?.message);
     }
 
     // Welcome email — fetch owner email and send
@@ -327,7 +320,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         log.info(`[Workspace Create] Welcome email sent to ${ownerEmail} for workspace ${workspace.id}`);
       }
     } catch (emailError: unknown) {
-      log.error(`[Workspace Create] Welcome email failed (non-blocking):`, (emailError as any)?.message);
+      log.error(`[Workspace Create] Welcome email failed (non-blocking):`, (emailError as Record<string,unknown>)?.message);
     }
 
     res.status(201).json({
@@ -340,10 +333,10 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       },
     });
   } catch (error: unknown) {
-    log.error('Error creating workspace:', (error as any)?.message || error);
-    log.error('Error stack:', (error as any)?.stack);
-    log.error('Error code:', (error as any)?.code);
-    log.error('Error detail:', (error as any)?.detail);
+    log.error('Error creating workspace:', (error as Record<string,unknown>)?.message || error);
+    log.error('Error stack:', (error as Record<string,unknown>)?.stack);
+    log.error('Error code:', (error as Record<string,unknown>)?.code);
+    log.error('Error detail:', (error as Record<string,unknown>)?.detail);
     res.status(500).json({ message: 'Failed to create organization' });
   }
 });
@@ -367,7 +360,6 @@ import {
  * Suggest an org code derived from a company name.
  * Used by the create-org flow to auto-populate the field.
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/suggest-org-code', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name } = req.query;
@@ -389,7 +381,6 @@ router.get('/suggest-org-code', requireAuth, async (req: AuthenticatedRequest, r
 /**
  * Check if an org code is available (for validation before claiming)
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/org-code/check/:code', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { code } = req.params;
@@ -414,7 +405,6 @@ router.get('/org-code/check/:code', requireAuth, async (req: AuthenticatedReques
  * Claim an org code for the current workspace
  * Only workspace owners/managers can claim codes
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/org-code/claim', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { code } = req.body;
@@ -468,7 +458,6 @@ router.post('/org-code/claim', requireAuth, async (req: AuthenticatedRequest, re
 /**
  * Get current workspace's org code configuration
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -510,7 +499,6 @@ router.get('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Resp
 /**
  * Release an org code (admin action - makes code available for others)
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.delete('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -541,7 +529,6 @@ router.delete('/org-code', requireAuth, async (req: AuthenticatedRequest, res: R
  * Update org code for a workspace
  * This allows changing the org code (e.g., from ORG-TXPS to STATEWIDE)
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.put('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -635,7 +622,6 @@ router.put('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Resp
  * Claim the generic staffing email (staffing@coaileague.com without org code)
  * Only ONE workspace can claim this at a time
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.post('/claim-generic-staffing-email', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -707,7 +693,6 @@ router.post('/claim-generic-staffing-email', requireAuth, async (req: Authentica
 /**
  * Release the generic staffing email claim
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.delete('/claim-generic-staffing-email', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
@@ -744,7 +729,6 @@ router.delete('/claim-generic-staffing-email', requireAuth, async (req: Authenti
 /**
  * Get staffing email configuration for current workspace
  */
-// @ts-expect-error — TS migration: fix in refactoring sprint
 router.get('/staffing-email-config', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;

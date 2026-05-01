@@ -38,7 +38,7 @@ export interface KnowledgeNode {
   domain: KnowledgeDomain;
   name: string;
   description: string;
-  attributes: Record<string, any>;
+  attributes: Record<string, unknown>;
   connections: string[];
   confidence: number;
   lastUpdated: Date;
@@ -90,7 +90,7 @@ export interface LearningEntry {
   executionTimeMs: number;
   userFeedback?: 'positive' | 'negative' | 'neutral';
   timestamp: Date;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface ReasoningChain {
@@ -356,7 +356,6 @@ Respond with JSON:
 }`;
 
     const meteredResult = await meteredGemini.generate({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: context.workspaceId,
       userId: context.userId,
       featureKey: 'knowledge_query_routing',
@@ -367,7 +366,7 @@ Respond with JSON:
     });
 
     if (!meteredResult.success) {
-      return (this as any).getFallbackRouting(query, context);
+      return (this as Record<string,unknown>).getFallbackRouting(query, context);
     }
 
     const text = meteredResult.text;
@@ -656,7 +655,6 @@ Think step-by-step and respond with JSON:
 }`;
 
     const meteredResult = await meteredGemini.generate({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: context.workspaceId,
       userId: context.userId,
       featureKey: 'knowledge_reasoning_chain',
@@ -682,7 +680,7 @@ Think step-by-step and respond with JSON:
     const tokensUsed = meteredResult.tokensUsed.total;
 
     try {
-      const parsed = JSON.parse(text);
+      const parsed: unknown = JSON.parse(text);
       return {
         steps: parsed.steps || [],
         conclusion: parsed.conclusion || 'Analysis complete',

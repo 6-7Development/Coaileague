@@ -493,7 +493,7 @@ export class ClientPortalHelpAIService {
           billingPeriod: new Date().toISOString().slice(0, 7),
           inputData: { messageLength: msg.length, turn: session.messages.length },
           outputData: { responseLength: aiResponse.length, provider: result.provider },
-        } as any).catch((err: unknown) => {
+        }).catch((err: unknown) => {
           log.warn('[ClientPortalHelpAI] workspaceAiUsage insert failed (non-blocking):', (err as Error)?.message);
         });
       }
@@ -674,7 +674,7 @@ export class ClientPortalHelpAIService {
 
     return rows.map(r => ({
       id: r.id,
-      ticketNumber: (r as any).sessionId ? r.id : r.id,
+      ticketNumber: (r as Record<string, unknown>).sessionId ? r.id : r.id,
       reportType: r.reportType as ReportType,
       severity: r.severity as ReportSeverity,
       title: r.title,
@@ -830,7 +830,6 @@ export class ClientPortalHelpAIService {
       const result = await tokenManager.recordUsage({
         workspaceId: orgWorkspaceId,
         featureKey: 'client_portal_helpai_session',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         featureName: 'Client Portal DockChat',
         description: 'Client Portal DockChat session — Trinity AI support conversation',
       });

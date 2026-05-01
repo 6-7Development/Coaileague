@@ -78,7 +78,7 @@ export function normalizeRole(role: string | null | undefined): WorkspaceRole {
 
 // Get role tier (1 = highest authority)
 export function getRoleTier(role: WorkspaceRole | string | null | undefined): number {
-  const normalized = normalizeRole(role as any);
+  const normalized = normalizeRole(role as unknown);
   return ROLE_TIERS[normalized] ?? 4;
 }
 
@@ -91,7 +91,7 @@ export function canModifyUser(
   const targetTier = getRoleTier(targetRole);
 
   // org_owner can modify everyone
-  if (normalizeRole(actorRole as any) === 'org_owner') return true;
+  if (normalizeRole(actorRole as unknown) === 'org_owner') return true;
 
   // Users can only modify users in lower tiers (higher tier numbers)
   return actorTier < targetTier;
@@ -107,12 +107,12 @@ export function canAssignRole(
 
   // Only org_owner can assign org_owner or co_owner (Tier 1)
   if (roleTier === 1) {
-    return normalizeRole(actorRole as any) === 'org_owner';
+    return normalizeRole(actorRole as unknown) === 'org_owner';
   }
 
   // org_owner/co_owner can assign org_manager (Tier 2 org-level)
   if (roleToAssign === 'org_manager') {
-    const actorNorm = normalizeRole(actorRole as any);
+    const actorNorm = normalizeRole(actorRole as unknown);
     return actorNorm === 'org_owner' || actorNorm === 'co_owner';
   }
 
@@ -122,7 +122,7 @@ export function canAssignRole(
 
 // Get list of roles a user can assign based on their role
 export function getAssignableRoles(actorRole: WorkspaceRole | string | null | undefined): WorkspaceRole[] {
-  const normalized = normalizeRole(actorRole as any);
+  const normalized = normalizeRole(actorRole as unknown);
 
   switch (normalized) {
     case 'org_owner':
@@ -143,7 +143,7 @@ export function getAssignableRoles(actorRole: WorkspaceRole | string | null | un
 
 // Check if role is protected (cannot be deleted/demoted)
 export function isProtectedRole(role: WorkspaceRole | string | null | undefined): boolean {
-  return normalizeRole(role as any) === 'org_owner';
+  return normalizeRole(role as unknown) === 'org_owner';
 }
 
 // Permission capabilities by role
@@ -169,7 +169,7 @@ export interface RolePermissions {
 }
 
 export function getRolePermissions(role: WorkspaceRole | string | null | undefined): RolePermissions {
-  const normalized = normalizeRole(role as any);
+  const normalized = normalizeRole(role as unknown);
 
   const basePermissions: RolePermissions = {
     canViewBilling: false,
@@ -292,7 +292,7 @@ export function getRolePermissions(role: WorkspaceRole | string | null | undefin
 
 // Get role badge color for UI
 export function getRoleBadgeColor(role: WorkspaceRole | string | null | undefined): string {
-  const normalized = normalizeRole(role as any);
+  const normalized = normalizeRole(role as unknown);
 
   switch (normalized) {
     case 'org_owner':
@@ -327,6 +327,6 @@ export function isSupervisorOrAbove(role: WorkspaceRole | string | null | undefi
 
 // Utility: is this role an org-level leadership role (owner/co-owner/org-manager)?
 export function isOrgLeadership(role: WorkspaceRole | string | null | undefined): boolean {
-  const normalized = normalizeRole(role as any);
+  const normalized = normalizeRole(role as unknown);
   return normalized === 'org_owner' || normalized === 'co_owner' || normalized === 'org_manager';
 }

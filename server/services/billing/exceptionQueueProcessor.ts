@@ -125,14 +125,14 @@ class ExceptionQueueProcessor {
             case 'escalated': results.escalated++; break;
             case 'expired': results.expired++; break;
           }
-        } catch (error: any) {
+        } catch (error : unknown) {
           results.errors.push(`${exception.id}: ${(error instanceof Error ? error.message : String(error))}`);
         }
       }
 
       log.info('Processed exceptions', { processed: results.processed, autoResolved: results.autoResolved, escalated: results.escalated, expired: results.expired });
       return results;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('Processing failed', { error: (error instanceof Error ? error.message : String(error)) });
       results.errors.push((error instanceof Error ? error.message : String(error)));
       return results;
@@ -142,7 +142,7 @@ class ExceptionQueueProcessor {
   /**
    * Process a single exception
    */
-  private async processException(exception: any): Promise<ExceptionResolution> {
+  private async processException(exception: unknown): Promise<ExceptionResolution> {
     const exceptionType = exception.exceptionType as ExceptionType;
     const rule = AUTO_RESOLUTION_RULES[exceptionType] || { canAutoResolve: false, maxAge: 48 };
     const ageHours = (Date.now() - new Date(exception.createdAt).getTime()) / (1000 * 60 * 60);
@@ -175,7 +175,7 @@ class ExceptionQueueProcessor {
   /**
    * Attempt auto-resolution based on exception type
    */
-  private async attemptAutoResolution(exception: any, action: string): Promise<ExceptionResolution> {
+  private async attemptAutoResolution(exception: unknown, action: string): Promise<ExceptionResolution> {
     log.info('Attempting auto-resolution', { action, exceptionId: exception.id });
 
     try {
@@ -223,7 +223,7 @@ class ExceptionQueueProcessor {
         resolution: 'escalated',
         message: `Auto-resolution failed: ${message}`,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         success: false,
         exceptionId: exception.id,
@@ -236,9 +236,8 @@ class ExceptionQueueProcessor {
   /**
    * Escalate exception to human review
    */
-  private async escalateException(exception: any): Promise<ExceptionResolution> {
+  private async escalateException(exception: unknown): Promise<ExceptionResolution> {
     await db.update(exceptionTriageQueue)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ status: 'escalated', escalatedAt: new Date() })
       .where(eq(exceptionTriageQueue.id, exception.id));
 
@@ -330,7 +329,6 @@ class ExceptionQueueProcessor {
           status: 'manually_resolved',
           resolvedAt: new Date(),
           resolvedBy: userId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           resolution,
         })
         .where(eq(exceptionTriageQueue.id, exceptionId));
@@ -342,7 +340,7 @@ class ExceptionQueueProcessor {
         message: 'Exception resolved manually',
         resolvedBy: userId,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         success: false,
         exceptionId,
@@ -368,8 +366,8 @@ class ExceptionQueueProcessor {
     const byPriority: Record<string, number> = {};
 
     for (const e of allExceptions) {
-      byType[(e as any).exceptionType] = (byType[(e as any).exceptionType] || 0) + 1;
-      byPriority[(e as any).priority] = (byPriority[(e as any).priority] || 0) + 1;
+      byType[(e as EmployeeWithStatus).exceptionType] = (byType[(e as EmployeeWithStatus).exceptionType] || 0) + 1;
+      byPriority[(e as EmployeeWithStatus).priority] = (byPriority[(e as EmployeeWithStatus).priority] || 0) + 1;
     }
 
     return {
@@ -432,9 +430,8 @@ class ExceptionQueueProcessor {
       description: 'Manually resolve a billing exception',
       requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
       handler: async (request) => {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { exceptionId, action, notes } = request.payload;
-        const result = await self.resolveManually(exceptionId, (request as any).context?.userId || 'system', { action, notes });
+        const result = await self.resolveManually(exceptionId, (request as Record<string,unknown>).context?.userId || 'system', { action, notes });
         return { success: result.success, actionId: request.actionId, message: result.message, data: result };
       },
     });

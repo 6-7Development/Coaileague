@@ -86,9 +86,7 @@ class TrinityHealthContext {
     const healthEventTypes = ['ai_error', 'ai_timeout', 'system_maintenance'];
     const severity = event.metadata?.severity as string | undefined;
     
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return healthCategories.includes(event.category) || 
-           // @ts-expect-error — TS migration: fix in refactoring sprint
            healthEventTypes.includes(event.type) ||
            severity === 'critical' ||
            severity === 'high';
@@ -100,9 +98,7 @@ class TrinityHealthContext {
       id: `event-${Date.now()}`,
       category: 'system_health',
       severity: this.mapEventSeverity(event),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       title: event.title,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       message: event.description,
       workspaceId: event.workspaceId,
       affectedComponent: event.metadata?.component || 'platform',
@@ -276,7 +272,7 @@ class TrinityHealthContext {
     return `${Math.floor(diffHours / 24)}d ago`;
   }
 
-  private generateSummaryText(status: any, alerts: SentinelAlert[]): string {
+  private generateSummaryText(status: unknown, alerts: SentinelAlert[]): string {
     if (alerts.length === 0) {
       return 'All platform systems are operating normally.';
     }
@@ -293,7 +289,7 @@ class TrinityHealthContext {
     return `Platform has ${parts.join(', ')} active. Health score: ${this.healthScore}%.`;
   }
 
-  private generateConversationalHint(status: any, alerts: SentinelAlert[]): string {
+  private generateConversationalHint(status: unknown, alerts: SentinelAlert[]): string {
     if (alerts.length === 0) {
       return "Everything's running smoothly - I'm here to help!";
     }

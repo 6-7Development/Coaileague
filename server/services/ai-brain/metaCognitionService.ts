@@ -314,7 +314,7 @@ SYNTHESIS NOTES:
 [Brief notes: what each model got right/wrong, why your synthesis is superior]`;
 
     try {
-      const result = await (claudeService as any).analyze({
+      const result = await (claudeService as Record<string,unknown>).analyze({
         content: prompt,
         analysisType: 'synthesis',
         context: { taskType: context.taskType }
@@ -388,7 +388,7 @@ FINAL ANSWER:
 [The correct answer]`;
 
     try {
-      const result = await (openaiClient as any).chat({
+      const result = await (openaiClient as Record<string,unknown>).chat({
         model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3
@@ -467,8 +467,8 @@ REASONING: [your analysis]`;
       const responseText = result.response?.text || '';
       
       // Parse confidence
-      const confidenceMatch = (responseText as any).match(/CALIBRATED CONFIDENCE:\s*(\d+)/i);
-      const reasoningMatch = (responseText as any).match(/REASONING:\s*([\s\S]*?)$/i);
+      const confidenceMatch = (responseText as Record<string,unknown>).match(/CALIBRATED CONFIDENCE:\s*(\d+)/i);
+      const reasoningMatch = (responseText as Record<string,unknown>).match(/REASONING:\s*([\s\S]*?)$/i);
 
       const calibrated = confidenceMatch 
         ? Math.min(100, Math.max(0, parseInt(confidenceMatch[1]))) / 100
@@ -522,7 +522,6 @@ REASONING: [your analysis]`;
     const totalCostDollars = result.costBreakdown.totalCostCents / 100;
 
     // Converted to Drizzle ORM: CASE WHEN → outcomes logic above
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [inserted] = await db.insert(metaCognitionLogs).values({
       workspaceId: context.workspaceId || null,
       originalTaskId: context.taskId ? context.taskId : null,
@@ -730,17 +729,17 @@ REASONING: [your analysis]`;
       GROUP BY trigger_reason
     `);
 
-    const row = (stats as any[])[0] as any;
+    const row = (stats as unknown[])[0] as unknown;
     
     return {
       totalLogs: parseInt(row?.total_logs || '0'),
       avgCalibratedConfidence: parseFloat(row?.avg_confidence || '0'),
       humanEscalations: parseInt(row?.human_escalations || '0'),
       byResolutionMethod: Object.fromEntries(
-        (byMethod as any[]).map(r => [r.resolution_method, parseInt(r.count)])
+        (byMethod as unknown[]).map(r => [r.resolution_method, parseInt(r.count)])
       ),
       byTriggerReason: Object.fromEntries(
-        (byReason as any[]).map(r => [r.trigger_reason, parseInt(r.count)])
+        (byReason as unknown[]).map(r => [r.trigger_reason, parseInt(r.count)])
       )
     };
   }

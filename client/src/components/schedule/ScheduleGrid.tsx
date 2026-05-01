@@ -69,12 +69,20 @@ const SHIFT_STATUS_GRADIENTS: Record<ShiftStatus, { gradient: string; border: st
 };
 
 const SHIFT_COLORS: Record<ShiftStatus, { bg: string; border: string; text: string }> = {
-  scheduled: { bg: 'bg-green-500/10', border: 'border-l-green-500', text: 'text-green-700 dark:text-green-300' },
-  pending: { bg: 'bg-yellow-500/10', border: 'border-l-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
-  conflict: { bg: 'bg-red-500/10', border: 'border-l-red-500', text: 'text-red-700 dark:text-red-300' },
-  published: { bg: 'bg-blue-500/10', border: 'border-l-blue-500', text: 'text-blue-700 dark:text-blue-300' },
-  completed: { bg: 'bg-gray-500/10', border: 'border-l-gray-400', text: 'text-gray-600 dark:text-gray-400' },
-  draft: { bg: 'bg-purple-500/10', border: 'border-l-purple-500', text: 'text-purple-700 dark:text-purple-300' },
+  scheduled:   { bg: 'bg-green-500/10',  border: 'border-l-green-500',   text: 'text-green-700 dark:text-green-300' },
+  pending:     { bg: 'bg-yellow-500/10', border: 'border-l-yellow-500',  text: 'text-yellow-700 dark:text-yellow-300' },
+  conflict:    { bg: 'bg-red-500/10',    border: 'border-l-red-500',     text: 'text-red-700 dark:text-red-300' },
+  published:   { bg: 'bg-blue-500/10',   border: 'border-l-blue-500',    text: 'text-blue-700 dark:text-blue-300' },
+  completed:   { bg: 'bg-gray-500/10',   border: 'border-l-gray-400',    text: 'text-gray-600 dark:text-gray-400' },
+  draft:       { bg: 'bg-purple-500/10', border: 'border-l-purple-500',  text: 'text-purple-700 dark:text-purple-300' },
+  open:        { bg: 'bg-orange-500/10', border: 'border-l-orange-500',  text: 'text-orange-700 dark:text-orange-300' },
+  assigned:    { bg: 'bg-blue-500/10',   border: 'border-l-blue-400',    text: 'text-blue-700 dark:text-blue-300' },
+  confirmed:   { bg: 'bg-emerald-500/10',border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  approved:    { bg: 'bg-emerald-500/10',border: 'border-l-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
+  in_progress: { bg: 'bg-violet-500/10', border: 'border-l-violet-500',  text: 'text-violet-700 dark:text-violet-300' },
+  cancelled:   { bg: 'bg-gray-500/10',   border: 'border-l-gray-400',    text: 'text-gray-500 dark:text-gray-400' },
+  calloff:     { bg: 'bg-red-500/10',    border: 'border-l-red-400',     text: 'text-red-600 dark:text-red-400' },
+  no_show:     { bg: 'bg-red-500/10',    border: 'border-l-red-500',     text: 'text-red-700 dark:text-red-400' },
 };
 
 const HOUR_WIDTH = 56;
@@ -158,7 +166,7 @@ const EmployeeSidebarCard = memo(function EmployeeSidebarCard({
 }) {
   const isExpanded = expandedId === employee.id;
   const initials = `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase();
-  const payRate = (employee as any).hourlyRate || (employee as any).payRate || 0;
+  const payRate = (employee as Record<string,unknown>).hourlyRate || (employee as Record<string,unknown>).payRate || 0;
   const position = resolveEmployeePosition(employee);
   const catColor = position ? getPositionCategoryColor(position.category) : null;
 
@@ -181,7 +189,7 @@ const EmployeeSidebarCard = memo(function EmployeeSidebarCard({
     >
       <div className="flex items-start gap-3.5 p-4 flex-1">
         <Avatar className="h-11 w-11 border border-white dark:border-slate-700 shadow-sm">
-          <AvatarImage src={(employee as any).photoUrl || (employee as any).avatarUrl} alt={employee.firstName || ''} />
+          <AvatarImage src={(employee as Record<string,unknown>).photoUrl || (employee as Record<string,unknown>).avatarUrl} alt={employee.firstName || ''} />
           <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
             {initials}
           </AvatarFallback>
@@ -193,7 +201,7 @@ const EmployeeSidebarCard = memo(function EmployeeSidebarCard({
             {employee.firstName} {employee.lastName}
           </div>
           <div className="text-xs text-muted-foreground truncate mt-0.5">
-            {position ? position.label : ((employee as any).jobTitle || (employee as any).position || 'Employee')}
+            {position ? position.label : ((employee as Record<string,unknown>).jobTitle || (employee as Record<string,unknown>).position || 'Employee')}
           </div>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {position && catColor && (
@@ -275,10 +283,10 @@ const DraggableShiftBlock = memo(function DraggableShiftBlock({
   const leftPx = Math.max(0, (startMinutes / 60) * HOUR_WIDTH);
   const widthPx = Math.max(80, (durationMinutes / 60) * HOUR_WIDTH);
   
-  const isAiGenerated = (shift as any).aiGenerated || (shift as any).trinityOptimized;
+  const isAiGenerated = (shift as Record<string,unknown>).aiGenerated || (shift as Record<string,unknown>).trinityOptimized;
   
-  const clientName = client?.companyName || (shift as any).clientName || 'Unassigned';
-  const siteName = (shift as any).siteName || (shift as any).location || '';
+  const clientName = client?.companyName || (shift as Record<string,unknown>).clientName || 'Unassigned';
+  const siteName = (shift as Record<string,unknown>).siteName || (shift as Record<string,unknown>).location || '';
 
   const positionCatColor = employeePosition ? getPositionCategoryColor(employeePosition.category) : null;
 
@@ -375,7 +383,7 @@ const DraggableShiftBlock = memo(function DraggableShiftBlock({
               ) : (
                 <>
                   <Shield className="h-2.5 w-2.5 flex-shrink-0" />
-                  <span className="truncate">{formatRoleDisplay((shift as any).positionType || (shift as any).role || 'Security')}</span>
+                  <span className="truncate">{formatRoleDisplay((shift as Record<string,unknown>).positionType || (shift as Record<string,unknown>).role || 'Security')}</span>
                 </>
               )}
               {isPending && (
@@ -409,7 +417,7 @@ function ShiftDragOverlay({
   const gradientColors = SHIFT_STATUS_GRADIENTS[status];
   const shiftStart = new Date(shift.startTime);
   const shiftEnd = new Date(shift.endTime);
-  const clientName = client?.companyName || (shift as any).clientName || 'Unassigned';
+  const clientName = client?.companyName || (shift as Record<string,unknown>).clientName || 'Unassigned';
   const positionCatColor = employeePosition ? getPositionCategoryColor(employeePosition.category) : null;
   const durationMinutes = differenceInMinutes(shiftEnd, shiftStart);
   const durationHours = (durationMinutes / 60).toFixed(1);

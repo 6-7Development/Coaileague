@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { RETRIES } from './config/platformConfig';
 import { createLogger } from './lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('Database');
 
@@ -161,9 +162,8 @@ pool.on('connect', (client) => {
 
   // Phase 39 — Slow query detection: wrap client.query to log queries over 500ms
   const _origQuery = client.query.bind(client);
-  (client as any).query = function slowQueryWrapper(...args: any[]) {
+  (client as ClientWithExtras).query = function slowQueryWrapper(...args: unknown[]) {
     const start = Date.now();
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = _origQuery(...args);
     const captureSlowQuery = (duration: number) => {
       if (duration >= 500) {
@@ -185,15 +185,14 @@ pool.on('connect', (client) => {
 // so the circuit breaker applies to every DB operation, not just withRetry().
 // Note: recordDbSuccess() is NOT called here — only query-level success matters.
 const _originalConnect = pool.connect.bind(pool);
-(pool as any).connect = async function circuitBreakerConnect(...args: any[]) {
+(pool as Record<string,unknown>).connect = async function circuitBreakerConnect(...args: unknown[]) {
   if (isDbCircuitOpen()) {
     throw new Error('[CircuitBreaker] DB circuit is open — skipping connection attempt');
   }
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const client = await _originalConnect(...args);
     return client;
-  } catch (err: any) {
+  } catch (err: unknown) {
     recordDbFailure(err?.message);
     throw err;
   }
@@ -217,7 +216,7 @@ export async function probeDbConnection(): Promise<boolean> {
     } finally {
       client.release();
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     recordDbFailure(err?.message);
     return false;
   }
@@ -251,7 +250,7 @@ export async function withRetry<T>(
       const result = await operation();
       recordDbSuccess();
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
       recordDbFailure();
       
@@ -292,9 +291,9 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     await db.execute(sql`SELECT 1`);
     recordDbSuccess();
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     recordDbFailure();
-    log.error('Database health check failed', { error: error?.message });
+    log.error('Database health check failed', { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }
@@ -304,8 +303,8 @@ process.on('SIGTERM', async () => {
   try {
     await pool.end();
     log.info('Pool closed gracefully');
-  } catch (err: any) {
-    log.error('Error closing pool', { error: err?.message });
+  } catch (err: unknown) {
+    log.error('Error closing pool', { error: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -314,7 +313,7 @@ process.on('SIGINT', async () => {
   try {
     await pool.end();
     log.info('Pool closed gracefully');
-  } catch (err: any) {
-    log.error('Error closing pool', { error: err?.message });
+  } catch (err: unknown) {
+    log.error('Error closing pool', { error: err instanceof Error ? err.message : String(err) });
   }
 });

@@ -24,7 +24,7 @@ const log = createLogger('LeaderRoutes');
 
 const router = Router();
 
-router.get("/leaders/stats", requireAuth, requireLeader, async (req: any, res) => {
+router.get("/leaders/stats", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     
@@ -111,7 +111,7 @@ router.get("/leaders/stats", requireAuth, requireLeader, async (req: any, res) =
   }
 });
 
-router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: any, res) => {
+router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     
@@ -149,9 +149,9 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: any
       )
       .limit(10);
     
-    const tasks: any[] = [];
+    const tasks: (string | number | boolean | null)[] = [];
     
-    pendingPTO.forEach((pto: any) => {
+    pendingPTO.forEach((pto: unknown) => {
       tasks.push({
         id: pto.id,
         title: `PTO Request: ${pto.leaveType || 'Time Off'}`,
@@ -168,7 +168,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: any
       });
     });
     
-    pendingDiscrepancies.forEach((disc: any) => {
+    pendingDiscrepancies.forEach((disc: unknown) => {
       tasks.push({
         id: disc.id,
         title: `Time Adjustment: ${disc.discrepancyType || 'Review Required'}`,
@@ -185,7 +185,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: any
       });
     });
     
-    openEscalations.forEach((esc: any) => {
+    openEscalations.forEach((esc: unknown) => {
       tasks.push({
         id: esc.id,
         title: esc.title || 'Escalation',
@@ -214,7 +214,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: any
   }
 });
 
-router.get("/leaders/recent-actions", requireAuth, requireLeader, async (req: any, res) => {
+router.get("/leaders/recent-actions", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 500);
@@ -227,7 +227,7 @@ router.get("/leaders/recent-actions", requireAuth, requireLeader, async (req: an
   }
 });
 
-router.post("/leaders/reset-password", requireAuth, requireLeader, async (req: any, res) => {
+router.post("/leaders/reset-password", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const leaderId = req.user?.id;
@@ -266,7 +266,6 @@ router.post("/leaders/reset-password", requireAuth, requireLeader, async (req: a
       changesAfter: { passwordReset: true, forcePasswordReset: true },
       reason,
       ipAddress: req.ip,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userAgent: req.get('user-agent') || '',
       requiresApproval: false,
     });
@@ -292,7 +291,7 @@ router.post("/leaders/reset-password", requireAuth, requireLeader, async (req: a
   }
 });
 
-router.post("/leaders/unlock-account", requireAuth, requireLeader, async (req: any, res) => {
+router.post("/leaders/unlock-account", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const leaderId = req.user?.id;
@@ -328,7 +327,6 @@ router.post("/leaders/unlock-account", requireAuth, requireLeader, async (req: a
       changesAfter: { accountLocked: false, loginAttempts: 0 },
       reason,
       ipAddress: req.ip,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       userAgent: req.get('user-agent') || '',
       requiresApproval: false,
     });
@@ -343,7 +341,7 @@ router.post("/leaders/unlock-account", requireAuth, requireLeader, async (req: a
   }
 });
 
-router.patch("/leaders/update-contact", requireAuth, requireLeader, async (req: any, res) => {
+router.patch("/leaders/update-contact", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const leaderId = req.user?.id;
@@ -360,7 +358,7 @@ router.patch("/leaders/update-contact", requireAuth, requireLeader, async (req: 
       address: employee.address,
     };
     
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (email !== undefined) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
@@ -378,7 +376,6 @@ router.patch("/leaders/update-contact", requireAuth, requireLeader, async (req: 
       leaderId,
       leaderEmail: req.user?.email || '',
       leaderRole: req.workspaceRole,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       action: 'update_contact',
       targetEntityType: 'employee',
       targetEntityId: employeeId,
@@ -402,7 +399,7 @@ router.patch("/leaders/update-contact", requireAuth, requireLeader, async (req: 
   }
 });
 
-router.post("/leaders/escalate", requireAuth, requireLeader, async (req: any, res) => {
+router.post("/leaders/escalate", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const requestorId = req.user?.id;
@@ -435,7 +432,6 @@ router.post("/leaders/escalate", requireAuth, requireLeader, async (req: any, re
           resolution: null,
         });
       } catch (error: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         if (error.code === '23505' && error.constraint === 'escalation_tickets_ticket_number_unique') {
           attempts++;
           if (attempts >= maxAttempts) {
@@ -456,7 +452,6 @@ router.post("/leaders/escalate", requireAuth, requireLeader, async (req: any, re
       requestorId,
       leaderEmail: req.user?.email || '',
       leaderRole: req.workspaceRole,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       action: 'escalate_to_support',
       targetEntityType: 'escalation_ticket',
       targetEntityId: ticket.id,
@@ -480,7 +475,7 @@ router.post("/leaders/escalate", requireAuth, requireLeader, async (req: any, re
   }
 });
 
-router.get("/leaders/escalations", requireAuth, requireLeader, async (req: any, res) => {
+router.get("/leaders/escalations", requireAuth, requireLeader, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     
@@ -492,7 +487,7 @@ router.get("/leaders/escalations", requireAuth, requireLeader, async (req: any, 
   }
 });
 
-router.patch("/leaders/escalations/:id/status", requireAuth, async (req: any, res) => {
+router.patch("/leaders/escalations/:id/status", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const { status, resolution } = req.body;
@@ -569,7 +564,6 @@ router.patch("/leaders/escalations/:id/status", requireAuth, async (req: any, re
       leaderId: staffId,
       leaderEmail: req.user?.email || '',
       leaderRole: staffRole.role as any,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       action: 'platform_update_escalation',
       targetEntityType: 'escalation_ticket',
       targetEntityId: id,

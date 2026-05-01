@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
 import { useLocation } from "wouter";
 import {
   UniversalModal,
@@ -173,7 +174,7 @@ function kindMeta(kind: TrinityTask["kind"]) {
   switch (kind) {
     case "approval":
       return {
-        icon: <TrinityLogo size={16} />,
+        icon: <TrinityAnimatedLogo size={16} />,
         label: "Trinity approval",
         accent: "from-cyan-500/10 to-blue-500/10 border-cyan-500/30 text-cyan-700 dark:text-cyan-300",
       };
@@ -478,7 +479,7 @@ export function TrinityTaskWidget() {
       <UniversalModalHeader className="border-b pb-3">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
-            <TrinityLogo size={16} />
+            <TrinityAnimatedLogo size={16} />
           </span>
           <div className="flex-1 min-w-0">
             <UniversalModalTitle className="text-base">
@@ -498,7 +499,7 @@ export function TrinityTaskWidget() {
         </div>
       </UniversalModalHeader>
 
-      <ScrollArea className="max-h-[60vh] px-1 py-3">
+      <ScrollArea className="flex-1 min-h-0 overflow-y-auto px-1 py-3">
         {isLoading && tasks.length === 0 ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
             <Bell className="h-4 w-4 mr-2 animate-pulse" /> Checking with Trinity…
@@ -506,7 +507,7 @@ export function TrinityTaskWidget() {
         ) : tasks.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             {grouped.approval.length > 0 && (
               <TaskSection
                 title="Waiting on you"

@@ -231,7 +231,7 @@ export class AIGuardRails {
   createIsolatedContext(
     baseContext: AIRequestContext,
     allowedFields: string[]
-  ): Record<string, any> {
+  ): Record<string, unknown> {
     return {
       workspaceId: baseContext.workspaceId,
       userId: baseContext.userId,
@@ -245,7 +245,7 @@ export class AIGuardRails {
           acc[field] = baseContext[field as keyof AIRequestContext];
         }
         return acc;
-      }, {} as Record<string, any>))
+      }, {} as Record<string, unknown>))
     };
   }
 
@@ -341,8 +341,8 @@ export class AIGuardRails {
     operation: string,
     context: AIRequestContext,
     error: Error
-  ): { fallbackData: any; shouldRetry: boolean; error: string } {
-    const fallbacks: Record<string, any> = {
+  ): { fallbackData: unknown; shouldRetry: boolean; error: string } {
+    const fallbacks: Record<string, unknown> = {
       sentiment_analysis: {
         sentiment: 'neutral',
         confidence: 0,
@@ -457,14 +457,14 @@ export class AIGuardRails {
   } {
     const relevantLogs = Array.from(this.auditLog.values())
       .flat()
-      .filter((log: any) => 
+      .filter((log: unknown) => 
         log.context?.workspaceId === workspaceId &&
         new Date(log.timestamp).getTime() > Date.now() - days * 86400000
       );
 
-    const successfulOps = relevantLogs.filter((log: any) => log.result?.success).length;
-    const totalCredits = relevantLogs.reduce((sum: number, log: any) => sum + (log.result?.creditsUsed || 0), 0);
-    const suspicious = relevantLogs.filter((log: any) => log.type === 'SUSPICIOUS_INPUT').length;
+    const successfulOps = relevantLogs.filter((log: unknown) => log.result?.success).length;
+    const totalCredits = relevantLogs.reduce((sum: number, log: unknown) => sum + (log.result?.creditsUsed || 0), 0);
+    const suspicious = relevantLogs.filter((log: unknown) => log.type === 'SUSPICIOUS_INPUT').length;
 
     return {
       totalOperations: relevantLogs.length,

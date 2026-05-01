@@ -116,7 +116,7 @@ class ComplianceEnforcementService {
       requiredDocTypes,
       submittedDocTypes: [],
       approvedDocTypes: [],
-    } as any).returning();
+    }).returning();
 
     log.info(`[ComplianceEnforcement] Initialized ${entityType} window for ${entityId}, deadline: ${windowDeadline.toISOString()}`);
     return window;
@@ -128,7 +128,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -186,9 +186,7 @@ class ComplianceEnforcementService {
       missingDocTypes,
       approvedDocTypes: approvedDocs,
       phase,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       canAppeal,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       canSubmitHelpdesk,
     };
   }
@@ -199,7 +197,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -213,7 +211,7 @@ class ComplianceEnforcementService {
     if (!submitted.includes(docType)) submitted.push(docType);
 
     // Track per-doc approval date for expiry checking
-    const approvalDates: Record<string, string> = { ...((window as any).docApprovalDates as Record<string, string> || {}) };
+    const approvalDates: Record<string, string> = { ...((window as Record<string,unknown>).docApprovalDates as Record<string, string> || {}) };
     approvalDates[docType] = new Date().toISOString();
 
     const required = (window.requiredDocTypes as string[]) || [];
@@ -227,7 +225,7 @@ class ComplianceEnforcementService {
         isFrozen: isNowCompliant ? false : window.isFrozen, // auto-unfreeze if now compliant
         docApprovalDates: approvalDates,
         updatedAt: new Date(),
-      } as any)
+      } as Record<string, unknown>)
       .where(eq(complianceWindows.id, window.id));
 
     if (isNowCompliant) {
@@ -238,9 +236,9 @@ class ComplianceEnforcementService {
           status: 'lifted',
           liftedAt: new Date(),
           liftReason: 'All required documents approved — compliance achieved',
-        } as any)
+        } as Record<string, unknown>)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ));
@@ -279,14 +277,14 @@ class ComplianceEnforcementService {
         missingDocTypes,
         frozenAt: new Date(),
         frozenBySystem: true,
-      } as any).returning();
+      }).returning();
 
       await tx.update(complianceWindows)
         .set({
           isFrozen: true,
           frozenAt: new Date(),
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(complianceWindows.id, windowId));
 
       return newFreeze;
@@ -310,7 +308,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -341,7 +339,7 @@ class ComplianceEnforcementService {
       const [activeFreeze] = await tx.select()
         .from(accountFreezes)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ))
@@ -359,7 +357,7 @@ class ComplianceEnforcementService {
         extensionDeadline,
         decidedAt: new Date(),
         decisionNotes: 'Automatically approved — one-time end-of-month extension granted',
-      } as any).returning();
+      }).returning();
 
       // Update compliance window: mark appeal used, grant extension, unfreeze
       await tx.update(complianceWindows)
@@ -370,13 +368,13 @@ class ComplianceEnforcementService {
           extensionDeadline,
           isFrozen: false, // Unfreezes account until extension deadline
           updatedAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(eq(complianceWindows.id, window.id));
 
       // Update freeze to pending_appeal status
       if (activeFreeze) {
         await tx.update(accountFreezes)
-          .set({ status: 'pending_appeal' } as any)
+          .set({ status: 'pending_appeal' } as Record<string, unknown>)
           .where(eq(accountFreezes.id, activeFreeze.id));
       }
 
@@ -422,9 +420,9 @@ class ComplianceEnforcementService {
           liftedBy,
           liftReason,
           relatedTicketId,
-        } as any)
+        } as Record<string, unknown>)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ))
@@ -433,9 +431,9 @@ class ComplianceEnforcementService {
       if (!updated) return null;
 
       await tx.update(complianceWindows)
-        .set({ isFrozen: false, updatedAt: new Date() } as any)
+        .set({ isFrozen: false, updatedAt: new Date() } as Record<string, unknown>)
         .where(and(
-          eq(complianceWindows.entityType, entityType as any),
+          eq(complianceWindows.entityType, entityType as unknown),
           eq(complianceWindows.entityId, entityId),
         ));
 
@@ -456,7 +454,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select({ isFrozen: complianceWindows.isFrozen })
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -485,14 +483,14 @@ class ComplianceEnforcementService {
 
       // Check if extension deadline has passed
       if (win.appealUsed && win.extensionDeadline && now > win.extensionDeadline) {
-        await this.autoFreezeAccount(win.entityType as any, win.entityId, win.id);
+        await this.autoFreezeAccount(win.entityType, win.entityId, win.id);
         extensionExpired++;
         continue;
       }
 
       // Check if 14-day deadline has passed
       if (now > win.windowDeadline && !win.appealUsed) {
-        await this.autoFreezeAccount(win.entityType as any, win.entityId, win.id);
+        await this.autoFreezeAccount(win.entityType, win.entityId, win.id);
         frozen++;
         continue;
       }
@@ -500,7 +498,7 @@ class ComplianceEnforcementService {
       // Day 13 warning — FINAL WARNING: account freezes in 1 day
       if (daysElapsed >= 13 && !win.warning13DaySentAt) {
         await db.update(complianceWindows)
-          .set({ warning13DaySentAt: now, updatedAt: now } as any)
+          .set({ warning13DaySentAt: now, updatedAt: now } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
         warned13++;
         log.info(`[ComplianceEnforcement] Day-13 warning for ${win.entityType} ${win.entityId}`);
@@ -510,7 +508,6 @@ class ComplianceEnforcementService {
           type: 'compliance_warning',
             title: 'FINAL WARNING: Compliance Deadline Tomorrow',
             message: `${win.entityType === 'officer' ? 'Officer' : 'Organization'} (${win.entityId}) has 1 day remaining to submit required compliance documents before account freeze. This is the final warning.`,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: win.workspaceId,
             severity: 'critical',
             source: 'compliance_enforcement',
@@ -525,7 +522,7 @@ class ComplianceEnforcementService {
       // Day 11 warning — 3 days remaining
       else if (daysElapsed >= 11 && !win.warning11DaySentAt) {
         await db.update(complianceWindows)
-          .set({ warning11DaySentAt: now, updatedAt: now } as any)
+          .set({ warning11DaySentAt: now, updatedAt: now } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
         warned11++;
         log.info(`[ComplianceEnforcement] Day-11 warning for ${win.entityType} ${win.entityId}`);
@@ -535,9 +532,7 @@ class ComplianceEnforcementService {
           type: 'compliance_warning',
             title: 'Compliance Warning: 3 Days Remaining',
             message: `${win.entityType === 'officer' ? 'Officer' : 'Organization'} (${win.entityId}) has 3 days to submit required compliance documents. Failure to comply will result in account freeze.`,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: win.workspaceId,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: 'high',
             source: 'compliance_enforcement',
             skipFeatureCheck: true,
@@ -581,7 +576,7 @@ class ComplianceEnforcementService {
 
     // State-specific requirements (merge over federal)
     for (const stateConfig of Object.values(STATE_COMPLIANCE_CONFIGS)) {
-      for (const doc of (stateConfig as any).requiredDocuments) {
+      for (const doc of (stateConfig as Record<string,unknown>).requiredDocuments) {
         if (doc.expiryPeriodDays) {
           docExpiryMap[doc.id] = doc.expiryPeriodDays;
           // Also map to generic doc type if possible
@@ -604,7 +599,7 @@ class ComplianceEnforcementService {
 
     for (const win of allWindows) {
       const approvedDocs = (win.approvedDocTypes as string[]) || [];
-      const approvalDates = ((win as any).docApprovalDates as Record<string, string>) || {};
+      const approvalDates = ((win as Record<string, unknown>).docApprovalDates as Record<string, string>) || {};
 
       if (approvedDocs.length === 0) continue;
 
@@ -639,14 +634,14 @@ class ComplianceEnforcementService {
             approvedDocTypes: updatedApproved,
             isCompliant: isStillCompliant,
             updatedAt: now,
-          } as any)
+          } as Record<string, unknown>)
           .where(eq(complianceWindows.id, win.id));
 
         expired++;
         affectedWindows.push(win.id);
 
         // ── Notify workspace manager + emit Trinity event ─────────────────
-        const wsId = (win as any).workspaceId as string | undefined;
+        const wsId = (win as Record<string, unknown>).workspaceId as string | undefined;
         if (wsId) {
           const expiredTypes = approvedDocs.filter(d => !updatedApproved.includes(d));
           universalNotificationEngine.sendNotification({
@@ -686,7 +681,6 @@ class ComplianceEnforcementService {
     flags: string[];
   }> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await meteredGemini.generate({
         workspaceId,
         feature: 'ai_document_analysis',
@@ -709,7 +703,7 @@ Return ONLY valid JSON, no markdown.`,
         temperature: 0.1,
       });
 
-      let parsed: any = {};
+      let parsed: Record<string, unknown> = {};
       try {
         parsed = JSON.parse(result.text || '{}');
       } catch {
@@ -751,7 +745,6 @@ Return ONLY valid JSON, no markdown.`,
     flags: string[];
   }> {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await meteredGemini.generate({
         workspaceId,
         feature: 'ai_document_analysis',
@@ -773,7 +766,7 @@ Return ONLY valid JSON, no markdown.`,
         temperature: 0.1,
       });
 
-      let parsed: any = {};
+      let parsed: Record<string, unknown> = {};
       try { parsed = JSON.parse(result.text || '{}'); } catch { parsed = {}; }
 
       const now = new Date();

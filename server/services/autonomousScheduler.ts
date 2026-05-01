@@ -21,7 +21,6 @@ import {
   customSchedulerIntervals,
   idempotencyKeys,
   chatConversations,
-  chatMessages,
   roomEvents,
   clients,
   invoices,
@@ -97,7 +96,7 @@ const registeredJobs: Map<string, ScheduledJobInfo> = new Map();
 
 const activeJobs = new Set<string>();
 
-async function trackJobExecution(jobName: string, fn: () => Promise<any>): Promise<void> {
+async function trackJobExecution(jobName: string, fn: () => Promise<unknown>): Promise<void> {
   if (activeJobs.has(jobName)) {
     log.debug('Skipping job - previous run still in progress', { jobName });
     return;
@@ -157,7 +156,7 @@ async function trackJobExecution(jobName: string, fn: () => Promise<any>): Promi
     persistJobResult(entry).catch((e) =>
       log.error('Failed to persist completed result', { jobName, error: e instanceof Error ? e.message : String(e) })
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     entry.completedAt = new Date();
     entry.status = 'failed';
     entry.durationMs = entry.completedAt.getTime() - entry.startedAt.getTime();
@@ -237,7 +236,7 @@ async function handleJobFailure(entry: JobExecutionEntry): Promise<void> {
       .from(platformRoles)
       .where(
         and(
-          inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager'] as any),
+          inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager'] as string[]),
           isNull(platformRoles.revokedAt),
           eq(platformRoles.isSuspended, false)
         )
@@ -318,7 +317,7 @@ async function applyGovernanceGate(
 
     log.info('Automation approved by governance', { domain, reason: result.reason });
     return { proceed: true, reason: result.reason };
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error('Governance check failed — blocking automation for safety', { error: (error instanceof Error ? error.message : String(error)), domain, workspaceId });
     return { proceed: false, reason: `Governance check error: ${(error instanceof Error ? error.message : String(error))} — automation blocked (fail-safe)` };
   }
@@ -334,7 +333,7 @@ interface AutomationEventData {
   success: boolean;
   recordsProcessed?: number;
   duration?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   workspaceId?: string;
 }
 
@@ -409,7 +408,7 @@ async function emitAutomationEvent(data: AutomationEventData) {
  * Build idempotency fingerprint for invoice generation
  * Includes: workspace, period boundaries (start/end dates), schedule config hash
  */
-function buildInvoiceFingerprintData(workspace: any, date: Date) {
+function buildInvoiceFingerprintData(workspace: Record<string, unknown>, date: Date) {
   // Calculate billing period boundaries (yesterday's work)
   const periodEnd = new Date(date);
   periodEnd.setHours(0, 0, 0, 0);
@@ -437,7 +436,7 @@ function buildInvoiceFingerprintData(workspace: any, date: Date) {
   };
 }
 
-function buildPayrollFingerprintData(workspace: any, date: Date) {
+function buildPayrollFingerprintData(workspace: Record<string, unknown>, date: Date) {
   // Calculate payroll period boundaries  
   const periodEnd = new Date(date);
   periodEnd.setHours(0, 0, 0, 0);
@@ -471,7 +470,7 @@ function buildPayrollFingerprintData(workspace: any, date: Date) {
  * Build idempotency fingerprint for schedule generation
  * Includes: workspace, period boundaries (next week), schedule config hash
  */
-function buildScheduleFingerprintData(workspace: any, date: Date, nextWeekStart: Date, nextWeekEnd: Date) {
+function buildScheduleFingerprintData(workspace: Record<string, unknown>, date: Date, nextWeekStart: Date, nextWeekEnd: Date) {
   return {
     workspaceId: workspace.id,
     runDate: date.toISOString().split('T')[0], // YYYY-MM-DD
@@ -597,7 +596,7 @@ async function logAutomationLifecycle<T>(
     }
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
 
     // Log job error
@@ -882,7 +881,7 @@ async function runNightlyInvoiceGeneration() {
               
               try {
                 // Route to correct invoice generator based on billing schedule
-                let invoices: any[] = [];
+                let invoices: (string | number | boolean | null)[] = [];
                 if (schedule === 'weekly') {
                   const result = await generateWeeklyInvoices(workspace.id, new Date(), 7);
                   invoices = result.invoices || [];
@@ -917,7 +916,7 @@ async function runNightlyInvoiceGeneration() {
                       } else {
                         log.warn('Failed to send invoice via Stripe', { invoiceNumber: invoice.invoiceNumber, error: result.error });
                       }
-                    } catch (stripeError: any) {
+                    } catch (stripeError: unknown) {
                       log.error('Stripe error for invoice', { invoiceNumber: invoice.invoiceNumber, error: stripeError.message });
                     }
                   }
@@ -935,7 +934,7 @@ async function runNightlyInvoiceGeneration() {
                       } else {
                         log.warn('QuickBooks sync failed for invoice', { invoiceNumber: invoice.invoiceNumber, error: qbResult.error });
                       }
-                    } catch (qbError: any) {
+                    } catch (qbError: unknown) {
                       log.warn('QuickBooks sync error for invoice', { invoiceNumber: invoice.invoiceNumber, error: qbError.message });
                     }
                   }
@@ -983,7 +982,7 @@ async function runNightlyInvoiceGeneration() {
                 
                 // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                 await db.transaction(async (tx) => {
-                  const updateData: any = { lastInvoiceRunAt: today };
+                  const updateData: Record<string, unknown> = { lastInvoiceRunAt: today };
                   
                   // Advance biweekly anchor if applicable (maintains 14-day cadence)
                   if (schedule === 'biweekly' && workspace.invoiceBiweeklyAnchor) {
@@ -1016,7 +1015,7 @@ async function runNightlyInvoiceGeneration() {
                   isDuplicate: false,
                   idempotencyKeyId: idem.idempotencyKeyId,
                 };
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // Mark idempotency operation failed with full error context
                 await updateIdempotencyResult({
                   idempotencyKeyId: idem.idempotencyKeyId,
@@ -1104,17 +1103,17 @@ async function runNightlyInvoiceGeneration() {
                 if (cs.autoSendInvoice) {
                   try {
                     await sendInvoiceViaStripe(invoice.id);
-                  } catch (e: any) {
+                  } catch (e: unknown) {
                     log.warn('Per-client auto-send failed', { invoiceId: invoice.id, error: e.message });
                   }
                 }
               }
             }
-          } catch (clientErr: any) {
+          } catch (clientErr: unknown) {
             log.error('Per-client billing error', { clientId: cs.clientId, error: clientErr.message });
           }
         }
-      } catch (wsErr: any) {
+      } catch (wsErr: unknown) {
         log.error('Per-client billing workspace error', { workspaceId: workspace.id, error: wsErr.message });
       }
     }
@@ -1364,8 +1363,8 @@ async function runWeeklyScheduleGeneration() {
                               siteId: s.siteId,
                               startTime: s.startTime,
                               endTime: s.endTime,
-                              assignedEmployeeIds: (s as any).assignedEmployeeIds || [],
-                              position: (s as any).position,
+                              assignedEmployeeIds: (s as Record<string, unknown>).assignedEmployeeIds || [],
+                              position: (s as Record<string, unknown>).position,
                             })),
                             employees: workspaceEmployees.map(e => ({
                               id: e.id,
@@ -1374,9 +1373,9 @@ async function runWeeklyScheduleGeneration() {
                               availability: availMap.get(e.id) || [],
                               skills: skillMap.get(e.id) || [],
                               // Armed officer attributes for scheduling eligibility
-                              isArmed: (e as any).isArmed ?? false,
-                              armedLicenseVerified: (e as any).armedLicenseVerified ?? false,
-                              guardCardExpiryDate: (e as any).guardCardExpiryDate ?? null,
+                              isArmed: (e as EmployeeWithStatus).isArmed ?? false,
+                              armedLicenseVerified: (e as EmployeeWithStatus).armedLicenseVerified ?? false,
+                              guardCardExpiryDate: (e as EmployeeWithStatus).guardCardExpiryDate ?? null,
                             })),
                             constraints: {
                               weekStart: nextWeekStart.toISOString(),
@@ -1389,7 +1388,6 @@ async function runWeeklyScheduleGeneration() {
                     
                     // Handle insufficient credits
                     if (!creditResult.success) {
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       if (creditResult.insufficientCredits) {
                         log.warn('Insufficient credits for autonomous schedule generation', { creditsRequired: 25 });
                         log.info('Purchase more credits to resume AI automations');
@@ -1406,20 +1404,20 @@ async function runWeeklyScheduleGeneration() {
                         const now = new Date();
                         const empMap = new Map(workspaceEmployees.map(e => [e.id, e]));
                         if (result.output?.assignments) {
-                          result.output.assignments = result.output.assignments.filter((a: any) => {
+                          result.output.assignments = result.output.assignments.filter((a: Record<string, unknown>) => {
                             const shift = existingShifts.find(s => s.id === a.shiftId);
                             const isArmedShift = shift && (
-                              String((shift as any).position || '').toLowerCase().includes('armed') ||
-                              String((shift as any).position || '') === 'armed_guard'
+                              String((shift as Record<string, unknown>).position || '').toLowerCase().includes('armed') ||
+                              String((shift as Record<string, unknown>).position || '') === 'armed_guard'
                             );
                             if (!isArmedShift) return true; // unarmed shifts — always valid
                             const officer = empMap.get(a.employeeId);
                             if (!officer) return false;
-                            const isArmedOfficer = (officer as any).isArmed && (officer as any).armedLicenseVerified;
-                            const guardCardExpiry = (officer as any).guardCardExpiryDate;
+                            const isArmedOfficer = (officer as EmployeeWithStatus).isArmed && (officer as EmployeeWithStatus).armedLicenseVerified;
+                            const guardCardExpiry = (officer as EmployeeWithStatus).guardCardExpiryDate;
                             const licenseExpired = guardCardExpiry && new Date(guardCardExpiry) < now;
                             if (!isArmedOfficer || licenseExpired) {
-                              log.warn(`[Scheduler] Armed shift ${a.shiftId} — officer ${a.employeeId} ineligible: armed=${(officer as any).isArmed}, verified=${(officer as any).armedLicenseVerified}, expired=${licenseExpired}`);
+                              log.warn(`[Scheduler] Armed shift ${a.shiftId} — officer ${a.employeeId} ineligible: armed=${(officer as EmployeeWithStatus).isArmed}, verified=${(officer as EmployeeWithStatus).armedLicenseVerified}, expired=${licenseExpired}`);
                               return false;
                             }
                             return true;
@@ -1432,14 +1430,14 @@ async function runWeeklyScheduleGeneration() {
                       }
                     }
                   }
-                } catch (aiError: any) {
+                } catch (aiError: unknown) {
                   log.error('AI Brain error', { error: aiError.message });
                   // Continue to mark operation as completed even if AI fails
                 }
                 
                 // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                 await db.transaction(async (tx) => {
-                  const updateData: any = { lastScheduleRunAt: today };
+                  const updateData: Record<string, unknown> = { lastScheduleRunAt: today };
                   
                   // Advance biweekly anchor if applicable
                   if (interval === 'biweekly' && workspace.scheduleBiweeklyAnchor) {
@@ -1751,7 +1749,7 @@ async function runAutomaticPayrollProcessing() {
                       await createNotification({
                         workspaceId: workspace.id,
                         userId: emp.id,
-                        type: 'payroll_processed' as any,
+                        type: 'payroll_processed',
                         title: '💰 Payroll Processed',
                         message: `Your payroll has been processed. Check your account for payment details.`,
                         actionUrl: `/my-paychecks`,
@@ -1785,7 +1783,7 @@ async function runAutomaticPayrollProcessing() {
                       } else if (qbPayrollResult.error !== 'QuickBooks not connected') {
                         log.warn('QuickBooks payroll sync failed', { error: qbPayrollResult.error });
                       }
-                    } catch (qbError: any) {
+                    } catch (qbError: unknown) {
                       log.warn('QuickBooks payroll sync error', { error: qbError.message });
                     }
                   }
@@ -1795,7 +1793,7 @@ async function runAutomaticPayrollProcessing() {
                   
                   // Update lastRunAt, advance anchor, and mark idempotency complete (ATOMIC)
                   await db.transaction(async (tx) => {
-                    const updateData: any = { lastPayrollRunAt: today };
+                    const updateData: Record<string, unknown> = { lastPayrollRunAt: today };
                     
                     // Advance biweekly anchor if applicable
                     if (paySchedule === 'biweekly' && workspace.payrollBiweeklyAnchor) {
@@ -1852,7 +1850,7 @@ async function runAutomaticPayrollProcessing() {
                   
                   return { employeesProcessed: 0, grossPay: 0, netPay: 0 };
                 }
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // Mark idempotency operation failed with full error context
                 await updateIdempotencyResult({
                   idempotencyKeyId: idem.idempotencyKeyId,
@@ -2077,19 +2075,6 @@ async function runRoomAutoClose() {
               ipAddress: 'system-scheduler',
             });
 
-            // CD-18: HelpAI closing message — workers see a clear read-only signal
-            // Posted as system message so it appears in the room before archival
-            await tx.insert(chatMessages).values({
-              conversationId: room.id,
-              workspaceId: room.workspaceId,
-              senderId: 'helpai-bot',
-              senderName: 'HelpAI',
-              senderType: 'bot',
-              message: `✅ This shift has ended. This room is now read-only and has been archived for compliance.\n\nNeed help? Start a new HelpDesk request anytime.`,
-              messageType: 'text',
-              isSystemMessage: true,
-            } as any).catch(() => null); // Non-fatal — room still closes
-
             log.info('Room auto-closed', { roomId: room.id, subject: room.subject });
             totalRoomsClosed++;
           }
@@ -2105,12 +2090,12 @@ async function runRoomAutoClose() {
           },
           async () => ({
             roomsClosed: rooms.length,
-            roomIds: rooms.map((r: any) => r.id),
+            roomIds: rooms.map((r: unknown) => r.id),
           })
         );
 
         successWorkspaces++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Error processing workspace for room auto-close', { workspaceId, error: (error instanceof Error ? error.message : String(error)) });
         errorWorkspaces++;
       }
@@ -2166,21 +2151,21 @@ async function runLateFeeApplication() {
     const { gt, and: andOp, isNotNull, sql: drizzleSql } = await import('drizzle-orm');
 
     const activeWs = await db
-      .select({ id: wsTable.id, lateFeePercentage: (wsTable as any).lateFeePercentage, lateFeeDays: (wsTable as any).lateFeeDays })
+      .select({ id: wsTable.id, lateFeePercentage: (wsTable as Record<string, unknown>).lateFeePercentage, lateFeeDays: (wsTable as Record<string, unknown>).lateFeeDays })
       .from(wsTable)
       .where(
         andOp(
-          (wsTable as any).lateFeePercentage ? gt((wsTable as any).lateFeePercentage, 0) : drizzleSql`1=1`,
-          drizzleSql`(${wsTable as any}.subscription_status IS NULL OR ${wsTable as any}.subscription_status != 'suspended')`
+          (wsTable as Record<string, unknown>).lateFeePercentage ? gt((wsTable as Record<string, unknown>).lateFeePercentage, 0) : drizzleSql`1=1`,
+          drizzleSql`(${wsTable as Record<string, unknown>}.subscription_status IS NULL OR ${wsTable as Record<string, unknown>}.subscription_status != 'suspended')`
         )
       );
 
     for (const ws of activeWs) {
       try {
-        const lateFeePercentage = parseFloat(String((ws as any).lateFeePercentage || 0));
+        const lateFeePercentage = parseFloat(String((ws as Record<string, unknown>).lateFeePercentage || 0));
         if (lateFeePercentage <= 0) continue;
 
-        const lateFeeDays = parseInt(String((ws as any).lateFeeDays || 30), 10);
+        const lateFeeDays = parseInt(String((ws as Record<string, unknown>).lateFeeDays || 30), 10);
         const results = await invoiceService.applyLateFees(ws.id, {
           gracePeriodDays: lateFeeDays,
           lateFeeType: 'percentage',
@@ -2192,14 +2177,14 @@ async function runLateFeeApplication() {
           totalApplied += results.length;
         }
         workspacesProcessed++;
-      } catch (wsErr: any) {
+      } catch (wsErr: unknown) {
         log.warn('Late fee application failed for workspace', { workspaceId: ws.id, error: wsErr.message });
       }
     }
 
     log.info('Late fee application complete', { workspacesProcessed, invoicesAffected: totalApplied });
     return { workspacesProcessed, invoicesAffected: totalApplied };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('Late fee application failed', { error: (err instanceof Error ? err.message : String(err)) });
     throw err;
   }
@@ -2269,7 +2254,7 @@ async function runPaymentReminderCheck() {
 
             if (existingReminders.length > 0) {
               const lastReminder = existingReminders[existingReminders.length - 1];
-              const meta = (lastReminder as any).metadata;
+              const meta = (lastReminder as Record<string,unknown>).metadata;
               const emailFailed = meta && meta.emailSent === false && meta.emailError;
               if (!emailFailed) continue;
               await db.delete(paymentReminders).where(eq(paymentReminders.id, lastReminder.id));
@@ -2294,7 +2279,7 @@ async function runPaymentReminderCheck() {
             if (recipientEmail) {
               try {
                 const { emailService } = await import('./emailService');
-                const outstanding = Number(invoice.total) - Number((invoice as any).amountPaid || '0');
+                const outstanding = Number(invoice.total) - Number((invoice as Record<string, unknown>).amountPaid || '0');
                 const subject = daysOverdue > 0
                   ? `[Overdue] Invoice ${invoice.invoiceNumber} is ${daysOverdue} day(s) past due - $${outstanding.toFixed(2)}`
                   : `[Reminder] Invoice ${invoice.invoiceNumber} payment due - $${outstanding.toFixed(2)}`;
@@ -2420,7 +2405,6 @@ export function startAutonomousScheduler() {
     // if the workflow aborts mid-flight. runNightlyInvoiceGeneration is
     // schedule-gated (weekly/monthly), so this hourly sweep is the real safety net.
     invoiceLifecycleSweep: { enabled: true, schedule: '17 * * * *', description: 'Hourly retry for approved time entries stuck without an invoice (Phase 26F)' },
-    approvalExpiry: { enabled: true, schedule: '*/15 * * * *', description: 'Mark pending AI approvals as expired once they pass their expiresAt timestamp' },
   };
 
   log.info('CoAIleague autonomous scheduler starting');
@@ -2445,7 +2429,7 @@ export function startAutonomousScheduler() {
             success: true,
             duration: Date.now() - startTime,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'CoAIleague Smart Billing',
             category: 'billing',
@@ -2474,7 +2458,7 @@ export function startAutonomousScheduler() {
             success: true,
             duration: Date.now() - startTime,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'AI Schedule Generation',
             category: 'scheduling',
@@ -2512,7 +2496,7 @@ export function startAutonomousScheduler() {
             success: true,
             duration: Date.now() - startTime,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Automatic Payroll Processing',
             category: 'payroll',
@@ -2550,7 +2534,7 @@ export function startAutonomousScheduler() {
             recordsProcessed: result.totalReminders,
             details: { notifications: result.totalNotifications },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Payment Reminder Check',
             category: 'billing',
@@ -2580,7 +2564,7 @@ export function startAutonomousScheduler() {
             recordsProcessed: result.invoicesAffected,
             details: { workspacesProcessed: result.workspacesProcessed },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Late Fee Application',
             category: 'billing',
@@ -2611,7 +2595,7 @@ export function startAutonomousScheduler() {
             recordsProcessed: result.workspacesScanned,
             details: { totalFlagged: result.totalFlagged, totalCritical: result.totalCritical },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Payroll Readiness Scan',
             category: 'payroll',
@@ -2647,7 +2631,7 @@ export function startAutonomousScheduler() {
               interventionsCreated: result.interventionsCreated,
             },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Training Certificate Renewal',
             category: 'compliance',
@@ -2670,7 +2654,7 @@ export function startAutonomousScheduler() {
   // table indefinitely and blocked automation that was waiting on
   // them. Workflow audit 2026-04-08 flagged this as "approval workflows
   // / expireOldApprovals never called by cron" — this is the fix.
-  registerJobInfo('Approval Expiry Sweep', SCHEDULER_CONFIG.approvalExpiry.schedule, SCHEDULER_CONFIG.approvalExpiry.description, SCHEDULER_CONFIG.approvalExpiry.enabled);
+  registerJobInfo('Approval Expiry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, (SCHEDUL as unknown)(ER_CONFIG.approvalExpiry.description as unknown), (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.enabled);
   if (SCHEDULER_CONFIG.approvalExpiry.enabled) {
     cron.schedule(SCHEDULER_CONFIG.approvalExpiry.schedule, () => {
       trackJobExecution('Approval Expiry Sweep', async () => {
@@ -2686,7 +2670,7 @@ export function startAutonomousScheduler() {
             recordsProcessed: expiredCount,
             details: { expiredCount },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           emitAutomationEvent({
             jobName: 'Approval Expiry Sweep',
             category: 'governance',
@@ -2697,7 +2681,7 @@ export function startAutonomousScheduler() {
         }
       });
     });
-    log.info('Approval Expiry Sweep registered', { schedule: SCHEDULER_CONFIG.approvalExpiry.schedule, description: SCHEDULER_CONFIG.approvalExpiry.description });
+    log.info('Approval Expiry Sweep registered', { schedule: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, description: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.description });
   }
 
   // 4. Idempotency Key Cleanup (4 AM daily)
@@ -2710,15 +2694,15 @@ export function startAutonomousScheduler() {
   }
 
   // Phase 26F — Invoice lifecycle retry sweep (hourly at :17)
-  registerJobInfo('Invoice Lifecycle Retry Sweep', (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule, (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.description, (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.enabled);
-  if ((SCHEDULER_CONFIG as any).invoiceLifecycleSweep.enabled) {
-    cron.schedule((SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule, () => {
+  registerJobInfo('Invoice Lifecycle Retry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule, (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.description, (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.enabled);
+  if ((SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.enabled) {
+    cron.schedule((SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule, () => {
       trackJobExecution('Invoice Lifecycle Retry Sweep', async () => {
         const { sweepStuckInvoiceLifecycleEntries } = await import('./trinity/workflows/invoiceLifecycleWorkflow');
         await sweepStuckInvoiceLifecycleEntries();
       });
     });
-    log.info('Invoice Lifecycle Retry Sweep registered', { schedule: (SCHEDULER_CONFIG as any).invoiceLifecycleSweep.schedule });
+    log.info('Invoice Lifecycle Retry Sweep registered', { schedule: (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).invoiceLifecycleSweep.schedule });
   }
 
   // License Expiry Alert Sweep (Daily 6 AM)
@@ -2730,11 +2714,63 @@ export function startAutonomousScheduler() {
         const { runLicenseExpiryAlerts } = await import('./trinity/workflows/licenseExpiryWorkflow');
         await runLicenseExpiryAlerts();
       } catch (err) {
-        log.warn('[Cron] License expiry sweep failed:', (err as any)?.message);
+        log.warn('[Cron] License expiry sweep failed:', (err as Error)?.message);
       }
     });
   });
   log.info('License Expiry Alert registered', { schedule: '0 6 * * *' });
+
+  // Midnight License Expiry Unassignment (Daily 00:00 — Texas OC §1702.201)
+  // Trinity must batch-unassign any officer whose pocket card / armed license expired at midnight.
+  // Daily 6 AM alerts are advisory only; this cron is the enforcement action.
+  registerJobInfo('Midnight License Expiry Unassign', '0 0 * * *', 'Batch-unassign officers whose guard card/armed license expired at midnight (TX OC §1702.201)', true);
+  cron.schedule('0 0 * * *', () => {
+    trackJobExecution('Midnight License Expiry Unassign', async () => {
+      try {
+        const { db: dbInst } = await import('../db');
+        const { sql: drizzleSql } = await import('drizzle-orm');
+        const { handleOfficerDeactivation } = await import('./scheduling/officerDeactivationHandler');
+
+        // Find officers whose guard card OR armed license expired in the last 24h.
+        // Joined to employees so we have workspace + active flag without a second round-trip.
+        const expired = await dbInst.execute(drizzleSql`
+          SELECT DISTINCT e.id AS employee_id, e.workspace_id,
+                 ecr.guard_card_expiration_date, ecr.armed_license_expiration
+          FROM employees e
+          JOIN employee_compliance_records ecr ON ecr.employee_id = e.id
+          WHERE e.is_active = true
+            AND (
+              (ecr.guard_card_expiration_date IS NOT NULL
+                AND ecr.guard_card_expiration_date < NOW()
+                AND ecr.guard_card_expiration_date >= NOW() - INTERVAL '24 hours')
+              OR
+              (ecr.armed_license_expiration IS NOT NULL
+                AND ecr.armed_license_expiration < NOW()
+                AND ecr.armed_license_expiration >= NOW() - INTERVAL '24 hours')
+            )
+        `);
+
+        const rows = (expired as Record<string,unknown>).rows ?? (expired as unknown);
+        let unassigned = 0;
+        for (const row of rows ?? []) {
+          try {
+            const result = await handleOfficerDeactivation(
+              row.employee_id,
+              row.workspace_id,
+              'license_expired',
+            );
+            unassigned += result.shiftsUnassigned;
+          } catch (err) {
+            log.warn('[Cron] Midnight unassign failed for', row.employee_id, (err as Error)?.message);
+          }
+        }
+        log.info('[Cron] Midnight license expiry sweep complete', { officersExpired: rows?.length ?? 0, shiftsUnassigned: unassigned });
+      } catch (err) {
+        log.warn('[Cron] Midnight license expiry unassign failed:', (err as Error)?.message);
+      }
+    });
+  });
+  log.info('Midnight License Expiry Unassign registered', { schedule: '0 0 * * *' });
 
   // 4b. Terminated Employee Access Expiry (Daily 4:30 AM UTC)
   // Finds employees whose document_access_expires_at has passed and
@@ -2756,7 +2792,7 @@ export function startAutonomousScheduler() {
             AND e.user_id IS NOT NULL
         `);
 
-        const rows: any[] = (expired as any).rows || [];
+        const rows: unknown[] = (expired as Record<string,unknown>).rows || [];
         log.info('[TerminationExpiry] Processing expired document access', { count: rows.length });
 
         for (const row of rows) {
@@ -2888,7 +2924,7 @@ export function startAutonomousScheduler() {
           recordsProcessed: result.prompted,
           details: { checked: result.checked, prompted: result.prompted, supervisorAlerts: result.supervisorAlerts },
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[PhotoPrompt] cron failed', { error: err instanceof Error ? err.message : String(err) });
         emitAutomationEvent({
           jobName: 'Hourly Proof-of-Service Prompt',
@@ -2926,7 +2962,7 @@ export function startAutonomousScheduler() {
     try {
       const { processSMSOutbox } = await import('./sms/smsQueueService');
       await processSMSOutbox();
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[Cron] SMS outbox worker error:', err?.message);
     }
   });
@@ -2964,7 +3000,7 @@ export function startAutonomousScheduler() {
           recordsProcessed: result.processed,
           details: { tokensUsed: result.totalCredits },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Platform billing error', { error: (error instanceof Error ? error.message : String(error)) });
         emitAutomationEvent({
           jobName: 'Monthly Platform Infrastructure Billing',
@@ -2997,7 +3033,7 @@ export function startAutonomousScheduler() {
             recordsProcessed: processed,
             details: { workspacesProcessed: results.length, totalAmount: amount.toFixed(2) },
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error('Monthly revenue recognition error', { error: (error instanceof Error ? error.message : String(error)) });
           emitAutomationEvent({
             jobName: 'Monthly Revenue Recognition',
@@ -3126,7 +3162,6 @@ export function startAutonomousScheduler() {
         category: 'compliance',
         success: true,
         duration: Date.now() - startTime,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         recordsProcessed: (certValue?.alertsSent || 0) + conflictsFound,
         details: { shiftLicenseConflicts: conflictsFound, auditReadinessReminded: readiness?.reminded ?? 0 },
       });
@@ -3174,7 +3209,6 @@ export function startAutonomousScheduler() {
       const result = await gpsInactivityMonitor.checkActiveShiftsForInactivity();
       emitAutomationEvent({
         jobName: 'GPS Inactivity Monitor (Silent Supervisor)',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         category: 'monitoring',
         success: true,
         duration: Date.now() - startTime,
@@ -3219,7 +3253,6 @@ export function startAutonomousScheduler() {
         .where(
           and(
             isNull(orgDocumentSignatures.signedAt),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             eq(orgDocumentSignatures.status, 'pending')
           )
         );
@@ -3240,7 +3273,7 @@ export function startAutonomousScheduler() {
 
           processedDocs.add(docId);
           try {
-            const result = await (documentSigningService as any).sendDocumentReminders(docId);
+            const result = await (documentSigningService as Record<string,unknown>).sendDocumentReminders(docId);
             remindersSent += result.sent;
           } catch (err) {
             // Skip individual failures
@@ -3377,7 +3410,7 @@ export function startAutonomousScheduler() {
             results: results.map(r => ({ job: r.job, success: r.success, records: r.recordsProcessed })),
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Database maintenance error', { error: error instanceof Error ? error.message : String(error) });
         await emitAutomationEvent({
           jobName: 'Database Maintenance',
@@ -3480,7 +3513,7 @@ export function startAutonomousScheduler() {
         if (retried > 0 || deadLettered > 0) {
           log.info('NDS retry sweep complete', { retried, deadLettered });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('NDS retry sweep error (non-blocking)', { error: err instanceof Error ? err.message : String(err) });
       }
     })();
@@ -3496,7 +3529,7 @@ export function startAutonomousScheduler() {
       try {
         const { checkDeliverabilityRates } = await import('../routes/resendWebhooks');
         await checkDeliverabilityRates();
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('Deliverability health check error (non-blocking)', { error: err instanceof Error ? err.message : String(err) });
       }
     })();
@@ -3517,7 +3550,7 @@ export function startAutonomousScheduler() {
         if (deleted > 0) {
           log.info('Session cleanup complete', { deletedSessions: deleted });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('Session cleanup error (non-blocking)', { error: err instanceof Error ? err.message : String(err) });
       }
     })();
@@ -3532,7 +3565,7 @@ export function startAutonomousScheduler() {
         if (cleaned > 0) {
           log.info('Notification cleanup complete', { notificationsCleaned: cleaned });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Notification cleanup error', { error: (error instanceof Error ? error.message : String(error)) });
       }
     })();
@@ -3561,7 +3594,7 @@ export function startAutonomousScheduler() {
             skipped: stats.skipped,
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Daily digest job error', { error: error instanceof Error ? error.message : String(error) });
         await emitAutomationEvent({
           jobName: 'Daily Digest Emails',
@@ -3592,12 +3625,12 @@ export function startAutonomousScheduler() {
           try {
             await aiMeteringService.rollupDailySummary(ws.id, dateStr);
             rolled++;
-          } catch (rollupErr: any) {
+          } catch (rollupErr: unknown) {
             log.warn('[AutonomousScheduler] AI usage rollup failed for workspace', { workspaceId: ws.id, date: dateStr, error: rollupErr?.message });
           }
         }
         log.info('AI usage daily summary rollup complete', { date: dateStr, workspaces: rolled });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('AI usage daily summary rollup error', { error: err instanceof Error ? err.message : String(err) });
       }
     })();
@@ -3623,7 +3656,6 @@ export function startAutonomousScheduler() {
         
         await emitAutomationEvent({
           jobName: 'QuickBooks Token Health',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           category: 'integration',
           success: healthResult.expired === 0 && refreshResult.failed === 0,
           duration: Date.now() - startTime,
@@ -3633,11 +3665,10 @@ export function startAutonomousScheduler() {
             refresh: refreshResult,
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('QuickBooks token health check error', { error: error instanceof Error ? error.message : String(error) });
         await emitAutomationEvent({
           jobName: 'QuickBooks Token Health',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           category: 'integration',
           success: false,
           details: { error: (error instanceof Error ? error.message : String(error)) },
@@ -3691,7 +3722,7 @@ export function startAutonomousScheduler() {
                 lastName: (nc.fromName || '').split(' ').slice(1).join(' ') || '',
                 status: 'lead',
                 source: 'inbound_email',
-              } as any);
+              } as Record<string, unknown>);
               totalSynced++;
             } catch { /* duplicate — skip */ }
           }
@@ -3701,7 +3732,6 @@ export function startAutonomousScheduler() {
         if (totalSynced > 0) {
           await emitAutomationEvent({
             jobName: 'QuickBooks Weekly Staffing Client Scan',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             category: 'integration',
             success: true,
             recordsProcessed: totalSynced,
@@ -3720,11 +3750,10 @@ export function startAutonomousScheduler() {
             log.warn('[autonomousScheduler] Event publish failed (non-fatal):', err);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('QB weekly staffing scan error', { error: (err instanceof Error ? err.message : String(err)) });
         await emitAutomationEvent({
           jobName: 'QuickBooks Weekly Staffing Client Scan',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           category: 'integration',
           success: false,
           details: { error: (err instanceof Error ? err.message : String(err)) },
@@ -3850,7 +3879,7 @@ export function startAutonomousScheduler() {
             scanResults,
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('VQA scheduled scan error', { error: error instanceof Error ? error.message : String(error) });
         await emitAutomationEvent({
           jobName: 'Visual QA Scan',
@@ -3952,7 +3981,7 @@ export function startAutonomousScheduler() {
               details: { totalClosed, workspacesChecked: activeWorkspaces.length },
             });
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error('Auto clock-out scan error', { error: error instanceof Error ? error.message : String(error) });
           await emitAutomationEvent({
             jobName: 'Auto Clock-Out',
@@ -3993,7 +4022,7 @@ export function startAutonomousScheduler() {
               },
             });
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.error('Shift Completion Bridge error', { error: (err instanceof Error ? err.message : String(err)) });
           await emitAutomationEvent({
             jobName: 'Shift Completion Bridge',
@@ -4074,7 +4103,7 @@ export function startAutonomousScheduler() {
             recommendations: report.recommendations.slice(0, 5),
           },
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Weekly platform audit error', { error: error instanceof Error ? error.message : String(error) });
         await emitAutomationEvent({
           jobName: 'Weekly Platform Audit',
@@ -4099,7 +4128,7 @@ export function startAutonomousScheduler() {
         const { trinityProactiveScanner } = await import('./ai-brain/trinityProactiveScanner');
         await trinityProactiveScanner.runAllWorkspacesDailyScan();
         log.info('Trinity Daily Intelligence Scan complete');
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Daily Intelligence Scan error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4114,7 +4143,7 @@ export function startAutonomousScheduler() {
         const { trinityProactiveScanner } = await import('./ai-brain/trinityProactiveScanner');
         await trinityProactiveScanner.runAllWorkspacesWeeklyScan();
         log.info('Trinity Weekly Intelligence Scan complete');
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Weekly Intelligence Scan error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4180,7 +4209,7 @@ export function startAutonomousScheduler() {
         const insights = await trinitySocialGraphEngine.recalculateWorkspaceGraph(wsId)
           .catch((e) => {
             log.warn('DreamCycle social graph recalc failed', { wsId, error: e?.message ?? e });
-            return [] as any[];
+            return [];
           });
         totalInsights += insights.length;
       }
@@ -4204,7 +4233,7 @@ export function startAutonomousScheduler() {
         const breakthroughs = await trinityIncubationEngine.runDreamCycle(wsId)
           .catch((e) => {
             log.warn('DreamCycle incubation failed', { wsId, error: e?.message ?? e });
-            return [] as any[];
+            return [];
           });
         totalBreakthroughs += breakthroughs.length;
       }
@@ -4262,7 +4291,7 @@ export function startAutonomousScheduler() {
         const { trinityProactiveScanner } = await import('./ai-brain/trinityProactiveScanner');
         await trinityProactiveScanner.runAllWorkspacesMonthlyCycle();
         log.info('Trinity Monthly Business Cycle complete');
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Monthly Business Cycle error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4276,7 +4305,7 @@ export function startAutonomousScheduler() {
         const { trinityProactiveScanner } = await import('./ai-brain/trinityProactiveScanner');
         await trinityProactiveScanner.runAllWorkspacesNightBefore();
         log.info('Trinity Night-Before Confirmation Sweep complete');
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Night-Before Confirmation Sweep error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4295,7 +4324,6 @@ export function startAutonomousScheduler() {
         const { workspaces: workspacesTable } = await import('@shared/schema');
         const activeWorkspaces = await db.select({ id: workspacesTable.id })
           .from(workspacesTable)
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           .where(eq(workspacesTable.status, 'active'))
           .limit(20)
           .catch(() => [] as { id: string }[]);
@@ -4310,7 +4338,7 @@ export function startAutonomousScheduler() {
         if (totalNew > 0) {
           log.info('Trinity Autonomous Task Scanner complete', { newTasksIdentified: totalNew, workspacesScanned: activeWorkspaces.length });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Autonomous Task Scanner error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4322,7 +4350,7 @@ export function startAutonomousScheduler() {
     (async () => {
       try {
         const { helpaiOrchestrator } = await import('./helpai/platformActionHub');
-        const overdueResult = await helpaiOrchestrator.executeAction({ actionId: 'task.track_overdue', params: {}, userId: 'trinity-system' } as any).catch(() => null);
+        const overdueResult = await helpaiOrchestrator.executeAction({ actionId: 'task.track_overdue', params: {}, userId: 'trinity-system' }).catch(() => null);
         const overdueTasks = overdueResult?.data?.overdueTasks || [];
         let escalated = 0;
         for (const task of overdueTasks) {
@@ -4331,14 +4359,14 @@ export function startAutonomousScheduler() {
               taskId: task.taskId,
               workspaceId: task.workspaceId,
               reason: `Task overdue by ${task.hoursOverdue} hours — auto-escalating to level ${task.escalationLevel + 1}`,
-            } } as any).catch(() => null);
+            } }).catch(() => null);
             escalated++;
           }
         }
         if (overdueTasks.length > 0) {
           log.info('Trinity Overdue Task Escalation Scan complete', { overdueTasks: overdueTasks.length, escalated });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.error('Trinity Overdue Task Escalation Scan error', { error: error instanceof Error ? error.message : String(error) });
       }
     })();
@@ -4359,7 +4387,7 @@ export function startAutonomousScheduler() {
 
   platformChangeMonitor.initEventDrivenScanning().then(() => {
     log.info('Platform Change Monitor event-driven scanning activated — significant events trigger immediate scans');
-  }).catch((err: any) => {
+  }).catch((err: unknown) => {
     log.error('Failed to initialize event-driven scanning', { error: err?.message || String(err) });
   });
 
@@ -4480,7 +4508,7 @@ export function startAutonomousScheduler() {
         category: 'scheduling',
         success: result.errors.length === 0,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4503,7 +4531,7 @@ export function startAutonomousScheduler() {
         category: 'scheduling',
         success: true,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4526,7 +4554,7 @@ export function startAutonomousScheduler() {
         category: 'notification',
         success: result.errors.length === 0,
         recordsProcessed: result.fourHourSent + result.oneHourSent,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4549,7 +4577,7 @@ export function startAutonomousScheduler() {
         category: 'compliance',
         success: result.errors.length === 0,
         recordsProcessed: result.notified,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4574,7 +4602,7 @@ export function startAutonomousScheduler() {
         category: 'payroll',
         success: true,
         recordsProcessed: result.flagged,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4597,7 +4625,7 @@ export function startAutonomousScheduler() {
         category: 'compliance',
         success: result.errors.length === 0,
         recordsProcessed: result.notified,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4620,7 +4648,7 @@ export function startAutonomousScheduler() {
         category: 'payroll',
         success: result.errors.length === 0,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4639,7 +4667,7 @@ export function startAutonomousScheduler() {
       const { registerProactiveMonitors } = await import('./trinity/proactive/proactiveOrchestrator');
       registerProactiveMonitors({ registerJobInfo, trackJobExecution });
       log.info('Trinity Phase 24 proactive monitors registered');
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('Failed to register Phase 24 proactive monitors', {
         error: err instanceof Error ? err.message : String(err),
       });
@@ -4743,12 +4771,13 @@ export const manualTriggers = {
   wsConnectionCleanup: runWebSocketConnectionCleanup,
   compliance: checkExpiringCertifications,
   gamificationWeeklyReset: async () => {
-    await gamificationService.resetWeeklyPoints();
-    return { success: true, resetType: 'weekly', resetAt: new Date().toISOString() };
+    // gamificationService not implemented yet — manual trigger no-ops until the service ships.
+    log.info('[manualTriggers] gamificationWeeklyReset invoked but gamificationService is not implemented');
+    return { success: true, resetType: 'weekly', resetAt: new Date().toISOString(), skipped: true };
   },
   gamificationMonthlyReset: async () => {
-    await gamificationService.resetMonthlyPoints();
-    return { success: true, resetType: 'monthly', resetAt: new Date().toISOString() };
+    log.info('[manualTriggers] gamificationMonthlyReset invoked but gamificationService is not implemented');
+    return { success: true, resetType: 'monthly', resetAt: new Date().toISOString(), skipped: true };
   },
   paymentReminders: runPaymentReminderCheck,
   shiftCompletionBridge: () => runShiftCompletionBridge(),

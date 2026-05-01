@@ -19,7 +19,7 @@ import type { ActionRequest, ActionResult } from '../helpai/platformActionHub';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityFrontierActions');
 
-export function registerTrinityFrontierActions(orchestrator: any): void {
+export function registerTrinityFrontierActions(orchestrator: unknown): void {
   log.info('[TrinityFrontier] Registering 4 guru.* frontier capability actions (3 duplicates removed)...');
 
   orchestrator.registerAction({
@@ -49,11 +49,11 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
       });
 
       return {
-        success: (result as any).success,
+        success: (result as Record<string, unknown>).success,
         actionId: request.actionId,
-        message: (result as any).success 
-          ? `Agent ${(result as any).assignedAgent?.name} hired successfully` 
-          : (result as any).reason || 'No suitable agent found',
+        message: (result as Record<string, unknown>).success 
+          ? `Agent ${(result as Record<string, unknown>).assignedAgent?.name} hired successfully` 
+          : (result as Record<string, unknown>).reason || 'No suitable agent found',
         data: result,
         executionTimeMs: Date.now() - startTime
       };
@@ -132,7 +132,7 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
     requiredRoles: ['root_admin', 'deputy_admin', 'sysop'],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const startTime = Date.now();
-      const diagnostics: any = {
+      const diagnostics: Record<string, unknown> = {
         timestamp: new Date().toISOString(),
         capabilities: trinityFrontierCapabilities.getCapabilities(),
         checks: []
@@ -145,7 +145,7 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
           status: 'operational',
           result: frustrationCheck.predictedOutcome
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         diagnostics.checks.push({ name: 'Chain-of-Action Reasoning', status: 'error', error: e.message });
       }
 
@@ -162,7 +162,7 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
           status: 'operational',
           bottlenecksFound: simulation.results.filter(r => r.bottleneckDetected).length
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         diagnostics.checks.push({ name: 'Digital Twin Simulation', status: 'error', error: e.message });
       }
 
@@ -184,14 +184,14 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
         ethicsRulesLoaded: true
       });
 
-      const allOperational = diagnostics.checks.every((c: any) => c.status === 'operational');
+      const allOperational = diagnostics.checks.every((c: Record<string,unknown>) => c.status === 'operational');
 
       return {
         success: true,
         actionId: request.actionId,
         message: allOperational 
           ? 'All 5 frontier capabilities operational'
-          : `${diagnostics.checks.filter((c: any) => c.status !== 'operational').length} capability issue(s) detected`,
+          : `${diagnostics.checks.filter((c: unknown) => c.status !== 'operational').length} capability issue(s) detected`,
         data: diagnostics,
         executionTimeMs: Date.now() - startTime
       };

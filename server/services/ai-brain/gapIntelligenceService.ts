@@ -117,7 +117,7 @@ class GapIntelligenceService {
           maxBuffer: 10 * 1024 * 1024,
         });
         output = result.stdout + result.stderr;
-      } catch (execError: any) {
+      } catch (execError : unknown) {
         output = (execError.stdout || '') + (execError.stderr || '');
         if (!output && execError.message) {
           log.info('[GapIntelligence] tsc execution failed:', execError.message);
@@ -471,7 +471,7 @@ class GapIntelligenceService {
       target: string;
       variant: 'primary' | 'secondary' | 'ghost';
     }>;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
   }>> {
     const openFindings = await this.getOpenFindings(limit);
     
@@ -690,7 +690,7 @@ class GapIntelligenceService {
    * Generate actionable description for scan results
    * Avoids vague "Found X issues" patterns - includes specific examples and guidance
    */
-  private generateActionableDescription(scanType: string, summary: any): string {
+  private generateActionableDescription(scanType: string, summary: unknown): string {
     // If no issues found, return a clear success message
     if (summary.totalFindings === 0) {
       return `${this.getScanTypeLabel(scanType)} completed with no issues detected. Platform code quality verified.`;
@@ -699,7 +699,7 @@ class GapIntelligenceService {
     // Get top issues from metadata if available
     const topIssues = summary.topIssues || [];
     const topIssuesSummary = topIssues.length > 0
-      ? topIssues.slice(0, 3).map((issue: any) => 
+      ? topIssues.slice(0, 3).map((issue: unknown) => 
           `• ${issue.file || issue.location || 'Unknown'}: ${issue.message?.substring(0, 60) || issue.type}...`
         ).join('\n')
       : '';
@@ -762,7 +762,7 @@ class GapIntelligenceService {
     return guidance[scanType] || 'Review findings and address high-severity issues first.';
   }
 
-  private async emitScanEvent(scanType: string, summary: any): Promise<void> {
+  private async emitScanEvent(scanType: string, summary: unknown): Promise<void> {
     // Generate actionable, specific description instead of vague counts
     const actionableDescription = this.generateActionableDescription(scanType, summary);
     
@@ -801,8 +801,8 @@ class GapIntelligenceService {
       { id: 'gap_intelligence.scan_hooks', name: 'Scan Hooks', desc: 'Scan for React hook issues', fn: () => self.scanHookIssues() },
       { id: 'gap_intelligence.scan_logs', name: 'Scan Logs', desc: 'Scan recent logs for errors', fn: () => self.scanRecentLogs() },
       { id: 'gap_intelligence.full_scan', name: 'Full Scan', desc: 'Run complete platform gap analysis', fn: () => self.runFullPlatformScan() },
-      { id: 'gap_intelligence.get_findings', name: 'Get Findings', desc: 'Get open gap findings', fn: (p: any) => p?.critical ? self.getCriticalFindings() : self.getOpenFindings(p?.limit || 50) },
-      { id: 'gap_intelligence.resolve_finding', name: 'Resolve Finding', desc: 'Mark a gap finding as resolved', fn: (p: any) => self.markFindingResolved(p.findingId, p.resolvedBy || 'Trinity') },
+      { id: 'gap_intelligence.get_findings', name: 'Get Findings', desc: 'Get open gap findings', fn: (p: unknown) => p?.critical ? self.getCriticalFindings() : self.getOpenFindings(p?.limit || 50) },
+      { id: 'gap_intelligence.resolve_finding', name: 'Resolve Finding', desc: 'Mark a gap finding as resolved', fn: (p: unknown) => self.markFindingResolved(p.findingId, p.resolvedBy || 'Trinity') },
       { id: 'gap_intelligence.scheduler_status', name: 'Scheduler Status', desc: 'Get scheduler status', fn: () => self.getSchedulerStatus() },
       { id: 'gap_intelligence.start_scheduler', name: 'Start Scheduler', desc: 'Start scheduled scans', fn: () => { self.startScheduledScans(); return { started: true }; } },
       { id: 'gap_intelligence.stop_scheduler', name: 'Stop Scheduler', desc: 'Stop scheduled scans', fn: () => { self.stopScheduledScans(); return { stopped: true }; } },

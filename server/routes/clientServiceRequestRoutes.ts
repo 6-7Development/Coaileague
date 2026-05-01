@@ -97,8 +97,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
           slaStatus: 'on_track',
           lockVersion: 0,
           escalationLevel: 0,
-        } as any)
-        .returning();
+        }).returning();
 
       // Back-link on the service request
       await tx
@@ -133,7 +132,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
         urgency: parsed.data.urgency,
       },
       visibility: 'supervisor',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     // Notify every workspace manager/owner in-app so the ticket doesn't sit
     // silently in the portal. Urgent/high requests also get push.
@@ -148,15 +147,15 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
           LIMIT 20`,
         [workspaceId]
       );
-      const managerIds: string[] = mgrRes.rows.map((r: any) => r.user_id).filter(Boolean);
+      const managerIds: string[] = mgrRes.rows.map((r: unknown) => r.user_id).filter(Boolean);
       const isHighPriority = parsed.data.urgency === 'urgent' || parsed.data.urgency === 'high';
       await Promise.allSettled(
         managerIds.flatMap((recipientUserId) => [
           NotificationDeliveryService.send({
-            type: 'client_portal_report' as any,
+            type: 'client_portal_report',
             workspaceId,
             recipientUserId,
-            channel: 'in_app' as any,
+            channel: 'in_app',
             subject: `New Client Service Request — ${parsed.data.requestType}`,
             body: {
               title: 'New Client Service Request',
@@ -167,10 +166,10 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
             idempotencyKey: `srq-${request.id}-inapp-${recipientUserId}`,
           }),
           ...(isHighPriority ? [NotificationDeliveryService.send({
-            type: 'client_portal_report' as any,
+            type: 'client_portal_report',
             workspaceId,
             recipientUserId,
-            channel: 'push' as any,
+            channel: 'push',
             subject: `${parsed.data.urgency?.toUpperCase()}: Client Service Request`,
             body: {
               title: `${parsed.data.urgency?.toUpperCase()}: Service Request`,
@@ -181,7 +180,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
           })] : []),
         ]),
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[ClientServiceRequest] Manager notification failed (non-blocking):', err?.message);
     }
 
@@ -196,7 +195,6 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (!hasManagerAccess(req)) return res.status(403).json({ error: 'Manager access required' });
 
     const { id } = req.params;

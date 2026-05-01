@@ -50,7 +50,7 @@ export default function PayrollGarnishmentsPage() {
   });
 
   // Fetch employees
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: any[] }, Error, any[]>({
+  const { data: employees = [], isLoading: loadingEmployees } = useQuery<{ data: unknown[] }, Error, any[]>({
     queryKey: ['/api/employees'],
     select: (res) => res?.data ?? [],
     enabled: !!user,
@@ -93,7 +93,7 @@ export default function PayrollGarnishmentsPage() {
       form.reset();
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "✗ Error", description: error.message, variant: "destructive" });
     },
   });
@@ -107,7 +107,7 @@ export default function PayrollGarnishmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/payroll/garnishments'] });
       refetch();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "✗ Error", description: error.message, variant: "destructive" });
     },
   });

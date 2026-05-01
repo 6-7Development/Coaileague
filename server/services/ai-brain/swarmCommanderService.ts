@@ -111,8 +111,8 @@ export interface StateSnapshot {
   timestamp: string;
   actor: string;
   action: string;
-  inputState: Record<string, any>;
-  outputState: Record<string, any>;
+  inputState: Record<string, unknown>;
+  outputState: Record<string, unknown>;
   costTokens: number;
   trinityAudit: {
     status: 'ok' | 'warning' | 'error';
@@ -680,8 +680,8 @@ class SwarmCommanderService {
       const tasks = await db
         .select({
           id: aiWorkboardTasks.id,
-          category: (aiWorkboardTasks as any).category,
-          actualTokens: (aiWorkboardTasks as any).actualTokens,
+          category: (aiWorkboardTasks as Record<string,unknown>).category,
+          actualTokens: (aiWorkboardTasks as Record<string,unknown>).actualTokens,
           status: aiWorkboardTasks.status,
           completedAt: aiWorkboardTasks.completedAt,
           createdAt: aiWorkboardTasks.createdAt,
@@ -702,7 +702,7 @@ class SwarmCommanderService {
           WHERE workspace_id = ${workspaceId}
             AND timestamp >= ${startDate.toISOString()}
         `);
-        const total = Number((rows as any)?.rows?.[0]?.total ?? 0);
+        const total = Number((rows as Record<string,unknown>)?.rows?.[0]?.total ?? 0);
         realApiCost = total * 0.01; // 1 token-unit = $0.01
       } catch {
         // Non-fatal — fall through with zero cost.

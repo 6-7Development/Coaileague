@@ -37,13 +37,13 @@ router.use(requireAuth);
 function getIntegrationContext(req: Request): IntegrationAccessContext {
   const user = req.user || {};
   return {
-    userId: (user as any).id || '',
-    workspaceId: req.workspaceId || (user as any).workspaceId || (user as any).activeWorkspaceId || (user as any).currentWorkspaceId || '',
-    platformRole: (user as any).platformRole || '',
-    workspaceRole: (user as any).workspaceRole || '',
+    userId: req.user?.id || '',
+    workspaceId: req.workspaceId || req.user?.workspaceId || req.user?.activeWorkspaceId || req.user?.currentWorkspaceId || '',
+    platformRole: req.user?.platformRole || '',
+    workspaceRole: req.user?.workspaceRole || '',
     accessLevel: integrationManagementService.determineAccessLevel(
-      (user as any).platformRole || '',
-      (user as any).workspaceRole || ''
+      req.user?.platformRole || '',
+      req.user?.workspaceRole || ''
     )
   };
 }
@@ -51,9 +51,8 @@ function getIntegrationContext(req: Request): IntegrationAccessContext {
 function getSupportContext(req: Request): SupportContext {
   const user = req.user || {};
   return {
-    userId: (user as any).id || '',
-    platformRole: (user as any).platformRole || '',
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    userId: req.user?.id || '',
+    platformRole: req.user?.platformRole || '',
     accessLevel: integrationPartnerService.determineSupportAccessLevel(user.platformRole || '')
   };
 }
@@ -293,7 +292,7 @@ router.post('/connection-request', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'integrationId and integrationName are required' });
     }
 
-    const workspaceId = req.workspaceId || (user as any).workspaceId || (user as any).workspace_id;
+    const workspaceId = req.workspaceId || req.user?.workspaceId || req.user?.workspace_id;
     if (!workspaceId) {
       return res.status(400).json({ success: false, error: 'No workspace associated with this session' });
     }

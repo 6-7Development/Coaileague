@@ -147,8 +147,8 @@ router.post("/sites/:siteId/versions", requireAuth, async (req: AuthenticatedReq
          JOIN site_assignments sa ON sa.employee_id = e.id
          WHERE sa.site_id = $1 AND sa.workspace_id = $2 AND e.status = 'active'`,
         [siteId, wid]
-      ).catch(() => ({ rows: [] as any[] }));
-      officerIds = empR.rows.map((r: any) => r.id);
+      ).catch(() => ({ rows: [] }));
+      officerIds = empR.rows.map((r: unknown) => r.id);
     }
 
     const id = `pov-${randomUUID()}`;
@@ -165,7 +165,7 @@ router.post("/sites/:siteId/versions", requireAuth, async (req: AuthenticatedReq
     );
 
     // Get site name for event
-    const siteR = await db.$client.query(`SELECT name FROM sites WHERE id = $1`, [siteId]).catch(() => ({ rows: [] as any[] }));
+    const siteR = await db.$client.query(`SELECT name FROM sites WHERE id = $1`, [siteId]).catch(() => ({ rows: [] }));
     const siteName = siteR.rows[0]?.name || siteId;
 
     platformEventBus.publish({
@@ -175,7 +175,7 @@ router.post("/sites/:siteId/versions", requireAuth, async (req: AuthenticatedReq
       description: `Version ${nextV} published. ${change_summary || 'No change summary.'}`,
       workspaceId: wid,
       metadata: { versionId: id, siteId, siteName, versionNumber: nextV }
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     const row = await db.$client.query(`SELECT * FROM post_order_versions WHERE id = $1`, [id]);
     res.status(201).json(row.rows[0]);
@@ -285,7 +285,7 @@ router.post("/versions/:versionId/acknowledge", requireAuth, async (req: Authent
       description: `Officer acknowledged version ${version.version_number}`,
       workspaceId: wid,
       metadata: { versionId, empId, method: acknowledgment_method }
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     // DV-19 FIX: Vault PDF — chain of custody for post order acknowledgment
     // Law: officer acknowledgments must be a real branded PDF in vault (SPS compliance)
@@ -334,7 +334,7 @@ router.post("/versions/:versionId/acknowledge", requireAuth, async (req: Authent
           pdfBuffer,
         });
         log.info(`[PostOrder] Acknowledgment vaulted — version ${version.version_number}, officer ${empId}`);
-      } catch (vaultErr: any) {
+      } catch (vaultErr : unknown) {
         log.warn(`[PostOrder] Vault PDF failed (non-fatal):`, vaultErr?.message);
       }
     });
@@ -381,7 +381,7 @@ router.get("/versions/:versionId/pending", requireAuth, async (req: Authenticate
     const acked = (await db.$client.query(
       `SELECT employee_id FROM post_order_version_acknowledgments WHERE post_order_version_id = $1`,
       [versionId]
-    )).rows.map((r: any) => r.employee_id);
+    )).rows.map((r: unknown) => r.employee_id);
 
     const pending = officers.filter((id: string) => !acked.includes(id));
     if (!pending.length) return res.json([]);

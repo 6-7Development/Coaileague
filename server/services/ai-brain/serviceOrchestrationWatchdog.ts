@@ -30,7 +30,7 @@ export interface RegisteredService {
   capabilities: string[];
   healthScore: number; // 0-100
   issueCount: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export type ServiceCategory = 
@@ -172,7 +172,7 @@ export class ServiceOrchestrationWatchdog {
     this.scanInterval = setInterval(async () => {
       try {
         await this.scanForOrphanServices();
-      } catch (error: any) {
+      } catch (error : unknown) {
         log.warn('[ServiceWatchdog] Scan failed (will retry):', error?.message || 'unknown');
       }
     }, this.SCAN_INTERVAL_MS);
@@ -213,7 +213,7 @@ export class ServiceOrchestrationWatchdog {
     category: ServiceCategory;
     capabilities: string[];
     orchestratedBy: 'trinity' | 'ai-brain' | 'standalone';
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): void {
     const existing = this.registeredServices.get(config.id);
     
@@ -242,7 +242,7 @@ export class ServiceOrchestrationWatchdog {
   /**
    * Handle service registration from events
    */
-  private handleServiceRegistration(metadata: Record<string, any>): void {
+  private handleServiceRegistration(metadata: Record<string, unknown>): void {
     const id = metadata.subagentId || metadata.serviceId;
     if (!id) return;
     
@@ -390,7 +390,7 @@ export class ServiceOrchestrationWatchdog {
   /**
    * Detect a rebel service trying to operate outside orchestration
    */
-  private detectRebelService(serviceId: string, payload: Record<string, any>): void {
+  private detectRebelService(serviceId: string, payload: Record<string, unknown>): void {
     log.info(`[ServiceWatchdog] Rebel service detected: ${serviceId}`);
     
     const rebelService: RegisteredService = {
@@ -484,7 +484,7 @@ Respond in JSON format:
       if (response.text) {
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const analysis = JSON.parse(jsonMatch[0]);
+          const analysis: unknown = JSON.parse(jsonMatch[0]);
           
           // Publish analysis results
           await platformEventBus.publish({
@@ -532,7 +532,7 @@ Respond in JSON format:
    */
   async requestHotpatch(serviceId: string, patchConfig: {
     type: 'config' | 'code' | 'restart';
-    payload: any;
+    payload: Record<string, unknown>;
     requiresApproval: boolean;
   }): Promise<{ success: boolean; message: string }> {
     const service = this.registeredServices.get(serviceId);

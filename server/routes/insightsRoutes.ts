@@ -43,7 +43,6 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.post("/dismiss/:id", requireAuth, async (req, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { userId, workspaceId } = req;
     const { id } = req.params;
     const { reason } = req.body;
@@ -76,7 +75,6 @@ router.post("/dismiss/:id", requireAuth, async (req, res) => {
 
 router.post("/generate", requireManager, async (req, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const { workspaceId, userId } = req;
 
     const employeeCount = await db.select({ count: sql<number>`count(*)` })
@@ -163,12 +161,12 @@ Respond with valid JSON array only.`
 
       const aiContent = insightsAiResult.success ? insightsAiResult.content || '{}' : '{}';
       try {
-        const aiInsightsData = JSON.parse(aiContent);
+        const aiInsightsData: unknown = JSON.parse(aiContent);
         const insightsList = aiInsightsData.insights || [];
 
         // Batch insert all insights in one query instead of N sequential inserts
         if (insightsList.length > 0) {
-          const insertRows = insightsList.map((insight: any) => ({
+          const insertRows = insightsList.map((insight: unknown) => ({
             workspaceId,
             title: insight.title || 'AI-Generated Insight',
             category: insight.category || 'efficiency_improvement',
@@ -188,7 +186,7 @@ Respond with valid JSON array only.`
         }
         /* placeholder — loop replaced by batch above */
         for (const insight of []) {
-          const savedInsight: any[] = [];
+          const savedInsight: (string | number | boolean | null)[] = [];
           insights.push(savedInsight[0]);
         }
       } catch (parseError) {
@@ -215,7 +213,6 @@ Respond with valid JSON array only.`
     } else {
       if (employeeCount[0]?.count > 5) {
         const savingsInsight = await db.insert(aiInsights).values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId,
           title: "Workforce Optimization Opportunity",
           category: 'efficiency_improvement',
@@ -272,7 +269,7 @@ router.get("/metrics", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/api/predict/turnover", requireManager, async (req: any, res) => {
+router.post("/api/predict/turnover", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.body;
@@ -306,7 +303,7 @@ router.post("/api/predict/turnover", requireManager, async (req: any, res) => {
   }
 });
 
-router.get("/api/predict/turnover/workspace", requireManager, async (req: any, res) => {
+router.get("/api/predict/turnover/workspace", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { turnoverRiskScores } = await import("@shared/schema");
@@ -332,7 +329,7 @@ router.get("/api/predict/turnover/workspace", requireManager, async (req: any, r
   }
 });
 
-router.post("/api/predict/cost-overrun", requireManager, async (req: any, res) => {
+router.post("/api/predict/cost-overrun", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { scheduleDate, proposedShifts } = req.body;
@@ -355,7 +352,7 @@ router.post("/api/predict/cost-overrun", requireManager, async (req: any, res) =
   }
 });
 
-router.get("/api/patterns/employee/:employeeId", requireAuth, async (req: any, res) => {
+router.get("/api/patterns/employee/:employeeId", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.params;
@@ -373,7 +370,7 @@ router.get("/api/patterns/employee/:employeeId", requireAuth, async (req: any, r
   }
 });
 
-router.get("/api/patterns/workspace", requireManager, async (req: any, res) => {
+router.get("/api/patterns/workspace", requireManager, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeePatternService } = await import("../services/employeePatternService");
@@ -391,7 +388,7 @@ router.get("/api/patterns/workspace", requireManager, async (req: any, res) => {
   }
 });
 
-router.get("/api/patterns/similar/:employeeId", requireAuth, async (req: any, res) => {
+router.get("/api/patterns/similar/:employeeId", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.params;

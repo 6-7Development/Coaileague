@@ -26,7 +26,7 @@ function sraFetch(path: string) {
   return fetch(path, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" }).then(r => r.json());
 }
 
-function sraRequest(method: string, path: string, body?: any) {
+function sraRequest(method: string, path: string, body?: unknown) {
   const token = localStorage.getItem("sra_session_token");
   return fetch(path, {
     method,
@@ -82,7 +82,7 @@ export default function SRAReportBuilder() {
     refetchInterval: false,
   });
 
-  const sections: ReportSection[] = (sectionsData?.sections || []).map((s: any, i: number) => ({ ...s, index: i }));
+  const sections: ReportSection[] = (sectionsData?.sections || []).map((s: unknown, i: number) => ({ ...s, index: i }));
   const verifiedCount = sections.filter(s => s.verified).length;
   const allVerified = sections.length > 0 && verifiedCount === sections.length;
 
@@ -152,7 +152,7 @@ export default function SRAReportBuilder() {
         `SRA-Audit-Report-${Date.now()}.pdf`
       );
       setPdfSuccess(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPdfError(err.message || "Failed to generate PDF.");
     } finally {
       setIsGeneratingPdf(false);

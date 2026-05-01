@@ -18,7 +18,7 @@ const log = createLogger('trinityFieldOpsIntegration');
 
 interface ActionRequest {
   actionId: string;
-  params: any;
+  params: Record<string, unknown>;
   context: {
     orgId: string;
     userId: string;
@@ -28,7 +28,7 @@ interface ActionRequest {
 
 interface ActionResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   message?: string;
   error?: string;
 }
@@ -361,7 +361,7 @@ export async function executeFieldOpsAction(request: ActionRequest): Promise<Act
       default:
         return { success: false, error: `Unknown action: ${actionId}` };
     }
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error(`[FieldOps] Action ${actionId} failed:`, error);
     return { success: false, error: (error instanceof Error ? error.message : String(error)) };
   }
@@ -373,7 +373,7 @@ export async function initializeFieldOpsIntegration(registerAction: Function): P
   for (const action of actions) {
     registerAction({
       ...action,
-      handler: async (params: any, context: any) => {
+      handler: async (params: Record<string, unknown>, context: Record<string, unknown>) => {
         return executeFieldOpsAction({
           actionId: action.id,
           params,

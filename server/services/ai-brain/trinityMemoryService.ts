@@ -84,7 +84,7 @@ export interface UserPreferences {
 
 export interface InteractionPattern {
   patternType: 'time_of_day' | 'day_of_week' | 'feature_sequence' | 'issue_recurrence';
-  patternData: Record<string, any>;
+  patternData: Record<string, unknown>;
   confidence: number;
   occurrences: number;
   lastSeen: Date;
@@ -1019,7 +1019,7 @@ class TrinityMemoryService {
           contextMemory: contextPatch,
           updatedAt: new Date(),
           lastActivityAt: new Date(),
-        } as any)
+        } as Record<string, unknown>)
         .where(
           and(
             eq(trinityConversationSessions.id, sessionId),
@@ -1395,12 +1395,11 @@ class TrinityMemoryService {
     actionName: string;
     actionDescription: string;
     outcome: 'success' | 'failure' | 'partial' | 'pending';
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     impactLevel?: 'low' | 'medium' | 'high' | 'critical';
   }): Promise<void> {
     try {
       await db.insert(automationActionLedger).values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: params.workspaceId,
         actionId: `org_${params.actionCategory}_${Date.now()}`,
         actionName: params.actionName,
@@ -1475,7 +1474,7 @@ class TrinityMemoryService {
         if (action.executionStatus === 'success') categoryCounts[cat].success++;
         if (action.executionStatus === 'error') categoryCounts[cat].failure++;
 
-        const payload = action.inputPayload as Record<string, any> | null;
+        const payload = action.inputPayload as Record<string, unknown> | null;
         if (payload?.impactLevel && ['high', 'critical'].includes(payload.impactLevel)) {
           recentHighImpact.push({
             category: cat,
@@ -1536,7 +1535,7 @@ export async function connectTrinityMemoryToEventBus(): Promise<void> {
   try {
     const { platformEventBus } = await import('../platformEventBus');
 
-    platformEventBus.on('automation_completed', (p: any) => {
+    platformEventBus.on('automation_completed', (p: unknown) => {
       if (!p?.workspaceId || !p?.domain) return;
       
       const domainToCategoryMap: Record<string, OrgActionCategory> = {
@@ -1574,7 +1573,7 @@ export async function connectTrinityMemoryToEventBus(): Promise<void> {
       }).catch(err => log.warn('[TrinityMemory] Failed to record automation success:', err?.message));
     });
     
-    platformEventBus.on('automation_execution_failed', (p: any) => {
+    platformEventBus.on('automation_execution_failed', (p: unknown) => {
       if (!p?.workspaceId || !p?.domain) return;
       
       const domainToCategoryMap: Record<string, OrgActionCategory> = {

@@ -405,8 +405,7 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
     .where(
       and(
         eq(workspaceMembers.workspaceId, workspaceId),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        inArray(workspaceMembers.workspaceRole as any, ['org_owner', 'co_owner', 'manager'])
+        inArray(workspaceMembers.workspaceRole, ['org_owner', 'co_owner', 'manager'])
       )
     );
   const managerUserIds = managerMembers.map(m => m.userId).filter(Boolean);
@@ -434,7 +433,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
       if (!shouldNotify) continue;
 
       deliveryTasks.push(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         createNotification({
           workspaceId,
           userId,
@@ -461,7 +459,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
     ];
 
     deliveryTasks.push(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       briefingChannelService.postToBriefingChannel(workspaceId, {
         category: 'COMPLIANCE ALERT',
         title: notificationTitle,
@@ -503,7 +500,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
           </div>
         </div>`;
       deliveryTasks.push(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         NotificationDeliveryService.send({ type: 'compliance_alert', workspaceId: workspaceId || 'system', recipientUserId: ownerRecord.id, channel: 'email', body: { to: ownerRecord.email, subject: emailSubject, html: emailHtml } })
           .then(() => {}).catch((e: Error) => errors.push(`email: ${e.message}`))
       );
@@ -521,7 +517,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
     for (const userId of managerUserIds) {
       if (!userId) continue;
       oosTasks.push(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         createNotification({
           workspaceId,
           userId,
@@ -538,7 +533,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
     }
 
     oosTasks.push(
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       briefingChannelService.postToBriefingChannel(workspaceId, {
         category: 'COMPLIANCE ALERT',
         title: 'Out-of-State License Review Required',
@@ -546,7 +540,6 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
         dataPoints: scan.outOfStateFlags.map(f => `${f.name}: ${f.state} license — verify reciprocity for TX operations`),
         recommendedAction: 'Review each officer\'s out-of-state license. Use the override flow at /compliance-scenarios to document approval with reason.',
         deepLink: '/compliance-scenarios',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         priority: 'medium',
       }).catch((e: Error) => errors.push(`oos-briefing: ${e.message}`))
     );

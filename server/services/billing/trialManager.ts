@@ -122,7 +122,7 @@ export class TrialManager {
       log.info(`[TrialManager] Started trial for workspace ${workspaceId}, ends ${trialEndsAt.toISOString()}`);
 
       return { success: true, trialEndsAt };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[TrialManager] Failed to start trial:', error);
       return { success: false, trialEndsAt: new Date(), error: (error instanceof Error ? error.message : String(error)) };
     }
@@ -299,14 +299,13 @@ export class TrialManager {
       const [owner] = await db.select().from(users).where(eq(users.id, workspace.ownerId)).limit(1);
       if (!owner?.email) return;
 
-      const ownerName = (owner as any).name || (owner as any).firstName || 'there';
+      const ownerName = (owner as Record<string,unknown>).name || (owner as Record<string,unknown>).firstName || 'there';
       
       await sendBilledEmail({
         to: owner.email,
         workspaceId,
         subject: `Your ${PLATFORM.name} trial ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`,
         templateId: 'trial-warning',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         templateData: {
           recipientName: ownerName,
           daysRemaining,
@@ -331,14 +330,13 @@ export class TrialManager {
       const [owner] = await db.select().from(users).where(eq(users.id, workspace.ownerId)).limit(1);
       if (!owner?.email) return;
 
-      const ownerName = (owner as any).name || (owner as any).firstName || 'there';
+      const ownerName = (owner as Record<string,unknown>).name || (owner as Record<string,unknown>).firstName || 'there';
 
       await sendBilledEmail({
         to: owner.email,
         workspaceId,
         subject: `Your ${PLATFORM.name} trial has ended`,
         templateId: 'trial-expired',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         templateData: {
           recipientName: ownerName,
           workspaceName: workspace.name,
@@ -389,7 +387,7 @@ export class TrialManager {
       log.info(`[TrialManager] Extended trial for ${workspaceId} by ${days} days to ${newEndsAt.toISOString()}`);
 
       return { success: true, newEndsAt };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[TrialManager] Failed to extend trial:', error);
       return { success: false, newEndsAt: new Date(), error: (error instanceof Error ? error.message : String(error)) };
     }

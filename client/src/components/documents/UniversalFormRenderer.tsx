@@ -300,8 +300,8 @@ function FieldRenderer({
   disabled,
 }: {
   field: TemplateField;
-  value: any;
-  onChange: (v: any) => void;
+  value: unknown;
+  onChange: (v) => void;
   error?: string;
   disabled?: boolean;
 }) {
@@ -347,8 +347,8 @@ function SectionRenderer({
   disabled,
 }: {
   section: TemplateSection;
-  formData: Record<string, any>;
-  onFieldChange: (id: string, value: any) => void;
+  formData: Record<string, unknown>;
+  onFieldChange: (id: string, value: unknown) => void;
   errors: Record<string, string>;
   disabled?: boolean;
 }) {
@@ -415,7 +415,7 @@ export function UniversalFormRenderer({
 }: UniversalFormRendererProps) {
   const { toast } = useToast();
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasDraft, setHasDraft] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
@@ -433,7 +433,7 @@ export function UniversalFormRenderer({
   const template = templateData?.template;
 
   // ── Load draft ──────────────────────────────────────────────────────────────
-  const { data: draftData, isLoading: draftLoading } = useQuery<{ draft: any }>({
+  const { data: draftData, isLoading: draftLoading } = useQuery<{ draft: unknown }>({
     queryKey: [`/api/document-forms/draft/${templateId}`],
     enabled: !!template && !readOnly,
     retry: false,
@@ -453,7 +453,7 @@ export function UniversalFormRenderer({
 
   // ── Auto-save draft ─────────────────────────────────────────────────────────
   const saveDraftMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-forms/draft", {
         templateId,
         formData: data,
@@ -481,7 +481,7 @@ export function UniversalFormRenderer({
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const submitMutation = useMutation({
-    mutationFn: async (payload: { formData: Record<string, any>; gpsData: GpsData | null }) => {
+    mutationFn: async (payload: { formData: Record<string, unknown>; gpsData: GpsData | null }) => {
       const res = await apiRequest("POST", "/api/document-forms/submit", {
         templateId,
         formData: payload.formData,
@@ -499,7 +499,7 @@ export function UniversalFormRenderer({
         toast({ title: "Submission Error", description: result.error ?? "Unknown error", variant: "destructive" });
       }
     },
-    onError: async (err: any) => {
+    onError: async (err) => {
       let msg = "Submission failed";
       try {
         const j = await err.response?.json?.();
@@ -521,7 +521,7 @@ export function UniversalFormRenderer({
   });
 
   // ── Field change ────────────────────────────────────────────────────────────
-  const handleFieldChange = (fieldId: string, value: any) => {
+  const handleFieldChange = (fieldId: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
     if (errors[fieldId]) {
       setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });

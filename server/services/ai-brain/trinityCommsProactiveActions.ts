@@ -13,20 +13,17 @@ import { typedQuery } from '../../lib/typedSql';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityCommsProactiveActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity action: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -39,8 +36,7 @@ export function registerCommsProactiveActions() {
     const { userId, title, message, workspaceId, urgent } = params;
     if (!userId || !title || !message) return { error: 'userId, title, message required' };
     if (urgent) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as any);
+      const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as unknown);
       return { sent: true, userId, result };
     }
     const result = await createNotification({ workspaceId, userId, type: 'alert', title, message, priority: 'normal',
@@ -53,7 +49,6 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('notify.sms', async (params) => {
     const { phoneNumber, message, workspaceId } = params;
     if (!phoneNumber || !message) return { error: 'phoneNumber and message required' };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const notifId = await NotificationDeliveryService.send({ type: 'sms_broadcast', workspaceId: workspaceId || 'system', recipientUserId: phoneNumber, channel: 'sms', body: { to: phoneNumber, body: message.substring(0, 1600) } });
     return { sent: true, phoneNumber: phoneNumber.replace(/\d(?=\d{4})/g, '*'), messageId: notifId };
   }));
@@ -61,15 +56,14 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('notify.email_officer', async (params) => {
     const { workspaceId, officerId, subject, message, priority } = params;
     if (!workspaceId || !officerId || !message) return { error: 'workspaceId, officerId, message required' };
-    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
-    const userId = (emp as any)?.userId || officerId;
+    const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) }).catch(() => null);
+    const userId = (emp as EmployeeWithStatus)?.userId || officerId;
     await createNotification({ workspaceId, userId, type: 'scheduled_email', title: subject || 'Message from CoAIleague', message, priority: priority || 'normal',
  idempotencyKey: `scheduled_email-${String(Date.now())}-${'system'}`,
         })
       .catch((err: Error) => log.warn(`[TrinityComms] Officer email notification persist failed for user ${userId}:`, err.message));
-    const emailAddr = (emp as any)?.email;
+    const emailAddr = (emp as EmployeeWithStatus)?.email;
     if (emailAddr) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint,
       await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: userId, channel: 'email', body: { to: emailAddr, subject: subject || 'Message from CoAIleague', html: `<p>${message}</p>` } }).catch(() => null);
     }
     return { sent: true, officerId, subject, emailSent: !!emailAddr };
@@ -92,10 +86,9 @@ export function registerCommsProactiveActions() {
  idempotencyKey: `scheduled_email-${String(Date.now())}-${mgr.userId}`,
         })
         .catch((err: Error) => log.warn(`[TrinityComms] Manager email notification persist failed for user ${mgr.userId}:`, err.message));
-      const mgrUser = await db.query.users?.findFirst({ where: eq(users.id, mgr.userId) } as any).catch(() => null);
-      if ((mgrUser as any)?.email) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint,
-        await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: mgr.userId, channel: 'email', body: { to: (mgrUser as any).email, subject: subject || 'Manager Alert from Trinity', html: `<p>${message}</p>` } }).catch(() => null);
+      const mgrUser = await db.query.users?.findFirst({ where: eq(users.id, mgr.userId) }).catch(() => null);
+      if ((mgrUser as Record<string,unknown>)?.email) {
+        await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: mgr.userId, channel: 'email', body: { to: (mgrUser as Record<string,unknown>).email, subject: subject || 'Manager Alert from Trinity', html: `<p>${message}</p>` } }).catch(() => null);
         emailsSent++;
       }
       sent++;
@@ -108,11 +101,10 @@ export function registerCommsProactiveActions() {
     if (!workspaceId || !message) return { error: 'workspaceId and message required' };
     let toEmail = clientEmail;
     if (!toEmail && clientId) {
-      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) } as any).catch(() => null);
-      toEmail = (client as any)?.email || (client as any)?.billingEmail || (client as any)?.pocEmail;
+      const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) }).catch(() => null);
+      toEmail = (client as Record<string,unknown>)?.email || (client as Record<string,unknown>)?.billingEmail || (client as Record<string,unknown>)?.pocEmail;
     }
     if (!toEmail) return { sent: false, error: 'No email address found for client', clientId };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const notifId = await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: clientId || toEmail, channel: 'email', body: { to: toEmail, subject: subject || 'Update from CoAIleague', html: `<p>${message}</p>` } }).catch(() => null);
     return { sent: true, clientId, toEmail, subject, notifId };
   }));
@@ -120,7 +112,6 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('notify.post_announcement', async (params) => {
     const { workspaceId, title, content, targetType, createdBy } = params;
     if (!workspaceId || !content) return { error: 'workspaceId and content required' };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const broadcast = await broadcastService.createBroadcast({
       workspaceId,
       title: title || 'Announcement',
@@ -128,11 +119,11 @@ export function registerCommsProactiveActions() {
       targetType: targetType || 'org',
       createdBy: createdBy || 'trinity-ai',
       sendNow: true,
-    } as any);
-    if ((broadcast as any)?.id) {
-      await broadcastService.deliverBroadcast((broadcast as any).id, workspaceId).catch(() => null);
+    } as unknown);
+    if ((broadcast as Record<string,unknown>)?.id) {
+      await broadcastService.deliverBroadcast(((broadcast as {id?: string}).id), workspaceId).catch(() => null);
     }
-    return { posted: true, broadcastId: (broadcast as any)?.id, title };
+    return { posted: true, broadcastId: (broadcast as Record<string,unknown>)?.id, title };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('report.executive_summary', async (params) => {
@@ -163,15 +154,15 @@ export function registerCommsProactiveActions() {
       .catch(() => [{ count: 0 }]);
     const pendingPayroll = await db.select({ count: sql`COUNT(*)` })
       .from(payrollRuns)
-      .where(and(eq(payrollRuns.workspaceId, workspaceId), eq(payrollRuns.status as any, 'pending')))
+      .where(and(eq(payrollRuns.workspaceId, workspaceId), eq(payrollRuns.status, 'pending')))
       .catch(() => [{ count: 0 }]);
     return {
       generatedAt: new Date().toISOString(),
       workspaceId,
-      openShiftsToday: parseInt(String((openShiftsToday[0] as any)?.count || 0)),
-      expiringCertsNext7Days: parseInt(String((expiringDocs[0] as any)?.count || 0)),
-      pendingPayrollApprovals: parseInt(String((pendingPayroll[0] as any)?.count || 0)),
-      overdueInvoices: overdue.status === 'fulfilled' ? (overdue as any).value?.overdueCount || 0 : 'unavailable',
+      openShiftsToday: parseInt(String((openShiftsToday[0] as unknown)?.count || 0)),
+      expiringCertsNext7Days: parseInt(String((expiringDocs[0] as unknown)?.count || 0)),
+      pendingPayrollApprovals: parseInt(String((pendingPayroll[0] as unknown)?.count || 0)),
+      overdueInvoices: overdue.status === 'fulfilled' ? (overdue as Record<string,unknown>).value?.overdueCount || 0 : 'unavailable',
       revenueForecast: forecast.status === 'fulfilled' ? forecast.value : null,
       weeklyScheduleSummary: weeklyReport.status === 'fulfilled' ? weeklyReport.value : null,
     };
@@ -244,7 +235,7 @@ export function registerCommsProactiveActions() {
     }
 
     // Build the emailEvents query
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (workspaceId) conditions.push(eq(emailEvents.workspaceId, workspaceId));
     if (userId) conditions.push(eq(emailEvents.userId, userId));
     if (resolvedRecipientEmail) conditions.push(eq(emailEvents.recipientEmail, resolvedRecipientEmail));
@@ -291,7 +282,6 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('system.trinity_audit_log', async (params) => {
     const { workspaceId, action, trigger, parameters, result, modelUsed, tokensUsed, humanReviewRequired } = params;
     if (!action) return { error: 'action required' };
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await db.insert(auditLogs).values({
       workspaceId: workspaceId || 'system',
       entityType: 'trinity_action',
@@ -306,7 +296,7 @@ export function registerCommsProactiveActions() {
   helpaiOrchestrator.registerAction(mkAction('system.org_calendar', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) } as any).catch(() => null);
+    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) }).catch(() => null);
     const today = new Date();
     const expiringCerts = await db.select({ expirationDate: employeeDocuments.expirationDate, documentType: employeeDocuments.documentType, employeeId: employeeDocuments.employeeId })
       .from(employeeDocuments)
@@ -318,8 +308,8 @@ export function registerCommsProactiveActions() {
       .orderBy(employeeDocuments.expirationDate)
       .limit(20)
       .catch(() => []);
-    const payPeriodSchedule = (workspace as any)?.payrollSchedule || 'biweekly';
-    const billingCycle = (workspace as any)?.invoiceSchedule || 'monthly';
+    const payPeriodSchedule = (workspace as Record<string,unknown>)?.payrollSchedule || 'biweekly';
+    const billingCycle = (workspace as Record<string,unknown>)?.invoiceSchedule || 'monthly';
     const nextPayDate = new Date(today);
     nextPayDate.setDate(nextPayDate.getDate() + (payPeriodSchedule === 'weekly' ? 7 : 14));
     const nextBillingDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
@@ -344,18 +334,18 @@ export function registerCommsProactiveActions() {
     }).catch(() => []);
     const { users } = await import('../../../shared/schema');
     const { eq: eqOp, inArray: inArrayOp } = await import('drizzle-orm');
-    const userIds = members.map((m: any) => m.userId).filter(Boolean);
+    const userIds = members.map((m: unknown) => m.userId).filter(Boolean);
     const userRows = userIds.length > 0
       ? await db.query.users.findMany({
           where: (u, { inArray }) => inArray(u.id, userIds),
           columns: { id: true, email: true, firstName: true, lastName: true },
         }).catch(() => [])
       : [];
-    const userMap = new Map(userRows.map((u: any) => [u.id, u]));
+    const userMap = new Map(userRows.map((u: unknown) => [u.id, u]));
     return {
       workspaceId,
       member_count: members.length,
-      members: members.slice(0, 10).map((m: any) => {
+      members: members.slice(0, 10).map((m: unknown) => {
         const user = userMap.get(m.userId);
         return {
           userId: m.userId,
@@ -377,7 +367,6 @@ export function registerCommsProactiveActions() {
     }).catch(() => []);
     const roleCounts: Record<string, number> = {};
     for (const m of members) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       roleCounts[m.role] = (roleCounts[m.role] || 0) + 1;
     }
     return { workspaceId, total_members: members.length, role_breakdown: roleCounts };
@@ -433,15 +422,15 @@ export function registerCommsProactiveActions() {
       where: (m, { eq }) => eq(m.workspaceId, workspaceId),
     }).catch(() => []);
     const { users: usersTable } = await import('../../../shared/schema');
-    const memberUserIds = members.map((m: any) => m.userId).filter(Boolean);
+    const memberUserIds = members.map((m: unknown) => m.userId).filter(Boolean);
     const mfaUsers = memberUserIds.length > 0
       ? await db.query.users.findMany({
           where: (u, { inArray }) => inArray(u.id, memberUserIds),
           columns: { id: true, mfaEnabled: true },
         }).catch(() => [])
       : [];
-    const mfaUserMap = new Map(mfaUsers.map((u: any) => [u.id, u]));
-    const mfaEnabled = members.filter((m: any) => mfaUserMap.get(m.userId)?.mfaEnabled).length;
+    const mfaUserMap = new Map(mfaUsers.map((u: unknown) => [u.id, u]));
+    const mfaEnabled = members.filter((m: unknown) => mfaUserMap.get(m.userId)?.mfaEnabled).length;
     const mfaDisabled = members.length - mfaEnabled;
     return {
       workspaceId,
@@ -485,9 +474,9 @@ export function registerCommsProactiveActions() {
     const members = await db.query.workspaceMembers.findMany({
       where: (m, { eq }) => eq(m.workspaceId, workspaceId),
     }).catch(() => []);
-    const adminCount = members.filter((m: any) => m.role === 'admin' || m.role === 'owner').length;
-    const managerCount = members.filter((m: any) => m.role === 'manager').length;
-    const staffCount = members.filter((m: any) => !['admin', 'owner', 'manager'].includes(m.role)).length;
+    const adminCount = members.filter((m: unknown) => m.role === 'admin' || m.role === 'owner').length;
+    const managerCount = members.filter((m: unknown) => m.role === 'manager').length;
+    const staffCount = members.filter((m: unknown) => !['admin', 'owner', 'manager'].includes(m.role)).length;
     return {
       workspaceId,
       admins: adminCount,

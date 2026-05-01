@@ -6,6 +6,7 @@ import { universalNotificationEngine } from '../universalNotificationEngine';
 import { broadcastToWorkspace } from '../../websocket';
 import { createLogger } from '../../lib/logger';
 import { withDistributedLock, LOCK_KEYS } from '../distributedLock';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 
 const log = createLogger('LoneWorkerSafety');
 
@@ -84,8 +85,8 @@ class LoneWorkerSafetyService {
     this.intervalId = setInterval(async () => {
       try {
         await withDistributedLock(LOCK_KEYS.LONE_WORKER_SAFETY, 'LoneWorkerSafety', () => this.runCycle());
-      } catch (error: any) {
-        log.error('Monitoring cycle failed (will retry)', { error: error?.message });
+      } catch (error: unknown) {
+        log.error('Monitoring cycle failed (will retry)', { error: error instanceof Error ? error.message : String(error) });
       }
     }, SERVICE_POLL_INTERVAL_MS);
 
@@ -208,8 +209,8 @@ class LoneWorkerSafetyService {
       }
 
       log.info('Loaded active welfare checks from DB', { count: rows.length });
-    } catch (error: any) {
-      log.error('Failed to load active welfare checks from DB', { error: error?.message });
+    } catch (error: unknown) {
+      log.error('Failed to load active welfare checks from DB', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -244,7 +245,7 @@ class LoneWorkerSafetyService {
             updatedAt: new Date(),
           },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('Failed to persist welfare check', { checkId: check.id, error: error?.message });
     }
   }
@@ -320,8 +321,8 @@ class LoneWorkerSafetyService {
           this.sessions.delete(sessionKey);
         }
       }
-    } catch (error: any) {
-      log.error('Failed to detect lone workers', { error: error?.message });
+    } catch (error: unknown) {
+      log.error('Failed to detect lone workers', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -421,7 +422,7 @@ class LoneWorkerSafetyService {
         };
         this.welfareChecks.set(checkId, reconstructed);
         return this.acknowledgeWelfareCheck(checkId, employeeId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('DB lookup failed for welfare check', { checkId, error: err?.message });
         return false;
       }
@@ -559,7 +560,7 @@ class LoneWorkerSafetyService {
         .where(
           and(
             eq(employees.workspaceId, check.workspaceId),
-            (employees as any).workspaceRole
+            (employees as EmployeeWithStatus).workspaceRole
           )
         );
 
@@ -587,8 +588,8 @@ class LoneWorkerSafetyService {
           });
         }
       }
-    } catch (error: any) {
-      log.error('Failed to notify for escalation', { error: error?.message });
+    } catch (error: unknown) {
+      log.error('Failed to notify for escalation', { error: error instanceof Error ? error.message : String(error) });
     }
 
     log.warn('Welfare check escalated via UNE', {

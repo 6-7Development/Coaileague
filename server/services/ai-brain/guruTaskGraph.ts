@@ -25,6 +25,8 @@ import {
 } from '@shared/schema';
 import { growthStrategist, StrategyCard, EmpireScanResult } from './growthStrategist';
 import { TTLCache } from './cacheUtils';
+import { createLogger } from '../../lib/logger';
+const log = createLogger('guruTaskGraph');
 
 // ============================================================================
 // TYPES
@@ -234,7 +236,7 @@ class GuruTaskGraphService {
       this.goalCache.set(workspaceId, goals);
       return goals;
     } catch (error) {
-      console.error('[GuruTaskGraph] Error getting org goals:', error);
+      log.error('[GuruTaskGraph] Error getting org goals:', error);
       return [];
     }
   }
@@ -310,7 +312,7 @@ class GuruTaskGraphService {
         return severityOrder[a.severity] - severityOrder[b.severity];
       });
     } catch (error) {
-      console.error('[GuruTaskGraph] Error analyzing gaps:', error);
+      log.error('[GuruTaskGraph] Error analyzing gaps:', error);
       return [];
     }
   }
@@ -461,11 +463,11 @@ class GuruTaskGraphService {
       });
 
       this.recommendationCache.set(workspaceId, recommendations);
-      console.log(`[GuruTaskGraph] Generated ${recommendations.length} recommendations for workspace ${workspaceId}`);
+      log.info(`[GuruTaskGraph] Generated ${recommendations.length} recommendations for workspace ${workspaceId}`);
       
       return recommendations;
     } catch (error) {
-      console.error('[GuruTaskGraph] Error generating recommendations:', error);
+      log.error('[GuruTaskGraph] Error generating recommendations:', error);
       return [];
     }
   }
@@ -529,7 +531,7 @@ class GuruTaskGraphService {
       const recommendation = recommendations.find(r => r.id === recommendationId);
 
       if (!recommendation) {
-        console.warn(`[GuruTaskGraph] Recommendation ${recommendationId} not found`);
+        log.warn(`[GuruTaskGraph] Recommendation ${recommendationId} not found`);
         return null;
       }
 
@@ -550,10 +552,10 @@ class GuruTaskGraphService {
       this.activeAssignments.set(workspaceId, workspaceAssignments);
 
       // Log assignment for tracking (database persistence handled by active assignments)
-      console.log(`[GuruTaskGraph] Task assigned to user ${userId}: ${recommendation.title}`);
+      log.info(`[GuruTaskGraph] Task assigned to user ${userId}: ${recommendation.title}`);
       return assignment;
     } catch (error) {
-      console.error('[GuruTaskGraph] Error assigning task:', error);
+      log.error('[GuruTaskGraph] Error assigning task:', error);
       return null;
     }
   }
@@ -595,7 +597,7 @@ class GuruTaskGraphService {
       scored.sort((a, b) => b.score - a.score);
       return scored[0]?.userId || null;
     } catch (error) {
-      console.error('[GuruTaskGraph] Error suggesting assignee:', error);
+      log.error('[GuruTaskGraph] Error suggesting assignee:', error);
       return null;
     }
   }
@@ -627,7 +629,7 @@ class GuruTaskGraphService {
       }
 
       if (!assignment || !workspaceId) {
-        console.warn(`[GuruTaskGraph] Assignment ${assignmentId} not found`);
+        log.warn(`[GuruTaskGraph] Assignment ${assignmentId} not found`);
         return false;
       }
 
@@ -646,10 +648,10 @@ class GuruTaskGraphService {
         await this.boostUserConfidence(assignment.userId, workspaceId);
       }
 
-      console.log(`[GuruTaskGraph] Task ${assignmentId} completed with outcome: ${outcome}`);
+      log.info(`[GuruTaskGraph] Task ${assignmentId} completed with outcome: ${outcome}`);
       return true;
     } catch (error) {
-      console.error('[GuruTaskGraph] Error tracking completion:', error);
+      log.error('[GuruTaskGraph] Error tracking completion:', error);
       return false;
     }
   }
@@ -669,7 +671,7 @@ class GuruTaskGraphService {
         })
         .where(eq(trinityOrgStats.workspaceId, workspaceId));
     } catch (error) {
-      console.error('[GuruTaskGraph] Error updating org stats:', error);
+      log.error('[GuruTaskGraph] Error updating org stats:', error);
     }
   }
 
@@ -689,7 +691,7 @@ class GuruTaskGraphService {
           )
         );
     } catch (error) {
-      console.error('[GuruTaskGraph] Error boosting user confidence:', error);
+      log.error('[GuruTaskGraph] Error boosting user confidence:', error);
     }
   }
 
@@ -724,7 +726,7 @@ class GuruTaskGraphService {
         lastUpdated: new Date(),
       };
     } catch (error) {
-      console.error('[GuruTaskGraph] Error getting org task summary:', error);
+      log.error('[GuruTaskGraph] Error getting org task summary:', error);
       return {
         workspaceId,
         totalRecommendations: 0,
@@ -766,7 +768,7 @@ class GuruTaskGraphService {
       
       return recommendations.filter(r => allowedEfforts.includes(r.estimatedEffort));
     } catch (error) {
-      console.error('[GuruTaskGraph] Error getting user recommendations:', error);
+      log.error('[GuruTaskGraph] Error getting user recommendations:', error);
       return [];
     }
   }
@@ -782,7 +784,7 @@ class GuruTaskGraphService {
       this.recommendationCache.clear();
       this.goalCache.clear();
     }
-    console.log(`[GuruTaskGraph] Cache cleared${workspaceId ? ` for workspace ${workspaceId}` : ''}`);
+    log.info(`[GuruTaskGraph] Cache cleared${workspaceId ? ` for workspace ${workspaceId}` : ''}`);
   }
 }
 

@@ -320,9 +320,9 @@ export interface GeminiResponse {
   text: string;
   tokensUsed: number;
   confidenceScore?: number;
-  metadata?: any;
-  functionCalls?: Array<{ name: string; args: any }>;
-  structuredOutput?: any;
+  metadata?: unknown;
+  functionCalls?: Array<{ name: string; args: Record<string, unknown> }>;
+  structuredOutput?: unknown;
 }
 
 // Define available AI Brain tools for Gemini
@@ -684,7 +684,7 @@ const AI_BRAIN_TOOLS: FunctionDeclaration[] = [
 
 interface ToolResult {
   success: boolean;
-  data: any;
+  data: Record<string, unknown>;
   error?: string;
 }
 
@@ -708,8 +708,8 @@ const TOOL_REQUIRED_FIELDS: Record<string, string[]> = {
   forecast_trends: ['forecastType'],
 };
 
-function sanitizeToolArgs(args: Record<string, any>): Record<string, any> {
-  const sanitized: Record<string, any> = {};
+function sanitizeToolArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(args)) {
     if (typeof value === 'string' && value.length > 500) {
       sanitized[key] = value.substring(0, 500) + '...[truncated]';
@@ -720,7 +720,7 @@ function sanitizeToolArgs(args: Record<string, any>): Record<string, any> {
   return sanitized;
 }
 
-function validateToolArgs(toolName: string, args: Record<string, any>): string | null {
+function validateToolArgs(toolName: string, args: Record<string, unknown>): string | null {
   const required = TOOL_REQUIRED_FIELDS[toolName];
   if (!required || required.length === 0) return null;
   const missing = required.filter(field => args[field] === undefined || args[field] === null || args[field] === '');
@@ -732,7 +732,7 @@ function validateToolArgs(toolName: string, args: Record<string, any>): string |
 
 async function logToolCallFailure(
   toolName: string,
-  args: Record<string, any>,
+  args: Record<string, unknown>,
   errorMessage: string,
   context: ToolExecutionContext
 ): Promise<void> {
@@ -758,7 +758,7 @@ async function logToolCallFailure(
 
 async function executeToolCall(
   toolName: string,
-  args: Record<string, any>,
+  args: Record<string, unknown>,
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   log.info(`🔧 [AI Brain] Executing tool: ${toolName}`, args);
@@ -815,7 +815,6 @@ async function executeToolCall(
         return await executeDetectSchedulingConflicts(args, context);
       
       case 'analyze_sentiment':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await executeAnalyzeSentiment(args, context);
       
       case 'lookup_incidents':
@@ -840,11 +839,9 @@ async function executeToolCall(
         return await executeListAvailableActions(args, context);
       
       case 'execute_platform_action':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await executePlatformAction(args, context);
       
       case 'get_financial_analysis':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await executeFinancialAnalysis(args, context);
       
       case 'analyze_cross_domain':
@@ -854,11 +851,9 @@ async function executeToolCall(
         return await executeDetectAnomaliesOnDemand(args, context);
       
       case 'explain_reasoning':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await executeExplainReasoning(args, context);
       
       case 'forecast_trends':
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return await executeForecastTrends(args, context);
       
       case 'get_temporal_trends':
@@ -878,7 +873,7 @@ async function executeToolCall(
       setTimeout(() => reject(new Error(`Tool '${toolName}' timed out after ${TOOL_TIMEOUT_MS / 1000}s`)), TOOL_TIMEOUT_MS);
     });
     return await Promise.race([toolExecution(), timeoutPromise]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorMessage = (error instanceof Error ? error.message : String(error)) || 'Tool execution failed';
     log.error(`❌ [AI Brain] Tool execution failed for ${toolName}:`, error);
     await logToolCallFailure(toolName, args, errorMessage, context);
@@ -933,7 +928,7 @@ async function executeSearchFaqs(
         query: args.query
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       data: null,
@@ -982,7 +977,7 @@ async function executeCreateSupportTicket(
         message: `Support ticket ${ticketNumber} has been created and assigned to our support team.`
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       data: null,
@@ -1014,7 +1009,7 @@ async function executeGetBusinessInsights(
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
     
-    let insights: any = {};
+    let insights: Record<string, unknown> = {};
     
     switch (args.insightType) {
       case 'sales':
@@ -1122,7 +1117,7 @@ async function executeGetBusinessInsights(
       success: true,
       data: insights
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       data: null,
@@ -1331,7 +1326,7 @@ async function executeUpdateFaq(
         }
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       data: null,
@@ -1403,7 +1398,7 @@ async function executeLookupSchedule(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Schedule lookup failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1419,7 +1414,7 @@ async function executeLookupTimesheets(
     const periodDays = args.periodDays || 7;
     const startDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(timeEntries.workspaceId, context.workspaceId),
       gte(timeEntries.clockIn, startDate),
     ];
@@ -1459,7 +1454,7 @@ async function executeLookupTimesheets(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Timesheet lookup failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1473,13 +1468,13 @@ async function executeLookupPayroll(
       return { success: false, data: null, error: 'Workspace context required' };
     }
 
-    const conditions: any[] = [eq(payrollRuns.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(payrollRuns.workspaceId, context.workspaceId)];
 
     if (args.payrollRunId) {
       conditions.push(eq(payrollRuns.id, args.payrollRunId));
     }
     if (args.status) {
-      conditions.push(eq(payrollRuns.status, args.status as any));
+      conditions.push(eq(payrollRuns.status, args.status as unknown));
     }
 
     const results = await db.select({
@@ -1510,7 +1505,7 @@ async function executeLookupPayroll(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Payroll lookup failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1536,7 +1531,7 @@ async function executeLookupInvoices(
         return {
           success: true,
           data: {
-            invoices: biResult.invoices.map((inv: any) => ({
+            invoices: biResult.invoices.map((inv: unknown) => ({
               id: inv.id,
               invoiceNumber: inv.invoiceNumber,
               externalInvoiceNumber: inv.externalInvoiceNumber,
@@ -1552,18 +1547,18 @@ async function executeLookupInvoices(
             }
           }
         };
-      } catch (biError: any) {
+      } catch (biError: unknown) {
         log.warn('[AI Brain] BI search fallback to standard query:', biError.message);
       }
     }
 
-    const conditions: any[] = [eq(invoices.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(invoices.workspaceId, context.workspaceId)];
 
     if (args.invoiceId) {
       conditions.push(eq(invoices.id, args.invoiceId));
     }
     if (args.status) {
-      conditions.push(eq(invoices.status, args.status as any));
+      conditions.push(eq(invoices.status, args.status as unknown));
     }
     if (args.clientId) {
       conditions.push(eq(invoices.clientId, args.clientId));
@@ -1601,7 +1596,7 @@ async function executeLookupInvoices(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Invoice lookup failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1615,7 +1610,7 @@ async function executeLookupEmployees(
       return { success: false, data: null, error: 'Workspace context required' };
     }
 
-    const conditions: any[] = [eq(employees.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(employees.workspaceId, context.workspaceId)];
 
     if (args.employeeId) {
       conditions.push(eq(employees.id, args.employeeId));
@@ -1664,7 +1659,7 @@ async function executeLookupEmployees(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Employee lookup failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1767,7 +1762,7 @@ async function executeDetectSchedulingConflicts(
         }
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: `Conflict detection failed: ${(error instanceof Error ? error.message : String(error))}` };
   }
 }
@@ -1840,10 +1835,10 @@ async function executeLookupIncidents(
   try {
     const daysBack = args.daysBack || 30;
     const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-    const conditions: any[] = [gte(securityIncidents.reportedAt, cutoff)];
+    const conditions: unknown[] = [gte(securityIncidents.reportedAt, cutoff)];
     if (context.workspaceId) conditions.push(eq(securityIncidents.workspaceId, context.workspaceId));
-    if (args.status) conditions.push(eq(securityIncidents.status, args.status as any));
-    if (args.severity) conditions.push(eq(securityIncidents.severity, args.severity as any));
+    if (args.status) conditions.push(eq(securityIncidents.status, args.status as unknown));
+    if (args.severity) conditions.push(eq(securityIncidents.severity, args.severity as unknown));
     if (args.siteId) conditions.push(eq(securityIncidents.clientId, args.siteId));
 
     const incidents = await db
@@ -1863,7 +1858,7 @@ async function executeLookupIncidents(
       .limit(25);
 
     return { success: true, data: { incidents, total: incidents.length, daysBack } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -1873,7 +1868,7 @@ async function executeLookupCertifications(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(employeeCertifications.workspaceId, context.workspaceId));
     if (args.employeeId) conditions.push(eq(employeeCertifications.employeeId, args.employeeId));
     if (args.certificationType) conditions.push(eq(employeeCertifications.certificationType, args.certificationType));
@@ -1914,7 +1909,7 @@ async function executeLookupCertifications(
     });
 
     return { success: true, data: { certifications: certs, total: certs.length, expiringSoon: expiringSoon.length } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -1924,7 +1919,7 @@ async function executeLookupClients(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(clients.workspaceId, context.workspaceId));
     if (args.clientId) conditions.push(eq(clients.id, args.clientId));
     if (args.clientName) {
@@ -1952,7 +1947,7 @@ async function executeLookupClients(
       .limit(25);
 
     return { success: true, data: { clients: clientList, total: clientList.length } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -1962,7 +1957,7 @@ async function executeLookupComplianceScore(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(complianceScores.workspaceId, context.workspaceId));
     if (args.state) conditions.push(eq(complianceScores.stateId, args.state));
 
@@ -1989,7 +1984,7 @@ async function executeLookupComplianceScore(
       : 0;
 
     return { success: true, data: { scores, total: scores.length, averageScore: avgScore } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -1999,11 +1994,11 @@ async function executeLookupGuardTours(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(guardTours.workspaceId, context.workspaceId));
     if (args.guardId) conditions.push(eq(guardTours.assignedEmployeeId, args.guardId));
     if (args.siteId) conditions.push(eq(guardTours.clientId, args.siteId));
-    if (args.status) conditions.push(eq(guardTours.status, args.status as any));
+    if (args.status) conditions.push(eq(guardTours.status, args.status as unknown));
 
     const tours = await db
       .select({
@@ -2022,7 +2017,7 @@ async function executeLookupGuardTours(
       .limit(25);
 
     return { success: true, data: { tours, total: tours.length } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2032,10 +2027,10 @@ async function executeLookupEquipment(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
-    const conditions: any[] = [];
+    const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(equipmentItems.workspaceId, context.workspaceId));
-    if (args.category) conditions.push(eq(equipmentItems.category, args.category as any));
-    if (args.status) conditions.push(eq(equipmentItems.status, args.status as any));
+    if (args.category) conditions.push(eq(equipmentItems.category, args.category as unknown));
+    if (args.status) conditions.push(eq(equipmentItems.status, args.status as unknown));
 
     const items = await db
       .select({
@@ -2057,7 +2052,7 @@ async function executeLookupEquipment(
     });
 
     return { success: true, data: { equipment: items, total: items.length, statusSummary } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2068,7 +2063,7 @@ async function executeListAvailableActions(
 ): Promise<ToolResult> {
   try {
     const { platformActionHub } = await import('../../helpai/platformActionHub');
-    const userRole = (context as any).userRole || 'system';
+    const userRole = (context as unknown).userRole || 'system';
     const allActions = platformActionHub.getTrinityActionCatalog(userRole, { category: args.category });
     const filtered = args.category
       ? allActions.filter((a) => a.category === args.category || a.actionId.startsWith(args.category + '.'))
@@ -2091,7 +2086,7 @@ async function executeListAvailableActions(
         usage: 'Pass a canonical actionId to execute_platform_action to invoke an action.',
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2111,7 +2106,7 @@ async function executePlatformAction(
     }
     const result = await platformActionHub.executeAction({
       actionId: args.actionId,
-      category: category as any,
+      category: category as unknown,
       name,
       payload,
       workspaceId: context.workspaceId,
@@ -2119,7 +2114,7 @@ async function executePlatformAction(
       userRole: 'system',
     });
     return { success: result.success, data: result.data || result, error: result.error };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2208,7 +2203,7 @@ async function executeFinancialAnalysis(
     const laborRatio = revenue > 0 ? ((labor / revenue) * 100).toFixed(1) : '0';
     const revenueChange = prevRev > 0 ? (((revenue - prevRev) / prevRev) * 100).toFixed(1) : 'N/A';
 
-    const analysis: any = {
+    const analysis: Record<string, unknown> = {
       timeframe,
       period: { start: periodStart.toISOString(), end: now.toISOString() },
       revenue: { current: revenue, previous: prevRev, changePercent: revenueChange },
@@ -2237,7 +2232,7 @@ async function executeFinancialAnalysis(
     }
 
     return { success: true, data: analysis };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2253,8 +2248,8 @@ async function executeAnalyzeCrossDomain(
     const requestedDomains = args.domains ? args.domains.split(',').map(d => d.trim()) : ['all'];
     const runAll = requestedDomains.includes('all');
 
-    const results: any = { domains: requestedDomains, focusArea: args.focusArea };
-    const allInsights: any[] = [];
+    const results: Record<string, unknown> = { domains: requestedDomains, focusArea: args.focusArea };
+    const allInsights: (string | number | boolean | null)[] = [];
 
     if (runAll || requestedDomains.includes('profitability')) {
       const insights = await trinityCrossDomainIntelligence.analyzeClientProfitability(wsId);
@@ -2292,7 +2287,7 @@ async function executeAnalyzeCrossDomain(
     };
 
     return { success: true, data: results };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2309,7 +2304,7 @@ async function executeDetectAnomaliesOnDemand(
     const threshold = args.severityThreshold || 'info';
     const runAll = types.includes('all');
 
-    const allInsights: any[] = [];
+    const allInsights: (string | number | boolean | null)[] = [];
 
     if (runAll || types.includes('overtime')) {
       allInsights.push(...await trinityCrossDomainIntelligence.detectOvertimeTrends(wsId));
@@ -2340,7 +2335,7 @@ async function executeDetectAnomaliesOnDemand(
         })),
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2354,7 +2349,7 @@ async function executeExplainReasoning(
     if (!wsId) return { success: false, data: null, error: 'No workspace context for reasoning explanation' };
 
     const detailLevel = args.detailLevel || 'detailed';
-    let insights: any[] = [];
+    let insights: (string | number | boolean | null)[] = [];
 
     switch (args.analysisType) {
       case 'profitability':
@@ -2392,7 +2387,7 @@ async function executeExplainReasoning(
     });
 
     return { success: true, data: { analysisType: args.analysisType, detailLevel, explanations } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2407,7 +2402,7 @@ async function executeForecastTrends(
 
     const weeksAhead = Math.min(Math.max(args.weeksAhead || 4, 1), 12);
     const forecastType = args.forecastType || 'all';
-    const results: any = { forecastType, weeksAhead };
+    const results: Record<string, unknown> = { forecastType, weeksAhead };
 
     if (forecastType === 'labor_costs' || forecastType === 'all') {
       const laborInsights = await trinityCrossDomainIntelligence.forecastLaborCosts(wsId, weeksAhead);
@@ -2425,7 +2420,7 @@ async function executeForecastTrends(
     }
 
     return { success: true, data: results };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2441,7 +2436,7 @@ async function executeGetTemporalTrends(
     const insights = await trinityCrossDomainIntelligence.getTemporalTrends(wsId);
 
     const data = insights.map(i => {
-      const base: any = { title: i.title, summary: i.summary, severity: i.severity, confidence: i.confidence };
+      const base: Record<string, unknown> = { title: i.title, summary: i.summary, severity: i.severity, confidence: i.confidence };
       if (args.includeDetails) {
         base.dataPoints = i.dataPoints;
         base.reasoningChain = i.reasoningChain;
@@ -2451,7 +2446,7 @@ async function executeGetTemporalTrends(
     });
 
     return { success: true, data: { trends: data, count: data.length } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, data: null, error: (error instanceof Error ? error.message : String(error)) };
   }
 }
@@ -2524,13 +2519,12 @@ export class UnifiedGeminiClient {
     try {
       const safeFeatureKey = featureKey || 'ai_general';
       const { aiTokenGateway } = await import('../../billing/aiTokenGateway');
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await aiTokenGateway.preAuthorize(workspaceId, userId, safeFeatureKey);
       if (!result.authorized) {
         return { allowed: false, errorMessage: result.reason };
       }
       return { allowed: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[BillingGate] Pre-check FAILED for ${featureKey}: ${(err instanceof Error ? err.message : String(err))} - BLOCKING`);
       return { allowed: false, errorMessage: `Billing system error: ${(err instanceof Error ? err.message : String(err))}` };
     }
@@ -2550,13 +2544,12 @@ export class UnifiedGeminiClient {
     try {
       const { aiTokenGateway } = await import('../../billing/aiTokenGateway');
       const tokensTotal = (tokenData?.inputTokens || 0) + (tokenData?.outputTokens || 0);
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await aiTokenGateway.finalizeBilling(workspaceId, userId, featureKey, tokensTotal, {
         inputTokens: tokenData?.inputTokens || 0,
         outputTokens: tokenData?.outputTokens || 0,
         model: tokenData?.model || 'gemini',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[BillingGate] BILLING_LEAK: Deduction crashed for ${featureKey} workspace=${workspaceId}: ${(err instanceof Error ? err.message : String(err))}`);
     }
   }
@@ -2579,7 +2572,6 @@ export class UnifiedGeminiClient {
         workspaceId,
         userId: userId || 'system-gemini',
         featureKey: creditKey,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         featureName: featureKey,
         description: `AI operation: ${featureKey}`,
       });
@@ -2589,7 +2581,7 @@ export class UnifiedGeminiClient {
       } else {
         log.warn(`[CreditEnforcer] Deduction failed for ${featureKey}: ${result.errorMessage}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error(`[CreditEnforcer] Post-deduction error for ${featureKey}:`, (err instanceof Error ? err.message : String(err)));
     }
   }
@@ -2639,7 +2631,7 @@ export class UnifiedGeminiClient {
             outputTokens,
             triggeredByUserId: request.userId,
           });
-         }).catch((err: any) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
+         }).catch((err: unknown) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
       }
 
       try {
@@ -2654,7 +2646,7 @@ export class UnifiedGeminiClient {
         });
         return { data: null, tokensUsed, error: "Failed to parse JSON response" };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return { data: null, tokensUsed: 0, error: (error instanceof Error ? error.message : String(error)) };
     }
   }
@@ -2747,7 +2739,7 @@ export class UnifiedGeminiClient {
           totalTokensUsed += initialInput + initialOutput;
 
           // STEP 3: Extract function calls if present
-          let functionCalls: Array<{ name: string; args: any }> = [];
+          let functionCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
           let candidates = response.candidates;
           
           if (candidates && candidates[0]?.content?.parts) {
@@ -2763,14 +2755,14 @@ export class UnifiedGeminiClient {
 
           // MULTI-TURN LOOP: Execute tools and get final response (Steps 4-7)
           let toolIterations = 0;
-          const allFunctionCalls: Array<{ name: string; args: any; result: any }> = [];
+          const allFunctionCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }> = [];
           
           while (functionCalls.length > 0 && toolIterations < maxToolIterations) {
             toolIterations++;
             log.info(`🔄 [AI Brain] Tool iteration ${toolIterations}: ${functionCalls.length} function call(s) to execute`);
 
             // STEP 4: Execute each tool and collect results
-            const toolResults: Array<{ name: string; response: any }> = [];
+            const toolResults: Array<{ name: string; response: unknown }> = [];
             
             for (const fc of functionCalls) {
               log.info(`🔧 [AI Brain] Executing tool: ${fc.name}`);
@@ -2883,7 +2875,7 @@ export class UnifiedGeminiClient {
                 if (fc.name === 'search_faqs' && fc.result.data?.faqs) {
                   const faqs = fc.result.data.faqs;
                   if (faqs.length > 0) {
-                    return `Found ${faqs.length} relevant FAQ(s):\n${faqs.map((f: any) => `- **${f.question}**\n  ${f.answer}`).join('\n\n')}`;
+                    return `Found ${faqs.length} relevant FAQ(s):\n${faqs.map((f: unknown) => `- **${f.question}**\n  ${f.answer}`).join('\n\n')}`;
                   }
                   return 'No matching FAQs found for your query.';
                 }
@@ -2892,10 +2884,10 @@ export class UnifiedGeminiClient {
                   return `Here are your ${insights.type} insights:\n${JSON.stringify(insights.recommendations || insights.metrics, null, 2)}`;
                 }
                 if (fc.name === 'suggest_automation' && fc.result.data?.suggestions) {
-                  return `Automation suggestions:\n${fc.result.data.suggestions.map((s: any) => `- **${s.area}**: ${s.description}`).join('\n')}`;
+                  return `Automation suggestions:\n${fc.result.data.suggestions.map((s: unknown) => `- **${s.area}**: ${s.description}`).join('\n')}`;
                 }
                 if (fc.name === 'recommend_platform_feature' && fc.result.data?.recommendations) {
-                  return `Recommended features:\n${fc.result.data.recommendations.map((r: any) => `- **${r.feature}** (${r.tier}): ${r.description}`).join('\n')}`;
+                  return `Recommended features:\n${fc.result.data.recommendations.map((r: unknown) => `- **${r.feature}** (${r.tier}): ${r.description}`).join('\n')}`;
                 }
                 return `${fc.name} completed successfully.`;
               });
@@ -2954,7 +2946,7 @@ export class UnifiedGeminiClient {
                 triggeredByUserId: request.userId,
                 trinityActionId: undefined,
               });
-             }).catch((err: any) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
+             }).catch((err: unknown) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
           }
 
           return {
@@ -2977,7 +2969,7 @@ export class UnifiedGeminiClient {
             }
           };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
           attempts++;
           lastError = error;
           log.warn(`⚠️ [AI Brain] Attempt ${attempts}/${maxAttempts} failed:`, (error instanceof Error ? error.message : String(error)));
@@ -2991,7 +2983,7 @@ export class UnifiedGeminiClient {
 
       throw lastError || new Error('All retry attempts failed');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`❌ [AI Brain] Gemini error for ${request.featureKey}:`, error);
       throw new Error(`AI Brain inference failed: ${(error instanceof Error ? error.message : String(error)) || 'Unknown error'}`);
     }
@@ -3013,7 +3005,7 @@ export class UnifiedGeminiClient {
    * Accepts either { prompt, purpose } or raw Google SDK { contents, generationConfig } format.
    */
   async generateContent(
-    requestOrPrompt: string | { prompt?: string; purpose?: string; featureKey?: string; contents?: any[]; generationConfig?: any; workspaceId?: string; userId?: string },
+    requestOrPrompt: string | { prompt?: string; purpose?: string; featureKey?: string; contents?: unknown[]; generationConfig?: unknown; workspaceId?: string; userId?: string },
     options?: { temperature?: number; maxTokens?: number; workspaceId?: string; userId?: string; featureKey?: string }
   ): Promise<{ text?: string; response?: { text: () => string }; tokensUsed?: number }> {
     let prompt: string;
@@ -3033,7 +3025,7 @@ export class UnifiedGeminiClient {
     } else {
       if (requestOrPrompt.contents) {
         prompt = requestOrPrompt.contents
-          .map((c: any) => c.parts?.map((p: any) => p.text).join(' ') || '')
+          .map((c: unknown) => c.parts?.map((p: unknown) => p.text).join(' ') || '')
           .join('\n');
       } else {
         prompt = requestOrPrompt.prompt || '';
@@ -3044,7 +3036,6 @@ export class UnifiedGeminiClient {
       if (requestOrPrompt.generationConfig?.temperature) temperature = requestOrPrompt.generationConfig.temperature;
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const response = await this.generate({
       userMessage: prompt,
       workspaceId,
@@ -3070,7 +3061,6 @@ export class UnifiedGeminiClient {
     prompt: string,
     context: { workspaceId?: string; userId?: string; purpose?: string } = {}
   ): Promise<{ text: string; tokensUsed: number }> {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const response = await this.generate({
       userMessage: prompt,
       workspaceId: context.workspaceId,
@@ -3093,7 +3083,7 @@ export class UnifiedGeminiClient {
     workspaceId: string;
     userId?: string;
     insightType: 'sales' | 'finance' | 'operations' | 'automation' | 'growth';
-    context: any;
+    context: Record<string, unknown>;
   }): Promise<GeminiResponse> {
     const systemPrompt = `You are CoAIleague Business Intelligence AI, an expert business analyst.
     
@@ -3137,7 +3127,7 @@ Provide actionable recommendations with estimated impact.`;
     userId?: string;
     userNeed: string;
     currentPlan?: string;
-    currentUsage?: any;
+    currentUsage?: unknown;
   }): Promise<GeminiResponse> {
     const systemPrompt = `You are CoAIleague Platform Advisor, helping users get the most from the platform.
 
@@ -3284,7 +3274,7 @@ Guidelines:
             outputTokens: usage?.candidatesTokenCount ?? 0,
             triggeredByUserId: request.userId,
           });
-         }).catch((err: any) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
+         }).catch((err: unknown) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
       }
 
       return {
@@ -3292,7 +3282,7 @@ Guidelines:
         tokensUsed
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error(`❌ [AI Brain] Vision error:`, error);
       throw new Error(`AI Brain vision failed: ${(error instanceof Error ? error.message : String(error))}`);
     }
@@ -3414,11 +3404,11 @@ Generate ONE thought for ${greeting}:`;
             inputTokens: usage?.promptTokenCount ?? 0,
             outputTokens: usage?.candidatesTokenCount ?? 0,
           });
-         }).catch((err: any) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
+         }).catch((err: unknown) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
       }
 
       return text || null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[Trinity AI] Thought generation failed:', (error instanceof Error ? error.message : String(error)));
       return null;
     }
@@ -3469,11 +3459,11 @@ Generate ONE thought for ${greeting}:`;
             inputTokens: insightUsage?.promptTokenCount ?? 0,
             outputTokens: insightUsage?.candidatesTokenCount ?? 0,
           });
-         }).catch((err: any) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
+         }).catch((err: unknown) => log.warn('[AIMeter] recordAiCall failed (non-blocking):', err?.message));
       }
 
       return result.response.text().trim() || null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.error('[AI Brain] Quick insight failed:', (error instanceof Error ? error.message : String(error)));
       return null;
     }

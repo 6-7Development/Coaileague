@@ -73,7 +73,6 @@ async function persistGapFinding(finding: GapFinding, detectedBy: string): Promi
       .from(aiGapFindings)
       .where(and(
         eq(aiGapFindings.filePath, finding.filePath),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiGapFindings.gapType, finding.gapType),
         eq(aiGapFindings.title, finding.title),
         eq(aiGapFindings.status, 'open')
@@ -112,7 +111,7 @@ async function persistGapFinding(finding: GapFinding, detectedBy: string): Promi
 
     log.info(`Persisted gap finding: ${finding.title}`);
     return inserted.id;
-  } catch (error: any) {
+  } catch (error : unknown) {
     // Detailed Postgres error logging — expose code/detail/column/
     // constraint so the actual cause is visible in production logs.
     // Previous one-liner hid everything except error.toString().
@@ -154,12 +153,9 @@ async function persistComponent(component: ComponentAnalysis, registeredBy: stri
     // Check if component already exists
     const existing = await db
       .select()
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .from(aiComponentRegistry)
       .where(and(
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiComponentRegistry.filePath, component.filePath),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eq(aiComponentRegistry.componentName, component.componentName)
       ))
       .limit(1);
@@ -167,7 +163,6 @@ async function persistComponent(component: ComponentAnalysis, registeredBy: stri
     if (existing.length > 0) {
       // Update existing component
       await db
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .update(aiComponentRegistry)
         .set({
           exports: component.exports,
@@ -176,14 +171,12 @@ async function persistComponent(component: ComponentAnalysis, registeredBy: stri
           lastScannedAt: new Date(),
           updatedAt: new Date(),
         })
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         .where(eq(aiComponentRegistry.id, existing[0].id));
       return existing[0].id;
     }
 
     // Insert new component
     const [inserted] = await db
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .insert(aiComponentRegistry)
       .values({
         workspaceId: 'system',
@@ -196,7 +189,6 @@ async function persistComponent(component: ComponentAnalysis, registeredBy: stri
         registeredBy,
         lastScannedAt: new Date(),
         isActive: true,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       } as InsertAiComponentRegistry)
       .returning();
 
@@ -308,7 +300,7 @@ class SchemaOpsSubagent {
         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
       `);
       
-      const dbTableNames = new Set((dbTables as any[]).map(r => r.table_name));
+      const dbTableNames = new Set((dbTables as unknown[]).map(r => r.table_name));
       
       // Get tables from schema file
       const schemaComponents = await this.scanSchemaFile();
@@ -383,7 +375,7 @@ class SchemaOpsSubagent {
         SELECT tablename, indexdef FROM pg_indexes WHERE schemaname = 'public'
       `);
       const indexMap = new Map<string, string[]>();
-      for (const row of (allIndexes as any[])) {
+      for (const row of (allIndexes as unknown[])) {
         const existing = indexMap.get(row.tablename) || [];
         existing.push(row.indexdef);
         indexMap.set(row.tablename, existing);
@@ -391,7 +383,7 @@ class SchemaOpsSubagent {
       
       // Check for missing indexes on FK columns
       const missingIndexFKs: string[] = [];
-      for (const row of (fkQuery as any[])) {
+      for (const row of (fkQuery as unknown[])) {
         const { table_name, column_name } = row;
         const tableIndexes = indexMap.get(table_name) || [];
         const hasIndex = tableIndexes.some(def => def.includes(column_name));
@@ -433,11 +425,11 @@ class SchemaOpsSubagent {
     const self = this;
     const actions = [
       { id: 'schema.scan_definitions', name: 'Scan Schema Definitions', desc: 'Scan schema file for table/enum definitions', 
-        fn: async (p: any) => { const c = await self.scanSchemaFile(); if (p?.persist !== false) await persistComponents(c, 'SchemaOps'); return c; } },
+        fn: async (p: unknown) => { const c = await self.scanSchemaFile(); if (p?.persist !== false) await persistComponents(c, 'SchemaOps'); return c; } },
       { id: 'schema.detect_mismatches', name: 'Detect Schema Mismatches', desc: 'Detect mismatches between schema and database', 
-        fn: async (p: any) => { const f = await self.detectSchemaMismatches(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'SchemaOps'); return f; } },
+        fn: async (p: unknown) => { const f = await self.detectSchemaMismatches(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'SchemaOps'); return f; } },
       { id: 'schema.analyze_relationships', name: 'Analyze Relationships', desc: 'Analyze table relationships and find issues', 
-        fn: async (p: any) => { const f = await self.analyzeRelationships(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'SchemaOps'); return f; } },
+        fn: async (p: unknown) => { const f = await self.analyzeRelationships(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'SchemaOps'); return f; } },
     ];
 
     for (const action of actions) {
@@ -622,9 +614,9 @@ Respond in JSON format:
     const self = this;
     const actions = [
       { id: 'logs.analyze_content', name: 'Analyze Log Content', desc: 'Analyze log content for errors and issues', 
-        fn: async (p: any) => { const f = await self.analyzeLogContent(p.content, p.source); if (p.persist !== false && f.length > 0) await persistGapFindings(f, 'LogOps'); return f; } },
-      { id: 'logs.extract_stack_traces', name: 'Extract Stack Traces', desc: 'Extract stack traces from log content', fn: (p: any) => self.extractStackTraces(p.content) },
-      { id: 'logs.ai_analyze', name: 'AI Analyze Logs', desc: 'Use AI to analyze log patterns', fn: (p: any) => self.aiAnalyzeLogs(p.content, p.workspaceId) },
+        fn: async (p: unknown) => { const f = await self.analyzeLogContent(p.content, p.source); if (p.persist !== false && f.length > 0) await persistGapFindings(f, 'LogOps'); return f; } },
+      { id: 'logs.extract_stack_traces', name: 'Extract Stack Traces', desc: 'Extract stack traces from log content', fn: (p: unknown) => self.extractStackTraces(p.content) },
+      { id: 'logs.ai_analyze', name: 'AI Analyze Logs', desc: 'Use AI to analyze log patterns', fn: (p: unknown) => self.aiAnalyzeLogs(p.content, p.workspaceId) },
     ];
 
     for (const action of actions) {
@@ -830,9 +822,9 @@ class HandlerOpsSubagent {
     const self = this;
     const actions = [
       { id: 'handlers.scan_routes', name: 'Scan Routes', desc: 'Scan for all API route handlers', 
-        fn: async (p: any) => { const c = await self.scanRouteHandlers(); if (p?.persist !== false) await persistComponents(c, 'HandlerOps'); return c; } },
+        fn: async (p: unknown) => { const c = await self.scanRouteHandlers(); if (p?.persist !== false) await persistComponents(c, 'HandlerOps'); return c; } },
       { id: 'handlers.detect_missing', name: 'Detect Missing', desc: 'Detect frontend API calls without backend handlers', 
-        fn: async (p: any) => { const f = await self.detectMissingHandlers(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'HandlerOps'); return f; } },
+        fn: async (p: unknown) => { const f = await self.detectMissingHandlers(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'HandlerOps'); return f; } },
     ];
 
     for (const action of actions) {
@@ -1036,9 +1028,9 @@ class HookOpsSubagent {
     const self = this;
     const actions = [
       { id: 'hooks.scan', name: 'Scan Hooks', desc: 'Scan for all React hooks in the codebase', 
-        fn: async (p: any) => { const c = await self.scanHooks(); if (p?.persist !== false) await persistComponents(c, 'HookOps'); return c; } },
+        fn: async (p: unknown) => { const c = await self.scanHooks(); if (p?.persist !== false) await persistComponents(c, 'HookOps'); return c; } },
       { id: 'hooks.detect_issues', name: 'Detect Hook Issues', desc: 'Detect common React hook issues', 
-        fn: async (p: any) => { const f = await self.detectHookIssues(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'HookOps'); return f; } },
+        fn: async (p: unknown) => { const f = await self.detectHookIssues(); if (p?.persist !== false && f.length > 0) await persistGapFindings(f, 'HookOps'); return f; } },
     ];
 
     for (const action of actions) {

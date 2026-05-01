@@ -40,8 +40,8 @@ export interface EventPayload {
   eventType: string;
   aggregateId: string;
   aggregateType: string;
-  payload: Record<string, any>;
-  changes?: { before: any; after: any };
+  payload: Record<string, unknown>;
+  changes?: { before: unknown; after: any };
 }
 
 export class AuditLogger {
@@ -49,7 +49,7 @@ export class AuditLogger {
    * Sort object keys deterministically for hash generation
    * Ensures consistent hashing regardless of property order
    */
-  private sortObjectKeys(obj: any): any {
+  private sortObjectKeys(obj: unknown): any {
     if (obj === null || typeof obj !== 'object') {
       return obj;
     }
@@ -58,7 +58,7 @@ export class AuditLogger {
     }
     return Object.keys(obj)
       .sort()
-      .reduce((sorted: any, key) => {
+      .reduce((sorted: unknown, key) => {
         sorted[key] = this.sortObjectKeys(obj[key]);
         return sorted;
       }, {});
@@ -97,7 +97,6 @@ export class AuditLogger {
 
       // Create audit event
       const auditEvent: InsertAuditLog = {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eventType,
         userId: actorId,
         actorType,
@@ -175,7 +174,7 @@ export class AuditLogger {
       operationType: string;
       entityType: string;
       entityId: string;
-      payload: Record<string, any>;
+      payload: Record<string, unknown>;
     }
   ): Promise<string> {
     try {
@@ -240,7 +239,7 @@ export class AuditLogger {
       operationType: string;
       entityType: string;
       entityId: string;
-      payload: Record<string, any>;
+      payload: Record<string, unknown>;
     },
     action: () => Promise<T>
   ): Promise<T> {
@@ -298,9 +297,9 @@ export class AuditLogger {
       actionType: string;
       targetEntityType: string;
       targetEntityId: string;
-      changes?: { before: any; after: any };
+      changes?: { before: unknown; after: any };
       reason?: string;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     },
     requestContext?: {
       ipAddress?: string;
@@ -346,7 +345,7 @@ export class AuditLogger {
       actionType: string;
       targetEntityType: string;
       targetEntityId: string;
-      payload: Record<string, any>;
+      payload: Record<string, unknown>;
       workspaceId?: string | null;
     }
   ): Promise<{ eventId: string; actionHash: string }> {
@@ -426,7 +425,7 @@ export class AuditLogger {
       actionType: string;
       targetEntityType: string;
       targetEntityId: string;
-      payload: Record<string, any>;
+      payload: Record<string, unknown>;
       workspaceId?: string | null;
     }
   ): Promise<string> {
@@ -461,7 +460,7 @@ export class AuditLogger {
     failure: {
       type: string;
       description: string;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     }
   ): Promise<string> {
     const eventId = await this.logEvent(

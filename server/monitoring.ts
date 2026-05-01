@@ -17,7 +17,7 @@ interface ErrorLog {
   level: 'error' | 'warn' | 'info';
   message: string;
   stack?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   userId?: string;
   workspaceId?: string;
   requestId?: string;
@@ -168,7 +168,7 @@ class MonitoringService {
     workspaceId?: string;
     requestId?: string;
     severity?: 'info' | 'warn' | 'error' | 'high' | 'critical';
-    additionalData?: Record<string, any>;
+    additionalData?: Record<string, unknown>;
   }): void {
     const errorLog: ErrorLog = {
       timestamp: new Date(),
@@ -303,7 +303,7 @@ class MonitoringService {
    * Supports Slack-compatible JSON payloads, PagerDuty, or any generic webhook.
    * Set MONITORING_WEBHOOK_URL in the environment to activate — no-op when not configured.
    */
-  private async sendToExternalService(errors: any[], metrics: any[]): Promise<void> {
+  private async sendToExternalService(errors: unknown[], metrics: unknown[]): Promise<void> {
     const webhookUrl = process.env.MONITORING_WEBHOOK_URL;
     if (!webhookUrl || (errors.length === 0 && metrics.filter(m => m.duration > 3000).length === 0)) {
       return;

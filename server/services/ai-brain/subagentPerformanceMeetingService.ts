@@ -338,7 +338,7 @@ class SubagentPerformanceMeetingService {
       log.info(`[PerformanceMeeting] Meeting ${meetingId} completed in ${result.duration}ms. Score: ${averageScore.toFixed(2)}, Pass: ${passedCount}/${subagentReports.length}`);
 
       return result;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[PerformanceMeeting] Meeting failed: ${(error instanceof Error ? error.message : String(error))}`);
       throw error;
     }
@@ -433,7 +433,7 @@ class SubagentPerformanceMeetingService {
    */
   private async generateAIAnalysis(
     subagent: AiSubagentDefinition,
-    telemetry: any[],
+    telemetry: unknown[],
     score: PerformanceScore,
     successRate: number
   ): Promise<{ summary: string; issues: string[]; recommendations: string[] }> {
@@ -462,11 +462,10 @@ Provide a brief performance analysis in JSON format:
         input: { prompt, context: 'performance_analysis' },
         workspaceId: 'platform-system',
         userId: 'system',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         priority: 'medium',
       });
 
-      const parsed = JSON.parse(result.output?.response || '{}');
+      const parsed: unknown = JSON.parse(result.output?.response || '{}');
       return {
         summary: parsed.summary || `${subagent.name} scored ${score}/5 with ${successRate.toFixed(1)}% success rate.`,
         issues: parsed.issues || [],
@@ -516,7 +515,7 @@ Generate an optimization strategy in JSON format:
         priority: 'high',
       });
 
-      const strategy = JSON.parse(result.output?.response || '{}');
+      const strategy: unknown = JSON.parse(result.output?.response || '{}');
       
       // Apply optimization (in real implementation, this would trigger actual fixes)
       report.optimizationApplied = true;
@@ -538,7 +537,7 @@ Generate an optimization strategy in JSON format:
       });
 
       log.info(`[PerformanceMeeting] Optimization applied to ${report.subagentName}: ${strategy.strategy}`);
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[PerformanceMeeting] Optimization failed for ${report.subagentName}: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
@@ -576,7 +575,6 @@ Provide a 2-3 sentence executive summary.`;
         input: { prompt, context: 'meeting_summary' },
         workspaceId: 'platform-system',
         userId: 'system',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         priority: 'medium',
       });
 
@@ -735,7 +733,7 @@ Provide a 2-3 sentence executive summary.`;
       actionId: string;
       workspaceId: string;
       userId: string;
-      parameters: Record<string, any>;
+      parameters: Record<string, unknown>;
     }
   ): Promise<{ approved: boolean; guidance?: string; warnings?: string[] }> {
     const supervisor = handlerSupervisors.get(handlerId);
@@ -766,7 +764,7 @@ Should this action proceed? Reply with JSON:
         priority: 'high',
       });
 
-      const decision = JSON.parse(result.output?.response || '{"approved": true}');
+      const decision: unknown = JSON.parse(result.output?.response || '{"approved": true}');
       
       supervisor.supervisionCount++;
       supervisor.lastSupervisionAt = new Date();

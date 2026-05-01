@@ -78,7 +78,7 @@ export function UniversalWelcomeNotification({
   // Determine role display and icon
   const getRoleInfo = () => {
     if (platformRole && platformRole !== "none" && platformRole !== null) {
-      const platformRoleMap: Record<string, { label: string; icon: any }> = {
+      const platformRoleMap: Record<string, { label: string; icon: string | React.ReactNode }> = {
         root_admin: { label: "Root Admin", icon: Crown },
         deputy_admin: { label: "Deputy Admin", icon: Shield },
         sysop: { label: "System Operator", icon: Zap },
@@ -89,7 +89,7 @@ export function UniversalWelcomeNotification({
       return platformRoleMap[platformRole] || { label: role || "Team Member", icon: LogIn };
     }
 
-    const roleMap: Record<string, { label: string; icon: any }> = {
+    const roleMap: Record<string, { label: string; icon: string | React.ReactNode }> = {
       org_admin: { label: "Administrator", icon: Shield },
       org_owner: { label: "Organization Owner", icon: Crown },
       co_owner: { label: "Co-Owner", icon: Crown },

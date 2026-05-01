@@ -20,14 +20,12 @@ import { platformEventBus } from '../platformEventBus';
 import { db } from '../../db';
 import {
   partnerConnections,
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   InsertPartnerSyncLog
 } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { quickbooksOAuthService } from '../oauth/quickbooks';
 import { quickbooksRateLimiter } from '../integrations/quickbooksRateLimiter';
 import { INTEGRATIONS } from '@shared/platformConfig';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../../lib/logger';
 import { partnerSyncLogs } from '@shared/schema';
@@ -54,7 +52,7 @@ export interface QBOrchestrationParams {
   userId?: string;
   operationType: QBOperationType;
   operationName: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   triggeredBy: 'user' | 'cron' | 'event' | 'api' | 'ai_brain' | 'webhook';
   requiresApproval?: boolean;
 }
@@ -207,7 +205,7 @@ class QuickBooksOrchestrationService {
         orchestrationId,
         'VALIDATE',
         async () => {
-          const canProceed = await (quickbooksRateLimiter as any).canMakeRequest(params.workspaceId);
+          const canProceed = await (quickbooksRateLimiter as Record<string,unknown>).canMakeRequest(params.workspaceId);
           if (!canProceed) {
             return {
               success: false,
@@ -224,12 +222,10 @@ class QuickBooksOrchestrationService {
               errorCode: 'CONNECTION_MISSING',
             };
           }
-
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          if (connection.accessTokenExpiresAt && new Date() > (connection as any).accessTokenExpiresAt) {
+          if (connection.accessTokenExpiresAt && new Date() > (connection as Record<string, unknown>).accessTokenExpiresAt) {
             try {
               await quickbooksOAuthService.refreshAccessToken(connection.id);
-            } catch (refreshError: any) {
+            } catch (refreshError : unknown) {
               return {
                 success: false,
                 error: `Token refresh failed: ${refreshError.message}`,
@@ -264,7 +260,7 @@ class QuickBooksOrchestrationService {
             
             const result = await executor(refreshedCtx, orchestrationCtx!);
             return { success: true, data: result };
-          } catch (error: any) {
+          } catch (error : unknown) {
             const errorCode = this.categorizeError(error);
             return {
               success: false,
@@ -342,7 +338,7 @@ class QuickBooksOrchestrationService {
         durationMs: Date.now() - startTime,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       const errorCode = this.categorizeError(error);
       const errorInfo = QB_ERROR_CODES[errorCode] || QB_ERROR_CODES['UNKNOWN'];
 
@@ -382,7 +378,7 @@ class QuickBooksOrchestrationService {
     workspaceId: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     endpoint: string,
-    body?: Record<string, any>,
+    body?: Record<string, unknown>,
     options?: {
       userId?: string;
       triggeredBy?: 'user' | 'cron' | 'event' | 'api' | 'ai_brain' | 'webhook';
@@ -400,7 +396,6 @@ class QuickBooksOrchestrationService {
       async (ctx) => {
         const url = `${ctx.apiBase}/v3/company/${ctx.realmId}${endpoint}`;
         
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         quickbooksRateLimiter.recordRequest(workspaceId);
 
         const response = await fetch(url, {
@@ -418,7 +413,7 @@ class QuickBooksOrchestrationService {
           let errorMessage = `QuickBooks API error: ${response.status}`;
           
           try {
-            const errorJson = JSON.parse(errorText);
+            const errorJson: unknown = JSON.parse(errorText);
             if (errorJson.Fault?.Error?.[0]?.Message) {
               errorMessage = errorJson.Fault.Error[0].Message;
             }
@@ -427,7 +422,7 @@ class QuickBooksOrchestrationService {
           }
           
           const error = new Error(errorMessage);
-          (error as any).status = response.status;
+          (error as Record<string,unknown>).status = response.status;
           throw error;
         }
 
@@ -441,7 +436,7 @@ class QuickBooksOrchestrationService {
    */
   private async fetchConnectionContext(workspaceId: string): Promise<QBConnectionContext | null> {
     const connection = await this.getConnectionRecord(workspaceId);
-    if (!connection || !connection.accessToken || !(connection as any).partnerAccountId) {
+    if (!connection || !connection.accessToken || !(connection as Record<string, unknown>).partnerAccountId) {
       return null;
     }
 
@@ -450,17 +445,17 @@ class QuickBooksOrchestrationService {
       return null;
     }
 
-    const metadata = connection.metadata as Record<string, any> | null;
+    const metadata = connection.metadata as Record<string, unknown> | null;
     const environment = (metadata?.environment as 'sandbox' | 'production') || 'sandbox';
 
     return {
       connectionId: connection.id,
       accessToken: decryptedToken,
-      realmId: (connection as any).partnerAccountId,
+      realmId: (connection as Record<string, unknown>).partnerAccountId,
       environment,
       apiBase: environment === 'production'
-        ? (INTEGRATIONS as any).quickbooks.apiBaseUrl
-        : (INTEGRATIONS as any).quickbooks.sandboxApiBaseUrl,
+        ? (INTEGRATIONS as Record<string,unknown>).quickbooks.apiBaseUrl
+        : (INTEGRATIONS as Record<string,unknown>).quickbooks.sandboxApiBaseUrl,
     };
   }
 
@@ -491,8 +486,8 @@ class QuickBooksOrchestrationService {
       operationName: string;
       success: boolean;
       orchestrationId: string;
-      payload?: Record<string, any>;
-      result?: any;
+      payload?: Record<string, unknown>;
+      result?: unknown;
       error?: string;
     }
   ): Promise<void> {
@@ -526,7 +521,7 @@ class QuickBooksOrchestrationService {
   /**
    * Categorize error into known error codes
    */
-  private categorizeError(error: any): string {
+  private categorizeError(error: unknown): string {
     const message = ((error instanceof Error ? error.message : String(error)) || '').toLowerCase();
     const status = error.status;
 
@@ -588,15 +583,14 @@ class QuickBooksOrchestrationService {
   async getOrchestrationHistory(workspaceId: string, limit = 50) {
     const logs = await db.select()
       .from(partnerSyncLogs)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(partnerSyncLogs.connectionId, workspaceId))
       .orderBy(partnerSyncLogs.startedAt)
       .limit(limit);
 
     return logs.map(log => ({
       ...log,
-      orchestrationId: (log as any).metadata?.orchestrationId,
-      operationName: (log as any).metadata?.operationName,
+      orchestrationId: (log as Record<string,unknown>).metadata?.orchestrationId,
+      operationName: (log as Record<string,unknown>).metadata?.operationName,
     }));
   }
 }

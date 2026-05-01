@@ -142,7 +142,7 @@ export class TrinityStaffingSkill extends BaseSkill {
     log.info('[TrinityStaffing] Skill initialized - Premier automated staffing ready');
   }
 
-  async execute(context: SkillContext, params: { action: string; payload: any }): Promise<SkillResult> {
+  async execute(context: SkillContext, params: { action: string; payload: Record<string, unknown> }): Promise<SkillResult> {
     const { action, payload } = params;
     
     switch (action) {
@@ -248,7 +248,6 @@ export class TrinityStaffingSkill extends BaseSkill {
       const deductionResult = await premiumFeatureGating.recordUsage(
         context.workspaceId,
         'trinity_staffing_request_parse',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         context.userId,
         1,
         { emailId: payload.emailId }
@@ -323,7 +322,6 @@ export class TrinityStaffingSkill extends BaseSkill {
       const deductionResult = await premiumFeatureGating.recordUsage(
         context.workspaceId,
         'trinity_staffing_auto_assign',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         context.userId,
         1,
         { shiftId: payload.shiftId }
@@ -368,7 +366,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   private async findEligibleEmployees(
     workspaceId: string,
     request: WorkRequest
-  ): Promise<any[]> {
+  ): Promise<Record<string,unknown>[]> {
     const result = await db.select()
       .from(employees)
       .where(
@@ -384,7 +382,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Rank employees by qualification, proximity, and reliability
    */
-  private rankEmployees(employees: any[], request: WorkRequest): EmployeeMatch[] {
+  private rankEmployees(employees: unknown[], request: WorkRequest): EmployeeMatch[] {
     return employees.map(emp => {
       const qualificationScore = this.calculateQualificationScore(emp, request);
       const proximityScore = this.calculateProximityScore(emp, request);
@@ -415,7 +413,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Calculate qualification match score
    */
-  private calculateQualificationScore(employee: any, request: WorkRequest): number {
+  private calculateQualificationScore(employee: Record<string, unknown>, request: WorkRequest): number {
     let score = 0.5;
     
     const certs = employee.certifications || [];
@@ -433,7 +431,7 @@ export class TrinityStaffingSkill extends BaseSkill {
   /**
    * Calculate proximity score using haversine distance when available
    */
-  private calculateProximityScore(employee: any, request: WorkRequest): number {
+  private calculateProximityScore(employee: Record<string, unknown>, request: WorkRequest): number {
     const empLat = parseFloat(employee.homeLatitude || employee.latitude || '0');
     const empLng = parseFloat(employee.homeLongitude || employee.longitude || '0');
     const reqCoords = request.location?.coordinates;
@@ -471,7 +469,6 @@ export class TrinityStaffingSkill extends BaseSkill {
       const deductionResult = await premiumFeatureGating.recordUsage(
         context.workspaceId,
         'trinity_staffing_confirmation',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         context.userId,
         1,
         { clientEmail: payload.workRequest.clientEmail }
@@ -516,9 +513,7 @@ export class TrinityStaffingSkill extends BaseSkill {
    */
   private generateConfirmationEmail(
     request: WorkRequest,
-    employees: EmployeeMatch[],
-    shiftDetails: any
-  ): string {
+    employees: EmployeeMatch[], shiftDetails: unknown): string {
     const date = request.requestedDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -607,7 +602,6 @@ Trinity Staffing Team
       const deductionResult = await premiumFeatureGating.recordUsage(
         context.workspaceId,
         'trinity_staffing_cancellation',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         context.userId,
         1,
         { shiftId: payload.shiftId }

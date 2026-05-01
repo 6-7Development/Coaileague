@@ -11,6 +11,7 @@ import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { SafeSection } from "@/components/ui/safe-section";
+import { useLoadingTimeout } from '@/hooks/useLoadingTimeout';
 
 const pageConfig: CanvasPageConfig = {
   id: "supervisor-dashboard",
@@ -21,7 +22,8 @@ const pageConfig: CanvasPageConfig = {
 };
 
 export default function SupervisorDashboard() {
-  const [, setLocation] = useLocation();
+
+  const loadingTimedOut = useLoadingTimeout(4000); // 4s max skeleton  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -30,17 +32,17 @@ export default function SupervisorDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
+  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: unknown }>({
     queryKey: ["/api/time-entries/status"],
     staleTime: 30000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
 
-  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: any[] }>({
+  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: unknown[] }>({
     queryKey: ["/api/incidents"],
     staleTime: 60000,
   });
@@ -49,26 +51,26 @@ export default function SupervisorDashboard() {
   const isDashboardError = workspaceIsError || clockIsError || shiftsIsError || incidentsIsError;
   const dashboardError = workspaceError || clockError || shiftsError || incidentsError;
 
-  const shifts: any[] = Array.isArray(shiftsRes)
+  const shifts: unknown[] = Array.isArray(shiftsRes)
     ? shiftsRes
-    : (shiftsRes as any)?.data ?? [];
+    : (shiftsRes as Record<string,unknown>)?.data ?? [];
 
-  const incidents: any[] = Array.isArray(incidentsRes)
+  const incidents: unknown[] = Array.isArray(incidentsRes)
     ? incidentsRes
-    : (incidentsRes as any)?.data ?? [];
+    : (incidentsRes as Record<string,unknown>)?.data ?? [];
 
   const today = new Date();
-  const todayShifts = shifts.filter((s: any) => {
+  const todayShifts = shifts.filter((s) => {
     if (!s.startTime) return false;
     const start = new Date(s.startTime);
     return start.toDateString() === today.toDateString();
   });
 
-  const openIncidents = incidents.filter((i: any) => i.status !== "closed" && i.status !== "resolved");
+  const openIncidents = incidents.filter((i) => i.status !== "closed" && i.status !== "resolved");
 
   const orgName = workspace?.name ?? "Your Organization";
 
-  if (isLoading) {
+  if (isLoading && !loadingTimedOut) {
     return (
       <CanvasHubPage config={pageConfig}>
         <PageSkeleton />
@@ -110,7 +112,7 @@ export default function SupervisorDashboard() {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">On Shift</p>
             </div>
             <p className="text-2xl font-bold text-foreground tracking-tight">
-              {shifts.filter((s: any) => s.status === "active" || s.status === "clocked_in").length || "—"}
+              {shifts.filter((s) => s.status === "active" || s.status === "clocked_in").length || "—"}
             </p>
           </div>
 
@@ -160,7 +162,7 @@ export default function SupervisorDashboard() {
               </Button>
             </div>
             <div className="space-y-2">
-              {todayShifts.slice(0, 4).map((shift: any) => (
+              {todayShifts.slice(0, 4).map((shift) => (
                 <div key={shift.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />

@@ -1,4 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
+import { AuthenticatedRequest } from '../rbac';
 import { Router } from "express";
 import { NotificationDeliveryService } from '../services/notificationDeliveryService';
 import { pool } from "../db";
@@ -27,23 +28,23 @@ function genNum(prefix: string) {
   return `${prefix}-${y}${m}${d}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
-function wid(req: any) {
+function wid(req: AuthenticatedRequest) {
   return req.workspaceId || req.session?.workspaceId;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
 
 // ─── INCIDENT REPORTS ────────────────────────────────────────────────────────
 
-rmsRouter.get("/incidents", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/incidents", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, category, siteId, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM incident_reports WHERE workspace_id = $1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (status) { query += ` AND status = $${i++}`; params.push(status); }
     if (category) { query += ` AND category = $${i++}`; params.push(category); }
@@ -56,14 +57,14 @@ rmsRouter.get("/incidents", requireAuth as any, ensureWorkspaceAccess as any, as
 });
 
 // In-memory idempotency cache for RMS submissions (5-minute TTL)
-const rmsIdempotencyCache = new Map<string, { result: any; expiresAt: number }>();
+const rmsIdempotencyCache = new Map<string, { result: unknown; expiresAt: number }>();
 
-rmsRouter.post("/incidents/:id/ai-narrative", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/incidents/:id/ai-narrative", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`SELECT * FROM incident_reports WHERE id = $1 AND workspace_id = $2`, [req.params.id, workspaceId]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
-    const inc = rows[0] as any;
+    const inc = rows[0] as Record<string, unknown>;
     const prompt = `You are a professional security report writer. Rewrite the following incident narrative in formal, third-person, factual language suitable for legal and law enforcement review:\n\nTitle: ${inc.title}\nCategory: ${inc.category}\nLocation: ${inc.location_description || "On premises"}\nOccurred: ${inc.occurred_at}\nOriginal Narrative: ${inc.narrative || "No narrative provided."}\n\nWrite a polished, professional incident narrative:`;
     const { meteredGemini } = await import("../services/billing/meteredGeminiClient");
     const aiNarrativeResult = await meteredGemini.generate({ workspaceId, userId: req.user?.id || req.session?.userId || "system", featureKey: "rms_narrative_polish", prompt });
@@ -77,12 +78,12 @@ rmsRouter.post("/incidents/:id/ai-narrative", requireAuth as any, ensureWorkspac
 
 // ─── DAILY ACTIVITY REPORTS ──────────────────────────────────────────────────
 
-rmsRouter.get("/dars", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/dars", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { employeeId, status, siteId, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM daily_activity_reports WHERE workspace_id = $1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (employeeId) { query += ` AND employee_id = $${i++}`; params.push(employeeId); }
     if (status) { query += ` AND status = $${i++}`; params.push(status); }
@@ -93,7 +94,7 @@ rmsRouter.get("/dars", requireAuth as any, ensureWorkspaceAccess as any, async (
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/dars", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/dars", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const authUserId = req.user?.id;
@@ -108,26 +109,26 @@ rmsRouter.post("/dars", requireAuth as any, ensureWorkspaceAccess as any, async 
     await q(`INSERT INTO daily_activity_reports (id,workspace_id,report_number,employee_id,employee_name,site_id,site_name,shift_id,shift_date,shift_start,shift_end,activity_summary,incidents_occurred,incident_report_ids,equipment_checked,equipment_notes,visitor_count,patrol_rounds_completed,post_orders_followed,post_orders_notes,weather_conditions,status,created_at,updated_at,photos) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'submitted',NOW(),NOW(),$22)`,
       [id, workspaceId, reportNumber, employeeId||null, employeeName, siteId||null, siteName||null, shiftId||null, shiftDate, shiftStart||null, shiftEnd||null, activitySummary, incidentsOccurred, JSON.stringify(incidentReportIds||[]), equipmentChecked, equipmentNotes||null, visitorCount, patrolRoundsCompleted, postOrdersFollowed, postOrdersNotes||null, weatherConditions||null, JSON.stringify(photos||[])]);
     const rows = await q(`SELECT * FROM daily_activity_reports WHERE id=$1`, [id]);
-    platformEventBus.publish({ type: 'dar_submitted', category: 'automation', title: `DAR Submitted — ${reportNumber}`, description: `${employeeName} submitted daily activity report for ${siteName || 'site'} on ${shiftDate}`, workspaceId, metadata: { darId: id, reportNumber, employeeId, employeeName, siteId, siteName, shiftDate, incidentsOccurred, incidentIds: incidentReportIds, photos } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'dar_submitted', category: 'automation', title: `DAR Submitted — ${reportNumber}`, description: `${employeeName} submitted daily activity report for ${siteName || 'site'} on ${shiftDate}`, workspaceId, metadata: { darId: id, reportNumber, employeeId, employeeName, siteId, siteName, shiftDate, incidentsOccurred, incidentIds: incidentReportIds, photos } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.status(201).json(rows[0]);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/dars/:id/approve", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/dars/:id/approve", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { supervisorId } = req.body;
     await q(`UPDATE daily_activity_reports SET status='approved', supervisor_id=$1, supervisor_review_at=NOW(), updated_at=NOW() WHERE id=$2 AND workspace_id=$3`, [supervisorId, req.params.id, workspaceId]);
     const rows = await q(`SELECT * FROM daily_activity_reports WHERE id=$1`, [req.params.id]);
-    const dar = rows[0] as any;
+    const dar = rows[0] as Record<string, unknown>;
     if (dar) {
-      platformEventBus.publish({ type: 'dar_approved', category: 'automation', title: `DAR Approved — ${dar.report_number}`, description: `${dar.report_number} approved by supervisor ${supervisorId || 'unknown'} for ${dar.employee_name} on ${dar.shift_date}`, workspaceId, metadata: { darId: req.params.id, reportNumber: dar.report_number, employeeName: dar.employee_name, employeeId: dar.employee_id, siteId: dar.site_id, siteName: dar.site_name, supervisorId } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'dar_approved', category: 'automation', title: `DAR Approved — ${dar.report_number}`, description: `${dar.report_number} approved by supervisor ${supervisorId || 'unknown'} for ${dar.employee_name} on ${dar.shift_date}`, workspaceId, metadata: { darId: req.params.id, reportNumber: dar.report_number, employeeName: dar.employee_name, employeeId: dar.employee_id, siteId: dar.site_id, siteName: dar.site_name, supervisorId } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
     res.json(dar);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/dars/:id/verify", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const authenticatedUserId = req.user?.id;
@@ -137,7 +138,7 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
     await q(`UPDATE daily_activity_reports SET status='verified', supervisor_id=$1, supervisor_review_at=NOW(), updated_at=NOW() WHERE id=$2 AND workspace_id=$3`, [verifierId, req.params.id, workspaceId]);
     const rows = await q(`SELECT * FROM daily_activity_reports WHERE id=$1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
-    const dar = rows[0] as any;
+    const dar = rows[0] as Record<string, unknown>;
 
     // 1. Auto-generate PDF if not already produced so the client portal
     //    sees a downloadable report the moment the DAR is verified.
@@ -152,7 +153,7 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
           );
           dar.pdf_url = pdfUrl;
         }
-      } catch (pdfErr: any) {
+      } catch (pdfErr : unknown) {
         log.error('[DAR] Auto PDF generation failed (non-blocking):', pdfErr?.message);
       }
     }
@@ -166,7 +167,7 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
       description: `DAR ${dar.report_number} verified and now visible in client portal`,
       workspaceId,
       metadata: { darId: req.params.id, clientId: dar.client_id, siteId: dar.site_id },
-    }).catch((err: any) => log.warn('[EventBus] dar_available_to_client publish failed:', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] dar_available_to_client publish failed:', err?.message));
 
     // 3. Optional auto-send per workspace setting. Stored in the
     //    automation_policy_blob JSONB so we don't need a new column.
@@ -176,7 +177,7 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
            FROM workspaces WHERE id = $1`,
         [workspaceId]
       );
-      const autoSend = (settingRows?.[0] as any)?.auto_send_dars_to_client === true;
+      const autoSend = (settingRows?.[0] as Record<string, unknown>)?.auto_send_dars_to_client === true;
       if (autoSend && dar.client_email) {
         const darHtml = `<h2>Daily Activity Report</h2>
           <p><strong>Officer:</strong> ${dar.employee_name}</p>
@@ -199,16 +200,16 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
           },
         });
       }
-    } catch (autoSendErr: any) {
+    } catch (autoSendErr : unknown) {
       log.warn('[DAR] Auto-send check failed (non-fatal):', autoSendErr?.message);
     }
 
-    platformEventBus.publish({ type: 'dar_verified', category: 'automation', title: `DAR Verified — ${dar.report_number}`, description: `${dar.report_number} verified by ${verifierName || verifierId}`, workspaceId, metadata: { darId: req.params.id, reportNumber: dar.report_number, verifiedBy: verifierName || verifierId } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'dar_verified', category: 'automation', title: `DAR Verified — ${dar.report_number}`, description: `${dar.report_number} verified by ${verifierName || verifierId}`, workspaceId, metadata: { darId: req.params.id, reportNumber: dar.report_number, verifiedBy: verifierName || verifierId } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.json(dar);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/dars/:id/generate-pdf", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/dars/:id/generate-pdf", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { generateDarPdf } = await import("../services/darPdfService");
@@ -222,7 +223,7 @@ rmsRouter.post("/dars/:id/generate-pdf", requireAuth as any, ensureWorkspaceAcce
 
 // ── DAR Narrative: Download as formatted HTML document ─────────────────────
 // ── Incident Narrative: Download formatted document ─────────────────────────
-rmsRouter.post("/shift-reports/:id/generate-pdf", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/shift-reports/:id/generate-pdf", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { generateShiftTransparencyPdf } = await import("../services/darPdfService");
@@ -236,7 +237,7 @@ rmsRouter.post("/shift-reports/:id/generate-pdf", requireAuth as any, ensureWork
 
 // Direct PDF stream — uses the shared objectStorageClient which has Replit credentials
 // uploadFileToObjectStorage strips the first path component (.private/objects) so we match that
-async function streamPdfFromStorage(pdfPath: string, filename: string, res: any): Promise<boolean> {
+async function streamPdfFromStorage(pdfPath: string, filename: string, res: unknown): Promise<boolean> {
   try {
     const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
     if (!bucketId) throw new Error('Object storage not configured');
@@ -255,7 +256,7 @@ async function streamPdfFromStorage(pdfPath: string, filename: string, res: any)
     res.set('Content-Disposition', `inline; filename="${encodeURIComponent(filename)}"`);
     res.set('Cache-Control', 'no-store');
     file.createReadStream()
-      .on('error', (err: any) => { log.error('[RMS PDF] Stream error:', sanitizeError(err)); if (!res.headersSent) res.status(500).json({ error: sanitizeError(err) }); })
+      .on('error', (err: unknown) => { log.error('[RMS PDF] Stream error:', sanitizeError(err)); if (!res.headersSent) res.status(500).json({ error: sanitizeError(err) }); })
       .pipe(res);
     return true;
   } catch (err: unknown) {
@@ -264,14 +265,14 @@ async function streamPdfFromStorage(pdfPath: string, filename: string, res: any)
   }
 }
 
-rmsRouter.get("/shift-reports", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/shift-reports", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
     const safeOffset = Math.max(0, Number(offset) || 0);
     let query = `SELECT * FROM dar_reports WHERE workspace_id = $1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let paramIdx = 2;
     if (status) { query += ` AND status = $${paramIdx}`; params.push(status); paramIdx++; }
     query += ` ORDER BY created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
@@ -280,13 +281,13 @@ rmsRouter.get("/shift-reports", requireAuth as any, ensureWorkspaceAccess as any
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/shift-reports/:id/submit", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/shift-reports/:id/submit", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     await q(`UPDATE dar_reports SET status='pending_review', updated_at=NOW() WHERE id=$1 AND workspace_id=$2`, [req.params.id, workspaceId]);
     const rows = await q(`SELECT * FROM dar_reports WHERE id=$1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
-    const report = rows[0] as any;
+    const report = rows[0] as Record<string, unknown>;
 
     // Trinity Claude articulation pass — improve summary for professional articulation
     if (report.summary && report.summary.trim().length > 20) {
@@ -333,18 +334,18 @@ rmsRouter.post("/shift-reports/:id/submit", requireAuth as any, ensureWorkspaceA
       }
     }
 
-    platformEventBus.publish({ type: 'dar_submitted', category: 'automation', title: `Shift Report Submitted — ${report.employee_name}`, description: `${report.employee_name} submitted shift transparency report`, workspaceId, metadata: { darId: req.params.id, shiftId: report.shift_id, employeeName: report.employee_name, autoGenerated: false } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'dar_submitted', category: 'automation', title: `Shift Report Submitted — ${report.employee_name}`, description: `${report.employee_name} submitted shift transparency report`, workspaceId, metadata: { darId: req.params.id, shiftId: report.shift_id, employeeName: report.employee_name, autoGenerated: false } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.json(report);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/shift-reports/:id/send-to-client", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/shift-reports/:id/send-to-client", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { recipientEmail } = req.body;
     const rows = await q(`SELECT * FROM dar_reports WHERE id=$1 AND workspace_id=$2`, [req.params.id, workspaceId]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
-    const report = rows[0] as any;
+    const report = rows[0] as Record<string, unknown>;
     if (report.status !== 'verified' && report.status !== 'approved') {
       return res.status(400).json({ error: "Report must be verified before sending to client" });
     }
@@ -371,7 +372,7 @@ rmsRouter.post("/shift-reports/:id/send-to-client", requireAuth as any, ensureWo
 
     await q(`UPDATE dar_reports SET status='sent', sent_to_client=true, sent_at=NOW(), updated_at=NOW() WHERE id=$1`, [req.params.id]);
     platformEventBus.publish({ idempotencyKey: `notif-${Date.now()}`,
-            type: 'dar_sent_to_client', category: 'automation', title: 'Shift Report Sent to Client', description: `Shift report ${req.params.id} delivered to client${recipientEmail ? ` at ${recipientEmail}` : ''}`, workspaceId, metadata: { darId: req.params.id, recipientEmail } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+            type: 'dar_sent_to_client', category: 'automation', title: 'Shift Report Sent to Client', description: `Shift report ${req.params.id} delivered to client${recipientEmail ? ` at ${recipientEmail}` : ''}`, workspaceId, metadata: { darId: req.params.id, recipientEmail } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     const updated = await q(`SELECT * FROM dar_reports WHERE id=$1`, [req.params.id]);
     res.json(updated[0]);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
@@ -379,7 +380,7 @@ rmsRouter.post("/shift-reports/:id/send-to-client", requireAuth as any, ensureWo
 
 // ─── VISITOR LOGS ────────────────────────────────────────────────────────────
 
-rmsRouter.get("/visitors/stats", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/visitors/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const [stats] = await q(`
@@ -410,7 +411,7 @@ rmsRouter.get("/visitors/stats", requireAuth as any, ensureWorkspaceAccess as an
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/visitors/pre-register", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/visitors/pre-register", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { 
@@ -453,13 +454,13 @@ rmsRouter.post("/visitors/pre-register", requireAuth as any, ensureWorkspaceAcce
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.get("/visitors", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/visitors", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, siteId, search, limit = 50, offset = 0 } = req.query;
     
     let query = `SELECT * FROM visitor_logs WHERE workspace_id = $1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
 
     if (status === 'active') {
@@ -488,7 +489,7 @@ rmsRouter.get("/visitors", requireAuth as any, ensureWorkspaceAccess as any, asy
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.put("/visitors/:id", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.put("/visitors/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { notes, visitorBadgeNumber, hostName, purpose } = req.body;
@@ -507,7 +508,7 @@ rmsRouter.put("/visitors/:id", requireAuth as any, ensureWorkspaceAccess as any,
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/visitors", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/visitors", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId, siteName, visitorName, visitorCompany, visitorIdType, visitorIdNumber, visitorBadgeNumber, hostName, hostEmployeeId, purpose, vehiclePlate, vehicleDescription, checkedInBy, notes, idPhotoUrl, vehicleFrontPhotoUrl, vehicleRearPhotoUrl, visitorPhotoUrl, expectedDeparture } = req.body;
@@ -526,35 +527,35 @@ rmsRouter.post("/visitors", requireAuth as any, ensureWorkspaceAccess as any, as
       LIMIT 1
     `, [workspaceId, visitorName]).catch(() => []);
     if (boloMatches.length > 0) {
-      const bolo = boloMatches[0] as any;
+      const bolo = boloMatches[0] as Record<string, unknown>;
       await broadcastToWorkspace(workspaceId, {
         type: 'rms:bolo_match',
         visitorLogId: id, visitorName, siteName,
         boloId: bolo.id, boloSubjectName: bolo.subject_name,
       });
-      platformEventBus.publish({ type: 'bolo_match_detected', category: 'automation', title: `BOLO Match Detected — ${visitorName}`, description: `Visitor '${visitorName}' matches active BOLO at ${siteName || 'site'}`, workspaceId, metadata: { boloId: bolo.id, subjectName: visitorName, siteId, siteName, visitorLogId: id } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'bolo_match_detected', category: 'automation', title: `BOLO Match Detected — ${visitorName}`, description: `Visitor '${visitorName}' matches active BOLO at ${siteName || 'site'}`, workspaceId, metadata: { boloId: bolo.id, subjectName: visitorName, siteId, siteName, visitorLogId: id } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
-    platformEventBus.publish({ type: 'visitor_checked_in', category: 'automation', title: `Visitor Checked In — ${visitorName}`, description: `${visitorName} checked in at ${siteName || 'site'}`, workspaceId, metadata: { visitorLogId: id, visitorName, siteId, siteName } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'visitor_checked_in', category: 'automation', title: `Visitor Checked In — ${visitorName}`, description: `${visitorName} checked in at ${siteName || 'site'}`, workspaceId, metadata: { visitorLogId: id, visitorName, siteId, siteName } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.status(201).json({ ...rows[0], boloMatch: boloMatches.length > 0 });
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
 // ─── KEY CONTROL ─────────────────────────────────────────────────────────────
 
-rmsRouter.get("/key-control", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/key-control", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM key_control_logs WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     if (siteId) { query += ` AND site_id=$2`; params.push(siteId); }
     query += ` ORDER BY checked_out_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ keys: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/key-control", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/key-control", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId, siteName, keyIdentifier, keyDescription, checkedOutByEmployeeId, checkedOutByName, expectedReturnAt, purpose, notes } = req.body;
@@ -569,19 +570,19 @@ rmsRouter.post("/key-control", requireAuth as any, ensureWorkspaceAccess as any,
 
 // ─── LOST & FOUND ────────────────────────────────────────────────────────────
 
-rmsRouter.get("/lost-found", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/lost-found", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM lost_found_items WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     if (status) { query += ` AND status=$2`; params.push(status); }
     query += ` ORDER BY found_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ items: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/lost-found", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/lost-found", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId, siteName, description, category, foundLocation, foundByEmployeeId, foundByName, storageLocation, notes } = req.body;
@@ -597,12 +598,12 @@ rmsRouter.post("/lost-found", requireAuth as any, ensureWorkspaceAccess as any, 
 
 // ─── TRESPASS NOTICES ────────────────────────────────────────────────────────
 
-rmsRouter.get("/trespass", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/trespass", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, siteId, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM trespass_notices WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
     if (siteId) { query += ` AND site_id=$${i++}`; params.push(siteId); }
@@ -611,7 +612,7 @@ rmsRouter.get("/trespass", requireAuth as any, ensureWorkspaceAccess as any, asy
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/trespass", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/trespass", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId, siteName, subjectName, subjectDob, subjectDescription, reason, issuedByEmployeeId, issuedByName, validUntil, isPermanent = false, witnessName, policeNotified = false, policeReportNumber } = req.body;
@@ -627,12 +628,12 @@ rmsRouter.post("/trespass", requireAuth as any, ensureWorkspaceAccess as any, as
 
 // ─── RMS CASES ───────────────────────────────────────────────────────────────
 
-rmsRouter.get("/cases", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/cases", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, priority, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM rms_cases WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
     if (priority) { query += ` AND priority=$${i++}`; params.push(priority); }
@@ -641,7 +642,7 @@ rmsRouter.get("/cases", requireAuth as any, ensureWorkspaceAccess as any, async 
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/cases", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/cases", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { title, category, priority = "medium", description, siteId, siteName, assignedToEmployeeId, assignedToName, incidentReportIds, policeCaseNumber } = req.body;
@@ -651,26 +652,26 @@ rmsRouter.post("/cases", requireAuth as any, ensureWorkspaceAccess as any, async
     await q(`INSERT INTO rms_cases (id,workspace_id,case_number,title,category,priority,status,description,site_id,site_name,assigned_to_employee_id,assigned_to_name,incident_report_ids,evidence,notes,police_case_number,document_storage_keys,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'open',$7,$8,$9,$10,$11,$12,'[]','[]',$13,'[]',NOW(),NOW())`,
       [id, workspaceId, caseNumber, title, category, priority, description||null, siteId||null, siteName||null, assignedToEmployeeId||null, assignedToName||null, JSON.stringify(incidentReportIds||[]), policeCaseNumber||null]);
     const rows = await q(`SELECT * FROM rms_cases WHERE id=$1`, [id]);
-    platformEventBus.publish({ type: 'rms_case_opened', category: 'automation', title: `Case Opened — ${caseNumber}`, description: `${category} case '${title}' opened at ${siteName || 'site'} — priority: ${priority}`, workspaceId, metadata: { caseId: id, caseNumber, title, category, priority, siteId, siteName, assignedToName } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'rms_case_opened', category: 'automation', title: `Case Opened — ${caseNumber}`, description: `${category} case '${title}' opened at ${siteName || 'site'} — priority: ${priority}`, workspaceId, metadata: { caseId: id, caseNumber, title, category, priority, siteId, siteName, assignedToName } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.status(201).json(rows[0]);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
 // ─── BOLO ALERTS ─────────────────────────────────────────────────────────────
 
-rmsRouter.get("/bolo", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/bolo", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { active, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM bolo_alerts WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     if (active === 'true') { query += ` AND is_active=true AND (expires_at IS NULL OR expires_at > NOW())`; }
     query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ bolos: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/bolo", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/bolo", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { subjectName, subjectDob, subjectDescription, photoUrl, reason, expiresAt, createdByName } = req.body;
@@ -680,19 +681,19 @@ rmsRouter.post("/bolo", requireAuth as any, ensureWorkspaceAccess as any, async 
       VALUES($1,$2,$3,$4,$5,$6,$7,true,$8,$9,$10,NOW(),NOW())`,
       [id, workspaceId, subjectName, subjectDob||null, subjectDescription||null, photoUrl||null, reason, expiresAt||null, req.session?.userId||null, createdByName||null]);
     const rows = await q(`SELECT * FROM bolo_alerts WHERE id=$1`, [id]);
-    platformEventBus.publish({ type: 'bolo_created', category: 'automation', title: `BOLO Created — ${subjectName}`, description: `New BOLO alert for '${subjectName}' — reason: ${reason}`, workspaceId, metadata: { boloId: id, subjectName, reason } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    platformEventBus.publish({ type: 'bolo_created', category: 'automation', title: `BOLO Created — ${subjectName}`, description: `New BOLO alert for '${subjectName}' — reason: ${reason}`, workspaceId, metadata: { boloId: id, subjectName, reason } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.status(201).json(rows[0]);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
 // ─── EVIDENCE ────────────────────────────────────────────────────────────────
 
-rmsRouter.get("/evidence", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/evidence", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { caseId, status, limit = 50, offset = 0 } = req.query;
     let query = `SELECT * FROM evidence_items WHERE workspace_id=$1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
     if (caseId) { query += ` AND case_id=$${i++}`; params.push(caseId); }
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
@@ -702,7 +703,7 @@ rmsRouter.get("/evidence", requireAuth as any, ensureWorkspaceAccess as any, asy
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/evidence", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/evidence", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { caseId, description, category, storageLocation, photoUrls, policeCaseNumber, currentCustodianName, createdByName } = req.body;
@@ -713,15 +714,15 @@ rmsRouter.post("/evidence", requireAuth as any, ensureWorkspaceAccess as any, as
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,'in_custody',$9,$10,$11,NOW(),NOW())`,
       [id, workspaceId, caseId||null, itemNumber, description, category||'physical', storageLocation||null, JSON.stringify(photoUrls||[]), policeCaseNumber||null, currentCustodianName||null, createdByName||null]);
     const rows = await q(`SELECT * FROM evidence_items WHERE id=$1`, [id]);
-    const evidence = rows[0] as any;
+    const evidence = rows[0] as Record<string, unknown>;
     if (evidence) {
-      platformEventBus.publish({ type: 'evidence_created', category: 'automation', title: `Evidence Logged — ${itemNumber}`, description: `Evidence item '${description}' logged into RMS${caseId ? ` for case ${caseId}` : ''}`, workspaceId, metadata: { evidenceId: id, itemNumber, description, category: category||'physical', caseId: caseId||null, currentCustodianName: currentCustodianName||null } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      platformEventBus.publish({ type: 'evidence_created', category: 'automation', title: `Evidence Logged — ${itemNumber}`, description: `Evidence item '${description}' logged into RMS${caseId ? ` for case ${caseId}` : ''}`, workspaceId, metadata: { evidenceId: id, itemNumber, description, category: category||'physical', caseId: caseId||null, currentCustodianName: currentCustodianName||null } }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
     res.status(201).json(evidence);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.get("/evidence/:id/custody-log", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/evidence/:id/custody-log", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const log = await q(`SELECT * FROM evidence_custody_log WHERE evidence_id=$1 AND workspace_id=$2 ORDER BY transferred_at ASC`, [req.params.id, wid(req)]);
     res.json({ log });
@@ -730,7 +731,7 @@ rmsRouter.get("/evidence/:id/custody-log", requireAuth as any, ensureWorkspaceAc
 
 // ─── STATS ───────────────────────────────────────────────────────────────────
 
-rmsRouter.get("/stats", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const [inc, dar, vis, keys, lf, tn, cases, bolos] = await Promise.all([
@@ -758,7 +759,7 @@ rmsRouter.get("/stats", requireAuth as any, ensureWorkspaceAccess as any, async 
 
 // ─── SITE LOOKUP FOR FORMS ────────────────────────────────────────────────────
 
-rmsRouter.get("/sites-lookup", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/sites-lookup", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`
@@ -782,7 +783,7 @@ const RMS_ALLOWED_MIME_TYPES = new Set([
 ]);
 const RMS_ALLOWED_CATEGORIES = new Set(['photos', 'evidence', 'signatures', 'documents', 'dar-photos', 'scene']);
 
-rmsRouter.post("/upload", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/upload", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { base64Data, fileName, category } = req.body;
@@ -811,7 +812,7 @@ rmsRouter.post("/upload", requireAuth as any, ensureWorkspaceAccess as any, asyn
       return res.status(507).json({ error: `Media storage quota exceeded. Used: ${Math.round(quotaCheck.usedBytes / 1048576)}MB of ${Math.round(quotaCheck.limitBytes / 1048576)}MB.`, code: 'STORAGE_QUOTA_EXCEEDED' });
     }
     await uploadFileToObjectStorage({ objectPath, buffer, metadata: { contentType } });
-    recordStorageUsage(workspaceId, 'media', buffer.length).catch(() => null);
+    recordStorageUsage(workspaceId, 'media', buffer.length).catch((e: unknown) => log.warn('[rmsRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
     res.json({ url: objectPath, id, fileName: safeName });
   } catch (e: unknown) {
     log.error("[RMS] /upload error:", (e instanceof Error ? e.message : String(e)));
@@ -827,20 +828,20 @@ const reportAuditTrail: Map<string, Array<{
   id: string; reportId: string; reportType: string; workspaceId: string;
   action: string; actorId: string | null; actorName: string | null;
   actorEmail: string | null; ipAddress: string | null; userAgent: string | null;
-  metadata: any; createdAt: string;
+  metadata: Record<string, unknown>; createdAt: string;
 }>> = new Map();
 
-rmsRouter.get("/reports/:id/audit-trail", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/reports/:id/audit-trail", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const reportId = req.params.id;
-    let trail: any[] = [];
+    let trail: (string | number | boolean | null)[] = [];
     try {
       const history = await universalAudit.getEntityHistory('report', reportId, workspaceId);
       trail = history.map(h => ({
         id: h.id,
         report_id: h.entityId,
-        report_type: (h as any).metadata?.reportType || 'unknown',
+        report_type: (h as unknown).metadata?.reportType || 'unknown',
         workspace_id: h.workspaceId,
         action: h.action === AUDIT_ACTIONS.DAILY_REPORT_OPENED ? 'opened' : 'downloaded',
         actor_id: h.actorId,
@@ -851,24 +852,24 @@ rmsRouter.get("/reports/:id/audit-trail", requireAuth as any, ensureWorkspaceAcc
       const key = `${workspaceId}:${reportId}`;
       trail = (reportAuditTrail.get(key) || []).slice().reverse();
     }
-    const openCount = trail.filter((e: any) => e.action === 'opened').length;
-    const downloadCount = trail.filter((e: any) => e.action === 'downloaded').length;
-    const lastOpened = trail.find((e: any) => e.action === 'opened')?.created_at || null;
-    const lastDownloaded = trail.find((e: any) => e.action === 'downloaded')?.created_at || null;
+    const openCount = trail.filter((e: unknown) => e.action === 'opened').length;
+    const downloadCount = trail.filter((e: unknown) => e.action === 'downloaded').length;
+    const lastOpened = trail.find((e: unknown) => e.action === 'opened')?.created_at || null;
+    const lastDownloaded = trail.find((e: unknown) => e.action === 'downloaded')?.created_at || null;
     res.json({ trail, summary: { openCount, downloadCount, lastOpened, lastDownloaded } });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.get("/reports/audit-summary", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.get("/reports/audit-summary", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
-    let summaries: any[] = [];
+    let summaries: (string | number | boolean | null)[] = [];
     try {
       const history = await universalAudit.getWorkspaceHistory(workspaceId, {
         entityType: 'report',
         limit: 500,
       });
-      const reportGroups = new Map<string, any>();
+      const reportGroups = new Map<string, unknown>();
       for (const h of history) {
         const rid = h.entityId!;
         if (!reportGroups.has(rid)) {
@@ -885,7 +886,7 @@ rmsRouter.get("/reports/audit-summary", requireAuth as any, ensureWorkspaceAcces
       }
       summaries = Array.from(reportGroups.values());
     } catch {
-      const seen = new Map<string, any>();
+      const seen = new Map<string, unknown>();
       for (const [key, entries] of reportAuditTrail.entries()) {
         if (!key.startsWith(`${workspaceId}:`)) continue;
         const reportId = key.split(':')[1];
@@ -901,7 +902,7 @@ rmsRouter.get("/reports/audit-summary", requireAuth as any, ensureWorkspaceAcces
       }
       summaries = Array.from(seen.values());
     }
-    const byReportId: Record<string, any> = {};
+    const byReportId: Record<string, unknown> = {};
     for (const s of summaries) {
       byReportId[s.report_id] = {
         openCount: Number(s.open_count || 0),
@@ -914,7 +915,7 @@ rmsRouter.get("/reports/audit-summary", requireAuth as any, ensureWorkspaceAcces
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rmsRouter.post("/upload-photo", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+rmsRouter.post("/upload-photo", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { base64Data, fileName, category } = req.body;
@@ -949,7 +950,7 @@ rmsRouter.post("/upload-photo", requireAuth as any, ensureWorkspaceAccess as any
         buffer,
         metadata: { contentType },
       });
-      recordStorageUsage(workspaceId, 'media', buffer.length).catch(() => null);
+      recordStorageUsage(workspaceId, 'media', buffer.length).catch((e: unknown) => log.warn('[rmsRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       res.json({ url: objectPath, fileName: safeName });
     } catch (uploadErr: unknown) {
       log.error('[RMS] Photo upload failed:', (uploadErr instanceof Error ? uploadErr.message : String(uploadErr)));

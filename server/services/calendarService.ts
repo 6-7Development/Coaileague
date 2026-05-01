@@ -96,7 +96,6 @@ export function generateICS(events: CalendarEvent[], calendarName: string = `${p
 
     if (event.reminder && event.reminder > 0) {
       icalEvent.createAlarm({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         type: 'display',
         trigger: event.reminder * 60,
       });
@@ -274,7 +273,6 @@ export async function exportScheduleToICS(
     return statusFilters.includes(status || 'draft');
   });
 
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const events: CalendarEvent[] = filteredShifts.map(row => {
     const shift = row.shifts;
     const employee = row.employees;
@@ -491,7 +489,7 @@ export async function importICalFile(
         result.importedShiftIds.push(newShift.id);
         result.eventsImported++;
 
-      } catch (eventError: any) {
+      } catch (eventError : unknown) {
         result.eventsFailed++;
         result.errors.push(`Failed to import event "${event.summary}": ${eventError.message}`);
       }
@@ -528,7 +526,7 @@ export async function importICalFile(
       },
     });
 
-  } catch (parseError: any) {
+  } catch (parseError : unknown) {
     result.errors.push(`Failed to parse iCal file: ${parseError.message}`);
     
     await db.update(calendarImports)

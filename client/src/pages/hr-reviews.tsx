@@ -245,7 +245,7 @@ export default function HRReviews() {
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
         <UniversalModal open={dialogOpen} onOpenChange={setDialogOpen}>
-              <UniversalModalContent size="full" className="max-h-[90vh] overflow-y-auto">
+              <UniversalModalContent size="full" className="max-h-[80dvh] sm:max-h-[90dvh] overflow-y-auto">
                 <UniversalModalHeader>
                   <UniversalModalTitle>Create Performance Review</UniversalModalTitle>
                 </UniversalModalHeader>

@@ -276,7 +276,7 @@ class OrchestrationStateMachine {
     // Create phase transition record
     const now = new Date();
     const phaseTransition: PhaseTransition = {
-      fromPhase: currentPhase as any,
+      fromPhase: currentPhase as unknown,
       toPhase: targetPhase,
       reason: request.reason ?? 'Transition requested',
       triggeredBy: request.triggeredBy,
@@ -305,8 +305,8 @@ class OrchestrationStateMachine {
     const [updated] = await db
       .update(orchestrationOverlays)
       .set({
-        phase: targetPhase as any,
-        previousPhase: currentPhase as any,
+        phase: targetPhase as unknown,
+        previousPhase: currentPhase as unknown,
         phaseEnteredAt: now,
         phaseTransitionCount: (overlay.phaseTransitionCount ?? 0) + 1,
         phaseHistory: phaseHistory,
@@ -438,7 +438,7 @@ class OrchestrationStateMachine {
           requiredPermissions: capabilities,
           grantedPermissions: grantedCapabilities,
           deniedPermissions: deniedCapabilities,
-          permissionResult: permResult as any,
+          permissionResult: permResult as unknown,
           permissionCheckedAt: new Date(),
           permissionCheckedBy: 'auth_service',
           permissionDeniedReason: combinedReason ?? null,
@@ -468,14 +468,13 @@ class OrchestrationStateMachine {
         bypassed: false,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OrchestrationStateMachine] Permission check failed:`, (error instanceof Error ? error.message : String(error)));
       
       // Log failure to audit trail for state consistency
       await this.appendAuditEntry(overlayId, {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eventType: 'permission_check_failed',
         details: {
           capabilities,
@@ -492,7 +491,7 @@ class OrchestrationStateMachine {
             requiredPermissions: capabilities,
             grantedPermissions: [],
             deniedPermissions: capabilities,
-            permissionResult: 'denied' as any,
+            permissionResult: 'denied',
             permissionCheckedAt: new Date(),
             permissionCheckedBy: 'auth_service',
             permissionDeniedReason: `Permission check error: ${error.message}`,
@@ -541,7 +540,6 @@ class OrchestrationStateMachine {
     await this.appendAuditEntry(overlayId, {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       eventType: 'tool_validation_started',
       details: { toolIds, subagentId, modelTier },
       actor: 'orchestrator',
@@ -579,7 +577,6 @@ class OrchestrationStateMachine {
     await this.appendAuditEntry(overlayId, {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       eventType: valid ? 'tool_validation_passed' : 'tool_validation_failed',
       details: {
         toolIds,
@@ -642,7 +639,7 @@ class OrchestrationStateMachine {
   /**
    * Get tool diagnostics for debugging
    */
-  getToolDiagnostics(): Record<string, any> {
+  getToolDiagnostics(): Record<string, unknown> {
     return toolCapabilityRegistry.exportDiagnostics();
   }
 
@@ -686,14 +683,13 @@ class OrchestrationStateMachine {
         reason: `Escalation: ${reason}`,
         triggeredBy: 'orchestrator',
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OrchestrationStateMachine] Escalation failed:`, (error instanceof Error ? error.message : String(error)));
       
       // Log escalation failure
       await this.appendAuditEntry(overlayId, {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eventType: 'escalation_failed',
         details: { reason, error: (error instanceof Error ? error.message : String(error)) },
         actor: 'orchestrator',
@@ -730,14 +726,13 @@ class OrchestrationStateMachine {
         reason: `Rollback: ${reason}`,
         triggeredBy: 'orchestrator',
       });
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OrchestrationStateMachine] Rollback failed:`, (error instanceof Error ? error.message : String(error)));
       
       // Log rollback failure
       await this.appendAuditEntry(overlayId, {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eventType: 'rollback_failed',
         details: { reason, error: (error instanceof Error ? error.message : String(error)) },
         actor: 'orchestrator',
@@ -887,7 +882,7 @@ class OrchestrationStateMachine {
       const toolValidation = await this.validateToolsForExecution(
         overlayId,
         toolIds,
-        (manifest as any).subagentId || 'orchestrator',
+        (manifest as Record<string,unknown>).subagentId || 'orchestrator',
         permResult.grantedPermissions,
         [], // User consents - would come from workspace settings
         'ORCHESTRATOR' // Model tier for orchestration
@@ -1002,7 +997,7 @@ class OrchestrationStateMachine {
         phase: 'completed',
       };
       
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error(`[OrchestrationStateMachine] Orchestration failed:`, (error instanceof Error ? error.message : String(error)));
       
       if (overlayId) {

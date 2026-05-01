@@ -87,7 +87,7 @@ async function setupStripeWebhook(secretKey: string, label: string): Promise<voi
         `→ Add to env: ${envVarName}`,
       );
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     check(`STRIPE:${label}`, false, `Stripe API error: ${err.message}`, 'Fix and re-run');
   }
 }
@@ -121,7 +121,7 @@ async function setupResendWebhooks(): Promise<void> {
     });
     if (listResp.ok) {
       const data = await listResp.json() as { data?: Array<{ url: string }> };
-      existingUrls = (data.data || []).map((w: any) => w.url);
+      existingUrls = (data.data || []).map((w: unknown) => w.url);
     }
   } catch {
     console.warn('  ⚠️  Could not list Resend webhooks — proceeding with registration');
@@ -148,7 +148,7 @@ async function setupResendWebhooks(): Promise<void> {
       check('RESEND:outbound', ok,
         ok ? `REGISTERED: ${outboundUrl}` : `Failed: HTTP ${resp.status}`,
         ok ? '' : 'Check RESEND_API_KEY and re-run');
-    } catch (err: any) {
+    } catch (err : unknown) {
       check('RESEND:outbound', false, `Network error: ${err.message}`, 'Fix and re-run');
     }
   }
@@ -174,7 +174,7 @@ async function setupResendWebhooks(): Promise<void> {
       check('RESEND:inbound', ok,
         ok ? `REGISTERED: ${inboundUrl}` : `Failed: HTTP ${resp.status}`,
         ok ? '' : 'Check RESEND_API_KEY and re-run');
-    } catch (err: any) {
+    } catch (err : unknown) {
       check('RESEND:inbound', false, `Network error: ${err.message}`, 'Fix and re-run');
     }
   }
@@ -244,11 +244,11 @@ async function setupTwilioWebhooks(): Promise<void> {
       smsMethod: 'POST',
       smsStatusCallback: smsCallback,
       smsStatusCallbackMethod: 'POST',
-    } as any);
+    } as unknown);
 
     // Fetch back and verify all 4 URLs match exactly
     const phoneNumber = await client.incomingPhoneNumbers(TWILIO_PHONE_NUMBER_SID).fetch();
-    const pn = phoneNumber as any;
+    const pn = phoneNumber as unknown;
 
     const verifications = [
       { label: 'Voice URL     ', expected: voiceUrl,      actual: pn.voiceUrl },
@@ -270,7 +270,7 @@ async function setupTwilioWebhooks(): Promise<void> {
       check('TWILIO:configure', false, 'One or more URL mismatches detected — see above', 'Re-run after checking SID');
       process.exitCode = 1;
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     check('TWILIO:configure', false, `Twilio SDK error: ${err.message}`, 'Verify SID and auth token');
   }
 }
@@ -330,10 +330,10 @@ async function checkPlaid(): Promise<void> {
       check('PLAID:sandbox', true, 'Plaid sandbox reachable — keys are valid', '');
       console.log('   ℹ️  Set PLAID_ENV=production when ready for live transfers');
     } else {
-      const body = await resp.json().catch(() => ({})) as any;
+      const body = await resp.json().catch(() => ({})) as unknown;
       check('PLAID:sandbox', false, `Plaid returned HTTP ${resp.status}: ${body?.error_message || 'unknown'}`, 'Verify Plaid keys');
     }
-  } catch (err: any) {
+  } catch (err : unknown) {
     check('PLAID:sandbox', false, `Network error: ${err.message}`, 'Check connectivity');
   }
 }

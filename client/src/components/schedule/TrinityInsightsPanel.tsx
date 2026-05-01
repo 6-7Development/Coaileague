@@ -29,7 +29,7 @@ interface TrinityInsight {
   description: string;
   actionable?: boolean;
   actionLabel?: string;
-  actionData?: any;
+  actionData?: unknown;
 }
 
 interface TrinityInsightsPanelProps {
@@ -94,7 +94,7 @@ export function TrinityInsightsPanel({
     onSuccess: (data) => {
       toast({ title: 'Trinity Response', description: 'Check the chat for Trinity\'s answer' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: 'destructive', title: 'Trinity unavailable', description: error.message });
     },
   });
@@ -115,7 +115,7 @@ export function TrinityInsightsPanel({
       setShowConfirm(false);
       toast({ title: 'Trinity is auto-filling shifts', description: 'Progress updates will appear as Trinity works.' });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setShowConfirm(false);
       toast({ variant: 'destructive', title: 'Action failed', description: error.message });
     },
@@ -127,7 +127,7 @@ export function TrinityInsightsPanel({
     setPreflightLoading(true);
     try {
       const res = await apiRequest('POST', '/api/schedules/auto-fill/preflight', {});
-      const data = await (res as any).json?.() ?? res;
+      const data = await (res as Record<string, unknown>).json?.() ?? res;
       if (data.success && data.preflight) {
         setPreflight(data.preflight);
         setShowConfirm(true);

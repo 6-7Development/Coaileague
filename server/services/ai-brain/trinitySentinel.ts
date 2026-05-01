@@ -50,7 +50,7 @@ export interface SentinelAlert {
   resolvedAt?: Date;
   autoRemediated: boolean;
   remediationAction?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface HealthCheck {
@@ -93,7 +93,7 @@ export interface RemediationAction {
   order: number;
   type: 'restart' | 'retry' | 'fallback' | 'notify' | 'escalate' | 'self_heal';
   target: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   executed: boolean;
   result?: string;
 }
@@ -458,7 +458,7 @@ class TrinitySentinel {
     message: string;
     affectedComponent: string;
     workspaceId?: string;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
   }): SentinelAlert {
     // Check for duplicate alerts
     const existingAlert = Array.from(this.alerts.values()).find(
@@ -673,11 +673,10 @@ class TrinitySentinel {
         case 'restart': {
           log.info(`[TrinitySentinel] Restarting service ${action.target}`);
           const { serviceControlManager } = await import('./serviceControl');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          const currentState = serviceControlManager.getServiceStatus(action as any).target;
+          const currentState = serviceControlManager.getServiceStatus(action as Record<string,unknown>).target;
           if (currentState) {
-            await serviceControlManager.pauseService(action.target as any, 'sentinel-remediation');
-            await serviceControlManager.resumeService(action.target as any, 'sentinel-remediation');
+            await serviceControlManager.pauseService(action.target, 'sentinel-remediation');
+            await serviceControlManager.resumeService(action.target, 'sentinel-remediation');
             action.result = `Service ${action.target} restarted (pause+resume)`;
           } else {
             action.result = `Service ${action.target} not found in control registry`;

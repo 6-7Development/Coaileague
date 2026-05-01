@@ -212,7 +212,7 @@ const BUILT_IN_TEMPLATES: Record<string, { name: string; description: string; fi
 
 // ─── Field palette config ─────────────────────────────────────────────────────
 
-const FIELD_PALETTE: { type: FieldType; label: string; icon: any; group: string }[] = [
+const FIELD_PALETTE: { type: FieldType; label: string; icon: string | React.ReactNode; group: string }[] = [
   { type: "text", label: "Text Input", icon: Type, group: "Basic" },
   { type: "textarea", label: "Text Area", icon: AlignLeft, group: "Basic" },
   { type: "number", label: "Number", icon: Hash, group: "Basic" },
@@ -494,17 +494,17 @@ function FormBuilder({
   initial, onSave, onCancel, isSaving
 }: {
   initial?: CustomForm | null;
-  onSave: (data: any) => void;
+  onSave: (data) => void;
   onCancel: () => void;
   isSaving: boolean;
 }) {
   const { toast } = useToast();
   const [title, setTitle] = useState(initial?.name || "");
   const [description, setDescription] = useState(initial?.description || "");
-  const [category, setCategory] = useState<string>((initial as any)?.category || "onboarding");
-  const [fields, setFields] = useState<FormField[]>((initial?.template as any)?.fields || []);
-  const [approverRole, setApproverRole] = useState<string>((initial as any)?.routingRules?.approverRole || "supervisor");
-  const [requiresApproval, setRequiresApproval] = useState<boolean>((initial as any)?.routingRules?.requiresApproval ?? false);
+  const [category, setCategory] = useState<string>((initial as Record<string,unknown>)?.category || "onboarding");
+  const [fields, setFields] = useState<FormField[]>((initial?.template as unknown)?.fields || []);
+  const [approverRole, setApproverRole] = useState<string>((initial as Record<string,unknown>)?.routingRules?.approverRole || "supervisor");
+  const [requiresApproval, setRequiresApproval] = useState<boolean>((initial as Record<string,unknown>)?.routingRules?.requiresApproval ?? false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -519,7 +519,6 @@ function FormBuilder({
   function genId() { return `field_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 
   function addField(type: FieldType) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const defaults: Partial<FormField> = {
       select: { options: ["Option 1", "Option 2", "Option 3"] },
       radio: { options: ["Yes", "No"] },
@@ -586,7 +585,7 @@ function FormBuilder({
     if (!title.trim()) { toast({ title: "Form title required", variant: "destructive" }); return; }
     if (fields.length === 0) { toast({ title: "Add at least one field", variant: "destructive" }); return; }
     const routingRules = requiresApproval ? { requiresApproval: true, approverRole } : null;
-    onSave({ name: title, description, category, template: { fields }, isActive: true, routingRules } as any);
+    onSave({ name: title, description, category, template: { fields }, isActive: true, routingRules } as unknown);
   }
 
   // ─── Analytics Helpers ──────────────────────────────────────────────────
@@ -858,7 +857,7 @@ function SubmissionsViewer({ form, onBack }: { form: CustomForm; onBack: () => v
     onError: () => toast({ title: "Failed to update submission", variant: "destructive" }),
   });
 
-  const formFields: FormField[] = (form.template as any)?.fields || [];
+  const formFields: FormField[] = (form.template as unknown)?.fields || [];
 
   if (selectedSubmission) {
     const formData = selectedSubmission.formData || selectedSubmission.form_data || {};
@@ -1040,7 +1039,7 @@ function SubmissionsViewer({ form, onBack }: { form: CustomForm; onBack: () => v
         </Card>
       ) : (
         <div className="space-y-2">
-          {submissions.map((sub: any, idx: number) => (
+          {submissions.map((sub: unknown, idx: number) => (
             <Card
               key={sub.id || idx}
               className="hover-elevate cursor-pointer"
@@ -1084,7 +1083,7 @@ function SubmissionsViewer({ form, onBack }: { form: CustomForm; onBack: () => v
 
 function FormCard({ form, onEdit, onDelete, onDuplicate, onViewSubmissions, analytics }:
   { form: CustomForm; onEdit: () => void; onDelete: () => void; onDuplicate: () => void; onViewSubmissions: () => void; analytics: any }) {
-  const fields = (form.template as any)?.fields || [];
+  const fields = (form.template as unknown)?.fields || [];
   const fieldCounts = fields.reduce((acc: Record<string, number>, f: FormField) => {
     acc[f.type] = (acc[f.type] || 0) + 1;
     return acc;
@@ -1106,7 +1105,7 @@ function FormCard({ form, onEdit, onDelete, onDuplicate, onViewSubmissions, anal
       </CardHeader>
       <CardContent className="pt-0 flex-1">
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <Badge variant="outline" className="text-[10px]">{(form as any).category || "general"}</Badge>
+          <Badge variant="outline" className="text-[10px]">{(form as Record<string,unknown>).category || "general"}</Badge>
           <Badge variant="secondary" className="text-[10px]">{fields.length} fields</Badge>
           {requiredCount > 0 && <Badge variant="outline" className="text-[10px]">{requiredCount} required</Badge>}
         </div>
@@ -1136,8 +1135,8 @@ function FormCard({ form, onEdit, onDelete, onDuplicate, onViewSubmissions, anal
             ))}
           </div>
         )}
-        {(form as any).created_at && (
-          <p className="text-[10px] text-muted-foreground">Created {format(new Date((form as any).created_at), "MMM d, yyyy")}</p>
+        {(form as Record<string,unknown>).created_at && (
+          <p className="text-[10px] text-muted-foreground">Created {format(new Date((form as Record<string,unknown>).created_at), "MMM d, yyyy")}</p>
         )}
       </CardContent>
       <div className="px-4 pb-3 flex flex-col gap-2 border-t pt-3">
@@ -1172,13 +1171,13 @@ export default function AdminCustomForms() {
   const { data: forms = [], isLoading, isError } = useQuery<CustomForm[]>({ queryKey: ["/api/form-builder/forms"] });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/form-builder/forms", data),
+    mutationFn: (data) => apiRequest("POST", "/api/form-builder/forms", data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/form-builder/forms"] }); toast({ title: "Form created" }); setBuilderMode("list"); setEditingForm(null); },
     onError: () => toast({ title: "Failed to save form", variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/form-builder/forms/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiRequest("PATCH", `/api/form-builder/forms/${id}`, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/form-builder/forms"] }); toast({ title: "Form updated" }); setBuilderMode("list"); setEditingForm(null); },
     onError: () => toast({ title: "Failed to update form", variant: "destructive" }),
   });
@@ -1189,7 +1188,7 @@ export default function AdminCustomForms() {
     onError: () => toast({ title: "Failed to delete form", variant: "destructive" }),
   });
 
-  function handleSave(data: any) {
+  function handleSave(data: unknown) {
     if (editingForm) {
       updateMutation.mutate({ id: editingForm.id, data });
     } else {
@@ -1201,7 +1200,7 @@ export default function AdminCustomForms() {
     createMutation.mutate({
       name: form.name + " (copy)",
       description: form.description,
-      category: (form as any).category,
+      category: (form as Record<string,unknown>).category,
       template: form.template,
       isActive: true,
     });
@@ -1286,7 +1285,6 @@ export default function AdminCustomForms() {
                 onDelete={() => setDeleteConfirmId(form.id)}
                 onDuplicate={() => handleDuplicate(form)}
                 onViewSubmissions={() => { setViewingSubmissionsForm(form); setBuilderMode("submissions"); }}
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 analytics={getAnalytics(form.id)}
               />
             ))}

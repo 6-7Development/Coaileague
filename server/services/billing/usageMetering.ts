@@ -19,7 +19,7 @@ export interface UsageEventInput {
   unitPrice?: number;
   sessionId?: string;
   activityType?: string;
-  metadata?: any;
+  metadata?: unknown;
   ipAddress?: string;
   userAgent?: string;
   // Control event bus emission - set to false when caller emits its own billing event
@@ -213,7 +213,6 @@ export class UsageMeteringService {
 
     // Store provider cost and model outside transaction (new columns via raw SQL to bypass Drizzle schema mismatch)
     if (event && (providerCostUsd > 0 || input.aiModel || input.creditsDeducted)) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await db.update(aiUsageEvents).set({ providerCostUsd: providerCostUsd, aiModel: input.aiModel || null, creditsDeducted: input.creditsDeducted || 0 }).where(eq(aiUsageEvents.id, event.id)).catch(() => {/* non-critical — usage event already recorded */});
     }
 
@@ -221,7 +220,7 @@ export class UsageMeteringService {
     // AI usage is now metered via aiMeteringService and workspace_ai_usage only.
 
     // Update daily rollup asynchronously
-    this.updateDailyRollup(input.workspaceId, input.featureKey, event.createdAt!).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
+    this.updateDailyRollup(input.workspaceId, input.featureKey, event.createdAt!).catch((e: unknown) => log.error(e instanceof Error ? e.message : String(e)));
 
     // Emit usage event to Trinity for tracking (unless caller handles its own event emission)
     if (input.emitEvent !== false) {

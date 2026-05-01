@@ -77,7 +77,7 @@ async function requireDeliberationConsensus(params: {
       };
     }
     return { allowed: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Fail closed on a deliberation error — financial mutations must not run
     // when the reasoning loop itself is unavailable.
     return {
@@ -96,7 +96,7 @@ function createResult(
   actionId: string, 
   success: boolean, 
   message: string, 
-  data?: any,
+  data?: Record<string, unknown>,
   startTime?: number
 ): ActionResult {
   return {
@@ -135,7 +135,7 @@ function withAuditWrap(action: ActionHandler, entityType: string): ActionHandler
           durationMs: Date.now() - start,
         });
         return result;
-      } catch (err: any) {
+      } catch (err: unknown) {
         await logActionAudit({
           actionId: request.actionId,
           workspaceId: request.workspaceId,
@@ -163,11 +163,11 @@ class AIBrainActionRegistry {
     if (this.initialized) return;
 
     // Fix: check if it's already being initialized to prevent duplicate calls from module load + server/index.ts
-    if ((global as any)._aiBrainActionRegistryInitializing) {
+    if ((global as NodeJS.Global & Record<string, unknown>)._aiBrainActionRegistryInitializing) {
       log.info('[AI Brain Action Registry] Initialization already in progress, skipping duplicate call');
       return;
     }
-    (global as any)._aiBrainActionRegistryInitializing = true;
+    (global as NodeJS.Global & Record<string, unknown>)._aiBrainActionRegistryInitializing = true;
 
     log.info('[AI Brain Action Registry] Initializing action registry...');
 
@@ -272,7 +272,7 @@ class AIBrainActionRegistry {
     registerProactiveActions();
 
     this.initialized = true;
-    (global as any)._aiBrainActionRegistryInitializing = false;
+    (global as NodeJS.Global & Record<string, unknown>)._aiBrainActionRegistryInitializing = false;
     log.info(`[AI Brain Action Registry] Initialization complete — all action modules registered`);
   }
 
@@ -333,7 +333,7 @@ class AIBrainActionRegistry {
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, result.success, result.message, null, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -399,11 +399,11 @@ class AIBrainActionRegistry {
             entityId: request.payload?.featurePath ?? null,
             success: true,
             message: `Feature toggle updated: ${request.payload?.featurePath}=${request.payload?.enabled}`,
-            changesAfter: result as any,
+            changesAfter: result as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, true, `Feature toggle updated`, result, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -468,14 +468,14 @@ class AIBrainActionRegistry {
             userRole: request.userRole,
             platformRole: request.platformRole,
             entityType: 'shift',
-            entityId: (shift as any)?.id ?? null,
+            entityId: (shift as {id?: string})?.id ?? null,
             success: true,
             message: 'Shift created',
             changesAfter: shift as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, true, `Shift created`, shift, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -622,7 +622,7 @@ class AIBrainActionRegistry {
               data: {
                 shiftId: openShift.id,
                 step: 'assigning',
-                message: `Assigning to ${assignment.employeeName} (score: ${(assignment as any).assignment.toFixed(0)})...`,
+                message: `Assigning to ${assignment.employeeName} (score: ${(assignment as Record<string, unknown>).assignment.toFixed(0)})...`,
                 progress: 80,
                 assignedEmployee: {
                   id: assignment.employeeId,
@@ -673,7 +673,7 @@ class AIBrainActionRegistry {
             await logActionAudit({
               actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
               userRole: request.userRole, platformRole: request.platformRole,
-              entityType: 'shift', entityId: (filledShift as any)?.id ?? openShift.id,
+              entityType: 'shift', entityId: (filledShift as {id?: string})?.id ?? openShift.id,
               success: true, message: `Open shift filled: assigned to ${assignment.employeeName}`,
               changesAfter: filledShift as Record<string, unknown>, durationMs: Date.now() - start,
             });
@@ -710,7 +710,7 @@ class AIBrainActionRegistry {
               start
             );
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error('[ActionRegistry] Create open shift fill error:', error);
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
@@ -773,7 +773,7 @@ class AIBrainActionRegistry {
           }
         }
 
-        const updateSet: Record<string, any> = { updatedAt: new Date() };
+        const updateSet: Record<string, unknown> = { updatedAt: new Date() };
         if (startTime) updateSet.startTime = new Date(startTime);
         if (endTime) updateSet.endTime = new Date(endTime);
         if (employeeId !== undefined) updateSet.employeeId = employeeId;
@@ -931,8 +931,8 @@ class AIBrainActionRegistry {
             message: `A shift on \${updated.startTime ? new Date(updated.startTime).toLocaleDateString() : 'upcoming date'} is now open for pickup.`,
             channel: 'broadcast',
             metadata: { shiftId, shiftTitle: current.title, triggeredBy: 'trinity_publish' },
-          } as any);
-        } catch (notifErr: any) {
+          } as Record<string, unknown>);
+        } catch (notifErr: unknown) {
           log.warn('[ActionRegistry] Publish notification failed (non-fatal):', notifErr?.message);
         }
 
@@ -1005,7 +1005,7 @@ class AIBrainActionRegistry {
               .where(and(...conditions))
               .returning({ id: shifts.id, title: shifts.title, startTime: shifts.startTime });
           });
-        } catch (txErr: any) {
+        } catch (txErr: unknown) {
           // Transaction rolled back — return semantic error code
           const code = txErr.code || 'BATCH_TRANSACTION_FAILED';
           return createResult(request.actionId, false, txErr.message || 'Batch publish failed — transaction rolled back', { code }, start);
@@ -1028,8 +1028,8 @@ class AIBrainActionRegistry {
               message: `\${published.length} new shift\${published.length > 1 ? 's are' : ' is'} now available. Check your schedule.`,
               channel: 'broadcast',
               metadata: { count: published.length, triggeredBy: 'trinity_bulk_publish', shiftIds: published.map(s => s.id) },
-            } as any);
-          } catch (notifErr: any) {
+            } as Record<string, unknown>);
+          } catch (notifErr: unknown) {
             log.warn('[ActionRegistry] Bulk publish notification failed (non-fatal):', notifErr?.message);
           }
         }
@@ -1041,7 +1041,7 @@ class AIBrainActionRegistry {
           entityType: 'shift', entityId: 'bulk',
           success: true,
           message: `Trinity bulk-published \${published.length} shift(s) — notification dispatched to workspace`,
-          changesAfter: { count: published.length, shiftIds: published.map(s => s.id) } as any,
+          changesAfter: { count: published.length, shiftIds: published.map(s => s.id) } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1188,12 +1188,12 @@ class AIBrainActionRegistry {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             userRole: request.userRole, platformRole: request.platformRole,
-            entityType: 'employee', entityId: (updated as any).id,
+            entityType: 'employee', entityId: (updated as {id?: string}).id,
             success: true, message: `Employee ${updated.firstName} ${updated.lastName} activated`,
             changesAfter: updated as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(request.actionId, true, `${updated.firstName} ${updated.lastName} has been activated`, updated, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             entityType: 'employee', entityId: request.payload?.employeeId ?? null,
@@ -1229,12 +1229,12 @@ class AIBrainActionRegistry {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             userRole: request.userRole, platformRole: request.platformRole,
-            entityType: 'employee', entityId: (updated as any).id,
+            entityType: 'employee', entityId: (updated as {id?: string}).id,
             success: true, message: `Employee ${updated.firstName} ${updated.lastName} deactivated`,
             changesAfter: updated as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(request.actionId, true, `${updated.firstName} ${updated.lastName} has been deactivated`, updated, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
             entityType: 'employee', entityId: request.payload?.employeeId ?? null,
@@ -1255,7 +1255,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { employeeId, ...updates } = request.payload || {};
         if (!employeeId) return createResult(request.actionId, false, 'Employee ID required', null, start);
-        const safeFields: Record<string, any> = {};
+        const safeFields: Record<string, unknown> = {};
         const allowed = ['firstName', 'lastName', 'email', 'phone', 'position', 'payRate', 'payType', 'department'];
         for (const key of allowed) {
           if (updates[key] !== undefined) safeFields[key] = updates[key];
@@ -1293,7 +1293,7 @@ class AIBrainActionRegistry {
           entityId: employeeId,
           success: true,
           message: 'Employee updated',
-          changesBefore: before as any,
+          changesBefore: before as Record<string, unknown>,
           changesAfter: updated as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
@@ -1327,7 +1327,7 @@ class AIBrainActionRegistry {
           payType: payType || 'hourly',
           department: department || null,
           isActive: true,
-        } as any).returning();
+        } as Record<string, unknown>).returning();
 
         if (!created) {
           await logActionAudit({
@@ -1353,8 +1353,8 @@ class AIBrainActionRegistry {
             workspaceId: request.workspaceId,
             title: 'Employee Created',
             description: `New employee ${firstName} ${lastName} added`,
-            metadata: { employeeId: (created as any).id, createdBy: request.userId },
-          } as any);
+            metadata: { employeeId: (created as {id?: string}).id, createdBy: request.userId },
+          } as Record<string, unknown>);
         } catch (err) {
           log.warn('[employees.create] event publish failed (non-fatal):', err);
         }
@@ -1366,10 +1366,10 @@ class AIBrainActionRegistry {
           userRole: request.userRole,
           platformRole: request.platformRole,
           entityType: 'employee',
-          entityId: (created as any).id,
+          entityId: (created as {id?: string}).id,
           success: true,
           message: 'Employee created',
-          changesAfter: created as any,
+          changesAfter: created as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1389,10 +1389,9 @@ class AIBrainActionRegistry {
         if (!employeeId) {
           return createResult(request.actionId, false, 'employeeId is required', null, start);
         }
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { universalAuditService } = await import('../universalAuditService');
         const history = await universalAuditService.getEntityHistory('employee', employeeId, request.workspaceId, limit);
-        const lifecycleEvents = history.filter((e: any) =>
+        const lifecycleEvents = history.filter((e: unknown) =>
           ['employee.activated', 'employee.suspended', 'employee.terminated', 'employee.rehired', 'employee.deactivated', 'employee.reactivated'].includes(e.action)
         );
         return createResult(request.actionId, true, `Lifecycle history retrieved for employee ${employeeId}`, { employeeId, total: lifecycleEvents.length, history: lifecycleEvents }, start);
@@ -1411,7 +1410,6 @@ class AIBrainActionRegistry {
         if (!clientId) {
           return createResult(request.actionId, false, 'clientId is required', null, start);
         }
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const { universalAuditService } = await import('../universalAuditService');
         const history = await universalAuditService.getEntityHistory('client', clientId, request.workspaceId, limit);
         return createResult(request.actionId, true, `Lifecycle history retrieved for client ${clientId}`, { clientId, total: history.length, history }, start);
@@ -1494,7 +1492,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'client', entityId: clientId,
           success: true, message: `Client ${p.companyName || `${p.firstName} ${p.lastName}`} created`,
-          changesAfter: newClient as any, durationMs: Date.now() - start,
+          changesAfter: newClient as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, `Client "${p.companyName || `${p.firstName} ${p.lastName}`}" created successfully`, { client: newClient, clientId }, start);
       },
@@ -1527,7 +1525,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'client', entityId: p.clientId ?? null,
           success: true, message: `Portal invite sent to ${p.email}`,
-          payload: { email: p.email, clientId: p.clientId } as any, durationMs: Date.now() - start,
+          payload: { email: p.email, clientId: p.clientId } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, `Portal invite sent to ${p.email}`, { email: p.email, clientId: p.clientId }, start);
       },
@@ -1552,7 +1550,7 @@ class AIBrainActionRegistry {
             lte(shifts.startTime, in14Days),
             isNull(shifts.employeeId),
           ),
-          with: { client: true } as any,
+          with: { client: true } as Record<string, unknown>,
           orderBy: [shifts.startTime],
         });
 
@@ -1686,7 +1684,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { entryId, clockIn: newClockIn, clockOut: newClockOut, notes, status } = request.payload || {};
         if (!entryId) return createResult(request.actionId, false, 'Time entry ID required', null, start);
-        const updates: Record<string, any> = {};
+        const updates: Record<string, unknown> = {};
         if (newClockIn) updates.clockIn = new Date(newClockIn);
         if (newClockOut) updates.clockOut = new Date(newClockOut);
         if (notes !== undefined) updates.notes = notes;
@@ -1784,7 +1782,6 @@ class AIBrainActionRegistry {
           type: effectiveType,
           title: title,
           message: message,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: request.workspaceId || undefined,
           targetUserIds,
           severity: effectiveSeverity,
@@ -1796,7 +1793,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'notification', entityId: null,
           success: true, message: `Notification sent: ${title}`,
-          payload: { effectiveSeverity, effectiveType, targetUserIds: targetUserIds.length } as any,
+          payload: { effectiveSeverity, effectiveType, targetUserIds: targetUserIds.length } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1838,7 +1835,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'notification', entityId: null,
             success: true, message: `Cleared ${totalCleared} notifications for user ${userId}`,
-            payload: { clearedNotifications, clearedAlerts } as any, durationMs: Date.now() - start,
+            payload: { clearedNotifications, clearedAlerts } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
@@ -1861,7 +1858,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'notification', entityId: null,
             success: true, message: `Marked all notifications read for user ${userId}`,
-            payload: { acknowledgedAlerts } as any, durationMs: Date.now() - start,
+            payload: { acknowledgedAlerts } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
@@ -1873,7 +1870,6 @@ class AIBrainActionRegistry {
         }
 
         // Default: stats — delegate to notify.stats
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const statsResult = await helpaiOrchestrator.executeAction({
           actionId: 'notify.stats',
           workspaceId: request.workspaceId,
@@ -1916,7 +1912,7 @@ class AIBrainActionRegistry {
 
           const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000);
 
-          const conditions: any[] = [gte(notificationDeliveries.createdAt, since)];
+          const conditions: unknown[] = [gte(notificationDeliveries.createdAt, since)];
           if (workspaceId) conditions.push(eq(notificationDeliveries.workspaceId, workspaceId));
           if (channel) conditions.push(eq(notificationDeliveries.channel, channel));
           if (status) conditions.push(eq(notificationDeliveries.status, status));
@@ -1959,7 +1955,7 @@ class AIBrainActionRegistry {
             deliveryRate,
             recentFailures,
           }, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           return createResult(request.actionId, false, `Failed to query delivery stats: ${err.message}`, null, start);
         }
       },
@@ -2006,7 +2002,7 @@ class AIBrainActionRegistry {
             await logActionAudit({ actionId: request.actionId, workspaceId, userId: request.userId,
               userRole: request.userRole, platformRole: request.platformRole, entityType: 'shift', entityId: shiftId,
               success: false, errorMessage: `COMPLIANCE_VIOLATION: Guard card \${detail}`,
-              payload: { shiftId, employeeId, reason: 'guard_card_expired' } as any, durationMs: Date.now() - start });
+              payload: { shiftId, employeeId, reason: 'guard_card_expired' } as Record<string, unknown>, durationMs: Date.now() - start });
             return createResult(request.actionId, false,
               `COMPLIANCE_VIOLATION: \${emp.firstName} \${emp.lastName}'s guard card \${detail}. Cannot assign. Renew card first (Texas OC 1702).`, null, start);
           }
@@ -2028,7 +2024,7 @@ class AIBrainActionRegistry {
             lt(shifts.startTime, targetShift.endTime as Date),
             gt(shifts.endTime, targetShift.startTime as Date),
             sql`${shifts.id} != ${shiftId}`,
-            notInArray(shifts.status as any, ['cancelled', 'calloff', 'no_show']),
+            notInArray(shifts.status, ['cancelled', 'calloff', 'no_show']),
           )).limit(1);
           if (overlapping.length > 0) {
             return createResult(request.actionId, false,
@@ -2040,7 +2036,7 @@ class AIBrainActionRegistry {
         const { expectedUpdatedAt } = request.payload || {};
         if (expectedUpdatedAt && targetShift) {
           const expectedMs = new Date(expectedUpdatedAt).getTime();
-          const currentTs = (targetShift as any).updatedAt;
+          const currentTs = (targetShift as Record<string,unknown>).updatedAt;
           const actualMs = currentTs ? new Date(currentTs).getTime() : 0;
           if (Math.abs(actualMs - expectedMs) > 1000) {
             return createResult(request.actionId, false,
@@ -2070,7 +2066,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'shift', entityId: shiftId,
             success: false, errorMessage: 'CONCURRENT_MODIFICATION: Shift was filled by concurrent request',
-            payload: { shiftId, employeeId } as any, durationMs: Date.now() - start,
+            payload: { shiftId, employeeId } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(request.actionId, false,
             'CONCURRENT_MODIFICATION: Another manager just filled this shift while you were assigning. DB-level race caught.', null, start);
@@ -2081,8 +2077,8 @@ class AIBrainActionRegistry {
 
         // PROXIMITY_ALERT: Employee address far from site (advisory)
         if (emp) {
-          const empZip = (emp as any).zip || (emp as any).zipCode;
-          const siteZip = targetShift ? (targetShift as any).siteZip : null;
+          const empZip = (emp as EmployeeWithStatus).zip || (emp as EmployeeWithStatus).zipCode;
+          const siteZip = targetShift ? (targetShift as Record<string,unknown>).siteZip : null;
           // Simple check: if zip codes differ significantly (first 3 digits), flag it
           if (empZip && siteZip && empZip.substring(0, 3) !== siteZip.substring(0, 3)) {
             softWarnings.push(`PROXIMITY_ALERT: Officer may have a long commute to this site. Verify travel time before confirming.`);
@@ -2154,7 +2150,7 @@ class AIBrainActionRegistry {
         // FINANCIAL LOCK GATE: Cannot approve an entry that is already billed or payrolled
         try {
           await AtomicFinancialLockService.assertCanModify(timeEntryId);
-        } catch (lockErr: any) {
+        } catch (lockErr: unknown) {
           if (lockErr instanceof FinancialLockConflict) {
             return createResult(request.actionId, false,
               `FINANCIAL_LOCK: ${lockErr.message}`, null, start);
@@ -2240,7 +2236,7 @@ class AIBrainActionRegistry {
             entityType: 'invoice',
             success: false,
             errorMessage: `Approval required: ${approvalDecision.rationale} Required role: ${approvalDecision.requiredRole}.`,
-            payload: { clientId, amount, decision: approvalDecision } as any,
+            payload: { clientId, amount, decision: approvalDecision } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(
@@ -2261,7 +2257,7 @@ class AIBrainActionRegistry {
           notes: notes || null,
           createdAt: new Date(),
           updatedAt: new Date(),
-        } as any).returning();
+        } as Record<string, unknown>).returning();
 
         if (!created) {
           await logActionAudit({
@@ -2287,8 +2283,8 @@ class AIBrainActionRegistry {
             workspaceId: request.workspaceId,
             title: 'Invoice Created',
             description: `New invoice created for client ${clientId}`,
-            metadata: { invoiceId: (created as any).id, clientId, createdBy: request.userId },
-          } as any);
+            metadata: { invoiceId: (created as {id?: string}).id, clientId, createdBy: request.userId },
+          } as Record<string, unknown>);
         } catch (err) {
           log.warn('[billing.invoice_create] event publish failed (non-fatal):', err);
         }
@@ -2300,10 +2296,10 @@ class AIBrainActionRegistry {
           userRole: request.userRole,
           platformRole: request.platformRole,
           entityType: 'invoice',
-          entityId: (created as any).id,
+          entityId: (created as {id?: string}).id,
           success: true,
           message: 'Invoice created',
-          changesAfter: created as any,
+          changesAfter: created as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -2431,10 +2427,9 @@ class AIBrainActionRegistry {
           await universalNotificationEngine.sendNotification({
             idempotencyKey: `notif-${Date.now()}`,
           type: 'compliance_alert',
-            title: `Compliance Escalation: ${(alert as any).title}`,
-            message: (alert as any).description,
+            title: `Compliance Escalation: ${(alert as Record<string,unknown>).title}`,
+            message: (alert as Record<string,unknown>).description,
             workspaceId: request.workspaceId!,
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             severity: alert.severity === 'critical' ? 'high' : 'medium',
             source: 'trinity_compliance_escalation',
             metadata: { alertId: alert.id }
@@ -2447,15 +2442,15 @@ class AIBrainActionRegistry {
             userRole: request.userRole,
             platformRole: request.platformRole,
             entityType: 'compliance_alert',
-            entityId: (alert as any)?.id ?? null,
+            entityId: (alert as {id?: string})?.id ?? null,
             success: true,
             message: 'Compliance issue escalated',
-            changesAfter: alert as any,
+            changesAfter: alert as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
 
           return createResult(request.actionId, true, 'Compliance issue escalated', alert, start);
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -2513,7 +2508,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, false, 'Invoice not found in this workspace', null, start);
         }
 
-        if ((invoice as any).status !== 'draft') {
+        if ((invoice as Record<string, unknown>).status !== 'draft') {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -2521,14 +2516,14 @@ class AIBrainActionRegistry {
             entityType: 'invoice',
             entityId: invoiceId,
             success: false,
-            errorMessage: `Cannot add line items to invoice in status '${(invoice as any).status}'. Only drafts accept new line items.`,
+            errorMessage: `Cannot add line items to invoice in status '${(invoice as Record<string, unknown>).status}'. Only drafts accept new line items.`,
             payload: { items },
             durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
             false,
-            `Cannot add line items to invoice in status '${(invoice as any).status}'. Only drafts accept new line items.`,
+            `Cannot add line items to invoice in status '${(invoice as Record<string, unknown>).status}'. Only drafts accept new line items.`,
             null,
             start,
           );
@@ -2536,7 +2531,7 @@ class AIBrainActionRegistry {
 
         // Compute deltas (integer cents to avoid float drift)
         let appendedTotalCents = 0;
-        const rows = items.map((it: any, idx: number) => {
+        const rows = items.map((it: unknown, idx: number) => {
           const qty = parseFloat(String(it.quantity ?? '1'));
           const unit = parseFloat(String(it.unitPrice ?? '0'));
           if (!Number.isFinite(qty) || qty <= 0) {
@@ -2559,10 +2554,10 @@ class AIBrainActionRegistry {
 
         try {
           const inserted = await db.transaction(async (tx) => {
-            const out = await tx.insert(invoiceLineItems).values(rows as any).returning();
-            const newTotalCents = Math.round(parseFloat(String((invoice as any).total ?? '0')) * 100) + appendedTotalCents;
+            const out = await tx.insert(invoiceLineItems).values(rows as Record<string, unknown>).returning();
+            const newTotalCents = Math.round(parseFloat(String((invoice as Record<string, unknown>).total ?? '0')) * 100) + appendedTotalCents;
             await tx.update(invoices)
-              .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as any)
+              .set({ total: (newTotalCents / 100).toFixed(2), updatedAt: new Date() } as Record<string, unknown>)
               .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, request.workspaceId!)));
             return out;
           });
@@ -2577,7 +2572,7 @@ class AIBrainActionRegistry {
             entityId: invoiceId,
             success: true,
             message: `${inserted.length} line items appended to invoice`,
-            changesAfter: { lineItemsAppended: inserted.length, appendedTotalCents } as any,
+            changesAfter: { lineItemsAppended: inserted.length, appendedTotalCents } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
 
@@ -2588,7 +2583,7 @@ class AIBrainActionRegistry {
             { lineItems: inserted, appendedTotal: (appendedTotalCents / 100).toFixed(2) },
             start,
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
           await logActionAudit({
             actionId: request.actionId,
             workspaceId: request.workspaceId,
@@ -2636,7 +2631,7 @@ class AIBrainActionRegistry {
             `Cannot update invoice with status "${existing.status}" — immutable after settlement`, null, start);
         }
 
-        const updateSet: Record<string, any> = { updatedAt: new Date() };
+        const updateSet: Record<string, unknown> = { updatedAt: new Date() };
         if (dueDate) updateSet.dueDate = new Date(dueDate);
         const combinedNotes = [notes, memo].filter(Boolean).join('\n').trim();
         if (combinedNotes) updateSet.notes = combinedNotes;
@@ -2730,7 +2725,7 @@ class AIBrainActionRegistry {
                 description: `Invoice ${existing.invoiceNumber} voided by Trinity — AR reversal ${remaining.toFixed(2)}. Reason: ${reason}`,
                 metadata: { previousStatus: existing.status, reason },
               });
-            } catch (err: any) {
+            } catch (err: unknown) {
               log.warn('[billing.invoice_void] ledger write failed (non-fatal):', err?.message);
             }
           }
@@ -2747,7 +2742,7 @@ class AIBrainActionRegistry {
           entityId: invoiceId,
           success: true,
           message: 'Invoice voided via dual-AI gate',
-          changesBefore: existing as any,
+          changesBefore: existing as Record<string, unknown>,
           changesAfter: updated as Record<string, unknown>,
           payload: { reason },
           durationMs: Date.now() - start,
@@ -2933,7 +2928,7 @@ class AIBrainActionRegistry {
             description: `Trinity applied ${paymentMethod} payment of ${amountNum.toFixed(2)} to ${preCheck.invoiceNumber}${reference ? ` (ref: ${reference})` : ''}`,
             metadata: { paymentMethod, reference, paymentRecordId: paymentRow?.id },
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn('[billing.apply_payment] ledger write failed (non-fatal):', err?.message);
         }
 
@@ -3020,7 +3015,6 @@ class AIBrainActionRegistry {
             invitation.email,
             invitation.inviteToken!,
             {
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               firstName: invitation.firstName,
               inviterName: 'System',
               workspaceName: workspace?.name || 'Your Organization',
@@ -3069,7 +3063,6 @@ class AIBrainActionRegistry {
           }
 
           const workspace = await storage.getWorkspace(request.workspaceId!);
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           const _welcomeEmail = emailService.buildClientWelcomeEmail(clientId || '', email, clientName, companyName || '', workspace?.name || '');
           await NotificationDeliveryService.send({ type: 'client_welcome', workspaceId: request.workspaceId || 'system', recipientUserId: clientId || email, channel: 'email', body: _welcomeEmail });
 
@@ -3088,7 +3081,6 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, false, 'Email, firstName, and lastName are required', null, start);
         }
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const invitation = await storage.createEmployeeInvitation({
           workspaceId: request.workspaceId!,
           email,
@@ -3116,7 +3108,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'invitation', entityId: invitation.id,
           success: true, message: `Invitation sent to ${email} (${firstName} ${lastName})`,
-          changesAfter: { email, firstName, lastName, role } as any, durationMs: Date.now() - start,
+          changesAfter: { email, firstName, lastName, role } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Invitation sent successfully', { invitationId: invitation.id }, start);
       },
@@ -3151,7 +3143,6 @@ class AIBrainActionRegistry {
           invitation.email,
           invitation.inviteToken!,
           {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             firstName: invitation.firstName,
             inviterName: 'System',
             workspaceName: workspace?.name || 'Your Organization',
@@ -3211,7 +3202,6 @@ class AIBrainActionRegistry {
         }
 
         const workspace = await storage.getWorkspace(request.workspaceId!);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const _welcomeEmail2 = emailService.buildClientWelcomeEmail(clientId || '', email, clientName, companyName || '', workspace?.name || '');
         await NotificationDeliveryService.send({ type: 'client_welcome', workspaceId: request.workspaceId || 'system', recipientUserId: clientId || email, channel: 'email', body: _welcomeEmail2 });
 
@@ -3240,12 +3230,11 @@ class AIBrainActionRegistry {
         }
 
         await db.update(platformRoles)
-          .set({ revokedAt: new Date(), revokedReason: 'Role changed via AI Brain' })
+          .set({ revokedAt: new Date(), revokedReason: 'Role changed via AI Brain' , updatedAt: new Date() })
           .where(and(eq(platformRoles.userId, userId)));
 
         if (role !== 'none') {
           await db.insert(platformRoles).values({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: PLATFORM_WORKSPACE_ID,
             userId,
             role,
@@ -3279,15 +3268,15 @@ class AIBrainActionRegistry {
 
         const pending = await db.select({ count: sql`count(*)::int` })
           .from(employeeInvitations)
-          .where(eq(employeeInvitations.inviteStatus, 'pending' as any));
+          .where(eq(employeeInvitations.inviteStatus, 'pending'));
 
         const accepted = await db.select({ count: sql`count(*)::int` })
           .from(employeeInvitations)
-          .where(eq(employeeInvitations.inviteStatus, 'accepted' as any));
+          .where(eq(employeeInvitations.inviteStatus, 'accepted'));
 
         const expired = await db.select({ count: sql`count(*)::int` })
           .from(employeeInvitations)
-          .where(eq(employeeInvitations.inviteStatus, 'expired' as any));
+          .where(eq(employeeInvitations.inviteStatus, 'expired'));
 
         return createResult(request.actionId, true, 'Platform onboarding status retrieved', {
           pendingInvitations: pending[0]?.count || 0,
@@ -3346,7 +3335,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, true,
             `Billing preferences saved for client ${clientId}: ${summary || 'defaults applied'}`,
             settings, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3398,8 +3387,8 @@ class AIBrainActionRegistry {
           role?: string;
         }>;
 
-        const imported: any[] = [];
-        const errors: any[] = [];
+        const imported: (string | number | boolean | null)[] = [];
+        const errors: (string | number | boolean | null)[] = [];
 
         for (const row of rows) {
           try {
@@ -3413,7 +3402,7 @@ class AIBrainActionRegistry {
               isActive: true,
             }).returning();
             imported.push(emp);
-          } catch (error: any) {
+          } catch (error: unknown) {
             errors.push({ row, error: (error instanceof Error ? error.message : String(error)) });
           }
         }
@@ -3423,7 +3412,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'employee', entityId: null,
           success: true, message: `Bulk import: ${imported.length} employees created, ${errors.length} errors`,
-          changesAfter: { importedCount: imported.length, errorCount: errors.length } as any,
+          changesAfter: { importedCount: imported.length, errorCount: errors.length } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
         return createResult(
@@ -3673,7 +3662,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const contracts = await contractPipelineService.getContracts(request.workspaceId!, { status: 'pending_signatures' });
-        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts awaiting signatures`, { contracts, count: (contracts as any).length }, start);
+        return createResult(request.actionId, true, `Found ${(contracts as Record<string,unknown>).length} contracts awaiting signatures`, { contracts, count: (contracts as Record<string,unknown>).length }, start);
       },
     };
 
@@ -3688,9 +3677,8 @@ class AIBrainActionRegistry {
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const contracts = await contractPipelineService.getContracts(request.workspaceId!, { expiresBy: thirtyDaysFromNow });
-        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts expiring in next 30 days`, { contracts, count: (contracts as any).length }, start);
+        return createResult(request.actionId, true, `Found ${(contracts as Record<string,unknown>).length} contracts expiring in next 30 days`, { contracts, count: (contracts as Record<string,unknown>).length }, start);
       },
     };
 
@@ -3733,7 +3721,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const searchTerm = request.payload?.query || '';
-        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as any).filter(c => 
+        const contracts = await contractPipelineService.getContracts(request.workspaceId!, {});        const filtered = (contracts as Record<string,unknown>).filter(c => 
           c.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           c.title?.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -3785,7 +3773,7 @@ class AIBrainActionRegistry {
           const { trinityMemoryOptimizer } = await import('./trinityMemoryOptimizer');
           const health = await trinityMemoryOptimizer.getMemoryHealth();
           return createResult(request.actionId, true, `Memory health: ${health.overallHealth} (score: ${health.healthScore}/100, ${health.totalRecordsManaged} records managed)`, health, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3816,13 +3804,13 @@ class AIBrainActionRegistry {
             entityType: 'memory', entityId: null,
             success,
             message: `Memory optimization: ${totalDeleted} deleted, ${totalDecayed} decayed, ${totalConsolidated} consolidated`,
-            changesAfter: { totalDeleted, totalDecayed, totalConsolidated, failures: failures.length } as any,
+            changesAfter: { totalDeleted, totalDecayed, totalConsolidated, failures: failures.length } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, success,
             `Optimization complete: ${totalDeleted} deleted, ${totalDecayed} decayed, ${totalConsolidated} consolidated${failures.length > 0 ? ` (${failures.length} failures)` : ''}`,
             results, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3843,7 +3831,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, true,
             `Dry run: ${totalWouldProcess} records would be affected across ${results.length} optimization jobs`,
             results, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3861,7 +3849,7 @@ class AIBrainActionRegistry {
           const { trinityMemoryOptimizer } = await import('./trinityMemoryOptimizer');
           const policies = trinityMemoryOptimizer.getRetentionPolicies();
           return createResult(request.actionId, true, `${policies.length} retention policies configured`, policies, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3879,7 +3867,7 @@ class AIBrainActionRegistry {
           const { trinityMemoryOptimizer } = await import('./trinityMemoryOptimizer');
           const history = trinityMemoryOptimizer.getOptimizationHistory();
           return createResult(request.actionId, true, `${history.length} optimization runs in history`, history, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -3953,7 +3941,7 @@ class AIBrainActionRegistry {
               entityType: 'billing_preference', entityId: entityId ?? null,
               success: true,
               message: `Learned ${preferenceType} for ${learnEntity} ${entityId || ''} (confidence: ${confidence || 'unknown'})`,
-              payload: request.payload as any, durationMs: Date.now() - start,
+              payload: request.payload as unknown, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true,
               `Learned ${preferenceType} preference for ${learnEntity} ${entityId || ''} (confidence: ${confidence || 'unknown'}, source: ${source || 'unknown'})`,
@@ -4010,7 +3998,7 @@ class AIBrainActionRegistry {
               userRole: request.userRole, platformRole: request.platformRole,
               entityType: 'client_billing_settings', entityId: clientId,
               success: true, message: `Client ${clientId} billing settings updated`,
-              changesAfter: settings as any, durationMs: Date.now() - start,
+              changesAfter: settings as Record<string, unknown>, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true, `Client ${clientId} billing settings updated`, settings, start);
           }
@@ -4051,7 +4039,7 @@ class AIBrainActionRegistry {
               userRole: request.userRole, platformRole: request.platformRole,
               entityType: 'workspace_billing_settings', entityId: request.workspaceId ?? null,
               success: true, message: 'Workspace billing settings updated',
-              changesAfter: payload as any, durationMs: Date.now() - start,
+              changesAfter: payload as Record<string, unknown>, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true, 'Workspace billing settings updated', payload, start);
           }
@@ -4064,12 +4052,12 @@ class AIBrainActionRegistry {
                    platform_fee_percentage, auto_payroll_enabled
             FROM workspaces WHERE id = ${request.workspaceId!} LIMIT 1
           `);
-          const settings = (result as any[])[0];
+          const settings = (result as unknown[])[0];
           return createResult(request.actionId, true,
             settings ? 'Workspace billing settings retrieved' : 'No billing settings found',
             settings || { payrollCycle: 'bi_weekly', defaultBillingCycle: 'monthly', defaultPaymentTerms: 'net_30' },
             start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4093,7 +4081,7 @@ class AIBrainActionRegistry {
             WHERE id = ${request.workspaceId!}
           `);
           return createResult(request.actionId, true, 'Workspace billing settings updated', payload, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4125,7 +4113,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, true,
             settings ? `Billing settings for client ${clientId}` : 'No custom settings - using workspace defaults',
             settings, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4168,7 +4156,7 @@ class AIBrainActionRegistry {
               .returning();
           }
           return createResult(request.actionId, true, `Client ${clientId} billing settings updated`, settings, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4195,7 +4183,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, true,
             `${settings.length} client(s) with custom billing settings`,
             settings, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4248,7 +4236,7 @@ class AIBrainActionRegistry {
           return createResult(request.actionId, true,
             `Learned ${preferenceType} preference for ${entity} ${entityId || ''} (confidence: ${confidence || 'unknown'}, source: ${source || 'unknown'})`,
             request.payload, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4281,7 +4269,7 @@ class AIBrainActionRegistry {
             FROM workspaces WHERE id = ${request.workspaceId} LIMIT 1
           `);
 
-          const row = (result as any[])[0];
+          const row = (result as unknown[])[0];
           if (!row) return createResult(request.actionId, false, 'Workspace not found', null, start);
 
           const tier = row.subscription_tier || 'free';
@@ -4318,7 +4306,7 @@ class AIBrainActionRegistry {
           };
 
           return createResult(request.actionId, true, summary.message, summary, start);
-        } catch (error: any) {
+        } catch (error: unknown) {
           return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
         }
       },
@@ -4363,7 +4351,7 @@ class AIBrainActionRegistry {
         }
 
         // List invoices
-        const conditions: any[] = [eq(invoices.workspaceId, request.workspaceId!)];
+        const conditions: unknown[] = [eq(invoices.workspaceId, request.workspaceId!)];
         if (request.payload?.status) {
           conditions.push(eq(invoices.status, request.payload.status));
         }
@@ -4689,7 +4677,7 @@ class AIBrainActionRegistry {
             result,
             start,
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
           return createResult(
             request.actionId,
             false,
@@ -4751,13 +4739,11 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'schedule', entityId: null,
           success: result.success,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.summary,
-          changesAfter: result as any, durationMs: Date.now() - start,
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return createResult(request.actionId, result.success, result.summary, result, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           entityType: 'schedule', entityId: null,
@@ -4781,7 +4767,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
         const { autonomousSchedulingDaemon } = await import('../scheduling/autonomousSchedulingDaemon');
         const status = await autonomousSchedulingDaemon.getStatus();
         return createResult(request.actionId, true, 'Autonomous scheduling status retrieved', status, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, (error instanceof Error ? error.message : String(error)), null, start);
       }
     },
@@ -4797,7 +4783,6 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
       const start = Date.now();
       try {
         const { autonomousSchedulingDaemon } = await import('../scheduling/autonomousSchedulingDaemon');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await autonomousSchedulingDaemon.start(request.workspaceId!);
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
@@ -4807,7 +4792,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Background scheduling daemon enabled', { running: true }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           entityType: 'daemon', entityId: null,
@@ -4829,7 +4814,6 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
       const start = Date.now();
       try {
         const { autonomousSchedulingDaemon } = await import('../scheduling/autonomousSchedulingDaemon');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         await autonomousSchedulingDaemon.stop(request.workspaceId!);
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
@@ -4839,7 +4823,7 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Background scheduling daemon disabled', { running: false }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           entityType: 'daemon', entityId: null,
@@ -4871,11 +4855,11 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'schedule', entityId: null,
           success: result.success,
-          message: (result as any).summary || 'Historical patterns import complete',
-          changesAfter: result as any, durationMs: Date.now() - start,
+          message: (result as Record<string, unknown>).summary || 'Historical patterns import complete',
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
-        return createResult(request.actionId, result.success, (result as any).summary, result, start);
-      } catch (error: any) {
+        return createResult(request.actionId, result.success, (result as Record<string, unknown>).summary, result, start);
+      } catch (error: unknown) {
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           entityType: 'schedule', entityId: null,
@@ -4897,7 +4881,6 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
       const start = Date.now();
       try {
         const { recurringScheduleTemplates } = await import('../scheduling/recurringScheduleTemplates');
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const result = await recurringScheduleTemplates.createTemplate(
           request.workspaceId!,
           request.payload?.template
@@ -4905,12 +4888,12 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           userRole: request.userRole, platformRole: request.platformRole,
-          entityType: 'schedule_template', entityId: (result as any)?.id ?? null,
+          entityType: 'schedule_template', entityId: (result as {id?: string})?.id ?? null,
           success: true, message: 'Recurring schedule template created',
-          changesAfter: result as any, durationMs: Date.now() - start,
+          changesAfter: result as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Recurring template created', result, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         await logActionAudit({
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           entityType: 'schedule_template', entityId: null,
@@ -4959,7 +4942,7 @@ export function registerUniversalIdActions(): void {
           return createResult(request.actionId, false, `No entity found for ID: ${humanId}`, null, start);
         }
         return createResult(request.actionId, true, `Found ${entity.type}: ${entity.displayName} (${entity.humanId})`, entity, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, error.message, null, start);
       }
     },
@@ -5002,7 +4985,7 @@ export function registerUniversalIdActions(): void {
         return createResult(request.actionId, true,
           `Found ${entity.type}: **${entity.displayName}** (${entity.humanId})${deepLink ? ` — [View →](${deepLink})` : ''}`,
           { ...entity, deepLink }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, error.message, null, start);
       }
     },
@@ -5032,10 +5015,10 @@ export function registerUniversalIdActions(): void {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'system', entityId: null,
           success: true, message: summary,
-          changesAfter: { orgs, clients, employees, users } as any, durationMs: Date.now() - start,
+          changesAfter: { orgs, clients, employees, users } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, summary, { orgs, clients, employees, users }, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, error.message, null, start);
       }
     },
@@ -5064,7 +5047,7 @@ export function registerUniversalIdActions(): void {
           return createResult(request.actionId, false, `No entity found for ID: ${humanId}`, null, start);
         }
         return createResult(request.actionId, true, `Resolved ${entity.type}: ${entity.displayName} (${entity.humanId})`, entity, start);
-      } catch (error: any) {
+      } catch (error: unknown) {
         return createResult(request.actionId, false, error.message, null, start);
       }
     },

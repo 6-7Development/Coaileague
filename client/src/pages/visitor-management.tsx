@@ -94,7 +94,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
     );
   }
 
-  const activeVisitors: any[] = data?.activeVisitors || [];
+  const activeVisitors: unknown[] = data?.activeVisitors || [];
   const bySite: Record<string, any[]> = data?.bySite || {};
 
   if (activeVisitors.length === 0) {
@@ -123,7 +123,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
             <Badge variant="secondary" className="text-xs">{visitors.length}</Badge>
           </div>
           <div className="space-y-2">
-            {visitors.map((v: any) => (
+            {visitors.map((v) => (
               <div
                 key={v.id}
                 className={['p-3 rounded-md border flex items-center justify-between gap-3 flex-wrap', v.isOverstay ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''].join(' ')}
@@ -179,7 +179,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
 // =============================================================================
 // CHECK-IN FORM
 // =============================================================================
-function CheckInForm({ preRegistrations, onSuccess }: { preRegistrations: any[]; onSuccess: () => void }) {
+function CheckInForm({ preRegistrations, onSuccess }: { preRegistrations: unknown[]; onSuccess: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const emptyForm = {
@@ -217,7 +217,7 @@ function CheckInForm({ preRegistrations, onSuccess }: { preRegistrations: any[];
       setForm(emptyForm);
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: 'Check-in Failed', description: err.message, variant: 'destructive' });
     },
   });
@@ -391,7 +391,7 @@ function PreRegistrationList() {
       setForm(emptyForm);
       setShowForm(false);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     },
   });
@@ -402,12 +402,12 @@ function PreRegistrationList() {
       toast({ title: 'Pre-Registration Cancelled' });
       qc.invalidateQueries({ queryKey: ['/api/visitor-management/pre-registrations'] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     },
   });
 
-  const preRegs: any[] = data?.preRegistrations || [];
+  const preRegs: unknown[] = data?.preRegistrations || [];
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -565,7 +565,7 @@ function VisitorLogHistory() {
     },
   });
 
-  const logs: any[] = data?.logs || [];
+  const logs: unknown[] = data?.logs || [];
   const total: number = data?.total || 0;
 
   return (
@@ -700,7 +700,7 @@ export default function VisitorManagement() {
   const { data: preRegsData } = useQuery<any>({
     queryKey: ['/api/visitor-management/pre-registrations'],
   });
-  const preRegistrations: any[] = preRegsData?.preRegistrations || [];
+  const preRegistrations: unknown[] = preRegsData?.preRegistrations || [];
 
   const checkoutMutation = useMutation({
     mutationFn: () => apiRequest('POST', `/api/visitor-management/checkout/${checkoutId}`, { notes: checkoutNotes }),
@@ -711,7 +711,7 @@ export default function VisitorManagement() {
       setCheckoutId(null);
       setCheckoutNotes('');
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: 'Checkout Failed', description: err.message, variant: 'destructive' });
     },
   });

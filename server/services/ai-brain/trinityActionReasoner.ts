@@ -53,7 +53,7 @@ export interface ActionReasoningContext {
   /** Brief human-readable description of what is about to happen */
   actionSummary: string;
   /** Structured data about the action — employees, shifts, amounts, etc. */
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   /** Any pre-computed risk signals to include in reasoning */
   riskSignals?: string[];
 }
@@ -227,11 +227,10 @@ class TrinityActionReasonerService {
             flags: aiResult.laborLawFlags,
             decision: aiResult.decision,
             severity: 'high',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             audience: 'manager',
           },
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[ActionReasoner] Failed to publish trinity_labor_law_flag (non-fatal):', err?.message);
       }
     }
@@ -251,11 +250,10 @@ class TrinityActionReasonerService {
             reason: aiResult.blockReason,
             actionSummary: ctx.actionSummary,
             severity: 'medium',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             audience: 'manager',
           },
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[ActionReasoner] Failed to publish trinity_action_blocked (non-fatal):', err?.message);
       }
     }
@@ -323,9 +321,9 @@ Required JSON structure:
 }`;
   }
 
-  private sanitizePayload(payload: Record<string, any>): Record<string, any> {
+  private sanitizePayload(payload: Record<string, unknown>): Record<string, unknown> {
     // Keep relevant fields, strip sensitive PII, cap array lengths
-    const safe: Record<string, any> = {};
+    const safe: Record<string, unknown> = {};
     const ALLOWED_KEYS = [
       'employeeCount', 'guardCount', 'shiftCount', 'weekStart', 'weekEnd',
       'totalHours', 'totalGross', 'totalNet', 'periodStart', 'periodEnd',
@@ -354,7 +352,7 @@ Required JSON structure:
 
       // 1. Try direct JSON.parse (clean responses from jsonMode)
       try {
-        const direct = JSON.parse(text);
+        const direct: unknown = JSON.parse(text);
         if (direct && typeof direct === 'object' && direct.decision) {
           return this.buildDecisionFromParsed(direct, perceptionThoughtId);
         }
@@ -369,7 +367,7 @@ Required JSON structure:
       // 3. Try to extract a complete JSON object
       const jsonMatch = stripped.match(/\{[\s\S]*\}/) || rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return this.buildDecisionFromParsed(parsed, perceptionThoughtId);
       }
 
@@ -403,7 +401,7 @@ Required JSON structure:
     }
   }
 
-  private buildDecisionFromParsed(parsed: Record<string, any>, perceptionThoughtId: string): TrinityReasoningDecision {
+  private buildDecisionFromParsed(parsed: Record<string, unknown>, perceptionThoughtId: string): TrinityReasoningDecision {
     const decision: ActionReasoningDecision =
       ['proceed', 'escalate', 'block'].includes(parsed.decision)
         ? parsed.decision

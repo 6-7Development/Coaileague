@@ -34,7 +34,7 @@ if (!WEBHOOK_SECRET) {
   process.exit(1);
 }
 
-const stripe = new Stripe(TEST_KEY, { apiVersion: '2025-09-30.clover' as any });
+const stripe = new Stripe(TEST_KEY, { apiVersion: '2025-09-30.clover' });
 
 // ── Pricing catalogue (mirrors billingConfig.ts exactly) ─────────────────────
 const CATALOGUE = [
@@ -96,7 +96,7 @@ const OVERAGE_AMOUNT = 2500; // $25 in cents
 function sep(label: string) {
   console.log(`\n${'═'.repeat(64)}\n  ${label}\n${'═'.repeat(64)}`);
 }
-function log(msg: string, data?: any) {
+function log(msg: string, data?: unknown) {
   console.log(`  ${msg}`, data ? JSON.stringify(data, null, 4).split('\n').map(l => '  ' + l).join('\n') : '');
 }
 function ok(msg: string) { console.log(`  ✅ ${msg}`); }
@@ -113,8 +113,8 @@ async function fireWebhook(event: object): Promise<void> {
     body: payload,
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Webhook ${(event as any).type} failed ${res.status}: ${text}`);
-  ok(`Webhook ${(event as any).type} → ${res.status} OK`);
+  if (!res.ok) throw new Error(`Webhook ${(event as Record<string,unknown>).type} failed ${res.status}: ${text}`);
+  ok(`Webhook ${(event as Record<string,unknown>).type} → ${res.status} OK`);
 }
 
 // ── Create/find a test payment method via tok_visa ─────────────────────────
@@ -127,7 +127,7 @@ async function ensurePaymentMethod(customerId: string): Promise<string> {
 }
 
 // ── Resolve or create a Stripe customer for a workspace ───────────────────
-async function ensureCustomer(ws: any, email: string): Promise<string> {
+async function ensureCustomer(ws: unknown, email: string): Promise<string> {
   if (ws.stripeCustomerId?.startsWith('cus_')) {
     try {
       const c = await stripe.customers.retrieve(ws.stripeCustomerId);
@@ -140,7 +140,7 @@ async function ensureCustomer(ws: any, email: string): Promise<string> {
     metadata: { workspaceId: ws.id, environment: 'test_sandbox' },
   });
   log(`Created customer`, { id: c.id, email });
-  await db.update(workspaces).set({ stripeCustomerId: c.id } as any).where(eq(workspaces.id, ws.id));
+  await db.update(workspaces).set({ stripeCustomerId: c.id } as Record<string, unknown>).where(eq(workspaces.id, ws.id));
   return c.id;
 }
 
@@ -234,7 +234,7 @@ async function seedAcme(priceMap: Map<string, string>): Promise<void> {
   await ensurePaymentMethod(customerId);
 
   // Cancel old incorrect subscription if still active
-  const existingSubId = (acme as any).stripeSubscriptionId as string | undefined;
+  const existingSubId = (acme as Record<string,unknown>).stripeSubscriptionId as string | undefined;
   if (existingSubId?.startsWith('sub_')) {
     try {
       const existingSub = await stripe.subscriptions.retrieve(existingSubId);
@@ -262,7 +262,7 @@ async function seedAcme(priceMap: Map<string, string>): Promise<void> {
   ok(`Created Starter subscription ${sub.id} ($299/month)`);
 
   await db.update(workspaces)
-    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as any)
+    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as Record<string, unknown>)
     .where(eq(workspaces.id, 'dev-acme-security-ws'));
 
   await fireMonthlyBillingCycle(customerId, sub.id, 'dev-acme-security-ws', 'starter', 29900, 5, priceMap);
@@ -279,7 +279,7 @@ async function seedAnvil(priceMap: Map<string, string>): Promise<void> {
   await ensurePaymentMethod(customerId);
 
   let subId: string;
-  const existingSubId = (anvil as any).stripeSubscriptionId as string | undefined;
+  const existingSubId = (anvil as Record<string,unknown>).stripeSubscriptionId as string | undefined;
   if (existingSubId?.startsWith('sub_')) {
     try {
       const existingSub = await stripe.subscriptions.retrieve(existingSubId);
@@ -302,7 +302,7 @@ async function seedAnvil(priceMap: Map<string, string>): Promise<void> {
   ok(`Created Professional subscription ${sub.id} ($999/month)`);
 
   await db.update(workspaces)
-    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as any)
+    .set({ stripeSubscriptionId: sub.id, stripeCustomerId: customerId } as Record<string, unknown>)
     .where(eq(workspaces.id, 'dev-anvil-security-ws'));
 
   await fireMonthlyBillingCycle(customerId, subId, 'dev-anvil-security-ws', 'professional', 99900, 10, priceMap);
@@ -455,7 +455,6 @@ async function printSummary(priceMap: Map<string, string>): Promise<void> {
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
   sep('CoAIleague Stripe Test Seeder — Start');
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   console.log(`  Using test key: sk_test_...${TEST_KEY.slice(-6)}`);
   console.log(`  Webhook target: ${LOCAL_WEBHOOK}`);
 

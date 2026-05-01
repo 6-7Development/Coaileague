@@ -1,2 +1,2 @@
 /** Mascot system removed — safe no-op stubs */
-export function useMascotRoaming(..._args: any[]): any { return {}; }
+export function useMascotRoaming(..._args: unknown[]): any { return {}; }

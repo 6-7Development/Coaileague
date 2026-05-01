@@ -1,4 +1,6 @@
+import { type Response } from 'express';
 import { Router } from "express";
+import { AuthenticatedRequest } from '../rbac';
 import { pool, db } from "../db";
 import { sql } from "drizzle-orm";
 import { requireAuth } from "../auth";
@@ -13,21 +15,21 @@ const log = createLogger('IncidentPipelineRoutes');
 
 export const incidentPipelineRouter = Router();
 
-function wid(req: any): string {
+function wid(req: AuthenticatedRequest): string {
   return req.workspaceId || req.session?.workspaceId;
 }
 
-function uid(req: any): string {
+function uid(req: AuthenticatedRequest): string {
   return req.user?.id || req.session?.userId;
 }
 
-async function q(text: string, params: any[] = []) {
+async function q(text: string, params: (string | number | boolean | null)[] = []) {
   const r = await typedPool(text, params);
   return r.rows;
 }
 
 // GAP 2 converted: generateIncidentNumberInTx now accepts Drizzle tx object (db.transaction session) | FOR UPDATE via tx.execute(sql) | 2026-03-23
-async function generateIncidentNumberInTx(tx: any, workspaceId: string): Promise<string> {
+async function generateIncidentNumberInTx(tx: unknown, workspaceId: string): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `INC-${year}-`;
   const result = await tx.execute(sql`
@@ -35,7 +37,7 @@ async function generateIncidentNumberInTx(tx: any, workspaceId: string): Promise
     WHERE workspace_id = ${workspaceId} AND incident_number LIKE ${`${prefix}%`}
     ORDER BY incident_number DESC LIMIT 1 FOR UPDATE
   `);
-  const rows = (result as any).rows || [];
+  const rows = (result as Record<string, unknown>).rows || [];
   let seq = 1;
   if (rows.length > 0) {
     const lastNum = rows[0].incident_number;
@@ -69,7 +71,7 @@ const createSchema = z.object({
   occurredAt: z.string().optional().nullable(),
 });
 
-incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+incidentPipelineRouter.post("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const userId = uid(req);
@@ -184,7 +186,7 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
           );
           log.info(`[IncidentPipeline] PDF vaulted for incident ${incident.incident_number} — vault id ${vaultResult.vault.id}`);
         }
-      } catch (pdfErr: any) {
+      } catch (pdfErr : unknown) {
         log.warn(`[IncidentPipeline] PDF vault failed for ${id} (non-fatal):`, pdfErr?.message);
       }
     });
@@ -196,14 +198,14 @@ incidentPipelineRouter.post("/", requireAuth as any, ensureWorkspaceAccess as an
   }
 });
 
-incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+incidentPipelineRouter.get("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
 
     const { status, severity, siteId, limit = 50, offset = 0, search } = req.query;
     let query = `SELECT * FROM incident_reports WHERE workspace_id = $1`;
-    const params: any[] = [workspaceId];
+    const params: Record<string, unknown>[] = [workspaceId];
     let i = 2;
 
     if (status) { query += ` AND status = $${i++}`; params.push(status); }
@@ -213,7 +215,6 @@ incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any
 
     const countQuery = query.replace("SELECT *", "SELECT COUNT(*) as total");
     const countRows = await q(countQuery, params);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const total = parseInt(countRows[0]?.total || "0", 10);
 
     query += ` ORDER BY incident_number DESC LIMIT $${i++} OFFSET $${i++}`;
@@ -227,7 +228,7 @@ incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any
   }
 });
 
-incidentPipelineRouter.get("/:id", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+incidentPipelineRouter.get("/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(
@@ -265,14 +266,14 @@ const statusUpdateSchema = z.object({
 
 const MANAGER_ROLES = ["org_owner", "co_owner", "manager", "org_manager", "department_manager", "supervisor"];
 
-function hasManagerRole(req: any): boolean {
+function hasManagerRole(req: AuthenticatedRequest): boolean {
   const role = req.workspaceRole || req.session?.workspaceRole || req.user?.platformRole;
   if (MANAGER_ROLES.includes(role)) return true;
   if (process.env.NODE_ENV !== 'production' && req.user?.id?.startsWith("dev-owner")) return true;
   return false;
 }
 
-incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
+incidentPipelineRouter.post("/:id/trinity-polish", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!hasManagerRole(req)) {
       return res.status(403).json({ error: "Insufficient permissions. Manager or above role required to use Trinity polish." });
@@ -295,7 +296,6 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
         workspaceId,
         userId,
         featureKey: "ai_document_processing",
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         featureName: "Incident Report Trinity Polish",
         description: `Trinity polish for incident ${incident.incident_number}`,
         amountOverride: 10,
@@ -316,7 +316,7 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
     const polishedSummary = `${incident.incident_type} incident (${incident.severity}) reported at ${incident.location_address || "unspecified location"}. ${incident.title}`;
 
     const legalFlags: Array<{ flag: string; severity: string; recommendation: string }> = [];
-    const lowerDesc = (rawText as any).toLowerCase();
+    const lowerDesc = (rawText as Record<string, unknown>).toLowerCase();
     if (lowerDesc.includes("injur") || lowerDesc.includes("hurt") || lowerDesc.includes("medical")) {
       legalFlags.push({ flag: "Potential Injury", severity: "high", recommendation: "Ensure medical documentation is obtained and preserved" });
     }
@@ -327,7 +327,6 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
       legalFlags.push({ flag: "Trespass/Unauthorized Access", severity: "medium", recommendation: "Document all evidence of unauthorized entry and notify property owner" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const revisionCount = (incident.trinity_revision_count || 0) + 1;
 
     // Tenant isolation: enforce workspace_id atomically (TRINITY.md §1)

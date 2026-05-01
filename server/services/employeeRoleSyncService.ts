@@ -342,7 +342,6 @@ class EmployeeRoleSyncService {
   }
 
   private getRolePriority(role: WorkspaceRole | null): number {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const priorities: Record<WorkspaceRole, number> = {
       org_owner: 100,
       co_owner: 90,
@@ -374,7 +373,7 @@ class EmployeeRoleSyncService {
     }
   }
 
-  private async handleEmployeeUpdated(data: { employeeId: string; changes: Record<string, any> }): Promise<void> {
+  private async handleEmployeeUpdated(data: { employeeId: string; changes: Record<string, unknown> }): Promise<void> {
     const hasRoleChange = data.changes.role || data.changes.position || data.changes.title || data.changes.organizationalTitle;
     
     if (hasRoleChange) {
@@ -404,7 +403,7 @@ class EmployeeRoleSyncService {
   }
 
   async getEmployeeRoleContext(employeeId: string): Promise<{
-    employee: any;
+    employee: Record<string, unknown>;
     currentRole: WorkspaceRole | null;
     suggestedRole: WorkspaceRole;
     roleMatchesPosition: boolean;
@@ -423,7 +422,6 @@ class EmployeeRoleSyncService {
     const currentRole = (employee.workspaceRole as WorkspaceRole) || null;
     const suggestedRole = this.inferRoleFromPosition(employee.role, employee.organizationalTitle);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const managementCapabilities: Record<WorkspaceRole, string[]> = {
       org_owner: ['all_employees', 'all_clients', 'all_schedules', 'billing', 'integrations', 'settings'],
       co_owner: ['all_employees', 'all_clients', 'all_schedules', 'some_settings'],

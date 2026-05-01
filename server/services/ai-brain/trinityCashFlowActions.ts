@@ -17,7 +17,6 @@ import { db } from '../../db';
 import { invoices, payrollRuns, workspaceMembers } from '@shared/schema';
 import { eq, and, gte, lte, lt, inArray, sql, desc } from 'drizzle-orm';
 import { helpaiOrchestrator } from '../helpai/platformActionHub';
-// @ts-expect-error — TS migration: fix in refactoring sprint
 import type { ActionRequest, ActionResult, ActionHandler } from './actionRegistry';
 import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
@@ -25,7 +24,7 @@ const log = createLogger('trinityCashFlowActions');
 
 const createResult = (
   actionId: string, success: boolean, message: string,
-  data: any, start: number
+  data: Record<string, unknown>, start: number
 ): ActionResult => ({
   actionId, success, message, data,
   executionTimeMs: Date.now() - start,
@@ -63,19 +62,19 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(payrollRuns)
     .where(and(
       eq(payrollRuns.workspaceId, workspaceId),
-      inArray(payrollRuns.status as any, ['draft', 'pending', 'approved']),
+      inArray(payrollRuns.status, ['draft', 'pending', 'approved']),
     ))
     .orderBy(payrollRuns.disbursementDate)
     .limit(1)
     .catch(() => []);
 
-  const upcomingPayroll = parseFloat(String((nextPayroll[0] as any)?.totalNetPay || 0));
-  const nextPayrollDate = (nextPayroll[0] as any)?.disbursementDate
-    ? new Date((nextPayroll[0] as any).disbursementDate).toISOString().split('T')[0]
+  const upcomingPayroll = parseFloat(String((nextPayroll[0] as unknown)?.totalNetPay || 0));
+  const nextPayrollDate = (nextPayroll[0] as unknown)?.disbursementDate
+    ? new Date((nextPayroll[0] as unknown).disbursementDate).toISOString().split('T')[0]
     : null;
 
-  const payrollCutoff = (nextPayroll[0] as any)?.disbursementDate
-    ? new Date((nextPayroll[0] as any).disbursementDate)
+  const payrollCutoff = (nextPayroll[0] as unknown)?.disbursementDate
+    ? new Date((nextPayroll[0] as unknown).disbursementDate)
     : horizon;
 
   // 2. Receivables due before payroll date
@@ -84,12 +83,12 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
       lte(invoices.dueDate, payrollCutoff),
     ))
     .catch(() => [{ total: 0 }]);
 
-  const receivablesDueBeforePayroll = parseFloat(String((receivablesDue[0] as any)?.total || 0));
+  const receivablesDueBeforePayroll = parseFloat(String((receivablesDue[0] as unknown)?.total || 0));
 
   // 3. Total outstanding receivables
   const receivablesAll = await db.select({
@@ -97,11 +96,11 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
     ))
     .catch(() => [{ total: 0 }]);
 
-  const receivablesTotal = parseFloat(String((receivablesAll[0] as any)?.total || 0));
+  const receivablesTotal = parseFloat(String((receivablesAll[0] as unknown)?.total || 0));
 
   // 4. Overdue total
   const overdueRows = await db.select({
@@ -109,11 +108,11 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      eq(invoices.status as any, 'overdue'),
+      eq(invoices.status, 'overdue'),
     ))
     .catch(() => [{ total: 0 }]);
 
-  const overdueTotal = parseFloat(String((overdueRows[0] as any)?.total || 0));
+  const overdueTotal = parseFloat(String((overdueRows[0] as unknown)?.total || 0));
 
   // 5. Aging buckets
   const agingQuery = await db.select({
@@ -123,7 +122,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
   }).from(invoices)
     .where(and(
       eq(invoices.workspaceId, workspaceId),
-      inArray(invoices.status as any, ['sent', 'overdue']),
+      inArray(invoices.status, ['sent', 'overdue']),
     ))
     .catch(() => []);
 
@@ -176,7 +175,7 @@ const cashFlowGapAction = mkAction('billing.cash_flow_gap', async (req) => {
     const horizonDays = req.payload?.horizonDays || 14;
     const gap = await computeCashFlowGap(wid, horizonDays);
     return createResult(req.actionId, true, gap.details, gap, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -197,7 +196,7 @@ const agingReportAction = mkAction('billing.aging_report_detailed', async (req) 
       status: invoices.status,
       issueDate: invoices.issueDate,
     }).from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['sent', 'overdue'])))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['sent', 'overdue'])))
       .orderBy(invoices.dueDate)
       .catch(() => []);
 
@@ -219,7 +218,7 @@ const agingReportAction = mkAction('billing.aging_report_detailed', async (req) 
     const summary = `Aging report: ${agingDetail.length} outstanding invoices. Current: $${gap.agingBuckets.current.toLocaleString()}, 1-30d: $${gap.agingBuckets.days1_30.toLocaleString()}, 31-60d: $${gap.agingBuckets.days31_60.toLocaleString()}, 61-90d: $${gap.agingBuckets.days61_90.toLocaleString()}, 90+d: $${gap.agingBuckets.days90plus.toLocaleString()}. Total outstanding: $${gap.receivablesTotal.toLocaleString()}.`;
 
     return createResult(req.actionId, true, summary, { invoices: agingDetail, buckets: gap.agingBuckets, totalOutstanding: gap.receivablesTotal }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -260,7 +259,7 @@ const payrollCashReadiness = mkAction('billing.payroll_cash_readiness', async (r
     return createResult(req.actionId, true,
       `Payroll readiness: ${readinessLevel}. ${recommendation}`,
       { ...gap, readinessLevel, recommendation }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -279,7 +278,7 @@ const receivablesCollectionPriority = mkAction('billing.collection_priority', as
       dueDate: invoices.dueDate,
       status: invoices.status,
     }).from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['sent', 'overdue'])))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['sent', 'overdue'])))
       .orderBy(invoices.dueDate)
       .limit(20)
       .catch(() => []);
@@ -300,7 +299,7 @@ const receivablesCollectionPriority = mkAction('billing.collection_priority', as
     return createResult(req.actionId, true,
       `Top ${prioritized.length} collection priorities — $${total.toLocaleString()} recoverable. Call the oldest/largest first.`,
       { priorities: prioritized, totalRecoverable: total }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -317,23 +316,23 @@ const revenueForecast = mkAction('billing.revenue_forecast', async (req) => {
 
     const lastMonth = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
       .from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['paid']), gte(invoices.paidAt, thirtyDaysAgo)))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['paid']), gte(invoices.paidAt, thirtyDaysAgo)))
       .catch(() => [{ total: 0 }]);
 
     const priorMonth = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
       .from(invoices)
-      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status as any, ['paid']), gte(invoices.paidAt, sixtyDaysAgo), lt(invoices.paidAt, thirtyDaysAgo)))
+      .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['paid']), gte(invoices.paidAt, sixtyDaysAgo), lt(invoices.paidAt, thirtyDaysAgo)))
       .catch(() => [{ total: 0 }]);
 
-    const lastMonthRevenue = parseFloat(String((lastMonth[0] as any)?.total || 0));
-    const priorMonthRevenue = parseFloat(String((priorMonth[0] as any)?.total || 0));
+    const lastMonthRevenue = parseFloat(String((lastMonth[0] as unknown)?.total || 0));
+    const priorMonthRevenue = parseFloat(String((priorMonth[0] as unknown)?.total || 0));
     const trend = priorMonthRevenue > 0 ? ((lastMonthRevenue - priorMonthRevenue) / priorMonthRevenue) * 100 : 0;
     const forecastNext30 = lastMonthRevenue * (1 + Math.max(-0.1, Math.min(0.2, trend / 100)));
 
     return createResult(req.actionId, true,
       `Revenue forecast: Last 30 days $${lastMonthRevenue.toLocaleString()}, prior 30 days $${priorMonthRevenue.toLocaleString()} (${trend >= 0 ? '+' : ''}${trend.toFixed(1)}% trend). Projected next 30 days: $${Math.round(forecastNext30).toLocaleString()}.`,
       { lastMonthRevenue, priorMonthRevenue, trendPercent: trend, forecastNext30: Math.round(forecastNext30) }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });
@@ -351,9 +350,9 @@ const quickCashSummary = mkAction('billing.quick_cash_summary', async (req) => {
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
         const row = await db.select({ total: sql`COALESCE(SUM(CAST(${invoices.total} AS DECIMAL)), 0)` })
           .from(invoices)
-          .where(and(eq(invoices.workspaceId, wid), eq(invoices.status as any, 'paid'), gte(invoices.paidAt, thirtyDaysAgo)))
+          .where(and(eq(invoices.workspaceId, wid), eq(invoices.status, 'paid'), gte(invoices.paidAt, thirtyDaysAgo)))
           .catch(() => [{ total: 0 }]);
-        return parseFloat(String((row[0] as any)?.total || 0));
+        return parseFloat(String((row[0] as unknown)?.total || 0));
       })(),
     ]);
 
@@ -361,7 +360,7 @@ const quickCashSummary = mkAction('billing.quick_cash_summary', async (req) => {
     const summary = `${statusIcon} Cash Summary — ${gap.riskLevel.toUpperCase()}\n• Outstanding receivables: $${gap.receivablesTotal.toLocaleString()}\n• Overdue: $${gap.overdueTotal.toLocaleString()}\n• Next payroll: $${gap.upcomingPayroll.toLocaleString()}${gap.nextPayrollDate ? ' (' + gap.nextPayrollDate + ')' : ''}\n• Cash gap (receivables vs payroll): ${gap.cashGap >= 0 ? '+' : ''}$${gap.cashGap.toLocaleString()}\n• Last 30d collected: $${forecast.toLocaleString()}`;
 
     return createResult(req.actionId, true, summary, { ...gap, collected30d: forecast }, start);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return createResult(req.actionId, false, e.message, null, start);
   }
 });

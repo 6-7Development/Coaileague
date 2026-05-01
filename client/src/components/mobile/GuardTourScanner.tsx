@@ -30,7 +30,7 @@ interface GuardTourScannerProps {
 // Feature-detect the native BarcodeDetector.
 function hasBarcodeDetector(): boolean {
   try {
-    return typeof (window as any).BarcodeDetector === "function";
+    return typeof (window as Record<string,unknown>).BarcodeDetector === "function";
   } catch {
     return false;
   }
@@ -43,7 +43,7 @@ export function GuardTourScanner({
 }: GuardTourScannerProps): JSX.Element {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<any>(null);
+  const detectorRef = useRef<unknown>(null);
   const loopRef = useRef<number | null>(null);
   const lastCodeRef = useRef<string | null>(null);
 
@@ -70,7 +70,7 @@ export function GuardTourScanner({
     try {
       await onScan(code);
       setStatus({ ok: true, text: `Checkpoint ${code.slice(0, 12)} logged.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus({ ok: false, text: err?.message || "Scan rejected. Try again or enter code manually." });
     } finally {
       setSubmitting(false);
@@ -95,7 +95,7 @@ export function GuardTourScanner({
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      detectorRef.current = new (window as any).BarcodeDetector({
+      detectorRef.current = new (window as Record<string,unknown>).BarcodeDetector({
         formats: ["qr_code", "code_128", "code_39"],
       });
       setScanning(true);
@@ -114,7 +114,7 @@ export function GuardTourScanner({
         loopRef.current = requestAnimationFrame(tick);
       };
       loopRef.current = requestAnimationFrame(tick);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus({
         ok: false,
         text:

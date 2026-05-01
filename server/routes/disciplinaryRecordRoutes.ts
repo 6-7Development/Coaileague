@@ -75,7 +75,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
         isTermination: parsed.data.recordType === 'termination',
       },
       visibility: 'supervisor',
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.status(201).json(record);
   } catch (err: unknown) {
@@ -153,7 +153,7 @@ router.post('/trinity-intake', requireAuth, async (req: AuthenticatedRequest, re
 
     const result = await runDisciplinaryWorkflow({
       workspaceId,
-      initiatedBy: (req.user as any)?.id || '',
+      initiatedBy: (req.user as unknown)?.id || '',
       initiatedByRole: req.workspaceRole || '',
       subjectId,
       subjectType: subjectType || 'employee',
@@ -170,7 +170,7 @@ router.post('/trinity-intake', requireAuth, async (req: AuthenticatedRequest, re
 
     res.json({ success: true, ...result });
   } catch (err: unknown) {
-    log.error('[Disciplinary] Trinity intake failed:', (err as any)?.message);
+    log.error('[Disciplinary] Trinity intake failed:', (err as Error)?.message);
     res.status(500).json({ error: 'Trinity document generation failed' });
   }
 });
@@ -197,7 +197,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       });
     }
 
-    const userId = (req.user as any)?.id || '';
+    const userId = (req.user as unknown)?.id || '';
     const issuedAtIso = new Date().toISOString().slice(0, 10);
 
     // 1. Create the org_documents shell first so we have a document id for signing.
@@ -211,7 +211,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       requiresSignature: true,
       signatureRequired: 'specific_users',
       totalSignaturesRequired: Array.isArray(signingSequence) ? signingSequence.length : 2,
-    } as any).returning();
+    }).returning();
 
     // 2. Create the canonical disciplinary record. We cross-link the
     //    org_documents id in `notes` (JSON) so the fully-signed event can
@@ -233,13 +233,13 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       issuedBy: userId,
       status: 'pending_signature',
       notes: JSON.stringify(notesPayload),
-    } as any).returning();
+    }).returning();
 
     // 3. Kick off the signing sequence starting with the subject (employee
     //    or contractor signs first, then the manager countersigns).
     try {
       const firstSigner = Array.isArray(signingSequence)
-        ? signingSequence.find((s: any) => s.order === 1)
+        ? signingSequence.find((s: unknown) => s.order === 1)
         : null;
       if (firstSigner && firstSigner.targetEmail) {
         const { documentSigningService } = await import(
@@ -249,7 +249,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
           documentId: orgDoc.id,
           workspaceId,
           senderUserId: userId,
-          senderName: (req.user as any)?.email || 'Management',
+          senderName: (req.user as unknown)?.email || 'Management',
           recipients: [{
             email: firstSigner.targetEmail,
             name: firstSigner.role === 'employee' ? 'Subject' : 'Manager',
@@ -259,7 +259,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
           message: firstSigner.message,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[Disciplinary] send-for-signature failed (non-fatal):', err?.message);
     }
 
@@ -280,7 +280,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
         log.info(
           `[DisciplinaryScore] Deducted ${points}pts from ${subjectId} for ${documentType}`,
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[DisciplinaryScore] Deduction failed (non-fatal):', err?.message);
       }
     });
@@ -306,7 +306,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
             }),
           ],
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[Disciplinary] event-log insert failed (non-fatal):', err?.message);
       }
     });
@@ -329,7 +329,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
         generatedByTrinity: true,
       },
       visibility: 'supervisor',
-    }).catch((err: any) => log.warn('[EventBus] publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] publish failed (non-blocking):', err?.message));
 
     res.json({
       success: true,
@@ -342,7 +342,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       } for signature.`,
     });
   } catch (err: unknown) {
-    log.error('[Disciplinary] Finalize failed:', (err as any)?.message);
+    log.error('[Disciplinary] Finalize failed:', (err as Error)?.message);
     res.status(500).json({ error: 'Failed to finalize disciplinary record' });
   }
 });
@@ -351,7 +351,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
 router.get('/my', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
-    const userId = (req.user as any)?.id;
+    const userId = (req.user as unknown)?.id;
     if (!workspaceId || !userId) {
       return res.status(403).json({ error: 'Auth required' });
     }

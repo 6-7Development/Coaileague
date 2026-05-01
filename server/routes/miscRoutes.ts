@@ -63,6 +63,7 @@ import OpenAI from "openai";
 import { createLogger } from '../lib/logger';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { PLATFORM } from '../config/platformConfig';
+import type { EmployeeWithStatus, ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('MiscRoutes');
 
 const ALLOWED_AUDIO_MIME_TYPES = [
@@ -208,7 +209,6 @@ router.get("/api/feature-updates", requireAuth, async (req: AuthenticatedRequest
     const updates = await db
       .select()
       .from(featureUpdates)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(eq(featureUpdates.isActive, true))
       .orderBy(desc(featureUpdates.releaseAt));
 
@@ -245,7 +245,7 @@ router.post("/api/voice/transcribe", requireAuth, audioUpload.single("audio"), a
       : mimeType.includes("wav") ? "wav"
       : "webm";
 
-    const readable = Readable.from(audioBuffer) as any;
+    const readable = Readable.from(audioBuffer) as unknown;
     readable.name = `audio.${ext}`;
 
     const transcription = await openai.audio.transcriptions.create({
@@ -318,7 +318,7 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
       return res.status(402).json({ message: aiResult.error || "Insufficient credits" });
     }
 
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(aiResult.content || "{}");
     } catch {
@@ -369,7 +369,6 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
           }
         }
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] clock_in execution error:', execErr.message);
         parsed.executed = false;
         parsed.naturalResponse = "I understood 'clock in' but couldn't execute it. Please use the clock-in button.";
@@ -405,7 +404,6 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
           }
         }
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] clock_out execution error:', execErr.message);
         parsed.executed = false;
         parsed.naturalResponse = "I understood 'clock out' but couldn't execute it. Please use the clock-out button.";
@@ -444,7 +442,6 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
           parsed.scheduleData = upcoming;
         }
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] schedule_lookup error:', execErr.message);
         parsed.naturalResponse = "I couldn't retrieve your schedule. Please check the Schedule page.";
       }
@@ -471,7 +468,7 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
             description: `${emp.firstName} called off via voice command${nextShift ? ` for shift: ${nextShift.title || 'shift'} starting ${new Date(nextShift.startTime!).toLocaleString()}` : ''}`,
             workspaceId: workspaceId!,
             metadata: { employeeId: emp.id, shiftId: nextShift?.id || null, method: 'voice_command' },
-          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+          }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
           const shiftInfo = nextShift
             ? ` for your upcoming shift ${nextShift.title ? `"${nextShift.title}"` : ''} starting ${new Date(nextShift.startTime!).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
             : '';
@@ -479,7 +476,6 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
           parsed.executed = true;
         }
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] calloff error:', execErr.message);
         parsed.naturalResponse = "I couldn't process your calloff. Please contact your supervisor directly.";
       }
@@ -516,7 +512,6 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
         }
         parsed.executed = true;
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] post_orders error:', execErr.message);
         parsed.naturalResponse = "I couldn't retrieve post orders. Please check the Site Briefing page.";
       }
@@ -537,14 +532,13 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
             description: messageContent,
             workspaceId: workspaceId!,
             metadata: { employeeId: emp.id, employeeName: emp.firstName, message: messageContent, method: 'voice_command' },
-          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+          }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
           parsed.executed = true;
           parsed.naturalResponse = `Message sent to your supervisor: "${messageContent}". They will receive it shortly.`;
         } else {
           parsed.naturalResponse = "Could not find your employee record. Please contact your supervisor directly.";
         }
       } catch (execErr: unknown) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[VoiceCommand] message_supervisor error:', execErr.message);
         parsed.naturalResponse = "Message could not be sent. Please contact your supervisor directly.";
       }
@@ -586,7 +580,7 @@ router.post("/api/voice-command", requireAuth, async (req: AuthenticatedRequest,
             description: `${employeeName} triggered a panic/backup alert via voice command.`,
             workspaceId,
             metadata: { employeeId, employeeName, method: 'voice_command', timestamp: new Date().toISOString() },
-          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+          }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
         }
 
         parsed.executed = true;
@@ -675,7 +669,7 @@ router.get("/api/user/role", requireAuth, async (req: AuthenticatedRequest, res)
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     res.json({
       role: user?.role || "user",
-      platformRole: (user as any)?.platformRole || null,
+      platformRole: (user as Record<string,unknown>)?.platformRole || null,
     });
   } catch (error: unknown) {
     log.error("Error fetching user role:", error);
@@ -693,7 +687,7 @@ router.get("/api/device/profile", requireAuth, async (req: AuthenticatedRequest,
     res.json({
       userId: user?.id,
       email: user?.email,
-      displayName: (user as any)?.displayName || `${user?.firstName} ${user?.lastName}`.trim(),
+      displayName: (user as Record<string,unknown>)?.displayName || `${user?.firstName} ${user?.lastName}`.trim(),
       preferences: {},
     });
   } catch (error: unknown) {
@@ -702,7 +696,7 @@ router.get("/api/device/profile", requireAuth, async (req: AuthenticatedRequest,
   }
 });
 
-router.get("/api/identity/me", requireAuth, async (req: any, res) => {
+router.get("/api/identity/me", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     if (!userId) {
@@ -712,9 +706,9 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user.currentWorkspaceId;
-    let employee: any = null;
-    let workspace: any = null;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user.currentWorkspaceId;
+    let employee: unknown = null;
+    let workspace: unknown = null;
     if (workspaceId) {
       employee = await storage.getEmployeeByUserId(userId, workspaceId);
       const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
@@ -740,7 +734,7 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
       supportCode = null;
     }
 
-    const platformRole = (user as any).platformRole ?? null;
+    const platformRole = req.user?.platformRole ?? null;
     const isPlatformStaff = !!platformRole &&
       ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(platformRole);
     const userType: 'employee' | 'support_agent' | 'client' | 'platform_admin' | 'guest' =
@@ -804,7 +798,7 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          displayName: (user as any).displayName,
+          displayName: req.user?.displayName,
           role: user.role,
           platformRole,
           currentWorkspaceId: user.currentWorkspaceId,
@@ -815,7 +809,7 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
               id: employee.id,
               workspaceRole: employee.workspaceRole || employee.role,
               position: employee.position,
-              department: (employee as any).department,
+              department: (employee as EmployeeWithStatus).department,
             }
           : null,
       },
@@ -853,7 +847,7 @@ router.get("/api/business-categories", requireAuth, async (req: AuthenticatedReq
   }
 });
 
-router.get("/api/premium-features", async (req: any, res) => {
+router.get("/api/premium-features", async (req: AuthenticatedRequest, res) => {
   try {
     const { PREMIUM_FEATURES, CREDIT_PACKAGES } = await import("@shared/config/premiumFeatures");
 
@@ -868,7 +862,7 @@ router.get("/api/premium-features", async (req: any, res) => {
   }
 });
 
-router.get("/api/premium-features/:featureId/check", requireAuth, async (req: any, res) => {
+router.get("/api/premium-features/:featureId/check", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const { featureId } = req.params;
@@ -946,7 +940,6 @@ router.post("/api/contact", async (req, res) => {
     });
 
     // Send confirmation to submitter
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const _confEmail = emailService.buildSupportTicketConfirmation(ticket.id, email, ticketNumber, subject, name);
     await NotificationDeliveryService.send({ idempotencyKey: `notif:ticket:${ticket.id}:confirmation`,
             type: 'support_ticket_confirmation', workspaceId: platformWorkspaceId, recipientUserId: email, channel: 'email', body: _confEmail });
@@ -988,7 +981,6 @@ Respond with a JSON object:
 Resolve if the inquiry is about: pricing, features, getting started, demo requests, general questions, platform capabilities.
 Escalate to human if: there are complaints, billing disputes, legal matters, urgent security issues, or complex technical problems.`;
 
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const aiResult = await meteredGemini(
           triagePrompt,
           'PLATFORM',
@@ -996,7 +988,7 @@ Escalate to human if: there are complaints, billing disputes, legal matters, urg
           { temperature: 0.4 }
         );
 
-        let parsed: any = null;
+        let parsed: unknown = null;
         try {
           const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
           if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
@@ -1033,7 +1025,6 @@ Escalate to human if: there are complaints, billing disputes, legal matters, urg
               workspaceId: platformWorkspaceId,
               recipientUserId: email,
               channel: 'email',
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               body: replyHtml,
             });
           } catch (emailErr) {
@@ -1241,14 +1232,13 @@ router.post("/api/search", requireAuth, async (req, res) => {
     }
 
     const pattern = `%${query}%`;
-    const results: any[] = [];
+    const results: (string | number | boolean | null)[] = [];
 
     const matchedEmployees = await db
       .select()
       .from(employees)
       .where(
         and(
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(employees.workspaceId, workspaceId),
           or(ilike(employees.firstName, pattern), ilike(employees.lastName, pattern), ilike(employees.email, pattern))
         )
@@ -1268,7 +1258,6 @@ router.post("/api/search", requireAuth, async (req, res) => {
     const matchedClients = await db
       .select()
       .from(clients)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       .where(and(eq(clients.workspaceId, workspaceId), ilike(clients.companyName, pattern)))
       .limit(10);
 
@@ -1277,13 +1266,12 @@ router.post("/api/search", requireAuth, async (req, res) => {
         type: "client",
         id: client.id,
         title: client.companyName,
-        subtitle: (client as any).industry || "Client",
+        subtitle: (client as ClientWithExtras).industry || "Client",
         relevance: 0.85,
       });
     }
 
     await db.insert(searchQueries).values({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId,
       userId: req.user?.id,
       query,
@@ -1372,7 +1360,6 @@ router.post("/api/migration/import-extracted", requireManager, async (req: Authe
         workspaceId,
         id: `emp_${randomUUID()}`,
       });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       importedId = newEmployee[0].id;
     } else if (entityType === "client") {
       const newClient = await db.insert(clients).values({
@@ -1380,7 +1367,6 @@ router.post("/api/migration/import-extracted", requireManager, async (req: Authe
         workspaceId,
         id: `cli_${randomUUID()}`,
       });
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       importedId = newClient[0].id;
     }
 
@@ -1462,14 +1448,13 @@ router.get("/api/my-team", requireAuth, async (req: AuthenticatedRequest, res) =
       return res.status(400).json({ message: "No workspace selected" });
     }
 
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as Record<string,unknown>)?.workspaceId || user.currentWorkspaceId;
 
     const allEmployees = await storage.getEmployeesByWorkspace(workspaceId);
     const currentEmployee = allEmployees.find((e) => e.userId === userId);
 
     const workspaceRole = currentEmployee?.workspaceRole || user.role;
     const managerRoles = ["org_owner", "co_owner", "department_manager", "supervisor", "manager"];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const isManager = managerRoles.includes(workspaceRole);
     if (!isManager) {
       return res.status(403).json({ message: "Only managers and supervisors can access My Team" });
@@ -1725,7 +1710,7 @@ router.get("/api/search/suggestions", requireAuth, async (req: AuthenticatedRequ
       .select({
         id: clients.id,
         companyName: clients.companyName,
-        industry: (clients as any).industry,
+        industry: (clients as ClientWithExtras).industry,
       })
       .from(clients)
       .where(and(eq(clients.workspaceId, workspaceId), ilike(clients.companyName, pattern)))
@@ -1735,7 +1720,6 @@ router.get("/api/search/suggestions", requireAuth, async (req: AuthenticatedRequ
       suggestions.push({
         type: "client",
         id: client.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         label: client.companyName,
         description: client.industry || "Client",
       });
@@ -1836,7 +1820,7 @@ const scheduleSmartAIRequestSchema = z.object({
     .optional(),
 });
 
-router.get("/api/shift-templates", requireAuth, async (req: any, res) => {
+router.get("/api/shift-templates", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspace = (await storage.getWorkspaceByOwnerId(userId)) || (await storage.getWorkspaceByMembership(userId));
@@ -1853,7 +1837,7 @@ router.get("/api/shift-templates", requireAuth, async (req: any, res) => {
   }
 });
 
-router.post("/api/shift-templates", requireAuth, async (req: any, res) => {
+router.post("/api/shift-templates", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspace = (await storage.getWorkspaceByOwnerId(userId)) || (await storage.getWorkspaceByMembership(userId));
@@ -1873,7 +1857,7 @@ router.post("/api/shift-templates", requireAuth, async (req: any, res) => {
   }
 });
 
-router.delete("/api/shift-templates/:id", requireAuth, async (req: any, res) => {
+router.delete("/api/shift-templates/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -1883,11 +1867,11 @@ router.delete("/api/shift-templates/:id", requireAuth, async (req: any, res) => 
     const { db } = await import('../db');
     const { eq, and } = await import('drizzle-orm');
     const [deleted] = await db.delete(shiftTemplates)
-      .where(and(eq(shiftTemplates.id, id), eq(shiftTemplates.workspaceId as any, workspaceId)))
+      .where(and(eq(shiftTemplates.id, id), eq(shiftTemplates.workspaceId, workspaceId)))
       .returning();
     if (!deleted) return res.status(404).json({ message: 'Template not found' });
     res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     res.status(500).json({ message: err.message || 'Failed to delete template' });
   }
 });
@@ -1974,7 +1958,7 @@ router.get("/api/billing/subscription", requireAuth, async (req: AuthenticatedRe
 const safetyCheckStore = new Map<string, any[]>(); // keyed by workspaceId
 
 // GET /api/safety-checks/recent — Recent safety check submissions for this workspace
-router.get("/api/safety-checks/recent", requireAuth, async (req: any, res) => {
+router.get("/api/safety-checks/recent", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.json([]);
@@ -1986,14 +1970,14 @@ router.get("/api/safety-checks/recent", requireAuth, async (req: any, res) => {
 });
 
 // POST /api/safety-checks — Submit a safety inspection check
-router.post("/api/safety-checks", requireAuth, async (req: any, res) => {
+router.post("/api/safety-checks", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
     const userId = req.userId || req.user?.id;
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
     const { items, notes, location, timestamp } = req.body;
-    const passCount = Object.values(items || {}).filter((v: any) => v === "pass").length;
-    const failCount = Object.values(items || {}).filter((v: any) => v === "fail").length;
+    const passCount = Object.values(items || {}).filter((v: unknown) => v === "pass").length;
+    const failCount = Object.values(items || {}).filter((v: unknown) => v === "fail").length;
     const record = {
       id: randomUUID(),
       workspaceId,

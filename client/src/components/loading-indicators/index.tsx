@@ -56,7 +56,7 @@ export function ResponsiveLoading({
       message={displayMessage}
       subMessage={submessage}
       variant="fullscreen"
-      status={status as any}
+      status={status as string}
       progress={progress}
     />
   );

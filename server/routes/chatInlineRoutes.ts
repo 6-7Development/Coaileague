@@ -19,6 +19,7 @@ import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
 import { PLATFORM } from '../config/platformConfig';
 import { summonHelpAIForConversation } from '../services/botSummonService';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('ChatInlineRoutes');
 
 
@@ -38,7 +39,6 @@ router.get('/conversations', async (req: AuthenticatedRequest, res) => {
 
     if (platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
       const status = req.query.status as string | undefined;
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const allConversations = await storage.getAllChatConversations({ status });
       return res.json(allConversations);
     }
@@ -58,7 +58,7 @@ router.get('/conversations', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post('/conversations', async (req: any, res) => {
+router.post('/conversations', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const workspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
@@ -83,7 +83,7 @@ router.post('/conversations', async (req: any, res) => {
         req.user?.id ?? req.user?.claims?.sub
       );
     } catch (summonErr: unknown) {
-      log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+      log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as Record<string,unknown>)?.message);
     }
 
     res.status(201).json(conversation);
@@ -152,19 +152,18 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
 
     if (platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
       // Platform staff always see full history (for moderation/support)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const messages = await storage.getChatMessagesByConversation(id);
 
       const enrichedMessages = await Promise.all(messages.map(async (msg) => {
         if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
           return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
         }
-        const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-        const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+        const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+        const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
         return {
           ...msg,
           role: senderRole || 'guest',
-          userType: (userInfo as any)?.userType || 'guest'
+          userType: (userInfo as Record<string,unknown>)?.userType || 'guest'
         };
       }));
 
@@ -186,19 +185,18 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
     // For DMs (dm_user, dm_bot): always show full history.
     const since = await getHistorySince(id, userId);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const messages = await storage.getChatMessagesByConversation(id, since);
 
     const enrichedMessages = await Promise.all(messages.map(async (msg) => {
       if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
         return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
       }
-      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       return {
         ...msg,
         role: senderRole || 'guest',
-        userType: (userInfo as any)?.userType || 'guest'
+        userType: (userInfo as Record<string,unknown>)?.userType || 'guest'
       };
     }));
 
@@ -209,7 +207,7 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
   }
 });
 
-router.patch('/conversations/:id', async (req: any, res) => {
+router.patch('/conversations/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -229,7 +227,6 @@ router.patch('/conversations/:id', async (req: any, res) => {
       .omit({ workspaceId: true })
       .parse(req.body);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const updated = await storage.updateChatConversation(id, validated);
 
     if (!updated) {
@@ -243,7 +240,7 @@ router.patch('/conversations/:id', async (req: any, res) => {
   }
 });
 
-router.post('/conversations/:id/close', async (req: any, res) => {
+router.post('/conversations/:id/close', async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -300,7 +297,6 @@ router.get('/main-room', async (req: AuthenticatedRequest, res) => {
 
     if (!mainRoom) {
       mainRoom = await storage.createChatConversation({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id: MAIN_ROOM_ID,
         workspaceId: PLATFORM_WORKSPACE_ID,
         customerName: 'Main Chatroom',
@@ -325,7 +321,6 @@ router.get('/main-room/messages', async (req: AuthenticatedRequest, res) => {
     let mainRoom = await resolveOrMigrateMainRoom();
     if (!mainRoom) {
       mainRoom = await storage.createChatConversation({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id: MAIN_ROOM_ID,
         workspaceId: PLATFORM_WORKSPACE_ID,
         customerName: 'Main Chatroom',
@@ -338,19 +333,18 @@ router.get('/main-room/messages', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const messages = await storage.getChatMessagesByConversation(MAIN_ROOM_ID);
 
     const enrichedMessages = await Promise.all(messages.map(async (msg) => {
       if (!msg.senderId || msg.senderId === 'system') {
         return { ...msg, role: 'system', userType: 'system' };
       }
-      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
-      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+      const senderRole = await storage.getUserPlatformRole(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
+      const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch((e: unknown) => log.warn('[chatInlineRoutes] Operation failed (non-fatal):', e instanceof Error ? e.message : String(e)));
       return {
         ...msg,
         role: senderRole || 'guest',
-        userType: (userInfo as any)?.userType || 'guest'
+        userType: (userInfo as Record<string,unknown>)?.userType || 'guest'
       };
     }));
 
@@ -374,7 +368,6 @@ router.post('/main-room/messages', async (req: AuthenticatedRequest, res) => {
     let mainRoom = await resolveOrMigrateMainRoom();
     if (!mainRoom) {
       mainRoom = await storage.createChatConversation({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         id: MAIN_ROOM_ID,
         workspaceId: PLATFORM_WORKSPACE_ID,
         customerName: 'Main Chatroom',
@@ -397,11 +390,8 @@ router.post('/main-room/messages', async (req: AuthenticatedRequest, res) => {
     const senderType = platformRole ? 'support' : 'customer';
     const { formatUserDisplayNameForChat } = await import('../utils/formatUserDisplayName');
     const senderName = formatUserDisplayNameForChat({
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       firstName: user.firstName,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       lastName: user.lastName,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       email: user.email || undefined,
       platformRole: platformRole || undefined,
     });
@@ -416,7 +406,6 @@ router.post('/main-room/messages', async (req: AuthenticatedRequest, res) => {
       isRead: false,
     });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     await storage.updateChatConversation(MAIN_ROOM_ID, {
       lastMessageAt: new Date(),
     });
@@ -428,7 +417,7 @@ router.post('/main-room/messages', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.post('/conversations/:id/grant-voice', async (req: any, res) => {
+router.post('/conversations/:id/grant-voice', async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -449,7 +438,6 @@ router.post('/conversations/:id/grant-voice', async (req: any, res) => {
       return res.status(403).json({ message: "Access denied: Conversation belongs to a different workspace" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const updated = await storage.updateChatConversation(id, {
       isSilenced: false,
       voiceGrantedBy: userId,
@@ -474,7 +462,7 @@ router.post('/conversations/:id/grant-voice', async (req: any, res) => {
   }
 });
 
-router.post('/help-bot/respond', async (req: any, res) => {
+router.post('/help-bot/respond', async (req: AuthenticatedRequest, res) => {
   try {
     const { conversationId, userMessage, previousMessages } = req.body;
     const userId = req.user?.id || req.user?.claims?.sub;
@@ -493,7 +481,6 @@ router.post('/help-bot/respond', async (req: any, res) => {
     const botResponse = await HelpBotService.generateResponse(userMessage, {
       conversationId,
       customerName: conversation.customerName || undefined,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       customerEmail: conversation.customerEmail || undefined,
       previousMessages,
       workspaceId: workspace.id,
@@ -589,7 +576,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
     // Intent detection → action routing
     type FieldIntent = {
       actionId: string;
-      payload: Record<string, any>;
+      payload: Record<string, unknown>;
       label: string;
     };
     let intent: FieldIntent | null = null;
@@ -630,7 +617,6 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const result = await helpaiOrchestrator.executeAction({
       actionId: intent.actionId,
       workspaceId,
@@ -648,7 +634,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No officers are currently on duty.';
         } else {
           narrative = `**${units.length} officer${units.length !== 1 ? 's' : ''} on duty:**\n\n` +
-            units.map((u: any) => `• **${u.employee_name}** (${u.unit_identifier}) — ${u.current_status}${u.current_site_name ? ` at ${u.current_site_name}` : ''}`).join('\n');
+            units.map((u: unknown) => `• **${u.employee_name}** (${u.unit_identifier}) — ${u.current_status}${u.current_site_name ? ` at ${u.current_site_name}` : ''}`).join('\n');
         }
       } else if (intent.actionId === 'cad.get_active_calls') {
         const calls = Array.isArray(data) ? data : [];
@@ -656,7 +642,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No active CAD calls at this time.';
         } else {
           narrative = `**${calls.length} active call${calls.length !== 1 ? 's' : ''}:**\n\n` +
-            calls.map((c: any) => `• **${c.call_number}** — P${c.priority} ${c.call_type} at ${c.site_name || c.location || 'unknown'} [${c.status}]`).join('\n');
+            calls.map((c: unknown) => `• **${c.call_number}** — P${c.priority} ${c.call_type} at ${c.site_name || c.location || 'unknown'} [${c.status}]`).join('\n');
         }
       } else if (intent.actionId === 'cad.suggest_dispatch') {
         const { suggestion, reason } = data;
@@ -675,7 +661,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No recent panic alerts on record.';
         } else {
           narrative = `**${alerts.length} recent panic alert${alerts.length !== 1 ? 's' : ''}:**\n\n` +
-            alerts.map((a: any) => `• **${a.alert_number}** — ${a.employee_name} at ${a.site_name || 'unknown'} [${a.status}]`).join('\n');
+            alerts.map((a: unknown) => `• **${a.alert_number}** — ${a.employee_name} at ${a.site_name || 'unknown'} [${a.status}]`).join('\n');
         }
       } else if (intent.actionId === 'rms.get_incidents_by_site') {
         const incidents = Array.isArray(data) ? data : [];
@@ -683,7 +669,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No incidents found for that location.';
         } else {
           narrative = `**${incidents.length} incident${incidents.length !== 1 ? 's' : ''}:**\n\n` +
-            incidents.slice(0, 5).map((i: any) => `• **${i.report_number}** — ${i.category} (${i.priority}) at ${i.site_name || 'unknown'} [${i.status}]`).join('\n') +
+            incidents.slice(0, 5).map((i: unknown) => `• **${i.report_number}** — ${i.category} (${i.priority}) at ${i.site_name || 'unknown'} [${i.status}]`).join('\n') +
             (incidents.length > 5 ? `\n\n_...and ${incidents.length - 5} more_` : '');
         }
       } else if (intent.actionId === 'rms.get_officer_incident_history') {
@@ -842,9 +828,7 @@ router.post('/macros', async (req: AuthenticatedRequest, res) => {
     res.status(201).json(macro);
   } catch (error: unknown) {
     log.error("Error creating chat macro:", error);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     if (error.name === 'ZodError') {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return res.status(400).json({ message: "Invalid macro data", errors: error.errors });
     }
     res.status(500).json({ message: "Failed to create chat macro" });
@@ -908,8 +892,8 @@ router.post('/conversations/:id/typing', async (req: AuthenticatedRequest, res) 
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    const isParticipant = (conversation as any).participantIds?.includes(userId);
-    const isCreator = (conversation as any).creatorId === userId;
+    const isParticipant = (conversation as Record<string,unknown>).participantIds?.includes(userId);
+    const isCreator = (conversation as Record<string,unknown>).creatorId === userId;
     let isWorkspaceMember = false;
 
     if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -937,17 +921,16 @@ router.post('/conversations/:id/typing', async (req: AuthenticatedRequest, res) 
     await db
       .insert(typingIndicators)
       .values({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: workspaceId,
         conversationId,
         userId,
-        userName: (user as any).displayName || (user as any).username || "Anonymous",
+        userName: req.user?.displayName || req.user?.username || "Anonymous",
       })
       .onConflictDoUpdate({
         target: [typingIndicators.conversationId, typingIndicators.userId],
         set: {
           startedAt: sql`NOW()`,
-          userName: (user as any).displayName || (user as any).username || "Anonymous",
+          userName: req.user?.displayName || req.user?.username || "Anonymous",
         },
       });
 
@@ -973,8 +956,8 @@ router.delete('/conversations/:id/typing', async (req: AuthenticatedRequest, res
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    const isParticipant = (conversation as any).participantIds?.includes(userId);
-    const isCreator = (conversation as any).creatorId === userId;
+    const isParticipant = (conversation as Record<string,unknown>).participantIds?.includes(userId);
+    const isCreator = (conversation as Record<string,unknown>).creatorId === userId;
     let isWorkspaceMember = false;
 
     if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -1022,7 +1005,6 @@ router.get('/tickets/:id', async (req: AuthenticatedRequest, res) => {
     const ticketId = req.params.id;
     const user = req.user;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const employee = await storage.getEmployeeByUserId(user.id);
 
     if (!employee || !employee.workspaceId) {
@@ -1040,7 +1022,7 @@ router.get('/tickets/:id', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as any).platformRole || '');
+    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as EmployeeWithStatus).platformRole || '');
 
     if (!isStaff) {
       if (ticket.employeeId !== employee.id && ticket.clientId !== employee.id) {
@@ -1060,7 +1042,6 @@ router.get('/tickets/:id', async (req: AuthenticatedRequest, res) => {
       status: mapTicketStatusToHeaderStatus(ticket),
       priority: (ticket.priority || 'normal'),
       assignedAgent,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       slaRemaining: calculateSLARemaining(ticket.createdAt!, (ticket.priority || 'normal')),
       subject: ticket.subject,
       description: ticket.description,
@@ -1081,7 +1062,6 @@ router.get('/tickets', async (req: AuthenticatedRequest, res) => {
 
     const user = req.user;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const employee = await storage.getEmployeeByUserId(user.id);
 
     if (!employee || !employee.workspaceId) {
@@ -1091,7 +1071,7 @@ router.get('/tickets', async (req: AuthenticatedRequest, res) => {
     const workspaceId = employee.workspaceId;
     let tickets = await storage.getSupportTickets(workspaceId);
 
-    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as any).platformRole || '');
+    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as EmployeeWithStatus).platformRole || '');
 
     if (!isStaff) {
       tickets = tickets.filter(t =>
@@ -1116,7 +1096,6 @@ router.get('/tickets', async (req: AuthenticatedRequest, res) => {
           status: mapTicketStatusToHeaderStatus(ticket),
           priority: (ticket.priority || 'normal'),
           assignedAgent,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           slaRemaining: calculateSLARemaining(ticket.createdAt!, (ticket.priority || 'normal')),
           subject: ticket.subject,
           description: ticket.description,
@@ -1195,8 +1174,8 @@ router.get('/room/:roomId/motd', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
-    const activeBots = (conversation as any).metadata?.activeBots || [];
+    const roomModes = (conversation as Record<string,unknown>).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as Record<string,unknown>).metadata?.activeBots || [];
     const roomName = conversation.subject || 'Chat Room';
 
     const motd = generateMOTD(roomName, roomModes, activeBots);
@@ -1243,7 +1222,6 @@ router.get('/commands/help', async (req: AuthenticatedRequest, res) => {
     }
 
     const modes = roomModes
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       ? (Array.isArray(roomModes) ? roomModes : [roomModes]).map(m => m as RoomMode)
       : [RoomMode.ORG];
 
@@ -1276,8 +1254,8 @@ router.get('/room/:roomId/bots', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
-    const activeBots = (conversation as any).metadata?.activeBots || [];
+    const roomModes = (conversation as Record<string,unknown>).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as Record<string,unknown>).metadata?.activeBots || [];
 
     const availableBots = new Set<string>();
     for (const mode of roomModes) {

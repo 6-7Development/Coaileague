@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   lost: "bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
 };
 
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, unknown> = {
   radio: Radio,
   vehicle: Car,
   weapon: Shield,
@@ -50,10 +50,10 @@ const CATEGORIES = ["radio", "vehicle", "weapon", "uniform", "tool", "technology
 const STATUSES = ["available", "assigned", "maintenance", "retired", "lost"];
 const VALID_CONDITIONS = ["new", "excellent", "good", "fair", "poor", "damaged"] as const;
 
-function EquipmentForm({ item, onClose }: { item?: any; onClose: () => void }) {
+function EquipmentForm({ item, onClose }: { item?: unknown; onClose: () => void }) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [form, setForm] = useState({
     name: item?.name ?? "",
     serialNumber: item?.serialNumber ?? "",
@@ -64,7 +64,7 @@ function EquipmentForm({ item, onClose }: { item?: any; onClose: () => void }) {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data) =>
       item
         ? apiRequest("PATCH", `/api/equipment/items/${item.id}`, data)
         : apiRequest("POST", "/api/equipment/items", { ...data, workspaceId }),
@@ -160,7 +160,7 @@ function EquipmentForm({ item, onClose }: { item?: any; onClose: () => void }) {
   );
 }
 
-function EquipmentCard({ item, onEdit, onAssign }: { item: any; onEdit: (item: any) => void; onAssign: (item: any) => void }) {
+function EquipmentCard({ item, onEdit, onAssign }: { item: unknown; onEdit: (item) => void; onAssign: (item) => void }) {
   const Icon = CATEGORY_ICONS[item.category] || Package;
   const statusClass = STATUS_COLORS[item.status] || "";
   return (
@@ -257,7 +257,7 @@ function ReportDamageDialog({ assignment, onClose }: { assignment: any; onClose:
   const [condition, setCondition] = useState("damaged");
 
   const mutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/equipment/report-damage/${assignment.id}`, data),
+    mutationFn: (data) => apiRequest("POST", `/api/equipment/report-damage/${assignment.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/equipment/items"] });
@@ -315,7 +315,7 @@ function ReturnWithDeductionDialog({ assignment, onClose }: { assignment: any; o
   const [damageNotes, setDamageNotes] = useState("");
 
   const mutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/equipment/return-with-deduction/${assignment.id}`, data),
+    mutationFn: (data) => apiRequest("POST", `/api/equipment/return-with-deduction/${assignment.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/equipment/items"] });
@@ -523,7 +523,7 @@ function OfficerEquipmentSection({ workspaceId }: { workspaceId: string }) {
 
       {officerAssignments.length > 0 && (
         <div className="space-y-3">
-          {officerAssignments.map((a: any) => {
+          {officerAssignments.map((a) => {
             const isActive = !a.actual_return_date && !a.actualReturnDate;
             return (
               <Card key={a.id} data-testid={`card-officer-assignment-${a.id}`}>
@@ -592,7 +592,7 @@ function OverdueEquipmentSection({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="space-y-3">
-      {overdueItems.map((a: any) => {
+      {overdueItems.map((a) => {
         const expectedDate = new Date(a.expected_return_date || a.expectedReturnDate);
         const daysOverdue = Math.floor((Date.now() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
         return (
@@ -646,7 +646,7 @@ function LowInventoryBanner({ workspaceId }: { workspaceId: string }) {
               The following categories have low available equipment:
             </p>
             <div className="flex gap-2 mt-2 flex-wrap">
-              {lowInventory.map((item: any, idx: number) => (
+              {lowInventory.map((item: unknown, idx: number) => (
                 <Badge
                   key={idx}
                   variant="secondary"
@@ -666,13 +666,13 @@ function LowInventoryBanner({ workspaceId }: { workspaceId: string }) {
 
 export default function EquipmentPage() {
   const { user } = useAuth();
-  const workspaceId = (user as any)?.workspaceId;
+  const workspaceId = (user as Record<string,unknown>)?.workspaceId;
   const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [reportLostAssignment, setReportLostAssignment] = useState<any>(null);
-  const [reportDamageAssignment, setReportDamageAssignment] = useState<any>(null);
-  const [returnDeductionAssignment, setReturnDeductionAssignment] = useState<any>(null);
+  const [reportLostAssignment, setReportLostAssignment] = useState<null>(null);
+  const [reportDamageAssignment, setReportDamageAssignment] = useState<null>(null);
+  const [returnDeductionAssignment, setReturnDeductionAssignment] = useState<null>(null);
   const [assignItem, setAssignItem] = useState<{ id: string; name: string } | null>(null);
 
   const { data: items = [], isLoading, isError } = useQuery<any[]>({
@@ -818,7 +818,7 @@ export default function EquipmentPage() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {assignments.map((a: any) => {
+                {assignments.map((a) => {
                   const isActive = !a.actualReturnDate && !a.actual_return_date;
                   return (
                     <Card key={a.id} data-testid={`card-assignment-${a.id}`}>

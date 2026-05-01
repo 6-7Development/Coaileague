@@ -44,7 +44,7 @@ async function ensureTable(): Promise<void> {
         ON compliance_score_snapshots(workspace_id, recorded_at DESC);
     `);
     bootstrapped = true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[complianceScoreMonitor] bootstrap failed (non-fatal):', err?.message);
   }
 }
@@ -80,8 +80,8 @@ export async function snapshotAndMonitor(workspaceId: string): Promise<SnapshotR
      LIMIT 1 OFFSET 1
   `);
   const previousScore: number | null =
-    (prevRes as any).rows?.[0]?.score !== undefined
-      ? Number((prevRes as any).rows[0].score)
+    (prevRes as Record<string,unknown>).rows?.[0]?.score !== undefined
+      ? Number((prevRes as Record<string,unknown>).rows[0].score)
       : null;
 
   const delta = previousScore === null ? null : current.score - previousScore;
@@ -127,10 +127,10 @@ async function notifyOwners(
       if (!userId) continue;
       try {
         await NotificationDeliveryService.send({
-          type: 'compliance_alert' as any,
+          type: 'compliance_alert',
           workspaceId,
           recipientUserId: userId,
-          channel: 'in_app' as any,
+          channel: 'in_app',
           subject: `Compliance score dropped ${previousScore - currentScore} points`,
           body: {
             previousScore,
@@ -143,13 +143,13 @@ async function notifyOwners(
           idempotencyKey: `compliance-drop-${workspaceId}-${new Date().toISOString().split('T')[0]}-${userId}`,
         });
         delivered++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn(`[complianceScoreMonitor] NDS send failed for ${userId}:`, err?.message);
       }
     }
     log.info(`[complianceScoreMonitor] Alerted ${delivered}/${ownerRows.rowCount} owners for ${workspaceId}`);
     return delivered > 0;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[complianceScoreMonitor] notifyOwners failed:', err?.message);
     return false;
   }

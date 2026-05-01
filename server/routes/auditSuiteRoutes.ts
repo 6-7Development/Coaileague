@@ -1,4 +1,5 @@
 import { requireAuth } from '../auth';
+import { AuthenticatedRequest } from '../rbac';
 /**
  * Audit Suite Routes — AI Regulatory Audit Suite (All 6 Phases)
  * ==============================================================
@@ -100,7 +101,7 @@ const upload = multer({
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
-function requireAuditorSession(req: any, res: Response, next: any): void {
+function requireAuditorSession(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (!req.session?.auditorId) {
     res.status(401).json({ ok: false, error: 'Auditor session required' });
     return;
@@ -108,7 +109,7 @@ function requireAuditorSession(req: any, res: Response, next: any): void {
   next();
 }
 
-function requireUserAuth(req: any, res: Response, next: any): void {
+function requireUserAuth(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (!req.user?.id && !req.session?.userId) {
     res.status(401).json({ ok: false, error: 'Authentication required' });
     return;
@@ -117,14 +118,14 @@ function requireUserAuth(req: any, res: Response, next: any): void {
 }
 
 // Accept either a logged-in tenant user OR an auditor session
-function requireEitherAuth(req: any, res: Response, next: any): void {
+function requireEitherAuth(req: AuthenticatedRequest, res: Response, next: unknown): void {
   if (req.user?.id || req.session?.userId || req.session?.auditorId) {
     return next();
   }
   res.status(401).json({ ok: false, error: 'Authentication required' });
 }
 
-function getUserOrAuditorId(req: any): string {
+function getUserOrAuditorId(req: AuthenticatedRequest): string {
   return req.user?.id ?? req.session?.userId ?? req.session?.auditorId ?? 'unknown';
 }
 
@@ -145,7 +146,7 @@ auditSuiteRouter.post(
   '/visual-compliance/upload',
   requireUserAuth,
   upload.single('file'),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const file = req.file;
     if (!file) {
       return res.status(400).json({ ok: false, error: 'No file uploaded' });
@@ -172,7 +173,7 @@ auditSuiteRouter.post(
         registeredAddress,
       });
       res.json({ ok: true, artifact: result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] visual upload error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -183,7 +184,7 @@ auditSuiteRouter.post(
 auditSuiteRouter.get(
   '/visual-compliance/:workspaceId',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { workspaceId } = req.params;
     const { auditId } = req.query;
 
@@ -196,7 +197,7 @@ auditSuiteRouter.get(
     try {
       const artifacts = await listArtifactsForWorkspace(workspaceId, auditId as string | undefined);
       res.json({ ok: true, artifacts });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -206,7 +207,7 @@ auditSuiteRouter.get(
 auditSuiteRouter.get(
   '/visual-compliance/:workspaceId/summary',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { workspaceId } = req.params;
     const callerWorkspaceId = req.workspaceId;
     if (callerWorkspaceId && callerWorkspaceId !== workspaceId) {
@@ -215,7 +216,7 @@ auditSuiteRouter.get(
     try {
       const summary = await getArtifactSummary(workspaceId);
       res.json({ ok: true, summary });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -230,7 +231,7 @@ auditSuiteRouter.post(
   '/audits/:auditId/submit-paperwork',
   requireAuditorSession,
   upload.single('paperwork'),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ ok: false, error: 'No paperwork file uploaded' });
 
@@ -247,7 +248,7 @@ auditSuiteRouter.post(
         mimeType:   file.mimetype,
       });
       res.json({ ok: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] submit-paperwork error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -258,7 +259,7 @@ auditSuiteRouter.post(
 auditSuiteRouter.get(
   '/audits/:auditId/safe-status',
   requireEitherAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = (req.workspaceId ?? req.query.workspaceId) as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
@@ -266,7 +267,7 @@ auditSuiteRouter.get(
     try {
       const unlocked = await isAuditSafeUnlocked(auditId, workspaceId);
       res.json({ ok: true, unlocked });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -276,7 +277,7 @@ auditSuiteRouter.get(
 auditSuiteRouter.get(
   '/audits/:auditId/access-log',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = req.workspaceId as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
@@ -284,7 +285,7 @@ auditSuiteRouter.get(
     try {
       const log_ = await getAccessLog(auditId, workspaceId);
       res.json({ ok: true, accessLog: log_ });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -298,7 +299,7 @@ auditSuiteRouter.get(
 auditSuiteRouter.post(
   '/audits/:auditId/generate-packet',
   requireEitherAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = (req.workspaceId ?? req.body.workspaceId) as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
@@ -311,7 +312,7 @@ auditSuiteRouter.post(
         modifyInstructions: req.body.modifyInstructions,
       });
       res.json({ ok: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] generate-packet error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -322,14 +323,14 @@ auditSuiteRouter.post(
 auditSuiteRouter.get(
   '/audits/:auditId/packets',
   requireEitherAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = (req.workspaceId ?? req.query.workspaceId) as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
     try {
       const drafts = await getDraftsForAudit(auditId, workspaceId);
       res.json({ ok: true, drafts });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -339,7 +340,7 @@ auditSuiteRouter.get(
 auditSuiteRouter.post(
   '/audits/:auditId/packets/:draftId/approve',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { draftId } = req.params;
     const workspaceId = req.workspaceId as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
@@ -347,7 +348,7 @@ auditSuiteRouter.post(
     try {
       const result = await approveAndSendDraft(draftId, workspaceId, getUserOrAuditorId(req));
       res.json({ ok: true, message: 'Audit packet approved and released to auditor.', ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -357,7 +358,7 @@ auditSuiteRouter.post(
 auditSuiteRouter.post(
   '/audits/:auditId/packets/:draftId/reject',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId, draftId } = req.params;
     const workspaceId = req.workspaceId as string;
     const { modifyInstructions } = req.body;
@@ -373,7 +374,7 @@ auditSuiteRouter.post(
         modifyInstructions,
       });
       res.json({ ok: true, message: 'Draft rejected. Trinity has generated a revised packet.', newDraft });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] reject-draft error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -389,7 +390,7 @@ auditSuiteRouter.post(
   '/audits/:auditId/verdict',
   requireAuditorSession,
   upload.single('violationPdf'),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = req.body.workspaceId;
     const auditorId   = req.session.auditorId;
@@ -428,13 +429,13 @@ auditSuiteRouter.post(
             cureDays,
             setByAuditorId: auditorId,
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           log.warn('[AuditSuite] Cure period start failed (non-fatal):', err?.message);
         }
       }
 
       res.json({ ok: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] verdict error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -445,14 +446,14 @@ auditSuiteRouter.post(
 auditSuiteRouter.get(
   '/audits/:auditId/citation',
   requireEitherAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = (req.workspaceId ?? req.query.workspaceId) as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
     try {
       const citation = await getCitationForAudit(auditId, workspaceId);
       res.json({ ok: true, citation });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -463,7 +464,7 @@ auditSuiteRouter.post(
   '/citations/:citationId/payment-proof',
   requireUserAuth,
   upload.single('moneyOrder'),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { citationId } = req.params;
     const workspaceId = req.workspaceId as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
@@ -478,7 +479,7 @@ auditSuiteRouter.post(
         certifiedMailTracking: req.body.certifiedMailTracking,
       });
       res.json({ ok: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] payment-proof error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }
@@ -489,7 +490,7 @@ auditSuiteRouter.post(
 auditSuiteRouter.get(
   '/:workspaceId/ledger',
   requireUserAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { workspaceId } = req.params;
     const callerWorkspaceId = req.workspaceId;
     if (callerWorkspaceId && callerWorkspaceId !== workspaceId) {
@@ -498,7 +499,7 @@ auditSuiteRouter.get(
     try {
       const ledger = await getAuditHistoricalLedger(workspaceId);
       res.json({ ok: true, ledger });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -512,14 +513,14 @@ auditSuiteRouter.get(
 auditSuiteRouter.get(
   '/audits/:auditId/cure-status',
   requireEitherAuth,
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const { auditId } = req.params;
     const workspaceId = (req.workspaceId ?? req.query.workspaceId) as string;
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
     try {
       const status = await getCureStatus(auditId, workspaceId);
       res.json({ ok: true, cureStatus: status });
-    } catch (err: any) {
+    } catch (err: unknown) {
       res.status(500).json({ ok: false, error: err?.message });
     }
   },
@@ -530,7 +531,7 @@ auditSuiteRouter.post(
   '/audits/:auditId/upload-corrections',
   requireUserAuth,
   upload.single('corrections'),
-  async (req: any, res) => {
+  async (req: AuthenticatedRequest, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ ok: false, error: 'No corrections file uploaded' });
 
@@ -546,7 +547,7 @@ auditSuiteRouter.post(
         correctionsMime:    file.mimetype,
       });
       res.json({ ok: true, ...result });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('[AuditSuite] upload-corrections error:', err?.message);
       res.status(500).json({ ok: false, error: err?.message });
     }

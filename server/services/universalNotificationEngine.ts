@@ -37,7 +37,7 @@ async function deliverPushNotification(userId: string, title: string, body: stri
   try {
     const { NotificationDeliveryService } = await import('./notificationDeliveryService');
     await NotificationDeliveryService.send({
-      type: (options?.type as any) || 'system_alert',
+      type: (options?.type as unknown) || 'system_alert',
       workspaceId: options?.workspaceId || 'system',
       recipientUserId: userId,
       channel: 'push',
@@ -158,7 +158,7 @@ export interface NotificationPayload {
   priority?: "low" | "medium" | "high" | "urgent";
   title: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   severity?: "info" | "warning" | "error" | "critical";
   userId?: string;
   targetRoles?: string[];
@@ -454,7 +454,7 @@ export class UniversalNotificationEngine {
           .values({
             workspaceId: payload.workspaceId,
             userId: payload.userId,
-            type: payload.type as any,
+            type: payload.type as unknown,
             title: enrichedTitle,
             message: enrichedMessage,
             actionUrl: payload.actionUrl,
@@ -542,7 +542,7 @@ export class UniversalNotificationEngine {
               .values({
                 workspaceId: payload.workspaceId,
                 userId: emp.userId,
-                type: payload.type as any,
+                type: payload.type as unknown,
                 title: rbacTitle,
                 message: personalMessage,
                 actionUrl: payload.actionUrl,
@@ -620,7 +620,7 @@ export class UniversalNotificationEngine {
               .values({
                 workspaceId: payload.workspaceId,
                 userId: emp.userId,
-                type: payload.type as any,
+                type: payload.type as unknown,
                 title: broadcastTitle,
                 message: personalMessage,
                 actionUrl: payload.actionUrl,
@@ -681,7 +681,7 @@ export class UniversalNotificationEngine {
         channels: deliveredChannels,
         notificationIds,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error:", error);
       return { success: false, recipientCount: 0, channels: [], notificationIds: [] };
     }
@@ -695,7 +695,7 @@ export class UniversalNotificationEngine {
     type: string;
     title: string;
     message: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     severity?: "info" | "warning" | "error" | "critical";
     actionUrl?: string;
     targetRoles?: string[];
@@ -741,7 +741,7 @@ export class UniversalNotificationEngine {
           const [notification] = await db.insert(notifications).values({
             workspaceId: admin.workspaceId,
             userId: admin.userId,
-            type: 'system' as any,
+            type: 'system',
             title: enrichedTitle,
             message: enrichedMessage,
             actionUrl: payload.actionUrl || '/updates',
@@ -783,7 +783,7 @@ export class UniversalNotificationEngine {
         success: true,
         recipientCount,
       };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Platform notification error:", error);
       return { success: false, recipientCount: 0 };
     }
@@ -813,7 +813,7 @@ export class UniversalNotificationEngine {
       });
 
       return results;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error fetching notifications:", error);
       return [];
     }
@@ -848,7 +848,7 @@ export class UniversalNotificationEngine {
       });
 
       return results;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error fetching user notifications:", error);
       return [];
     }
@@ -864,7 +864,7 @@ export class UniversalNotificationEngine {
         .set({ isRead: true, readAt: new Date() })
         .where(eq(notifications.id, notificationId));
       return true;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error marking as read:", error);
       return false;
     }
@@ -886,7 +886,7 @@ export class UniversalNotificationEngine {
           )
         );
       return 1; // Return count affected
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error marking all as read:", error);
       return 0;
     }
@@ -906,7 +906,7 @@ export class UniversalNotificationEngine {
         columns: { id: true },
       });
       return unread.length;
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error("[UniversalNotificationEngine] Error getting unread count:", error);
       return 0;
     }
@@ -943,7 +943,7 @@ export class UniversalNotificationEngine {
     workspaceId?: string;
     priority?: number;
     learnMoreUrl?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<{ success: boolean; id?: string; isDuplicate?: boolean }> {
     try {
       // Validate title - reject empty or undefined titles
@@ -1030,7 +1030,7 @@ export class UniversalNotificationEngine {
       
       let finalTitle: string;
       let finalDescription: string;
-      let enrichedMetadata: Record<string, any>;
+      let enrichedMetadata: Record<string, unknown>;
 
       if (skipAIEnrichment) {
         finalTitle = sanitizeForEndUser(payload.title);
@@ -1080,7 +1080,7 @@ export class UniversalNotificationEngine {
         id: updateId,
         title: finalTitle,
         description: safeDescription,
-        category: safeCategory as any,
+        category: safeCategory as unknown,
         workspaceId: safeWorkspaceId || PLATFORM_WORKSPACE_ID,
         priority: payload.priority || 1,
         isNew: true,
@@ -1128,7 +1128,7 @@ export class UniversalNotificationEngine {
       });
 
       return { success: true, id: update.id };
-    } catch (error: any) {
+    } catch (error : unknown) {
       // Detailed Postgres error logging — expose code/detail/column/
       // constraint so we can diagnose ON CONFLICT failures, NOT NULL
       // violations, FK constraint failures, etc. The previous one-liner
@@ -1221,7 +1221,7 @@ export class UniversalNotificationEngine {
         .values({
           workspaceId: payload.workspaceId,
           userId: payload.recipientUserId,
-          type: 'system' as any,
+          type: 'system',
           title,
           message,
           actionUrl,
@@ -1268,7 +1268,7 @@ export class UniversalNotificationEngine {
 
       log.info(`[UniversalNotificationEngine] Internal email notification sent to ${payload.recipientUserId} via ${channels.join(', ')}`);
       return { success: true, channels };
-    } catch (error: any) {
+    } catch (error : unknown) {
       log.error('[UniversalNotificationEngine] Error sending internal email notification:', error);
       return { success: false, channels: [] };
     }

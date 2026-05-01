@@ -80,8 +80,8 @@ interface ActionLogEntry {
   errorMessage?: string;
   durationMs?: number;
   tokensUsed?: number;
-  inputPayload?: Record<string, any>;
-  outputPayload?: Record<string, any>;
+  inputPayload?: Record<string, unknown>;
+  outputPayload?: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -195,7 +195,7 @@ interface HelpAIActivityData {
   success: boolean;
   summary: HelpAIActivitySummary;
   conversations: HelpAIConversationV2[];
-  slaLogs: any[];
+  slaLogs: unknown[];
   proactiveAlerts: HelpAIProactiveAlertRecord[];
   faqGaps: HelpAIFaqGapRecord[];
   commandBus: HelpAICommandBusEntry[];

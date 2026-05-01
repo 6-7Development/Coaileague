@@ -20,7 +20,7 @@ const log = createLogger('softDelete');
 
 export interface SoftDeleteParams {
   /** The Drizzle table whose row to mark deleted. Must declare `deleted_at` + `deleted_by` columns. */
-  table: any;
+  table: Record<string, unknown>;
   /** The fully-qualified WHERE clause selecting the row(s) to mark deleted. Must include `workspace_id` per Section G. */
   where: SQL;
   /** ID of the user performing the deletion (for audit + `deleted_by`). */
@@ -47,7 +47,7 @@ export async function softDelete(params: SoftDeleteParams): Promise<void> {
     .set({
       deletedAt: new Date(),
       deletedBy: userId,
-    } as any)
+    } as Record<string, unknown>)
     .where(where);
 
   try {
@@ -60,11 +60,11 @@ export async function softDelete(params: SoftDeleteParams): Promise<void> {
       metadata: {
         reason: reason ?? null,
         // Store SQL string for replay/debugging — Drizzle SQL toString() exposes the parameterized form.
-        whereSql: (where as any).toString?.() ?? null,
+        whereSql: (where as Record<string,unknown>).toString?.() ?? null,
       },
       createdAt: new Date(),
     } as any);
-  } catch (auditErr: any) {
+  } catch (auditErr : unknown) {
     log.warn('[softDelete] Audit log write failed (non-fatal):', auditErr?.message);
   }
 }

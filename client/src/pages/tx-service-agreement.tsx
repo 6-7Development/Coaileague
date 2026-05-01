@@ -261,7 +261,7 @@ export default function TxServiceAgreement() {
   const { data: authData } = useQuery<any>({ queryKey: ["/api/auth/me"] });
   const orgName = authData?.user?.workspaceName || "Security Services Company";
 
-  const set = (key: keyof AgreementForm, value: any) =>
+  const set = (key: keyof AgreementForm, value: unknown) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const createMutation = useMutation({
@@ -289,7 +289,7 @@ export default function TxServiceAgreement() {
       toast({ title: "Contract created", description: "Send it to the client for signature." });
       setLocation("/clients");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const previewContent = generateContractContent(form, orgName);

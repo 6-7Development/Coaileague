@@ -296,24 +296,24 @@ function ReasoningDrawer({
                   <div className="text-xs font-semibold text-[#4FC3F7] uppercase tracking-wider">
                     Decision Reasoning
                   </div>
-                  {(reasoning.decision as any).reasoning && (
+                  {(reasoning.decision as unknown).reasoning && (
                     <p className="text-sm text-white/70 leading-relaxed">
-                      {(reasoning.decision as any).reasoning}
+                      {(reasoning.decision as unknown).reasoning}
                     </p>
                   )}
-                  {(reasoning.decision as any).verifierReasoning && (
+                  {(reasoning.decision as unknown).verifierReasoning && (
                     <div className="mt-2">
                       <div className="text-xs text-white/40 mb-1">Verifier (Claude):</div>
                       <p className="text-sm text-white/60 leading-relaxed">
-                        {(reasoning.decision as any).verifierReasoning}
+                        {(reasoning.decision as unknown).verifierReasoning}
                       </p>
                     </div>
                   )}
-                  {(reasoning.decision as any).verifierSuggestedAlternative && (
+                  {(reasoning.decision as unknown).verifierSuggestedAlternative && (
                     <div className="mt-2">
                       <div className="text-xs text-white/40 mb-1">Alternative considered:</div>
                       <p className="text-sm text-white/60 leading-relaxed italic">
-                        {(reasoning.decision as any).verifierSuggestedAlternative}
+                        {(reasoning.decision as unknown).verifierSuggestedAlternative}
                       </p>
                     </div>
                   )}
@@ -330,25 +330,25 @@ function ReasoningDrawer({
                     <div>
                       <span className="text-white/40">Action type:</span>{' '}
                       <span className="text-white/70">
-                        {(reasoning.approval as any).action_type}
+                        {(reasoning.approval as unknown).action_type}
                       </span>
                     </div>
                     <div>
                       <span className="text-white/40">Confidence:</span>{' '}
                       {confidenceBadge(
-                        parseFloat((reasoning.approval as any).confidence_score ?? '1'),
+                        parseFloat((reasoning.approval as unknown).confidence_score ?? '1'),
                       )}
                     </div>
                   </div>
-                  {(reasoning.approval as any).reason && (
+                  {(reasoning.approval as unknown).reason && (
                     <p className="text-sm text-white/60 leading-relaxed">
-                      {(reasoning.approval as any).reason}
+                      {(reasoning.approval as unknown).reason}
                     </p>
                   )}
-                  {Array.isArray((reasoning.approval as any).risk_factors) &&
-                    (reasoning.approval as any).risk_factors.length > 0 && (
+                  {Array.isArray((reasoning.approval as unknown).risk_factors) &&
+                    (reasoning.approval as unknown).risk_factors.length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {((reasoning.approval as any).risk_factors as string[]).map(f => (
+                        {((reasoning.approval as unknown).risk_factors as string[]).map(f => (
                           <Badge
                             key={f}
                             variant="outline"
@@ -372,21 +372,21 @@ function ReasoningDrawer({
                     <div>
                       <span className="text-white/40">Status:</span>{' '}
                       <span className="text-white/70">
-                        {(reasoning.executionLog as any).status}
+                        {(reasoning.executionLog as unknown).status}
                       </span>
                     </div>
-                    {(reasoning.executionLog as any).duration_ms && (
+                    {(reasoning.executionLog as unknown).duration_ms && (
                       <div>
                         <span className="text-white/40">Duration:</span>{' '}
                         <span className="text-white/70">
-                          {(reasoning.executionLog as any).duration_ms}ms
+                          {(reasoning.executionLog as unknown).duration_ms}ms
                         </span>
                       </div>
                     )}
                   </div>
-                  {(reasoning.executionLog as any).error_message && (
+                  {(reasoning.executionLog as unknown).error_message && (
                     <p className="text-sm text-red-400">
-                      {(reasoning.executionLog as any).error_message}
+                      {(reasoning.executionLog as unknown).error_message}
                     </p>
                   )}
                 </div>

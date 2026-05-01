@@ -53,7 +53,7 @@ export interface ActionContext {
   workspaceId?: string;
   userId?: string;
   actionName: string;
-  actionPayload: Record<string, any>;
+  actionPayload: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -309,7 +309,7 @@ class ContextResolver {
 class GeminiClientWrapper {
   private genAI: GoogleGenerativeAI | null;
   private model: GenerativeModel | null;
-  private requestQueue: Array<{ resolve: Function; reject: Function; request: any }> = [];
+  private requestQueue: Array<{ resolve: Function; reject: Function; request: unknown }> = [];
   private isProcessing = false;
   private lastRequestTime = 0;
   private MIN_REQUEST_INTERVAL_MS = 100; // Rate limit: 10 requests/second max
@@ -453,7 +453,6 @@ class AIAnalyticsEngine {
 
     const workspaceId = actionContext.workspaceId;
     const relevantCategories = this.getRelevantCategories(actionContext.category);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const context = await this.contextResolver.resolveContext(workspaceId, relevantCategories);
 
     const userPrompt = this.buildPreActionPrompt(actionContext, context, role);
@@ -463,7 +462,6 @@ class AIAnalyticsEngine {
     const decision = await this.geminiClient.generateDecision(
       TRINITY_SYSTEM_PROMPT,
       userPrompt,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId,
       actionContext.userId
     );
@@ -472,7 +470,6 @@ class AIAnalyticsEngine {
       // Store insight for Trinity Insights page
       await this.storeInsight({
         id: `insight-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         userId: actionContext.userId,
         type: decision.insightType,
@@ -496,7 +493,7 @@ class AIAnalyticsEngine {
 
   async analyzePostAction(
     actionContext: ActionContext,
-    actionResult: { success: boolean; data?: any; error?: string },
+    actionResult: { success: boolean; data?: unknown; error?: string },
     role: TrinityRole = 'analyst'
   ): Promise<GeminiDecision | null> {
     if (!this.geminiClient.isAvailable()) {
@@ -505,7 +502,6 @@ class AIAnalyticsEngine {
 
     const workspaceId = actionContext.workspaceId;
     const relevantCategories = this.getRelevantCategories(actionContext.category);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const context = await this.contextResolver.resolveContext(workspaceId, relevantCategories);
 
     const userPrompt = this.buildPostActionPrompt(actionContext, actionResult, context, role);
@@ -515,7 +511,6 @@ class AIAnalyticsEngine {
     const decision = await this.geminiClient.generateDecision(
       TRINITY_SYSTEM_PROMPT,
       userPrompt,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId,
       actionContext.userId
     );
@@ -523,7 +518,6 @@ class AIAnalyticsEngine {
     if (decision) {
       await this.storeInsight({
         id: `insight-${Date.now()}-${crypto.randomUUID().slice(0, 9)}`,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId,
         userId: actionContext.userId,
         type: decision.insightType,
@@ -612,7 +606,7 @@ class AIAnalyticsEngine {
         generatedBy: 'gemini-2.5-flash',
         confidence: String(insight.confidence * 100),
         actionable: true,
-        suggestedActions: (insight as any).followUpActions,
+        suggestedActions: (insight as Record<string,unknown>).followUpActions,
         status: insight.isRead ? 'dismissed' : 'active',
       });
 
@@ -642,7 +636,6 @@ class AIAnalyticsEngine {
         .orderBy(desc(aiInsights.createdAt))
         .limit(limit);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return dbInsights.map(row => ({
         id: row.id,
         workspaceId: row.workspaceId,
@@ -697,7 +690,6 @@ class AIAnalyticsEngine {
         .orderBy(desc(aiInsights.createdAt))
         .limit(limit);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return dbInsights.map(row => ({
         id: row.id,
         workspaceId: row.workspaceId,
@@ -782,7 +774,7 @@ Respond with JSON matching the required schema.`;
 
   private buildPostActionPrompt(
     actionContext: ActionContext,
-    actionResult: { success: boolean; data?: any; error?: string },
+    actionResult: { success: boolean; data?: unknown; error?: string },
     context: CategoryContext,
     role: TrinityRole
   ): string {

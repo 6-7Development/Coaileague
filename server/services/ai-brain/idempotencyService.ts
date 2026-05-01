@@ -57,7 +57,7 @@ class IdempotencyService {
     actionId?: string;
     workspaceId?: number | string;
     userId?: number | string;
-    payload?: any;
+    payload?: unknown;
     customKey?: string;
   }): string {
     if (params.customKey) {
@@ -272,7 +272,7 @@ export async function withIdempotency<T>(
     actionId: string;
     workspaceId?: number | string;
     userId?: number | string;
-    payload?: any;
+    payload?: unknown;
   },
   operation: () => Promise<T>,
   options?: Partial<IdempotencyOptions>
@@ -310,7 +310,7 @@ export async function withIdempotency<T>(
 }
 
 // Register AI Brain actions for idempotency management
-export function registerIdempotencyActions(helpaiOrchestrator: any): void {
+export function registerIdempotencyActions(helpaiOrchestrator: unknown): void {
   helpaiOrchestrator.registerAction({
     actionId: 'idempotency.get_stats',
     name: 'Get Idempotency Stats',
@@ -349,7 +349,7 @@ export function registerIdempotencyActions(helpaiOrchestrator: any): void {
     description: 'Delete an idempotency key to allow operation retry',
     category: 'system',
     requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
-    handler: async (request: any) => {
+    handler: async (request: unknown) => {
       const { key } = request.payload || {};
       if (!key) {
         return { success: false, message: 'Key is required' };

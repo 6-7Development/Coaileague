@@ -105,7 +105,7 @@ export async function runComplianceMonitorWorkflow(): Promise<ComplianceSweepRes
           }
           await recordNotification(exp, bucket.label);
           result.notified++;
-        } catch (err: any) {
+        } catch (err: unknown) {
           result.errors.push(`${exp.skillId}:${bucket.label}:${err?.message}`);
         }
       }
@@ -117,7 +117,7 @@ export async function runComplianceMonitorWorkflow(): Promise<ComplianceSweepRes
         `${bucket.label}: ${expirations.length} found`,
         { bucket: bucket.label, count: expirations.length },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.errors.push(`bucket:${bucket.label}:${err?.message}`);
       await logWorkflowStep(record, 'process', false, `${bucket.label} scan failed: ${err?.message}`);
     }
@@ -178,7 +178,7 @@ async function findExpirationsInBucket(
           AND e.is_active = true
         LIMIT 500`,
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       skillId: row.skill_id,
       workspaceId: row.workspace_id,
       employeeId: row.employee_id,
@@ -189,7 +189,7 @@ async function findExpirationsInBucket(
       expiresAt: new Date(row.expires_at),
       daysRemaining: row.days_remaining ?? 0,
     }));
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Column names vary across deployments — skill_name may be just `name`.
     log.info('[compliance] expiration query failed (non-fatal):', err?.message);
     return [];
@@ -237,10 +237,10 @@ async function notifyExpiration(
   if (exp.employeeUserId) {
     try {
       await NotificationDeliveryService.send({
-        type: 'compliance.cert_expiry' as any,
+        type: 'compliance.cert_expiry',
         workspaceId: exp.workspaceId,
         recipientUserId: exp.employeeUserId,
-        channel: 'in_app' as any,
+        channel: 'in_app',
         subject: label,
         body: {
           skillId: exp.skillId,
@@ -251,7 +251,7 @@ async function notifyExpiration(
         },
         idempotencyKey: `compliance-${exp.skillId}-${bucket.label}-${exp.employeeUserId}`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[compliance] in-app send failed:', err?.message);
     }
   }
@@ -264,7 +264,7 @@ async function notifyExpiration(
         `compliance_${bucket.label}`,
         exp.workspaceId,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[compliance] employee SMS failed:', err?.message);
     }
   }
@@ -276,10 +276,10 @@ async function notifyExpiration(
       await Promise.allSettled(
         managerIds.map((recipientUserId) =>
           NotificationDeliveryService.send({
-            type: 'compliance.cert_expiry' as any,
+            type: 'compliance.cert_expiry',
             workspaceId: exp.workspaceId,
             recipientUserId,
-            channel: 'in_app' as any,
+            channel: 'in_app',
             subject: `Compliance: ${skill} (${name})`,
             body: {
               employeeId: exp.employeeId,
@@ -306,7 +306,7 @@ async function notifyExpiration(
           ),
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.warn('[compliance] manager fanout failed:', err?.message);
     }
   }
@@ -319,8 +319,8 @@ async function notifyExpiration(
         title: 'Certification expired',
         description: `${name}'s ${skill} has expired. Officer flagged as non-compliant.`,
         metadata: { employeeId: exp.employeeId, skillId: exp.skillId },
-      } as any);
-    } catch (err: any) {
+      } as unknown);
+    } catch (err: unknown) {
       log.warn('[compliance] expired event publish failed:', err?.message);
     }
   }
@@ -342,7 +342,7 @@ async function markEmployeeNonCompliant(exp: Expiration): Promise<void> {
         exp.workspaceId,
       ],
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.info('[compliance] non_compliant flag skipped (column may not exist):', err?.message);
   }
 }
@@ -363,11 +363,11 @@ async function recordNotification(exp: Expiration, bucket: string): Promise<void
         employeeId: exp.employeeId,
         skillName: exp.skillName,
         daysRemaining: exp.daysRemaining,
-      } as any,
+      } as unknown,
       source: 'system',
       actorType: 'trinity',
-    } as any);
-  } catch (err: any) {
+    } as unknown);
+  } catch (err: unknown) {
     log.warn('[compliance] notification record failed:', err?.message);
   }
 }
@@ -383,7 +383,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -403,8 +403,8 @@ async function fetchManagerContacts(workspaceId: string): Promise<Array<{ employ
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

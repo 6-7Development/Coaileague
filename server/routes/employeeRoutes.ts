@@ -28,6 +28,7 @@ import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 const log = createLogger('EmployeeRoutes');
 
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 import {
   createFilterContext,
   filterEmployeeForResponse,
@@ -45,11 +46,11 @@ const FINANCIAL_FIELDS_SENSITIVE = [
 ] as const;
 
 function stripFinancialFields(
-  employee: Record<string, any>,
+  employee: Record<string, unknown>,
   callerRole: string,
   callerPlatformRole: string,
   callerUserId: string,
-): Record<string, any> {
+): Record<string, unknown> {
   if (!employee) return employee;
   const isOwnerLevel = ['org_owner', 'co_owner'].includes(callerRole);
   const isPlatformStaff = ['root_admin', 'deputy_admin', 'sysop',
@@ -58,7 +59,7 @@ function stripFinancialFields(
   if (isOwnerLevel || isPlatformStaff || isSelf) return employee;
   const sanitized = { ...employee };
   for (const field of FINANCIAL_FIELDS_SENSITIVE) {
-    delete (sanitized as any)[field];
+    delete (sanitized as unknown)[field];
   }
   return sanitized;
 }
@@ -95,7 +96,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 200);
     const offset = (page - 1) * limit;
 
-    let allEmployees: any[] = [];
+    let allEmployees: (string | number | boolean | null)[] = [];
     // Platform staff may pass an explicit workspaceId via query to view any org.
     // Regular users always use their authenticated session workspaceId.
     // NEVER fall back to the "first workspace in the DB" — that is a cross-tenant leak.
@@ -175,7 +176,7 @@ router.post('/bulk-notify', async (req: AuthenticatedRequest, res) => {
       status: 'unread',
     }));
 
-    await storage.createBulkNotifications(notifications as any);
+    await storage.createBulkNotifications(notifications as unknown);
 
     res.json({ success: true, message: `Notifications sent to ${employeeIds.length} employees` });
   } catch (error: unknown) {
@@ -286,7 +287,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
     }
 
     // ── REHIRE DETECTION: check if email matches a previously terminated officer ─
-    let priorEmploymentRecord: any = null;
+    let priorEmploymentRecord: unknown = null;
     if (validatedData.email) {
       try {
         const [priorEmp] = await db.select().from(employees)
@@ -302,9 +303,9 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
             id: priorEmp.id,
             firstName: priorEmp.firstName,
             lastName: priorEmp.lastName,
-            hireDate: (priorEmp as any).hireDate,
-            terminationDate: (priorEmp as any).terminationDate,
-            deactivationReason: (priorEmp as any).deactivationReason,
+            hireDate: (priorEmp as unknown).hireDate,
+            terminationDate: (priorEmp as unknown).terminationDate,
+            deactivationReason: (priorEmp as unknown).deactivationReason,
             position: priorEmp.position,
             isRehire: true,
           };
@@ -325,7 +326,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
         const generatedNumber = await storage.generateEmployeeNumber(workspaceId);
         validatedData.employeeNumber = generatedNumber;
       } catch (numErr: unknown) {
-        log.warn('[EmployeeRoutes] generateEmployeeNumber failed (non-blocking):', (numErr as any)?.message || String(numErr));
+        log.warn('[EmployeeRoutes] generateEmployeeNumber failed (non-blocking):', (numErr as unknown)?.message || String(numErr));
       }
     }
 
@@ -350,7 +351,6 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
         if (targetUser) {
           await tx.insert(platformRoles).values({
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             workspaceId: PLATFORM_WORKSPACE_ID,
             userId: targetUser.id,
             role: platformRole,
@@ -374,7 +374,6 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
     if (employee.email) {
       const existingUser = await storage.getUserByEmail(employee.email);
       if (existingUser && !employee.userId) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         updatedEmployee = await storage.updateEmployee(employee.id, workspaceId, {
           userId: existingUser.id,
         });
@@ -392,7 +391,6 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
     scheduleNonBlocking('employee.ai-brain-event-hired', async () => {
       const { postDatabaseEventToAIBrain } = await import('../services/ai-brain/workboardService');
       postDatabaseEventToAIBrain({
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         eventType: 'employee_hired',
         workspaceId,
         userId: req.user?.id || 'system',
@@ -507,9 +505,9 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
     const payRateViolations = [
       validated.hourlyRate !== undefined ? validatePayRate(validated.hourlyRate, 'hourlyRate') : null,
-      (validated as any).payRate !== undefined ? validatePayRate((validated as any).payRate, 'payRate') : null,
-      (validated as any).billRate !== undefined ? validatePayRate((validated as any).billRate, 'billRate') : null,
-      (validated as any).overtimeRate !== undefined ? validatePayRate((validated as any).overtimeRate, 'overtimeRate') : null,
+      (validated as unknown).payRate !== undefined ? validatePayRate((validated as unknown).payRate, 'payRate') : null,
+      (validated as unknown).billRate !== undefined ? validatePayRate((validated as unknown).billRate, 'billRate') : null,
+      (validated as unknown).overtimeRate !== undefined ? validatePayRate((validated as unknown).overtimeRate, 'overtimeRate') : null,
     ];
     if (businessRuleResponse(res, payRateViolations)) return;
 
@@ -519,7 +517,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
     }
 
     if (expectedVersion !== undefined) {
-      const currentVersion = (oldEmployee as any).version || 1;
+      const currentVersion = (oldEmployee as unknown).version || 1;
       if (currentVersion !== expectedVersion) {
         return res.status(409).json({
           message: "This employee was modified by another user. Please refresh and try again.",
@@ -539,7 +537,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
     // hourlyRate, billRate, payRate, etc. without changing their role.
     const FINANCIAL_FIELDS = ['hourlyRate', 'payRate', 'billRate', 'overtimeRate', 'salaryAmount'];
     const isModifyingSelf = !!(userId && oldEmployee.userId === userId);
-    const isChangingOwnFinancials = FINANCIAL_FIELDS.some(f => (validated as any)[f] !== undefined);
+    const isChangingOwnFinancials = FINANCIAL_FIELDS.some(f => (validated as unknown)[f] !== undefined);
     if (isModifyingSelf && isChangingOwnFinancials && !isPlatStaff) {
       return res.status(403).json({
         message: "You cannot modify your own compensation fields. A higher-authority user must make this change.",
@@ -547,8 +545,8 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    const positionChanging = (validated as any).position && (validated as any).position !== oldEmployee.position;
-    const roleChanging = (validated as any).workspaceRole && (validated as any).workspaceRole !== oldEmployee.workspaceRole;
+    const positionChanging = (validated as unknown).position && (validated as unknown).position !== oldEmployee.position;
+    const roleChanging = (validated as unknown).workspaceRole && (validated as unknown).workspaceRole !== oldEmployee.workspaceRole;
 
     if ((positionChanging || roleChanging) && !isPlatStaff && userId) {
       const requesterEmployee = await storage.getEmployeeByUserId(userId, workspaceId);
@@ -561,19 +559,19 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
         }
 
         if (positionChanging) {
-          const newPos = (validated as any).position;
+          const newPos = (validated as unknown).position;
           if (!canPromoteEmployeeTo(requesterEmployee.position, newPos, requesterEmployee.workspaceRole as string)) {
             return res.status(403).json({ message: "You cannot assign a position at or above your own authority level" });
           }
           const posDefinition = getPositionById(newPos);
           if (posDefinition) {
-            (validated as any).workspaceRole = getWorkspaceRoleForPosition(newPos);
+            (validated as unknown).workspaceRole = getWorkspaceRoleForPosition(newPos);
           }
         }
       }
     }
 
-    if ((validated as any).organizationalTitle && !positionChanging) {
+    if ((validated as unknown).organizationalTitle && !positionChanging) {
       const titleToRoleMap: Record<string, string> = {
         'owner': 'org_owner',
         'director': 'co_owner',
@@ -581,18 +579,18 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
         'supervisor': 'supervisor',
         'staff': 'staff',
       };
-      const mappedRole = titleToRoleMap[(validated as any).organizationalTitle];
+      const mappedRole = titleToRoleMap[(validated as unknown).organizationalTitle];
       if (mappedRole) {
-        (validated as any).workspaceRole = mappedRole;
-        log.info(`[RBAC Sync] Employee ${req.params.id}: organizationalTitle=${(validated as any).organizationalTitle} -> workspaceRole=${mappedRole}`);
+        (validated as unknown).workspaceRole = mappedRole;
+        log.info(`[RBAC Sync] Employee ${req.params.id}: organizationalTitle=${(validated as unknown).organizationalTitle} -> workspaceRole=${mappedRole}`);
       }
     }
 
-    if (!oldEmployee.isActive && (validated as any).isActive === false) {
+    if (!oldEmployee.isActive && (validated as unknown).isActive === false) {
       return res.status(400).json({ message: "Employee is already deactivated" });
     }
 
-    const oldOrgTitle = (oldEmployee as any)?.organizationalTitle;
+    const oldOrgTitle = (oldEmployee as unknown)?.organizationalTitle;
     const oldWorkspaceRole = oldEmployee?.workspaceRole;
     const oldPosition = oldEmployee?.position;
 
@@ -602,13 +600,13 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
     }
 
     if (expectedVersion !== undefined || positionChanging || roleChanging) {
-      const newVersion = ((oldEmployee as any).version || 1) + 1;
+      const newVersion = ((oldEmployee as unknown).version || 1) + 1;
       // Include workspaceId in WHERE to prevent cross-tenant version bump
       await db.update(employees).set({ version: newVersion, updatedAt: new Date() })
         .where(and(eq(employees.id, req.params.id), eq(employees.workspaceId, workspaceId)));
     }
 
-    const newOrgTitle = (employee as any)?.organizationalTitle;
+    const newOrgTitle = (employee as unknown)?.organizationalTitle;
     const newWorkspaceRole = employee?.workspaceRole;
     const newPosition = employee?.position;
     const titleChanged = oldOrgTitle !== newOrgTitle;
@@ -625,7 +623,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
         description: `Employee role/position updated${titleChanged ? ` — title: ${oldOrgTitle || 'none'} → ${newOrgTitle || 'none'}` : ''}${roleChanged ? ` — role: ${oldWorkspaceRole || 'none'} → ${newWorkspaceRole || 'none'}` : ''}`,
         workspaceId,
         metadata: { employeeId: req.params.id, previousTitle: oldOrgTitle || null, newTitle: newOrgTitle || null, previousRole: oldWorkspaceRole || null, newRole: newWorkspaceRole || null, previousPosition: oldPosition || null, newPosition: newPosition || null, updatedBy: userId },
-      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       broadcastToWorkspace(workspaceId, {
         type: 'EMPLOYEE_POSITION_CHANGED',
@@ -694,15 +692,14 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
     // 🧠 TRINITY: If pay rate changed, trigger downstream recalculation pipeline
     // Flags open payroll drafts + re-evaluates future shift costs automatically
-    if ((validated as any).hourlyRate !== undefined) {
+    if ((validated as unknown).hourlyRate !== undefined) {
       (async () => {
         try {
           const { helpaiOrchestrator } = await import('../services/helpai/platformActionHub');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await helpaiOrchestrator.executeAction('settings.propagate_pay_rate_change', {
             employeeId: req.params.id,
             workspaceId,
-            newRate: (validated as any).hourlyRate,
+            newRate: (validated as unknown).hourlyRate,
             changedBy: userId,
           });
         } catch (propagateErr) {
@@ -712,15 +709,14 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
     }
 
     // 🧠 TRINITY: If certification expiry changed, trigger compliance pipeline
-    if ((validated as any).certificationExpiresAt !== undefined) {
+    if ((validated as unknown).certificationExpiresAt !== undefined) {
       (async () => {
         try {
           const { helpaiOrchestrator } = await import('../services/helpai/platformActionHub');
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await helpaiOrchestrator.executeAction('settings.propagate_license_expiry', {
             employeeId: req.params.id,
             workspaceId,
-            expiresAt: (validated as any).certificationExpiresAt,
+            expiresAt: (validated as unknown).certificationExpiresAt,
             changedBy: userId,
           });
         } catch (propagateErr) {
@@ -803,7 +799,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get('/me', async (req: any, res) => {
+router.get('/me', async (req: AuthenticatedRequest, res) => {
   try {
     let userId: string | undefined;
     
@@ -847,7 +843,6 @@ router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id || req.user?.id;
 
     // Scope to the authenticated workspace — prevents cross-tenant mutation
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const employee = await storage.getEmployeeByUserId(userId, req.workspaceId);
 
     if (!employee) {
@@ -868,7 +863,7 @@ router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
     // ── S3: allowedFields no longer includes 'email' ───────────────────────
     const allowedFields = ['phone', 'address', 'addressLine2', 'city', 'state', 'zipCode', 'country',
                            'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
-    const filteredData: any = {};
+    const filteredData: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
         filteredData[key] = req.body[key];
@@ -895,7 +890,7 @@ router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
         const trimmedPhone = typeof filteredData.phone === 'string' ? filteredData.phone.trim() : filteredData.phone;
         await storage.updateUser(employee.userId, { phone: trimmedPhone ?? null });
       } catch (userSyncErr: unknown) {
-        log.warn('[EmployeeRoutes] users.phone sync from /me/contact-info failed (non-blocking):', (userSyncErr as any)?.message || String(userSyncErr));
+        log.warn('[EmployeeRoutes] users.phone sync from /me/contact-info failed (non-blocking):', (userSyncErr as unknown)?.message || String(userSyncErr));
       }
     }
 

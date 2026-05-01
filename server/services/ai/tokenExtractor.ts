@@ -2,7 +2,7 @@ export function extractGeminiTokens(response: unknown): {
   inputTokens: number;
   outputTokens: number;
 } {
-  const r = response as any;
+  const r = response as unknown;
   return {
     inputTokens:
       r?.usageMetadata?.promptTokenCount ??
@@ -20,7 +20,7 @@ export function extractClaudeTokens(response: unknown): {
   inputTokens: number;
   outputTokens: number;
 } {
-  const r = response as any;
+  const r = response as unknown;
   return {
     inputTokens:
       r?.usage?.input_tokens ??
@@ -37,7 +37,7 @@ export function extractGptTokens(response: unknown): {
   inputTokens: number;
   outputTokens: number;
 } {
-  const r = response as any;
+  const r = response as unknown;
   return {
     inputTokens:
       r?.usage?.prompt_tokens ??

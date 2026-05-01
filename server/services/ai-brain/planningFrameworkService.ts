@@ -92,7 +92,7 @@ export interface PlanStep {
   
   // Execution details
   subagent?: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   
   // Dependencies
   dependsOn: string[];
@@ -129,7 +129,7 @@ export interface ReasoningNode {
   content: string;
   timestamp: Date;
   parentNodeId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RiskAssessment {
@@ -224,7 +224,6 @@ class PlanningFrameworkService {
     await this.logPlan(request, plan);
 
     // Publish event
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     platformEventBus.publish('ai_brain_action', {
       action: 'plan_created',
       planId,
@@ -299,7 +298,7 @@ Provide your plan as JSON:
   "confidence": 0.85
 }`;
 
-    const response = await (aiBrainService as any).query({
+    const response = await (aiBrainService as Record<string,unknown>).query({
       prompt,
       systemPrompt: 'You are an expert planning system. Create comprehensive, actionable plans with clear reasoning.',
       featureId: 'planning_framework',
@@ -308,7 +307,7 @@ Provide your plan as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(response.response || '{}');
     } catch {
@@ -380,7 +379,7 @@ Respond as JSON:
   "shouldContinue": true/false
 }`;
 
-    const response = await (aiBrainService as any).query({
+    const response = await (aiBrainService as Record<string,unknown>).query({
       prompt,
       systemPrompt: 'You are an intelligent agent using ReAct reasoning. Think step by step.',
       featureId: 'planning_framework',
@@ -389,7 +388,7 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     return {
       iterationNumber,
@@ -513,7 +512,7 @@ Respond as JSON:
   }
 }`;
 
-    const response = await (aiBrainService as any).query({
+    const response = await (aiBrainService as Record<string,unknown>).query({
       prompt,
       systemPrompt: 'You are an expert multi-path planning system. Explore alternatives thoroughly.',
       featureId: 'planning_framework',
@@ -522,12 +521,12 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     return this.buildPlanFromResponse(planId, request, {
       steps: parsed.synthesis?.finalSteps || [],
       confidence: parsed.synthesis?.confidence || 0.7,
-      reasoningSteps: parsed.approaches?.map((a: any) => `Approach: ${a.strategy}`) || [],
+      reasoningSteps: parsed.approaches?.map((a: unknown) => `Approach: ${a.strategy}`) || [],
     }, 'tree_of_thought');
   }
 
@@ -572,7 +571,7 @@ Respond as JSON:
   "confidence": 0.85
 }`;
 
-    const response = await (aiBrainService as any).query({
+    const response = await (aiBrainService as Record<string,unknown>).query({
       prompt,
       systemPrompt: 'You are an expert at breaking complex goals into manageable subgoals.',
       featureId: 'planning_framework',
@@ -581,10 +580,10 @@ Respond as JSON:
       responseFormat: 'json',
     });
 
-    let parsed: any; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
+    let parsed: unknown; try { parsed = JSON.parse(response.response || '{}'); } catch { parsed = {}; }
     
     // Flatten subgoals into steps
-    const steps: any[] = [];
+    const steps: (string | number | boolean | null)[] = [];
     let order = 1;
     
     for (const subgoal of (parsed.subgoals || [])) {
@@ -600,7 +599,7 @@ Respond as JSON:
     return this.buildPlanFromResponse(planId, request, {
       steps,
       confidence: parsed.confidence || 0.8,
-      reasoningSteps: (parsed.subgoals || []).map((sg: any) => `Subgoal: ${sg.name} - ${sg.description}`),
+      reasoningSteps: (parsed.subgoals || []).map((sg: unknown) => `Subgoal: ${sg.name} - ${sg.description}`),
     }, 'decomposition');
   }
 
@@ -613,7 +612,7 @@ Respond as JSON:
     parsed: any,
     framework: PlanningRequest['framework']
   ): ExecutionPlan {
-    const steps: PlanStep[] = (parsed.steps || []).map((s: any, i: number) => ({
+    const steps: PlanStep[] = (parsed.steps || []).map((s: unknown, i: number) => ({
       stepId: `step-${i + 1}`,
       order: s.order || i + 1,
       action: s.action || 'unknown',

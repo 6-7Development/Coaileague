@@ -116,7 +116,6 @@ async function populateDemoData() {
 
   const createdEmployees = [demoUserEmployee]; // Include demo user in employees list
   for (const emp of employeeData) {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const [employee] = await db.insert(employees).values({
       ...emp,
       workspaceId: DEMO_WORKSPACE_ID,
@@ -248,7 +247,7 @@ async function populateDemoData() {
 
   const clientRateMap = new Map<string, string>();
   for (const c of createdClients) {
-    clientRateMap.set(c.id, (c as any).contractRate || '40.00');
+    clientRateMap.set(c.id, (c as Record<string, unknown>).contractRate || '40.00');
   }
 
   const createdShifts = [];
@@ -378,7 +377,7 @@ async function populateDemoData() {
     workspaceId: DEMO_WORKSPACE_ID,
     clientId: createdClients[0].id,
     invoiceNumber: "INV-DEMO-001",
-    status: "paid" as any,
+    status: "paid",
     subtotal: invoice1Subtotal.toFixed(2),
     taxRate: invoice1TaxRate.toFixed(2),
     taxAmount: invoice1TaxAmount.toFixed(2),
@@ -386,7 +385,7 @@ async function populateDemoData() {
     platformFeePercentage: "10.00",
     platformFeeAmount: invoice1PlatformFee.toFixed(2),
     businessAmount: invoice1BusinessAmount.toFixed(2),
-  } as any).returning();
+  }).returning();
   const invoice1 = invoice1Result[0];
 
   await db.insert(invoiceLineItems).values({
@@ -414,7 +413,7 @@ async function populateDemoData() {
     workspaceId: DEMO_WORKSPACE_ID,
     clientId: createdClients[1].id,
     invoiceNumber: "INV-DEMO-002",
-    status: "sent" as any,
+    status: "sent",
     subtotal: invoice2Subtotal.toFixed(2),
     taxRate: invoice2TaxRate.toFixed(2),
     taxAmount: invoice2TaxAmount.toFixed(2),
@@ -422,7 +421,7 @@ async function populateDemoData() {
     platformFeePercentage: "10.00",
     platformFeeAmount: invoice2PlatformFee.toFixed(2),
     businessAmount: invoice2BusinessAmount.toFixed(2),
-  } as any).returning();
+  }).returning();
   const invoice2 = invoice2Result[0];
 
   await db.insert(invoiceLineItems).values([

@@ -142,7 +142,7 @@ const TASK_STATUS_COLORS: Record<string, string> = {
 
 export default function AICommandCenter() {
   const { user } = useAuth();
-  const workspaceRole = (user as any)?.workspaceRole || '';
+  const workspaceRole = (user as Record<string,unknown>)?.workspaceRole || '';
 
   const isFullAccess = ['org_owner', 'co_owner'].includes(workspaceRole);
   const isManagement = ['org_owner', 'co_owner', 'department_manager'].includes(workspaceRole);
@@ -372,7 +372,7 @@ export default function AICommandCenter() {
                     </div>
                   ) : approvals && approvals.length > 0 ? (
                     <div className="space-y-3">
-                      {approvals.map((approval: any) => (
+                      {approvals.map((approval) => (
                         <ApprovalCard key={approval.id} approval={approval} />
                       ))}
                     </div>
@@ -406,7 +406,7 @@ export default function AICommandCenter() {
                     </div>
                   ) : patterns && patterns.length > 0 ? (
                     <div className="space-y-3">
-                      {patterns.map((pattern: any) => (
+                      {patterns.map((pattern) => (
                         <PatternCard key={pattern.id} pattern={pattern} />
                       ))}
                     </div>
@@ -437,7 +437,7 @@ export default function AICommandCenter() {
                     </div>
                   ) : recentJobs && recentJobs.length > 0 ? (
                     <div className="space-y-2">
-                      {recentJobs.map((job: any) => (
+                      {recentJobs.map((job) => (
                         <JobCard key={job.id} job={job} />
                       ))}
                     </div>
@@ -837,7 +837,7 @@ function MetricCard({ label, value, icon }: any) {
   );
 }
 
-function ApprovalCard({ approval }: { approval: any }) {
+function ApprovalCard({ approval }: { approval: Record<string, unknown> }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors" data-testid={`approval-${approval.id}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -867,7 +867,7 @@ function ApprovalCard({ approval }: { approval: any }) {
   );
 }
 
-function PatternCard({ pattern }: { pattern: any }) {
+function PatternCard({ pattern }: { pattern: Record<string, unknown> }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4" data-testid={`pattern-${pattern.id}`}>
       <div className="flex items-start justify-between gap-2 mb-2">

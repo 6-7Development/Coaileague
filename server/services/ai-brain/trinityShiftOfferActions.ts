@@ -13,7 +13,7 @@ import { createLogger } from '../../lib/logger';
 
 const log = createLogger('TrinityShiftOfferActions');
 
-function ok(actionId: string, message: string, data: any, start: number): ActionResult {
+function ok(actionId: string, message: string, data: Record<string, unknown>, start: number): ActionResult {
   return { success: true, actionId, message, data, executionTimeMs: Date.now() - start };
 }
 function fail(actionId: string, message: string, start: number): ActionResult {
@@ -43,7 +43,7 @@ const sendShiftOffersAction: ActionHandler = {
         shiftId, workspaceId, location, date, startTime, endTime, hourlyRate, requiredLicense, maxOfficers,
       });
       return ok(request.actionId, `Shift offers sent to ${result.offered} officers`, result, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed to send shift offers: ${err.message}`, start);
     }
   },
@@ -70,7 +70,7 @@ const outboundWelfareCheckAction: ActionHandler = {
       });
       if (!result.success) return fail(request.actionId, result.error || 'Call failed', start);
       return ok(request.actionId, 'Welfare check call placed', result, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed to place welfare check: ${err.message}`, start);
     }
   },
@@ -96,7 +96,7 @@ const outboundCallAction: ActionHandler = {
       });
       if (!result.success) return fail(request.actionId, result.error || 'Call failed', start);
       return ok(request.actionId, 'Outbound call placed', result, start);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return fail(request.actionId, `Failed to place outbound call: ${err.message}`, start);
     }
   },

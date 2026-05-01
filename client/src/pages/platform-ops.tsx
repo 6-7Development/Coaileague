@@ -200,18 +200,18 @@ function SchedulerTab(): JSX.Element {
 
 function DemoTenantTab(): JSX.Element {
   const { toast } = useToast();
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<null>(null);
 
   const mut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/dev/demo-tenant-seed", {}),
-    onSuccess: (r: any) => {
+    onSuccess: (r) => {
       setResult(r);
       toast({
         title: r.created ? "Demo tenant created" : "Demo tenant already exists",
         description: r.workspaceName ? `Workspace: ${r.workspaceName}` : undefined,
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Seed failed", description: err?.message, variant: "destructive" });
     },
   });
@@ -253,18 +253,18 @@ function DemoTenantTab(): JSX.Element {
 
 function RegulatoryTab(): JSX.Element {
   const { toast } = useToast();
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<null>(null);
 
   const mut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/dev/seed-multi-state-regulatory", {}),
-    onSuccess: (r: any) => {
+    onSuccess: (r) => {
       setResult(r);
       toast({
         title: "Regulatory data seeded",
         description: `Seeded: ${(r.seeded || []).join(', ') || 'none'}. Skipped: ${(r.skipped || []).join(', ') || 'none'}.`,
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Seed failed", description: err?.message, variant: "destructive" });
     },
   });
@@ -300,18 +300,18 @@ function RegulatoryTab(): JSX.Element {
 function ComplianceTab(): JSX.Element {
   const { toast } = useToast();
   const [workspaceId, setWorkspaceId] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<null>(null);
 
   const mut = useMutation({
     mutationFn: () => apiRequest("POST", `/api/dev/compliance-snapshot/${workspaceId}`, {}),
-    onSuccess: (r: any) => {
+    onSuccess: (r) => {
       setResult(r);
       toast({
         title: "Snapshot recorded",
         description: r.alerted ? "Score dropped — owners alerted." : `Score: ${r.score}`,
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Snapshot failed", description: err?.message, variant: "destructive" });
     },
   });
@@ -351,18 +351,18 @@ function ComplianceTab(): JSX.Element {
 
 function RetentionTab(): JSX.Element {
   const { toast } = useToast();
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<null>(null);
 
   const mut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/dev/retention-scan", {}),
-    onSuccess: (r: any) => {
+    onSuccess: (r) => {
       setResult(r);
       toast({
         title: "Retention scan complete",
         description: `${r.scanned} workspaces scanned, ${r.decisions?.length || 0} non-retain decisions.`,
       });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Scan failed", description: err?.message, variant: "destructive" });
     },
   });
@@ -394,7 +394,7 @@ function RetentionTab(): JSX.Element {
               <div className="text-xs">
                 <div className="font-semibold mb-1">Decisions</div>
                 <ul className="divide-y border rounded">
-                  {result.decisions.slice(0, 20).map((d: any) => (
+                  {result.decisions.slice(0, 20).map((d) => (
                     <li key={d.workspaceId} className="flex justify-between px-2 py-1">
                       <span className="font-mono">{d.workspaceId.slice(0, 18)}</span>
                       <span className="text-muted-foreground">{d.decision.action}{d.decision.reason ? ` · ${d.decision.reason}` : ''}</span>

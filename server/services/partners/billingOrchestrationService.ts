@@ -90,11 +90,11 @@ class IdentityReconcilerAgent {
   ): Promise<{
     ok: boolean;
     missing: { entityType: string; internalId: string }[];
-    ambiguous: { entityType: string; internalId: string; candidates: any[] }[];
+    ambiguous: { entityType: string; internalId: string; candidates: unknown[] }[];
     stale: { entityType: string; internalId: string; reason: string }[];
   }> {
     const missing: { entityType: string; internalId: string }[] = [];
-    const ambiguous: { entityType: string; internalId: string; candidates: any[] }[] = [];
+    const ambiguous: { entityType: string; internalId: string; candidates: unknown[] }[] = [];
     const stale: { entityType: string; internalId: string; reason: string }[] = [];
 
     const existingMappings = await db.select()
@@ -337,7 +337,7 @@ class PolicyRulesAgent {
       const employeeIds = new Set<string>();
 
       for (const shift of clientShifts) {
-        let shiftHours = (shift as any).totalHours || 0;
+        let shiftHours = (shift as Record<string,unknown>).totalHours || 0;
         
         const breakRules = clientPolicy?.breakRules as { unpaidBreakMinutes?: number; autoDeductBreaks?: boolean } | null;
         if (breakRules?.autoDeductBreaks && shiftHours > 6) {
@@ -383,7 +383,7 @@ class RiskGateAgent {
     cycleKey: string,
     clientId: string,
     invoiceTotal: number,
-    mappingStatus: { ok: boolean; missing: any[]; ambiguous: any[] }
+    mappingStatus: { ok: boolean; missing: unknown[]; ambiguous: unknown[] }
   ): Promise<RiskGateResult> {
     const riskSignals: RiskSignal[] = [];
 
@@ -463,7 +463,6 @@ class BillingStateManagerAgent {
     }
 
     const currentState = lifecycle.currentState;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const allowedTransitions = this.validTransitions[currentState] || [];
 
     if (!allowedTransitions.includes(newState)) {
@@ -484,14 +483,13 @@ class BillingStateManagerAgent {
 
     await db.update(invoiceLifecycleStates)
       .set({
-        currentState: newState as any,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+        currentState: newState as unknown,
         previousState: currentState,
         stateChangedAt: new Date(),
         stateChangedBy: options?.userId,
         stateHistory,
-        qboInvoiceId: options?.qboInvoiceId || (lifecycle as any).qboInvoiceId,
-        qboDocNumber: options?.qboDocNumber || (lifecycle as any).qboDocNumber,
+        qboInvoiceId: options?.qboInvoiceId || (lifecycle as Record<string,unknown>).qboInvoiceId,
+        qboDocNumber: options?.qboDocNumber || (lifecycle as Record<string,unknown>).qboDocNumber,
         updatedAt: new Date(),
       })
       .where(eq(invoiceLifecycleStates.id, lifecycle.id));
@@ -884,7 +882,7 @@ class WeeklyInvoiceOrchestrator {
 
           invoicesCreated++;
 
-        } catch (error: any) {
+        } catch (error : unknown) {
           await this.exceptionTriage.triage(
             workspaceId,
             realmId,
@@ -916,7 +914,7 @@ class WeeklyInvoiceOrchestrator {
         errors,
       };
 
-    } catch (error: any) {
+    } catch (error : unknown) {
       return {
         success: false,
         invoicesCreated,
@@ -938,7 +936,7 @@ export const auditPackAgent = new AuditPackAgent();
 export const weeklyInvoiceOrchestrator = new WeeklyInvoiceOrchestrator();
 
 export function registerBillingOrchestrationActions() {
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.run_weekly_invoice',
     name: 'Run Weekly Invoice Workflow',
     category: 'invoicing',
@@ -953,7 +951,7 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.check_identity_mappings',
     name: 'Check Identity Mappings',
     category: 'invoicing',
@@ -968,14 +966,14 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.evaluate_risk',
     name: 'Evaluate Invoice Risk',
     category: 'invoicing',
     description: 'Evaluate risk signals for an invoice to determine if auto-send or approval required',
     requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
     handler: async (params: { workspaceId: string; cycleKey: string; clientId: string; invoiceTotal: number; connectionId?: string }) => {
-      let mappingStatus: { ok: boolean; missing: any[]; ambiguous: any[]; stale?: any[] } = { ok: true, missing: [], ambiguous: [] };
+      let mappingStatus: { ok: boolean; missing: unknown[]; ambiguous: unknown[]; stale?: unknown[] } = { ok: true, missing: [], ambiguous: [] };
       
       if (params.connectionId) {
         const reconcileResult = await identityReconcilerAgent.reconcile(
@@ -1001,7 +999,7 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.transition_state',
     name: 'Transition Invoice State',
     category: 'invoicing',
@@ -1018,7 +1016,7 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.get_exception_queue',
     name: 'Get Exception Queue',
     category: 'invoicing',
@@ -1036,7 +1034,7 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.resolve_exception',
     name: 'Resolve Exception',
     category: 'invoicing',
@@ -1052,7 +1050,7 @@ export function registerBillingOrchestrationActions() {
     },
   });
 
-  (helpaiOrchestrator as any).registerAction({
+  (helpaiOrchestrator as Record<string,unknown>).registerAction({
     actionId: 'billing.generate_audit_pack',
     name: 'Generate Audit Pack',
     category: 'invoicing',

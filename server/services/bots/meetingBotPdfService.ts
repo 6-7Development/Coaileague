@@ -78,10 +78,10 @@ class MeetingBotPdfService {
         const { shiftRoomBotOrchestrator } = await import('./shiftRoomBotOrchestrator');
         const botData = shiftRoomBotOrchestrator.getMeetingBotData(conversationId);
         if (botData) {
-          botMotions = (botData as any).motions || [];
-          botVotes = (botData as any).votes || [];
-          botAttendees = (botData as any).attendees || [];
-          meetingType = (botData as any).meetingType;
+          botMotions = (botData as Record<string,unknown>).motions || [];
+          botVotes = (botData as Record<string,unknown>).votes || [];
+          botAttendees = (botData as Record<string,unknown>).attendees || [];
+          meetingType = (botData as Record<string,unknown>).meetingType;
         }
       } catch {
         // Non-blocking — proceed without in-memory data
@@ -103,9 +103,8 @@ class MeetingBotPdfService {
 
       for (const msg of rawMessages) {
         if (msg.senderType === 'system') continue;
-        const meta = (msg as any).metadata || {};
+        const meta = (msg as Record<string, unknown>).metadata || {};
         const author = msg.senderName || 'Unknown';
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const ts = new Date(msg.createdAt);
 
         if (msg.senderType !== 'bot') {
@@ -271,7 +270,6 @@ class MeetingBotPdfService {
             title: 'Meeting Summary Ready',
             message: `MeetingBot generated a meeting summary for "${conv.subject || 'Meeting'}". ${items.filter(i => i.type === 'action').length} action items, ${items.filter(i => i.type === 'decision').length} decisions.`,
             metadata: { documentId: docId, conversationId, category: 'meetings' },
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             priority: 'normal',
             idempotencyKey: `document-${Date.now()}-${mgr.id}`
           });
@@ -281,7 +279,7 @@ class MeetingBotPdfService {
       }
 
       return { success: true, documentId: docId, summaryText: aiSummary };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { success: false, error: err?.message || String(err) };
     }
   }

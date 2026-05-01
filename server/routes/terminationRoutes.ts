@@ -1,10 +1,11 @@
+import { type Response } from 'express';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
 import { db, pool } from "../db";
 import { sql } from "drizzle-orm";
-import { hasManagerAccess, resolveWorkspaceForUser, getUserPlatformRole, hasPlatformWideAccess } from "../rbac";
+import { hasManagerAccess, resolveWorkspaceForUser, getUserPlatformRole, hasPlatformWideAccess, AuthenticatedRequest} from "../rbac";
 import { platformEventBus } from "../services/platformEventBus";
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
@@ -13,7 +14,7 @@ const log = createLogger('TerminationRoutes');
 
 const router = Router();
 
-async function requireManagerForTermination(req: any, res: any): Promise<{ workspace: any } | null> {
+async function requireManagerForTermination(req: AuthenticatedRequest, res: Response): Promise<{ workspace: Record<string, unknown> } | null> {
   const userId = req.user?.id || req.user?.claims?.sub;
   if (!userId) { res.status(401).json({ message: "Unauthorized" }); return null; }
   const platformRole = await getUserPlatformRole(userId);
@@ -30,7 +31,7 @@ async function requireManagerForTermination(req: any, res: any): Promise<{ works
   return { workspace };
 }
 
-router.get("/terminations", requireAuth, async (req: any, res) => {
+router.get("/terminations", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await requireManagerForTermination(req, res);
     if (!result) return;
@@ -44,7 +45,7 @@ router.get("/terminations", requireAuth, async (req: any, res) => {
   }
 });
 
-router.post("/terminations", requireAuth, async (req: any, res) => {
+router.post("/terminations", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await requireManagerForTermination(req, res);
     if (!result) return;
@@ -69,7 +70,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
         const delibCtx = {
           requestType: 'terminate_employee' as const,
           requestedBy: req.user?.id || 'unknown',
-          requestedByRole: (result as any)?.workspace?.role || '',
+          requestedByRole: (result as Record<string,unknown>)?.workspace?.role || '',
           workspaceId: workspace.id,
           targetId: validated.employeeId || undefined,
           targetType: 'employee' as const,
@@ -104,7 +105,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
             overrideAvailable: false,
           });
         }
-      } catch (deliberationErr: any) {
+      } catch (deliberationErr: unknown) {
         log.warn('[Termination] Deliberation failed (non-fatal):', deliberationErr?.message);
       }
     }
@@ -136,7 +137,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
                 AND status NOT IN ('completed','cancelled','no_show')
                 AND (date >= CURRENT_DATE OR start_time >= NOW())`
         );
-        const shiftsCancelled = (cancelledShifts as any).rowCount || 0;
+        const shiftsCancelled = (cancelledShifts as Record<string,unknown>).rowCount || 0;
 
         // 3. Trinity audit — Who/What/Where/When/Why (must succeed or rollback)
         const { auditLogs } = await import('@shared/schema');
@@ -144,7 +145,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
           workspaceId: workspace.id,
           userId: req.user?.id || 'system',
           userEmail: req.user?.email || 'system',
-          action: 'employee_terminated' as any,
+          action: 'employee_terminated',
           entityType: 'employee',
           entityId: employeeId,
           changes: {
@@ -154,7 +155,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
             when: new Date().toISOString(),
             why: validated.reason || 'Termination',
             shiftsCancelled,
-            terminationType: (validated as any).terminationType || 'involuntary',
+            terminationType: (validated as Record<string,unknown>).terminationType || 'involuntary',
           },
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'] || null,
@@ -173,8 +174,8 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
       // Invalidate employee's auth tokens via authService
       try {
         const { authService } = await import('./authService');
-        if ((authService as any).revokeAllSessionsForUser) {
-          await (authService as any).revokeAllSessionsForUser(employeeId);
+        if ((authService as Record<string,unknown>).revokeAllSessionsForUser) {
+          await (authService as Record<string,unknown>).revokeAllSessionsForUser(employeeId);
         }
       } catch (revokeErr) {
         log.warn('[Termination] Session revocation failed (non-fatal):', revokeErr);
@@ -198,7 +199,7 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
            WHERE employee_id = $2 AND workspace_id = $3
         `, [validated.reason || 'terminated', validated.employeeId, workspace.id]);
         log.info(`[CrossTenantScore] Score persisted to global pool for ${validated.employeeId}`);
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.warn('[CrossTenantScore] Persist failed (non-fatal):', err?.message);
       }
     });

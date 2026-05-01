@@ -17,11 +17,11 @@ import { typedQuery } from '../../lib/typedSql';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityOpsActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity action: ${actionId}`,
     requiredRoles: [],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -35,7 +35,7 @@ function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHa
           data,
           executionTimeMs: Date.now() - start,
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         return {
           success: false,
           actionId,
@@ -154,7 +154,7 @@ export function registerOpsActions() {
       try {
         await db.insert(shifts).values({ ...data, workspaceId, startTime: new Date(data.startTime), endTime: new Date(data.endTime) });
         imported++;
-      } catch (e: any) { failed++; errors.push(e.message); }
+      } catch (e: unknown) { failed++; errors.push(e.message); }
     }
     return { imported, failed, errors };
   }));
@@ -175,7 +175,7 @@ export function registerOpsActions() {
           description: `Client ${newClient.companyName || newClient.firstName} added via bulk import`,
           data: { clientId: newClient.id, companyName: newClient.companyName, source: 'bulk_import' },
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         failed++;
         errors.push(e?.message || 'Unknown error');
         log.warn('[TrinityOpsActions] bulk.import_clients: failed to insert client', { workspaceId, data, error: e?.message });
@@ -197,7 +197,7 @@ export function registerOpsActions() {
           clockOut: data.clockOut ? new Date(data.clockOut) : undefined,
         });
         imported++;
-      } catch (e: any) {
+      } catch (e: unknown) {
         failed++;
         log.warn('[TrinityOpsActions] bulk.import_time_entries: failed to insert entry', { workspaceId, error: e?.message });
       }
@@ -230,7 +230,7 @@ export function registerOpsActions() {
     const { workspaceId, startDate, endDate } = params;
     const entries = await db.select({
       employeeName: sql<string>`${employees.firstName} || ' ' || ${employees.lastName}`,
-      date: (timeEntries as any).date,
+      date: (timeEntries as Record<string,unknown>).date,
       clockIn: timeEntries.clockIn,
       clockOut: timeEntries.clockOut,
       hours: timeEntries.totalHours,
@@ -240,9 +240,7 @@ export function registerOpsActions() {
     .innerJoin(employees, eq(timeEntries.employeeId, employees.id))
     .where(and(
       eq(timeEntries.workspaceId, workspaceId),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       startDate ? gte(timeEntries.date, startDate) : undefined,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       endDate ? lte(timeEntries.date, endDate) : undefined
     ));
     return { rows: entries, count: entries.length, csvAvailable: true };
@@ -285,24 +283,24 @@ export function registerOpsActions() {
       LEFT JOIN employee_payroll_info epi ON epi.employee_id = e.id
       WHERE e.workspace_id = ${workspaceId} AND e.status = 'active'
     `);
-    const pr = ((payrollInfoRows as any[])[0] || {}) as any;
+    const pr = ((payrollInfoRows as unknown[])[0] || {}) as unknown;
 
     const checks = {
       org: {
-        ein: !!(ws as any).taxId,
-        companyName: !!(ws as any).companyName || !!(ws as any).name,
-        address: !!(ws as any).address,
-        stateLicense: !!(ws as any).stateLicenseNumber,
+        ein: !!(ws as Record<string,unknown>).taxId,
+        companyName: !!(ws as Record<string,unknown>).companyName || !!(ws as Record<string,unknown>).name,
+        address: !!(ws as Record<string,unknown>).address,
+        stateLicense: !!(ws as Record<string,unknown>).stateLicenseNumber,
       },
       invoice: {
-        billingEmail: !!(ws as any).billingEmail,
-        invoicePrefix: !!(ws as any).invoicePrefix,
-        paymentTerms: !!((ws as any).paymentTermsDays),
-        clientsBillingReady: Number((clientRows as any)?.missingEmail || 0) === 0,
-        clientsRateReady: Number((clientRows as any)?.missingRate || 0) === 0,
+        billingEmail: !!(ws as Record<string,unknown>).billingEmail,
+        invoicePrefix: !!(ws as Record<string,unknown>).invoicePrefix,
+        paymentTerms: !!((ws as Record<string,unknown>).paymentTermsDays),
+        clientsBillingReady: Number((clientRows as Record<string,unknown>)?.missingEmail || 0) === 0,
+        clientsRateReady: Number((clientRows as Record<string,unknown>)?.missingRate || 0) === 0,
       },
       payroll: {
-        payrollSchedule: !!(ws as any).payrollSchedule,
+        payrollSchedule: !!(ws as Record<string,unknown>).payrollSchedule,
         employeesHaveBank: Number(pr.missing_bank || 0) === 0,
         employeesHaveW4: Number(pr.missing_w4 || 0) === 0,
         employeesHaveI9: Number(pr.missing_i9 || 0) === 0,

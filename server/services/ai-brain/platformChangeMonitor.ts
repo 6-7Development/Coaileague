@@ -26,7 +26,7 @@ interface PlatformSnapshot {
   schemaVersion: string;
   serviceCount: number;
   routeCount: number;
-  healthStatus: Record<string, any>;
+  healthStatus: Record<string, unknown>;
   keyFiles: Record<string, string>;
   timestamp: Date;
 }
@@ -308,8 +308,8 @@ class PlatformChangeMonitorService {
             platformStatus: 'operational',
             requiresAction: aiSummary.requiresAction,
             actionRequired: aiSummary.actionRequired,
-            detailedCategory: aiSummary.detailedCategory as any,
-            sourceType: aiSummary.sourceType as any,
+            detailedCategory: aiSummary.detailedCategory as unknown,
+            sourceType: aiSummary.sourceType as string,
             sourceName: aiSummary.sourceName,
             endUserSummary: aiSummary.endUserSummary,
             brokenDescription: aiSummary.brokenDescription,
@@ -395,7 +395,7 @@ class PlatformChangeMonitorService {
 
     const schemaContent = keyFiles['shared/schema.ts'] || 'unknown';
     
-    let healthStatus: Record<string, any> = {};
+    let healthStatus: Record<string, unknown> = {};
     try {
       healthStatus = await getDetailedHealthReport();
     } catch (e) {
@@ -409,8 +409,7 @@ class PlatformChangeMonitorService {
         const content = fs.readFileSync(routesPath, 'utf-8');
         routeCount = (content.match(/app\.(get|post|put|patch|delete)\(/gi) || []).length;
       }
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    } catch (e: any) { log.warn('[PlatformChangeMonitor] Route scan failed:', e.message); }
+    } catch (e: unknown) { log.warn('[PlatformChangeMonitor] Route scan failed:', e.message); }
 
     return {
       codebaseHash: combinedHash,
@@ -482,8 +481,8 @@ class PlatformChangeMonitorService {
       }
     }
 
-    const prevHealth = previous.healthStatus as any;
-    const currHealth = current.healthStatus as any;
+    const prevHealth = previous.healthStatus as unknown;
+    const currHealth = current.healthStatus as unknown;
     
     if (prevHealth?.overall !== currHealth?.overall) {
       changes.push({
@@ -648,7 +647,6 @@ Respond ONLY with valid JSON:
       });
 
       if (!result.success) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.warn('[PlatformChangeMonitor] AI generation failed, using fallback');
         return this.generateFallbackResponse(change);
       }
@@ -659,7 +657,7 @@ Respond ONLY with valid JSON:
       
       if (jsonMatch) {
         try {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           // Sanitize title - remove "undefined" literals and ensure valid title
           let safeTitle = parsed.title?.substring(0, 70) || '';
           safeTitle = safeTitle.replace(/undefined/gi, '').trim();
@@ -826,7 +824,7 @@ Respond ONLY with valid JSON:
     if (!category) return 'announcement'; // Default generic updates go to What's New
     
     // Direct match to valid enum value
-    if (PlatformChangeMonitorService.VALID_CATEGORIES.includes(category as any)) {
+    if (PlatformChangeMonitorService.VALID_CATEGORIES.includes(category as unknown)) {
       return category;
     }
     
@@ -1128,7 +1126,6 @@ Respond ONLY with valid JSON:
         .groupBy(users.currentWorkspaceId);
       
       if (uniqueWorkspaces.length === 0) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.info('[PlatformChangeMonitor] No workspaces to notify');
         return 0;
       }
@@ -1137,10 +1134,9 @@ Respond ONLY with valid JSON:
 
       // Ensure title is never empty - this was causing 0 notifications
       if (!summary.title || summary.title.trim().length < 3) {
-        const moduleNames = (summary as any).affectedModules || [];
+        const moduleNames = (summary as Record<string,unknown>).affectedModules || [];
         const moduleName = moduleNames[0] ? this.formatModuleName(moduleNames[0]) : 'Platform';
         summary.title = `${moduleName} Updated`;
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.warn(`[PlatformChangeMonitor] Empty title detected, using fallback: ${summary.title}`);
       }
       if (!summary.endUserSummary || summary.endUserSummary.trim().length < 3) {
@@ -1204,7 +1200,6 @@ Respond ONLY with valid JSON:
           this.log.info(`[PlatformChangeMonitor] Skipped duplicate platform update`);
         }
       } catch (platformUpdateError) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         log.error('[PlatformChangeMonitor] Failed to create platform update:', platformUpdateError);
       }
 

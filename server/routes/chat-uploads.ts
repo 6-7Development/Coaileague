@@ -239,7 +239,7 @@ router.post(
           : storagePath;
         
         // Get scan result from middleware (attached to file object)
-        const scanResult = (file as any).scanResult;
+        const scanResult = (file as Record<string,unknown>).scanResult;
 
         // Save to database with ORIGINAL filename for audit trail
         const [uploadRecord] = await db
@@ -313,10 +313,10 @@ router.post(
             const chatroomResult = await typedPool(
               `SELECT id, shift_id, assigned_employee_id FROM shift_chatrooms WHERE id = $1 LIMIT 1`,
               [conversationId]
-            ).catch(() => [] as any[]);
+            ).catch(() => []);
             const chatroomRows = Array.isArray(chatroomResult)
               ? chatroomResult
-              : ((chatroomResult as any)?.rows || []);
+              : ((chatroomResult as Record<string,unknown>)?.rows || []);
             const isShiftChatroom = chatroomRows.length > 0;
             const shiftChatroom = isShiftChatroom ? chatroomRows[0] : null;
 
@@ -334,7 +334,7 @@ router.post(
               }
 
               for (const f of imageUploads) {
-                const msgMeta: Record<string, any> = {};
+                const msgMeta: Record<string, unknown> = {};
                 if (gpsData) msgMeta.gps = gpsData;
                 // CATEGORY C — Raw SQL retained: ::jsonb | Tables: shift_chatroom_messages | Verified: 2026-03-23
                 const insertedMessageRows = await typedPool(
@@ -352,8 +352,8 @@ router.post(
                 const messageId = insertedMessageRows?.rows?.[0]?.id;
 
                 // Persist GPS-tagged photo evidence to shift_proof_photos (critical durability).
-                const gpsLatRaw = (gpsData as any)?.lat ?? (gpsData as any)?.latitude;
-                const gpsLngRaw = (gpsData as any)?.lng ?? (gpsData as any)?.longitude;
+                const gpsLatRaw = (gpsData as Record<string,unknown>)?.lat ?? (gpsData as Record<string,unknown>)?.latitude;
+                const gpsLngRaw = (gpsData as Record<string,unknown>)?.lng ?? (gpsData as Record<string,unknown>)?.longitude;
                 const gpsLat = gpsLatRaw !== undefined && gpsLatRaw !== null ? Number(gpsLatRaw) : NaN;
                 const gpsLng = gpsLngRaw !== undefined && gpsLngRaw !== null ? Number(gpsLngRaw) : NaN;
                 if (
@@ -415,7 +415,6 @@ router.post(
                     });
                   }
                 } catch (botErr: unknown) {
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   log.warn('[ChatUploads] ReportBot photo ack failed (non-blocking):', botErr.message);
                 }
               })();
@@ -427,11 +426,9 @@ router.post(
               `SELECT id, photo_manifest, photo_count FROM dar_reports WHERE chatroom_id = $1 AND workspace_id = $2 LIMIT 1`,
               [conversationId, workspaceId]
             );
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             if (darResult.length > 0) {
-              // @ts-expect-error — TS migration: fix in refactoring sprint
               const dar = darResult[0];
-              const existingManifest: any[] = Array.isArray(dar.photo_manifest) ? dar.photo_manifest : [];
+              const existingManifest: unknown[] = Array.isArray(dar.photo_manifest) ? dar.photo_manifest : [];
               const newEntries = imageUploads.map(f => ({
                 url: f.url,
                 filename: f.originalFilename || f.filename,
@@ -454,7 +451,6 @@ router.post(
             }
           }
         } catch (darErr: unknown) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           log.warn('[ChatUploads] DAR photo manifest link failed (non-blocking):', darErr.message);
         }
       }
@@ -493,9 +489,9 @@ router.post(
                 uploaderName: userName,
                 hasGps: !!gpsData,
               },
-            }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+            }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
           } catch (evtErr: unknown) {
-            log.warn('[ChatUploads] Image event emission failed (non-blocking):', (evtErr as any)?.message);
+            log.warn('[ChatUploads] Image event emission failed (non-blocking):', (evtErr as Record<string,unknown>)?.message);
           }
         }
       }

@@ -44,7 +44,7 @@ import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 // ============================================================================
 export const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -139,6 +139,7 @@ import surveyRoutes, { surveyPublicRouter } from './routes/surveyRoutes';
 import wellnessRoutes from './routes/wellnessRoutes';
 import trainingCertificationRouter from './routes/trainingCertificationRoutes';
 import alertConfigRouter from './routes/alertConfigRoutes';
+import featureStubRouter from './routes/featureStubRoutes';
 import { trinityThoughtStatusRouter } from './routes/trinityThoughtStatusRoutes';
 import { platformConfigValuesRouter } from './routes/platformConfigValuesRoutes';
 import { ensureWorkspaceAccess } from './middleware/workspaceScope';
@@ -161,13 +162,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // STARTUP: SEED ROOT USER AND PLATFORM WORKSPACE (background, non-blocking)
   // ============================================================================
   // Run seeding in the background so port opens immediately even if DB is slow.
-  const seedWithRetry = async (fn: () => Promise<any>, name: string, maxAttempts = 8) => {
+  const seedWithRetry = async (fn: () => Promise<unknown>, name: string, maxAttempts = 8) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         await fn();
         log.info(`[Startup] ${name} succeeded on attempt ${attempt}`);
         return;
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (attempt === maxAttempts) {
           log.warn(`[Startup] ${name} failed after ${maxAttempts} attempts (non-blocking):`, err?.message);
           return;
@@ -454,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   log.info('[ROUTE-INIT] step: websocket-setup');
   const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = await import("./websocket");
   notificationStateManager.setBroadcastFunction((ws, uid, type, data, count) =>
-    broadcastNotification(ws, uid, type as any, data, count)
+    broadcastNotification(ws, uid, type as unknown, data, count)
   );
 
   log.info('[ROUTE-INIT] step: platform-event-bus');
@@ -462,10 +463,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   platformEventBus.setWebSocketHandler((event) => {
     broadcastPlatformUpdate({
       type: "platform_update",
-      category: event.category as any,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      category: event.category as unknown,
       title: event.title,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       description: event.description,
       version: event.version,
       priority: event.priority,
@@ -492,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // to give developers a reliable 1-click login even when the main flow has issues.
   // NEVER active in production — gated by isProductionEnv() which checks Railway env.
   if (!isProductionEnv()) {
-    app.post('/api/dev/quick-login', async (req: any, res: any) => {
+    app.post('/api/dev/quick-login', async (req: AuthenticatedRequest, res: Response) => {
       try {
         const { account } = req.body || {};
         const { pool: devPool } = await import('./db');
@@ -529,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.plan = account === 'root' ? 'enterprise' : 'enterprise';
         
         await new Promise<void>((resolve, reject) => {
-          req.session.save((err: any) => err ? reject(err) : resolve());
+          req.session.save((err: unknown) => err ? reject(err) : resolve());
         });
         
         log.info(`[DevQuickLogin] Logged in as ${email} (${user.id})`);
@@ -545,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currentWorkspaceId: effectiveWorkspaceId,
           }
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         log.error('[DevQuickLogin] Error:', err?.message);
         return res.status(500).json({ success: false, error: err?.message });
       }
@@ -567,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stress test bypass (non-production only)
   const stressTestKey = process.env.STRESS_TEST_KEY || (process.env.NODE_ENV !== "production" ? "stress-test-internal-2026" : "");
   if (process.env.STRESS_TEST_MODE === "true" && stressTestKey) {
-    app.use("/api", (req: any, res: any, next: any) => {
+    app.use("/api", (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
       if (req.get("x-stress-key") === stressTestKey) {
         req.session.userId = "root-user-00000000";
         req.session.workspaceId = "dev-acme-security-ws";
@@ -591,14 +590,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Billing/webhook routes are exempt so operators can recover payment.
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (isPublicPath(req.path)) return next();
-    return subscriptionReadOnlyGuard(req as any, res, next);
+    return subscriptionReadOnlyGuard(req as unknown, res, next);
   });
 
   // Cancelled workspace guard: full block (403) for all /api routes when workspace is cancelled.
   // Auth/health/billing are always exempt so operators can sign in and re-activate.
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (isPublicPath(req.path)) return next();
-    return cancelledWorkspaceGuard(req as any, res, next);
+    return cancelledWorkspaceGuard(req as unknown, res, next);
   });
 
   // Terminated employee guard: enforce 14-day read-only grace period after termination.
@@ -624,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // load. The strict authLimiter is applied only to the specific brute-force
   // targets (login, register, password reset) inside registerAuthRoutes().
 
-  app.use("/api", (req: any, res: any, next: any) => {
+  app.use("/api", (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
     if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS") {
       return mutationLimiter(req, res, next);
     }
@@ -911,11 +910,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/voice', voiceRouter);
   // Twilio SMS webhook aliases — Twilio console expects /api/sms/inbound and
   // /api/sms/status. Forward to voiceRouter's sms-inbound / sms-status handlers.
-  app.post('/api/sms/inbound', (req: any, res: any, next: any) => {
+  app.post('/api/sms/inbound', (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
     req.url = '/sms-inbound';
     voiceRouter(req, res, next);
   });
-  app.post('/api/sms/status', (req: any, res: any, next: any) => {
+  app.post('/api/sms/status', (req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
     req.url = '/sms-status';
     voiceRouter(req, res, next);
   });
@@ -939,6 +938,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   log.info('[ROUTE-INIT] step: security-admin-routes');
   const { securityAdminRouter } = await import('./routes/securityAdminRoutes');
   app.use('/api/security-admin', securityAdminRouter);
+
+  // ACME sandbox simulation — orchestrates the full demo month, persists
+  // clearly-fake artifacts, runs chaos tests, and emits the holistic
+  // telemetry log. Disabled in production (the routes themselves refuse).
+  log.info('[ROUTE-INIT] step: acme-sandbox-routes');
+  const { acmeSandboxRouter } = await import('./routes/acmeSandboxRoutes');
+  app.use('/api/sandbox/acme', acmeSandboxRouter);
 
   // Phase 13: Inbound email webhook receivers (calloffs@, incidents@, docs@, support@)
   // No auth required — Resend POSTs here; signature verification is internal.
@@ -966,6 +972,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mega Phase: Legal consent (accept agreements, opt-out, consent prefs)
   // Note: /api/legal/opt-out is public (TCPA compliance), others require auth
   app.use("/api/legal", legalConsentRouter);
+  // Feature stubs — graceful 503 for genuinely unbuilt features.
+  // NOTE: Mounted LAST so real domain routes always take precedence.
+  // ⚠  Must stay at the bottom of all app.use() registrations.
+  // (moved from middle of routes to avoid shadowing billing + ops domain mounts)
   // Legal document downloads — DPA, AUP (Phase 52; public, no auth required)
   // MUST be mounted here, BEFORE any domain that uses app.use("/api", requireAuth, ...)
   // catch-alls (billing, compliance, comms). Route: GET /api/legal/dpa/download
@@ -1043,13 +1053,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── ACTIVE-OPERATIONS: same bypass — all workspace members can poll this ──
   // TrinityThoughtBar calls /api/trinity/active-operations on every dashboard load.
   // Must NOT go through requireTrinityAccess (platform staff only) or it 403s every user.
-  app.use('/api/trinity/active-operations', requireAuth, ensureWorkspaceAccess, (req: any, res: any) => {
+  app.use('/api/trinity/active-operations', requireAuth, ensureWorkspaceAccess, (req: AuthenticatedRequest, res: Response) => {
     // Inline handler — imports universalStepLogger to get active orchestrations
     import('./services/orchestration/universalStepLogger').then(({ universalStepLogger }) => {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: 'workspaceId required' });
       const active = universalStepLogger.getActiveOrchestrations(workspaceId);
-      const operations = active.map((ctx: any) => ({
+      const operations = active.map((ctx: unknown) => ({
         orchestrationId: ctx.orchestrationId,
         domain: ctx.domain,
         actionName: ctx.actionName,
@@ -1057,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentStep: ctx.steps?.[ctx.steps.length - 1]?.step || 'TRIGGER',
         stepStatus: ctx.steps?.[ctx.steps.length - 1]?.status || 'pending',
         progress: ctx.steps?.length > 0
-          ? Math.round((ctx.steps.filter((s: any) => s.status === 'completed').length / ctx.steps.length) * 100)
+          ? Math.round((ctx.steps.filter((s: unknown) => s.status === 'completed').length / ctx.steps.length) * 100)
           : 0,
         modelUsed: ctx.metadata?.modelUsed || 'claude',
       }));
@@ -1124,12 +1134,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: sqlRaw`now()`,
         });
         log.info("[EnterpriseInquiry] Lead persisted to DB for:", email);
-      } catch (dbErr: any) {
+      } catch (dbErr: unknown) {
         log.error("[EnterpriseInquiry] DB persist failed (non-fatal):", dbErr?.message);
       }
 
       return res.status(200).json({ success: true, message: "Inquiry received — we will be in touch within 24 hours." });
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error("[EnterpriseInquiry] Error:", err?.message);
       return res.status(500).json({ error: "Failed to submit inquiry" });
     }
@@ -1140,7 +1150,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Global Express Error Handler ──────────────────────────────────────────
   // Must be registered AFTER all routes (4-argument signature tells Express this is an error handler)
-  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  // ── Feature stubs — must be LAST, after all real domain routes ──────────────
+  // Only fires for routes that have no real handler registered above.
+  app.use("/api", requireAuth, featureStubRouter);
+
+  app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     const status: number = typeof err.statusCode === "number" ? err.statusCode
       : typeof err.status === "number" ? err.status
       : 500;

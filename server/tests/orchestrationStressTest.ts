@@ -40,7 +40,7 @@ function fileExists(relPath: string): boolean {
   return fs.existsSync(path.join(process.cwd(), relPath));
 }
 
-function extractRows(result: any): any[] {
+function extractRows(result: unknown): unknown[] {
   if (Array.isArray(result)) return result;
   if (result?.rows && Array.isArray(result.rows)) return result.rows;
   return [];
@@ -101,7 +101,7 @@ async function phase1_db_table_coverage() {
     AND table_name = ANY(ARRAY[${sql.raw(requiredTables.map(t => `'${t}'`).join(','))}])
     ORDER BY table_name
   `);
-  const found = new Set(extractRows(res).map((r: any) => r.table_name));
+  const found = new Set(extractRows(res).map((r: unknown) => r.table_name));
   const missing = requiredTables.filter(t => !found.has(t));
 
   record({
@@ -120,7 +120,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'helpai_sessions' ORDER BY ordinal_position
   `);
-  const haCols = new Set(extractRows(helpaiCols).map((r: any) => r.column_name));
+  const haCols = new Set(extractRows(helpaiCols).map((r: unknown) => r.column_name));
   // Actual columns: id, ticket_number, workspace_id, user_id, state, queue_position, was_escalated, satisfaction_score
   const requiredHACols = ['id', 'workspace_id', 'user_id', 'state', 'ticket_number', 'was_escalated', 'satisfaction_score'];
   const missingHACols = requiredHACols.filter(c => !haCols.has(c));
@@ -138,7 +138,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'workspace_credits' ORDER BY ordinal_position
   `);
-  const ccols = new Set(extractRows(creditCols).map((r: any) => r.column_name));
+  const ccols = new Set(extractRows(creditCols).map((r: unknown) => r.column_name));
   const requiredCCols = ['workspace_id', 'current_balance', 'monthly_allocation', 'total_credits_spent'];
   const missingCCols = requiredCCols.filter(c => !ccols.has(c));
   record({
@@ -155,7 +155,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'workspaces' AND column_name IN ('subscription_tier','subscription_status','id','name')
   `);
-  const wsColNames = new Set(extractRows(wsCols).map((r: any) => r.column_name));
+  const wsColNames = new Set(extractRows(wsCols).map((r: unknown) => r.column_name));
   record({
     name: 'Workspaces Has Subscription Tier',
     phase: 'DB_TABLES',
@@ -301,7 +301,7 @@ async function phase3_helpai_orchestration() {
     const sessions = await typedCount(sql`SELECT count(*) as cnt FROM helpai_sessions`);
     const cnt = Number(extractRows(sessions)[0]?.cnt ?? 0);
     record({ name: 'HelpAI Sessions Table Queryable', phase: 'HELPAI', passed: true, details: `${cnt} sessions in DB`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'HelpAI Sessions Table Queryable', phase: 'HELPAI', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -310,7 +310,7 @@ async function phase3_helpai_orchestration() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: helpai_safety_codes | Verified: 2026-03-23
     const codes = await typedCount(sql`SELECT count(*) as cnt FROM helpai_safety_codes`);
     record({ name: 'HelpAI Safety Codes Table', phase: 'HELPAI', passed: true, details: `${Number(extractRows(codes)[0]?.cnt ?? 0)} codes`, severity: 'high' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'HelpAI Safety Codes Table', phase: 'HELPAI', passed: false, details: e.message, severity: 'high' });
   }
 
@@ -373,7 +373,7 @@ async function phase4_trinity_orchestration() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: trinity_decision_log | Verified: 2026-03-23
     const dl = await typedCount(sql`SELECT count(*) as cnt FROM trinity_decision_log`);
     record({ name: 'Trinity Decision Log Table', phase: 'TRINITY', passed: true, details: `${Number(extractRows(dl)[0]?.cnt ?? 0)} entries`, severity: 'high' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Trinity Decision Log Table', phase: 'TRINITY', passed: false, details: e.message, severity: 'high' });
   }
 
@@ -496,7 +496,7 @@ async function phase5_subscription_lifecycle() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: processed_stripe_events | Verified: 2026-03-23
     const idempotency = await typedCount(sql`SELECT count(*) as cnt FROM processed_stripe_events`);
     record({ name: 'Stripe Idempotency Table', phase: 'SUBSCRIPTIONS', passed: true, details: `${Number(extractRows(idempotency)[0]?.cnt ?? 0)} processed events`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Stripe Idempotency Table', phase: 'SUBSCRIPTIONS', passed: false, details: e.message, severity: 'critical' });
   }
 }
@@ -514,7 +514,7 @@ async function phase6_onboarding_workflow() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: onboarding_invites | Verified: 2026-03-23
     const invitations = await typedCount(sql`SELECT count(*) as cnt FROM onboarding_invites`);
     record({ name: 'Onboarding Invites Table', phase: 'ONBOARDING', passed: true, details: `${Number(extractRows(invitations)[0]?.cnt ?? 0)} invitations`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Onboarding Invites Table', phase: 'ONBOARDING', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -523,7 +523,7 @@ async function phase6_onboarding_workflow() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: onboarding_sessions | Verified: 2026-03-23
     const oSessions = await typedCount(sql`SELECT count(*) as cnt FROM onboarding_sessions`);
     record({ name: 'Onboarding Sessions Table', phase: 'ONBOARDING', passed: true, details: `${Number(extractRows(oSessions)[0]?.cnt ?? 0)} sessions`, severity: 'high' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Onboarding Sessions Table', phase: 'ONBOARDING', passed: false, details: e.message, severity: 'high' });
   }
 
@@ -578,7 +578,7 @@ async function phase7_credit_chain() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: credit_transactions | Verified: 2026-03-23
     const txns = await typedCount(sql`SELECT count(*) as cnt FROM credit_transactions`);
     record({ name: 'Credit Transactions Table', phase: 'CREDITS', passed: true, details: `${Number(extractRows(txns)[0]?.cnt ?? 0)} transactions logged`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Credit Transactions Table', phase: 'CREDITS', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -599,7 +599,7 @@ async function phase7_credit_chain() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: workspace_credits | Verified: 2026-03-23
     const balances = await typedCount(sql`SELECT count(*) as cnt FROM workspace_credits WHERE current_balance >= 0`);
     record({ name: 'Workspace Credit Balances', phase: 'CREDITS', passed: true, details: `${Number(extractRows(balances)[0]?.cnt ?? 0)} workspaces have credit records`, severity: 'high' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Workspace Credit Balances', phase: 'CREDITS', passed: false, details: e.message, severity: 'high' });
   }
 
@@ -747,7 +747,7 @@ async function phase11_chatroom_system() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: chat_conversations | Verified: 2026-03-23
     const rooms = await typedCount(sql`SELECT count(*) as cnt FROM chat_conversations`);
     record({ name: 'Chat Conversations Table', phase: 'CHATROOM', passed: true, details: `${Number(extractRows(rooms)[0]?.cnt ?? 0)} conversations`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Chat Conversations Table', phase: 'CHATROOM', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -789,7 +789,7 @@ async function phase12_settings_config() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: workspaces | Verified: 2026-03-23
     const wsCnt = await typedCount(sql`SELECT count(*) as cnt FROM workspaces`);
     record({ name: 'Workspaces Table Active', phase: 'SETTINGS', passed: true, details: `${Number(extractRows(wsCnt)[0]?.cnt ?? 0)} workspaces`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Workspaces Table Active', phase: 'SETTINGS', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -828,7 +828,7 @@ async function phase13_pwa_manifest() {
   console.log('════════════════════════════════════════');
 
   const manifest = readFile('client/public/manifest.json');
-  let manifestJson: any = {};
+  let manifestJson: Record<string, unknown> = {};
   try { manifestJson = JSON.parse(manifest); } catch (e) { /* ignore */ }
 
   const requiredFields: Array<{ key: string; severity: 'critical' | 'high' | 'medium' }> = [
@@ -871,15 +871,15 @@ async function phase13_pwa_manifest() {
 
   // Icons: 512x512 any + maskable
   const icons = manifestJson.icons || [];
-  const has512any = icons.some((i: any) => i.sizes === '512x512' && (i.purpose === 'any' || !i.purpose));
-  const has512mask = icons.some((i: any) => i.sizes === '512x512' && i.purpose === 'maskable');
+  const has512any = icons.some((i: unknown) => i.sizes === '512x512' && (i.purpose === 'any' || !i.purpose));
+  const has512mask = icons.some((i: unknown) => i.sizes === '512x512' && i.purpose === 'maskable');
   record({ name: 'Manifest: 512x512 Icon (any)', phase: 'PWA', passed: has512any, details: has512any ? '512x512 any icon present' : 'MISSING', severity: 'critical' });
   record({ name: 'Manifest: 512x512 Icon (maskable)', phase: 'PWA', passed: has512mask, details: has512mask ? '512x512 maskable present' : 'MISSING', severity: 'high' });
 
   // Screenshots: one wide, one narrow
   const screenshots = manifestJson.screenshots || [];
-  const hasWide = screenshots.some((s: any) => s.form_factor === 'wide');
-  const hasNarrow = screenshots.some((s: any) => s.form_factor === 'narrow');
+  const hasWide = screenshots.some((s: unknown) => s.form_factor === 'wide');
+  const hasNarrow = screenshots.some((s: unknown) => s.form_factor === 'narrow');
   record({ name: 'Manifest: Desktop Screenshot (wide)', phase: 'PWA', passed: hasWide, details: hasWide ? 'Wide screenshot present' : 'MISSING', severity: 'high' });
   record({ name: 'Manifest: Mobile Screenshot (narrow)', phase: 'PWA', passed: hasNarrow, details: hasNarrow ? 'Narrow screenshot present' : 'MISSING', severity: 'high' });
 
@@ -1019,7 +1019,7 @@ async function phase15_end_to_end() {
     const wsCount = await typedCount(sql`SELECT count(*) as cnt FROM workspaces`);
     const wsCnt = Number(extractRows(wsCount)[0]?.cnt ?? 0);
     record({ name: 'Multi-Tenant: Multiple Workspaces', phase: 'E2E', passed: wsCnt >= 1, details: `${wsCnt} workspaces in DB`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Multi-Tenant: Multiple Workspaces', phase: 'E2E', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -1031,7 +1031,7 @@ async function phase15_end_to_end() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: audit_logs | Verified: 2026-03-23
     const auditCount = await typedCount(sql`SELECT count(*) as cnt FROM audit_logs`);
     record({ name: 'Audit Trail Active', phase: 'E2E', passed: true, details: `${Number(extractRows(auditCount)[0]?.cnt ?? 0)} audit log entries`, severity: 'critical' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Audit Trail Active', phase: 'E2E', passed: false, details: e.message, severity: 'critical' });
   }
 
@@ -1043,7 +1043,7 @@ async function phase15_end_to_end() {
     // CATEGORY C — Raw SQL retained: Count( | Tables: employee_behavior_scores | Verified: 2026-03-23
     const scores = await typedCount(sql`SELECT count(*) as cnt FROM employee_behavior_scores`);
     record({ name: 'Behavior Scoring DB Active', phase: 'E2E', passed: true, details: `${Number(extractRows(scores)[0]?.cnt ?? 0)} behavior scores`, severity: 'high' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     record({ name: 'Behavior Scoring DB Active', phase: 'E2E', passed: false, details: e.message, severity: 'high' });
   }
 }

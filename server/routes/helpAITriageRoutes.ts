@@ -26,7 +26,7 @@ const router = Router();
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
-  user?: any;
+  user?: unknown;
   workspaceId?: string;
 }
 
@@ -100,7 +100,7 @@ async function searchFAQ(message: string, workspaceId?: string): Promise<{ found
 
 // ─── Workspace Context Loader ──────────────────────────────────────────────
 
-async function loadWorkspaceContext(workspaceId: string): Promise<Record<string, any>> {
+async function loadWorkspaceContext(workspaceId: string): Promise<Record<string, unknown>> {
   const [ws, empCount, activeShifts, openInvoices, recentTickets] = await Promise.all([
     pool.query(`SELECT id, name FROM workspaces WHERE id = $1`, [workspaceId]),
     pool.query(`SELECT COUNT(*) FROM employees WHERE workspace_id = $1 AND status = 'active'`, [workspaceId]),
@@ -142,7 +142,7 @@ async function createSupportTicket(params: {
   priority?: string;
   trinityAttempted: boolean;
   trinityTranscript?: string;
-  actionsJson?: any[];
+  actionsJson?: unknown[];
   escalatedToHuman?: boolean;
   escalationReason?: string;
   resolvedByFaq?: boolean;
@@ -186,7 +186,7 @@ async function tryResolveAccountAccess(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'For account access issues, use the Forgot Password link on the login screen. If your account is locked, contact support.' };
@@ -214,7 +214,7 @@ async function tryResolveOnboardingStuck(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'If your onboarding is stuck, try refreshing the page. A support agent has been assigned to review your progress.' };
@@ -232,7 +232,7 @@ async function tryResolveOnboardingStuck(
   let actionsPerformed = 0;
 
   // Reset any stuck tasks
-  for (const task of progress.rows.filter((t: any) => t.status === 'stuck' || t.status === 'error')) {
+  for (const task of progress.rows.filter((t: unknown) => t.status === 'stuck' || t.status === 'error')) {
     const r = await executeSupportAction({
       actionType: 'support.onboarding.reset_task',
       workspaceId,
@@ -294,7 +294,7 @@ async function tryResolveDocumentMissing(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'Please check Documents in the main menu. If the document is missing, a support agent will resend it.' };
@@ -311,7 +311,7 @@ async function tryResolveDocumentMissing(
      ORDER BY fi.created_at DESC
      LIMIT 3`,
     [userId, workspaceId]
-  ).catch(() => ({ rows: [] as any[] }));
+  ).catch(() => ({ rows: [] }));
 
   let actionsPerformed = 0;
   for (const inv of invitations.rows) {
@@ -340,7 +340,7 @@ async function tryResolveNotificationIssue(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   if (!userId) {
     return { resolved: false, message: 'Go to Settings > Notifications to ensure SMS and email alerts are enabled.' };
@@ -365,7 +365,7 @@ async function tryResolvePayrollDispute(
   userId: string | undefined,
   workspaceId: string,
   message: string,
-  actionsLog: any[]
+  actionsLog: unknown[]
 ): Promise<{ resolved: boolean; message: string }> {
   const emp = userId ? await lookupEmployeeForUser(userId, workspaceId) : null;
   const r = await executeSupportAction({
@@ -436,12 +436,12 @@ async function handleAuditorHelpAI(
       if (!rows.length) {
         return { reply: 'No officers have licenses expiring within 60 days.', resolved: true };
       }
-      const summary = rows.map((r: any) => {
+      const summary = rows.map((r: unknown) => {
         const expiry = r.guard_card_expiry_date ? new Date(r.guard_card_expiry_date).toLocaleDateString() : 'N/A';
         return `• ${r.name} (${r.employee_number || 'N/A'}) — ${r.is_armed ? 'Armed' : 'Unarmed'} — Expires: ${expiry}`;
       }).join('\n');
       return { reply: `Officers with licenses expiring in 60 days (${rows.length}):\n\n${summary}`, resolved: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { reply: 'Unable to retrieve expiry data right now. Please try again.', resolved: false };
     }
   }
@@ -464,7 +464,7 @@ async function handleAuditorHelpAI(
         [workspaceId],
       );
       if (!rows.length) return { reply: 'No active officers found in this workspace.', resolved: true };
-      const summary = rows.map((r: any) => {
+      const summary = rows.map((r: unknown) => {
         const status = (r.guard_card_status || 'unknown').replace(/_/g, ' ');
         const expiry = r.guard_card_expiry_date ? new Date(r.guard_card_expiry_date).toLocaleDateString() : 'N/A';
         return `• ${r.name} (${r.employee_number || 'N/A'}) — ${r.is_armed ? 'Armed' : 'Unarmed'} — ${status} — Expires: ${expiry}`;
@@ -473,7 +473,7 @@ async function handleAuditorHelpAI(
         reply: `Active officers in this organization (${rows.length} total):\n\n${summary}`,
         resolved: true,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { reply: 'Unable to retrieve officer records right now. Please try again.', resolved: false };
     }
   }
@@ -491,11 +491,11 @@ async function handleAuditorHelpAI(
         [workspaceId],
       );
       if (!rows.length) return { reply: 'No incident reports on file.', resolved: true };
-      const summary = rows.map((r: any) =>
+      const summary = rows.map((r: unknown) =>
         `• ${r.incident_number || 'N/A'} — ${new Date(r.incident_date).toLocaleDateString()} — ${r.incident_type || 'general'} — ${r.severity || 'low'} — Officer: ${r.officer_name || 'Unknown'}`,
       ).join('\n');
       return { reply: `Recent incident reports (last 25):\n\n${summary}`, resolved: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { reply: 'Unable to retrieve incident reports right now. Please try again.', resolved: false };
     }
   }
@@ -527,7 +527,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
     const userId = req.userId;
 
     const category = classifyMessage(message);
-    const actionsLog: any[] = [];
+    const actionsLog: (string | number | boolean | null)[] = [];
 
     // ── Phase 6: Auditor HelpAI branch ─────────────────────────────────────
     // When the caller is a DPS/regulatory auditor, route through Trinity
@@ -568,7 +568,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
             },
           });
         }
-      } catch (auditErr: any) {
+      } catch (auditErr: unknown) {
         log.warn('[HelpAITriage] Audit intelligence failed, falling back to pattern handler:', auditErr?.message);
       }
 
@@ -635,7 +635,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
     }
 
     // ── TIER 1: Trinity auto-resolution by category ──
-    let workspaceContext: Record<string, any> = {};
+    let workspaceContext: Record<string, unknown> = {};
     if (workspaceId) {
       workspaceContext = await loadWorkspaceContext(workspaceId).catch(() => ({}));
     }
@@ -699,7 +699,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
 
     // Background: promote qualified FAQ candidates (fire-and-forget)
     if (workspaceId) {
-      promoteQualifiedFaqCandidates().catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+      promoteQualifiedFaqCandidates().catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
     return res.status(201).json({
@@ -727,7 +727,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
 
 // ─── Contextual Response Generator (Tier 2 fallback) ──────────────────────
 
-function generateContextualResponse(category: string, ctx: Record<string, any>, message: string): string {
+function generateContextualResponse(category: string, ctx: Record<string, unknown>, message: string): string {
   const orgName = ctx.workspace?.name ? `for ${ctx.workspace.name}` : '';
   switch (category) {
     case 'scheduling_issue':

@@ -10,10 +10,10 @@
  * Subscribes to: model heartbeat, simulated thread state (real data via activity API)
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { TrinityArrowMark } from "@/components/trinity-logo";
+import { TrinityOrbitalAvatar, type TrinityState } from "@/components/ui/trinity-animated-logo";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 
 // ─── Module-level fallback (accessible to ALL sub-components) ───────────────
@@ -78,6 +78,21 @@ const MODEL_LABELS: Record<string, string> = {
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────
+
+// Broadcast Trinity's cognitive state to all orbital avatars
+const COAI_TO_TRINITY: Record<string, string> = {
+  "working":   "thinking",
+  "thinking":  "thinking",
+  "processing":"loading",
+  "speaking":  "speaking",
+  "listening": "listening",
+  "idle":      "idle",
+  "error":     "error",
+  "warning":   "warning",
+  "success":   "success",
+  "active":    "focused",
+};
+
 
 export function TrinityThoughtBar({
   isProcessing = false,
@@ -326,6 +341,16 @@ export function TrinityThoughtBar({
     : schedulingLabel ?? phrase;
 
   // ─── Render ───────────────────────────────────────────────────────────────
+  // Broadcast Trinity state to orbital avatars (TrinityOrbitalAvatar listens)
+  const prevBroadcastRef = React.useRef<string>("");
+  React.useEffect(() => {
+    const mapped = COAI_TO_TRINITY[state] ?? "idle";
+    if (mapped !== prevBroadcastRef.current) {
+      prevBroadcastRef.current = mapped;
+      window.dispatchEvent(new CustomEvent("trinity-state-change", { detail: { state: mapped } }));
+    }
+  }, [state]);
+
   return (
     <div
       className={cn("trinity-thought-bar relative flex-shrink-0 overflow-hidden", className)}
@@ -553,48 +578,13 @@ function TrinityIcon({
   active: boolean;
   critical?: boolean;
 }) {
-  const ringAnimation = critical
-    ? "coai-critical-pulse 1s infinite"
-    : active
-    ? "trinity-icon-breathe 2.1s ease-in-out infinite"
-    : "trinity-icon-breathe 4.8s ease-in-out infinite";
-  const markAnimation = active
-    ? "trinity-icon-spin 2.6s linear infinite, trinity-icon-bounce 1.6s ease-in-out infinite"
-    : undefined;
+  // TrinityOrbitalAvatar IS the icon — it has its own orbital rings, glow,
+  // breathing animation, and auto-detects Trinity state via useTrinityGlobalState.
+  // No outer wrapper needed — it was causing a double-circle overlay.
+  const trinityState = critical ? "error" : active ? "thinking" : "idle";
   return (
-    <span
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 32,
-        height: 32,
-        borderRadius: "50%",
-        border: `2.5px solid ${color}`,
-        color,
-        fontSize: 14,
-        fontWeight: 700,
-        flexShrink: 0,
-        boxShadow: `0 0 12px ${color}66, 0 0 24px ${color}33`,
-        animation: ringAnimation,
-      }}
-      aria-hidden="true"
-    >
-      {active && (
-        <span
-          style={{
-            position: "absolute",
-            inset: -6,
-            borderRadius: "50%",
-            border: `1.5px solid ${color}77`,
-            animation: "trinity-icon-halo 1.8s ease-out infinite",
-          }}
-        />
-      )}
-      <span style={{ display: "inline-flex", animation: markAnimation }}>
-        <TrinityArrowMark size={16} />
-      </span>
+    <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+      <TrinityOrbitalAvatar size={36} state={trinityState} />
     </span>
   );
 }

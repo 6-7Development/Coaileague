@@ -70,7 +70,7 @@ export interface DiagnosticReport {
 // PLATFORM METRICS COLLECTORS
 // ============================================================================
 
-async function collectDatabaseMetrics(): Promise<Record<string, any>> {
+async function collectDatabaseMetrics(): Promise<Record<string, unknown>> {
   try {
     // Check table counts and recent activity
     // CATEGORY C — Raw SQL retained: Count( | Tables: audit_logs | Verified: 2026-03-23
@@ -95,7 +95,7 @@ async function collectDatabaseMetrics(): Promise<Record<string, any>> {
       pendingAITasks: taskResult,
       databaseStatus: 'connected'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       databaseStatus: 'error',
       error: (error instanceof Error ? error.message : String(error))
@@ -103,17 +103,17 @@ async function collectDatabaseMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectSubagentMetrics(): Promise<Record<string, any>> {
+async function collectSubagentMetrics(): Promise<Record<string, unknown>> {
   try {
     const allSubagents = await subagentSupervisor.getAllSubagents();
-    const activeCount = allSubagents.filter((s: any) => s.isActive).length;
+    const activeCount = allSubagents.filter((s: unknown) => s.isActive).length;
     
     return {
       totalSubagents: allSubagents.length,
       activeSubagents: activeCount,
       inactiveSubagents: allSubagents.length - activeCount,
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       subagentStatus: 'error',
       error: (error instanceof Error ? error.message : String(error))
@@ -121,7 +121,7 @@ async function collectSubagentMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectToolMetrics(): Promise<Record<string, any>> {
+async function collectToolMetrics(): Promise<Record<string, unknown>> {
   try {
     const allTools = toolCapabilityRegistry.getAllTools();
     // Count tools as healthy by default since we can't access private healthStatus
@@ -131,7 +131,7 @@ async function collectToolMetrics(): Promise<Record<string, any>> {
       degradedTools: 0,
       status: 'operational'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       toolStatus: 'error',
       error: (error instanceof Error ? error.message : String(error))
@@ -139,7 +139,7 @@ async function collectToolMetrics(): Promise<Record<string, any>> {
   }
 }
 
-async function collectNotificationMetrics(): Promise<Record<string, any>> {
+async function collectNotificationMetrics(): Promise<Record<string, unknown>> {
   try {
     // CATEGORY C — Raw SQL retained: Count( | Tables: notifications | Verified: 2026-03-23
     const result = await typedCount(sql`
@@ -151,7 +151,7 @@ async function collectNotificationMetrics(): Promise<Record<string, any>> {
       unreadNotifications: result,
       notificationSystem: 'operational'
     };
-  } catch (error: any) {
+  } catch (error : unknown) {
     return {
       notificationSystem: 'error',
       error: (error instanceof Error ? error.message : String(error))
@@ -165,7 +165,7 @@ async function collectNotificationMetrics(): Promise<Record<string, any>> {
 
 async function analyzeWithGemini(
   healthSummary: PlatformHealthSummary,
-  metrics: Record<string, any>,
+  metrics: Record<string, unknown>,
   tier: GeminiModelTier,
   workspaceId?: string
 ): Promise<{ analysis: string; findings: DiagnosticFinding[]; recommendations: string[] }> {
@@ -215,7 +215,7 @@ Be concise but thorough. Focus on actionable insights. Format your response with
     const jsonMatch = analysis.match(/\[[\s\S]*?\]/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed)) {
           findings.push(...parsed.map(f => ({
             ...f,
@@ -252,7 +252,7 @@ Be concise but thorough. Focus on actionable insights. Format your response with
     }
 
     return { analysis, findings, recommendations };
-  } catch (error: any) {
+  } catch (error : unknown) {
     const executionTime = Date.now() - startTime;
     recordModelResult(tier, false, executionTime, (error instanceof Error ? error.message : String(error)));
     
@@ -297,7 +297,7 @@ async function applySelfHealing(findings: DiagnosticFinding[]): Promise<string[]
           break;
       }
       finding.fixApplied = true;
-    } catch (error: any) {
+    } catch (error : unknown) {
       actions.push(`Failed to fix ${finding.title}: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
@@ -354,7 +354,7 @@ async function sendDiagnosticReport(report: DiagnosticReport): Promise<void> {
     }
 
     log.info(`[TrinityDiagnostic] Report sent to notification system: ${report.id}`);
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[TrinityDiagnostic] Failed to send report:', (error instanceof Error ? error.message : String(error)));
   }
 }

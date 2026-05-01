@@ -34,7 +34,7 @@ interface SearchResult {
   subtitle: string;
   description?: string;
   relevanceScore: number;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   actions?: { label: string; action: string; path?: string }[];
 }
 

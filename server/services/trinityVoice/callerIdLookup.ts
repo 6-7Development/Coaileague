@@ -43,7 +43,7 @@ async function ensureTables(): Promise<void> {
       );
     `);
     bootstrapped = true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[CallerIdLookup] Bootstrap failed (non-fatal):', err?.message);
   }
 }
@@ -98,10 +98,10 @@ export async function lookupCallerId(rawPhone: string): Promise<LookupResult> {
       fields: 'line_type_intelligence',
     });
 
-    const lti = (lookup as any).lineTypeIntelligence || {};
+    const lti = (lookup as Record<string,unknown>).lineTypeIntelligence || {};
     const lineType: string | undefined = lti.type;
     const carrierName: string | undefined = lti.carrier_name;
-    const countryCode: string | undefined = (lookup as any).countryCode;
+    const countryCode: string | undefined = (lookup as Record<string,unknown>).countryCode;
     const risk: 'low' | 'high' | 'unknown' = lineType
       ? (RISKY_LINE_TYPES.has(lineType) ? 'high' : 'low')
       : 'unknown';
@@ -120,7 +120,7 @@ export async function lookupCallerId(rawPhone: string): Promise<LookupResult> {
     );
 
     return { phone, risk, lineType, carrierName, countryCode, cached: false };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[CallerIdLookup] lookup failed (open):', err?.message);
     return { phone, risk: 'unknown', cached: false };
   }
@@ -148,7 +148,7 @@ export async function flagMultipleSpeakers(params: {
       [params.speakerCount, params.callSid]
     );
     log.info(`[CallerIdLookup] Flagged ${params.callSid} with ${params.speakerCount} speakers`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[CallerIdLookup] flag failed:', err?.message);
   }
 }

@@ -184,7 +184,7 @@ function ConversationActions({
       onClose();
       onLeaveSuccess?.();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to leave conversation", variant: "destructive" });
     },
   });
@@ -241,7 +241,7 @@ function NewConversationView({ onBack, onCreated }: { onBack: () => void; onCrea
       const data = await res.json();
       return { ...data, recipientName: recipient.name };
     },
-    onSuccess: async (data: any) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       await chatManager.loadRoomList();
       onCreated(data.conversationId, data.recipientName || "Direct Message");
@@ -257,12 +257,12 @@ function NewConversationView({ onBack, onCreated }: { onBack: () => void; onCrea
       });
       return await res.json();
     },
-    onSuccess: async (data: any) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       await chatManager.loadRoomList();
       onCreated(data.conversationId, roomName.trim());
     },
-    onError: (error: any) => {
+    onError: (error) => {
       let message = "Failed to create room";
       try {
         // ApiError.message is "{status}: {body}" — extract JSON body from the suffix
@@ -376,7 +376,7 @@ function NewConversationView({ onBack, onCreated }: { onBack: () => void; onCrea
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         )}
-        {users.map((u: any) => {
+        {users.map((u) => {
           const isSelected = selectedUsers.find((s) => s.id === u.id);
           return (
             <button
@@ -523,7 +523,7 @@ function RoomInfoPanel({
   // fall back to DB participants for persisted group rooms.
   const useLive = liveUsers.length > 0;
   const displayCount = useLive ? liveUsers.length : dbParticipants.length;
-  const currentUserParticipant = dbParticipants.find((p: any) => p.participantId === user?.id);
+  const currentUserParticipant = dbParticipants.find((p) => p.participantId === user?.id);
   const isOwnerOrAdmin = currentUserParticipant && ["owner", "admin"].includes(currentUserParticipant.participantRole);
 
   return (
@@ -585,7 +585,7 @@ function RoomInfoPanel({
         })}
 
         {/* DB participants (group rooms with persisted membership) */}
-        {!useLive && dbParticipants.map((p: any) => (
+        {!useLive && dbParticipants.map((p) => (
           <div key={p.id} className="flex items-center gap-2 px-3 py-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
@@ -803,7 +803,7 @@ function MessageActions({
       const res = await apiRequest("POST", `/api/chat/manage/messages/${messageId}/pin`);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       toast({ title: data.pinned ? "Message pinned" : "Message unpinned" });
       queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'pinned'] });
       onClose();
@@ -1048,7 +1048,7 @@ function ImageLightbox({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
-            size="icon"
+            size="icon" aria-label="Lightbox Download"
             variant="ghost"
             className="text-white"
             onClick={handleDownload}
@@ -1058,7 +1058,7 @@ function ImageLightbox({
             <Download className="h-5 w-5" />
           </Button>
           <Button
-            size="icon"
+            size="icon" aria-label="Lightbox Close"
             variant="ghost"
             className="text-white"
             onClick={onClose}
@@ -1071,7 +1071,7 @@ function ImageLightbox({
       <img
         src={data.src}
         alt="Full size preview"
-        className="max-w-full max-h-[85vh] object-contain rounded-lg p-4"
+        className="max-w-full max-h-[80dvh] sm:max-h-[85vh] object-contain rounded-lg p-4"
         onClick={(e) => e.stopPropagation()}
       />
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3 z-[6001]">
@@ -1462,7 +1462,7 @@ function ConversationList({ onSelectRoom, isFullPage }: { onSelectRoom: (roomId:
 
   const renderRoomItem = (room: typeof rooms[0]) => {
     const hasUnread = room.unreadCount > 0;
-    const isOnline = (room as any).isOnline;
+    const isOnline = (room as Record<string,unknown>).isOnline;
     const isDM = isDMType(room.type);
     const isSupport = isSupportType(room.type);
     const isShift = isShiftType(room.type);
@@ -1753,15 +1753,15 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
       toast({ title: "Message edited" });
       setEditingMessage(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ title: "Edit failed", description: error.message, variant: "destructive" });
     },
   });
 
-  const reactionsMap = (reactionsData as any)?.reactions || {};
-  const pinnedMessages = (pinnedData as any)?.messages || [];
-  const searchHits = (searchResults as any)?.messages || [];
-  const searchHitIds = new Set(searchHits.map((m: any) => m.id));
+  const reactionsMap = (reactionsData as Record<string,unknown>)?.reactions || {};
+  const pinnedMessages = (pinnedData as Record<string,unknown>)?.messages || [];
+  const searchHits = (searchResults as Record<string,unknown>)?.messages || [];
+  const searchHitIds = new Set(searchHits.map((m) => m.id));
 
   const parentMessageCache = useMemo(() => {
     const cache: Record<string, { senderName: string; message: string }> = {};
@@ -2216,7 +2216,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
             const isOwn = msg.senderId === user?.id;
             const isSystem = msg.isSystemMessage || msg.senderType === "system";
             const isBot = msg.senderType === "bot" || msg.senderId === "ai-bot" || msg.senderId === "helpai";
-            const isDeletedForAll = (msg as any).isDeletedForEveryone;
+            const isDeletedForAll = (msg as Record<string, unknown>).isDeletedForEveryone;
             const msgReactions = reactionsMap[msg.id] || [];
             const readReceipt = readReceipts.get(msg.id);
             const isHighlighted = chatSearch && searchHitIds.has(msg.id);
@@ -2284,8 +2284,8 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                             ? <span className="text-amber-500 font-semibold">HelpAI</span>
                             : <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>)
                         : (msg.senderName || "Unknown")}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
                     </span>
                   )}
@@ -2423,11 +2423,11 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                           {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
-                      {isOwn && (msg as any).bridgeDeliveryStatus ? (
-                        <DeliveryStatusIndicator status={(msg as any).bridgeDeliveryStatus} />
+                      {isOwn && (msg as Record<string, unknown>).bridgeDeliveryStatus ? (
+                        <DeliveryStatusIndicator status={(msg as Record<string, unknown>).bridgeDeliveryStatus} />
                       ) : isOwn && (
                         readReceipt ? (
                           <CheckCheck className="h-3 w-3 text-primary" data-testid={`read-receipt-${msg.id}`} />
@@ -2504,7 +2504,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
               <div className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-md shadow-sm py-2 min-w-[180px] z-50 animate-in slide-in-from-bottom-2 fade-in duration-150" data-testid="menu-attach">
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate active-elevate-2 text-left"
-                  onClick={() => { fileInputRef.current!.accept = "image/*"; fileInputRef.current!.click(); }}
+                  onClick={() => { fileInputRef.current!.accept = "image/*"; fileInputRef.current?.click(); }}
                   data-testid="button-attach-image"
                 >
                   <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
@@ -2514,7 +2514,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                 </button>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate active-elevate-2 text-left"
-                  onClick={() => { fileInputRef.current!.accept = "video/*"; fileInputRef.current!.click(); }}
+                  onClick={() => { fileInputRef.current!.accept = "video/*"; fileInputRef.current?.click(); }}
                   data-testid="button-attach-video"
                 >
                   <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
@@ -2524,7 +2524,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                 </button>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate active-elevate-2 text-left"
-                  onClick={() => { fileInputRef.current!.accept = "audio/*"; fileInputRef.current!.click(); }}
+                  onClick={() => { fileInputRef.current!.accept = "audio/*"; fileInputRef.current?.click(); }}
                   data-testid="button-attach-audio"
                 >
                   <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0">
@@ -2534,7 +2534,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                 </button>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate active-elevate-2 text-left"
-                  onClick={() => { fileInputRef.current!.accept = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"; fileInputRef.current!.click(); }}
+                  onClick={() => { fileInputRef.current!.accept = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"; fileInputRef.current?.click(); }}
                   data-testid="button-attach-document"
                 >
                   <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
@@ -2551,7 +2551,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
               { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
               { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
             ];
-            const memberMentions = (members ?? []).map((m: any) => ({
+            const memberMentions = (members ?? []).map((m) => ({
               id: `@${m.firstName}${m.lastName}`,
               name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim(),
               role: m.workspaceRole || 'Member',
@@ -2913,7 +2913,6 @@ export function ChatFullPage({ autoOpenSupportRoom }: { autoOpenSupportRoom?: bo
     if (autoOpenSupportRoom && !activeChatRoom && rawRooms && rawRooms.length > 0) {
       // Specifically target the Help Desk room (HelpAI bot), not general support rooms
       const helpDeskRoom = rawRooms.find(r =>
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         r.type === "support" && (r.slug === 'helpdesk' || r.name === 'Help Desk')
       ) || rawRooms.find(r => r.type === "support");
       if (helpDeskRoom) {

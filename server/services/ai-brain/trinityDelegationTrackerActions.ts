@@ -27,20 +27,17 @@ import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityDelegationTrackerActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity delegation tracker: ${actionId}`,
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     }
@@ -107,10 +104,10 @@ export function registerDelegationTrackerActions() {
       requiresApproval: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
     await db.insert(orchestrationRunSteps).values({
-      runId: (run as any).id,
+      runId: (run as Record<string, unknown>).id,
       stepNumber: 1,
       stepName: 'Task Assigned',
       stepType: 'action',
@@ -122,7 +119,7 @@ export function registerDelegationTrackerActions() {
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     await notifyUser(
       workspaceId,
@@ -132,10 +129,10 @@ export function registerDelegationTrackerActions() {
       'high'
     );
 
-    log.info(`[TrinityDelegationTracker] Task created: id=${(run as any).id}, type=${taskType}, assignedTo=${assignedTo}, dueBy=${dueBy}`);
+    log.info(`[TrinityDelegationTracker] Task created: id=${(run as Record<string, unknown>).id}, type=${taskType}, assignedTo=${assignedTo}, dueBy=${dueBy}`);
     return {
       created: true,
-      taskId: (run as any).id,
+      taskId: (run as Record<string, unknown>).id,
       taskType,
       assignedTo,
       dueBy,
@@ -164,15 +161,15 @@ export function registerDelegationTrackerActions() {
         eq(orchestrationRuns.category, 'operational_task'),
         ...(status ? [eq(orchestrationRuns.status, status)] : []),
       )
-    ).orderBy(desc(orchestrationRuns.createdAt)) as any;
+    ).orderBy(desc(orchestrationRuns.createdAt)) as unknown;
 
     const tasks = await query.catch(() => []);
     let filtered = tasks;
-    if (taskType) filtered = filtered.filter((t: any) => t.inputParams?.taskType === taskType);
-    if (assignedTo) filtered = filtered.filter((t: any) => t.inputParams?.assignedTo === assignedTo);
+    if (taskType) filtered = filtered.filter((t: unknown) => t.inputParams?.taskType === taskType);
+    if (assignedTo) filtered = filtered.filter((t: unknown) => t.inputParams?.assignedTo === assignedTo);
     if (overdueOnly) {
       const now = new Date();
-      filtered = filtered.filter((t: any) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now && t.status === 'awaiting_approval');
+      filtered = filtered.filter((t: unknown) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now && t.status === 'awaiting_approval');
     }
     return {
       tasks: filtered,
@@ -188,15 +185,15 @@ export function registerDelegationTrackerActions() {
       .where(and(eq(orchestrationRuns.id, taskId), eq(orchestrationRuns.category, 'operational_task')))
       .limit(1);
     if (!existing) return { error: `Task ${taskId} not found` };
-    const currentParams = (existing as any).inputParams || {};
+    const currentParams = (existing as Record<string,unknown>).inputParams || {};
     const updatedHistory = [
       ...(currentParams.escalationHistory || []),
       { timestamp: new Date().toISOString(), fromStatus: existing.status, toStatus: newStatus, note: note || '', updatedBy: updatedBy || 'trinity-ai' },
     ];
     await db.update(orchestrationRuns)
       .set({
-        status: newStatus as any,
-        inputParams: { ...currentParams, escalationHistory: updatedHistory } as any,
+        status: newStatus as unknown,
+        inputParams: { ...currentParams, escalationHistory: updatedHistory } as unknown,
         updatedAt: new Date(),
         ...(newStatus === 'completed' ? { completedAt: new Date() } : {}),
         ...(newStatus === 'running' ? { startedAt: new Date() } : {}),
@@ -213,10 +210,10 @@ export function registerDelegationTrackerActions() {
       outputData: { newStatus, updatedBy },
       startedAt: new Date(),
       completedAt: new Date(),
-      workspaceId: workspaceId || (existing as any).workspaceId,
+      workspaceId: workspaceId || (existing as Record<string,unknown>).workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { updated: true, taskId, previousStatus: existing.status, newStatus };
   }));
@@ -228,11 +225,11 @@ export function registerDelegationTrackerActions() {
       ? and(eq(orchestrationRuns.workspaceId, workspaceId), eq(orchestrationRuns.category, 'operational_task'), eq(orchestrationRuns.status, 'awaiting_approval'))
       : and(eq(orchestrationRuns.category, 'operational_task'), eq(orchestrationRuns.status, 'awaiting_approval'));
     const pendingTasks = await db.select().from(orchestrationRuns).where(whereClause).catch(() => []);
-    const overdue = pendingTasks.filter((t: any) => {
+    const overdue = pendingTasks.filter((t: unknown) => {
       const dueBy = t.inputParams?.dueBy;
       return dueBy && new Date(dueBy) < now;
     });
-    const overdueSummary = overdue.map((t: any) => ({
+    const overdueSummary = overdue.map((t: unknown) => ({
       taskId: t.id,
       taskType: t.inputParams?.taskType,
       assignedTo: t.inputParams?.assignedTo,
@@ -254,7 +251,7 @@ export function registerDelegationTrackerActions() {
       .where(and(eq(orchestrationRuns.id, taskId), eq(orchestrationRuns.category, 'operational_task')))
       .limit(1);
     if (!existing) return { error: `Task ${taskId} not found` };
-    const currentParams = (existing as any).inputParams || {};
+    const currentParams = (existing as Record<string,unknown>).inputParams || {};
     const newLevel = (currentParams.escalationLevel || 0) + 1;
     const escalationEntry = {
       timestamp: new Date().toISOString(),
@@ -265,12 +262,12 @@ export function registerDelegationTrackerActions() {
     const updatedHistory = [...(currentParams.escalationHistory || []), escalationEntry];
     await db.update(orchestrationRuns)
       .set({
-        inputParams: { ...currentParams, escalationLevel: newLevel, escalationHistory: updatedHistory } as any,
+        inputParams: { ...currentParams, escalationLevel: newLevel, escalationHistory: updatedHistory } as unknown,
         updatedAt: new Date(),
       })
       .where(eq(orchestrationRuns.id, taskId));
 
-    const ws = workspaceId || (existing as any).workspaceId;
+    const ws = workspaceId || (existing as Record<string,unknown>).workspaceId;
     const escalateToUserId = escalateTo || null;
     const taskDesc = currentParams.description || `Task ${taskId}`;
     const dueBy = currentParams.dueBy ? new Date(currentParams.dueBy).toLocaleDateString() : 'N/A';
@@ -295,7 +292,7 @@ export function registerDelegationTrackerActions() {
       workspaceId: ws,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).catch(() => null);
+    }).catch(() => null);
 
     return { escalated: true, taskId, newEscalationLevel: newLevel, notified: escalateToUserId || 'managers', escalationEntry };
   }));
@@ -307,24 +304,24 @@ export function registerDelegationTrackerActions() {
       .where(and(eq(orchestrationRuns.id, taskId), eq(orchestrationRuns.category, 'operational_task')))
       .limit(1);
     if (!task) return { error: `Task ${taskId} not found` };
-    const taskType = (task as any).inputParams?.taskType;
-    const context = (task as any).inputParams?.context || {};
-    const ws = workspaceId || (task as any).workspaceId;
+    const taskType = (task as Record<string, unknown>).inputParams?.taskType;
+    const context = (task as Record<string, unknown>).inputParams?.context || {};
+    const ws = workspaceId || (task as Record<string, unknown>).workspaceId;
     let verified = false;
     let verificationDetails = '';
-    let verificationData: any = {};
+    let verificationData: Record<string, unknown> = {};
 
     switch (taskType) {
       case 'timesheet_approval': {
         const { timesheetId, employeeId, periodStart, periodEnd } = context;
         if (timesheetId) {
           const [entry] = await db.select({ status: timeEntries.status }).from(timeEntries).where(eq(timeEntries.id, timesheetId)).limit(1).catch(() => []);
-          verified = (entry as any)?.status === 'approved';
-          verificationDetails = verified ? 'Timesheet status confirmed as approved' : `Timesheet status is '${(entry as any)?.status || 'unknown'}' — not yet approved`;
-          verificationData = { timesheetId, status: (entry as any)?.status };
+          verified = (entry as unknown)?.status === 'approved';
+          verificationDetails = verified ? 'Timesheet status confirmed as approved' : `Timesheet status is '${(entry as unknown)?.status || 'unknown'}' — not yet approved`;
+          verificationData = { timesheetId, status: (entry as unknown)?.status };
         } else if (employeeId && periodStart && periodEnd) {
           const pending = await db.select({ id: timeEntries.id }).from(timeEntries)
-            .where(and(eq(timeEntries.workspaceId, ws), eq(timeEntries.employeeId, employeeId), eq(timeEntries.status as any, 'pending')))
+            .where(and(eq(timeEntries.workspaceId, ws), eq(timeEntries.employeeId, employeeId), eq(timeEntries.status, 'pending')))
             .limit(1).catch(() => []);
           verified = pending.length === 0;
           verificationDetails = verified ? 'No pending timesheets found for employee in period' : `${pending.length} timesheet(s) still pending approval`;
@@ -339,7 +336,7 @@ export function registerDelegationTrackerActions() {
           const weekStart = new Date(weekOf);
           const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
           const draftShifts = await db.select({ id: shifts.id }).from(shifts)
-            .where(and(eq(shifts.workspaceId, ws), eq(shifts.status as any, 'draft'), sql`${shifts.startTime} >= ${weekStart}`, sql`${shifts.startTime} < ${weekEnd}`))
+            .where(and(eq(shifts.workspaceId, ws), eq(shifts.status, 'draft'), sql`${shifts.startTime} >= ${weekStart}`, sql`${shifts.startTime} < ${weekEnd}`))
             .limit(1).catch(() => []);
           const unassigned = await db.select({ id: shifts.id }).from(shifts)
             .where(and(eq(shifts.workspaceId, ws), isNull(shifts.employeeId), sql`${shifts.startTime} >= ${weekStart}`, sql`${shifts.startTime} < ${weekEnd}`, ne(shifts.status, 'cancelled')))
@@ -358,9 +355,9 @@ export function registerDelegationTrackerActions() {
         const { invoiceId, clientId } = context;
         if (invoiceId) {
           const [inv] = await db.select({ status: invoices.status, total: invoices.total }).from(invoices).where(eq(invoices.id, invoiceId)).limit(1).catch(() => []);
-          verified = ['paid', 'sent', 'partial'].includes((inv as any)?.status || '');
-          verificationDetails = verified ? `Invoice status: ${(inv as any)?.status}` : `Invoice still at status '${(inv as any)?.status || 'unknown'}'`;
-          verificationData = { invoiceId, status: (inv as any)?.status, total: (inv as any)?.total };
+          verified = ['paid', 'sent', 'partial'].includes((inv as unknown)?.status || '');
+          verificationDetails = verified ? `Invoice status: ${(inv as unknown)?.status}` : `Invoice still at status '${(inv as unknown)?.status || 'unknown'}'`;
+          verificationData = { invoiceId, status: (inv as unknown)?.status, total: (inv as unknown)?.total };
         } else {
           verificationDetails = 'invoiceId not provided — cannot verify invoice followup';
         }
@@ -370,9 +367,9 @@ export function registerDelegationTrackerActions() {
         const { payrollRunId } = context;
         if (payrollRunId) {
           const [run] = await db.select({ status: payrollRuns.status, totalNetPay: payrollRuns.totalNetPay }).from(payrollRuns).where(eq(payrollRuns.id, payrollRunId)).limit(1).catch(() => []);
-          verified = ['approved', 'processing', 'completed'].includes((run as any)?.status || '');
-          verificationDetails = verified ? `Payroll run approved. Net pay: $${parseFloat(String((run as any)?.totalNetPay || 0)).toLocaleString()}` : `Payroll run status: '${(run as any)?.status || 'unknown'}' — pending approval`;
-          verificationData = { payrollRunId, status: (run as any)?.status, netPay: (run as any)?.totalNetPay };
+          verified = ['approved', 'processing', 'completed'].includes((run as unknown)?.status || '');
+          verificationDetails = verified ? `Payroll run approved. Net pay: $${parseFloat(String((run as unknown)?.totalNetPay || 0)).toLocaleString()}` : `Payroll run status: '${(run as unknown)?.status || 'unknown'}' — pending approval`;
+          verificationData = { payrollRunId, status: (run as unknown)?.status, netPay: (run as unknown)?.totalNetPay };
         } else {
           verificationDetails = 'payrollRunId not provided — cannot verify payroll approval';
         }
@@ -406,7 +403,7 @@ export function registerDelegationTrackerActions() {
       .where(and(eq(orchestrationRuns.id, taskId), eq(orchestrationRuns.category, 'operational_task')))
       .limit(1);
     if (!task) return { error: `Task ${taskId} not found` };
-    const currentParams = (task as any).inputParams || {};
+    const currentParams = (task as Record<string, unknown>).inputParams || {};
     const outputResult = {
       closedAt: new Date().toISOString(),
       closedBy: closedBy || 'trinity-ai',
@@ -418,13 +415,13 @@ export function registerDelegationTrackerActions() {
     await db.update(orchestrationRuns)
       .set({
         status: 'completed',
-        outputResult: outputResult as any,
+        outputResult: outputResult as unknown,
         completedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(orchestrationRuns.id, taskId));
 
-    const ws = workspaceId || (task as any).workspaceId;
+    const ws = workspaceId || (task as Record<string, unknown>).workspaceId;
     const taskDesc = currentParams.description || `Task ${taskId}`;
     await notifyUser(ws, currentParams.assignedTo, 'Task Closed', `Your task "${taskDesc}" has been marked complete. Trinity verified the outcome.`, 'normal');
 
@@ -440,11 +437,11 @@ export function registerDelegationTrackerActions() {
       .limit(1);
     if (!task) return { error: `Task ${taskId} not found` };
     const steps = await db.select().from(orchestrationRunSteps).where(eq(orchestrationRunSteps.runId, taskId)).orderBy(orchestrationRunSteps.stepNumber).catch(() => []);
-    const params_ = (task as any).inputParams || {};
+    const params_ = (task as Record<string, unknown>).inputParams || {};
     const timeline = [
-      { event: 'Task Created', timestamp: (task as any).createdAt, actor: (task as any).userId, detail: `Assigned to ${params_.assignedToName || params_.assignedTo}, due ${params_.dueBy}` },
-      ...(params_.escalationHistory || []).map((h: any) => ({ event: `Status/Escalation: L${h.level || '-'}`, timestamp: h.timestamp, actor: h.updatedBy || h.escalatedTo || 'system', detail: h.reason || h.note || '' })),
-      ...((task as any).completedAt ? [{ event: 'Loop Closed', timestamp: (task as any).completedAt, actor: (task as any).outputResult?.closedBy || 'trinity-ai', detail: (task as any).outputResult?.outcome || '' }] : []),
+      { event: 'Task Created', timestamp: (task as Record<string, unknown>).createdAt, actor: (task as Record<string, unknown>).userId, detail: `Assigned to ${params_.assignedToName || params_.assignedTo}, due ${params_.dueBy}` },
+      ...(params_.escalationHistory || []).map((h: unknown) => ({ event: `Status/Escalation: L${h.level || '-'}`, timestamp: h.timestamp, actor: h.updatedBy || h.escalatedTo || 'system', detail: h.reason || h.note || '' })),
+      ...((task as Record<string, unknown>).completedAt ? [{ event: 'Loop Closed', timestamp: (task as Record<string, unknown>).completedAt, actor: (task as Record<string, unknown>).outputResult?.closedBy || 'trinity-ai', detail: (task as Record<string, unknown>).outputResult?.outcome || '' }] : []),
     ].sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
     return { task, steps, timeline, stepCount: steps.length };
   }));

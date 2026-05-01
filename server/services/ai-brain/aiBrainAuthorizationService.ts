@@ -212,16 +212,16 @@ class AIBrainAuthorizationService {
       const rows = await typedQuery(
         sql`SELECT workspace_id, paused_by, paused_at, reason FROM trinity_workspace_pauses WHERE is_active = true`
       );
-      for (const row of (rows as any[]) || []) {
+      for (const row of (rows as unknown[][]) || []) {
         this.workspacePauseMap.set(row.workspace_id as string, {
           pausedBy: row.paused_by as string,
           pausedAt: new Date(row.paused_at as string),
           reason: row.reason as string,
         });
       }
-      const count = (rows as any[]).length ?? 0;
+      const count = (rows as unknown[][]).length ?? 0;
       log.info(`Reloaded ${count} active workspace pause(s) from DB`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('Failed to reload workspace pauses from DB (non-blocking):', (err instanceof Error ? err.message : String(err)));
     }
   }
@@ -235,7 +235,7 @@ class AIBrainAuthorizationService {
       const rows = await typedQuery(
         sql`SELECT value FROM platform_config_registry WHERE domain = 'trinity' AND key = 'global_kill_switch' AND workspace_id = 'platform' AND is_active = true LIMIT 1`
       );
-      const row = (rows as any[])[0];
+      const row = (rows as unknown[][])[0];
       if (row?.value) {
         const state = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
         if (state.active) {
@@ -248,7 +248,7 @@ class AIBrainAuthorizationService {
           log.info('Global kill switch is NOT active (confirmed from DB)');
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('Failed to reload kill switch state from DB (non-blocking):', (err instanceof Error ? err.message : String(err)));
     }
   }
@@ -447,27 +447,24 @@ class AIBrainAuthorizationService {
       }
 
       const userRecord = user[0];
-      const role = (userRecord as any).platformRole as string;
+      const role = (userRecord as Record<string,unknown>).platformRole as string;
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (!SUPPORT_ROLES.includes(role)) {
         return {
           valid: false,
           role,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           reason: `User is ${role}, requires one of [${SUPPORT_ROLES.join(', ')}]`
         };
       }
 
       return { valid: true, role };
     } catch (error) {
-      return { valid: false, reason: `Validation error: ${(error as any).message}` };
+      return { valid: false, reason: `Validation error: ${(error instanceof Error ? error.message : String(error))}` };
     }
   }
 
   requiresSupportRole(category: string): boolean {
     const requiredRoles = AI_BRAIN_AUTHORITY_ROLES[category] || [];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     return SUPPORT_ROLES.some(role => requiredRoles.includes(role));
   }
 
@@ -526,8 +523,8 @@ class AIBrainAuthorizationService {
     userRole: string;
     actionId: string;
     category: string;
-    parameters?: Record<string, any>;
-    result?: any;
+    parameters?: Record<string, unknown>;
+    result?: unknown;
     error?: string;
   }): Promise<void> {
     try {
@@ -559,7 +556,6 @@ class AIBrainAuthorizationService {
       role: userRole,
       level: ROLE_HIERARCHY[userRole] || 0,
       accessible_categories: this.getAccessibleCategories(userRole),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       is_support_staff: SUPPORT_ROLES.includes(userRole)
     };
   }
@@ -599,7 +595,7 @@ class AIBrainAuthorizationService {
     requesterId: string;
     requesterRole: string;
     targetEntity: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
     reason: string;
   }): Promise<{ approved: boolean; approvalId?: string; reason?: string }> {
     const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[data.actionType];
@@ -660,7 +656,6 @@ class AIBrainAuthorizationService {
         return { success: false, fullyApproved: false, reason: `Approval already ${approval.status}` };
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (new Date() > approval.expiresAt) {
         await db.update(governanceApprovals).set({ status: 'expired', updatedAt: new Date() }).where(eq(governanceApprovals.id, approvalId));
         return { success: false, fullyApproved: false, reason: 'Approval request has expired' };
@@ -690,7 +685,6 @@ class AIBrainAuthorizationService {
         approvedAt: new Date().toISOString(),
       }];
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const fullyApproved = updatedApprovals.length >= approval.requiredApprovals;
       
       await db.update(governanceApprovals).set({ 
@@ -731,7 +725,6 @@ class AIBrainAuthorizationService {
 
       await db.update(governanceApprovals).set({ 
         status: 'rejected',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         rejectedBy: rejecterId,
         rejectionReason: reason,
         updatedAt: new Date(),
@@ -765,7 +758,7 @@ class AIBrainAuthorizationService {
     }
   }
 
-  async isApprovalValid(approvalId: string): Promise<{ valid: boolean; approval?: any; reason?: string }> {
+  async isApprovalValid(approvalId: string): Promise<{ valid: boolean; approval?: unknown; reason?: string }> {
     try {
       const [approval] = await db.select().from(governanceApprovals).where(eq(governanceApprovals.id, approvalId)).limit(1);
       
@@ -777,7 +770,6 @@ class AIBrainAuthorizationService {
         return { valid: false, reason: `Approval status is ${approval.status}, not approved` };
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       if (new Date() > approval.expiresAt) {
         await db.update(governanceApprovals).set({ status: 'expired', updatedAt: new Date() }).where(eq(governanceApprovals.id, approvalId));
         return { valid: false, reason: 'Approval has expired' };
@@ -808,15 +800,13 @@ class AIBrainAuthorizationService {
       const approvals = await db.select().from(governanceApprovals)
         .where(and(
           eq(governanceApprovals.status, 'pending'),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           lt(now, governanceApprovals.expiresAt)
         ))
         .orderBy(desc(governanceApprovals.createdAt));
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       return approvals.map(approval => {
         const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[approval.actionType];
-        const approvalsArray = (approval.approvals as Array<any>) || [];
+        const approvalsArray = (approval.approvals as Array<unknown>) || [];
         
         return {
           id: approval.id,
@@ -846,14 +836,12 @@ class AIBrainAuthorizationService {
         return { found: false };
       }
       
-      const approvalsArray = (approval.approvals as Array<any>) || [];
+      const approvalsArray = (approval.approvals as Array<unknown>) || [];
       
       return {
         found: true,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         status: approval.status,
         approvals: approvalsArray.length,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         required: approval.requiredApprovals,
       };
     } catch (error) {
@@ -906,7 +894,7 @@ class AIBrainAuthorizationService {
   async requireApprovalForExecution(actionType: string, approvalId?: string): Promise<{ 
     canExecute: boolean; 
     reason: string;
-    approval?: any;
+    approval?: unknown;
   }> {
     if (!this.isDestructiveAction(actionType)) {
       return { canExecute: true, reason: 'Action does not require approval gate' };
@@ -957,7 +945,7 @@ setTimeout(async () => {
     }
     aiBrainAuthorizationService.loadPausesFromDB();
     aiBrainAuthorizationService.loadKillSwitchFromDB();
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.warn('[AIBrainAuth] Startup pause reload failed (non-blocking):', err?.message);
   }
 }, 120000);

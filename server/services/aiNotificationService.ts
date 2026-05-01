@@ -175,11 +175,11 @@ export async function generatePlatformUpdate(data: AIInsightData): Promise<Platf
   
   // TRINITY FEATURE VALIDATION: Validate content before processing
   // This catches stale data, vague language, and missing feature references
-  const skipFeatureCheck = (data.metadata as Record<string, any>)?.skipFeatureCheck === true;
+  const skipFeatureCheck = (data.metadata as Record<string, unknown>)?.skipFeatureCheck === true;
   const preValidation = featureRegistryService.validateNotificationContent(
     data.title,
     data.description,
-    { ...data.metadata as Record<string, any>, skipFeatureCheck }
+    { ...data.metadata as Record<string, unknown>, skipFeatureCheck }
   );
   
   // Block notifications with critical validation failures (unless skipFeatureCheck is set)
@@ -320,7 +320,7 @@ Respond with ONLY valid JSON, no markdown:`;
           jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
         }
         
-        let parsed: any;
+        let parsed: unknown;
         try {
           parsed = JSON.parse(jsonText);
         } catch (initialErr) {
@@ -739,7 +739,7 @@ export async function notifySystemIssue(
 /**
  * Event listener for platform changes - converts AI Brain events into What's New notifications
  */
-export async function handlePlatformChangeEvent(event: any): Promise<void> {
+export async function handlePlatformChangeEvent(event: unknown): Promise<void> {
   try {
     const eventType = event.type;
     const title = event.title;
@@ -1032,7 +1032,7 @@ JSON:`;
       } else if (result.error) {
         log.info('[AINotification] Metered billing failed, using direct Gemini fallback:', result.error);
       }
-    } catch (meteredError: any) {
+    } catch (meteredError : unknown) {
       log.info('[AINotification] Metered billing exception, using direct Gemini fallback:', meteredError.message || meteredError);
     }
     
@@ -1053,7 +1053,7 @@ JSON:`;
         }
         
         // Robust JSON repair for AI responses (handles truncation and malformed output)
-        let parsed: any = null;
+        let parsed: unknown = null;
         
         // Helper: Count unescaped quotes to detect unterminated strings
         const countUnescapedQuotes = (s: string): number => {

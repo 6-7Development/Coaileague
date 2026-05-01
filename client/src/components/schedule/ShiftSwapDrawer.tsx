@@ -70,7 +70,7 @@ export function ShiftSwapDrawer({
   const { data: swapRequests = [], isLoading: loadingRequests } = useQuery<ShiftSwapRequest[]>({
     queryKey: ['/api/scheduling/swap-requests'],
     enabled: open,
-    select: (data: any): ShiftSwapRequest[] => Array.isArray(data) ? data : (data?.requests || []),
+    select: (data: unknown): ShiftSwapRequest[] => Array.isArray(data) ? data : (data?.requests || []),
   });
 
   const requestSwapMutation = useMutation({
@@ -246,7 +246,7 @@ export function ShiftSwapDrawer({
 
               <TabsContent value="request" className="mt-3">
                 {shift ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 pb-safe-mobile">
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="text-xs text-muted-foreground mb-1">Selected Shift</div>
                       <div className="flex items-center justify-between gap-2">
@@ -421,10 +421,8 @@ function SwapRequestCard({
   onCancel,
   isLoading,
 }: SwapRequestCardProps) {
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const requestingEmployee = employees.find(e => e.id === request.requestingEmployeeId);
   const targetEmployee = employees.find(e => e.id === request.targetEmployeeId);
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   const isOwnRequest = request.requestingEmployeeId === currentUserId;
 
   const getInitials = (name: string) => {
@@ -484,11 +482,11 @@ function SwapRequestCard({
         </div>
       </div>
 
-      // @ts-ignore — TS migration: fix in refactoring sprint
-      {(request as any).notes && (
+      // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+      {(request as Record<string,unknown>).notes && (
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-          // @ts-ignore — TS migration: fix in refactoring sprint
-          "{(request as any).notes}"
+          // @ts-expect-error — TS migration: fix in refactoring sprint — TS migration: fix in refactoring sprint
+          "{(request as Record<string,unknown>).notes}"
         </p>
       )}
 

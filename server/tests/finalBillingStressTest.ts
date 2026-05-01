@@ -175,7 +175,7 @@ async function phase3_credit_costs_completeness() {
   ];
   let syncMismatches: string[] = [];
   for (const key of syncKeys) {
-    const cm = (TOKEN_COSTS as any)[key];
+    const cm = (TOKEN_COSTS as unknown)[key];
     const bc = billingCreditCosts[key];
     if (cm !== undefined && bc !== undefined && cm !== bc) syncMismatches.push(`${key}: CM=${cm} BC=${bc}`);
   }
@@ -183,10 +183,10 @@ async function phase3_credit_costs_completeness() {
 
   const aiCosts = ['ai_scheduling', 'ai_invoice_generation', 'ai_payroll_processing', 'ai_chat_query', 'trinity_chat'];
   const claudeCosts = ['trinity_analysis', 'trinity_strategic', 'trinity_executive'];
-  const aiAllPositive = aiCosts.every(k => (TOKEN_COSTS as any)[k] > 0);
-  const claudeAllPositive = claudeCosts.every(k => (TOKEN_COSTS as any)[k] > 0);
-  record({ name: 'AI Features Have Positive Costs', phase: 'COSTS', passed: aiAllPositive, details: aiCosts.map(k => `${k}=${(TOKEN_COSTS as any)[k]}`).join(', '), severity: 'high' });
-  record({ name: 'Claude Features Have Positive Costs', phase: 'COSTS', passed: claudeAllPositive, details: claudeCosts.map(k => `${k}=${(TOKEN_COSTS as any)[k]}`).join(', '), severity: 'high' });
+  const aiAllPositive = aiCosts.every(k => (TOKEN_COSTS as unknown)[k] > 0);
+  const claudeAllPositive = claudeCosts.every(k => (TOKEN_COSTS as unknown)[k] > 0);
+  record({ name: 'AI Features Have Positive Costs', phase: 'COSTS', passed: aiAllPositive, details: aiCosts.map(k => `${k}=${(TOKEN_COSTS as unknown)[k]}`).join(', '), severity: 'high' });
+  record({ name: 'Claude Features Have Positive Costs', phase: 'COSTS', passed: claudeAllPositive, details: claudeCosts.map(k => `${k}=${(TOKEN_COSTS as unknown)[k]}`).join(', '), severity: 'high' });
 }
 
 async function phase4_subscription_tiers_pricing() {
@@ -202,16 +202,15 @@ async function phase4_subscription_tiers_pricing() {
   ];
 
   for (const exp of expectedTiers) {
-    const tier = (BILLING as any).tiers[exp.id];
+    const tier = (BILLING as Record<string,unknown>).tiers[exp.id];
     record({ name: `${exp.id} Price = $${exp.price / 100}/mo`, phase: 'PRICING', passed: tier?.monthlyPrice === exp.price, details: `Configured: $${(tier?.monthlyPrice || 0) / 100}, expected: $${exp.price / 100}`, severity: 'critical' });
     record({ name: `${exp.id} Credits = ${exp.credits}/mo`, phase: 'PRICING', passed: tier?.monthlyTokens === exp.credits, details: `Configured: ${tier?.monthlyTokens}, expected: ${exp.credits}`, severity: 'critical' });
     record({ name: `${exp.id} MaxEmployees = ${exp.maxEmp}`, phase: 'PRICING', passed: tier?.maxEmployees === exp.maxEmp, details: `Configured: ${tier?.maxEmployees}, expected: ${exp.maxEmp}`, severity: 'critical' });
   }
 
-  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: (BILLING.tiers.free as any).allowTokenOverage === false, details: `allowCreditOverage=${(BILLING.tiers.free as any).allowTokenOverage}`, severity: 'critical' });
+  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: (BILLING.tiers.free as unknown).allowTokenOverage === false, details: `allowCreditOverage=${(BILLING.tiers.free as unknown).allowTokenOverage}`, severity: 'critical' });
 
   const tca = TIER_TOKEN_ALLOCATIONS;
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   record({ name: 'TIER_TOKEN_ALLOCATIONS Match billingConfig', phase: 'PRICING', passed: tca.free === 250 && tca.starter === 2500 && tca.professional === 10000 && tca.enterprise === 50000, details: `free=${tca.free}, starter=${tca.starter}, pro=${tca.professional}, ent=${tca.enterprise}`, severity: 'critical' });
 
   record({ name: 'Prices Monotonically Increase by Tier', phase: 'PRICING', passed: BILLING.tiers.free.monthlyPrice < BILLING.tiers.starter.monthlyPrice && BILLING.tiers.starter.monthlyPrice < BILLING.tiers.professional.monthlyPrice && BILLING.tiers.professional.monthlyPrice < BILLING.tiers.enterprise.monthlyPrice, details: 'free < starter < professional < enterprise', severity: 'critical' });
@@ -226,7 +225,7 @@ async function phase5_stripe_alignment() {
 
   const tierKeys = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
   for (const key of tierKeys) {
-    const prod = (STRIPE_PRODUCTS as any)[key];
+    const prod = (STRIPE_PRODUCTS as unknown)[key];
     record({ name: `STRIPE_PRODUCTS.${key} Exists`, phase: 'STRIPE', passed: !!prod && !!prod.name && prod.amount !== undefined, details: `name=${prod?.name}, amount=$${(prod?.amount || 0) / 100}`, severity: 'critical' });
   }
 
@@ -354,7 +353,7 @@ async function phase8_feature_matrix() {
 
   let invalidEntries: string[] = [];
   for (const [key, value] of Object.entries(fm)) {
-    const v = value as any;
+    const v = value as unknown;
     if (v.free === undefined || v.starter === undefined || v.professional === undefined || v.enterprise === undefined) {
       invalidEntries.push(key);
     }
@@ -362,13 +361,13 @@ async function phase8_feature_matrix() {
   record({ name: 'All Matrix Entries Have 4 Tier Values', phase: 'MATRIX', passed: invalidEntries.length === 0, details: invalidEntries.length === 0 ? `All ${matrixKeys.length} entries have free/starter/pro/enterprise` : `Incomplete: ${invalidEntries.join(', ')}`, severity: 'critical' });
 
   const enterpriseOnlyCount = matrixKeys.filter(k => {
-    const v = (fm as any)[k];
+    const v = (fm as unknown)[k];
     return v.enterprise === true && v.professional !== true && v.professional !== 'addon';
   }).length;
   record({ name: 'Enterprise-Only Features >= 3', phase: 'MATRIX', passed: enterpriseOnlyCount >= 3, details: `${enterpriseOnlyCount} enterprise-only features`, severity: 'high' });
 
   const addonFeatures = matrixKeys.filter(k => {
-    const v = (fm as any)[k];
+    const v = (fm as unknown)[k];
     return v.starter === 'addon' || v.professional === 'addon';
   });
   record({ name: 'Addon Features Exist', phase: 'MATRIX', passed: addonFeatures.length > 0, details: `${addonFeatures.length} features available as addons`, severity: 'medium' });
@@ -391,7 +390,7 @@ async function phase9_db_tables_integrity() {
     WHERE table_schema = 'public' 
     AND table_name = ANY(ARRAY[${sql.raw(billingTables.map(t => `'${t}'`).join(','))}])
   `);
-  const foundTables = (tableCheck as any).rows?.map((r: any) => r.table_name) || [];
+  const foundTables = (tableCheck as Record<string,unknown>).rows?.map((r: unknown) => r.table_name) || [];
   const missingTables = billingTables.filter(t => !foundTables.includes(t));
   record({ name: 'All 8 Billing Tables Exist', phase: 'DB', passed: missingTables.length === 0, details: missingTables.length === 0 ? 'All billing tables present' : `MISSING: ${missingTables.join(', ')}`, severity: 'critical' });
 
@@ -399,7 +398,7 @@ async function phase9_db_tables_integrity() {
   const credColCheck = await typedQuery(sql`
     SELECT column_name FROM information_schema.columns WHERE table_name = 'workspace_credits' ORDER BY ordinal_position
   `);
-  const credCols = (credColCheck as any).rows?.map((r: any) => r.column_name) || [];
+  const credCols = (credColCheck as Record<string,unknown>).rows?.map((r: unknown) => r.column_name) || [];
   const requiredCredCols = ['workspace_id', 'current_balance', 'monthly_allocation'];
   record({ name: 'workspace_credits Has Key Columns', phase: 'DB', passed: requiredCredCols.every(c => credCols.includes(c)), details: `Required: ${requiredCredCols.join(', ')} | Found: ${credCols.slice(0, 8).join(', ')}...`, severity: 'critical' });
 
@@ -407,7 +406,7 @@ async function phase9_db_tables_integrity() {
   const txColCheck = await typedQuery(sql`
     SELECT column_name FROM information_schema.columns WHERE table_name = 'credit_transactions' ORDER BY ordinal_position
   `);
-  const txCols = (txColCheck as any).rows?.map((r: any) => r.column_name) || [];
+  const txCols = (txColCheck as Record<string,unknown>).rows?.map((r: unknown) => r.column_name) || [];
   const requiredTxCols = ['workspace_id', 'amount', 'feature_key', 'transaction_type'];
   record({ name: 'credit_transactions Has Key Columns', phase: 'DB', passed: requiredTxCols.every(c => txCols.includes(c)), details: `Required: ${requiredTxCols.join(', ')} | Found: ${txCols.slice(0, 8).join(', ')}...`, severity: 'critical' });
 
@@ -415,7 +414,7 @@ async function phase9_db_tables_integrity() {
   const subColCheck = await typedQuery(sql`
     SELECT column_name FROM information_schema.columns WHERE table_name = 'subscriptions' ORDER BY ordinal_position
   `);
-  const subCols = (subColCheck as any).rows?.map((r: any) => r.column_name) || [];
+  const subCols = (subColCheck as Record<string,unknown>).rows?.map((r: unknown) => r.column_name) || [];
   const requiredSubCols = ['workspace_id', 'stripe_subscription_id', 'plan', 'status'];
   record({ name: 'subscriptions Has Key Columns', phase: 'DB', passed: requiredSubCols.every(c => subCols.includes(c)), details: `Required: ${requiredSubCols.join(', ')}`, severity: 'critical' });
 
@@ -423,7 +422,7 @@ async function phase9_db_tables_integrity() {
   const eventColCheck = await typedQuery(sql`
     SELECT column_name FROM information_schema.columns WHERE table_name = 'processed_stripe_events' ORDER BY ordinal_position
   `);
-  const eventCols = (eventColCheck as any).rows?.map((r: any) => r.column_name) || [];
+  const eventCols = (eventColCheck as Record<string,unknown>).rows?.map((r: unknown) => r.column_name) || [];
   record({ name: 'processed_stripe_events Table Has Columns', phase: 'DB', passed: eventCols.length >= 2, details: `${eventCols.length} columns: ${eventCols.join(', ')}`, severity: 'high' });
 }
 
@@ -490,9 +489,9 @@ async function phase11_cross_validation() {
   let stripeBillingMatch = true;
   let mismatchDetails: string[] = [];
   for (const tier of ['free', 'starter', 'professional', 'enterprise'] as const) {
-    if ((stripeAmounts as any)[tier] !== (billingAmounts as any)[tier]) {
+    if ((stripeAmounts as unknown)[tier] !== (billingAmounts as unknown)[tier]) {
       stripeBillingMatch = false;
-      mismatchDetails.push(`${tier}: Stripe=$${(stripeAmounts as any)[tier] / 100} vs Config=$${(billingAmounts as any)[tier] / 100}`);
+      mismatchDetails.push(`${tier}: Stripe=$${(stripeAmounts as unknown)[tier] / 100} vs Config=$${(billingAmounts as unknown)[tier] / 100}`);
     }
   }
   record({ name: 'Stripe ↔ billingConfig Price Parity (All 4 Tiers)', phase: 'CROSS', passed: stripeBillingMatch, details: stripeBillingMatch ? 'All 4 tier prices match exactly' : mismatchDetails.join('; '), severity: 'critical' });

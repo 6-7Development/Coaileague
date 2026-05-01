@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 // Domain Audit & Platform Ops — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api-docs, /api/audit/*, /api/dashboard, /api/analytics,
@@ -6,6 +8,7 @@
 //   /api/admin, /api/platform, /api/sandbox, /api/deletion-protection
 // NOTE: /api/alerts/* is owned by the COMMS domain (commInlineRoutes.ts)
 import { sanitizeError } from '../../middleware/errorHandler';
+import { AuthenticatedRequest } from '../../rbac';
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
@@ -53,7 +56,7 @@ export function mountAuditRoutes(app: Express): void {
   app.use("/api-docs", apiDocsRouter);
 
   // Inline audit trail handlers (universalAudit service)
-  app.get("/api/audit/trail", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/trail", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -72,7 +75,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/entity/:type/:id", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/entity/:type/:id", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       const { type, id } = req.params;
@@ -82,7 +85,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/user/:userId", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/user/:userId", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       const { userId } = req.params;
@@ -92,7 +95,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/bot/:botName", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/bot/:botName", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -103,7 +106,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/workspace/summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/workspace/summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -114,7 +117,7 @@ export function mountAuditRoutes(app: Express): void {
 
   // Compliance export for workspace audit history.
   // GET /api/audit/export?start=&end=&format=csv|json
-  app.get("/api/audit/export", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+  app.get("/api/audit/export", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -134,7 +137,7 @@ export function mountAuditRoutes(app: Express): void {
       }
 
       // universalAudit.getWorkspaceHistory caps to 500; page through up to 10k.
-      const logs: any[] = [];
+      const logs: (string | number | boolean | null)[] = [];
       const pageSize = 500;
       const maxRows = 10_000;
       for (let offset = 0; offset < maxRows; offset += pageSize) {
@@ -158,7 +161,7 @@ export function mountAuditRoutes(app: Express): void {
       };
 
       const header = 'timestamp,action,actorType,actorId,entityType,entityId,payload\n';
-      const rows = logs.map((logEntry: any) => ([
+      const rows = logs.map((logEntry: unknown) => ([
         escapeCsv(logEntry.createdAt),
         escapeCsv(logEntry.action),
         escapeCsv(logEntry.actorType),
@@ -208,7 +211,7 @@ export function mountAuditRoutes(app: Express): void {
   app.use("/api/kpi-alerts", kpiAlertRouter);
   app.use("/api/insights", requireAuth, ensureWorkspaceAccess, insightsRouter);
   // Predict & patterns routes have full /api/predict/*, /api/patterns/* paths inside insightsRouter
-  app.use((req: any, res: any, next: any) => {
+  app.use((req: AuthenticatedRequest, res: Response, next: unknown) => {
     if (req.path.startsWith("/api/predict") || req.path.startsWith("/api/patterns")) {
       return insightsRouter(req, res, next);
     }

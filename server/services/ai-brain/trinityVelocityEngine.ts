@@ -6,7 +6,7 @@ import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityVelocityEngine');
 
 interface CacheEntry {
-  value: any;
+  value: unknown;
   expiresAt: number;
   accessCount: number;
 }
@@ -33,7 +33,7 @@ class AgentCache {
     return entry.value;
   }
 
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     if (this.cache.size >= 1000) {
       const oldest = [...this.cache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt)[0];
       if (oldest) this.cache.delete(oldest[0]);
@@ -65,7 +65,7 @@ export interface VelocityAgentResult {
   agent: string;
   status: 'completed' | 'failed' | 'needs_review';
   confidence: number;
-  data: any;
+  data: Record<string, unknown>;
   recommendation?: string;
   timeMs: number;
   cached: boolean;
@@ -278,7 +278,7 @@ Return a JSON object with a "subtasks" array.`;
       const text = result.text;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         if (!Array.isArray(parsed.subtasks)) {
           return { subtasks: [] };
         }
@@ -524,7 +524,7 @@ Synthesize these results into a coherent, actionable response for the user. Use 
       const text = result.text;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
 
         // Format the synthesis with insights
         let synthesis = parsed.synthesis || '';

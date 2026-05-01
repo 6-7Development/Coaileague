@@ -11,6 +11,7 @@
  */
 
 import { Router } from 'express';
+import { AuthenticatedRequest } from '../rbac';
 import { requireAuth } from '../auth';
 import {
   isValidIANATimezone,
@@ -28,21 +29,21 @@ const log = createLogger('HolidayRoutes');
 const router = Router();
 
 // ─── GET /api/holidays ────────────────────────────────────────────────────────
-router.get('/', requireAuth, async (req: any, res) => {
+router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const year = req.query.year ? parseInt(req.query.year as string) : undefined;
     
     const holidays = await getWorkspaceHolidays(workspaceId, year);
     return res.json({ holidays });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HolidayRoutes] GET /api/holidays error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch holidays' });
   }
 });
 
 // ─── POST /api/holidays/validate-timezone ─────────────────────────────────────
-router.post('/validate-timezone', requireAuth, (req: any, res) => {
+router.post('/validate-timezone', requireAuth, (req: AuthenticatedRequest, res) => {
   const { timezone } = req.body;
   if (!timezone) return res.status(400).json({ error: 'timezone is required' });
   
@@ -51,7 +52,7 @@ router.post('/validate-timezone', requireAuth, (req: any, res) => {
 });
 
 // ─── GET /api/holidays/check-date ────────────────────────────────────────────
-router.get('/check-date', requireAuth, async (req: any, res) => {
+router.get('/check-date', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId } = req.user;
     const { date, state_code } = req.query;
@@ -65,7 +66,7 @@ router.get('/check-date', requireAuth, async (req: any, res) => {
     );
     
     return res.json({ isHoliday, date, stateCode: state_code || null });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HolidayRoutes] check-date error:', err.message);
     return res.status(500).json({ error: 'Failed to check holiday status' });
   }
@@ -80,7 +81,7 @@ const createSchema = z.object({
   appliesToDifferential: z.boolean().default(true),
 });
 
-router.post('/', requireAuth, async (req: any, res) => {
+router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId, id: userId } = req.user;
     
@@ -104,7 +105,7 @@ router.post('/', requireAuth, async (req: any, res) => {
     });
     
     return res.status(201).json({ holiday });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HolidayRoutes] POST /api/holidays error:', err.message);
     return res.status(500).json({ error: 'Failed to create holiday' });
   }
@@ -118,7 +119,7 @@ const updateSchema = z.object({
   appliesToDifferential: z.boolean().optional(),
 });
 
-router.put('/:id', requireAuth, async (req: any, res) => {
+router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId } = req.user;
     
@@ -137,14 +138,14 @@ router.put('/:id', requireAuth, async (req: any, res) => {
     }
     
     return res.json({ holiday });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HolidayRoutes] PUT error:', err.message);
     return res.status(500).json({ error: 'Failed to update holiday' });
   }
 });
 
 // ─── DELETE /api/holidays/:id ─────────────────────────────────────────────────
-router.delete('/:id', requireAuth, async (req: any, res) => {
+router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { role, workspaceId } = req.user;
     
@@ -158,7 +159,7 @@ router.delete('/:id', requireAuth, async (req: any, res) => {
     }
     
     return res.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[HolidayRoutes] DELETE error:', err.message);
     return res.status(500).json({ error: 'Failed to delete holiday' });
   }

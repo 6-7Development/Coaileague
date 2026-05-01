@@ -78,7 +78,7 @@ interface ShiftReport {
   pdf_generated_at: string | null;
   trinity_articulated: boolean;
   photo_count: number | null;
-  photo_manifest: any[] | null;
+  photo_manifest: unknown[] | null;
   verified_by: string | null;
   verified_at: string | null;
   sent_to_client: boolean;
@@ -135,7 +135,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
 };
 
-const REPORT_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const REPORT_STATUS_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   draft: { label: "Draft", color: "bg-slate-500/15 text-slate-600 dark:text-slate-400", icon: Clock },
   pending_review: { label: "Pending Review", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", icon: Clock },
   verified: { label: "Verified", color: "bg-green-500/15 text-green-600 dark:text-green-400", icon: CheckCheck },
@@ -201,7 +201,7 @@ export default function DocumentVault() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiRequest("POST", "/api/document-vault", data);
       return res.json();
     },
@@ -211,7 +211,7 @@ export default function DocumentVault() {
       resetForm();
       toast({ title: "Document Uploaded", description: "Document has been added to the vault." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to upload document", variant: "destructive" });
     },
   });
@@ -226,7 +226,7 @@ export default function DocumentVault() {
       setDetailDoc(null);
       toast({ title: "Document Deleted", description: "Document has been removed from the vault." });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to delete document", variant: "destructive" });
     },
   });

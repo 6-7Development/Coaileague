@@ -19,7 +19,7 @@ export interface BotInstance {
   roomId: string;
   orgId: string;
   status: BotInstanceStatus;
-  sessionData: Record<string, any>;
+  sessionData: Record<string, unknown>;
   startedAt: Date;
   lastActivityAt: Date;
   messageCount: number;
@@ -33,7 +33,7 @@ export interface BotMessage {
   senderName: string;
   content: string;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class BotPoolManagerClass {
@@ -89,8 +89,6 @@ class BotPoolManagerClass {
     }
     const orgCounts = this.orgBotCounts.get(orgId)!;
     orgCounts.set(botId, (orgCounts.get(botId) || 0) + 1);
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ircEmitter.emit({
       event: IRC_EVENTS.JOIN,
       roomId,
@@ -119,8 +117,6 @@ class BotPoolManagerClass {
 
     instance.status = 'terminating';
     const definition = BOT_REGISTRY[instance.botId];
-
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     ircEmitter.emit({
       event: IRC_EVENTS.PART,
       roomId: instance.roomId,

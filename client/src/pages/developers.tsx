@@ -46,7 +46,7 @@ import {
 export default function DeveloperPortal() {
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newKeyData, setNewKeyData] = useState<any>(null);
+  const [newKeyData, setNewKeyData] = useState<null>(null);
   const [keyName, setKeyName] = useState("");
 
   const { data: keys, isLoading: keysLoading } = useQuery({
@@ -103,7 +103,7 @@ export default function DeveloperPortal() {
           <Badge variant="outline" className="h-9 px-4 flex gap-2">
             <Activity className="w-4 h-4 text-green-500" />
             // @ts-ignore — TS migration: fix in refactoring sprint
-            System Status: {(status as any)?.status || 'checking...'}
+            System Status: {(status as Record<string,unknown>)?.status || 'checking...'}
           </Badge>
           <Button 
             onClick={() => setIsCreateModalOpen(true)}
@@ -137,11 +137,10 @@ export default function DeveloperPortal() {
               <TableBody>
                 {keysLoading ? (
                   <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Loading API keys and access status...</TableCell></TableRow>
-                // @ts-expect-error — TS migration: fix in refactoring sprint
                 ) : keys?.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No API keys found.</TableCell></TableRow>
                 // @ts-expect-error — TS migration: fix in refactoring sprint
-                ) : keys?.map((key: any) => (
+                ) : keys?.map((key) => (
                   <TableRow key={key.id}>
                     <TableCell className="font-medium" data-testid={`text-key-name-${key.id}`}>{key.name}</TableCell>
                     <TableCell><code>{key.key_prefix}...</code></TableCell>

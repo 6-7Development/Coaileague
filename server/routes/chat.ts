@@ -52,7 +52,6 @@ const router = Router();
       if (platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
         // Platform staff can see ALL conversations across all workspaces
         const status = req.query.status as string | undefined;
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const allConversations = await storage.getAllChatConversations({ status });
         return res.json(allConversations);
       }
@@ -75,7 +74,7 @@ const router = Router();
   });
 
   // Create new conversation
-  router.post('/api/chat/conversations', requireAuth, async (req: any, res) => {
+  router.post('/api/chat/conversations', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -101,7 +100,7 @@ const router = Router();
           userId
         );
       } catch (summonErr: unknown) {
-        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as Record<string,unknown>)?.message);
       }
 
       res.status(201).json(conversation);
@@ -128,7 +127,6 @@ const router = Router();
       
       if (platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
         // Platform staff can view ANY conversation's messages (full security/monitoring access)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const messages = await storage.getChatMessagesByConversation(id);
         
         // Batch lookup sender info (N+1 query optimization)
@@ -171,7 +169,6 @@ const router = Router();
 
       await storage.ensureChatParticipant(id, userId);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const messages = await storage.getChatMessagesByConversation(id);
       
       // Batch lookup sender info (N+1 query optimization)
@@ -203,7 +200,7 @@ const router = Router();
   });
 
   // Update conversation (assign agent, change status, etc.)
-  router.patch('/api/chat/conversations/:id', requireAuth, async (req: any, res) => {
+  router.patch('/api/chat/conversations/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -225,7 +222,6 @@ const router = Router();
         .omit({ workspaceId: true })
         .parse(req.body);
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const updated = await storage.updateChatConversation(id, validated);
       
       if (!updated) {
@@ -240,7 +236,7 @@ const router = Router();
   });
 
   // Close conversation
-  router.post('/api/chat/conversations/:id/close', requireAuth, async (req: any, res) => {
+  router.post('/api/chat/conversations/:id/close', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -306,7 +302,6 @@ const router = Router();
       // Create main room if it doesn't exist
       if (!mainRoom) {
         mainRoom = await storage.createChatConversation({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           id: MAIN_ROOM_ID,
           workspaceId: PLATFORM_WORKSPACE_ID, // Use actual platform workspace
           customerName: 'Main Chatroom',
@@ -333,7 +328,6 @@ const router = Router();
       let mainRoom = await resolveOrMigrateMainRoom();
       if (!mainRoom) {
         mainRoom = await storage.createChatConversation({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           id: MAIN_ROOM_ID,
           workspaceId: PLATFORM_WORKSPACE_ID,
           customerName: 'Main Chatroom',
@@ -346,7 +340,6 @@ const router = Router();
         });
       }
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const messages = await storage.getChatMessagesByConversation(MAIN_ROOM_ID);
       res.json(messages);
     } catch (error) {
@@ -371,7 +364,6 @@ const router = Router();
       let mainRoom = await resolveOrMigrateMainRoom();
       if (!mainRoom) {
         mainRoom = await storage.createChatConversation({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           id: MAIN_ROOM_ID,
           workspaceId: PLATFORM_WORKSPACE_ID,
           customerName: 'Main Chatroom',
@@ -412,7 +404,6 @@ const router = Router();
       });
       
       // Update last message timestamp
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       await storage.updateChatConversation(MAIN_ROOM_ID, {
         lastMessageAt: new Date(),
       });
@@ -425,7 +416,7 @@ const router = Router();
   });
 
   // Grant voice to user (remove silence) - Managers and Owners only
-  router.post('/api/chat/conversations/:id/grant-voice', requireManager, async (req: any, res) => {
+  router.post('/api/chat/conversations/:id/grant-voice', requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -450,7 +441,6 @@ const router = Router();
       }
 
       // Grant voice (remove silence)
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const updated = await storage.updateChatConversation(id, {
         isSilenced: false,
         voiceGrantedBy: userId,
@@ -477,7 +467,7 @@ const router = Router();
   });
 
   // Help bot: Send AI response
-  router.post('/api/chat/help-bot/respond', requireAuth, async (req: any, res) => {
+  router.post('/api/chat/help-bot/respond', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { conversationId, userMessage, previousMessages } = req.body;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -498,7 +488,6 @@ const router = Router();
       const botResponse = await HelpBotService.generateResponse(userMessage, {
         conversationId,
         customerName: conversation.customerName || undefined,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         customerEmail: conversation.customerEmail || undefined,
         previousMessages,
         workspaceId: workspace.id, // CRITICAL: Required for billing tracking
@@ -530,7 +519,6 @@ const router = Router();
         return res.status(400).json({ message: "Message is required" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { generateGeminiResponse, isGeminiAvailable } = await import('./gemini');
       
       if (!isGeminiAvailable()) {
@@ -579,7 +567,6 @@ const router = Router();
   // Check Gemini AI availability
   router.get('/api/chat/gemini/status', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const { isGeminiAvailable } = await import('./gemini');
       const available = isGeminiAvailable();
       
@@ -723,7 +710,7 @@ const router = Router();
     } catch (error: unknown) {
       log.error("Error creating chat macro:", error);
       if (error instanceof Error && error.name === 'ZodError') {
-        return res.status(400).json({ message: "Invalid macro data", errors: (error as any).errors });
+        return res.status(400).json({ message: "Invalid macro data", errors: (error as Record<string,unknown>).errors });
       }
       res.status(500).json({ message: "Failed to create chat macro" });
     }
@@ -797,8 +784,8 @@ const router = Router();
       }
       
       // SECURITY: Verify user is a participant or workspace member
-      const isParticipant = (conversation as any).participantIds?.includes(userId);
-      const isCreator = (conversation as any).creatorId === userId;
+      const isParticipant = (conversation as Record<string,unknown>).participantIds?.includes(userId);
+      const isCreator = (conversation as Record<string,unknown>).creatorId === userId;
       let isWorkspaceMember = false;
       
       if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -828,17 +815,16 @@ const router = Router();
       await db
         .insert(typingIndicators)
         .values({
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           workspaceId: workspaceId,
           conversationId,
           userId,
-          userName: (user as any).displayName || (user as any).username || "Anonymous",
+          userName: req.user?.displayName || req.user?.username || "Anonymous",
         })
         .onConflictDoUpdate({
           target: [typingIndicators.conversationId, typingIndicators.userId],
           set: {
             startedAt: sql`NOW()`,
-            userName: (user as any).displayName || (user as any).username || "Anonymous",
+            userName: req.user?.displayName || req.user?.username || "Anonymous",
           },
         });
       
@@ -908,7 +894,6 @@ const router = Router();
       const conversationData: InsertChatConversation = {
         workspaceId,
         subject: subject || 'Team Chat',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         isActive: true,
         conversationType: conversationType || 'open_chat',
         shiftId: shiftId || null,
@@ -928,7 +913,7 @@ const router = Router();
             // For now, just track in memory
             addedParticipants.push({
               id: participant.id,
-              name: (participant as any).displayName || participant.email,
+              name: (participant as Record<string,unknown>).displayName || participant.email,
               email: participant.email
             });
           }
@@ -956,7 +941,7 @@ const router = Router();
       }
       
       // Send welcome system message
-      const userName = (user as any).displayName || user.email;
+      const userName = req.user?.displayName || user.email;
       const welcomeMessage = `Chat created by ${userName}. Type: ${chatType}`;
       
       await storage.createChatMessage({
@@ -978,7 +963,7 @@ const router = Router();
           userId
         );
       } catch (summonErr: unknown) {
-        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as Record<string,unknown>)?.message);
       }
       
       res.json({
@@ -1005,7 +990,7 @@ const router = Router();
       const user = req.user!;
       // Support staff authorization
       const userRole = user.role;
-      const platformRole = (user as any)?.platformRole;
+      const platformRole = (user as Record<string,unknown>)?.platformRole;
       const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
@@ -1018,7 +1003,6 @@ const router = Router();
         return res.status(400).json({ message: "Format must be 'pdf' or 'html'" });
       }
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       const data = await storage.getSupportConversationForExport(conversationId);
       if (!data) {
         return res.status(404).json({ message: "Conversation not found" });
@@ -1048,7 +1032,7 @@ const router = Router();
       const exportData = {
         title: data.conversation.subject || 'Support Conversation',
         subtitle: `Conversation ID: ${conversationId}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
@@ -1061,9 +1045,7 @@ const router = Router();
           exportedByRole: user.role,
           totalMessages: data.messages.length,
           dateRange: data.messages.length > 0 ? {
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             start: new Date(data.messages[0].createdAt),
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             end: new Date(data.messages[data.messages.length - 1].createdAt),
           } : undefined,
           participants: [data.conversation.customerName, data.conversation.supportAgentName].filter(Boolean),
@@ -1071,13 +1053,11 @@ const router = Router();
       };
 
       if (format === 'pdf') {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const pdfBuffer = await generateChatPDF(exportData);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="conversation-${conversationId}.pdf"`);
         res.send(pdfBuffer);
       } else {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const html = generateChatHTML(exportData);
         res.setHeader('Content-Type', 'text/html');
         res.send(html);
@@ -1094,7 +1074,7 @@ const router = Router();
       const user = req.user!;
       // Support staff authorization
       const userRole = user.role;
-      const platformRole = (user as any)?.platformRole;
+      const platformRole = (user as Record<string,unknown>)?.platformRole;
       const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
@@ -1138,7 +1118,7 @@ const router = Router();
       const exportData = {
         title: data.room.name || 'Chat Room',
         subtitle: `Room ID: ${roomId}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
@@ -1154,18 +1134,16 @@ const router = Router();
             start: new Date(data.messages[0].createdAt),
             end: new Date(data.messages[data.messages.length - 1].createdAt),
           } : undefined,
-          participants: data.members?.map((m: any) => m.memberName).filter(Boolean) || [],
+          participants: data.members?.map((m: unknown) => m.memberName).filter(Boolean) || [],
         },
       };
 
       if (format === 'pdf') {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const pdfBuffer = await generateChatPDF(exportData);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="chatroom-${roomId}.pdf"`);
         res.send(pdfBuffer);
       } else {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const html = generateChatHTML(exportData);
         res.setHeader('Content-Type', 'text/html');
         res.send(html);
@@ -1182,7 +1160,7 @@ const router = Router();
       const user = req.user!;
       // Support staff authorization (only platform_admin or support_staff can export encrypted DMs)
       const userRole = user.role;
-      const platformRole = (user as any)?.platformRole;
+      const platformRole = (user as Record<string,unknown>)?.platformRole;
       const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
@@ -1235,7 +1213,7 @@ const router = Router();
       const exportData = {
         title: 'Private Conversation - CONFIDENTIAL',
         subtitle: `Conversation ID: ${conversationId} • Audit Request: ${data.auditInfo?.auditRequestId || 'N/A'}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
@@ -1258,13 +1236,11 @@ const router = Router();
       };
 
       if (format === 'pdf') {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const pdfBuffer = await generateChatPDF(exportData);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="private-dm-${conversationId}.pdf"`);
         res.send(pdfBuffer);
       } else {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const html = generateChatHTML(exportData);
         res.setHeader('Content-Type', 'text/html');
         res.send(html);
@@ -1465,8 +1441,8 @@ router.get("/api/chat/room/:roomId/motd", requireAnyAuth, async (req: Authentica
       return res.status(404).json({ message: "Room not found" });
     }
     
-    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
-    const activeBots = (conversation as any).metadata?.activeBots || [];
+    const roomModes = (conversation as Record<string,unknown>).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as Record<string,unknown>).metadata?.activeBots || [];
     const roomName = conversation.subject || "Chat Room";
     
     const motd = generateMOTD(roomName, roomModes, activeBots);
@@ -1516,7 +1492,6 @@ router.get("/api/chat/commands/help", requireAnyAuth, async (req: AuthenticatedR
     }
     
     const modes = roomModes 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       ? (Array.isArray(roomModes) ? roomModes : [roomModes]).map(m => m as RoomMode)
       : [RoomMode.ORG];
     
@@ -1552,8 +1527,8 @@ router.get("/api/chat/room/:roomId/bots", requireAnyAuth, async (req: Authentica
       return res.status(404).json({ message: "Room not found" });
     }
     
-    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
-    const activeBots = (conversation as any).metadata?.activeBots || [];
+    const roomModes = (conversation as Record<string,unknown>).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as Record<string,unknown>).metadata?.activeBots || [];
     
     const availableBots = new Set<string>();
     for (const mode of roomModes) {
@@ -1630,7 +1605,6 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
         sessionId,
         message,
         userId: user?.id,
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         workspaceId: user?.currentWorkspaceId,
       });
       return res.json({ handled: true, command, ...result });
@@ -1639,7 +1613,6 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
     // Otherwise start a new HelpAI session and send the command as first message
     const session = await helpAIOrchestrator.startSession({
       userId: user?.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: user?.currentWorkspaceId,
       guestName: user ? `${user.firstName} ${user.lastName}`.trim() : undefined,
       guestEmail: user?.email,
@@ -1651,7 +1624,6 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
       sessionId: session.sessionId,
       message,
       userId: user?.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: user?.currentWorkspaceId,
     });
 

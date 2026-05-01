@@ -4,8 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormSection, SignatureField, DocumentViewer, AckCheckbox, FieldError } from './shared';
 
 interface Props {
-  data: Record<string, any>;
-  onChange: (field: string, value: any) => void;
+  data: Record<string, unknown>;
+  onChange: (field: string, value: unknown) => void;
   errors: Record<string, string>;
 }
 

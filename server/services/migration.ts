@@ -17,7 +17,7 @@ export interface CreateMigrationJobParams {
 
 export interface ExtractedRecord {
   recordType: MigrationType;
-  data: any;
+  data: Record<string, unknown>;
   confidence: number;
   warnings: string[];
 }
@@ -44,9 +44,9 @@ export interface MigrationDocument {
   mimeType: string;
   detectedType: MigrationType;
   confidence: string;
-  extractedData: any;
-  validationErrors: any[];
-  warnings: any[];
+  extractedData: unknown;
+  validationErrors: unknown[];
+  warnings: unknown[];
   recordsExtracted: number;
   recordsImported: number;
   requiresReview: boolean;
@@ -61,7 +61,7 @@ export interface MigrationRecord {
   documentId: string;
   workspaceId: string;
   recordType: MigrationType;
-  extractedData: any;
+  extractedData: unknown;
   importedToTable: string | null;
   importedRecordId: string | null;
   importStatus: string;

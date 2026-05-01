@@ -8,7 +8,7 @@ const log = createLogger('FinanceInvoiceService');
 const _billingInvoiceService = new InvoiceService();
 
 export const invoiceService = {
-  async sendInvoice(invoiceId: string, workspaceId: string): Promise<{ success: boolean; message: string; data?: any }> {
+  async sendInvoice(invoiceId: string, workspaceId: string): Promise<{ success: boolean; message: string; data?: unknown }> {
     try {
       const [invoice] = await db.select()
         .from(invoices)
@@ -43,7 +43,7 @@ export const invoiceService = {
         return { success: true, message: `Invoice ${invoice.invoiceNumber} sent to ${client.email}`, data: { invoiceId, recipientEmail: client.email } };
       }
       return { success: false, message: result.error || 'Failed to send invoice' };
-    } catch (err: any) {
+    } catch (err: unknown) {
       log.error('sendInvoice failed', { invoiceId, workspaceId, error: err?.message });
       return { success: false, message: err?.message || 'Invoice send failed' };
     }

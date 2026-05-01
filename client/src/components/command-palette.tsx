@@ -146,7 +146,7 @@ export function CommandPalette() {
 
   // ── Global open function ───────────────────────────────────────────────────
   useEffect(() => {
-    (window as any).openCommandPalette = () => setOpen(true);
+    (window as Record<string,unknown>).openCommandPalette = () => setOpen(true);
   }, []);
 
   // ── Debounced live search ──────────────────────────────────────────────────
@@ -177,7 +177,7 @@ export function CommandPalette() {
           setSearchResults(data.results);
           setSearchTotal(data.total);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err.name !== 'AbortError') {
           setSearchResults([]);
           setSearchTotal(0);

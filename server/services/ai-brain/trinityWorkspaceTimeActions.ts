@@ -5,21 +5,18 @@ import { eq, and, gte, isNull, lt, lte, ne, sql, count, gt } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityWorkspaceTimeActions');
 
-function mkAction(actionId: string, fn: (params: any) => Promise<any>): ActionHandler {
+function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
   return {
     actionId,
     name: actionId,
-    category: 'automation' as any,
+    category: 'automation',
     description: `Trinity platform action: ${actionId}`,
     inputSchema: { type: 'object' as const, properties: {} },
     handler: async (req: ActionRequest): Promise<ActionResult> => {
       try {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         const data = await fn(req.params || req.payload || {});
-        // @ts-expect-error — TS migration: fix in refactoring sprint
         return { success: true, data };
-      } catch (err: any) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+      } catch (err: unknown) {
         return { success: false, error: err?.message || 'Unknown error' };
       }
     },
@@ -31,19 +28,19 @@ export function registerWorkspaceTimeActions() {
   helpaiOrchestrator.registerAction(mkAction('workspace.get_org_context', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) } as any).catch(() => null);
+    const workspace = await db.query.workspaces?.findFirst({ where: eq(workspaces.id, workspaceId) }).catch(() => null);
     if (!workspace) return { error: 'Workspace not found' };
     const [empCount] = await db.select({ count: count() }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.status, 'active')));
-    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId as any, workspaceId) } as any).catch(() => null);
+    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId, workspaceId) }).catch(() => null);
     return {
       workspaceId,
-      name: (workspace as any).name,
-      industry: (workspace as any).industry,
-      size: (workspace as any).size,
+      name: (workspace as Record<string, unknown>).name,
+      industry: (workspace as Record<string, unknown>).industry,
+      size: (workspace as Record<string, unknown>).size,
       activeEmployees: empCount?.count || 0,
-      subscriptionTier: (subscription as any)?.tier || 'free',
-      subscriptionStatus: (subscription as any)?.status || 'active',
-      createdAt: (workspace as any).createdAt,
+      subscriptionTier: (subscription as Record<string,unknown>)?.tier || 'free',
+      subscriptionStatus: (subscription as Record<string,unknown>)?.status || 'active',
+      createdAt: (workspace as Record<string, unknown>).createdAt,
     };
   }));
 
@@ -64,15 +61,15 @@ export function registerWorkspaceTimeActions() {
   helpaiOrchestrator.registerAction(mkAction('workspace.get_subscription_status', async (params) => {
     const { workspaceId } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId as any, workspaceId) } as any).catch(() => null);
+    const subscription = await db.query.subscriptions?.findFirst({ where: eq(subscriptions.workspaceId, workspaceId) }).catch(() => null);
     if (!subscription) return { workspaceId, tier: 'free', status: 'active', credits: null };
     return {
       workspaceId,
-      tier: (subscription as any).tier,
-      status: (subscription as any).status,
-      currentPeriodEnd: (subscription as any).currentPeriodEnd,
-      cancelAtPeriodEnd: (subscription as any).cancelAtPeriodEnd,
-      stripeSubscriptionId: (subscription as any).stripeSubscriptionId,
+      tier: (subscription as Record<string,unknown>).tier,
+      status: (subscription as Record<string,unknown>).status,
+      currentPeriodEnd: (subscription as Record<string,unknown>).currentPeriodEnd,
+      cancelAtPeriodEnd: (subscription as Record<string,unknown>).cancelAtPeriodEnd,
+      stripeSubscriptionId: (subscription as Record<string,unknown>).stripeSubscriptionId,
     };
   }));
 
@@ -89,7 +86,7 @@ export function registerWorkspaceTimeActions() {
     if (employeeId) conditions.push(eq(timeEntries.employeeId, employeeId));
     const entries = await db.select({
       employeeId: timeEntries.employeeId,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
       clockIn: timeEntries.clockIn,
     })
@@ -120,14 +117,14 @@ export function registerWorkspaceTimeActions() {
       employeeId: timeEntries.employeeId,
       clockIn: timeEntries.clockIn,
       clockOut: timeEntries.clockOut,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
     })
       .from(timeEntries)
       .where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, from)))
       .limit(500);
     const byEmployee: Record<string, number> = {};
-    const exceptions: any[] = [];
+    const exceptions: (string | number | boolean | null)[] = [];
     for (const e of entries) {
       if (!e.employeeId) continue;
       byEmployee[e.employeeId] = (byEmployee[e.employeeId] || 0) + (e.totalMinutes || 0);
@@ -169,7 +166,7 @@ export function registerWorkspaceTimeActions() {
     weekStart.setHours(0, 0, 0, 0);
     const weekEntries = await db.select({
       employeeId: timeEntries.employeeId,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
     })
       .from(timeEntries)
       .where(and(eq(timeEntries.workspaceId, workspaceId), gte(timeEntries.clockIn, weekStart)))
@@ -195,7 +192,7 @@ export function registerWorkspaceTimeActions() {
       employeeId: timeEntries.employeeId,
       clockIn: timeEntries.clockIn,
       clockOut: timeEntries.clockOut,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
     }).from(timeEntries).where(and(
       eq(timeEntries.workspaceId, workspaceId),
@@ -241,7 +238,7 @@ export function registerWorkspaceTimeActions() {
     const weekEnd = new Date(weekStart.getTime() + 7 * 86400000);
     const entries = await db.select({
       employeeId: timeEntries.employeeId,
-      totalMinutes: (timeEntries as any).totalMinutes,
+      totalMinutes: (timeEntries as Record<string,unknown>).totalMinutes,
       status: timeEntries.status,
     }).from(timeEntries).where(and(
       eq(timeEntries.workspaceId, workspaceId),

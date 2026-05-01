@@ -45,7 +45,7 @@ router.post('/generate', requireManager, async (req: AuthenticatedRequest, res) 
     }
     const workspaceId = workspace.id;
 
-    let reportData: any = {};
+    let reportData: Record<string, unknown> = {};
 
     switch (reportType) {
       case 'payroll-summary':
@@ -89,7 +89,7 @@ router.post('/generate', requireManager, async (req: AuthenticatedRequest, res) 
           totalHours: timeEntries.reduce((sum, e) => sum + parseFloat(e.totalHours?.toString() || '0'), 0),
           activeEmployees: new Set(timeEntries.map(e => e.employeeId)).size,
           details: Object.entries(
-            timeEntries.reduce((acc: any, e) => {
+            timeEntries.reduce((acc: unknown, e) => {
               if (!acc[e.employeeId]) acc[e.employeeId] = { hours: 0, count: 0 };
               acc[e.employeeId].hours += parseFloat(e.totalHours?.toString() || '0');
               acc[e.employeeId].count++;
@@ -189,7 +189,6 @@ router.post('/share', requireManager, async (req: AuthenticatedRequest, res) => 
 
 router.get('/billable-hours', requireSupervisor, requireStarter, async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspace = await storage.getWorkspaceByOwnerId(req.user?.id) || await storage.getWorkspaceByMembership(req.user.id);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -218,7 +217,6 @@ router.get('/billable-hours', requireSupervisor, requireStarter, async (req: Aut
 
 router.get('/payroll', requireManager, requireProfessional, async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspace = await storage.getWorkspaceByOwnerId(req.user.id) || await storage.getWorkspaceByMembership(req.user.id);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -246,7 +244,6 @@ router.get('/payroll', requireManager, requireProfessional, async (req: Authenti
 
 router.get('/client-summary', requireManager, requireStarter, async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspace = await storage.getWorkspaceByOwnerId(req.user.id) || await storage.getWorkspaceByMembership(req.user.id);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -274,7 +271,6 @@ router.get('/client-summary', requireManager, requireStarter, async (req: Authen
 
 router.get('/employee-activity', requireSupervisor, requireStarter, async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspace = await storage.getWorkspaceByOwnerId(req.user.id) || await storage.getWorkspaceByMembership(req.user.id);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -302,7 +298,6 @@ router.get('/employee-activity', requireSupervisor, requireStarter, async (req: 
 
 router.get('/audit-logs', requireManager, requireProfessional, async (req: AuthenticatedRequest, res) => {
   try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const workspace = await storage.getWorkspaceByOwnerId(req.user.id) || await storage.getWorkspaceByMembership(req.user.id);
     if (!workspace) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -332,7 +327,7 @@ router.get('/audit-logs', requireManager, requireProfessional, async (req: Authe
   }
 });
 
-router.post('/:id/generate-summary', requireAuth, async (req: any, res) => {
+router.post('/:id/generate-summary', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
     const user = await storage.getUser(userId);
@@ -392,7 +387,7 @@ router.get('/export', requireManager, async (req: AuthenticatedRequest, res) => 
     const { reportType, startDate, endDate, format: exportFormat } = req.query;
     if (!reportType) return res.status(400).json({ message: 'reportType is required' });
 
-    let data: any[] = [];
+    let data: (string | number | boolean | null)[] = [];
     const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate as string) : new Date();
 
@@ -479,7 +474,6 @@ router.post('/auto-generate', requireManager, async (req: AuthenticatedRequest, 
         .from(timeEntriesTable)
         .where(and(
           eq(timeEntriesTable.workspaceId, workspaceId),
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           eq(timeEntriesTable.userId, userId),
           gte(timeEntriesTable.clockIn, weekStart),
           lt(timeEntriesTable.clockIn, weekEnd)
@@ -607,7 +601,7 @@ router.get('/company-data', requireAdmin, async (req: AuthenticatedRequest, res)
       return res.json({ report: reportType, data: [], period: { startDate, endDate }, generated: new Date().toISOString() });
     }
 
-    let data: any = {};
+    let data: Record<string, unknown> = {};
 
     if (reportType === 'general') {
       const [employeeCount] = await db

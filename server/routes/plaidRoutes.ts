@@ -21,10 +21,10 @@ const log = createLogger('PlaidRoutes');
 
 const router = Router();
 
-function getWorkspaceId(req: any): string {
+function getWorkspaceId(req: AuthenticatedRequest): string {
   return req.workspaceId || req.user?.workspaceId || req.user?.currentWorkspaceId || '';
 }
-function getUserId(req: any): string {
+function getUserId(req: AuthenticatedRequest): string {
   return req.user?.id || '';
 }
 
@@ -59,7 +59,7 @@ router.get('/status', requireAuth, requireOwner, async (req, res) => {
       orgBankLast4,
       orgBankName,
     });
-  } catch (error: any) {
+  } catch (error : unknown) {
     log.error('[Plaid] Status error:', error?.message || error);
     res.status(500).json({ error: 'Failed to fetch Plaid status' });
   }
@@ -141,7 +141,7 @@ router.post('/exchange/org', requireAuth, requireOwner, async (req, res) => {
       description: `${details.institutionName} (...${details.mask}) connected as payroll ACH funding source via Plaid`,
       workspaceId,
       metadata: { itemId, mask: details.mask, institutionName: details.institutionName, connectedBy: userId },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({
       success: true,
@@ -188,7 +188,7 @@ router.delete('/org-bank', requireAuth, requireOwner, async (req, res) => {
       description: `${prior?.plaidInstitutionName || 'Bank'} (...${prior?.plaidAccountLast4 || '????'}) disconnected — ACH payroll disbursement suspended until reconnected`,
       workspaceId,
       metadata: { disconnectedBy: userId, priorInstitution: prior?.plaidInstitutionName, priorMask: prior?.plaidAccountLast4 },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({ success: true });
   } catch (err: unknown) {
@@ -196,7 +196,7 @@ router.delete('/org-bank', requireAuth, requireOwner, async (req, res) => {
   }
 });
 
-router.post('/link-token/employee/:employeeId', requireAuth, async (req: any, res) => {
+router.post('/link-token/employee/:employeeId', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     if (!isPlaidConfigured()) {
       return res.status(503).json({ error: 'Plaid is not configured on this server' });
@@ -242,7 +242,7 @@ router.post('/exchange/employee/:employeeId', requireAuth, async (req, res) => {
     const userId = getUserId(req);
     const { employeeId } = req.params;
 
-    const workspaceRole = (req as any).workspaceRole || (req as any).user?.workspaceRole || '';
+    const workspaceRole = req.workspaceRole || req.user?.workspaceRole || '';
     const isManagerOrAbove = ['org_owner', 'co_owner', 'manager', 'supervisor'].includes(workspaceRole);
 
     const emp = await db
@@ -331,7 +331,7 @@ router.post('/exchange/employee/:employeeId', requireAuth, async (req, res) => {
       description: `${details.institutionName} (...${details.mask}) linked for employee ${employeeId} — ACH payroll ready`,
       workspaceId,
       metadata: { employeeId, itemId, mask: details.mask, institutionName: details.institutionName, linkedBy: userId },
-    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+    }).catch((err: unknown) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
     res.json({
       success: true,

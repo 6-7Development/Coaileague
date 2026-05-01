@@ -225,7 +225,7 @@ export async function initiateTransfer(opts: {
     throw new Error(`Transfer authorization declined: ${rationale?.description || authorization.decision}`);
   }
 
-  const transferCreateBody: any = {
+  const transferCreateBody: Record<string, unknown> = {
     access_token: opts.accessToken,
     account_id: opts.accountId,
     authorization_id: authorization.id,
@@ -250,7 +250,7 @@ export async function initiateTransfer(opts: {
     try {
       transferResponse = await client.transferCreate(transferCreateBody);
       break; // success
-    } catch (err: any) {
+    } catch (err: unknown) {
       const status = err?.response?.status ?? err?.status;
       const isRateLimit = status === 429 || err?.error_code === 'RATE_LIMIT_EXCEEDED';
       if (isRateLimit && attempt < MAX_PLAID_RETRIES) {
@@ -281,7 +281,7 @@ export async function getTransferStatus(transferId: string): Promise<{
   const transfer = response.data.transfer;
   return {
     status: transfer.status,
-    failureReason: (transfer as any).failure_reason?.description || undefined,
+    failureReason: (transfer as Record<string,unknown>).failure_reason?.description || undefined,
   };
 }
 
@@ -299,7 +299,7 @@ export async function verifyBankAccount(accessToken: string): Promise<{ valid: b
       valid: isActive,
       status: account.verification_status || 'active',
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return { valid: false, status: err?.message || 'verification_error' };
   }
 }
@@ -332,7 +332,7 @@ export async function cancelTransfer(transferId: string): Promise<boolean> {
 
 // In-memory JWK cache to avoid a Plaid API round-trip on every webhook delivery.
 // TTL: 5 minutes. Plaid rotates keys infrequently but the cache avoids DOS potential.
-const _jwkCache = new Map<string, { key: any; expiresAt: number }>();
+const _jwkCache = new Map<string, { key: unknown; expiresAt: number }>();
 
 export async function verifyPlaidWebhookJwt(token: string | undefined): Promise<boolean> {
   if (!token) {
@@ -384,7 +384,7 @@ export async function verifyPlaidWebhookJwt(token: string | undefined): Promise<
     await jwtVerify(token, cached.key);
 
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error('[PlaidWebhook] JWT signature verification failed:', (err instanceof Error ? err.message : String(err)));
     return false;
   }

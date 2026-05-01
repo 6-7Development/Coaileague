@@ -104,7 +104,7 @@ export const DEFAULTS = {
  */
 export function getDefault(path: string): any {
   const parts = path.split(".");
-  let current: any = DEFAULTS;
+  let current: unknown = DEFAULTS;
   
   for (const part of parts) {
     current = current[part];
@@ -118,5 +118,5 @@ export function getDefault(path: string): any {
  * Get all defaults for a category
  */
 export function getDefaults(category: string): any {
-  return (DEFAULTS as any)[category] || null;
+  return (DEFAULTS as unknown)[category] || null;
 }

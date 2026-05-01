@@ -8,7 +8,7 @@ async function check() {
   console.log(`Total clients: ${allClients.length}\n`);
   const byIndustry = new Map<string, number>();
   for (const c of allClients) {
-    const ind = (c as any).industry || 'Unknown';
+    const ind = (c as Record<string, unknown>).industry || 'Unknown';
     byIndustry.set(ind, (byIndustry.get(ind) || 0) + 1);
     console.log(`  ${c.companyName} (${ind})`);
   }

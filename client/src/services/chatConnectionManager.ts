@@ -129,7 +129,7 @@ class ChatConnectionManager {
       const rooms = data.rooms || data || [];
 
       const serverMap = new Map<string, ChatRoomSummary>();
-      rooms.forEach((room: any) => {
+      rooms.forEach((room) => {
         const roomId = room.roomId || room.id;
         if (!roomId) return;
         serverMap.set(roomId, {
@@ -215,7 +215,7 @@ class ChatConnectionManager {
     this.subscribedRooms.add(roomId);
   }
 
-  handleExternalMessage(data: any) {
+  handleExternalMessage(data: unknown) {
     this.handleIncomingMessage(data);
   }
 
@@ -229,7 +229,7 @@ class ChatConnectionManager {
     }
   }
 
-  private handleIncomingMessage(data: any) {
+  private handleIncomingMessage(data: unknown) {
     if (data.type === "chat_message" || data.type === "new_message") {
       const conversationId = data.conversationId || data.roomId;
       if (!conversationId) return;
@@ -425,7 +425,7 @@ class ChatConnectionManager {
 
       this.roomSummaries.clear();
 
-      rooms.forEach((room: any) => {
+      rooms.forEach((room) => {
         const roomId = room.roomId || room.id;
         if (!roomId) return;
         const unreadCount = room.unreadCount || 0;
