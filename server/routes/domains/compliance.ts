@@ -39,6 +39,7 @@ import insuranceRouter from "../insuranceRoutes";
 import complianceEvidenceRouter from "../complianceEvidenceRoutes";
 import { spsFormsRouter } from '../spsFormsRoutes';
 import { matrixRoutes } from '../compliance/matrix';
+import auditorPublicRouter from '../auditorPublicRoutes';
 
 export function mountComplianceRoutes(app: Express): void {
   // Compliance matrix routes — includes /api/compliance/matrix/my-score
@@ -75,6 +76,8 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/sps/negotiations", requireAuth, ensureWorkspaceAccess, spsNegotiationRouter);
   // SPS public routes — no auth, token-controlled (portalLimiter: 60 req/min per IP)
   app.use("/api/public/sps", portalLimiter, spsPublicRouter);
+  // Vault auditor public access — single-doc, signed, time-bound tokens
+  app.use("/api/public/auditor", portalLimiter, auditorPublicRouter);
   // Compliance report generation (canonical: /api/compliance-reports)
   app.use("/api/compliance-reports", requireAuth, ensureWorkspaceAccess, complianceReportsRouter);
   // Regulatory credential enrollment — 30-day deadline for all org members

@@ -15,6 +15,7 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { downloadFileFromObjectStorage } from '../objectStorage';
 import { writeHardenedPdfHeaders } from '../lib/pdfResponseHeaders';
+import { exportLimiter } from '../middleware/rateLimiter';
 import { createLogger } from '../lib/logger';
 const log = createLogger('PayStubRoutes');
 
@@ -77,7 +78,7 @@ router.get('/pay-stubs/:id', requireAuth, attachWorkspaceId, async (req: Request
  * on demand from the live data and streamed back without creating a new vault
  * copy (vault copies are produced by the original generatePaystub flow).
  */
-router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, async (req: Request, res: Response) => {
+router.get('/pay-stubs/:id/pdf', requireAuth, attachWorkspaceId, exportLimiter, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.id;

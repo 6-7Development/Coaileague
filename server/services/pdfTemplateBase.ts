@@ -238,6 +238,56 @@ export function renderPdfFooter(
   }
 }
 
+// ─── Status watermark ────────────────────────────────────────────────────────
+
+export type PdfWatermarkStatus = 'DRAFT' | 'EXECUTED' | 'VOID' | 'EXPIRED' | 'COPY' | 'CONFIDENTIAL';
+
+const WATERMARK_COLORS: Record<PdfWatermarkStatus, string> = {
+  DRAFT: '#9CA3AF',
+  EXECUTED: '#15803D',
+  VOID: '#DC2626',
+  EXPIRED: '#CA8A04',
+  COPY: '#1E3A5F',
+  CONFIDENTIAL: '#7C2D12',
+};
+
+/**
+ * Stamps a large diagonal status watermark across every buffered page.
+ *
+ * Call AFTER all content is rendered but BEFORE doc.end(). Requires the
+ * PDFDocument to have been created with `bufferPages: true`. The watermark
+ * is intentionally low-opacity so it doesn't obscure the underlying content
+ * but is impossible to miss at a glance — exactly what an auditor wants.
+ *
+ * Example:
+ *   drawStatusWatermark(doc, 'EXECUTED');
+ *   renderPdfFooter(doc, { docId });
+ *   doc.end();
+ */
+export function drawStatusWatermark(
+  doc: PDFDocumentType,
+  status: PdfWatermarkStatus,
+  opts?: { color?: string; opacity?: number },
+): void {
+  const color = opts?.color ?? WATERMARK_COLORS[status];
+  const opacity = opts?.opacity ?? 0.08;
+  const totalPages = (doc as any)._pageBuffer?.length ?? 1;
+
+  for (let i = 0; i < totalPages; i++) {
+    doc.switchToPage(i);
+    doc.save();
+    doc.rotate(-30, { origin: [PAGE.MID, doc.page.height / 2] });
+    doc.fillOpacity(opacity).fontSize(96).font('Helvetica-Bold').fillColor(color);
+    doc.text(status, 0, doc.page.height / 2 - 40, {
+      width: doc.page.width,
+      align: 'center',
+      lineBreak: false,
+    });
+    doc.fillOpacity(1);
+    doc.restore();
+  }
+}
+
 // ─── Tenant branding helper ───────────────────────────────────────────────────
 
 /**

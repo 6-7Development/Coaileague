@@ -187,6 +187,30 @@ export default function DocumentVault() {
     enabled: activeTab === "shift-reports",
   });
 
+  const { data: recycleData, isLoading: recycleLoading, isError: recycleError, refetch: refetchRecycle } = useQuery<VaultListResponse>({
+    queryKey: ["/api/document-vault/recycle-bin", { limit: PAGE_SIZE, offset: 0 }],
+    enabled: activeTab === "recycle-bin",
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/document-vault/${id}/restore`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/document-vault"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document-vault/recycle-bin"] });
+      toast({ title: "Document Restored", description: "Document is back in the active vault." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Restore failed",
+        description: err?.message || "Could not restore the document",
+        variant: "destructive",
+      });
+    },
+  });
+
   const generatePdfMutation = useMutation({
     mutationFn: async (reportId: string) => {
       const res = await apiRequest("POST", `/api/rms/shift-reports/${reportId}/generate-pdf`, {});
@@ -374,6 +398,10 @@ export default function DocumentVault() {
             <TabsTrigger value="shift-reports" data-testid="tab-shift-reports">
               <ClipboardList className="w-4 h-4 mr-2" />
               Shift Reports
+            </TabsTrigger>
+            <TabsTrigger value="recycle-bin" data-testid="tab-recycle-bin">
+              <Trash2 className="w-4 h-4 mr-2" />
+              Recycle Bin
             </TabsTrigger>
           </TabsList>
 
@@ -645,6 +673,79 @@ export default function DocumentVault() {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* Recycle Bin — manager-only soft-deleted vault docs (restorable) */}
+          <TabsContent value="recycle-bin" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle data-testid="text-recycle-bin-title">Recycle Bin</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Soft-deleted documents are retained for audit. A manager can restore them here.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => refetchRecycle()} data-testid="button-refresh-recycle">
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {recycleLoading ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-recycle-loading">
+                    Loading…
+                  </p>
+                ) : recycleError ? (
+                  <p className="text-sm text-destructive py-6 text-center" data-testid="text-recycle-error">
+                    Failed to load recycle bin.
+                  </p>
+                ) : !recycleData?.items?.length ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-recycle-empty">
+                    Nothing here. Deleted documents appear in this list.
+                  </p>
+                ) : (
+                  <div className="space-y-2" data-testid="list-recycle-bin">
+                    {recycleData.items.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+                        data-testid={`recycle-row-${doc.id}`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium truncate" data-testid={`text-recycle-title-${doc.id}`}>
+                              {doc.title}
+                            </span>
+                            {doc.documentNumber && (
+                              <Badge variant="outline" className="font-mono text-[10px]">
+                                {doc.documentNumber}
+                              </Badge>
+                            )}
+                            {doc.isSigned && (
+                              <Badge variant="outline" className="bg-green-500/15 text-green-600 dark:text-green-400 text-[10px]">
+                                Signed
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {doc.category ? `${doc.category} · ` : ""}
+                            Deleted {doc.updatedAt ? format(new Date(doc.updatedAt), "MMM d, yyyy h:mm a") : "—"}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => restoreMutation.mutate(doc.id)}
+                          disabled={restoreMutation.isPending}
+                          data-testid={`button-restore-${doc.id}`}
+                        >
+                          Restore
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

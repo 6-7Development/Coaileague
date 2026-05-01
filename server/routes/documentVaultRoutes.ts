@@ -10,6 +10,8 @@ import { requirePlan } from '../tierGuards';
 import { universalAudit } from "../services/universalAuditService";
 import { downloadFileFromObjectStorage } from "../objectStorage";
 import { writeHardenedPdfHeaders } from "../lib/pdfResponseHeaders";
+import { exportLimiter } from "../middleware/rateLimiter";
+import { issueAuditorToken } from "../services/documents/auditorTokenService";
 import { createLogger } from '../lib/logger';
 const log = createLogger('DocumentVaultRoutes');
 
@@ -479,11 +481,99 @@ async function streamVaultPdf(req: AuthenticatedRequest, res: any, mode: 'attach
   }
 }
 
-router.get("/:id/download", async (req: AuthenticatedRequest, res) => {
+// Per-workspace+IP rate limit on document streaming so a compromised
+// session can't exfiltrate the entire safe in seconds. exportLimiter
+// allows ~10 downloads per 10-minute window per (workspace, IP) pair —
+// generous enough for normal review workflows, tight enough to flag
+// scraping. Limit hits respond 429 with a Retry-After header.
+// ─── Issue an auditor token for a single document ────────────────────────────
+// Manager-only. Returns a stateless, signed, time-bound token bound to one
+// vault doc + one regulator email. Hand the returned URL to the regulator
+// (or auto-email it). They get read-only PDF access via /api/public/auditor/...
+// without a CoAIleague login. Token expires after 7 days by default
+// (max 30); rotating SESSION_SECRET invalidates all outstanding tokens.
+router.post("/:id/auditor-token", async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!hasManagerRole(req)) return res.status(403).json({ error: "Manager role required" });
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+
+    const tokenSchema = z.object({
+      regulatorEmail: z.string().email(),
+      regulatorName: z.string().trim().min(1).max(120).optional(),
+      expiresInHours: z.number().int().min(1).max(720).optional(),
+      reason: z.string().trim().min(8).max(500),
+    });
+    const parsed = tokenSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+    }
+
+    // The doc must exist, live in this workspace, and not be soft-deleted.
+    // We do NOT require isSigned here — pre-signing previews of a draft are
+    // sometimes part of an auditor's review, but the audit log records
+    // the doc's signed state at issuance time.
+    const [doc] = await db
+      .select()
+      .from(documentVault)
+      .where(and(
+        eq(documentVault.id, req.params.id),
+        eq(documentVault.workspaceId, workspaceId),
+        isNull(documentVault.deletedAt),
+      ));
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+
+    const issued = issueAuditorToken({
+      vaultDocumentId: doc.id,
+      workspaceId,
+      issuingUserId: req.user?.id || 'unknown',
+      regulatorEmail: parsed.data.regulatorEmail,
+      regulatorName: parsed.data.regulatorName,
+      expiresInHours: parsed.data.expiresInHours,
+    });
+
+    const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host') || 'app.coaileague.com'}`;
+    const auditorUrl = `${baseUrl}/api/public/auditor/document/${issued.token}`;
+
+    await universalAudit.log({
+      workspaceId,
+      actorId: req.user?.id || 'unknown',
+      actorType: 'user',
+      changeType: 'create',
+      action: 'AUDITOR_TOKEN:ISSUED',
+      entityType: 'document_vault',
+      entityId: doc.id,
+      entityName: doc.title,
+      metadata: {
+        regulatorEmail: parsed.data.regulatorEmail.toLowerCase(),
+        regulatorName: parsed.data.regulatorName ?? null,
+        expiresAt: issued.expiresAt.toISOString(),
+        reason: parsed.data.reason,
+        wasSigned: doc.isSigned,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      token: issued.token,
+      url: auditorUrl,
+      expiresAt: issued.expiresAt.toISOString(),
+      regulator: {
+        email: parsed.data.regulatorEmail.toLowerCase(),
+        name: parsed.data.regulatorName ?? null,
+      },
+    });
+  } catch (error: any) {
+    log.error("[Document Vault] Auditor token issue error:", error?.message);
+    res.status(500).json({ error: "Failed to issue auditor token" });
+  }
+});
+
+router.get("/:id/download", exportLimiter, async (req: AuthenticatedRequest, res) => {
   return streamVaultPdf(req, res, 'attachment');
 });
 
-router.get("/:id/preview", async (req: AuthenticatedRequest, res) => {
+router.get("/:id/preview", exportLimiter, async (req: AuthenticatedRequest, res) => {
   return streamVaultPdf(req, res, 'inline');
 });
 
