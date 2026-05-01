@@ -300,6 +300,86 @@ section('Forward composer body content');
   record('buildForwardHtml emits explicit notice for empty bodies', builderHandlesEmpty);
 }
 
+// ─── Outbound send loop integrity ────────────────────────────────────────────
+section('Outbound send loop integrity');
+{
+  const src = readFile('server/email.ts');
+  const truthful = /if \(!result\.success\)\s*\{[^}]*return\s*\{[^}]*success:\s*false[^}]*error:/.test(src);
+  record('server sendEmail propagates failure with reason', truthful, '', 'high');
+  const lazyInits = /await getUncachableResendClient\(\)/.test(src);
+  record('server sendEmail lazy-initialises Resend client (avoids first-call silent skip)', lazyInits);
+}
+{
+  const src = readFile('server/routes/externalEmailRoutes.ts');
+  const checksSuccess = /if \(!result\.success\)\s*\{[\s\S]{0,400}status:\s*'failed'/.test(src);
+  const returnsFailure = /return res\.status\(502\)\.json\(\{[\s\S]{0,200}success:\s*false/.test(src);
+  record('/api/external-emails/:id/send checks result.success', checksSuccess, '', 'high');
+  record('/api/external-emails/:id/send returns 502 when delivery fails', returnsFailure);
+}
+
+// ─── Trinity staffing workflow loop ──────────────────────────────────────────
+// The full inbound→Trinity→outbound chain must remain wired:
+//   1. Resend webhook receives staffing email
+//   2. Trinity AI greeting fires back to sender
+//   3. inboundOpportunityAgent claims a shift
+//   4. Winner: sendStaffingOnboardingInvitation fires
+//   5. Loser:  staffingClaimService.sendDropNotifications fires
+section('Trinity staffing workflow loop');
+{
+  const webhook = readFile('server/routes/resendWebhooks.ts');
+  record('Resend webhook fires Trinity AI greeting',
+    /emailService\.sendTrinityAIGreeting\(/.test(webhook));
+  record('Resend webhook hands off to inboundOpportunityAgent',
+    /inboundOpportunityAgent\.processInboundEmail\(/.test(webhook));
+
+  const agent = readFile('server/services/inboundOpportunityAgent.ts');
+  record('inboundOpportunityAgent sends onboarding invitation on win',
+    /emailService\.sendStaffingOnboardingInvitation\(/.test(agent), '', 'high');
+  record('inboundOpportunityAgent dispatches drop notifications on loss',
+    /staffingClaimService\.sendDropNotifications\(/.test(agent), '', 'high');
+
+  const inbound = readFile('server/services/trinity/trinityInboundEmailProcessor.ts');
+  record('processStaffing routes calloffs to processCalloff',
+    /wantsCalloff[\s\S]{0,200}processCalloff\(/.test(inbound));
+  record('processStaffing triggers trinityAutonomousScheduler',
+    /trinityAutonomousScheduler\.executeAutonomousScheduling\(/.test(inbound));
+  record('processStaffing logs failures with needsReview flag',
+    /needsReview:\s*true,\s*reviewReason:/.test(inbound));
+}
+
+// ─── Inbound webhook security ────────────────────────────────────────────────
+section('Inbound webhook security');
+{
+  const src = readFile('server/routes/resendWebhooks.ts');
+  record('Resend webhook verifies Svix signature',
+    /Svix\b|svix-signature/i.test(src) && /timingSafeEqual|timingsafeequal/i.test(src),
+    '', 'high');
+  record('Resend webhook rejects requests with missing Svix headers',
+    /Missing Svix headers/.test(src));
+  record('Resend webhook tolerates timestamp drift bound',
+    /timestamp/i.test(src));
+}
+
+// ─── Front-end loop polish ───────────────────────────────────────────────────
+section('Front-end loop polish');
+{
+  const src = readFile('client/src/components/email/EmailHubCanvas.tsx');
+  record('inbox query throws on non-OK responses',
+    /Inbox request failed: HTTP/.test(src), '', 'high');
+  record('inbox surfaces error state with retry button',
+    /data-testid="state-inbox-error"/.test(src) && /data-testid="button-inbox-retry"/.test(src));
+  record('inbox empty state has stable testid',
+    /data-testid="state-inbox-empty"/.test(src));
+  record('inbox loading skeleton has aria-busy',
+    /aria-busy="true"/.test(src) || /aria-busy=\{true\}/.test(src));
+  record('apiRequest throws on non-2xx (throwIfResNotOk wired)',
+    /throwIfResNotOk\(res\)/.test(readFile('client/src/lib/queryClient.ts')));
+  record('GlobalMutationErrorHandler subscribes to mutation cache',
+    /getMutationCache\(\)\.subscribe/.test(readFile('client/src/components/GlobalMutationErrorHandler.tsx')));
+  record('forward composer guards against blank body',
+    /\(Original message had no readable body/.test(src));
+}
+
 // ─── Live Resend round-trip (REST API, no SDK required) ──────────────────────
 section('Live Resend send (REST round-trip)');
 

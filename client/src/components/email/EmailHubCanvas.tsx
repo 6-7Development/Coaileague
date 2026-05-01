@@ -965,6 +965,7 @@ function EmailHub({
   onBulkMarkRead,
   onBulkArchive,
   onBulkDelete,
+  isLoadError,
 }: {
   emails: UnifiedEmail[];
   selectedEmailId: string | null;
@@ -976,6 +977,7 @@ function EmailHub({
   onCompose: () => void;
   onRefresh: () => void;
   isLoading: boolean;
+  isLoadError?: boolean;
   isMobileView?: boolean;
   onStarEmail?: (email: UnifiedEmail) => void;
   onArchiveEmail?: (email: UnifiedEmail) => void;
@@ -1110,7 +1112,7 @@ function EmailHub({
 
       <div className="flex-1 overflow-y-auto" ref={scrollRef}>
         {isLoading ? (
-          <div className={cn("space-y-0", isMobile ? "px-0" : "p-4 space-y-3")}>
+          <div className={cn("space-y-0", isMobile ? "px-0" : "p-4 space-y-3")} role="status" aria-label="Loading emails" aria-busy="true">
             {[...Array(isMobile ? 10 : 5)].map((_, i) => (
               <div key={i} className={cn("flex gap-2.5", isMobile ? "px-3 py-2 border-b border-border/30" : "")}>
                 <Skeleton className={cn("rounded-full shrink-0", isMobile ? "w-8 h-8" : "w-9 h-9")} />
@@ -1124,9 +1126,25 @@ function EmailHub({
                 </div>
               </div>
             ))}
+            <span className="sr-only">Loading your inbox…</span>
+          </div>
+        ) : isLoadError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center" role="alert" data-testid="state-inbox-error">
+            <div className={cn("rounded-full bg-destructive/10 flex items-center justify-center mb-3", isMobile ? "w-12 h-12" : "w-16 h-16")}>
+              <AlertCircle className={cn("text-destructive", isMobile ? "w-5 h-5" : "w-7 h-7")} />
+            </div>
+            <h3 className={cn("font-semibold mb-1 text-foreground", isMobile ? "text-sm" : "text-base")}>
+              Couldn't load your inbox
+            </h3>
+            <p className={cn("text-muted-foreground max-w-[280px] leading-relaxed mb-4", isMobile ? "text-xs" : "text-sm")}>
+              We hit an error reaching the email service. Please try again — if it keeps happening, contact support.
+            </p>
+            <Button size="sm" variant="outline" onClick={onRefresh} data-testid="button-inbox-retry" className="gap-2">
+              <RefreshCw className="w-3.5 h-3.5" /> Try again
+            </Button>
           </div>
         ) : filteredEmails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center" data-testid="state-inbox-empty">
             <div className={cn("rounded-full bg-muted flex items-center justify-center mb-3", isMobile ? "w-12 h-12" : "w-16 h-16")}>
               {searchQuery ? <Search className={cn("text-muted-foreground", isMobile ? "w-5 h-5" : "w-7 h-7")} /> : <CheckCircle className={cn("text-green-500", isMobile ? "w-5 h-5" : "w-7 h-7")} />}
             </div>
@@ -3645,14 +3663,18 @@ export function EmailHubCanvas() {
     staleTime: 1000 * 30,
   });
 
-  const { data: internalEmailsData, isLoading: internalLoading, refetch: refetchInternal } = useQuery<{ emails?: any[] }>({
+  const { data: internalEmailsData, isLoading: internalLoading, isError: internalError, refetch: refetchInternal } = useQuery<{ emails?: any[] }>({
     queryKey: ['/api/internal-email/inbox', selectedFolder],
-    queryFn: () => fetch(`/api/internal-email/inbox?folder=${selectedFolder}`, { credentials: 'include' }).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/internal-email/inbox?folder=${selectedFolder}`, { credentials: 'include' });
+      if (!r.ok) throw new Error(`Inbox request failed: HTTP ${r.status}`);
+      return r.json();
+    },
     // @ts-expect-error — TS migration: fix in refactoring sprint
     enabled: !!mailboxData?.mailbox && selectedFolder !== 'support' && selectedFolder !== 'trinity',
   });
 
-  const { data: externalEmailsData, isLoading: externalLoading, refetch: refetchExternal } = useQuery<{ data?: any[] }>({
+  const { data: externalEmailsData, isLoading: externalLoading, isError: externalError, refetch: refetchExternal } = useQuery<{ data?: any[] }>({
     queryKey: ['/api/external-emails'],
     retry: false,
     staleTime: 1000 * 60 * 5,
@@ -3935,6 +3957,10 @@ export function EmailHubCanvas() {
   const folders = foldersData?.folders ?? [];
   const totalUnread = foldersData?.totalUnread ?? 0;
 
+  // Show an error banner when both feeds fail — without this, an inbox API
+  // outage looks identical to "all caught up" and users don't know to retry.
+  const isLoadError = (internalError && externalError) || (internalError && !externalEmailsData);
+
   const sharedEmailHubProps = {
     emails: allEmails,
     selectedEmailId: selectedEmail?.id || null,
@@ -3946,6 +3972,7 @@ export function EmailHubCanvas() {
     onCompose: handleCompose,
     onRefresh: handleRefresh,
     isLoading,
+    isLoadError,
     onStarEmail: handleStar,
     onArchiveEmail: handleArchive,
     onDeleteEmail: handleDelete,

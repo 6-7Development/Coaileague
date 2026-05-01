@@ -138,12 +138,28 @@ export function registerExternalEmailRoutes(app: Express, requireAuth: any, atta
           workspaceId,
         });
 
+        // sendEmail returns { success: false, error } when Resend is not
+        // configured or the API call failed. Without this check the row
+        // was being marked status='sent' for an undelivered message, which
+        // is the silent-failure mode users see as "I clicked send but the
+        // email never arrived."
+        if (!result.success) {
+          await db.update(externalEmailsSent)
+            .set({ status: 'failed', errorMessage: result.error || 'Email delivery failed' })
+            .where(eq(externalEmailsSent.id, id));
+          return res.status(502).json({
+            success: false,
+            error: 'Email failed to send',
+            detail: result.error || 'Email delivery failed',
+          });
+        }
+
         const [updated] = await db.update(externalEmailsSent)
-          .set({ 
-            status: 'sent', 
-            sentAt: new Date(), 
+          .set({
+            status: 'sent',
+            sentAt: new Date(),
             isDraft: false,
-            externalMessageId: result?.id 
+            externalMessageId: result.id
           })
           .where(eq(externalEmailsSent.id, id))
           .returning();
@@ -154,7 +170,7 @@ export function registerExternalEmailRoutes(app: Express, requireAuth: any, atta
           .set({ status: 'failed', errorMessage: (sendError as any)?.message ?? 'Unknown error' })
           .where(eq(externalEmailsSent.id, id));
 
-        res.status(500).json({ error: "Failed to send email" });
+        res.status(500).json({ error: "Failed to send email", detail: (sendError as any)?.message });
       }
     } catch (error: unknown) {
       log.error('[ExternalEmail] Operation error:', error);
