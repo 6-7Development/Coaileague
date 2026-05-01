@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-05-01T07:15:53.441Z",
+  "ranAt": "2026-05-01T07:32:31.380Z",
   "database": "postgres://coai:***@127.0.0.1:5432/coai_chatdock_sandbox",
   "passed": 35,
   "failed": 0,
@@ -21,13 +21,13 @@
       "name": "POST /api/chat/manage/dm/create returns 200 + conversationId",
       "pass": true,
       "status": 200,
-      "detail": "conversationId=cad841ec-9bad-43f8-83bc-508112ed8b15"
+      "detail": "conversationId=42fa3eed-7202-4b04-8505-0a3eac534b95"
     },
     {
       "name": "Group room creation returns conversationId",
       "pass": true,
       "status": 200,
-      "detail": "conversationId=ee9c3840-6e4e-4319-b611-62e46b19fcd8 participantCount=4"
+      "detail": "conversationId=15ffa779-93e0-43c4-8724-3adb2e654a05 participantCount=4"
     },
     {
       "name": "Participants endpoint returns all 3 seeded users",
@@ -53,7 +53,7 @@
     {
       "name": "Two DM messages persisted via Drizzle",
       "pass": true,
-      "detail": "manager_msg=b47ca786-9150-47ff-8bf6-8c344957c325 peer_msg=1a5780aa-de43-44c0-8333-b69930da2f06"
+      "detail": "manager_msg=b4be7874-0fd2-4a7b-b2ce-391d834bed63 peer_msg=8cb339f6-51d7-4754-81e3-65aa857e5976"
     },
     {
       "name": "POST reactions returns 2xx",
@@ -121,7 +121,7 @@
     {
       "name": "After hide, bystander's room list excludes the hidden room",
       "pass": true,
-      "detail": "room_count=0 hiddenRoom=ee9c3840-6e4e-4319-b611-62e46b19fcd8"
+      "detail": "room_count=0 hiddenRoom=15ffa779-93e0-43c4-8724-3adb2e654a05"
     },
     {
       "name": "POST mark-as-read returns 2xx",
@@ -155,7 +155,7 @@
       "name": "POST forward returns 2xx",
       "pass": true,
       "status": 200,
-      "detail": "{\"success\":true,\"forwardedMessageId\":\"b187402b-98a4-4ee8-9249-4de88f6d5b41\"}"
+      "detail": "{\"success\":true,\"forwardedMessageId\":\"a101bd75-7893-4990-9fc1-c2ec29ae4fff\"}"
     },
     {
       "name": "Forwarded message lands in the group room",
@@ -189,7 +189,7 @@
       "name": "POST trinity-react returns 2xx (no longer a ghost endpoint)",
       "pass": true,
       "status": 200,
-      "detail": "{\"success\":true,\"reacted\":true,\"messageId\":\"6ec55dad-2d8e-46b4-8e74-55040c61914c\",\"emoji\":\"✅\"}"
+      "detail": "{\"success\":true,\"reacted\":true,\"messageId\":\"d3f7dbad-78a5-4748-bbb1-8c41b7d303dc\",\"emoji\":\"✅\"}"
     },
     {
       "name": "Trinity ✅ reaction persisted on the user's message",
@@ -200,7 +200,7 @@
       "name": "Manager's room list contains the DM and the group room",
       "pass": true,
       "status": 200,
-      "detail": "rooms=2 ids=ee9c3840-6e4e-4319-b611-62e46b19fcd8,cad841ec-9bad-43f8-83bc-508112ed8b15"
+      "detail": "rooms=2 ids=15ffa779-93e0-43c4-8724-3adb2e654a05,42fa3eed-7202-4b04-8505-0a3eac534b95"
     }
   ]
 }

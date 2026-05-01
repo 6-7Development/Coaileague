@@ -38,6 +38,13 @@ export interface OfficerPersonaContext {
   shiftLoad: string;          // e.g. "heavy week — 48hrs, 2 OT shifts"
   certStatus: string;         // e.g. "license expires in 14 days"
   reliabilityScore: string;   // e.g. "98% — excellent"
+  // Field-manager memory additions: HelpAI must remember the operational
+  // history of each officer the way a watch commander would — how reliable
+  // their attendance has been, whether they've had recent incidents, and
+  // whether they're a "good officer" we can lean on without worry.
+  callOffSummary: string;     // e.g. "2 call-offs in last 30d"
+  incidentSummary: string;    // e.g. "1 incident report in last 60d (resolved)"
+  goodOfficerNotes: string;   // e.g. "always on time, detailed reports — A-tier"
 }
 
 // ── Profile retrieval ─────────────────────────────────────────────────────────
@@ -59,6 +66,9 @@ export async function getOfficerPersona(
     const shiftLoad = await getShiftLoad(officerId, workspaceId);
     const certStatus = await getCertStatus(officerId, workspaceId);
     const reliabilityScore = await getReliabilityScore(officerId, workspaceId);
+    const callOffSummary = await getCallOffSummary(officerId, workspaceId);
+    const incidentSummary = await getIncidentSummary(officerId, workspaceId);
+    const goodOfficerNotes = buildGoodOfficerNotes(profile);
 
     // Get officer name
     const nameRow = await pool.query(
@@ -82,6 +92,9 @@ export async function getOfficerPersona(
       shiftLoad,
       certStatus,
       reliabilityScore,
+      callOffSummary,
+      incidentSummary,
+      goodOfficerNotes,
     };
   } catch (err: any) {
     log.warn('[OfficerPersona] Failed to load persona (non-fatal):', err?.message);
@@ -119,6 +132,16 @@ export function buildPersonaPrompt(persona: OfficerPersonaContext): string {
   }
   if (persona.reliabilityScore) {
     lines.push(`Reliability: ${persona.reliabilityScore}`);
+  }
+  // Field-manager memory: attendance + safety history + good-officer notes
+  if (persona.callOffSummary) {
+    lines.push(`Attendance: ${persona.callOffSummary}`);
+  }
+  if (persona.incidentSummary) {
+    lines.push(`Recent incidents: ${persona.incidentSummary}`);
+  }
+  if (persona.goodOfficerNotes) {
+    lines.push(`Strengths on file: ${persona.goodOfficerNotes}`);
   }
 
   // Emotional baseline
@@ -270,4 +293,70 @@ async function getReliabilityScore(officerId: string, workspaceId: string): Prom
     const grade = pct >= 97 ? 'excellent' : pct >= 90 ? 'good' : pct >= 80 ? 'fair' : 'needs attention';
     return `${pct}% — ${grade}`;
   } catch { return ''; }
+}
+
+// Call-off / no-show summary so HelpAI can talk to officers with the same
+// awareness a real watch commander would have ("hey, this is your second
+// late shift this month — everything OK?").  Counts shifts in the last 30
+// days marked as no-show, called-off, late, or cancelled by the officer.
+async function getCallOffSummary(officerId: string, workspaceId: string): Promise<string> {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status IN ('no_show','called_off','cancelled_by_employee')) as call_offs,
+        COUNT(*) FILTER (WHERE status = 'late' OR (clock_in_time IS NOT NULL AND clock_in_time > start_time)) as late_arrivals
+      FROM shifts
+      WHERE employee_id = $1 AND workspace_id = $2
+        AND date >= CURRENT_DATE - 30
+    `, [officerId, workspaceId]);
+    const row = result.rows[0];
+    const off = Number(row?.call_offs ?? 0);
+    const late = Number(row?.late_arrivals ?? 0);
+    if (off === 0 && late === 0) return 'clean — no call-offs or late arrivals in last 30d';
+    const parts: string[] = [];
+    if (off > 0) parts.push(`${off} call-off${off === 1 ? '' : 's'}`);
+    if (late > 0) parts.push(`${late} late arrival${late === 1 ? '' : 's'}`);
+    return `${parts.join(', ')} in last 30d`;
+  } catch { return ''; }
+}
+
+// Incident-report awareness so HelpAI knows the officer's recent safety
+// history before responding.  Pulls counts from the canonical incident_reports
+// table; safe-falls to '' if the table is unavailable.
+async function getIncidentSummary(officerId: string, workspaceId: string): Promise<string> {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE severity IN ('high','critical')) as serious,
+        COUNT(*) FILTER (WHERE status IN ('open','investigating')) as open_count
+      FROM incident_reports
+      WHERE reporter_id = $1 AND workspace_id = $2
+        AND created_at >= NOW() - INTERVAL '60 days'
+    `, [officerId, workspaceId]);
+    const row = result.rows[0];
+    const total = Number(row?.total ?? 0);
+    if (total === 0) return 'none in last 60d';
+    const serious = Number(row?.serious ?? 0);
+    const open = Number(row?.open_count ?? 0);
+    const tags: string[] = [];
+    if (serious > 0) tags.push(`${serious} serious`);
+    if (open > 0) tags.push(`${open} still open`);
+    const tagStr = tags.length ? ` (${tags.join(', ')})` : '';
+    return `${total} report${total === 1 ? '' : 's'} in last 60d${tagStr}`;
+  } catch { return ''; }
+}
+
+// Pull the strengths array off the officer profile (set by managers /
+// auto-detected after consistently good performance) so HelpAI greets known
+// reliable officers with the trust they've earned.
+function buildGoodOfficerNotes(profile: any): string {
+  if (!profile?.strengths) return '';
+  try {
+    const arr: string[] = JSON.parse(profile.strengths);
+    if (!Array.isArray(arr) || arr.length === 0) return '';
+    return arr.slice(0, 3).join(', ');
+  } catch {
+    return '';
+  }
 }

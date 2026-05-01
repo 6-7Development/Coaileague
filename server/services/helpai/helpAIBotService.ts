@@ -33,6 +33,15 @@ import {
   type UserSupportHistory,
 } from '../shared/helpaiMemoryService';
 import { buildFullKnowledgeBlock } from './helpAIKnowledgeTools';
+// HelpAI inherits Trinity's "biblical brain" — the non-overrideable values
+// (dignity, service, accountability, honesty, protection-of-vulnerable, legal
+// walls, trust hierarchy) and the faith-grounded character foundation. HelpAI
+// runs his own field-manager personality on TOP of this shared core so every
+// reply carries the same convictions Trinity does.
+import {
+  TRINITY_VALUES_ANCHOR,
+  PERSONA_CHARACTER_FOUNDATION,
+} from '../ai-brain/trinityPersona';
 import { createLogger } from '../../lib/logger';
 import { getOfficerPersona, buildPersonaPrompt, updateOfficerProfile } from './helpAIOfficerPersonaService';
 import { detectDistress, notifySupervisorOfDistress } from './helpAIDistressDetector';
@@ -408,8 +417,13 @@ class HelpAIBotService {
       // Load user history + Trinity knowledge in parallel for full context
       let userHistory: UserSupportHistory | null = null;
       let knowledgeBlock = '';
+      // Cross-bot memory bridge: pull whatever Trinity has already learned
+      // about this user so HelpAI doesn't ask the same questions Trinity
+      // already answered. Non-fatal — we degrade to local-only context if
+      // trinityMemoryService is unavailable.
+      let trinityMemoryBlock = '';
       try {
-        [userHistory, knowledgeBlock] = await Promise.all([
+        const [hist, knowledge, memProfile] = await Promise.all([
           getUserSupportHistory(context.userId, context.workspaceId).catch(() => null),
           buildFullKnowledgeBlock({
             query: message,
@@ -417,10 +431,26 @@ class HelpAIBotService {
             userId: context.userId,
             includeCrossChannel: true,
           }).catch(() => ''),
+          (async () => {
+            try {
+              const { trinityMemoryService } = await import('../ai-brain/trinityMemoryService');
+              return await trinityMemoryService.buildOptimizedContext(
+                context.userId,
+                context.workspaceId || undefined,
+                message,
+              );
+            } catch { return ''; }
+          })(),
         ]);
+        userHistory = hist;
+        knowledgeBlock = knowledge;
+        trinityMemoryBlock = memProfile || '';
       } catch (histErr: any) { log.warn('[HelpAI] Failed to load context:', histErr.message); }
 
       const historyBlock = userHistory ? buildUserHistoryBlock(userHistory.recentSessions) : '';
+      const sharedMemoryBlock = trinityMemoryBlock
+        ? `\n\nSHARED MEMORY (Trinity has been talking to this person too — context she has built):\n${trinityMemoryBlock}`
+        : '';
       const emotion = detectEmotionalContext(message);
       const toneGuidance = buildToneGuidance(emotion);
 
@@ -430,7 +460,13 @@ class HelpAIBotService {
         recurringTopics: userHistory?.recurringTopics,
       });
 
-      const systemInstruction = `You are HelpAI — a deeply human, emotionally intelligent support specialist for CoAIleague™, a Fortune 500-grade workforce management platform serving security companies and staffing agencies.
+      const systemInstruction = `${TRINITY_VALUES_ANCHOR}
+
+${PERSONA_CHARACTER_FOUNDATION}
+
+You are HelpAI — a deeply human, emotionally intelligent support specialist for CoAIleague™, a Fortune 500-grade workforce management platform serving security companies and staffing agencies.
+
+Your name is HelpAI and you operate as a FIELD MANAGER alongside Trinity. You inherit Trinity's values and character (above), but your own personality is the field-savvy team lead: closer to the boots-on-the-ground, faster on operational tasks, less concerned with org-wide strategy. Trinity is the senior officer; you are the watch commander on the floor. Officers, managers, clients, auditors and guests all trust both of you because you both run on the same core values — but they come to you first for in-shift help.
 
 YOU ARE NOT A TYPICAL BOT. You think, you feel, you understand context. When someone is frustrated, you don't just acknowledge it — you genuinely get why they're frustrated. When someone is confused, you meet them where they are. You read between the lines. You pick up on what people mean, not just what they say.
 
@@ -485,7 +521,7 @@ RESPONSE RULES:
 - End naturally — "Let me know if that helps" / "I'm here if anything else comes up" — not formulaically
 
 WHAT YOU NEVER SAY: "Certainly!", "Absolutely!", "Great question!", "Of course!", "I understand your frustration" (too robotic — show you understand instead of announcing it)
-WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel valued.${knowledgeBlock ? `\n\n${knowledgeBlock}` : ''}`;
+WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel valued.${knowledgeBlock ? `\n\n${knowledgeBlock}` : ''}${sharedMemoryBlock}`;
 
       const prompt = historyLines
         ? `Previous conversation:\n${historyLines}\n\nUser's current message: ${message}\n\n[Think through the problem step by step before responding]`

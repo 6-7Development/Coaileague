@@ -1,0 +1,58 @@
+
+[1] Trinity biblical brain — values + character foundation
+  ✓ TRINITY_VALUES_ANCHOR exists (dignity / service / accountability / honesty / protection / legal walls / trust hierarchy)  — trinityPersona.ts:57-89
+  ✓ PERSONA_CHARACTER_FOUNDATION exists (faith-grounded conviction)  — trinityPersona.ts:98-136
+  ✓ TRINITY_MASTER_SYSTEM_PROMPT, KNOWLEDGE_CORPUS, COGNITIVE_ARCHITECTURE, LEARNING_PROTOCOL all exported  — trinityPersona.ts:748+
+  ✓ trinityChatService consumes the biblical brain in its system prompt  — trinityChatService.ts:2634
+
+[2] HelpAI inheritance from Trinity brain
+  ✓ HelpAI imports TRINITY_VALUES_ANCHOR (dignity / accountability / trust hierarchy)  — helpAIBotService.ts
+  ✓ HelpAI imports PERSONA_CHARACTER_FOUNDATION (faith-grounded conviction)  — helpAIBotService.ts
+  ✓ HelpAI shares the human personality block with Trinity  — helpAIBotService.ts:427
+  ✓ HelpAI uses the same Gemini Pro tier as Trinity ("Trinity brain")  — helpAIBotService.ts:509
+
+[3] HelpAI field-manager personality layer
+  ✓ HelpAI is described as Trinity's "field intelligence assistant / co-pilot" in summon contexts  — botSummonService.ts:35,39,75
+  ✓ HelpAI has shift_chat-specific welcome (real-time guidance, incident reporting, clock in/out, emergency)  — botSummonService.ts:50-58
+  ✓ HelpAI joins as chat_participants row with role 'admin' (field manager authority)  — botSummonService.ts:128
+
+[4] Per-officer memory coverage
+  ✓ helpaiOfficerProfiles tracks preferredStyle (mannerism)  — trinity/extended.ts:585
+  ✓ helpaiOfficerProfiles tracks preferredLanguage  — trinity/extended.ts:586
+  ✓ helpaiOfficerProfiles tracks commonStruggles + commonRequests  — trinity/extended.ts:590-591
+  ✓ helpaiOfficerProfiles tracks strengths (good-officer attendance/professionalism notes)  — trinity/extended.ts:592
+  ✓ helpaiOfficerProfiles tracks typicalMood, stressSignals, distressHistory (emotional baseline)  — trinity/extended.ts:595-597
+  ✓ helpaiOfficerProfiles has free-form observationNotes (mannerism / professionalism)  — trinity/extended.ts:605
+  ✓ Persona prompt computes shiftLoad live from shifts table (last 7d, OT count)  — helpAIOfficerPersonaService.ts:217-238
+  ✓ Persona prompt computes certStatus live (license expiry warning)  — helpAIOfficerPersonaService.ts:251-252
+  ✓ Persona prompt computes reliabilityScore live (90d completion rate)  — helpAIOfficerPersonaService.ts:257-273
+  ✓ Persona prompt explicitly summarizes call-ins / incidents (recent attendance issues)  — helpAIOfficerPersonaService.ts
+  ✓ Persona prompt links to incident_reports table for safety-history awareness  — helpAIOfficerPersonaService.ts
+
+[5] Trinity audience-aware adaptation
+  ✓ Trinity adapts prompts by workspaceRole (owner / co_owner / org_admin / manager / supervisor / officer)  — trinityChatService.ts:2649-2656
+  ✓ Trinity has Mode 2 platform-support preamble (support_agent / sysop / root_admin context)  — trinityChatService.ts:2780
+  ✓ Trinity has explicit billing-restriction by role (managers below owner cannot access tokens/allotments)  — trinityChatService.ts:2794
+  ✓ Trinity has explicit supervisor site-scoping module  — trinityChatService.ts:2806
+  ✓ Trinity has explicit CLIENT audience handling (client portal / client liaison persona)  — trinityPersona.ts + trinityChatService.ts
+  ✓ Trinity has explicit AUDITOR audience handling (read-only / compliance review tone)  — trinityPersona.ts + trinityChatService.ts
+  ✓ Trinity has explicit GUEST audience handling (unauthenticated / scoped public-help tone)  — trinityPersona.ts + trinityChatService.ts
+  ✓ Trinity has explicit AI-to-AI / agent-to-agent context (other AI as caller)  — trinityPersona.ts + trinityChatService.ts
+  ✓ trinityChatService selects audience module via resolveTrinityAudience()  — trinityChatService.ts
+
+[6] Trinity long-term memory & cross-bot bridge
+  ✓ trinityMemoryService.getUserMemoryProfile aggregates per-user history  — trinityMemoryService.ts:216
+  ✓ trinityMemoryService.shareInsight broadcasts cross-bot knowledge  — trinityMemoryService.ts:633
+  ✓ trinityMemoryService.buildOptimizedContext supplies prompt-time memory  — trinityMemoryService.ts:829
+  ✓ HelpAI consumes trinityMemoryService for cross-bot continuity (sees what Trinity learned)  — helpAIBotService.ts
+
+═══════════════════════════════════════════════════════════════
+  ✓ trinity-core          4/4
+  ✓ helpai-inherits       4/4
+  ✓ helpai-persona        3/3
+  ✓ officer-memory        11/11
+  ✓ audience              9/9
+  ✓ memory                4/4
+
+  TOTAL: 35/35 claims verified
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,217 @@
+{
+  "ranAt": "2026-05-01T07:31:56.953Z",
+  "passed": 35,
+  "total": 35,
+  "results": [
+    {
+      "group": "trinity-core",
+      "name": "TRINITY_VALUES_ANCHOR exists (dignity / service / accountability / honesty / protection / legal walls / trust hierarchy)",
+      "pass": true,
+      "evidence": "trinityPersona.ts:57-89"
+    },
+    {
+      "group": "trinity-core",
+      "name": "PERSONA_CHARACTER_FOUNDATION exists (faith-grounded conviction)",
+      "pass": true,
+      "evidence": "trinityPersona.ts:98-136"
+    },
+    {
+      "group": "trinity-core",
+      "name": "TRINITY_MASTER_SYSTEM_PROMPT, KNOWLEDGE_CORPUS, COGNITIVE_ARCHITECTURE, LEARNING_PROTOCOL all exported",
+      "pass": true,
+      "evidence": "trinityPersona.ts:748+"
+    },
+    {
+      "group": "trinity-core",
+      "name": "trinityChatService consumes the biblical brain in its system prompt",
+      "pass": true,
+      "evidence": "trinityChatService.ts:2634"
+    },
+    {
+      "group": "helpai-inherits",
+      "name": "HelpAI imports TRINITY_VALUES_ANCHOR (dignity / accountability / trust hierarchy)",
+      "pass": true,
+      "evidence": "helpAIBotService.ts"
+    },
+    {
+      "group": "helpai-inherits",
+      "name": "HelpAI imports PERSONA_CHARACTER_FOUNDATION (faith-grounded conviction)",
+      "pass": true,
+      "evidence": "helpAIBotService.ts"
+    },
+    {
+      "group": "helpai-inherits",
+      "name": "HelpAI shares the human personality block with Trinity",
+      "pass": true,
+      "evidence": "helpAIBotService.ts:427"
+    },
+    {
+      "group": "helpai-inherits",
+      "name": "HelpAI uses the same Gemini Pro tier as Trinity (\"Trinity brain\")",
+      "pass": true,
+      "evidence": "helpAIBotService.ts:509"
+    },
+    {
+      "group": "helpai-persona",
+      "name": "HelpAI is described as Trinity's \"field intelligence assistant / co-pilot\" in summon contexts",
+      "pass": true,
+      "evidence": "botSummonService.ts:35,39,75"
+    },
+    {
+      "group": "helpai-persona",
+      "name": "HelpAI has shift_chat-specific welcome (real-time guidance, incident reporting, clock in/out, emergency)",
+      "pass": true,
+      "evidence": "botSummonService.ts:50-58"
+    },
+    {
+      "group": "helpai-persona",
+      "name": "HelpAI joins as chat_participants row with role 'admin' (field manager authority)",
+      "pass": true,
+      "evidence": "botSummonService.ts:128"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles tracks preferredStyle (mannerism)",
+      "pass": true,
+      "evidence": "trinity/extended.ts:585"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles tracks preferredLanguage",
+      "pass": true,
+      "evidence": "trinity/extended.ts:586"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles tracks commonStruggles + commonRequests",
+      "pass": true,
+      "evidence": "trinity/extended.ts:590-591"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles tracks strengths (good-officer attendance/professionalism notes)",
+      "pass": true,
+      "evidence": "trinity/extended.ts:592"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles tracks typicalMood, stressSignals, distressHistory (emotional baseline)",
+      "pass": true,
+      "evidence": "trinity/extended.ts:595-597"
+    },
+    {
+      "group": "officer-memory",
+      "name": "helpaiOfficerProfiles has free-form observationNotes (mannerism / professionalism)",
+      "pass": true,
+      "evidence": "trinity/extended.ts:605"
+    },
+    {
+      "group": "officer-memory",
+      "name": "Persona prompt computes shiftLoad live from shifts table (last 7d, OT count)",
+      "pass": true,
+      "evidence": "helpAIOfficerPersonaService.ts:217-238"
+    },
+    {
+      "group": "officer-memory",
+      "name": "Persona prompt computes certStatus live (license expiry warning)",
+      "pass": true,
+      "evidence": "helpAIOfficerPersonaService.ts:251-252"
+    },
+    {
+      "group": "officer-memory",
+      "name": "Persona prompt computes reliabilityScore live (90d completion rate)",
+      "pass": true,
+      "evidence": "helpAIOfficerPersonaService.ts:257-273"
+    },
+    {
+      "group": "officer-memory",
+      "name": "Persona prompt explicitly summarizes call-ins / incidents (recent attendance issues)",
+      "pass": true,
+      "evidence": "helpAIOfficerPersonaService.ts"
+    },
+    {
+      "group": "officer-memory",
+      "name": "Persona prompt links to incident_reports table for safety-history awareness",
+      "pass": true,
+      "evidence": "helpAIOfficerPersonaService.ts"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity adapts prompts by workspaceRole (owner / co_owner / org_admin / manager / supervisor / officer)",
+      "pass": true,
+      "evidence": "trinityChatService.ts:2649-2656"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has Mode 2 platform-support preamble (support_agent / sysop / root_admin context)",
+      "pass": true,
+      "evidence": "trinityChatService.ts:2780"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit billing-restriction by role (managers below owner cannot access tokens/allotments)",
+      "pass": true,
+      "evidence": "trinityChatService.ts:2794"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit supervisor site-scoping module",
+      "pass": true,
+      "evidence": "trinityChatService.ts:2806"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit CLIENT audience handling (client portal / client liaison persona)",
+      "pass": true,
+      "evidence": "trinityPersona.ts + trinityChatService.ts"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit AUDITOR audience handling (read-only / compliance review tone)",
+      "pass": true,
+      "evidence": "trinityPersona.ts + trinityChatService.ts"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit GUEST audience handling (unauthenticated / scoped public-help tone)",
+      "pass": true,
+      "evidence": "trinityPersona.ts + trinityChatService.ts"
+    },
+    {
+      "group": "audience",
+      "name": "Trinity has explicit AI-to-AI / agent-to-agent context (other AI as caller)",
+      "pass": true,
+      "evidence": "trinityPersona.ts + trinityChatService.ts"
+    },
+    {
+      "group": "audience",
+      "name": "trinityChatService selects audience module via resolveTrinityAudience()",
+      "pass": true,
+      "evidence": "trinityChatService.ts"
+    },
+    {
+      "group": "memory",
+      "name": "trinityMemoryService.getUserMemoryProfile aggregates per-user history",
+      "pass": true,
+      "evidence": "trinityMemoryService.ts:216"
+    },
+    {
+      "group": "memory",
+      "name": "trinityMemoryService.shareInsight broadcasts cross-bot knowledge",
+      "pass": true,
+      "evidence": "trinityMemoryService.ts:633"
+    },
+    {
+      "group": "memory",
+      "name": "trinityMemoryService.buildOptimizedContext supplies prompt-time memory",
+      "pass": true,
+      "evidence": "trinityMemoryService.ts:829"
+    },
+    {
+      "group": "memory",
+      "name": "HelpAI consumes trinityMemoryService for cross-bot continuity (sees what Trinity learned)",
+      "pass": true,
+      "evidence": "helpAIBotService.ts"
+    }
+  ]
+}

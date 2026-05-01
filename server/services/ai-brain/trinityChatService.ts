@@ -53,7 +53,26 @@ import { trinityClarificationService } from './trinityClarificationService';
 import { trinityHypothesisEngine } from './trinityHypothesisEngine';
 import { trinityPersonaAnchor } from './trinityPersonaAnchor';
 import { detectMultiStepRequest, generateExecutionPlan, formatPlanAsResponse } from './trinityExecutivePlanner';
-import { TRINITY_PERSONA, PERSONA_SYSTEM_INSTRUCTION, TRINITY_MASTER_SYSTEM_PROMPT, GEMINI_CONTINGENCY_ADDENDUM, CLAUDE_CONTINGENCY_ADDENDUM, OPENAI_CONTINGENCY_ADDENDUM, EMOTIONAL_INTELLIGENCE_MODULE, PROACTIVE_INTELLIGENCE_MODULE, FINANCIAL_WORKFLOWS_MODULE, PLATFORM_SUPPORT_MODULE, PLATFORM_STAFF_MODE2_PREAMBLE, TRINITY_OFFLINE_MESSAGE, TRINITY_KNOWLEDGE_CORPUS, TRINITY_COGNITIVE_ARCHITECTURE, TRINITY_DUAL_MODE_GUIDE, TRINITY_LEARNING_PROTOCOL, TRINITY_VALUES_ANCHOR } from './trinityPersona';
+import { TRINITY_PERSONA, PERSONA_SYSTEM_INSTRUCTION, TRINITY_MASTER_SYSTEM_PROMPT, GEMINI_CONTINGENCY_ADDENDUM, CLAUDE_CONTINGENCY_ADDENDUM, OPENAI_CONTINGENCY_ADDENDUM, EMOTIONAL_INTELLIGENCE_MODULE, PROACTIVE_INTELLIGENCE_MODULE, FINANCIAL_WORKFLOWS_MODULE, PLATFORM_SUPPORT_MODULE, PLATFORM_STAFF_MODE2_PREAMBLE, TRINITY_OFFLINE_MESSAGE, TRINITY_KNOWLEDGE_CORPUS, TRINITY_COGNITIVE_ARCHITECTURE, TRINITY_DUAL_MODE_GUIDE, TRINITY_LEARNING_PROTOCOL, TRINITY_VALUES_ANCHOR, getAudienceModule, type TrinityAudience, CLIENT_AUDIENCE_MODULE, AUDITOR_AUDIENCE_MODULE, GUEST_AUDIENCE_MODULE, AGENT_TO_AGENT_AUDIENCE_MODULE } from './trinityPersona';
+
+/**
+ * Resolve which audience-adaptation module Trinity should use based on the
+ * caller's role and channel. Same brain + same biblical values, but tone and
+ * data-disclosure rules differ for clients, auditors, guests, and other AI.
+ */
+function resolveTrinityAudience(opts: {
+  isSupportMode: boolean;
+  workspaceRole?: string | null;
+  platformRole?: string | null;
+  callerType?: string | null;
+}): TrinityAudience {
+  if (opts.callerType === 'agent' || opts.callerType === 'ai' || opts.callerType === 'bot') return 'agent';
+  if (opts.callerType === 'guest' || opts.callerType === 'anonymous' || opts.callerType === 'unauthenticated') return 'guest';
+  if (opts.callerType === 'client' || opts.workspaceRole === 'client_portal' || opts.workspaceRole === 'client') return 'client';
+  if (opts.callerType === 'auditor' || opts.workspaceRole === 'auditor' || opts.workspaceRole === 'compliance_auditor') return 'auditor';
+  if (opts.isSupportMode) return 'support';
+  return 'staff';
+}
 import { getTrinityPersonalityPrompt } from '../../trinity/personality';
 import { trinityContentGuardrails, GuardrailStatus } from './trinityContentGuardrails';
 import { trinityQuickBooksSnapshot } from './trinityQuickBooksSnapshot';
@@ -2818,6 +2837,24 @@ Do NOT skip steps — decompose fully before concluding.`;
           `- Org-wide headcount decisions, hiring/termination authority\n` +
           `- Contract pricing, client billing rates, or company P&L\n` +
           `If this supervisor asks for restricted data, respond: "That information is available to management-level users. I can help you with operational data for your assigned sites. Would you like me to flag this for your manager?"\n`;
+      }
+
+      // === AUDIENCE-AWARE ADAPTATION ===
+      // Same brain + same Trinity values, but tone and data-disclosure rules
+      // differ when Trinity is talking to a CLIENT (the company we serve), an
+      // AUDITOR (compliance review), a GUEST (unauthenticated visitor), or
+      // another AI / agent (HelpAI, sub-agent). Each audience module is
+      // appended after the role scoping below so role-based hard-limits still
+      // win when they conflict.
+      const trinityAudience = resolveTrinityAudience({
+        isSupportMode,
+        workspaceRole,
+        platformRole: (workspaceContext as any)?.platformRole,
+        callerType: (workspaceContext as any)?.callerType,
+      });
+      const audienceModule = getAudienceModule(trinityAudience);
+      if (audienceModule) {
+        basePrompt += `\n\n${audienceModule}`;
       }
 
       // EMPLOYEE ROLE HARD SCOPING: when role is employee/officer, enforce data isolation
