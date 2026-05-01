@@ -201,7 +201,7 @@ async function startMissedClockInWorkflow(miss: {
                 detail: smsResult.error ?? 'SMS check-in sent',
               },
             ],
-          } as any,
+          } as unknown,
         })
         .where(eq(auditLogs.id, record.id));
     } catch (err: unknown) {
@@ -251,7 +251,7 @@ async function advanceToCall(
                 : `call failed: ${callResult.error}`,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
 
@@ -319,7 +319,7 @@ async function advanceToEscalation(
         title: 'Missed clock-in escalation',
         description: summary,
         metadata: { shiftId: miss.shiftId, employeeId: miss.employeeId },
-      } as any);
+      } as unknown);
     } catch (err: unknown) {
       log.warn('[missed-clockin] event publish failed:', err?.message);
     }
@@ -341,7 +341,7 @@ async function advanceToEscalation(
               detail: summary,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
     return true;
@@ -375,7 +375,7 @@ async function markResolved(
               detail,
             },
           ],
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, auditId));
   } catch (err: unknown) {

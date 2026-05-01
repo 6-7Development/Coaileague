@@ -93,14 +93,14 @@ export default function DisputesPage() {
 
   // Watch disputeType to auto-update targetType
   const handleDisputeTypeChange = (value: string) => {
-    form.setValue("disputeType", value as any);
+    form.setValue("disputeType", value as unknown);
     const targetTypeMap: Record<string, string> = {
       "performance_review": "performance_reviews",
       "employer_rating": "employer_ratings",
       "report_submission": "report_submissions",
       "composite_score": "composite_scores",
     };
-    form.setValue("targetType", targetTypeMap[value] as any);
+    form.setValue("targetType", targetTypeMap[value] as unknown);
   };
 
   const createMutation = useMutation({

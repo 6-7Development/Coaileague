@@ -89,15 +89,15 @@ export async function calculateEmployerRatingStats(
 
   // Calculate sentiment breakdown
   const sentimentBreakdown = {
-    positive: ratings.filter(r => (r as any).sentiment === 'positive').length,
-    neutral: ratings.filter(r => (r as any).sentiment === 'neutral').length,
-    negative: ratings.filter(r => (r as any).sentiment === 'negative').length,
+    positive: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'positive').length,
+    neutral: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'neutral').length,
+    negative: ratings.filter(r => (r as Record<string, unknown>).sentiment === 'negative').length,
   };
 
   // Extract top issues from comments
   const allComments = ratings
-    .filter(r => (r as any).comment)
-    .map(r => (r as any).comment?.toLowerCase() || '');
+    .filter(r => (r as Record<string, unknown>).comment)
+    .map(r => (r as Record<string, unknown>).comment?.toLowerCase() || '');
   
   const issueKeywords = [
     'communication', 'management', 'support', 'feedback', 'growth', 'benefits',
@@ -124,9 +124,9 @@ export async function calculateEmployerRatingStats(
     ...r,
     ratingDisplay: {
       rating: parseFloat(r.overallRating?.toString() || '0').toFixed(1),
-      sentiment: (r as any).sentiment,
+      sentiment: (r as Record<string, unknown>).sentiment,
       submittedAt: r.submittedAt,
-      comment: (r as any).comment,
+      comment: (r as Record<string, unknown>).comment,
     }
   }));
 

@@ -130,7 +130,7 @@ class TrinityCounterfactualEngine {
     .limit(3)
     .catch(() => []);
 
-    for (const cf of (coverageFailures as any[])) {
+    for (const cf of (coverageFailures as unknown[])) {
       const alreadySimulated = await this.alreadySimulated(workspaceId, `coverage failure at ${cf.site_name}`);
       if (!alreadySimulated) {
         await this.simulateAfterEvent(

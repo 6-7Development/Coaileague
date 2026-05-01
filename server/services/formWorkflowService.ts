@@ -212,7 +212,7 @@ class FormWorkflowService {
     notes?: string,
     workspaceId?: string
   ): Promise<FormSubmission | null> {
-    const conditions: any[] = [eq(customFormSubmissions.id, submissionId)];
+    const conditions: unknown[] = [eq(customFormSubmissions.id, submissionId)];
     if (workspaceId) conditions.push(eq(customFormSubmissions.workspaceId, workspaceId));
 
     const rows = await db
@@ -318,10 +318,10 @@ class FormWorkflowService {
         category: t.category || 'security',
         isSystem: true,
         fields: t.fields,
-        requiresPhotos: (t as any).requiresPhotos || false,
-        photoInstructions: (t as any).photoInstructions || '',
-        minPhotos: (t as any).minPhotos || 0,
-        maxPhotos: (t as any).maxPhotos || 0,
+        requiresPhotos: (t as Record<string, unknown>).requiresPhotos || false,
+        photoInstructions: (t as Record<string, unknown>).photoInstructions || '',
+        minPhotos: (t as Record<string, unknown>).minPhotos || 0,
+        maxPhotos: (t as Record<string, unknown>).maxPhotos || 0,
       });
     }
 
@@ -334,10 +334,10 @@ class FormWorkflowService {
         category: t.category || 'general',
         isSystem: true,
         fields: t.fields,
-        requiresPhotos: (t as any).requiresPhotos || false,
-        photoInstructions: (t as any).photoInstructions || '',
-        minPhotos: (t as any).minPhotos || 0,
-        maxPhotos: (t as any).maxPhotos || 0,
+        requiresPhotos: (t as Record<string, unknown>).requiresPhotos || false,
+        photoInstructions: (t as Record<string, unknown>).photoInstructions || '',
+        minPhotos: (t as Record<string, unknown>).minPhotos || 0,
+        maxPhotos: (t as Record<string, unknown>).maxPhotos || 0,
       });
     }
 
@@ -423,7 +423,7 @@ class FormWorkflowService {
     for (const category of allCategories) {
       if (Array.isArray(category)) {
         for (const t of category) {
-          const generatedId = `system-${(t as any).category || 'general'}-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          const generatedId = `system-${(t as Record<string, unknown>).category || 'general'}-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
           if (generatedId === templateId || t.name === templateId) {
             return t;
           }

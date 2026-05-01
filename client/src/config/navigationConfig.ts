@@ -234,7 +234,7 @@ export function buildPath(base: string, params: Record<string, string>): string 
 export function isPublicRoute(path: string): boolean {
   const publicPaths = Object.values(navConfig.public);
   const authPaths = Object.values(navConfig.auth);
-  return publicPaths.includes(path as any) || authPaths.includes(path as any);
+  return publicPaths.includes(path as string) || authPaths.includes(path as string);
 }
 
 export function redirectTo(path: string, replace = false): void {

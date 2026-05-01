@@ -175,7 +175,7 @@ async function phase3_credit_costs_completeness() {
   ];
   let syncMismatches: string[] = [];
   for (const key of syncKeys) {
-    const cm = (TOKEN_COSTS as any)[key];
+    const cm = (TOKEN_COSTS as unknown)[key];
     const bc = billingCreditCosts[key];
     if (cm !== undefined && bc !== undefined && cm !== bc) syncMismatches.push(`${key}: CM=${cm} BC=${bc}`);
   }
@@ -183,10 +183,10 @@ async function phase3_credit_costs_completeness() {
 
   const aiCosts = ['ai_scheduling', 'ai_invoice_generation', 'ai_payroll_processing', 'ai_chat_query', 'trinity_chat'];
   const claudeCosts = ['trinity_analysis', 'trinity_strategic', 'trinity_executive'];
-  const aiAllPositive = aiCosts.every(k => (TOKEN_COSTS as any)[k] > 0);
-  const claudeAllPositive = claudeCosts.every(k => (TOKEN_COSTS as any)[k] > 0);
-  record({ name: 'AI Features Have Positive Costs', phase: 'COSTS', passed: aiAllPositive, details: aiCosts.map(k => `${k}=${(TOKEN_COSTS as any)[k]}`).join(', '), severity: 'high' });
-  record({ name: 'Claude Features Have Positive Costs', phase: 'COSTS', passed: claudeAllPositive, details: claudeCosts.map(k => `${k}=${(TOKEN_COSTS as any)[k]}`).join(', '), severity: 'high' });
+  const aiAllPositive = aiCosts.every(k => (TOKEN_COSTS as unknown)[k] > 0);
+  const claudeAllPositive = claudeCosts.every(k => (TOKEN_COSTS as unknown)[k] > 0);
+  record({ name: 'AI Features Have Positive Costs', phase: 'COSTS', passed: aiAllPositive, details: aiCosts.map(k => `${k}=${(TOKEN_COSTS as unknown)[k]}`).join(', '), severity: 'high' });
+  record({ name: 'Claude Features Have Positive Costs', phase: 'COSTS', passed: claudeAllPositive, details: claudeCosts.map(k => `${k}=${(TOKEN_COSTS as unknown)[k]}`).join(', '), severity: 'high' });
 }
 
 async function phase4_subscription_tiers_pricing() {
@@ -208,7 +208,7 @@ async function phase4_subscription_tiers_pricing() {
     record({ name: `${exp.id} MaxEmployees = ${exp.maxEmp}`, phase: 'PRICING', passed: tier?.maxEmployees === exp.maxEmp, details: `Configured: ${tier?.maxEmployees}, expected: ${exp.maxEmp}`, severity: 'critical' });
   }
 
-  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: (BILLING.tiers.free as any).allowTokenOverage === false, details: `allowCreditOverage=${(BILLING.tiers.free as any).allowTokenOverage}`, severity: 'critical' });
+  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: (BILLING.tiers.free as unknown).allowTokenOverage === false, details: `allowCreditOverage=${(BILLING.tiers.free as unknown).allowTokenOverage}`, severity: 'critical' });
 
   const tca = TIER_TOKEN_ALLOCATIONS;
   record({ name: 'TIER_TOKEN_ALLOCATIONS Match billingConfig', phase: 'PRICING', passed: tca.free === 250 && tca.starter === 2500 && tca.professional === 10000 && tca.enterprise === 50000, details: `free=${tca.free}, starter=${tca.starter}, pro=${tca.professional}, ent=${tca.enterprise}`, severity: 'critical' });
@@ -225,7 +225,7 @@ async function phase5_stripe_alignment() {
 
   const tierKeys = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
   for (const key of tierKeys) {
-    const prod = (STRIPE_PRODUCTS as any)[key];
+    const prod = (STRIPE_PRODUCTS as unknown)[key];
     record({ name: `STRIPE_PRODUCTS.${key} Exists`, phase: 'STRIPE', passed: !!prod && !!prod.name && prod.amount !== undefined, details: `name=${prod?.name}, amount=$${(prod?.amount || 0) / 100}`, severity: 'critical' });
   }
 
@@ -353,7 +353,7 @@ async function phase8_feature_matrix() {
 
   let invalidEntries: string[] = [];
   for (const [key, value] of Object.entries(fm)) {
-    const v = value as any;
+    const v = value as unknown;
     if (v.free === undefined || v.starter === undefined || v.professional === undefined || v.enterprise === undefined) {
       invalidEntries.push(key);
     }
@@ -361,13 +361,13 @@ async function phase8_feature_matrix() {
   record({ name: 'All Matrix Entries Have 4 Tier Values', phase: 'MATRIX', passed: invalidEntries.length === 0, details: invalidEntries.length === 0 ? `All ${matrixKeys.length} entries have free/starter/pro/enterprise` : `Incomplete: ${invalidEntries.join(', ')}`, severity: 'critical' });
 
   const enterpriseOnlyCount = matrixKeys.filter(k => {
-    const v = (fm as any)[k];
+    const v = (fm as unknown)[k];
     return v.enterprise === true && v.professional !== true && v.professional !== 'addon';
   }).length;
   record({ name: 'Enterprise-Only Features >= 3', phase: 'MATRIX', passed: enterpriseOnlyCount >= 3, details: `${enterpriseOnlyCount} enterprise-only features`, severity: 'high' });
 
   const addonFeatures = matrixKeys.filter(k => {
-    const v = (fm as any)[k];
+    const v = (fm as unknown)[k];
     return v.starter === 'addon' || v.professional === 'addon';
   });
   record({ name: 'Addon Features Exist', phase: 'MATRIX', passed: addonFeatures.length > 0, details: `${addonFeatures.length} features available as addons`, severity: 'medium' });
@@ -489,9 +489,9 @@ async function phase11_cross_validation() {
   let stripeBillingMatch = true;
   let mismatchDetails: string[] = [];
   for (const tier of ['free', 'starter', 'professional', 'enterprise'] as const) {
-    if ((stripeAmounts as any)[tier] !== (billingAmounts as any)[tier]) {
+    if ((stripeAmounts as unknown)[tier] !== (billingAmounts as unknown)[tier]) {
       stripeBillingMatch = false;
-      mismatchDetails.push(`${tier}: Stripe=$${(stripeAmounts as any)[tier] / 100} vs Config=$${(billingAmounts as any)[tier] / 100}`);
+      mismatchDetails.push(`${tier}: Stripe=$${(stripeAmounts as unknown)[tier] / 100} vs Config=$${(billingAmounts as unknown)[tier] / 100}`);
     }
   }
   record({ name: 'Stripe ↔ billingConfig Price Parity (All 4 Tiers)', phase: 'CROSS', passed: stripeBillingMatch, details: stripeBillingMatch ? 'All 4 tier prices match exactly' : mismatchDetails.join('; '), severity: 'critical' });

@@ -188,7 +188,7 @@ class WeeklyBillingRunServiceImpl {
       .limit(1);
 
     if (completionLog.length > 0) {
-      const state = completionLog[0].newState as any;
+      const state = completionLog[0].newState as unknown;
       const isCompleted = completionLog[0].eventType === 'billing_run_completed';
       return {
         locked: true,
@@ -211,7 +211,7 @@ class WeeklyBillingRunServiceImpl {
       .limit(1);
 
     if (existingRun.length > 0) {
-      const state = existingRun[0].newState as any;
+      const state = existingRun[0].newState as unknown;
       return { locked: true, reason: 'Billing run already in progress', existingRunId: state?.runId };
     }
 
@@ -363,7 +363,7 @@ class WeeklyBillingRunServiceImpl {
             success: false,
             error: orgError.message,
             errorType: 'system',
-          } as any);
+          } as unknown);
         }
       }
 
@@ -443,7 +443,7 @@ class WeeklyBillingRunServiceImpl {
       .limit(1);
 
     if (existingProcess.length > 0) {
-      const state = existingProcess[0].newState as any;
+      const state = existingProcess[0].newState as unknown;
       return {
         workspaceId,
         success: true,
@@ -711,7 +711,7 @@ class WeeklyBillingRunServiceImpl {
               currency: 'usd',
               description: `Trinity AI token overage — ${periodStart} ($${(overageChargesCents / 100).toFixed(2)} USD)`,
               idempotency_key: `ai-token-overage-${workspaceId}-${periodStart}`,
-            } as any);
+            } as unknown);
             log.info(`[WeeklyBilling] AI token overage invoiced: $${(overageChargesCents / 100).toFixed(2)} for workspace ${workspaceId}`);
           } else {
             log.warn(`[WeeklyBilling] AI token overage of $${(overageChargesCents / 100).toFixed(2)} — no Stripe customer ID for workspace ${workspaceId}`);
@@ -989,7 +989,7 @@ class WeeklyBillingRunServiceImpl {
       return null;
     }
 
-    const state = lastRunLog[0].newState as any;
+    const state = lastRunLog[0].newState as unknown;
     return {
       runId: state?.runId || 'unknown',
       completedAt: lastRunLog[0].createdAt,

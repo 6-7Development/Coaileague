@@ -137,7 +137,7 @@ router.get("/applicants", requireAuth, async (req: AuthenticatedRequest, res) =>
                  FROM applicants a
                  LEFT JOIN job_postings jp ON jp.id = a.job_posting_id AND jp.workspace_id = $1
                  WHERE a.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (posting_id) { query += ` AND a.job_posting_id = $${i++}`; vals.push(posting_id); }
     if (status) { query += ` AND a.status = $${i++}`; vals.push(status); }
@@ -241,7 +241,7 @@ router.patch("/applicants/:id/status", requireAuth, async (req: AuthenticatedReq
     const { status, rejection_reason, notes } = req.body;
     if (!status) return res.status(400).json({ error: "status required" });
     const updates: string[] = ['status = $1'];
-    const vals: any[] = [status];
+    const vals: unknown[] = [status];
     let i = 2;
     if (rejection_reason) { updates.push(`rejection_reason = $${i++}`); vals.push(rejection_reason); }
     if (notes) { updates.push(`notes = $${i++}`); vals.push(notes); }

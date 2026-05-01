@@ -197,8 +197,8 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
       // Opt-in via `smsChannel: true` in the body. For workspace-wide broadcasts
       // or larger targeting (>10 recipients), Twilio rate limits mandate queuing.
       try {
-        const smsChannel = (req.body as any)?.smsChannel === true;
-        const smsBody = ((req.body as any)?.smsBody || validated.message || '').toString().slice(0, 320);
+        const smsChannel = (req.body as unknown)?.smsChannel === true;
+        const smsBody = ((req.body as unknown)?.smsBody || validated.message || '').toString().slice(0, 320);
         if (smsChannel && smsBody && !validated.isDraft) {
           const { rows: recipients } = await pool.query(
             `SELECT id, phone FROM employees
@@ -251,8 +251,8 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { workspaceId } = await getUserInfo(req);
     const broadcasts = await broadcastService.getBroadcasts({
       workspaceId,
-      type: req.query.type as any,
-      priority: req.query.priority as any,
+      type: req.query.type as unknown,
+      priority: req.query.priority as unknown,
       isActive: req.query.isActive === 'true',
       includeDrafts: req.query.includeDrafts === 'true',
       includeExpired: req.query.includeExpired === 'true',
@@ -321,7 +321,7 @@ router.get('/platform', requireAuth, requireRole(['sysop', 'root_admin', 'deputy
   try {
     const broadcasts = await broadcastService.getBroadcasts({
       workspaceId: undefined,
-      type: req.query.type as any,
+      type: req.query.type as unknown,
       isActive: req.query.isActive === 'true',
       includeDrafts: true,
       includeExpired: true,

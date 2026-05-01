@@ -55,7 +55,7 @@ async function main(): Promise<void> {
     LIMIT 5000
   `);
 
-  const rows = ((result as any).rows ?? (result as any)) as Array<{
+  const rows = ((result as Record<string, unknown>).rows ?? (result as unknown)) as Array<{
     id: string;
     decision_type: string;
     domain: string;

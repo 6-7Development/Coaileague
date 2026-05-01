@@ -311,7 +311,7 @@ export function getEndpoint(
   params?: Record<string, string>
 ): string {
   const parts = path.split(".");
-  let endpoint: any = API_ENDPOINTS;
+  let endpoint: unknown = API_ENDPOINTS;
 
   for (const part of parts) {
     endpoint = endpoint[part];
@@ -355,5 +355,5 @@ export function buildApiUrl(
  * Get endpoint group by category
  */
 export function getEndpointGroup(category: string): any {
-  return (API_ENDPOINTS as any)[category] || null;
+  return (API_ENDPOINTS as unknown)[category] || null;
 }

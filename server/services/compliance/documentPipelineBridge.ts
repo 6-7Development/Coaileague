@@ -144,7 +144,7 @@ export async function bridgeComplianceToEmployeeDocument(
     const existing = await db.query.employeeDocuments.findFirst({
       where: and(
         eq(employeeDocuments.employeeId, complianceDoc.employeeId),
-        eq(employeeDocuments.documentType, employeeDocType as any),
+        eq(employeeDocuments.documentType, employeeDocType as unknown),
         eq(employeeDocuments.workspaceId, complianceDoc.workspaceId),
       ),
     });
@@ -170,7 +170,7 @@ export async function bridgeComplianceToEmployeeDocument(
           fileSize: complianceDoc.fileSizeBytes,
           fileType: complianceDoc.fileType,
           originalFileName: complianceDoc.fileName,
-          status: empDocStatus as any,
+          status: empDocStatus as unknown,
           expirationDate: complianceDoc.expirationDate,
           isVerified: complianceStatus === 'approved' || complianceStatus === 'locked' || complianceStatus === 'verified',
           verifiedAt: (complianceStatus === 'approved' || complianceStatus === 'locked') ? new Date() : undefined,
@@ -191,7 +191,7 @@ export async function bridgeComplianceToEmployeeDocument(
     const [newDoc] = await db.insert(employeeDocuments).values({
       workspaceId: complianceDoc.workspaceId,
       employeeId: complianceDoc.employeeId,
-      documentType: employeeDocType as any,
+      documentType: employeeDocType as unknown,
       documentName: complianceDoc.documentName,
       fileUrl,
       fileSize: complianceDoc.fileSizeBytes,
@@ -200,7 +200,7 @@ export async function bridgeComplianceToEmployeeDocument(
       uploadedBy: complianceDoc.uploadedBy,
       uploadIpAddress: complianceDoc.uploadIpAddress || '0.0.0.0',
       uploadUserAgent: complianceDoc.uploadUserAgent,
-      status: empDocStatus as any,
+      status: empDocStatus as unknown,
       expirationDate: complianceDoc.expirationDate,
       isComplianceDocument: true,
       isVerified: complianceStatus === 'approved' || complianceStatus === 'locked' || complianceStatus === 'verified',
@@ -254,7 +254,7 @@ export async function bridgeFileCabinetToEmployeeDocument(
     const existing = await db.query.employeeDocuments.findFirst({
       where: and(
         eq(employeeDocuments.employeeId, employeeId),
-        eq(employeeDocuments.documentType, docType as any),
+        eq(employeeDocuments.documentType, docType as unknown),
         eq(employeeDocuments.workspaceId, workspaceId),
       ),
     });
@@ -280,7 +280,7 @@ export async function bridgeFileCabinetToEmployeeDocument(
     const [newDoc] = await db.insert(employeeDocuments).values({
       workspaceId,
       employeeId,
-      documentType: docType as any,
+      documentType: docType as unknown,
       documentName: fileRecord.fileName,
       fileUrl,
       fileType: fileRecord.fileType,
@@ -325,7 +325,7 @@ export async function bridgeComplianceStatusChange(
     const existing = await db.query.employeeDocuments.findFirst({
       where: and(
         eq(employeeDocuments.employeeId, compDoc.employeeId),
-        eq(employeeDocuments.documentType, employeeDocType as any),
+        eq(employeeDocuments.documentType, employeeDocType as unknown),
         eq(employeeDocuments.workspaceId, compDoc.workspaceId),
       ),
     });

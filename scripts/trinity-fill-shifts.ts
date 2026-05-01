@@ -90,7 +90,7 @@ async function main() {
       }
     } catch (err : unknown) {
       console.log(`ERROR — ${err.message}`);
-      unresolved.push(...batchShifts.map((s: any) => s.id));
+      unresolved.push(...batchShifts.map((s: unknown) => s.id));
     }
   }
 

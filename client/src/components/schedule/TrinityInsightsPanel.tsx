@@ -127,7 +127,7 @@ export function TrinityInsightsPanel({
     setPreflightLoading(true);
     try {
       const res = await apiRequest('POST', '/api/schedules/auto-fill/preflight', {});
-      const data = await (res as any).json?.() ?? res;
+      const data = await (res as Record<string, unknown>).json?.() ?? res;
       if (data.success && data.preflight) {
         setPreflight(data.preflight);
         setShowConfirm(true);

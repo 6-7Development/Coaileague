@@ -115,7 +115,7 @@ export function registerComplianceIncidentActions() {
       ));
     if (futureShifts.length === 0) return { removed: 0, message: 'No future shifts found for this officer' };
     await db.update(shifts)
-      .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: `[AUTO_REMOVED_NONCOMPLIANT] ${reason || 'Compliance violation'}` } as any)
+      .set({ employeeId: null, status: 'open', updatedAt: new Date(), notes: `[AUTO_REMOVED_NONCOMPLIANT] ${reason || 'Compliance violation'}` } as unknown)
       .where(and(
         eq(shifts.workspaceId, workspaceId),
         eq(shifts.employeeId, officerId),
@@ -144,7 +144,7 @@ export function registerComplianceIncidentActions() {
       severity: severity || 'low',
       description,
       location: location || null,
-    } as any);
+    } as unknown);
     return result;
   }));
 
@@ -201,7 +201,7 @@ export function registerComplianceIncidentActions() {
       limit,
       severity,
     }).catch(() => []);
-    return { incidents, count: (incidents as any[]).length };
+    return { incidents, count: (incidents as unknown[]).length };
   }));
 
   helpaiOrchestrator.registerAction(mkAction('client.get_full_profile', async (params) => {
@@ -264,7 +264,7 @@ export function registerComplianceIncidentActions() {
     const overdueResult = await db.select({ amount: sql`SUM(amount)` })
       .from(sql`invoices WHERE workspace_id = ${workspaceId} AND client_id = ${clientId} AND status = 'overdue'`)
       .catch(() => [{ amount: 0 }]);
-    const overdueAmount = parseFloat(String((overdueResult[0] as any)?.amount || 0));
+    const overdueAmount = parseFloat(String((overdueResult[0] as unknown)?.amount || 0));
     const score = Math.round(coverageRate * 0.6 + (overdueAmount === 0 ? 40 : 0));
     return { clientId, score, coverageRate: +coverageRate.toFixed(1), overdueAmount, totalShifts30d: total, health: score >= 80 ? 'healthy' : score >= 60 ? 'at_risk' : 'critical' };
   }));
@@ -337,7 +337,7 @@ export function registerComplianceIncidentActions() {
     return {
       employee: emp,
       documents: docs,
-      hoursLast30d: Math.round(parseFloat(String((recentHours[0] as any)?.total || 0)) / 60),
+      hoursLast30d: Math.round(parseFloat(String((recentHours[0] as unknown)?.total || 0)) / 60),
     };
   }));
 
@@ -345,7 +345,7 @@ export function registerComplianceIncidentActions() {
     const { workspaceId, employeeId, newRole, userId } = params;
     if (!workspaceId || !employeeId || !newRole) return { error: 'workspaceId, employeeId, newRole required' };
     await db.update(workspaceMembers)
-      .set({ role: newRole as any, updatedAt: new Date() } as Record<string, unknown>)
+      .set({ role: newRole as unknown, updatedAt: new Date() } as Record<string, unknown>)
       .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.employeeId, employeeId)));
     return { updated: true, employeeId, newRole };
   }));
@@ -524,7 +524,7 @@ export function registerComplianceIncidentActions() {
       .from(sql`workspaces`)
       .where(sql`id = ${workspaceId}`)
       .limit(1)
-      .then(r => r[0] as any)
+      .then(r => r[0] as unknown)
       .catch(() => null);
     const activeStates: string[] = wsRow?.operatingStates?.length
       ? wsRow.operatingStates

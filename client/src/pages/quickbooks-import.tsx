@@ -114,7 +114,7 @@ interface ConnectionStatus {
   };
 }
 
-const STEPS: { id: WizardStep; label: string; icon: any }[] = [
+const STEPS: { id: WizardStep; label: string; icon: string | React.ReactNode }[] = [
   { id: 'connect', label: 'Connect', icon: ExternalLink },
   { id: 'discovery', label: 'Discover', icon: RefreshCw },
   { id: 'select-customers', label: 'Clients', icon: Building2 },
@@ -528,7 +528,7 @@ export default function QuickBooksImportPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        const error = new Error(data.message || data.error || 'Import failed') as any;
+        const error = new Error(data.message || data.error || 'Import failed') as unknown;
         error.code = data.code;
         error.employeesWithMissingPayRates = data.employeesWithMissingPayRates;
         throw error;

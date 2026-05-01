@@ -4135,7 +4135,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getChatMessagesByConversation(conversationId: string, workspaceId: string, since?: Date): Promise<ChatMessage[]> {
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(chatMessages.conversationId, conversationId),
       eq(chatMessages.workspaceId, workspaceId),
       eq(chatMessages.isDeletedForEveryone, false),
@@ -5841,7 +5841,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getInternalBidById(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
-    const conditions: any[] = [eq(internalBids.id, id)];
+    const conditions: unknown[] = [eq(internalBids.id, id)];
     if (workspaceId) {
       conditions.push(eq(internalBids.workspaceId, workspaceId));
     }
@@ -6143,7 +6143,7 @@ export class DatabaseStorage implements IStorage {
   
   async getSecurityIncident(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
     const { securityIncidents } = await import("@shared/schema");
-    const conditions: any[] = [eq(securityIncidents.id, id)];
+    const conditions: unknown[] = [eq(securityIncidents.id, id)];
     if (workspaceId) {
       conditions.push(eq(securityIncidents.workspaceId, workspaceId));
     }
@@ -6512,7 +6512,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getOrganizationChatRoom(id: string, workspaceId?: string): Promise<Record<string,unknown> | undefined> {
-    const conditions: any[] = [eq(organizationChatRooms.id, id)];
+    const conditions: unknown[] = [eq(organizationChatRooms.id, id)];
     if (workspaceId) {
       conditions.push(eq(organizationChatRooms.workspaceId, workspaceId));
     }
@@ -8974,7 +8974,7 @@ export class DatabaseStorage implements IStorage {
     offset?: number;
   }): Promise<SupportAuditLog[]> {
     // Redirected: support_audit_logs merged into audit_logs
-    const conditions: any[] = [eq(auditLogs.entityType, 'support_audit')];
+    const conditions: unknown[] = [eq(auditLogs.entityType, 'support_audit')];
     if (filters?.workspaceId) conditions.push(eq(auditLogs.workspaceId, filters.workspaceId));
     if (filters?.adminUserId) conditions.push(eq(auditLogs.userId, filters.adminUserId));
     if (filters?.startDate) conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);

@@ -1833,7 +1833,7 @@ export function registerPredictiveAnalyticsBrainActions() {
 
     if (historicalPayroll.length === 0) return { error: 'No historical payroll data to forecast from' };
 
-    const avgGross = historicalPayroll.reduce((s, r) => s + Number((r as any).totalGross || 0), 0) / historicalPayroll.length;
+    const avgGross = historicalPayroll.reduce((s, r) => s + Number((r as Record<string, unknown>).totalGross || 0), 0) / historicalPayroll.length;
     const avgTaxes = historicalPayroll.reduce((s, r) => s + Number(r.totalTaxes || 0), 0) / historicalPayroll.length;
 
     // Simple trend: check if growing or shrinking

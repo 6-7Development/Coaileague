@@ -286,7 +286,7 @@ class TrinityProactiveScannerService {
     try {
       const activeCollections = await db.select({ id: clients.id, companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName, collectionsStatus: (clients as Record<string,unknown>).collectionsStatus, collectionAttemptCount: (clients as Record<string,unknown>).collectionAttemptCount })
         .from(clients)
-        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as Record<string,unknown>).collectionsStatus as any, 'active')))
+        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as Record<string,unknown>).collectionsStatus as unknown, 'active')))
         .catch(() => []);
       if (activeCollections.length > 0) {
         const names = activeCollections.slice(0, 3).map((c: unknown) => c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown').join(', ');
@@ -797,8 +797,8 @@ class TrinityProactiveScannerService {
         payrollCycleTriggered ? `Payroll draft generated for current period.` : `Payroll generation failed.`,
         qbPayrollSynced ? `QB payroll sync complete.` : `QB payroll sync failed — review QuickBooks connection.`,
         invoiceCycleTriggered ? `Invoices sent to all eligible clients.` : `Invoice cycle failed.`,
-        `Open shifts next month: ${parseInt(String((openShiftsNextMonth[0] as any)?.count || 0))}`,
-        `Compliance flags: ${parseInt(String((complianceFlags[0] as any)?.count || 0))} cert(s) expiring in 30 days.`,
+        `Open shifts next month: ${parseInt(String((openShiftsNextMonth[0] as unknown)?.count || 0))}`,
+        `Compliance flags: ${parseInt(String((complianceFlags[0] as unknown)?.count || 0))} cert(s) expiring in 30 days.`,
         overdueData ? `Overdue invoices: ${(overdueData as Record<string,unknown>)?.overdueCount || 0}` : '',
         errors.length > 0 ? `Errors requiring attention: ${errors.length}` : 'All cycles completed successfully.',
       ].filter(Boolean).join(' ');
@@ -967,7 +967,7 @@ class TrinityProactiveScannerService {
             where: and(
               eq(timeEntries.id, payload.timeEntryId),
               eq(timeEntries.workspaceId, workspaceId),
-            ) as any,
+            ) as unknown,
           }).catch(() => null);
           if (entry) {
             const hasIssues = !(entry as Record<string,unknown>).clockOut || (entry as Record<string,unknown>).totalMinutes > 600 || (entry as Record<string,unknown>).totalMinutes < 0;
@@ -1271,7 +1271,7 @@ class TrinityProactiveScannerService {
         .limit(1)
         .catch(() => []);
       if (dedupRecord.length > 0 && dedupRecord[0].outputResult) {
-        previousAlertFingerprints = (dedupRecord[0].outputResult as any).fingerprints || {};
+        previousAlertFingerprints = (dedupRecord[0].outputResult as unknown).fingerprints || {};
       }
     } catch (_dedupLoadErr) { /* non-fatal — proceed without history */ }
 

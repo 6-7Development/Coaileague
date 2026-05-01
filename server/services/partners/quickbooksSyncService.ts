@@ -2043,11 +2043,11 @@ export class QuickBooksSyncService {
       let recordsProcessed = 0;
 
       for (const queryResponse of response.CDCResponse || []) {
-        const customers: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Customer)
+        const customers: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Customer)
           .flatMap((q: unknown) => q.Customer) || [];
-        const employees: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Employee)
+        const employees: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Employee)
           .flatMap((q: unknown) => q.Employee) || [];
-        const invoiceEntities: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Invoice)
+        const invoiceEntities: unknown[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Invoice)
           .flatMap((q: unknown) => q.Invoice) || [];
 
         recordsProcessed += customers.length + employees.length + invoiceEntities.length;

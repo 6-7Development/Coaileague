@@ -160,7 +160,7 @@ function EquipmentForm({ item, onClose }: { item?: unknown; onClose: () => void 
   );
 }
 
-function EquipmentCard({ item, onEdit, onAssign }: { item: any; onEdit: (item) => void; onAssign: (item) => void }) {
+function EquipmentCard({ item, onEdit, onAssign }: { item: unknown; onEdit: (item) => void; onAssign: (item) => void }) {
   const Icon = CATEGORY_ICONS[item.category] || Package;
   const statusClass = STATUS_COLORS[item.status] || "";
   return (

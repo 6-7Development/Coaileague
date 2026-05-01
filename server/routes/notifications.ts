@@ -562,7 +562,7 @@ router.get("/api/platform/diagnostics", requireAuth, async (req: AuthenticatedRe
       const { universalDiagnosticOrchestrator } = await import("../services/ai-brain/universalDiagnosticOrchestrator");
       
       if (domain) {
-        const issues = await universalDiagnosticOrchestrator.runDomainDiagnostic(domain as any);
+        const issues = await universalDiagnosticOrchestrator.runDomainDiagnostic(domain as unknown);
         return res.json({ success: true, domain, issues });
       } else {
         const report = await universalDiagnosticOrchestrator.runFullDiagnostic(userId || "system", platformRole);
@@ -758,8 +758,8 @@ router.get('/api/notifications/unread-count', requireAuth, async (req: Authentic
       // NOTE: req.platformRole is only set by ensureWorkspaceAccess middleware, which this
       // route does NOT use. Check the user's role directly from the auth object instead.
       const isPlatformUser = !!req.platformRole ||
-        (req.user as any)?.role === 'platform_staff' ||
-        (req.user as any)?.isPlatformStaff === true;
+        (req.user as unknown)?.role === 'platform_staff' ||
+        (req.user as unknown)?.isPlatformStaff === true;
       
       try {
         if (isPlatformUser) {

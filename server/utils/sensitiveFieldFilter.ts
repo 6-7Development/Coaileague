@@ -212,13 +212,13 @@ export function filterSensitiveFields<T extends Record<string, unknown>>(
 
   if (!canViewPayRates(context)) {
     for (const field of PAY_RATE_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
   if (!canViewSensitivePersonalInfo(context)) {
     for (const field of SENSITIVE_PERSONAL_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
@@ -295,16 +295,16 @@ export function filterClientForResponse<T extends Record<string, unknown>>(
 
   if (!canViewClientFinancials(context)) {
     for (const field of CLIENT_FINANCIAL_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
     for (const field of CLIENT_INTEGRATION_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 
   if (!canViewClientContactInfo(context)) {
     for (const field of CLIENT_CONTACT_FIELDS) {
-      delete (filtered as any)[field];
+      delete (filtered as unknown)[field];
     }
   }
 

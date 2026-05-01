@@ -969,7 +969,7 @@ class PlatformActionHub {
         }
         const entities = await knowledgeGraphRepository.getEntitiesByType('client_preference', workspaceId || request.workspaceId);
         const clientEntities = entities.filter((e: unknown) => {
-          const attrs = e.attributes as any;
+          const attrs = e.attributes as unknown;
           return attrs?.clientId === clientId;
         });
         return { success: true, actionId: request.actionId, message: `Found ${clientEntities.length} intelligence entries for client`, data: clientEntities, executionTimeMs: Date.now() - startTime };
@@ -1209,7 +1209,7 @@ class PlatformActionHub {
           return { success: true, actionId: request.actionId, message: 'No available units on duty', data: { call, availableUnits: [], suggestion: null }, executionTimeMs: Date.now() - startTime };
         }
 
-        let suggestion: any = availableUnitsArr[0];
+        let suggestion: unknown = availableUnitsArr[0];
         if (call?.latitude && call?.longitude) {
           suggestion = availableUnitsArr.sort((a: unknown, b: unknown) => {
             const distA = Math.pow((a.latitude || 0) - call.latitude, 2) + Math.pow((a.longitude || 0) - call.longitude, 2);
@@ -1271,7 +1271,7 @@ class PlatformActionHub {
         params.push(limitNum);
 
         const result = await typedPool(query, params).catch(() => []);
-        const resultRows = result as any[];
+        const resultRows = result as unknown[];
 
         const categoryCounts: Record<string, number> = {};
         resultRows.forEach((r: unknown) => { categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1; });
@@ -2613,7 +2613,7 @@ class PlatformActionHub {
       
       if (aiAnalyticsEngine.isAvailable() && !request.isTestMode) {
         const actionContext = {
-          category: handler.category as any,
+          category: handler.category as unknown,
           workspaceId: request.workspaceId,
           userId: request.userId,
           actionName: handler.name,
@@ -2744,7 +2744,7 @@ class PlatformActionHub {
           const skipPostAction = ['test', 'health_check'].includes(handler.category);
           if (!skipPostAction) {
             const actionContext = {
-              category: handler.category as any,
+              category: handler.category as unknown,
               workspaceId: request.workspaceId,
               userId: request.userId,
               actionName: handler.name,
@@ -2764,7 +2764,7 @@ class PlatformActionHub {
             const { trinityActionReasoner } = await import('../ai-brain/trinityActionReasoner');
             trinityActionReasoner.reflect(
               {
-                domain: handler.category as any,
+                domain: handler.category as unknown,
                 workspaceId: request.workspaceId,
                 userId: request.userId,
               },

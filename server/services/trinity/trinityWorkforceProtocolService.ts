@@ -455,13 +455,13 @@ class TrinityWorkforceProtocolService {
       .catch(() => []);
 
     // CATEGORY C — Genuine schema mismatch: No client_documents table in schema; SOP docs stored in org_documents without clientId FK | Tables: org_documents | Verified: 2026-03-23
-    const sopRows: any[] = clientId ? await db.execute(sql`
+    const sopRows: unknown[] = clientId ? await db.execute(sql`
       SELECT category as "documentType", file_path as "storagePath", file_name as "fileName"
       FROM org_documents
       WHERE workspace_id = ${workspaceId}
         AND category IN ('sop', 'post_orders', 'site_instructions')
       LIMIT 5
-    `).then(r => Array.isArray(r) ? r : (r as any).rows || []).catch(() => []) : [];
+    `).then(r => Array.isArray(r) ? r : (r as Record<string, unknown>).rows || []).catch(() => []) : [];
 
     const hasHandbook = handbookRows.length > 0;
     const hasSOP = sopRows.length > 0;

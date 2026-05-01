@@ -154,7 +154,7 @@ export async function initiatePayrollAchTransfer(params: {
     .catch(() => []);
 
   if (existingAttempt.length > 0) {
-    const existing = existingAttempt[0] as any;
+    const existing = existingAttempt[0] as unknown;
     log.info('[AchTransfer] Idempotent retry — returning existing attempt', { idempotencyKey, status: existing.status });
     return {
       status: existing.transferId ? 'initiated' : existing.status,

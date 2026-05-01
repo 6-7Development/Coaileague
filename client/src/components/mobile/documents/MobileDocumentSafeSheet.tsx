@@ -104,9 +104,9 @@ export function MobileDocumentSafeSheet({
   const openShare = async (doc: VaultDoc) => {
     const url = `${window.location.origin}/api/document-vault/${doc.id}/preview`;
     const label = doc.documentNumber || doc.title;
-    if (typeof navigator !== "undefined" && (navigator as any).share) {
+    if (typeof navigator !== "undefined" && (navigator as Record<string, unknown>).share) {
       try {
-        await (navigator as any).share({ title: doc.title, text: label, url });
+        await (navigator as Record<string, unknown>).share({ title: doc.title, text: label, url });
         return;
       } catch {
         /* fall through to clipboard */

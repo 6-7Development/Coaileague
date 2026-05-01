@@ -59,7 +59,7 @@ async function main() {
   // ── 1. Health endpoint returns 200 and status=healthy ─────────────────────
   try {
     const { status, body } = await httpGet(`${baseUrl}/health`);
-    let parsed: any = {};
+    let parsed: Record<string, unknown> = {};
     try { parsed = JSON.parse(body); } catch {}
     const isHealthy = status === 200 && parsed.status === 'healthy';
     results.push({

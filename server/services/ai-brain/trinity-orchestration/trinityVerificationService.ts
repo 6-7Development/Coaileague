@@ -28,7 +28,7 @@ export interface VerificationResult {
   approved: boolean;
   boostedConfidence: number;
   criticalIssues: string[];
-  suggestedModifications: any | null;
+  suggestedModifications: unknown | null;
   rejectionReason: string | null;
   reasoning: string;
   creditsUsed: number;

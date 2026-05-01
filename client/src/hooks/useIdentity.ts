@@ -29,7 +29,7 @@ interface IdentityResponse {
   workspaceRole: string | null; // org_owner, manager, staff, etc.
 
   // Full details (varies by type)
-  details: any;
+  details: Record<string, unknown>;
 }
 
 /**

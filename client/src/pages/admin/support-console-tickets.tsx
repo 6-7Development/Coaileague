@@ -54,7 +54,7 @@ export default function SupportConsoleTicketsPage() {
     refetchInterval: 60000,
   });
 
-  const tickets: any[] = data?.tickets ?? data?.data ?? [];
+  const tickets: unknown[] = data?.tickets ?? data?.data ?? [];
   const totalCount = data?.total ?? tickets.length;
 
   const filtered = tickets.filter(t => {

@@ -92,7 +92,7 @@ class TrinityFinancialIntelligenceEngine {
 
     const scores: SiteMarginScore[] = [];
 
-    for (const site of (sites as any[])) {
+    for (const site of (sites as unknown[])) {
       // CATEGORY C — Raw SQL retained: COALESCE(SUM | Tables: invoice_line_items, invoices | Verified: 2026-03-23
       const revenue = await typedQuery(sql`
         SELECT COALESCE(SUM(il.quantity * il.unit_price), 0) as total_revenue
@@ -120,8 +120,8 @@ class TrinityFinancialIntelligenceEngine {
           AND te.clock_out IS NOT NULL
       `).catch(() => ([{ total_labor: 0 }]));
 
-      const grossRevenue = parseFloat((revenue as any[])[0]?.total_revenue || '0');
-      const laborCost = parseFloat((labor as any[])[0]?.total_labor || '0');
+      const grossRevenue = parseFloat((revenue as unknown[])[0]?.total_revenue || '0');
+      const laborCost = parseFloat((labor as unknown[])[0]?.total_labor || '0');
       const grossMargin = grossRevenue - laborCost;
       const grossMarginPct = grossRevenue > 0 ? (grossMargin / grossRevenue) * 100 : 0;
 
@@ -195,7 +195,7 @@ class TrinityFinancialIntelligenceEngine {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    for (const client of (clients as any[])) {
+    for (const client of (clients as unknown[])) {
       // CATEGORY C — Raw SQL retained: COALESCE(SUM | Tables: time_entries, employees, shifts | Verified: 2026-03-23
       const actuals = await typedQuery(sql`
         SELECT
@@ -221,10 +221,10 @@ class TrinityFinancialIntelligenceEngine {
           AND i.created_at >= ${thirtyDaysAgo.toISOString()}
       `).catch(() => ([{ billed_hours: 0, avg_rate: 0 }]));
 
-      const actualHours = parseFloat((actuals as any[])[0]?.actual_hours || '0');
-      const avgPayRate = parseFloat((actuals as any[])[0]?.avg_pay_rate || '15');
-      const billedHours = parseFloat((invoicedHours as any[])[0]?.billed_hours || '0');
-      const billingRate = parseFloat((invoicedHours as any[])[0]?.avg_rate || '0');
+      const actualHours = parseFloat((actuals as Record<string, unknown>[])[0]?.actual_hours || '0');
+      const avgPayRate = parseFloat((actuals as Record<string, unknown>[])[0]?.avg_pay_rate || '15');
+      const billedHours = parseFloat((invoicedHours as unknown[])[0]?.billed_hours || '0');
+      const billingRate = parseFloat((invoicedHours as unknown[])[0]?.avg_rate || '0');
 
       const actualCostPerHour = avgPayRate * 1.3;
       const marginPerHour = billingRate - actualCostPerHour;
@@ -484,7 +484,7 @@ class TrinityFinancialIntelligenceEngine {
       LIMIT ${limit}
     `).catch(() => ([]));
 
-    return (result as any[]).map(r => ({
+    return (result as unknown[]).map(r => ({
       siteId: r.site_id,
       workspaceId: r.workspace_id,
       periodStart: r.period_start,

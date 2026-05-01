@@ -148,11 +148,11 @@ export async function executeIdempotencyCheck(params: IdempotencyParams): Promis
     SELECT * FROM upsert
   `);
 
-  if (!result || (result as any[]).length === 0) {
+  if (!result || (result as unknown[]).length === 0) {
     throw new Error('[IDEMPOTENCY] No rows returned from atomic upsert');
   }
 
-  const row = (result as any[])[0] as any;
+  const row = (result as unknown[])[0] as unknown;
   const isNew = row.is_fresh_insert || row.is_resurrected;
 
   if (isNew) {

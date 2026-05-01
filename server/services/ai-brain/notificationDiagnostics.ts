@@ -118,7 +118,7 @@ async function collectMaintenanceAlertMetrics(): Promise<Record<string, unknown>
 
     return {
       activeAlerts: Number(activeResult?.count || 0),
-      acknowledgedUsers: parseInt((ackResult as any[])[0]?.acknowledged_users || '0'),
+      acknowledgedUsers: parseInt((ackResult as unknown[])[0]?.acknowledged_users || '0'),
       status: 'collected'
     };
   } catch (error : unknown) {

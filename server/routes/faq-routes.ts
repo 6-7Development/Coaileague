@@ -84,7 +84,7 @@ export function registerFaqRoutes(app: Express) {
 
     // Apply all conditions together using Drizzle's and() combinator
     if (conditions.length > 0) {
-      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as any;
+      query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as unknown;
     }
 
     const faqs = await query.orderBy(desc(helposFaqs.viewCount)).limit(Math.min(Math.max(1, Number(limit) || 20), 100));

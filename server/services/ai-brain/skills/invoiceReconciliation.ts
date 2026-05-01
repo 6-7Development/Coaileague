@@ -431,7 +431,7 @@ export class InvoiceReconciliationSkill extends BaseSkill {
 
   private async generateAIInsights(
     issues: ReconciliationIssue[],
-    summary: any,
+    summary: Record<string, unknown>,
     context: SkillContext
   ): Promise<string> {
     try {
@@ -501,7 +501,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
 
   private generateRecommendations(
     issues: ReconciliationIssue[],
-    summary: any, gapAnalysis: unknown): string[] {
+    summary: Record<string, unknown>, gapAnalysis: unknown): string[] {
     const recommendations: string[] = [];
 
     if (summary.unbilledRevenue > 500) {
@@ -530,7 +530,7 @@ Provide 2-3 sentences of actionable revenue optimization insights. Focus on reco
 
   private calculateConfidence(
     issues: ReconciliationIssue[],
-    summary: any, gapAnalysis: unknown): number {
+    summary: Record<string, unknown>, gapAnalysis: unknown): number {
     let confidence = 1.0;
 
     // Deduct for critical issues

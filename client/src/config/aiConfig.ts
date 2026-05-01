@@ -181,7 +181,7 @@ Return structured payroll report.`,
  * Usage: getAIConfig('scheduling')
  */
 export function getAIConfig(feature: string): any {
-  const config = (AI_CONFIG as any)[feature];
+  const config = (AI_CONFIG as unknown)[feature];
   return config ? { ...AI_CONFIG.global, ...config } : AI_CONFIG.global;
 }
 
@@ -189,7 +189,7 @@ export function getAIConfig(feature: string): any {
  * Get prompt for a feature
  */
 export function getAIPrompt(feature: string): string {
-  const config = (AI_CONFIG as any)[feature];
+  const config = (AI_CONFIG as unknown)[feature];
   return config?.prompt || "";
 }
 
@@ -197,7 +197,7 @@ export function getAIPrompt(feature: string): string {
  * Get system prompt for a feature
  */
 export function getAISystemPrompt(feature: string): string {
-  const config = (AI_CONFIG as any)[feature];
+  const config = (AI_CONFIG as unknown)[feature];
   return config?.systemPrompt || AI_CONFIG.global;
 }
 
@@ -205,7 +205,7 @@ export function getAISystemPrompt(feature: string): string {
  * Check if AI feature is enabled
  */
 export function isAIFeatureEnabled(feature: string): boolean {
-  const config = (AI_CONFIG as any)[feature];
+  const config = (AI_CONFIG as unknown)[feature];
   return config?.enabled === true;
 }
 

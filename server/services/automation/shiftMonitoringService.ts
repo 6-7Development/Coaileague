@@ -230,7 +230,7 @@ class ShiftMonitoringService {
                 // Seed cache regardless — prevents repeated DB queries in future cycles
                 this.reminderSentCache.set(ncnsKey, now.getTime() + 4 * 60 * 60 * 1000);
 
-                const ncnsAlreadySent = (ncnsExisting as any[]).length > 0;
+                const ncnsAlreadySent = (ncnsExisting as unknown[]).length > 0;
                 if (!ncnsAlreadySent) {
                   result.ncnsAlerts++;
                   await this.handleNoCallNoShow(shift, employee, minutesSinceStart);
@@ -262,7 +262,7 @@ class ShiftMonitoringService {
                 );
                 this.reminderSentCache.set(lateKey, now.getTime() + 90 * 60 * 1000);
 
-                if ((lateExisting as any[]).length === 0) {
+                if ((lateExisting as unknown[]).length === 0) {
                   result.lateAlerts++;
                   await this.handleLateClockIn(shift, employee, minutesSinceStart);
                 }

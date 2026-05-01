@@ -199,7 +199,7 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: Authenticat
       metadata: { source: 'ai_automation', transactionId: result.transactionId, requiresApproval: result.decision?.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Schedule activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Schedule activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -508,7 +508,7 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: Authenti
       metadata: { source: 'ai_automation_anchor', count: result.invoices?.length, requiresApproval: result.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Batch invoice activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Batch invoice activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -639,7 +639,7 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: Authenticate
       metadata: { source: 'ai_automation', transactionId: result.transactionId, netPay: result.decision?.netPay, requiresApproval: result.decision?.requiresApproval },
       visibility: 'manager',
     }).catch((err: unknown) => {
-      log.warn('[Automation] Payroll activity log notification failed (non-fatal):', (err as any)?.message);
+      log.warn('[Automation] Payroll activity log notification failed (non-fatal):', (err as Error)?.message);
     });
 
     return res.json({
@@ -857,10 +857,10 @@ automationRouter.get('/status', requireAuth, async (req: AuthenticatedRequest, r
     });
 
     // Calculate stats for each automation type
-    const schedulingEvents = recentEvents.filter(e => (e as any).eventType?.includes('(schedule as any)') || (e as any).eventType?.includes('shift'));
-    const invoicingEvents = recentEvents.filter(e => (e as any).eventType?.includes('invoice'));
-    const payrollEvents = recentEvents.filter(e => (e as any).eventType?.includes('payroll'));
-    const complianceEvents = recentEvents.filter(e => (e as any).eventType?.includes('compliance'));
+    const schedulingEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('(schedule as any)') || (e as Record<string, unknown>).eventType?.includes('shift'));
+    const invoicingEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('invoice'));
+    const payrollEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('payroll'));
+    const complianceEvents = recentEvents.filter(e => (e as Record<string, unknown>).eventType?.includes('compliance'));
     
     const calcSuccessRate = (events: unknown[]) => {
       if (events.length === 0) return 0;

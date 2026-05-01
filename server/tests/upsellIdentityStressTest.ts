@@ -41,7 +41,7 @@ function PASS(name: string, ms: number) {
   passed++;
 }
 
-function FAIL(name: string, err: any, ms: number) {
+function FAIL(name: string, err: unknown, ms: number) {
   const msg = err?.message || String(err);
   console.log(`  ❌ FAIL  ${name} (${ms}ms): ${msg}`);
   failed++;

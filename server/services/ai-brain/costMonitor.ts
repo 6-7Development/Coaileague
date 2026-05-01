@@ -375,7 +375,7 @@ class AICostMonitorService {
     const statsByType: Record<string, OperationStats> = {};
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       if (!metadata?.operationType) continue;
 
       const opType = metadata.operationType;
@@ -429,7 +429,7 @@ class AICostMonitorService {
     }> = {};
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       const wsId = log.workspaceId;
       if (!wsId) continue;
 
@@ -570,7 +570,7 @@ class AICostMonitorService {
     let unprofitableToday = 0, lowMarginToday = 0;
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       const cost = metadata.actualUsdCost || 0;
       const revenue = (metadata.creditsCharged || 0) * CREDIT_TO_USD;
       const logDate = new Date(log.createdAt!);
@@ -637,7 +637,7 @@ class AICostMonitorService {
     }> = [];
 
     for (const log of logs) {
-      const metadata = log.metadata as any;
+      const metadata = log.metadata as unknown;
       if (!metadata.isProfitable) {
         alerts.push({
           type: 'unprofitable',

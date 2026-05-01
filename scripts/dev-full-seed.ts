@@ -64,7 +64,7 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
 function randInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function randFloat(min: number, max: number) { return +(Math.random() * (max - min) + min).toFixed(2); }
 
-async function q(sql: string, params: any[] = []) {
+async function q(sql: string, params: unknown[] = []) {
   try {
     return await pool.query(sql, params);
   } catch (e : unknown) {
@@ -195,7 +195,7 @@ async function seedShifts(
   historyDays: number,
   futureDays: number
 ) {
-  const shifts: any[] = [];
+  const shifts: unknown[] = [];
   const SHIFT_TYPES = [
     { start: '07:00', end: '15:00', title: 'Day Shift' },
     { start: '15:00', end: '23:00', title: 'Evening Shift' },

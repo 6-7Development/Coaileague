@@ -161,7 +161,7 @@ export function registerDelegationTrackerActions() {
         eq(orchestrationRuns.category, 'operational_task'),
         ...(status ? [eq(orchestrationRuns.status, status)] : []),
       )
-    ).orderBy(desc(orchestrationRuns.createdAt)) as any;
+    ).orderBy(desc(orchestrationRuns.createdAt)) as unknown;
 
     const tasks = await query.catch(() => []);
     let filtered = tasks;
@@ -192,8 +192,8 @@ export function registerDelegationTrackerActions() {
     ];
     await db.update(orchestrationRuns)
       .set({
-        status: newStatus as any,
-        inputParams: { ...currentParams, escalationHistory: updatedHistory } as any,
+        status: newStatus as unknown,
+        inputParams: { ...currentParams, escalationHistory: updatedHistory } as unknown,
         updatedAt: new Date(),
         ...(newStatus === 'completed' ? { completedAt: new Date() } : {}),
         ...(newStatus === 'running' ? { startedAt: new Date() } : {}),
@@ -262,7 +262,7 @@ export function registerDelegationTrackerActions() {
     const updatedHistory = [...(currentParams.escalationHistory || []), escalationEntry];
     await db.update(orchestrationRuns)
       .set({
-        inputParams: { ...currentParams, escalationLevel: newLevel, escalationHistory: updatedHistory } as any,
+        inputParams: { ...currentParams, escalationLevel: newLevel, escalationHistory: updatedHistory } as unknown,
         updatedAt: new Date(),
       })
       .where(eq(orchestrationRuns.id, taskId));
@@ -355,9 +355,9 @@ export function registerDelegationTrackerActions() {
         const { invoiceId, clientId } = context;
         if (invoiceId) {
           const [inv] = await db.select({ status: invoices.status, total: invoices.total }).from(invoices).where(eq(invoices.id, invoiceId)).limit(1).catch(() => []);
-          verified = ['paid', 'sent', 'partial'].includes((inv as any)?.status || '');
-          verificationDetails = verified ? `Invoice status: ${(inv as any)?.status}` : `Invoice still at status '${(inv as any)?.status || 'unknown'}'`;
-          verificationData = { invoiceId, status: (inv as any)?.status, total: (inv as any)?.total };
+          verified = ['paid', 'sent', 'partial'].includes((inv as unknown)?.status || '');
+          verificationDetails = verified ? `Invoice status: ${(inv as unknown)?.status}` : `Invoice still at status '${(inv as unknown)?.status || 'unknown'}'`;
+          verificationData = { invoiceId, status: (inv as unknown)?.status, total: (inv as unknown)?.total };
         } else {
           verificationDetails = 'invoiceId not provided — cannot verify invoice followup';
         }
@@ -367,9 +367,9 @@ export function registerDelegationTrackerActions() {
         const { payrollRunId } = context;
         if (payrollRunId) {
           const [run] = await db.select({ status: payrollRuns.status, totalNetPay: payrollRuns.totalNetPay }).from(payrollRuns).where(eq(payrollRuns.id, payrollRunId)).limit(1).catch(() => []);
-          verified = ['approved', 'processing', 'completed'].includes((run as any)?.status || '');
-          verificationDetails = verified ? `Payroll run approved. Net pay: $${parseFloat(String((run as any)?.totalNetPay || 0)).toLocaleString()}` : `Payroll run status: '${(run as any)?.status || 'unknown'}' — pending approval`;
-          verificationData = { payrollRunId, status: (run as any)?.status, netPay: (run as any)?.totalNetPay };
+          verified = ['approved', 'processing', 'completed'].includes((run as unknown)?.status || '');
+          verificationDetails = verified ? `Payroll run approved. Net pay: $${parseFloat(String((run as unknown)?.totalNetPay || 0)).toLocaleString()}` : `Payroll run status: '${(run as unknown)?.status || 'unknown'}' — pending approval`;
+          verificationData = { payrollRunId, status: (run as unknown)?.status, netPay: (run as unknown)?.totalNetPay };
         } else {
           verificationDetails = 'payrollRunId not provided — cannot verify payroll approval';
         }
@@ -415,7 +415,7 @@ export function registerDelegationTrackerActions() {
     await db.update(orchestrationRuns)
       .set({
         status: 'completed',
-        outputResult: outputResult as any,
+        outputResult: outputResult as unknown,
         completedAt: new Date(),
         updatedAt: new Date(),
       })

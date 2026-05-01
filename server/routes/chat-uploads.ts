@@ -428,7 +428,7 @@ router.post(
             );
             if (darResult.length > 0) {
               const dar = darResult[0];
-              const existingManifest: any[] = Array.isArray(dar.photo_manifest) ? dar.photo_manifest : [];
+              const existingManifest: unknown[] = Array.isArray(dar.photo_manifest) ? dar.photo_manifest : [];
               const newEntries = imageUploads.map(f => ({
                 url: f.url,
                 filename: f.originalFilename || f.filename,

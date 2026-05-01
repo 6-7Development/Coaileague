@@ -168,7 +168,7 @@ export async function getStrongestEdges(
       ORDER  BY strength DESC
       LIMIT  ${limit}
     `);
-    return (rows as any[]).map((r: unknown) => ({
+    return (rows as unknown[][]).map((r: unknown) => ({
       sourceId: r.source_id,
       targetId: r.target_id,
       type: r.type,
@@ -198,7 +198,7 @@ export async function getConnectomeStats(): Promise<{
         COUNT(*) FILTER (WHERE strength <= ${STRENGTH_FLOOR}) AS dormant_edges
       FROM knowledge_relationships
     `);
-    const r = (rowResult as any[])[0] || {};
+    const r = (rowResult as unknown[])[0] || {};
     return {
       totalEdges:   parseInt(r.total || '0'),
       avgStrength:  parseFloat(r.avg_strength || '0.5'),

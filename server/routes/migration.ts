@@ -158,7 +158,7 @@ function buildJob(csvText: string, workspaceId: string, fileName: string): Migra
     headers.forEach((h, i) => { data[h] = row[i] || ""; });
     const mapped: MigrationRecord["mapped"] = { firstName: "", lastName: "", email: "" };
     for (const [idx, field] of Object.entries(colMap)) {
-      (mapped as any)[field] = (row[parseInt(idx)] || "").trim();
+      (mapped as unknown)[field] = (row[parseInt(idx)] || "").trim();
     }
     const errors = validateRecord(mapped);
     records.push({ row: r, data, mapped, errors, isValid: errors.length === 0 });
@@ -261,7 +261,7 @@ migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: Re
       try {
         // CATEGORY C — Raw SQL retained: LIMIT | Tables: users | Verified: 2026-03-23
         const existing = await typedQuery(sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`);
-        const finalUserId = (existing[0] as any)?.id || userId;
+        const finalUserId = (existing[0] as unknown)?.id || userId;
         if (!existing.length) {
           // Converted to Drizzle ORM: ON CONFLICT
           await db.insert(usersTable).values({
@@ -292,7 +292,7 @@ migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: Re
           employeeNumber: employeeNumber || null,
           onboardingStatus: 'not_started',
           payType: payTypeVal,
-          workspaceRole: wsRole as any,
+          workspaceRole: wsRole as unknown,
           quickbooksSyncStatus: 'pending',
           createdAt: sql`now()`,
           updatedAt: sql`now()`,

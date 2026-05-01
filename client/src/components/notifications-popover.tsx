@@ -352,7 +352,7 @@ function canSeeEndUserActions(workspaceRole: string | null | undefined, isAuthen
 }
 
 // Generate simplified inline actions for end users (employees, officers)
-function generateEndUserActions(notif: any): UNSNotification['actions'] {
+function generateEndUserActions(notif: Record<string, unknown>): UNSNotification['actions'] {
   const actions: UNSNotification['actions'] = [];
   const title = (notif.title || '').toLowerCase();
   const type = notif.type || notif.category || '';
@@ -434,7 +434,7 @@ function generateEndUserActions(notif: any): UNSNotification['actions'] {
 
 // Generate action buttons based on notification type and content
 function generateTypeBasedActions(
-  notif: any,
+  notif: Record<string, unknown>,
   platformRole: string | null | undefined,
   workspaceRole?: string | null,
   isAuthenticated?: boolean
@@ -991,8 +991,7 @@ function NotificationDetailModal({
     notification.title,
     notification.message,
     notification.subCategory,
-    notification.metadata as any
-  );
+    notification.metadata as unknown);
   
   const isCritical = notification.priority === 'critical';
   const isHigh = notification.priority === 'high';
@@ -1619,7 +1618,7 @@ export function NotificationsPopover() {
   return <NotificationsPopoverInner user={user} />;
 }
 
-function NotificationsPopoverInner({ user }: { user: any }) {
+function NotificationsPopoverInner({ user }: { user: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabCategory>('alerts');
   const [subFilter, setSubFilter] = useState<SubFilter>('all');
@@ -1658,9 +1657,9 @@ function NotificationsPopoverInner({ user }: { user: any }) {
   
   const { toast } = useToast();
   // user is now passed as a prop from NotificationsPopover wrapper
-  const userId = (user as any)?.id;
-  const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
-  const userPlatformRole = (user as any)?.platformRole as string | null | undefined;
+  const userId = (user as unknown)?.id;
+  const workspaceId = (user as unknown)?.activeWorkspaceId || (user as unknown)?.workspaceId;
+  const userPlatformRole = (user as unknown)?.platformRole as string | null | undefined;
   
   // Get workspace role for proper notification filtering in UNS Command Center
   const { workspaceRole, platformRole: accessPlatformRole } = useWorkspaceAccess();
@@ -1855,8 +1854,8 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       const cachedData = queryClient.getQueryData(["/api/notifications/combined"]) as NotificationsData | undefined;
       
       // Check each source array to determine which API endpoint to call
-      const isPlatformUpdate = cachedData?.platformUpdates?.some((u: any) => u.id === id);
-      const isMaintenanceAlert = cachedData?.maintenanceAlerts?.some((a: any) => a.id === id);
+      const isPlatformUpdate = cachedData?.platformUpdates?.some((u: unknown) => u.id === id);
+      const isMaintenanceAlert = cachedData?.maintenanceAlerts?.some((a: unknown) => a.id === id);
       
       let response: Response;
       if (isMaintenanceAlert) {
@@ -1880,7 +1879,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       
       // Optimistic cache update for immediate UI feedback
       const now = new Date().toISOString();
-      queryClient.setQueryData(["/api/notifications/combined"], (old: any) => {
+      queryClient.setQueryData(["/api/notifications/combined"], (old: Record<string, unknown>) => {
         if (!old) return old;
         
         // Find which type the item belongs to and decrement appropriate counter
@@ -1890,10 +1889,10 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         let unreadGapFindings = old.unreadGapFindings || 0;
         
         // Check each array and decrement the right counter
-        const inNotifications = old.notifications?.some((n: any) => n.id === id && !n.clearedAt);
-        const inPlatformUpdates = old.platformUpdates?.some((u: any) => u.id === id && !u.isViewed);
-        const inAlerts = old.maintenanceAlerts?.some((a: any) => a.id === id && !a.isAcknowledged);
-        const inGapFindings = old.gapFindings?.some((f: any) => f.id === id && !f.clearedAt);
+        const inNotifications = old.notifications?.some((n: unknown) => n.id === id && !n.clearedAt);
+        const inPlatformUpdates = old.platformUpdates?.some((u: unknown) => u.id === id && !u.isViewed);
+        const inAlerts = old.maintenanceAlerts?.some((a: unknown) => a.id === id && !a.isAcknowledged);
+        const inGapFindings = old.gapFindings?.some((f: unknown) => f.id === id && !f.clearedAt);
         
         if (inNotifications) unreadNotifications = Math.max(0, unreadNotifications - 1);
         if (inPlatformUpdates) unreadPlatformUpdates = Math.max(0, unreadPlatformUpdates - 1);
@@ -1902,16 +1901,16 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         
         return {
           ...old,
-          notifications: old.notifications?.map((n: any) => 
+          notifications: old.notifications?.map((n: unknown) => 
             n.id === id ? { ...n, clearedAt: now, isRead: true, metadata: { ...(n.metadata || {}), wasCleared: true } } : n
           ),
-          platformUpdates: old.platformUpdates?.map((u: any) => 
+          platformUpdates: old.platformUpdates?.map((u: unknown) => 
             u.id === id ? { ...u, isViewed: true, metadata: { ...(u.metadata || {}), wasCleared: true } } : u
           ),
-          maintenanceAlerts: old.maintenanceAlerts?.map((a: any) => 
+          maintenanceAlerts: old.maintenanceAlerts?.map((a: unknown) => 
             a.id === id ? { ...a, isAcknowledged: true, metadata: { ...(a.metadata || {}), wasCleared: true } } : a
           ),
-          gapFindings: old.gapFindings?.map((f: any) => 
+          gapFindings: old.gapFindings?.map((f: unknown) => 
             f.id === id ? { ...f, clearedAt: now, isRead: true, metadata: { ...(f.metadata || {}), wasCleared: true } } : f
           ),
           totalUnread: unreadNotifications + unreadPlatformUpdates + unreadAlerts,
@@ -1932,7 +1931,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       // Sync across tabs
       syncNotificationRead(id);
     },
-    onError: (_, id, context: any) => {
+    onError: (_, id, context: Record<string, unknown>) => {
       // Remove from pending tracking on error (rollback reactive state)
       pendingClears.rollbackSingle(id);
       // Restore previous cache state
@@ -1990,14 +1989,14 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       
       // Optimistic cache update for immediate UI feedback + pending set for protection
       // NOTE: Protected categories (hotpatch, system_fix, admin_action) are NOT cleared
-      queryClient.setQueryData(["/api/notifications/combined"], (old: any) => {
+      queryClient.setQueryData(["/api/notifications/combined"], (old: Record<string, unknown>) => {
         // Count how many protected notifications remain unread (not yet cleared)
-        const protectedUnreadCount = old?.notifications?.filter((n: any) => 
+        const protectedUnreadCount = old?.notifications?.filter((n: unknown) => 
           PROTECTED_CATEGORIES.includes(n.category) && !n.clearedAt && !n.isRead
         )?.length || 0;
         
         // Map notifications - mark all as cleared EXCEPT protected categories
-        const updatedNotifications = old?.notifications?.map((n: any) => {
+        const updatedNotifications = old?.notifications?.map((n: unknown) => {
           // Preserve protected notifications (hotpatch, system_fix, admin_action)
           if (PROTECTED_CATEGORIES.includes(n.category)) {
             return n; // Don't modify - these require explicit action
@@ -2013,17 +2012,17 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         return {
           ...old,
           notifications: updatedNotifications,
-          platformUpdates: old?.platformUpdates?.map((u: any) => ({ 
+          platformUpdates: old?.platformUpdates?.map((u: unknown) => ({ 
             ...u, 
             isViewed: true,
             metadata: { ...(u.metadata || {}), wasCleared: true }
           })) || [],
-          maintenanceAlerts: old?.maintenanceAlerts?.map((a: any) => ({ 
+          maintenanceAlerts: old?.maintenanceAlerts?.map((a: unknown) => ({ 
             ...a, 
             isAcknowledged: true,
             metadata: { ...(a.metadata || {}), wasCleared: true }
           })) || [],
-          gapFindings: old?.gapFindings?.map((f: any) => ({
+          gapFindings: old?.gapFindings?.map((f: unknown) => ({
             ...f,
             isRead: true,
             clearedAt: now,
@@ -2060,7 +2059,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       // Invalidate internal email unread badge
       queryClient.invalidateQueries({ queryKey: ["/api/internal-email/mailbox/auto-create"] });
     },
-    onError: (error, _, context: any) => {
+    onError: (error, _, context: Record<string, unknown>) => {
       // Reset pending clear tracking on error (reactive state)
       pendingClears.reset();
       if (context?.previousData) {
@@ -2101,7 +2100,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         toast({ 
           title: "Complete", 
           description: stepsText || "Action executed successfully.",
-          variant: "success" as any,
+          variant: "success" as unknown,
         });
       } else {
         toast({ title: "Action Failed", description: data.error || "Unable to complete action.", variant: "destructive" });

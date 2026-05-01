@@ -184,7 +184,7 @@ router.post('/portal/setup/:token', async (req, res) => {
         changes: { firstName, lastName, email: normalizedEmail, pocEmail, address, billRate, serviceHours, statusFlip: 'invited → active' },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
     // ── END ATOMIC ───────────────────────────────────────────────────────────
 
@@ -195,9 +195,9 @@ router.post('/portal/setup/:token', async (req, res) => {
       });
       // Spec: session widget must hold { userId, clientId, tenantId, orgCode }
       req.session.userId = userId;
-      (req.session as any).clientId = invite.clientId;
-      (req.session as any).tenantId = invite.workspaceId; // tenantId = workspaceId
-      (req.session as any).orgCode = orgCode;
+      (req.session as unknown).clientId = invite.clientId;
+      (req.session as unknown).tenantId = invite.workspaceId; // tenantId = workspaceId
+      (req.session as unknown).orgCode = orgCode;
     }
 
     res.json({
@@ -256,7 +256,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
 
     // Step 2: Logic Gate — three branches
     if (existingInvite) {
-      const isExpired = new Date(existingInvite.expiresAt as any) < new Date();
+      const isExpired = new Date(existingInvite.expiresAt as unknown) < new Date();
 
       // Gate A: ACTIVE — block entirely ("User already active")
       if (existingInvite.isUsed) {
@@ -310,7 +310,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
           },
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'] || null,
-        } as any);
+        } as unknown);
       });
 
       const [wsRec] = await db.select({ orgCode: (workspaces as Record<string,unknown>).orgCode }).from(workspaces).where(eq(((workspaces as {id?: string}).id), workspaceId)).limit(1);
@@ -343,7 +343,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
         token,
         expiresAt,
         // Step 3: Persist — status is canonical DB truth, not calculated in UI
-        ...(({ inviteStatus: 'invited' }) as any),
+        ...(({ inviteStatus: 'invited' }) as unknown),
       });
 
       await tx.insert(auditLogs).values({
@@ -356,7 +356,7 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
         changes: { email, expiresAt: expiresAt.toISOString(), ttlDays: 7 },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
     // ── END ATOMIC ───────────────────────────────────────────────────────────
 
@@ -436,7 +436,7 @@ router.delete('/portal/invite/:inviteId/revoke', requireManagerOrPlatformStaff, 
         changes: { revokedInviteId: invite.id, email: invite.email },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'] || null,
-      } as any);
+      } as unknown);
     });
 
     res.json({ success: true, message: 'Invitation revoked.', visualStatus: 'expired' });

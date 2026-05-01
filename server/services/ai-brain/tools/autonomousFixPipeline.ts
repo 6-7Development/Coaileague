@@ -328,7 +328,7 @@ class AutonomousFixPipelineService {
     // Must have a non-empty right side that isn't just a type annotation
     if (!right || right.startsWith('>') || right.startsWith(':')) return line;
     
-    return `${left}= (${right.replace(/;$/, '')}) as any;`;
+    return `${left}= (${right.replace(/;$/, '')}) as unknown;`;
   }
 
   /**
@@ -916,7 +916,7 @@ class AutonomousFixPipelineService {
       workspaceId: 'system',
       userId: 'trinity',
       files: (validatedSpec as Record<string,unknown>).affectedFiles,
-      message: `[Trinity AutoFix] ${(validatedSpec as Record<string,unknown>).title}\n\nApproach: ${(validatedSpec as Record<string,unknown>).approach.substring(0, 200)}...\(nConfidence as any): ${(validatedSpec.confidence * 100).toFixed(0)}%\nAttempts: ${iterationResult.attempts.length}`,
+      message: `[Trinity AutoFix] ${(validatedSpec as Record<string,unknown>).title}\n\nApproach: ${(validatedSpec as Record<string,unknown>).approach.substring(0, 200)}...\(nConfidence as unknown): ${(validatedSpec.confidence * 100).toFixed(0)}%\nAttempts: ${iterationResult.attempts.length}`,
       author: this.config.commitAuthor,
     });
     

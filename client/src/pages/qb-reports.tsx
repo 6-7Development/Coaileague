@@ -568,7 +568,7 @@ function WorkersCompReport({ startDate, endDate }: { startDate: string; endDate:
   );
 }
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
+function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: string | React.ReactNode }) {
   return (
     <Card>
       <CardContent className="p-4">

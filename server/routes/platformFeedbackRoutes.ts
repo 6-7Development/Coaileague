@@ -196,7 +196,7 @@ router.post('/surveys', requirePlatformStaff, async (req, res) => {
         workspaceId: PLATFORM_WS,
         title,
         description: description || '',
-        questions: questions as any,
+        questions: questions as unknown,
         frequency,
         isActive,
         isAnonymous: false,
@@ -226,7 +226,7 @@ router.put('/surveys/:id', requirePlatformStaff, async (req, res) => {
   try {
     const [updated] = await db
       .update(pulseSurveyTemplates)
-      .set({ ...parse.data, questions: parse.data.questions as any, updatedAt: new Date() })
+      .set({ ...parse.data, questions: parse.data.questions as unknown, updatedAt: new Date() })
       .where(and(
         eq(pulseSurveyTemplates.id, id),
         eq(pulseSurveyTemplates.workspaceId, PLATFORM_WS),
@@ -283,7 +283,7 @@ router.post('/respond', async (req, res) => {
         workspaceId: responderWorkspace,
         surveyTemplateId: surveyId,
         employeeId: userId || null,
-        responses: answers as any,
+        responses: answers as unknown,
         ipAddress: req.ip || null,
         userAgent: req.headers['user-agent'] || null,
       })

@@ -50,7 +50,7 @@ async function openDB(): Promise<IDBDatabase> {
 export async function queueRequest(
   url: string,
   method: string,
-  body: any,
+  body: Record<string, unknown>,
   type: QueuedRequest['type'] = 'other'
 ): Promise<void> {
   const database = await openDB();
@@ -174,7 +174,7 @@ export function setupOnlineSync(onSync?: (result: { synced: number; failed: numb
 export async function fetchWithOfflineFallback(
   url: string,
   method: string,
-  body: any,
+  body: Record<string, unknown>,
   type: QueuedRequest['type'] = 'other'
 ): Promise<{ queued: boolean; response?: Response }> {
   if (!navigator.onLine) {

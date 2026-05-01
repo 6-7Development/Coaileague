@@ -83,7 +83,7 @@ async function loadProfileFromDB(workspaceId: string): Promise<WorkspaceConfiden
     const workspace = await db.query.workspaces.findFirst({
       where: eq(workspaces.id, workspaceId),
     });
-    const prefs = (workspace as Record<string,unknown>)?.billingPreferences as any;
+    const prefs = (workspace as Record<string,unknown>)?.billingPreferences as unknown;
     if (prefs?.financialPipelineConfidence) {
       const saved = prefs.financialPipelineConfidence;
       return {
@@ -110,7 +110,7 @@ async function persistProfileToDB(profile: WorkspaceConfidenceProfile): Promise<
     const workspace = await db.query.workspaces.findFirst({
       where: eq(workspaces.id, profile.workspaceId),
     });
-    const existingPrefs = ((workspace as Record<string,unknown>)?.billingPreferences as any) || {};
+    const existingPrefs = ((workspace as Record<string,unknown>)?.billingPreferences as unknown) || {};
     await db.update(workspaces)
       .set({
         billingPreferences: {
@@ -128,7 +128,7 @@ async function persistProfileToDB(profile: WorkspaceConfidenceProfile): Promise<
             updatedAt: new Date().toISOString(),
           },
         },
-      } as any)
+      } as unknown)
       .where(eq(workspaces.id, profile.workspaceId));
   } catch (e) {
     log.warn('[FinancialPipeline] Failed to persist profile to DB:', e);

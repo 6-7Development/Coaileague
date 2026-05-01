@@ -49,7 +49,7 @@ interface ComplianceReport {
   generatedAt: string;
   generatedBy: string;
   automated: boolean;
-  reportData: any;
+  reportData: Record<string, unknown>;
   exportFormats: string[];
   retentionYears: number;
 }

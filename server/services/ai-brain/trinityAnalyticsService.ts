@@ -376,7 +376,7 @@ class TrinityAnalyticsService {
           AND created_at >= NOW() - INTERVAL '30 days'
       `);
 
-      const row = (result as any[])[0];
+      const row = (result as unknown[])[0];
       if (!row || !row.ai_scheduling_tasks) return null;
 
       const confidence = parseFloat(row.avg_confidence) || 0;
@@ -413,7 +413,7 @@ class TrinityAnalyticsService {
           AND created_at >= NOW() - INTERVAL '30 days'
       `);
 
-      const row = (result as any[])[0];
+      const row = (result as unknown[])[0];
       if (!row || parseInt(row.ai_payroll_tasks) === 0) return null;
 
       const confidence = parseFloat(row.avg_confidence) || 0;
@@ -525,7 +525,7 @@ class TrinityAnalyticsService {
           AND ${metaCognitionLogs.createdAt} >= NOW() - INTERVAL '30 days'`);
 
       const summaryRow = summaryResult[0] || {};
-      const topModelRow = (topModel as any[])[0];
+      const topModelRow = (topModel as unknown[])[0];
       const trendRow = trendResult[0] || {};
 
       const recentConfidence = trendRow.recentConfidence || 0;

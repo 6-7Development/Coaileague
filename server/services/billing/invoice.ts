@@ -1822,7 +1822,7 @@ export class InvoiceService {
         .limit(1);
       if (!invoice) return { success: false, error: 'Invoice not found' };
 
-      const inv = invoice as any;
+      const inv = invoice as unknown;
 
       const [client] = await db.select().from(clients)
         .where(and(eq(clients.id, inv.clientId), eq(clients.workspaceId, workspaceId)))
@@ -1835,8 +1835,8 @@ export class InvoiceService {
       const lineItems = await db.select().from((await import('@shared/schema')).invoiceLineItems)
         .where(eq((await import('@shared/schema')).invoiceLineItems.invoiceId, invoiceId));
 
-      const c = client as any;
-      const w = ws as any;
+      const c = client as unknown;
+      const w = ws as unknown;
       const clientName = c?.companyName || `${c?.firstName || ''} ${c?.lastName || ''}`.trim() || 'Client';
       const workspaceName = w?.companyName || workspaceId;
       const issueDate = inv.issueDate ? new Date(inv.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';

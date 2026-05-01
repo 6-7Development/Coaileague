@@ -674,7 +674,7 @@ export class ClientPortalHelpAIService {
 
     return rows.map(r => ({
       id: r.id,
-      ticketNumber: (r as any).sessionId ? r.id : r.id,
+      ticketNumber: (r as Record<string, unknown>).sessionId ? r.id : r.id,
       reportType: r.reportType as ReportType,
       severity: r.severity as ReportSeverity,
       title: r.title,

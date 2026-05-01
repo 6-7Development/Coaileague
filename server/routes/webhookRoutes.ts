@@ -89,7 +89,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
 
     // Validate event types
     const invalidEvents = parsed.data.events.filter(
-      e => !WEBHOOK_EVENT_TYPES.includes(e as any)
+      e => !WEBHOOK_EVENT_TYPES.includes(e as string)
     );
     if (invalidEvents.length > 0) {
       return res.status(400).json({ error: `Invalid event types: ${invalidEvents.join(', ')}` });

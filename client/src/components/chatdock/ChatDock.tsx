@@ -2216,7 +2216,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
             const isOwn = msg.senderId === user?.id;
             const isSystem = msg.isSystemMessage || msg.senderType === "system";
             const isBot = msg.senderType === "bot" || msg.senderId === "ai-bot" || msg.senderId === "helpai";
-            const isDeletedForAll = (msg as any).isDeletedForEveryone;
+            const isDeletedForAll = (msg as Record<string, unknown>).isDeletedForEveryone;
             const msgReactions = reactionsMap[msg.id] || [];
             const readReceipt = readReceipts.get(msg.id);
             const isHighlighted = chatSearch && searchHitIds.has(msg.id);
@@ -2284,8 +2284,8 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                             ? <span className="text-amber-500 font-semibold">HelpAI</span>
                             : <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>)
                         : (msg.senderName || "Unknown")}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
                     </span>
                   )}
@@ -2423,11 +2423,11 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                           {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
-                      {isOwn && (msg as any).bridgeDeliveryStatus ? (
-                        <DeliveryStatusIndicator status={(msg as any).bridgeDeliveryStatus} />
+                      {isOwn && (msg as Record<string, unknown>).bridgeDeliveryStatus ? (
+                        <DeliveryStatusIndicator status={(msg as Record<string, unknown>).bridgeDeliveryStatus} />
                       ) : isOwn && (
                         readReceipt ? (
                           <CheckCheck className="h-3 w-3 text-primary" data-testid={`read-receipt-${msg.id}`} />

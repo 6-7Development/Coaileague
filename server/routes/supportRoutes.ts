@@ -477,7 +477,7 @@ router.post('/tickets/:id/escalate', async (req: AuthenticatedRequest, res) => {
     });
 
     const platformStaff = await db.query.platformRoles.findMany({
-      where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as any),
+      where: inArray(platformRoles.role, [...PLATFORM_SUPPORT_ROLES] as unknown),
     });
 
     // Use Promise.allSettled so a single failed notification doesn't abort the rest
@@ -523,7 +523,7 @@ router.get('/escalated', requirePlatformStaff, async (req: AuthenticatedRequest,
     const wsRows = wsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, wsIds) })
       : [];
-    const wsMap = new Map((wsRows as any[]).map(w => [w.id, w]));
+    const wsMap = new Map((wsRows as unknown[]).map(w => [w.id, w]));
     const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: wsMap.get(t.workspaceId) || null }));
 
     res.json(tickets);
@@ -547,7 +547,7 @@ router.get('/priority-queue', requirePlatformStaff, async (req: AuthenticatedReq
     const pqWsRows = pqWsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, pqWsIds) })
       : [];
-    const pqWsMap = new Map((pqWsRows as any[]).map(w => [w.id, w]));
+    const pqWsMap = new Map((pqWsRows as unknown[]).map(w => [w.id, w]));
     const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: pqWsMap.get(t.workspaceId) || null }));
 
     const tierWeights: Record<string, number> = {

@@ -231,7 +231,7 @@ class PolicyDecisionPoint {
 
       for (const attr of dbAttributes) {
         // Parse attribute based on type
-        let value: any = attr.attributeValue;
+        let value: unknown = attr.attributeValue;
         try {
           if (attr.attributeType === 'number') value = parseFloat(attr.attributeValue);
           else if (attr.attributeType === 'boolean') value = attr.attributeValue === 'true';

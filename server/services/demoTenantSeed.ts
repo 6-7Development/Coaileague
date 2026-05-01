@@ -45,7 +45,7 @@ async function exists(workspaceId: string): Promise<boolean> {
   const r = await db.execute(
     sql`SELECT 1 FROM workspaces WHERE id = ${workspaceId} LIMIT 1`,
   );
-  return ((r as any).rows?.length ?? 0) > 0;
+  return ((r as Record<string, unknown>).rows?.length ?? 0) > 0;
 }
 
 /**

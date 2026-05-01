@@ -244,11 +244,11 @@ export async function runComplianceSeed(): Promise<{ success: boolean; message: 
         workspaceId: o.ws,
         title: o.title,
         description: o.desc,
-        priority: o.priority as any,
+        priority: o.priority as unknown,
         requiresAcknowledgment: o.reqAck,
         requiresSignature: o.reqSig,
         requiresPhotos: o.reqPhotos,
-        photoFrequency: o.photoFreq as any,
+        photoFrequency: o.photoFreq as unknown,
         photoInstructions: o.photoInstr,
         isActive: true,
         createdBy: o.createdBy,
@@ -295,11 +295,11 @@ export async function runComplianceSeed(): Promise<{ success: boolean; message: 
         workspaceId: o.ws,
         title: o.title,
         description: o.desc,
-        priority: o.priority as any,
+        priority: o.priority as unknown,
         requiresAcknowledgment: o.reqAck,
         requiresSignature: o.reqSig,
         requiresPhotos: o.reqPhotos,
-        photoFrequency: o.photoFreq as any,
+        photoFrequency: o.photoFreq as unknown,
         photoInstructions: o.photoInstr,
         isActive: true,
         createdBy: o.createdBy,
@@ -510,7 +510,7 @@ export async function runGuardCardEnrichment(): Promise<{ success: boolean; mess
   const check = await typedQuery(sql`
     SELECT guard_card_number FROM employees WHERE id = 'dev-acme-emp-001' LIMIT 1
   `);
-  if ((check as any[])[0]?.guard_card_number) {
+  if ((check as unknown[])[0]?.guard_card_number) {
     return { success: true, message: "Guard card data already enriched — skipped" };
   }
 

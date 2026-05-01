@@ -538,7 +538,7 @@ class CoveragePipelineService {
           log.info(`No Tier ${nextTier} candidates queued for request ${request.id}`);
           if (nextTier === 3) {
             // No more tiers — escalate
-            await this.escalateToOrgOwner(request as any, `No candidates responded through Tier 2 and no Tier 3 pool`);
+            await this.escalateToOrgOwner(request as unknown, `No candidates responded through Tier 2 and no Tier 3 pool`);
           } else {
             // Advance current_tier counter so next cycle can try Tier 3
             const tier3Window = new Date(now.getTime() + TIER2_WINDOW_MINUTES * 60 * 1000);
@@ -650,7 +650,7 @@ class CoveragePipelineService {
         FOR UPDATE
       `);
 
-      const offer = (offerResult.rows as any[])[0];
+      const offer = (offerResult.rows as unknown[][])[0];
 
       if (!offer) {
         return { success: false, message: 'Offer not found or not for this employee' };
@@ -666,7 +666,7 @@ class CoveragePipelineService {
         FOR UPDATE
       `);
 
-      const request = (requestResult.rows as any[])[0];
+      const request = (requestResult.rows as unknown[][])[0];
 
       if (!request) {
         return { success: false, message: 'Coverage request not found' };
@@ -742,7 +742,7 @@ class CoveragePipelineService {
           .set({
             status: 'cancelled',
             description: `Cancelled - covered by shift ${newShiftId}`,
-          } as any)
+          } as unknown)
           .where(eq(shifts.id, request.original_shift_id));
       }
 

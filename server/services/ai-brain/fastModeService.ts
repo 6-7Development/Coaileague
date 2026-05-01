@@ -905,7 +905,7 @@ class FastModeService {
     return entry;
   }
   
-  private addToCache(key: string, result: any, creditsOriginal: number): void {
+  private addToCache(key: string, result: unknown, creditsOriginal: number): void {
     this.resultCache.set(key, {
       result,
       timestamp: Date.now(),
@@ -990,7 +990,7 @@ class FastModeService {
     return `Fast mode completed with ${successCount}/${totalAgents} agents (${agentNames}). Results aggregated and ready.`;
   }
   
-  private async generateProactiveInsights(content: string, result: any, workspaceId: string): Promise<string[]> {
+  private async generateProactiveInsights(content: string, result: unknown, workspaceId: string): Promise<string[]> {
     const insights: string[] = [];
     const contentLower = content.toLowerCase();
     
@@ -1101,8 +1101,8 @@ class FastModeService {
         gte(aiWorkboardTasks.createdAt, periodStart)
       ));
     
-    const fastModeTasks = tasks.filter(t => (t as any).executionMode === 'trinity_fast');
-    const normalModeTasks = tasks.filter(t => (t as any).executionMode !== 'trinity_fast');
+    const fastModeTasks = tasks.filter(t => (t as Record<string, unknown>).executionMode === 'trinity_fast');
+    const normalModeTasks = tasks.filter(t => (t as Record<string, unknown>).executionMode !== 'trinity_fast');
     
     // Calculate execution times
     const fastModeAvgTime = this.calculateAvgExecutionTime(fastModeTasks);
@@ -1146,7 +1146,7 @@ class FastModeService {
     const categoryCounts: Record<string, number> = {};
     fastModeTasks.forEach(t => {
       if (t.category) {
-        categoryCounts[(t as any).category] = (categoryCounts[(t as any).category] || 0) + 1;
+        categoryCounts[(t as Record<string, unknown>).category] = (categoryCounts[(t as Record<string, unknown>).category] || 0) + 1;
       }
     });
     const tasksByCategory = Object.entries(categoryCounts)

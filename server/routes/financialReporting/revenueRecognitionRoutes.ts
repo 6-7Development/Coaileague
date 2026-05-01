@@ -211,7 +211,7 @@ router.post('/recognition/schedules', async (req: AuthenticatedRequest, res: Res
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
     const workspaceId = ctx.workspaceId!;
-    const userId = req.user?.id || (req.user as any)?.claims?.sub;
+    const userId = req.user?.id || (req.user as unknown)?.claims?.sub;
 
     const body = createScheduleBodySchema.parse(req.body);
 
@@ -260,7 +260,7 @@ router.post('/recognition/run', async (req: AuthenticatedRequest, res: Response)
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
     const workspaceId = ctx.workspaceId!;
-    const userId = req.user?.id || (req.user as any)?.claims?.sub;
+    const userId = req.user?.id || (req.user as unknown)?.claims?.sub;
 
     const now = new Date();
     const year = req.body?.year ?? now.getFullYear();
@@ -565,7 +565,7 @@ router.post('/contracts/:contractId/map-revenue', async (req: AuthenticatedReque
     const ctx = await resolveWorkspace(req);
     if (!ctx.ok) return res.status(ctx.status!).json({ error: ctx.error });
     const workspaceId = ctx.workspaceId!;
-    const userId = req.user?.id || (req.user as any)?.claims?.sub;
+    const userId = req.user?.id || (req.user as unknown)?.claims?.sub;
     const { contractId } = req.params;
     const { invoiceId } = req.body;
 

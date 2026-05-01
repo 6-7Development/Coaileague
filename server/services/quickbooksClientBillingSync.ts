@@ -231,7 +231,7 @@ export async function syncPendingInvoices(workspaceId: string): Promise<{ synced
   });
 
   const unsyncedInvoices = pendingInvoices.filter(
-    (inv) => !(inv as any).quickbooksInvoiceId && (inv as any).quickbooksSyncStatus !== 'synced'
+    (inv) => !(inv as Record<string, unknown>).quickbooksInvoiceId && (inv as Record<string, unknown>).quickbooksSyncStatus !== 'synced'
   );
 
   let synced = 0;
@@ -332,7 +332,7 @@ export async function syncPayrollToQuickBooks(payrollRunId: string): Promise<Syn
         log.info(`[QBPayrollSync] Employee ${employee.id} has no QB ID - attempting lazy sync...`);
         const workerType = (employee as EmployeeWithStatus).workerType;
         const entityType = workerType === 'contractor' ? 'vendor' : 'employee';
-        const lazySyncResult = await ensureQuickBooksRecord(entityType as any, employee.id, payrollRun.workspaceId);
+        const lazySyncResult = await ensureQuickBooksRecord(entityType as unknown, employee.id, payrollRun.workspaceId);
         if (lazySyncResult.success && lazySyncResult.qbId) {
           qbEmployeeId = lazySyncResult.qbId;
           log.info(`[QBPayrollSync] Lazy sync provisioned ${entityType} → QB ${entityType} ${qbEmployeeId}`);

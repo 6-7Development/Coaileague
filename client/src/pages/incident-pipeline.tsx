@@ -41,7 +41,7 @@ interface Activity {
   action: string;
   performed_by: string;
   performed_by_role: string;
-  details: any;
+  details: Record<string, unknown>;
   created_at: string;
 }
 
@@ -312,8 +312,8 @@ function DetailView({
   const sevCfg = SEVERITY_CONFIG[incident.severity];
   const StatusIcon = statusCfg.icon;
 
-  const photos = Array.isArray(incident.photos) ? incident.photos : (() => { try { return JSON.parse(incident.photos as any) || []; } catch { return []; } })();
-  const legalFlags = Array.isArray(incident.trinity_legal_flags) ? incident.trinity_legal_flags : (() => { try { return JSON.parse(incident.trinity_legal_flags as any) || []; } catch { return []; } })();
+  const photos = Array.isArray(incident.photos) ? incident.photos : (() => { try { return JSON.parse(incident.photos as unknown) || []; } catch { return []; } })();
+  const legalFlags = Array.isArray(incident.trinity_legal_flags) ? incident.trinity_legal_flags : (() => { try { return JSON.parse(incident.trinity_legal_flags as unknown) || []; } catch { return []; } })();
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">

@@ -217,7 +217,7 @@ export function renderPdfFooter(
   doc: PDFDocumentType,
   opts: PdfFooterOptions,
 ): void {
-  const pageCount = (doc as any)._pageBuffer?.length ?? 1;
+  const pageCount = (doc as Record<string, unknown>)._pageBuffer?.length ?? 1;
   const { docId, docType = 'Document', hash, workspaceName = 'CoAIleague' } = opts;
 
   for (let i = 0; i < pageCount; i++) {

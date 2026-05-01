@@ -337,8 +337,8 @@ const checkMultiStateLicenseEligibility = mkAction('hiring.check_multistate_lice
         { employeeId, targetState, warning: 'Unknown state requirements — verify before scheduling' }, start);
     }
 
-    const hasTXLicense = licenses.some(l => (l as any).issuingAuthority?.includes('Texas DPS') || (l as any).issuingAuthority?.includes('DPS Private Security'));
-    const hasStateSpecificLicense = licenses.some(l => (l as any).issuingAuthority?.includes(stateReq.authority));
+    const hasTXLicense = licenses.some(l => (l as Record<string, unknown>).issuingAuthority?.includes('Texas DPS') || (l as Record<string, unknown>).issuingAuthority?.includes('DPS Private Security'));
+    const hasStateSpecificLicense = licenses.some(l => (l as Record<string, unknown>).issuingAuthority?.includes(stateReq.authority));
 
     if (hasStateSpecificLicense) {
       return createResult(req.actionId, true,

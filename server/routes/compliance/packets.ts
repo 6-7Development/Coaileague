@@ -163,7 +163,7 @@ router.post("/generate", requireAuth, mutationLimiter, async (req: Request, res:
       ) RETURNING *
     `);
     
-    const packet = packetResult[0] as any;
+    const packet = packetResult[0] as unknown;
     
     // CATEGORY C — Raw SQL retained: ::jsonb | Tables: compliance_audit_trail | Verified: 2026-03-23
     await db.insert(complianceAuditTrail).values({
@@ -198,7 +198,7 @@ router.post("/generate", requireAuth, mutationLimiter, async (req: Request, res:
             overallScore: officerTrainingCertificates.overallScore,
             isValid: officerTrainingCertificates.isValid,
             expiresAt: officerTrainingCertificates.expiresAt,
-            createdAt: (officerTrainingCertificates as any).createdAt,
+            createdAt: (officerTrainingCertificates as Record<string, unknown>).createdAt,
             moduleTitle: trainingModules.title,
           })
           .from(officerTrainingCertificates)
@@ -277,7 +277,7 @@ router.post("/generate", requireAuth, mutationLimiter, async (req: Request, res:
               fileName: d.fileName,
               fileHash: d.fileHashSha256,
               isLocked: d.isLocked,
-              approvedAt: (d as any).approvedAt,
+              approvedAt: (d as Record<string, unknown>).approvedAt,
               expirationDate: d.expirationDate
             })),
           trainingTranscript: {

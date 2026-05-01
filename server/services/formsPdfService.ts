@@ -178,7 +178,7 @@ function renderSignatureSection(doc: PDFKit.PDFDocument, submission: GenerateOpt
 }
 
 function renderFooter(doc: PDFKit.PDFDocument, submissionId: string, hash: string) {
-  const pages = (doc as any)._pageBuffer?.length || 1;
+  const pages = (doc as Record<string, unknown>)._pageBuffer?.length || 1;
   for (let i = 0; i < pages; i++) {
     doc.switchToPage(i);
     const footerY = doc.page.height - 40;
@@ -520,7 +520,7 @@ export async function generateCustomFormPdf(opts: CustomFormPdfOptions): Promise
       .createHash('sha256')
       .update(`${submission.id}:${submission.submittedAt}:${form.id}`)
       .digest('hex');
-    const pages = (doc as any)._pageBuffer?.length || 1;
+    const pages = (doc as Record<string, unknown>)._pageBuffer?.length || 1;
     for (let i = 0; i < pages; i++) {
       doc.switchToPage(i);
       const footerY = doc.page.height - 40;

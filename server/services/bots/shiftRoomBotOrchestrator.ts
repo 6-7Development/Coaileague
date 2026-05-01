@@ -350,7 +350,7 @@ async function buildShiftFieldIntel(
           .where(and(eq(employees.workspaceId, workspaceId), eq(employees.userId, uid)))
           .limit(1);
         if (emp) {
-          const e = emp as any;
+          const e = emp as unknown;
           officerRole = e.role || e.position || 'Officer';
           const expDate = e.licenseExpiry || e.licenseExpiryDate || e.guardCardExpiry || e.psbLicenseExpiry;
           if (expDate) {
@@ -1666,7 +1666,7 @@ class ShiftRoomBotOrchestrator {
           licenseStatus: pending.licenseStatus,
           onboardingStatus: pending.onboardingStatus,
           note: `Clock-in created by supervisor override via ClockBot. Authorized by ${managerName} at ${format(now, 'HH:mm')}. Reason: ${overrideReason}`,
-        } as any,
+        } as unknown,
         notes: `Supervisor override. Authorized by ${managerName}. Reason: ${overrideReason}`,
       });
 
@@ -2092,15 +2092,15 @@ class ShiftRoomBotOrchestrator {
         m.senderType !== 'bot' && m.senderType !== 'system'
       );
       const photoCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'photo_ack' || meta?.botEvent === 'photo_logged';
       }).length;
       const incidentCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'incident_ack' || meta?.botEvent === 'incident_report_complete';
       }).length;
       const checkInCount = messages.filter(m => {
-        const meta = m.metadata as any;
+        const meta = m.metadata as unknown;
         return meta?.botEvent === 'checkin_ack';
       }).length;
 
@@ -2254,7 +2254,7 @@ class ShiftRoomBotOrchestrator {
           status: 'open',
           reportedBy: reporterName,
           occurredAt: new Date(),
-        } as any);
+        } as unknown);
       }
     } catch (saveErr) {
       log.warn('[ShiftBotOrchestrator] Incident report DB save failed:', saveErr);
@@ -2410,7 +2410,7 @@ class ShiftRoomBotOrchestrator {
       const currentHour = now.getHours();
       const isOvernightHours = currentHour >= 22 || currentHour < 6;
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];
@@ -2557,7 +2557,7 @@ class ShiftRoomBotOrchestrator {
       const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
 
       // Find time entries open for 12+ hours
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         isNull(timeEntries.clockOut),
         lte(timeEntries.clockIn, twelveHoursAgo),
       ];
@@ -2630,7 +2630,7 @@ class ShiftRoomBotOrchestrator {
       // Only runs during overnight hours
       if (currentHour < 22 && currentHour >= 6) return;
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];
@@ -2721,7 +2721,7 @@ class ShiftRoomBotOrchestrator {
       const fiveMinAgo = subMinutes(now, 5);
       const fiveMinFuture = addMinutes(now, 5);
 
-      const conditions: any[] = [
+      const conditions: unknown[] = [
         eq(chatConversations.conversationType, 'shift_chat'),
         eq(chatConversations.status, 'active'),
       ];

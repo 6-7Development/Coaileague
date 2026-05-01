@@ -1160,7 +1160,7 @@ router.post('/complete-report', requireAuditorPortalAuth, async (req: Request, r
     }
 
     // Verify auditor token workspace matches the request workspace
-    const tokenWorkspaceId = (req as any).auditorWorkspaceId;
+    const tokenWorkspaceId = (req as Record<string, unknown>).auditorWorkspaceId;
     if (tokenWorkspaceId && tokenWorkspaceId !== request.workspaceId) {
       return res.status(403).json({ success: false, error: 'Workspace mismatch — token does not authorize this request' });
     }

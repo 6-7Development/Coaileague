@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-function CureCountdown({ cureStatus }: { cureStatus: any }) {
+function CureCountdown({ cureStatus }: { cureStatus: Record<string, unknown> }) {
   if (!cureStatus) return null;
 
   const { daysRemaining, hoursRemaining, isExpired, status, conditionsText, cureDays, deadlineAt } = cureStatus;

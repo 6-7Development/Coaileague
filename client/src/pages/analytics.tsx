@@ -178,7 +178,7 @@ function MetricCard({
   title: string; 
   value: string | number; 
   subtitle?: string; 
-  icon: any;
+  icon: string | React.ReactNode;
   change?: number;
   colorClass?: string;
   borderClass?: string;

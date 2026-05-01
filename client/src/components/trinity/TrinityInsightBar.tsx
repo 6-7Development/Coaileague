@@ -66,7 +66,7 @@ function severityOrder(s: string) {
   return 2;
 }
 
-function transformLogs(logs: any[]): Insight[] {
+function transformLogs(logs: unknown[]): Insight[] {
   if (!logs || !Array.isArray(logs)) return [];
 
   const insights: Insight[] = [];

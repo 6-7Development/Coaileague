@@ -147,8 +147,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       import('../services/email/emailProvisioningService').then(({ emailProvisioningService }) =>
         emailProvisioningService.provisionWorkspaceAddresses(workspace.id, emailSlug)
           .then(() => log.info(`[Workspace Create] Email addresses provisioned for workspace ${workspace.id}`))
-          .catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning failed (non-blocking):`, (err as any)?.message))
-      ).catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning import failed:`, (err as any)?.message));
+          .catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning failed (non-blocking):`, (err as Error)?.message))
+      ).catch((err: unknown) => log.warn(`[Workspace Create] Email provisioning import failed:`, (err as Error)?.message));
     } catch (slugErr: unknown) {
       log.warn(`[Workspace Create] Email slug setup failed (non-blocking):`, (slugErr as Record<string,unknown>)?.message);
     }

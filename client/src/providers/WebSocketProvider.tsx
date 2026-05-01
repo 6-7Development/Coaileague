@@ -23,7 +23,7 @@ class WebSocketBusImpl implements WebSocketBus {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private isConnectingFlag = false;
-  private sendQueue: any[] = [];
+  private sendQueue: unknown[] = [];
   private disposed = false;
   // Auth is complete only after the server confirms ws_authenticated (or fallback fires).
   // isConnected() gates on this so that join_conversation is never sent before serverAuth is set.

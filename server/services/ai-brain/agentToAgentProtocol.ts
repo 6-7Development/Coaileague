@@ -296,8 +296,8 @@ class AgentToAgentProtocol {
         id: message.id,
         fromAgent: message.fromAgent,
         toAgent: message.toAgent,
-        type: message.type as any,
-        priority: message.priority as any,
+        type: message.type as unknown,
+        priority: message.priority as unknown,
         payload: message.payload,
         correlationId: message.correlationId,
         replyTo: message.replyTo,
@@ -357,7 +357,7 @@ class AgentToAgentProtocol {
   private async markMessagePersisted(messageId: string, status: 'delivered' | 'processed' | 'failed' | 'expired'): Promise<void> {
     try {
       await db.update(a2aMessages)
-        .set({ status: status as any, processedAt: new Date() })
+        .set({ status: status as unknown, processedAt: new Date() })
         .where(eq(a2aMessages.id, messageId));
     } catch (persistErr : unknown) {
       log.warn('[A2A] Mark message persisted failed (non-fatal):', persistErr?.message);

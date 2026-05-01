@@ -630,7 +630,7 @@ class TrinitySelfEditGovernanceService {
         actionCategory: 'trinity_self_edit',
         actionName: 'self_edit_proposal',
         actionId: proposal.id,
-        executionStatus: proposal.status === 'pending' ? 'pending_approval' : proposal.status as any,
+        executionStatus: proposal.status === 'pending' ? 'pending_approval' : proposal.status as unknown,
         workspaceId: proposal.workspaceId || null,
         executedBy: null,
         executedByBot: true,
@@ -685,7 +685,7 @@ class TrinitySelfEditGovernanceService {
       
       await db.update(automationActionLedger)
         .set({
-          executionStatus: status as any,
+          executionStatus: status as unknown,
           updatedAt: new Date(),
           inputPayload: mergedMeta,
         })
@@ -709,7 +709,7 @@ class TrinitySelfEditGovernanceService {
         ));
       
       for (const p of proposals) {
-        const meta = p.inputPayload as any;
+        const meta = p.inputPayload as unknown;
         if (meta?.type === 'self_edit_proposal') {
           // Map database status to proposal status - preserve original approval type
           const dbStatus = p.executionStatus as string;

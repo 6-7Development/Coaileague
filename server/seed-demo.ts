@@ -247,7 +247,7 @@ async function populateDemoData() {
 
   const clientRateMap = new Map<string, string>();
   for (const c of createdClients) {
-    clientRateMap.set(c.id, (c as any).contractRate || '40.00');
+    clientRateMap.set(c.id, (c as Record<string, unknown>).contractRate || '40.00');
   }
 
   const createdShifts = [];

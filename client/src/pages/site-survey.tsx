@@ -51,7 +51,7 @@ export default function SiteSurveyPage() {
   });
 
   const updateSurveyMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('PATCH', `/api/site-survey/${id}`, data);
       return res.json();
     },
@@ -66,7 +66,7 @@ export default function SiteSurveyPage() {
   });
 
   const addZoneMutation = useMutation({
-    mutationFn: async ({ surveyId, data }: { surveyId: string; data: any }) => {
+    mutationFn: async ({ surveyId, data }: { surveyId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('POST', `/api/site-survey/${surveyId}/zones`, data);
       return res.json();
     },
@@ -80,7 +80,7 @@ export default function SiteSurveyPage() {
   });
 
   const addRequirementMutation = useMutation({
-    mutationFn: async ({ surveyId, data }: { surveyId: string; data: any }) => {
+    mutationFn: async ({ surveyId, data }: { surveyId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('POST', `/api/site-survey/${surveyId}/requirements`, data);
       return res.json();
     },
@@ -94,7 +94,7 @@ export default function SiteSurveyPage() {
   });
 
   const updateRequirementMutation = useMutation({
-    mutationFn: async ({ reqId, data }: { reqId: string; data: any }) => {
+    mutationFn: async ({ reqId, data }: { reqId: string; data: Record<string, unknown> }) => {
       const res = await apiRequest('PATCH', `/api/site-survey/requirements/${reqId}`, data);
       return res.json();
     },

@@ -2654,7 +2654,7 @@ export function startAutonomousScheduler() {
   // table indefinitely and blocked automation that was waiting on
   // them. Workflow audit 2026-04-08 flagged this as "approval workflows
   // / expireOldApprovals never called by cron" — this is the fix.
-  registerJobInfo('Approval Expiry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, (SCHEDUL as any)(ER_CONFIG.approvalExpiry.description as any), (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.enabled);
+  registerJobInfo('Approval Expiry Sweep', (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.schedule, (SCHEDUL as unknown)(ER_CONFIG.approvalExpiry.description as unknown), (SCHEDULER_CONFIG as Record<string, Record<string, unknown>>).approvalExpiry.enabled);
   if (SCHEDULER_CONFIG.approvalExpiry.enabled) {
     cron.schedule(SCHEDULER_CONFIG.approvalExpiry.schedule, () => {
       trackJobExecution('Approval Expiry Sweep', async () => {
@@ -2714,7 +2714,7 @@ export function startAutonomousScheduler() {
         const { runLicenseExpiryAlerts } = await import('./trinity/workflows/licenseExpiryWorkflow');
         await runLicenseExpiryAlerts();
       } catch (err) {
-        log.warn('[Cron] License expiry sweep failed:', (err as any)?.message);
+        log.warn('[Cron] License expiry sweep failed:', (err as Error)?.message);
       }
     });
   });
@@ -2750,7 +2750,7 @@ export function startAutonomousScheduler() {
             )
         `);
 
-        const rows = (expired as Record<string,unknown>).rows ?? (expired as any);
+        const rows = (expired as Record<string,unknown>).rows ?? (expired as unknown);
         let unassigned = 0;
         for (const row of rows ?? []) {
           try {
@@ -2761,12 +2761,12 @@ export function startAutonomousScheduler() {
             );
             unassigned += result.shiftsUnassigned;
           } catch (err) {
-            log.warn('[Cron] Midnight unassign failed for', row.employee_id, (err as any)?.message);
+            log.warn('[Cron] Midnight unassign failed for', row.employee_id, (err as Error)?.message);
           }
         }
         log.info('[Cron] Midnight license expiry sweep complete', { officersExpired: rows?.length ?? 0, shiftsUnassigned: unassigned });
       } catch (err) {
-        log.warn('[Cron] Midnight license expiry unassign failed:', (err as any)?.message);
+        log.warn('[Cron] Midnight license expiry unassign failed:', (err as Error)?.message);
       }
     });
   });
@@ -4508,7 +4508,7 @@ export function startAutonomousScheduler() {
         category: 'scheduling',
         success: result.errors.length === 0,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4531,7 +4531,7 @@ export function startAutonomousScheduler() {
         category: 'scheduling',
         success: true,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4554,7 +4554,7 @@ export function startAutonomousScheduler() {
         category: 'notification',
         success: result.errors.length === 0,
         recordsProcessed: result.fourHourSent + result.oneHourSent,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4577,7 +4577,7 @@ export function startAutonomousScheduler() {
         category: 'compliance',
         success: result.errors.length === 0,
         recordsProcessed: result.notified,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4602,7 +4602,7 @@ export function startAutonomousScheduler() {
         category: 'payroll',
         success: true,
         recordsProcessed: result.flagged,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4625,7 +4625,7 @@ export function startAutonomousScheduler() {
         category: 'compliance',
         success: result.errors.length === 0,
         recordsProcessed: result.notified,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });
@@ -4648,7 +4648,7 @@ export function startAutonomousScheduler() {
         category: 'payroll',
         success: result.errors.length === 0,
         recordsProcessed: result.scanned,
-        details: result as any,
+        details: result as unknown,
       });
     });
   });

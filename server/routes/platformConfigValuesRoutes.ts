@@ -27,13 +27,13 @@ const WORKSPACE_OWNERS = ['org_owner', 'co_owner'];
 
 function isPlatformAdmin(req: Request): boolean {
   const r = req as AuthenticatedRequest;
-  const role = (r as any).platformRole || '';
+  const role = (r as Record<string, unknown>).platformRole || '';
   return PLATFORM_ADMINS.includes(role);
 }
 
 function isWorkspaceOwner(req: Request): boolean {
   const r = req as AuthenticatedRequest;
-  const role = (r as any).workspaceRole || r.workspaceRole || '';
+  const role = (r as Record<string, unknown>).workspaceRole || r.workspaceRole || '';
   return WORKSPACE_OWNERS.includes(role);
 }
 

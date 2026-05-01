@@ -567,7 +567,7 @@ export async function processBotMessage(
 export async function closeBotTicketSuccess(
   ticketId: string,
   userId: string
-): Promise<{ faqSuggestion: any | null; conversationSummary: string }> {
+): Promise<{ faqSuggestion: unknown | null; conversationSummary: string }> {
   
   const conversation = activeBotConversations.get(ticketId);
   
@@ -710,7 +710,7 @@ export async function notifySupportStaffOfEscalation(
     `);
     
     // Create notification for each support staff member
-    for (const staff of supportStaff.rows as any[]) {
+    for (const staff of supportStaff.rows as unknown[][]) {
       await storage.createNotification({
         workspaceId: staff.current_workspace_id || 'platform-external',
         userId: staff.id,

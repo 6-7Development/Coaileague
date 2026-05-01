@@ -407,7 +407,7 @@ class TaskStateMachine {
     await db.update(aiBrainTasks)
       .set({ 
         lastError: error,
-        errorCount: (db as any).raw(`COALESCE(error_count, 0) + 1`) as any,
+        errorCount: (db as Record<string, unknown>).raw(`COALESCE(error_count, 0) + 1`) as any,
       })
       .where(eq(aiBrainTasks.id, taskId));
 

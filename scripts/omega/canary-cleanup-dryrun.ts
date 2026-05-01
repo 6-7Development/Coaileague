@@ -35,7 +35,7 @@ async function run() {
     AND id != ${SPS_ID}
     LIMIT 1
   `);
-  const acme = (rows.rows || rows)[0] as any;
+  const acme = (rows.rows || rows)[0] as unknown;
 
   if (!acme) {
     console.log('ACME workspace not found — nothing to clean up.');
@@ -61,7 +61,7 @@ async function run() {
       const countRows = await db.execute(
         sql.raw(`SELECT COUNT(*) as cnt FROM ${table} WHERE workspace_id = '${acme.id}'`)
       );
-      const cnt = (countRows.rows || countRows)[0] as any;
+      const cnt = (countRows.rows || countRows)[0] as unknown;
       console.log(`  📋 DELETE FROM ${table} WHERE workspace_id = '${acme.id}' — ${cnt?.cnt || 0} rows would be deleted`);
     } catch {
       console.log(`  📋 DELETE FROM ${table} WHERE workspace_id = '${acme.id}' — (count unavailable)`);

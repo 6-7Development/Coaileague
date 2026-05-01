@@ -106,7 +106,7 @@ async function verifyResend(): Promise<void> {
     }
 
     const data = await resp.json() as { data?: Array<{ url: string }> };
-    const registeredUrls = (data.data || []).map((w: any) => w.url);
+    const registeredUrls = (data.data || []).map((w: unknown) => w.url);
 
     const outboundFound = registeredUrls.includes(outboundUrl);
     const inboundFound  = registeredUrls.includes(inboundUrl);
@@ -154,11 +154,11 @@ async function verifyTwilio(): Promise<void> {
     const twilio = (await import('twilio')).default;
     const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     const phoneNumber = await client.incomingPhoneNumbers(TWILIO_PHONE_SID).fetch();
-    const pn = phoneNumber as any;
+    const pn = phoneNumber as unknown;
 
     for (const c of checks) {
       const actual   = pn[c.field] || '';
-      const expected_val = (expected as any)[c.field];
+      const expected_val = (expected as unknown)[c.field];
       const match    = actual === expected_val;
       row('Twilio', c.label, match ? 'VERIFIED' : 'MISMATCH',
         match ? actual : `Expected: ${expected_val} | Got: ${actual}`);

@@ -98,7 +98,7 @@ interface QuickAction {
   label: string;
   icon: string;
   action: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 interface PreviewData {
@@ -692,7 +692,7 @@ function PreviewPanel({ preview, onApply, onCancel }: {
   );
 }
 
-const quickActionIconMap: Record<string, any> = {
+const quickActionIconMap: Record<string, unknown> = {
   Calendar, FileText, Users, DollarSign, Clock, AlertCircle, HelpCircle, Activity
 };
 
@@ -1057,7 +1057,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
       }
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       agentState.stopExecution();
       
       // Determine confidence based on response
@@ -1074,7 +1074,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
         unlimitedCredits: data.usage.unlimited || data.usage.unlimited_credits || false,
         tier: data.usage.tier || undefined,
         monthlyAllowance: data.usage.monthlyAllowance || data.usage.monthly_allowance || undefined,
-        actions: (data.usage.actions || []).map((a: any) => ({
+        actions: (data.usage.actions || []).map((a: unknown) => ({
           model: a.model || 'unknown',
           tokens: a.tokens || 0,
           credits: a.credits || 0,
@@ -1200,7 +1200,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
   };
 
   // Mobile swipe gesture handling
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
     const velocity = info.velocity.y;
     const offset = info.offset.y;
 
@@ -1264,7 +1264,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
     const heightMap = TRINITY_MOBILE_CONFIG.heights;
 
     // Handle swipe gestures - tuned for smooth touch response
-    const handleDragEnd = (_: any, info: PanInfo) => {
+    const handleDragEnd = (_: unknown, info: PanInfo) => {
       const { offset, velocity } = info;
       // Use config thresholds with sensible defaults
       const swipeThreshold = TRINITY_MOBILE_CONFIG.swipe?.threshold || 50;

@@ -461,7 +461,7 @@ async function compileAndFileIncidentReport(
         status: 'open',
         reportedBy: reporterName,
         occurredAt: new Date(),
-      } as any);
+      } as unknown);
     } catch (err: unknown) {
       log.warn('[ShiftChatroomBot] Incident DB save failed (non-blocking):', (err instanceof Error ? err.message : String(err)));
     }
@@ -535,14 +535,14 @@ async function handleEndShift(
       .orderBy(shiftChatroomMessages.createdAt);
 
     const officerMessages = messages.filter(m => {
-      const meta = m.metadata as any;
+      const meta = m.metadata as unknown;
       return m.userId !== 'reportbot' && m.messageType !== 'system' && !meta?.isBot;
     });
 
     const photoCount = messages.filter(m => m.messageType === 'photo').length;
 
     const incidentMessages = messages.filter(m => {
-      const meta = m.metadata as any;
+      const meta = m.metadata as unknown;
       return meta?.botEvent === 'incident_report_complete';
     });
 

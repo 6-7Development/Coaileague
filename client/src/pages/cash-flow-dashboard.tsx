@@ -56,7 +56,7 @@ function MetricCard({
 }: {
   title: string;
   amount: number;
-  icon: any;
+  icon: string | React.ReactNode;
   color: string;
   subtext?: string;
   isLoading?: boolean;

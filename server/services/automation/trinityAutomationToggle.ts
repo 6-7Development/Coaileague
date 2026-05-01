@@ -124,7 +124,7 @@ export interface AutomationResult {
   pauseReason?: string;
   revisedPayload?: Record<string, unknown> | null;
   revisionNotes?: string | null;
-  revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string; payloadSnapshot: any }>;
+  revisionHistory?: Array<{ revisedBy: string; revisedAt: string; notes: string; payloadSnapshot: unknown }>;
   trinityReanalysis?: string | null;
   trinityReanalysisAt?: Date | null;
 }
@@ -395,7 +395,7 @@ class TrinityAutomationToggleService {
     // If a revised payload exists, apply it to the preview before execution
     const revisedPayload = request.revisedPayload;
     const effectivePreview = revisedPayload
-      ? { ...(request.preview as any || {}), previewData: revisedPayload }
+      ? { ...(request.preview as unknown || {}), previewData: revisedPayload }
       : request.preview;
 
     await db.update(trinityAutomationRequests)
@@ -712,8 +712,8 @@ class TrinityAutomationToggleService {
    * Convert database record to AutomationResult
    */
   private mapToResult(record: TrinityAutomationRequest): AutomationResult {
-    const preview = record.preview as any || {};
-    const r = record as any;
+    const preview = record.preview as unknown || {};
+    const r = record as unknown;
     return {
       requestId: record.id,
       feature: record.feature as AutomationFeature,
@@ -1476,7 +1476,7 @@ class TrinityAutomationToggleService {
       throw new Error(`Trinity re-analysis only available for pending or paused automations (current status: ${request.status})`);
     }
 
-    const preview = request.preview as any || {};
+    const preview = request.preview as unknown || {};
     const revisedPayload = request.revisedPayload;
     const effectivePayload = revisedPayload || preview.previewData || preview;
 

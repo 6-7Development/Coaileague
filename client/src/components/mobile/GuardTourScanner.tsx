@@ -43,7 +43,7 @@ export function GuardTourScanner({
 }: GuardTourScannerProps): JSX.Element {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<any>(null);
+  const detectorRef = useRef<unknown>(null);
   const loopRef = useRef<number | null>(null);
   const lastCodeRef = useRef<string | null>(null);
 

@@ -144,7 +144,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
               workspaceId: workspaceId!,
               filePath: doc.filePath,
               category,
-              version: (doc as any).version || 1,
+              version: (doc as Record<string, unknown>).version || 1,
             });
           } catch (err: unknown) {
             log.warn('[SOP] Indexing failed (non-fatal):', err?.message);

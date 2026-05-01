@@ -118,7 +118,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 
     let conditions = [eq(pipelineDeals.workspaceId, workspaceId)];
 
-    if (stage && typeof stage === 'string' && VALID_STAGES.includes(stage as any)) {
+    if (stage && typeof stage === 'string' && VALID_STAGES.includes(stage as string)) {
       conditions.push(eq(pipelineDeals.stage, stage));
     }
 

@@ -322,11 +322,11 @@ class AdvancedUsageAnalyticsService {
     const history = await tokenManager.getUsageHistory(workspaceId, limit);
     return history.map(t => ({
       id: t.id,
-      type: (t as any).transactionType || 'deduction',
-      credits: (t as any).amount ?? 0,
-      balanceAfter: (t as any).balanceAfter ?? 0,
-      description: (t as any).description || '',
-      actionType: (t as any).featureKey,
+      type: (t as Record<string, unknown>).transactionType || 'deduction',
+      credits: (t as Record<string, unknown>).amount ?? 0,
+      balanceAfter: (t as Record<string, unknown>).balanceAfter ?? 0,
+      description: (t as Record<string, unknown>).description || '',
+      actionType: (t as Record<string, unknown>).featureKey,
       createdAt: t.createdAt?.toISOString?.() || new Date().toISOString(),
     }));
   }

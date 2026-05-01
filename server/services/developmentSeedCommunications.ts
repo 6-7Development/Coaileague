@@ -247,8 +247,8 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
       senderType: m.stype,
       message: m.msg,
       messageType: 'text',
-      isPrivateMessage: (m as any).is_private || false,
-      recipientId: (m as any).recipient || null,
+      isPrivateMessage: (m as Record<string, unknown>).is_private || false,
+      recipientId: (m as Record<string, unknown>).recipient || null,
       createdAt: sql`${m.ts}::timestamptz`,
       updatedAt: sql`${m.ts}::timestamptz`,
     }).onConflictDoNothing();
@@ -264,7 +264,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
   const rooms = await typedQuery(sql`
     SELECT id, name FROM shift_chatrooms WHERE workspace_id = ${WS} LIMIT 10
   `);
-  const roomIds = (rooms as any[]).map(r => r.id);
+  const roomIds = (rooms as unknown[]).map(r => r.id);
 
   if (roomIds.length > 0) {
     const room0 = roomIds[0];
@@ -328,9 +328,9 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
       description: t.desc,
       status: t.status,
       requestedBy: t.requested_by,
-      resolution: (t as any).resolution || null,
-      resolvedBy: (t as any).resolved_by || null,
-      resolvedAt: (t as any).resolved_at ? sql`${(t as any).resolved_at}::timestamptz` : null,
+      resolution: (t as Record<string, unknown>).resolution || null,
+      resolvedBy: (t as Record<string, unknown>).resolved_by || null,
+      resolvedAt: (t as Record<string, unknown>).resolved_at ? sql`${(t as Record<string, unknown>).resolved_at}::timestamptz` : null,
       createdAt: sql`${t.ts}::timestamptz`,
       updatedAt: sql`${t.ts}::timestamptz`,
     }).onConflictDoNothing();
@@ -365,7 +365,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
       callerName: i.caller,
       callerPhone: i.caller_phone,
       callReceivedAt: sql`${i.call_at}::timestamptz`,
-      clearedAt: (i as any).cleared_at ? sql`${(i as any).cleared_at}::timestamptz` : null,
+      clearedAt: (i as Record<string, unknown>).cleared_at ? sql`${(i as Record<string, unknown>).cleared_at}::timestamptz` : null,
       incidentType: i.type,
       createdAt: sql`now()`,
       updatedAt: sql`now()`,
@@ -418,7 +418,7 @@ export async function runCommunicationsSeed(): Promise<{ success: boolean; messa
       polishedDescription: r.polished_desc,
       status: r.status,
       occurredAt: sql`${r.occurred_at}::timestamptz`,
-      reviewedAt: (r as any).reviewed_at ? sql`${(r as any).reviewed_at}::timestamptz` : null,
+      reviewedAt: (r as Record<string, unknown>).reviewed_at ? sql`${(r as Record<string, unknown>).reviewed_at}::timestamptz` : null,
       trinityRevisionCount: 1,
       updatedAt: sql`now()`,
     }).onConflictDoNothing();

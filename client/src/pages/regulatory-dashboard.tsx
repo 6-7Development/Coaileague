@@ -104,7 +104,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function SectionCard({ title, icon: Icon, children, isLoading }: {
   title: string;
-  icon: any;
+  icon: string | React.ReactNode;
   children: React.ReactNode;
   isLoading?: boolean;
 }) {
@@ -638,7 +638,7 @@ export default function RegulatoryDashboard() {
                       <div className="flex items-center gap-2">
                         <XCircle size={14} className="text-red-400" />
                         <p className="text-red-300 text-xs font-medium">
-                          {officersQuery?.data?.data?.officers.filter((o) => (o as any).complianceScore?.isHardBlocked).length} officer(s) have active hard blocks (expired license or missing qualification).
+                          {officersQuery?.data?.data?.officers.filter((o) => (o as Record<string, unknown>).complianceScore?.isHardBlocked).length} officer(s) have active hard blocks (expired license or missing qualification).
                           These officers cannot be legally assigned to shifts.
                         </p>
                       </div>

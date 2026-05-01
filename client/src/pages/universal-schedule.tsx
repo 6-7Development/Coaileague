@@ -18,7 +18,7 @@ import { secureFetch } from "@/lib/csrf";
 import { markCoreActionPerformed } from "@/lib/pushNotifications";
 
 /** Parse compliance / eligibility block errors into a user-readable string */
-function parseScheduleError(error: any): string {
+function parseScheduleError(error: unknown): string {
   if (!error) return 'An unexpected error occurred';
   const raw: string = error.message || String(error);
   // Strip leading "NNN: " status prefix from ApiError
@@ -430,7 +430,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         duration: 5000,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to toggle automation',
@@ -471,7 +471,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/credit-status', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/active-operations', workspaceId] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
@@ -495,7 +495,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'The shift has been removed from the schedule',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to delete shift',
@@ -514,10 +514,10 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     onMutate: async ({ shiftId, newEmployeeId }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/shifts', workspaceId] });
       const previousQueries = queryClient.getQueriesData<any>({ queryKey: ['/api/shifts', workspaceId] });
-      queryClient.setQueriesData<any>({ queryKey: ['/api/shifts', workspaceId] }, (old: any) => {
+      queryClient.setQueriesData<any>({ queryKey: ['/api/shifts', workspaceId] }, (old: Record<string, unknown>) => {
         if (!old) return old;
         const list: unknown[] = Array.isArray(old) ? old : (old.shifts || old.data || []);
-        const updated = list.map((s: any) => s.id === shiftId ? { ...s, employeeId: newEmployeeId } : s);
+        const updated = list.map((s: unknown) => s.id === shiftId ? { ...s, employeeId: newEmployeeId } : s);
         if (Array.isArray(old)) return updated;
         if (old.shifts) return { ...old, shifts: updated };
         if (old.data) return { ...old, data: updated };
@@ -535,7 +535,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
     },
-    onError: (error: any, _, context: any) => {
+    onError: (error: unknown, _, context: Record<string, unknown>) => {
       if (context?.previousQueries) {
         context.previousQueries.forEach(([key, data]: [any, any]) => {
           queryClient.setQueryData(key, data);
@@ -584,7 +584,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'All employees have been notified of their shifts',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to publish schedule',
@@ -603,7 +603,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       });
       return await response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/credit-status', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/active-operations', workspaceId] });
@@ -618,7 +618,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: `Trinity AI has optimized the schedule${tokensUsed > 0 ? ` (${tokensUsed} tokens used)` : ''}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
@@ -703,7 +703,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
       toast({ variant: 'success', title: `${count} shift${count !== 1 ? 's' : ''} saved`, description: 'Schedule updated successfully.' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({ variant: 'destructive', title: 'Failed to save changes', description: parseScheduleError(error) });
     },
   });
@@ -745,7 +745,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       // Stage the date change as a pending reassignment (reuses existing staging architecture)
       setPendingReassignments(prev => {
         const next = new Map(prev);
-        next.set(`${shift.id}-date`, { newEmployeeId: shift.employeeId ?? '', originalEmployeeId: shift.employeeId ?? null, newDate: newDateStr, newStartTime: `${hourStr}:00`, newEndTime: `${endHour}:00` } as any);
+        next.set(`${shift.id}-date`, { newEmployeeId: shift.employeeId ?? '', originalEmployeeId: shift.employeeId ?? null, newDate: newDateStr, newStartTime: `${hourStr}:00`, newEndTime: `${endHour}:00` } as unknown);
         return next;
       });
       toast({ variant: 'info', title: `Shift moved to ${newDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`, description: 'Click Publish to save changes' });
@@ -1117,7 +1117,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: shiftForm.isOpenShift ? 'Open shift created successfully' : 'Shift created and assigned',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to create shift',
@@ -1136,7 +1136,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       });
       return await response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/credit-status', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orchestrated-schedule/active-operations', workspaceId] });
@@ -1152,7 +1152,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: `Best available employee assigned${tokensUsed > 0 ? ` (${tokensUsed} tokens used)` : ''}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
@@ -1180,7 +1180,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'Employee has been assigned to the shift',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to assign shift',
@@ -1202,7 +1202,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       const data = await response.json();
       return { ...data, totalOpen: openCount };
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats', workspaceId] });
       queryClient.refetchQueries({ queryKey: ['/api/shifts', workspaceId] });
@@ -1246,7 +1246,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
@@ -1396,14 +1396,14 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         workspaceId,
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       queryClient.invalidateQueries({ queryKey: ['/api/shifts', workspaceId] });
       toast({
         title: 'Week duplicated',
         description: `Copied ${data?.copiedShifts || 0} shifts to the next week`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to duplicate week',
@@ -1473,7 +1473,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'The shift has been copied to the new date',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to duplicate shift',
@@ -1504,7 +1504,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'The shift has been updated successfully',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to update shift',
@@ -1533,7 +1533,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'Your shift swap request has been submitted for approval',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to request swap',
@@ -1544,7 +1544,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
   
   // Create recurring pattern mutation
   const createRecurringMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       return await apiRequest('POST', '/api/scheduling/recurring', { ...data, workspaceId });
     },
     onSuccess: () => {
@@ -1555,7 +1555,7 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         description: 'Shifts have been generated according to the pattern',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Failed to create recurring shifts',

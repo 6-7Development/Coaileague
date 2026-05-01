@@ -68,13 +68,13 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
     .limit(1)
     .catch(() => []);
 
-  const upcomingPayroll = parseFloat(String((nextPayroll[0] as any)?.totalNetPay || 0));
-  const nextPayrollDate = (nextPayroll[0] as any)?.disbursementDate
-    ? new Date((nextPayroll[0] as any).disbursementDate).toISOString().split('T')[0]
+  const upcomingPayroll = parseFloat(String((nextPayroll[0] as unknown)?.totalNetPay || 0));
+  const nextPayrollDate = (nextPayroll[0] as unknown)?.disbursementDate
+    ? new Date((nextPayroll[0] as unknown).disbursementDate).toISOString().split('T')[0]
     : null;
 
-  const payrollCutoff = (nextPayroll[0] as any)?.disbursementDate
-    ? new Date((nextPayroll[0] as any).disbursementDate)
+  const payrollCutoff = (nextPayroll[0] as unknown)?.disbursementDate
+    ? new Date((nextPayroll[0] as unknown).disbursementDate)
     : horizon;
 
   // 2. Receivables due before payroll date
@@ -88,7 +88,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
     ))
     .catch(() => [{ total: 0 }]);
 
-  const receivablesDueBeforePayroll = parseFloat(String((receivablesDue[0] as any)?.total || 0));
+  const receivablesDueBeforePayroll = parseFloat(String((receivablesDue[0] as unknown)?.total || 0));
 
   // 3. Total outstanding receivables
   const receivablesAll = await db.select({
@@ -100,7 +100,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
     ))
     .catch(() => [{ total: 0 }]);
 
-  const receivablesTotal = parseFloat(String((receivablesAll[0] as any)?.total || 0));
+  const receivablesTotal = parseFloat(String((receivablesAll[0] as unknown)?.total || 0));
 
   // 4. Overdue total
   const overdueRows = await db.select({
@@ -112,7 +112,7 @@ async function computeCashFlowGap(workspaceId: string, horizonDays = 14): Promis
     ))
     .catch(() => [{ total: 0 }]);
 
-  const overdueTotal = parseFloat(String((overdueRows[0] as any)?.total || 0));
+  const overdueTotal = parseFloat(String((overdueRows[0] as unknown)?.total || 0));
 
   // 5. Aging buckets
   const agingQuery = await db.select({
@@ -324,8 +324,8 @@ const revenueForecast = mkAction('billing.revenue_forecast', async (req) => {
       .where(and(eq(invoices.workspaceId, wid), inArray(invoices.status, ['paid']), gte(invoices.paidAt, sixtyDaysAgo), lt(invoices.paidAt, thirtyDaysAgo)))
       .catch(() => [{ total: 0 }]);
 
-    const lastMonthRevenue = parseFloat(String((lastMonth[0] as any)?.total || 0));
-    const priorMonthRevenue = parseFloat(String((priorMonth[0] as any)?.total || 0));
+    const lastMonthRevenue = parseFloat(String((lastMonth[0] as unknown)?.total || 0));
+    const priorMonthRevenue = parseFloat(String((priorMonth[0] as unknown)?.total || 0));
     const trend = priorMonthRevenue > 0 ? ((lastMonthRevenue - priorMonthRevenue) / priorMonthRevenue) * 100 : 0;
     const forecastNext30 = lastMonthRevenue * (1 + Math.max(-0.1, Math.min(0.2, trend / 100)));
 
@@ -352,7 +352,7 @@ const quickCashSummary = mkAction('billing.quick_cash_summary', async (req) => {
           .from(invoices)
           .where(and(eq(invoices.workspaceId, wid), eq(invoices.status, 'paid'), gte(invoices.paidAt, thirtyDaysAgo)))
           .catch(() => [{ total: 0 }]);
-        return parseFloat(String((row[0] as any)?.total || 0));
+        return parseFloat(String((row[0] as unknown)?.total || 0));
       })(),
     ]);
 

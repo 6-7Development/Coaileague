@@ -715,7 +715,7 @@ async function suiteAuditorPortal() {
     // complianceRoutes deleted in refactor — test disabled
     // const mod = await import('../routes/complianceRoutes');
     assert(!!mod.default, 'Should export default router');
-    assert(typeof mod.default === 'function' || typeof (mod as any).default.use === 'function',
+    assert(typeof mod.default === 'function' || typeof (mod as Record<string, unknown>).default.use === 'function',
       'Should be an express Router');
   });
 }

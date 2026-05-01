@@ -482,7 +482,7 @@ function SupportDashboard() {
 
 function WorkspaceDeepDive({ workspaceId, data, isLoading, onExecuteAction }: {
   workspaceId: string;
-  data: any;
+  data: Record<string, unknown>;
   isLoading: boolean;
   onExecuteAction: (wsId: string) => void;
 }) {

@@ -403,7 +403,7 @@ async function notify(a: Anomaly): Promise<boolean> {
   const inAppFailed = inAppResults.filter((r) => r.status === 'rejected').length;
   for (const r of inAppResults) {
     if (r.status === 'rejected') {
-      log.warn('[anomalyWatch] in-app notify failed (non-fatal):', (r.reason as any)?.message ?? r.reason);
+      log.warn('[anomalyWatch] in-app notify failed (non-fatal):', (r.reason as unknown)?.message ?? r.reason);
     }
   }
 
@@ -424,13 +424,13 @@ async function notify(a: Anomaly): Promise<boolean> {
         ),
       ),
     );
-    smsDelivered = smsResults.filter((r) => r.status === 'fulfilled' && (r.value as any)?.success).length;
+    smsDelivered = smsResults.filter((r) => r.status === 'fulfilled' && (r.value as unknown)?.success).length;
     smsFailed = smsResults.length - smsDelivered;
     for (const r of smsResults) {
       if (r.status === 'rejected') {
-        log.warn('[anomalyWatch] supervisor SMS threw (non-fatal):', (r.reason as any)?.message ?? r.reason);
-      } else if (!(r.value as any)?.success) {
-        log.info('[anomalyWatch] supervisor SMS not sent:', (r.value as any)?.error);
+        log.warn('[anomalyWatch] supervisor SMS threw (non-fatal):', (r.reason as unknown)?.message ?? r.reason);
+      } else if (!(r.value as unknown)?.success) {
+        log.info('[anomalyWatch] supervisor SMS not sent:', (r.value as unknown)?.error);
       }
     }
   }
@@ -445,7 +445,7 @@ async function notify(a: Anomaly): Promise<boolean> {
       description: a.summary,
       severity: a.severity,
       metadata: { workflow: WORKFLOW_NAME, ...a },
-    } as any);
+    } as unknown);
   } catch (err: unknown) {
     log.warn('[anomalyWatch] event publish failed (non-fatal):', err?.message);
   }

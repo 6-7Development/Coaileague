@@ -34,7 +34,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
 
       const { status, industry, assignedTo, limit = 100 } = req.query;
       
-      let conditions: any[] = [eq(leads.organizationId, workspaceId)];
+      let conditions: unknown[] = [eq(leads.organizationId, workspaceId)];
       if (status) conditions.push(eq(leads.leadStatus, status as string));
       if (industry) conditions.push(eq(leads.industry, industry as string));
       if (assignedTo) conditions.push(eq(leads.assignedTo, assignedTo as string));
@@ -59,7 +59,7 @@ export function registerLeadCrmRoutes(app: Express, requireAuth: any, attachWork
 
       const { stage, status, ownerId, limit = 50 } = req.query;
       
-      let conditions: any[] = [eq(deals.organizationId, workspaceId)];
+      let conditions: unknown[] = [eq(deals.organizationId, workspaceId)];
       if (stage) conditions.push(eq(deals.stage, stage as string));
       if (status) conditions.push(eq(deals.status, status as string));
       if (ownerId) conditions.push(eq(deals.ownerId, ownerId as string));

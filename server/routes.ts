@@ -44,7 +44,7 @@ import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 // ============================================================================
 export const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -455,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   log.info('[ROUTE-INIT] step: websocket-setup');
   const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = await import("./websocket");
   notificationStateManager.setBroadcastFunction((ws, uid, type, data, count) =>
-    broadcastNotification(ws, uid, type as any, data, count)
+    broadcastNotification(ws, uid, type as unknown, data, count)
   );
 
   log.info('[ROUTE-INIT] step: platform-event-bus');
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   platformEventBus.setWebSocketHandler((event) => {
     broadcastPlatformUpdate({
       type: "platform_update",
-      category: event.category as any,
+      category: event.category as unknown,
       title: event.title,
       description: event.description,
       version: event.version,
@@ -590,14 +590,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Billing/webhook routes are exempt so operators can recover payment.
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (isPublicPath(req.path)) return next();
-    return subscriptionReadOnlyGuard(req as any, res, next);
+    return subscriptionReadOnlyGuard(req as unknown, res, next);
   });
 
   // Cancelled workspace guard: full block (403) for all /api routes when workspace is cancelled.
   // Auth/health/billing are always exempt so operators can sign in and re-activate.
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (isPublicPath(req.path)) return next();
-    return cancelledWorkspaceGuard(req as any, res, next);
+    return cancelledWorkspaceGuard(req as unknown, res, next);
   });
 
   // Terminated employee guard: enforce 14-day read-only grace period after termination.

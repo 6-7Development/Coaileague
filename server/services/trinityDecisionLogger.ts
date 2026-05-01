@@ -380,7 +380,7 @@ ESCALATE = Too risky for AI, flag for human review`;
       const limit = Math.min(filters?.limit || 50, 200);
       const offset = filters?.offset || 0;
 
-      const conditions: any[] = [eq(trinityDecisionLog.workspaceId, workspaceId)];
+      const conditions: unknown[] = [eq(trinityDecisionLog.workspaceId, workspaceId)];
 
       if (filters?.domain) {
         conditions.push(eq(trinityDecisionLog.domain, filters.domain));

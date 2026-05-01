@@ -32,9 +32,9 @@ function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Pro
     handler: async (req: import('../helpai/platformActionHub').ActionRequest): Promise<import('../helpai/platformActionHub').ActionResult> => {
       try {
         const data = await fn(req.params || {});
-        return { success: true, data } as any;
+        return { success: true, data } as unknown;
       } catch (err: unknown) {
-        return { success: false, error: err?.message || 'Unknown error' } as any;
+        return { success: false, error: err?.message || 'Unknown error' } as unknown;
       }
     },
   };
@@ -262,7 +262,7 @@ export function registerReportAnalyticsActions(): void {
               AND status = 'sent'
               AND due_date < NOW()
           `);
-          const overdueAmount = Number((overdueInvoices as any[])[0]?.total_overdue || 0);
+          const overdueAmount = Number((overdueInvoices as unknown[])[0]?.total_overdue || 0);
 
           // 2. Activity: Active shifts in last 30 days
           // CATEGORY C — Raw SQL retained: Count( | Tables: shifts | Verified: 2026-03-23
@@ -333,7 +333,7 @@ export function registerReportAnalyticsActions(): void {
           HAVING SUM(te.total_hours::numeric) > 32
         `);
 
-        const atRiskEmployees = (weeklyHours as any[]).map(row => ({
+        const atRiskEmployees = (weeklyHours as unknown[]).map(row => ({
           employeeId: row.employeeId,
           name: row.name,
           hoursThisWeek: Number(row.hoursThisWeek),
@@ -417,7 +417,7 @@ export function registerReportAnalyticsActions(): void {
           GROUP BY c.id, c.company_name
         `);
 
-        const byClient = (profitabilityData as any[]).map(row => {
+        const byClient = (profitabilityData as unknown[]).map(row => {
           const revenue = Number(row.revenue || 0);
           const cost = Number(row.cost || 0);
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;

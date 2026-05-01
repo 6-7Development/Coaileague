@@ -718,14 +718,14 @@ Example: ["Improvement one here", "Improvement two here"]`,
       .limit(limit);
 
     const recentLessons = recentReflections
-      .map(r => (r as any).context?.lessonsLearned)
+      .map(r => (r as Record<string, unknown>).context?.lessonsLearned)
       .filter(Boolean)
       .flatMap((l: string) => l.split('\n'))
       .filter((l: string) => l.trim().length > 0)
       .slice(0, 10);
 
     const scores = recentReflections
-      .map(r => parseFloat((r as any).context?.performanceScore?.toString() || '0'))
+      .map(r => parseFloat((r as Record<string, unknown>).context?.performanceScore?.toString() || '0'))
       .filter(s => s > 0);
     const successRate = scores.length > 0
       ? scores.filter(s => s >= 0.7).length / scores.length

@@ -49,11 +49,11 @@ export default function SupervisorDashboard() {
   const isDashboardError = workspaceIsError || clockIsError || shiftsIsError || incidentsIsError;
   const dashboardError = workspaceError || clockError || shiftsError || incidentsError;
 
-  const shifts: any[] = Array.isArray(shiftsRes)
+  const shifts: unknown[] = Array.isArray(shiftsRes)
     ? shiftsRes
     : (shiftsRes as Record<string,unknown>)?.data ?? [];
 
-  const incidents: any[] = Array.isArray(incidentsRes)
+  const incidents: unknown[] = Array.isArray(incidentsRes)
     ? incidentsRes
     : (incidentsRes as Record<string,unknown>)?.data ?? [];
 

@@ -78,21 +78,21 @@ function testSchemaHasWorkspaceId() {
 
   const tableChecks: [string, Record<string, unknown>][] = [
     // NOT NULL group (5)
-    ['contractorPool', contractorPool as any],
-    ['deals', deals as any],
-    ['emailTemplates', emailTemplates as any],
-    ['helposFaqs', helposFaqs as any],
-    ['internalEmails', internalEmails as any],
+    ['contractorPool', contractorPool as unknown],
+    ['deals', deals as unknown],
+    ['emailTemplates', emailTemplates as unknown],
+    ['helposFaqs', helposFaqs as unknown],
+    ['internalEmails', internalEmails as unknown],
     // Nullable group (10)
-    ['chatMessages', chatMessages as any],
-    ['internalEmailFolders', internalEmailFolders as any],
-    ['mascotMotionProfiles', mascotMotionProfiles as any],
-    ['shiftChatroomMembers', shiftChatroomMembers as any],
-    ['aiGapFindings', aiGapFindings as any],
-    ['platformScanSnapshots', platformScanSnapshots as any],
-    ['platformChangeEvents', platformChangeEvents as any],
-    ['laborLawRules', laborLawRules as any],
-    ['integrationMarketplace', integrationMarketplace as any],
+    ['chatMessages', chatMessages as unknown],
+    ['internalEmailFolders', internalEmailFolders as unknown],
+    ['mascotMotionProfiles', mascotMotionProfiles as unknown],
+    ['shiftChatroomMembers', shiftChatroomMembers as unknown],
+    ['aiGapFindings', aiGapFindings as unknown],
+    ['platformScanSnapshots', platformScanSnapshots as unknown],
+    ['platformChangeEvents', platformChangeEvents as unknown],
+    ['laborLawRules', laborLawRules as unknown],
+    ['integrationMarketplace', integrationMarketplace as unknown],
   ];
 
   for (const [name, table] of tableChecks) {
@@ -135,7 +135,7 @@ async function testDbColumnsExist() {
         WHERE table_name = ${tableName}
           AND column_name = 'workspace_id'
       `);
-      const count = Number((result.rows[0] as any).cnt);
+      const count = Number((result.rows[0] as unknown).cnt);
       assert(count === 1, `${tableName}.workspace_id column exists in DB`);
     } catch (e : unknown) {
       assert(false, `${tableName}.workspace_id DB check`, e.message);
@@ -165,7 +165,7 @@ async function testNotNullConstraints() {
         WHERE table_name = ${tableName}
           AND column_name = 'workspace_id'
       `);
-      const nullable = (result.rows[0] as any)?.is_nullable;
+      const nullable = (result.rows[0] as unknown)?.is_nullable;
       assert(nullable === 'NO', `${tableName}.workspace_id is NOT NULL`);
     } catch (e : unknown) {
       assert(false, `${tableName} NOT NULL check`, e.message);
@@ -183,7 +183,7 @@ async function testDealsDataIntegrity() {
     const result = await db.execute(sql`
       SELECT COUNT(*) as cnt FROM deals WHERE workspace_id IS NULL
     `);
-    const nullCount = Number((result.rows[0] as any).cnt);
+    const nullCount = Number((result.rows[0] as unknown).cnt);
     assert(nullCount === 0, `No deals with NULL workspace_id (found ${nullCount})`);
   } catch (e : unknown) {
     assert(false, 'Deals null workspace_id check', e.message);
@@ -207,7 +207,7 @@ async function testCrossWorkspaceIsolation() {
       GROUP BY workspace_id
     `);
 
-    for (const row of empResult.rows as any[]) {
+    for (const row of empResult.rows as unknown[][]) {
       if (!workspaceGroups[row.workspace_id]) {
         workspaceGroups[row.workspace_id] = { employees: 0, payrollRuns: 0 };
       }
@@ -221,7 +221,7 @@ async function testCrossWorkspaceIsolation() {
       GROUP BY workspace_id
     `);
 
-    for (const row of payrollResult.rows as any[]) {
+    for (const row of payrollResult.rows as unknown[][]) {
       if (!workspaceGroups[row.workspace_id]) {
         workspaceGroups[row.workspace_id] = { employees: 0, payrollRuns: 0 };
       }
@@ -253,7 +253,7 @@ async function testChatConnectionsWorkspace() {
              SUM(CASE WHEN workspace_id IS NULL THEN 1 ELSE 0 END) as nulls
       FROM chat_connections
     `);
-    const row = result.rows[0] as any;
+    const row = result.rows[0] as unknown;
     const total = Number(row.total);
     const nulls = Number(row.nulls);
     assert(nulls === 0 || total === 0, `chat_connections: ${total} rows, ${nulls} with null workspace_id`);

@@ -121,7 +121,7 @@ export function requireBreakGlass(action: string) {
     try {
       const { universalAudit } = await import('../services/audit/universalAuditLogger').catch(() =>
         import('../services/universalAuditLogger')
-      ) as any;
+      ) as unknown;
 
       if (universalAudit?.log) {
         await universalAudit.log({
@@ -168,7 +168,7 @@ export async function completeBreakGlassAudit(
   try {
     const { universalAudit } = await import('../services/audit/universalAuditLogger').catch(() =>
       import('../services/universalAuditLogger')
-    ) as any;
+    ) as unknown;
 
     if (universalAudit?.log) {
       await universalAudit.log({

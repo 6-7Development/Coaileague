@@ -122,7 +122,7 @@ router.get('/history', async (req: AuthenticatedRequest, res) => {
         .from(alertHistory)
         .where(and(eq(alertHistory.workspaceId, workspaceId), eq(alertHistory.isAcknowledged, false)))
         .orderBy(desc(alertHistory.createdAt))
-        .limit(100) as any;
+        .limit(100) as unknown;
     }
 
     const rows = await query;

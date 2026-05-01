@@ -247,7 +247,7 @@ export function registerChangePropagationActions() {
         ne(shifts.status, 'cancelled'),
       ))
       .catch(() => [{ count: 0 }]);
-    const futureShifts = parseInt(String((futureShiftCount[0] as any)?.count || 0));
+    const futureShifts = parseInt(String((futureShiftCount[0] as unknown)?.count || 0));
     if (futureShifts > 0) {
       const estimatedImpact = (rateChange * 8 * futureShifts).toFixed(2);
       flaggedItems.push({
@@ -360,7 +360,7 @@ export function registerChangePropagationActions() {
         impact: anyItemUpdated
           ? `Line items recalculated at new rate $${newRate}/hr. New total: $${invoiceRunningTotal.toFixed(2)}`
           : 'No line items matched old rate — manual review recommended',
-        dueDate: (inv as any).dueDate,
+        dueDate: (inv as Record<string, unknown>).dueDate,
       });
     }
 
@@ -369,7 +369,7 @@ export function registerChangePropagationActions() {
       .from(shifts)
       .where(and(eq(shifts.workspaceId, workspaceId), eq(shifts.clientId, clientId), gte(shifts.startTime, new Date()), ne(shifts.status, 'cancelled')))
       .catch(() => [{ count: 0 }]);
-    const futureShifts = parseInt(String((futureShiftCount[0] as any)?.count || 0));
+    const futureShifts = parseInt(String((futureShiftCount[0] as unknown)?.count || 0));
     if (futureShifts > 0) {
       const projectedImpact = (rateChange * 8 * futureShifts).toFixed(2);
       const isMarginRisk = newRateNum > 0 && oldRateNum > 0 && (newRateNum / oldRateNum) < 0.95;
@@ -440,7 +440,7 @@ export function registerChangePropagationActions() {
           status: 'open',
           notes: `[COMPLIANCE_HOLD] Officer ${empName} removed — ${docType || 'license'} expired. Replacement needed.`,
           updatedAt: new Date(),
-        } as any)
+        } as unknown)
         .where(eq(shifts.id, shift.id)).catch(() => null);
       unassigned++;
       replacementsCreated++;

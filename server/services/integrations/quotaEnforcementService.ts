@@ -602,7 +602,7 @@ class QuotaEnforcementService {
         WHERE realm_id = ${realmId}
           AND period_start >= DATE_TRUNC('minute', NOW())`
       );
-      const count = parseInt((result as any[])[0]?.count || '0', 10);
+      const count = parseInt((result as unknown[])[0]?.count || '0', 10);
       
       const resetAt = new Date(Date.now() + 60000);
       this.qbUsageCache.set(cacheKey, { count, resetAt });

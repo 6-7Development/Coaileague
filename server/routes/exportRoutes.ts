@@ -296,7 +296,7 @@ router.post("/tenant-takeout", requireOwner, async (req: AuthenticatedRequest, r
         const r = await db.execute(
           sql`SELECT * FROM ${sql.identifier(table)} WHERE workspace_id = ${workspaceId}`,
         );
-        return ((r as any).rows ?? []) as T[];
+        return ((r as Record<string, unknown>).rows ?? []) as T[];
       } catch (err: unknown) {
         log.warn(`[tenant-takeout] ${table} export failed:`, err?.message);
         return [];
@@ -320,7 +320,7 @@ router.post("/tenant-takeout", requireOwner, async (req: AuthenticatedRequest, r
           JOIN auditor_audits aa ON aa.auditor_id = na.auditor_id
          WHERE aa.workspace_id = ${workspaceId}
       `);
-      ndaAcceptances = ((r as any).rows ?? []);
+      ndaAcceptances = ((r as Record<string, unknown>).rows ?? []);
     } catch (err: unknown) {
       log.warn('[tenant-takeout] auditor_nda_acceptances export failed:', err?.message);
     }

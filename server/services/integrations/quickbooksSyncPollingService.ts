@@ -361,7 +361,7 @@ class QuickBooksSyncPollingService {
 
             if (existingClient) {
               // GAP-4: Build field-level conflict log before applying update
-              const conflicts: Array<{ field: string; coaileagueValue: unknown; qbValue: any }> = [];
+              const conflicts: Array<{ field: string; coaileagueValue: unknown; qbValue: unknown }> = [];
               const incomingName = customer.DisplayName || existingClient.companyName;
               const incomingEmail = customer.PrimaryEmailAddr?.Address || existingClient.email;
               const incomingPhone = customer.PrimaryPhone?.FreeFormNumber || existingClient.phone;
@@ -468,7 +468,7 @@ class QuickBooksSyncPollingService {
 
             if (existingEmployee) {
               // GAP-4: Build field-level conflict log before applying update
-              const conflicts: Array<{ field: string; coaileagueValue: unknown; qbValue: any }> = [];
+              const conflicts: Array<{ field: string; coaileagueValue: unknown; qbValue: unknown }> = [];
               if (qbEmployee.GivenName && qbEmployee.GivenName !== existingEmployee.firstName) {
                 conflicts.push({ field: 'firstName', coaileagueValue: existingEmployee.firstName, qbValue: qbEmployee.GivenName });
               }

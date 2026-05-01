@@ -52,7 +52,7 @@ interface FeatureShowcase {
   name: string;
   tagline: string;
   description: string;
-  icon: any;
+  icon: string | React.ReactNode;
   tier: "core" | "premium" | "elite";
   category: string;
   benefits: string[];
@@ -597,7 +597,7 @@ const FEATURE_SHOWCASES: FeatureShowcase[] = [
   },
 ];
 
-const TIER_INFO: Record<string, { label: string; bgClass: string; bgStyle?: React.CSSProperties; icon: any }> = {
+const TIER_INFO: Record<string, { label: string; bgClass: string; bgStyle?: React.CSSProperties; icon: string | React.ReactNode }> = {
   core: { label: "Core", bgClass: "bg-blue-500", icon: Star },
   premium: { label: "Premium", bgClass: "bg-purple-500", icon: Crown },
   elite: { label: "Elite", bgClass: "", bgStyle: { background: "linear-gradient(to right, #f59e0b, #f97316)" }, icon: Building2 },

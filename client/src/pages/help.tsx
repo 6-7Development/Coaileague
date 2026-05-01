@@ -156,7 +156,7 @@ export default function Help() {
     setRatingGiven(false);
 
     try {
-      const body: any = {
+      const body: Record<string, unknown> = {
         workspaceId: currentUser?.workspaceId || 'platform',
       };
 

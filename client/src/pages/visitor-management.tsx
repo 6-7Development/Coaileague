@@ -94,7 +94,7 @@ function ActiveVisitorsBoard({ onCheckout }: { onCheckout: (id: string) => void 
     );
   }
 
-  const activeVisitors: any[] = data?.activeVisitors || [];
+  const activeVisitors: unknown[] = data?.activeVisitors || [];
   const bySite: Record<string, any[]> = data?.bySite || {};
 
   if (activeVisitors.length === 0) {
@@ -407,7 +407,7 @@ function PreRegistrationList() {
     },
   });
 
-  const preRegs: any[] = data?.preRegistrations || [];
+  const preRegs: unknown[] = data?.preRegistrations || [];
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -565,7 +565,7 @@ function VisitorLogHistory() {
     },
   });
 
-  const logs: any[] = data?.logs || [];
+  const logs: unknown[] = data?.logs || [];
   const total: number = data?.total || 0;
 
   return (
@@ -700,7 +700,7 @@ export default function VisitorManagement() {
   const { data: preRegsData } = useQuery<any>({
     queryKey: ['/api/visitor-management/pre-registrations'],
   });
-  const preRegistrations: any[] = preRegsData?.preRegistrations || [];
+  const preRegistrations: unknown[] = preRegsData?.preRegistrations || [];
 
   const checkoutMutation = useMutation({
     mutationFn: () => apiRequest('POST', `/api/visitor-management/checkout/${checkoutId}`, { notes: checkoutNotes }),

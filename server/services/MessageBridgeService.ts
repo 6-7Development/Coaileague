@@ -131,7 +131,7 @@ class MessageBridgeService {
             },
             body: body.toString(),
           });
-          const data = await response.json() as any;
+          const data = await response.json() as unknown;
           return {
             externalMessageId: data.sid || `sms-${Date.now()}`,
             providerResponse: data,
@@ -172,7 +172,7 @@ class MessageBridgeService {
             },
             body: body.toString(),
           });
-          const data = await response.json() as any;
+          const data = await response.json() as unknown;
           return {
             externalMessageId: data.sid || `wa-${Date.now()}`,
             providerResponse: data,

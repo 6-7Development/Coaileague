@@ -489,7 +489,7 @@ function MailHeaderButton({ onClick }: { onClick: () => void }) {
     refetchInterval: 60000,
   });
   
-  const unreadCount = ((mailboxData as Record<string,unknown>)?.mailbox as any)?.unreadCount || 0;
+  const unreadCount = ((mailboxData as Record<string,unknown>)?.mailbox as unknown)?.unreadCount || 0;
   
   return (
     <Tooltip>
@@ -816,7 +816,6 @@ function AppContent() {
               <Route path="/templates/:templateId" component={TemplatesPage} />
               <Route path="/contact" component={Contact} />
               <Route path="/support" component={Support} />
-              {/* @ts-expect-error — TS migration */}
               <Route path="/client-status-lookup" component={ClientStatusLookup} />
               <Route path="/features-showcase" component={FeaturesShowcase} />
               <Route path="/universal-marketing" component={UniversalMarketing} />
@@ -1273,7 +1272,7 @@ function AppContent() {
                 {/* Org-isolated chat rooms (internal communication) - Master-detail pattern */}
                 <Route path="/chatrooms"><ErrorBoundary><Chatrooms /></ErrorBoundary></Route>
                 <Route path="/chatrooms/:roomId">{(params) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
-                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as any)} /></ErrorBoundary>}</Route>
+                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as unknown)} /></ErrorBoundary>}</Route>
                 <Route path="/broadcasts"><ErrorBoundary><Broadcasts /></ErrorBoundary></Route>
                 <Route path="/briefing-channel"><ErrorBoundary><BriefingChannel /></ErrorBoundary></Route>
                 {/* HelpDesk IRC/MSN-style chat interface with WebSocket */}
@@ -1689,7 +1688,7 @@ function AppContent() {
                 <Route path="/communications/onboarding"><ErrorBoundary><CommunicationsOnboarding /></ErrorBoundary></Route>
                 <Route path="/chatrooms"><ErrorBoundary><Chatrooms /></ErrorBoundary></Route>
                 <Route path="/chatrooms/:roomId">{(params) => <ErrorBoundary><Chatrooms {...params} /></ErrorBoundary>}</Route>
-                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as any)} /></ErrorBoundary>}</Route>
+                <Route path="/helpdesk">{(params) => <ErrorBoundary><HelpDesk {...(params as unknown)} /></ErrorBoundary>}</Route>
                 <Route path="/broadcasts"><ErrorBoundary><Broadcasts /></ErrorBoundary></Route>
                 <Route path="/briefing-channel"><ErrorBoundary><BriefingChannel /></ErrorBoundary></Route>
                 <Route path="/chat/:roomId">{(params: { roomId: string }) => <ErrorBoundary><HelpDesk roomId={params.roomId} /></ErrorBoundary>}</Route>

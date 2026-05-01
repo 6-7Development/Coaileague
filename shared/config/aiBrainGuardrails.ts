@@ -875,10 +875,10 @@ export const aiBrainConfig = {
   issueDetectionRules: issueDetectionRulesConfig,
 
   // Helper functions
-  isGuardrailViolated(ruleName: string, value: any): boolean {
-    const rules = guardrailsConfig as any;
+  isGuardrailViolated(ruleName: string, value: unknown): boolean {
+    const rules = guardrailsConfig as unknown;
     for (const category of Object.values(rules)) {
-      const categoryRules = category as any;
+      const categoryRules = category as unknown;
       for (const [key, limit] of Object.entries(categoryRules)) {
         if (key === ruleName && typeof limit === "number") {
           return value > limit;
@@ -893,7 +893,7 @@ export const aiBrainConfig = {
   },
 
   getNotificationChannels(triggerType: string, userRole: string): string[] {
-    const rule = notificationRulesConfig.find((r) => r.triggerType === triggerType as any);
+    const rule = notificationRulesConfig.find((r) => r.triggerType === triggerType as unknown);
     if (!rule || !rule.enabled) return [];
 
     const rbacCfg = this.getRBACConfig(userRole);

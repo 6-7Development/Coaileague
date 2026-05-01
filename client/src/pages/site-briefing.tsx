@@ -64,7 +64,7 @@ function ContactEditor({ contacts, onChange }: { contacts: EmergencyContact[]; o
   const remove = (i: number) => onChange(contacts.filter((_, idx) => idx !== i));
   const update = (i: number, field: keyof EmergencyContact, val: string | number) => {
     const copy = [...contacts];
-    (copy[i] as any)[field] = val;
+    (copy[i] as unknown)[field] = val;
     onChange(copy);
   };
 
@@ -91,7 +91,7 @@ function CodeEditor({ codes, onChange }: { codes: AccessCode[]; onChange: (c: Ac
   const remove = (i: number) => onChange(codes.filter((_, idx) => idx !== i));
   const update = (i: number, field: keyof AccessCode, val: string) => {
     const copy = [...codes];
-    (copy[i] as any)[field] = val;
+    (copy[i] as unknown)[field] = val;
     onChange(copy);
   };
 
@@ -113,7 +113,7 @@ function CodeEditor({ codes, onChange }: { codes: AccessCode[]; onChange: (c: Ac
   );
 }
 
-function FacilityEditor({ label, icon: Icon, value, onChange }: { label: string; icon: any; value: FacilityInfo | null; onChange: (f: FacilityInfo | null) => void }) {
+function FacilityEditor({ label, icon: Icon, value, onChange }: { label: string; icon: string | React.ReactNode; value: FacilityInfo | null; onChange: (f: FacilityInfo | null) => void }) {
   const v = value ?? { name: "", address: "", phone: "" };
   const set = (field: keyof FacilityInfo, val: string) => onChange({ ...v, [field]: val });
   return (
@@ -236,7 +236,7 @@ function BriefingForm({ briefing, onClose }: { briefing?: SiteBriefing; onClose:
   );
 }
 
-function FacilityDisplay({ label, icon: Icon, value }: { label: string; icon: any; value: FacilityInfo | null | undefined }) {
+function FacilityDisplay({ label, icon: Icon, value }: { label: string; icon: string | React.ReactNode; value: FacilityInfo | null | undefined }) {
   if (!value || !value.name) return null;
   return (
     <div className="flex items-start gap-2">

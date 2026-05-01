@@ -161,7 +161,7 @@ async function phase2_credit_costs_defined() {
 
   let syncMismatches: string[] = [];
   for (const key of sharedKeys) {
-    const cmCost = (TOKEN_COSTS as any)[key];
+    const cmCost = (TOKEN_COSTS as unknown)[key];
     const bcCost = billingCreditCosts[key];
     if (cmCost !== undefined && bcCost !== undefined && cmCost !== bcCost) {
       syncMismatches.push(`${key}: tokenManager=${cmCost} vs billingConfig=${bcCost}`);
@@ -241,12 +241,12 @@ async function phase3_subscription_tiers() {
     severity: 'critical'
   });
   const freeGetsCredits = BILLING.tiers.free.monthlyTokens === 250;
-  const freeNoOverage = (BILLING.tiers.free as any).allowTokenOverage === false;
+  const freeNoOverage = (BILLING.tiers.free as unknown).allowTokenOverage === false;
   record({
     name: 'Free Tier Initial Credits + No Overage',
     phase: 'SUBSCRIPTION_TIERS',
     passed: freeGetsCredits && freeNoOverage,
-    details: `Free gets ${BILLING.tiers.free.monthlyTokens} credits, overage=${(BILLING.tiers.free as any).allowTokenOverage}`,
+    details: `Free gets ${BILLING.tiers.free.monthlyTokens} credits, overage=${(BILLING.tiers.free as unknown).allowTokenOverage}`,
     severity: 'high'
   });
 }
@@ -350,7 +350,7 @@ async function phase5_feature_matrix_completeness() {
 
   let invalidMatrixEntries: string[] = [];
   for (const [key, value] of Object.entries(featureMatrix)) {
-    const v = value as any;
+    const v = value as unknown;
     if (v.free === undefined || v.starter === undefined || v.professional === undefined || v.enterprise === undefined) {
       invalidMatrixEntries.push(key);
     }
@@ -367,7 +367,7 @@ async function phase5_feature_matrix_completeness() {
   });
 
   const enterpriseOnlyCount = matrixKeys.filter(k => {
-    const v = (featureMatrix as any)[k];
+    const v = (featureMatrix as unknown)[k];
     return v.enterprise === true && v.professional !== true && v.professional !== 'addon';
   }).length;
 
@@ -717,7 +717,7 @@ async function phase11_per_unit_billing_validation() {
   let allPerUnitHaveCost = true;
   let perUnitNoCost: string[] = [];
   for (const key of perUnitKeys) {
-    if (!((key in TOKEN_COSTS) && (TOKEN_COSTS as any)[key] >= 0)) {
+    if (!((key in TOKEN_COSTS) && (TOKEN_COSTS as unknown)[key] >= 0)) {
       allPerUnitHaveCost = false;
       perUnitNoCost.push(key);
     }
@@ -740,17 +740,17 @@ async function phase12_credit_deduction_math() {
   console.log('════════════════════════════════════════');
 
   const testCases = [
-    { feature: 'ai_scheduling', units: 5, expectedCost: (TOKEN_COSTS as any)['ai_scheduling'] * 5, label: '5 shifts scheduled' },
-    { feature: 'ai_payroll_processing', units: 10, expectedCost: (TOKEN_COSTS as any)['ai_payroll_processing'] * 10, label: '10 employees payroll' },
-    { feature: 'guard_tour_scan', units: 20, expectedCost: (TOKEN_COSTS as any)['guard_tour_scan'] * 20, label: '20 checkpoint scans' },
-    { feature: 'document_signing_send', units: 3, expectedCost: (TOKEN_COSTS as any)['document_signing_send'] * 3, label: '3 docs sent' },
-    { feature: 'equipment_checkout', units: 1, expectedCost: (TOKEN_COSTS as any)['equipment_checkout'] * 1, label: '1 equipment checkout' },
-    { feature: 'equipment_return', units: 1, expectedCost: (TOKEN_COSTS as any)['equipment_return'] * 1, label: '1 equipment return' },
-    { feature: 'employee_behavior_scoring', units: 15, expectedCost: (TOKEN_COSTS as any)['employee_behavior_scoring'] * 15, label: '15 employees scored' },
+    { feature: 'ai_scheduling', units: 5, expectedCost: (TOKEN_COSTS as unknown)['ai_scheduling'] * 5, label: '5 shifts scheduled' },
+    { feature: 'ai_payroll_processing', units: 10, expectedCost: (TOKEN_COSTS as unknown)['ai_payroll_processing'] * 10, label: '10 employees payroll' },
+    { feature: 'guard_tour_scan', units: 20, expectedCost: (TOKEN_COSTS as unknown)['guard_tour_scan'] * 20, label: '20 checkpoint scans' },
+    { feature: 'document_signing_send', units: 3, expectedCost: (TOKEN_COSTS as unknown)['document_signing_send'] * 3, label: '3 docs sent' },
+    { feature: 'equipment_checkout', units: 1, expectedCost: (TOKEN_COSTS as unknown)['equipment_checkout'] * 1, label: '1 equipment checkout' },
+    { feature: 'equipment_return', units: 1, expectedCost: (TOKEN_COSTS as unknown)['equipment_return'] * 1, label: '1 equipment return' },
+    { feature: 'employee_behavior_scoring', units: 15, expectedCost: (TOKEN_COSTS as unknown)['employee_behavior_scoring'] * 15, label: '15 employees scored' },
   ];
 
   for (const tc of testCases) {
-    const baseCost = (TOKEN_COSTS as any)[tc.feature];
+    const baseCost = (TOKEN_COSTS as unknown)[tc.feature];
     const calculated = baseCost * tc.units;
     record({
       name: `Deduction Math: ${tc.label}`,
@@ -762,8 +762,8 @@ async function phase12_credit_deduction_math() {
   }
 
   const premiumMultiplier = 2;
-  const claudeBase = (TOKEN_COSTS as any)['trinity_analysis'];
-  const claudeStrategic = (TOKEN_COSTS as any)['trinity_strategic'];
+  const claudeBase = (TOKEN_COSTS as unknown)['trinity_analysis'];
+  const claudeStrategic = (TOKEN_COSTS as unknown)['trinity_strategic'];
   record({
     name: 'Premium AI Features Have Higher Costs',
     phase: 'DEDUCTION_MATH',
@@ -773,7 +773,7 @@ async function phase12_credit_deduction_math() {
   });
 
   const tierBudgets = TIER_TOKEN_ALLOCATIONS;
-  const schedulingCostPer = (TOKEN_COSTS as any)['ai_scheduling'] || 3;
+  const schedulingCostPer = (TOKEN_COSTS as unknown)['ai_scheduling'] || 3;
   const freeShifts = Math.floor(tierBudgets.free / schedulingCostPer);
   const starterShifts = Math.floor(tierBudgets.starter / schedulingCostPer);
   const proShifts = Math.floor(tierBudgets.professional / schedulingCostPer);
@@ -981,7 +981,7 @@ async function phase14_feature_to_billing_traceability() {
   const packKeys = Object.keys(creditPacks);
   let packErrors: string[] = [];
   for (const key of packKeys) {
-    const pack = (creditPacks as any)[key];
+    const pack = (creditPacks as unknown)[key];
     if (!pack.credits || !pack.price || pack.credits <= 0 || pack.price <= 0) {
       packErrors.push(`${key}: invalid credits=${pack.credits} or price=${pack.price}`);
     }

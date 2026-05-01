@@ -1613,7 +1613,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
             const isOwn = msg.senderId === user?.id;
             const isSystem = msg.isSystemMessage || msg.senderType === "system";
             const isBot = msg.senderType === "bot" || msg.senderId === "ai-bot" || msg.senderId === "helpai";
-            const isDeletedForAll = (msg as any).isDeletedForEveryone;
+            const isDeletedForAll = (msg as Record<string, unknown>).isDeletedForEveryone;
             const msgReactions = reactionsMap[msg.id] || [];
             const readReceipt = readReceipts.get(msg.id);
             const isHighlighted = chatSearch && searchHitIds.has(msg.id);
@@ -1696,8 +1696,8 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
                                 <span className="chatdock-ai-chip" data-bot="trinity" aria-label="Trinity is the AI senior assistant">Senior</span>
                               </>)
                         : (msg.senderName || "Unknown")}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
                     </span>
                   )}
@@ -1846,11 +1846,11 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
                           {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
-                      {(msg as any).bridgeChannelType && (
-                        <ChannelIndicator channelType={(msg as any).bridgeChannelType} />
+                      {(msg as Record<string, unknown>).bridgeChannelType && (
+                        <ChannelIndicator channelType={(msg as Record<string, unknown>).bridgeChannelType} />
                       )}
-                      {isOwn && (msg as any).bridgeDeliveryStatus ? (
-                        <DeliveryStatusIndicator status={(msg as any).bridgeDeliveryStatus} />
+                      {isOwn && (msg as Record<string, unknown>).bridgeDeliveryStatus ? (
+                        <DeliveryStatusIndicator status={(msg as Record<string, unknown>).bridgeDeliveryStatus} />
                       ) : isOwn && (() => {
                         // Read-receipt ladder (B1):
                         //   read       — recipient acknowledged the message
@@ -2044,7 +2044,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
               t.style.height = 'auto';
               t.style.height = `${Math.min(t.scrollHeight, 144)}px`;
               // Detect @mention trigger
-              const cursor = (e.target as any).selectionStart ?? val.length;
+              const cursor = (e.target as HTMLInputElement).selectionStart ?? val.length;
               const before = val.slice(0, cursor);
               const mentionMatch = before.match(/@([\w]*)$/);
               if (mentionMatch) {

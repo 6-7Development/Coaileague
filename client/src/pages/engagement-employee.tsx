@@ -354,7 +354,7 @@ function EmployerRatingForm({ onSubmit, isSubmitting }: any) {
                 <Button
                   key={rating}
                   type="button"
-                  variant={(formData as any)[category.key] === rating ? "default" : "outline"}
+                  variant={(formData as unknown)[category.key] === rating ? "default" : "outline"}
                   onClick={() => setFormData({ ...formData, [category.key]: rating })}
                   data-testid={`button-${category.key}-${rating}`}
                 >

@@ -116,7 +116,7 @@ export function ResponsiveAppFrame({ children }: { children: ReactNode }) {
   // PWA detection
   const isPWA = typeof window !== 'undefined' && (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true ||
+    (window.navigator as unknown).standalone === true ||
     document.referrer.includes('android-app://')
   );
 

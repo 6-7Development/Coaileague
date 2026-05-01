@@ -204,7 +204,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
             COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as recent
           FROM notifications
         `);
-        const stats = (result as any[])[0] as any;
+        const stats = (result as unknown[])[0] as unknown;
         
         if (parseInt(stats?.unread || '0') > 1000) {
           issues.push({
@@ -259,7 +259,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
           SELECT COUNT(*) as conflicts FROM shifts 
           WHERE status = 'conflict' AND shift_date >= CURRENT_DATE
         `);
-        const conflicts = parseInt((result as any[])[0]?.conflicts || '0');
+        const conflicts = parseInt((result as unknown[])[0]?.conflicts || '0');
         
         if (conflicts > 0) {
           issues.push({
@@ -305,7 +305,7 @@ const DOMAIN_SUBAGENTS: DomainSubagent[] = [
           SELECT COUNT(*) as expired FROM sessions 
           WHERE expire < NOW()
         `);
-        const expired = parseInt((result as any[])[0]?.expired || '0');
+        const expired = parseInt((result as unknown[])[0]?.expired || '0');
         
         if (expired > 100) {
           issues.push({

@@ -169,13 +169,13 @@ router.patch("/workspace", requireManager, async (req: AuthenticatedRequest, res
 
       if (existingPayrollSettings?.id) {
         const [updatedPayrollSettings] = await tx.update(payrollSettings)
-          .set(mergedPayrollSettingsWithoutId as any)
+          .set(mergedPayrollSettingsWithoutId as unknown)
           .where(eq(payrollSettings.id, existingPayrollSettings.id))
           .returning();
-        persistedPayrollSettings = updatedPayrollSettings as any;
+        persistedPayrollSettings = updatedPayrollSettings as unknown;
       } else {
         const [insertedPayrollSettings] = await tx.insert(payrollSettings).values(mergedPayrollSettingsWithoutId).returning();
-        persistedPayrollSettings = insertedPayrollSettings as any;
+        persistedPayrollSettings = insertedPayrollSettings as unknown;
       }
 
       await tx.insert(auditLogs).values({

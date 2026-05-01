@@ -422,7 +422,7 @@ export async function runAcmeOperationalSeed(): Promise<{ success: boolean; mess
     for (const r of reports) {
       const createdAt = new Date();
       createdAt.setDate(createdAt.getDate() - r.daysAgo);
-      const darStatus = (r as any).status ?? 'verified';
+      const darStatus = (r as Record<string, unknown>).status ?? 'verified';
       // CATEGORY C — Genuine schema mismatch: SQL omits shiftStartTime and shiftEndTime which are NOT NULL in darReports Drizzle schema
       await typedExec(sql`
         INSERT INTO dar_reports
@@ -791,7 +791,7 @@ Photo 2 — 12:00: Food court incident location — post-incident clear [GPS: 29
       WHERE workspace_id = ${WS} AND (status = 'open' OR employee_id IS NULL)
       ORDER BY start_time ASC LIMIT 4
     `);
-    const openIds = (openResult as any[]).map(r => r.id);
+    const openIds = (openResult as unknown[]).map(r => r.id);
     if (openIds.length === 0) {
       log.info("[AcmeOps] Shift offers: 0 (no open shifts found)");
       return;

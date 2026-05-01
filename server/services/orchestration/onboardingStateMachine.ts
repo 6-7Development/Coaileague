@@ -478,12 +478,12 @@ class OnboardingStateMachine {
   private async loadState(workspaceId: string): Promise<OnboardingState | null> {
     try {
       // CATEGORY C — Raw SQL retained: Orchestration state loader | Tables: workspace_onboarding_states | Verified: 2026-03-23
-      const result = await (typedQuery as any)(`
+      const result = await (typedQuery as unknown)(`
         SELECT state_data FROM workspace_onboarding_states WHERE workspace_id = $1
       `, [workspaceId]);
       
-      if (result && (result as any[]).length > 0) {
-        const state = JSON.parse((result as any[])[0].state_data as string) as OnboardingState;
+      if (result && (result as unknown[]).length > 0) {
+        const state = JSON.parse((result as unknown[])[0].state_data as string) as OnboardingState;
         this.states.set(workspaceId, state);
         return state;
       }

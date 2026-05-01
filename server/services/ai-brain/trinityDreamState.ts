@@ -484,7 +484,7 @@ class TrinityDreamState {
           eq(aiLearningEvents.workspaceId, workspaceId),
           gte(aiLearningEvents.createdAt, sql`NOW() - INTERVAL '24 hours'`)
         ));
-      return parseInt(String((result[0] as any)?.count || '0'));
+      return parseInt(String((result[0] as unknown)?.count || '0'));
     } catch {
       return 0;
     }
@@ -543,7 +543,7 @@ class TrinityDreamState {
           lte(shifts.startTime, sql`NOW() + INTERVAL '48 hours'`),
           or(eq(shifts.status, 'open'), isNull(shifts.assignedEmployeeId))
         ));
-      return parseInt(String((result[0] as any)?.count || '0'));
+      return parseInt(String((result[0] as unknown)?.count || '0'));
     } catch {
       return 0;
     }
@@ -561,7 +561,7 @@ class TrinityDreamState {
           eq(incidentReports.workspaceId, workspaceId),
           sql`${incidentReports.status} NOT IN ('closed', 'resolved')`
         ));
-      return parseInt(String((result[0] as any)?.count || '0'));
+      return parseInt(String((result[0] as unknown)?.count || '0'));
     } catch {
       return 0;
     }
@@ -582,7 +582,7 @@ class TrinityDreamState {
           lte(complianceDocuments.expirationDate, sql`NOW() + INTERVAL '30 days'`),
           sql`${complianceDocuments.status} != 'expired'`
         ));
-      return parseInt(String((result[0] as any)?.count || '0'));
+      return parseInt(String((result[0] as unknown)?.count || '0'));
     } catch {
       return 0;
     }

@@ -243,7 +243,7 @@ class SelfReflectionEngine {
   async autoCorrect(
     context: ReflectionContext,
     reflection: ReflectionResult
-  ): Promise<{ success: boolean; corrections: AppliedCorrection[]; newOutput: any }> {
+  ): Promise<{ success: boolean; corrections: AppliedCorrection[]; newOutput: unknown }> {
     if (!reflection.autoCorrectible) {
       throw new Error('Reflection result is not auto-correctible');
     }

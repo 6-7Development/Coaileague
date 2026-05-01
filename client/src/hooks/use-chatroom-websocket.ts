@@ -831,7 +831,7 @@ export function useChatroomWebSocket(
       return;
     }
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       type: 'chat_message',
       conversationId: targetConversationId,
       message: messageText,

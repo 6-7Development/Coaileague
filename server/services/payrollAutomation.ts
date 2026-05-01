@@ -2143,7 +2143,7 @@ export async function executeInternalPayroll(
       .returning({ id: payrollRuns.id });
     if (!disbursing.length) {
       logAudit('STATUS_UPDATE_SKIP', 'Payroll run already being executed by another process — aborting duplicate');
-      return { success: false, message: 'Payroll run is already executing' } as any;
+      return { success: false, message: 'Payroll run is already executing' } as Record<string, unknown>;
     }
     platformEventBus.publish({
       type: 'payroll_run_disbursing',

@@ -245,7 +245,7 @@ router.post("/api/voice/transcribe", requireAuth, audioUpload.single("audio"), a
       : mimeType.includes("wav") ? "wav"
       : "webm";
 
-    const readable = Readable.from(audioBuffer) as any;
+    const readable = Readable.from(audioBuffer) as unknown;
     readable.name = `audio.${ext}`;
 
     const transcription = await openai.audio.transcriptions.create({

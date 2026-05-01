@@ -72,11 +72,11 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
     const conditions = [eq(auditLogs.workspaceId, workspaceId)];
     
     if (actorFilter && actorFilter !== 'all') {
-      conditions.push(eq(auditLogs.actorType, actorFilter as any));
+      conditions.push(eq(auditLogs.actorType, actorFilter as unknown));
     }
     
     if (statusFilter && statusFilter !== 'all') {
-      conditions.push(eq(auditLogs.eventStatus, statusFilter as any));
+      conditions.push(eq(auditLogs.eventStatus, statusFilter as unknown));
     }
 
     const events = await db
@@ -96,10 +96,10 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
       action: (event as Record<string,unknown>).eventType,
       resourceType: (event as Record<string,unknown>).aggregateType,
       resourceId: (event as Record<string,unknown>).aggregateId,
-      status: (event as Record<string,unknown>).status === 'completed' ? '(success as any)' : (event as Record<string,unknown>).status === 'failed' ? 'failure' : 'warning',
+      status: (event as Record<string,unknown>).status === 'completed' ? '(success as unknown)' : (event as Record<string,unknown>).status === 'failed' ? 'failure' : 'warning',
       details: typeof event.payload === 'object' && event.payload && 'description' in event.payload
         ? String(event.payload.description)
-        : `${(event as Record<string,unknown>).eventType} (on as any) ${(event as Record<string,unknown>).aggregateType}`,
+        : `${(event as Record<string,unknown>).eventType} (on as unknown) ${(event as Record<string,unknown>).aggregateType}`,
       ipAddress: event.ipAddress || undefined,
       userAgent: event.userAgent || undefined,
       verificationHash: event.actionHash || undefined,

@@ -569,7 +569,7 @@ class ProofOfServiceService {
       );
       clearTimeout(timeout);
       if (response.ok) {
-        const data = await response.json() as any;
+        const data = await response.json() as unknown;
         if (data?.display_name) {
           const a = data.address || {};
           const parts = [

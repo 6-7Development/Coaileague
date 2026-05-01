@@ -33,7 +33,7 @@ import {
  * @param tx - Active transaction context
  */
 async function ensureOrgIdentifiersInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   orgId: string,
   orgName: string
 ): Promise<{ orgCode: string; externalId: string }> {
@@ -243,7 +243,7 @@ export async function ensureOrgIdentifiers(
  * Internal function to attach employee external ID within a transaction
  */
 async function attachEmployeeExternalIdInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   employeeId: string,
   orgId: string
 ): Promise<{ externalId: string; localNumber: number }> {
@@ -375,7 +375,7 @@ export async function attachEmployeeExternalId(
  * Internal function to attach client external ID within a transaction
  */
 async function attachClientExternalIdInTx(
-  tx: any,
+  tx: Record<string, unknown>,
   clientId: string,
   orgId: string
 ): Promise<{ externalId: string; localNumber: number }> {

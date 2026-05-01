@@ -921,7 +921,7 @@ class WorkboardService {
           assignedAgent: routingResult.assignedAgent,
           estimatedTokens: routingResult.estimatedTokens,
           confidenceScore: routingResult.confidence
-        } as any, 
+        } as unknown, 
         routingResult
       );
 
@@ -1032,7 +1032,7 @@ class WorkboardService {
     }
     
     if (options?.priority) {
-      conditions.push(eq(aiWorkboardTasks.priority, options.priority as any));
+      conditions.push(eq(aiWorkboardTasks.priority, options.priority as unknown));
     }
     
     let query = db.select()
@@ -1041,11 +1041,11 @@ class WorkboardService {
       .orderBy(desc(aiWorkboardTasks.createdAt));
 
     if (options?.limit) {
-      query = query.limit(options.limit) as any;
+      query = query.limit(options.limit) as unknown;
     }
 
     if (options?.offset) {
-      query = query.offset(options.offset) as any;
+      query = query.offset(options.offset) as unknown;
     }
 
     return await query;

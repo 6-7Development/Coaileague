@@ -71,7 +71,7 @@ async function requireManagerRole(req: AuthenticatedRequest): Promise<{ allowed:
   }
 
   req.workspaceId = resolved.workspaceId;
-  req.workspaceRole = resolved.role as any;
+  req.workspaceRole = resolved.role as unknown;
   req.employeeId = resolved.employeeId || undefined;
   return { allowed: true };
 }
@@ -102,7 +102,7 @@ import { mutationLimiter } from "../middleware/rateLimiter";
 // Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -131,8 +131,7 @@ router.use(rateLimitMiddleware(
     if (workspaceId) return `invoices-${workspaceId}`;
     return `invoices-ip-${req.ip}`;
   },
-  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as any
-));
+  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as unknown));
 
 router.use((req, res, next) => {
   if (req.path.startsWith('/portal/')) return next();
@@ -260,7 +259,7 @@ import { createHash } from "crypto";
         relatedEntityId: invoice.id,
         uploadedBy: req.user?.id || null,
         createdAt: new Date(),
-      }) as any).onConflictDoNothing();
+      }) as unknown).onConflictDoNothing();
 
       // AI-assisted verification (withGpt)
       if (true) { // AI verification always attempted via metered client
@@ -295,7 +294,7 @@ import { createHash } from "crypto";
       if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
       const workspaceId = req.workspaceId!;
 
-      const { invoiceProposals } = (await import("@shared/schema")) as any;
+      const { invoiceProposals } = (await import("@shared/schema")) as unknown;
       
       const proposals = await db.select({
         id: invoiceProposals.id,
@@ -773,7 +772,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         return res.status(500).json({ message: result.message || "Failed to send invoice email" });
       }
 
-      await storage.updateInvoice(id, workspaceId, { status: 'sent', updatedAt: new Date() } as any);
+      await storage.updateInvoice(id, workspaceId, { status: 'sent', updatedAt: new Date() } as unknown);
 
       res.json({ success: true, message: "Invoice sent successfully" });
     } catch (error: unknown) {
@@ -1974,7 +1973,7 @@ router.post('/:id/create-payment', async (req, res) => {
         return res.status(404).json({ message: 'Client not found' });
       }
 
-      const { clientPaymentInfo } = (await import("@shared/schema")) as any;
+      const { clientPaymentInfo } = (await import("@shared/schema")) as unknown;
       
       let paymentInfo = await db
         .select()

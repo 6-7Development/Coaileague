@@ -148,7 +148,7 @@ function DocDot({ present, label }: { present: boolean; label: string }) {
 // ── Company Tab ────────────────────────────────────────────────────────────────
 
 function CompanyTab() {
-  const { data, isLoading } = useQuery<{ success: boolean; data: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; data: Record<string, unknown> }>({
     queryKey: ["/api/sps/company-docs"],
   });
   const [contractFilter, setContractFilter] = useState("all");

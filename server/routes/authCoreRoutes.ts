@@ -594,8 +594,8 @@ router.post("/api/auth/login", async (req, res) => {
           if (invite) {
             const now = Date.now();
             const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-            const created = invite.createdAt ? new Date(invite.createdAt as any).getTime() : now;
-            const isExpired = now > new Date(invite.expiresAt as any).getTime() || (now - created > SEVEN_DAYS);
+            const created = invite.createdAt ? new Date(invite.createdAt as unknown).getTime() : now;
+            const isExpired = now > new Date(invite.expiresAt as unknown).getTime() || (now - created > SEVEN_DAYS);
 
             // EXPIRED gate: block login for expired, non-accepted invites (RED border → blocked)
             if (isExpired && !invite.isUsed) {
@@ -616,7 +616,7 @@ router.post("/api/auth/login", async (req, res) => {
                   clientOnboardingStatus: 'active',
                   updatedAt: new Date(),
                   // activated_at = the exact moment of first login (Pillar 2, Step 4)
-                  activatedAt: new Date() as any,
+                  activatedAt: new Date() as unknown,
                 } as Record<string, unknown>)
                 .where(eq(clients.id, clientRecord.id));
               // Also flip the invite token status to 'active' and set activated_at
@@ -1628,8 +1628,8 @@ router.post("/api/auth/reset-password-request", async (req, res) => {
       if (data.email === 'root@coaileague.com' && process.env.ROOT_EMAIL_FORWARD_TO) {
         deliveryEmail = process.env.ROOT_EMAIL_FORWARD_TO;
         log.info(`[Auth] Password reset for root@ — delivering directly to ${deliveryEmail}`);
-      } else if ((result.user as any).personalForwardEmail) {
-        deliveryEmail = (result.user as any).personalForwardEmail;
+      } else if ((result.user as unknown).personalForwardEmail) {
+        deliveryEmail = (result.user as unknown).personalForwardEmail;
       }
 
       const emailResult = await emailService.sendPasswordResetEmail( // infra

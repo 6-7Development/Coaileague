@@ -34,7 +34,7 @@ export default function SRAOfficers() {
     queryFn: () => sraFetch("/api/sra/data/officers"),
   });
 
-  const officers: any[] = data?.data || [];
+  const officers: unknown[] = data?.data || [];
   const stateReq = data?.stateRequirements;
 
   const now = new Date();

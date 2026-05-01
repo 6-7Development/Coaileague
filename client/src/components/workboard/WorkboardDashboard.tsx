@@ -656,7 +656,6 @@ export default function WorkboardDashboard() {
                       }, {} as Record<string, number>) || {}).map(([status, count]) => (
                         <div key={status} className="flex items-center justify-between gap-2 text-sm">
                           <StatusBadge status={status} />
-                          {/* @ts-expect-error — TS migration */}
                           <span className="font-medium">{count}</span>
                         </div>
                       ))}
@@ -676,7 +675,6 @@ export default function WorkboardDashboard() {
                             <Bot className="h-3 w-3" />
                             {agent}
                           </span>
-                          {/* @ts-expect-error — TS migration */}
                           <span className="font-medium">{count}</span>
                         </div>
                       ))}

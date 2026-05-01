@@ -10,7 +10,7 @@ import { AlertCircle, CheckCircle, Edit2, Loader2 } from "lucide-react";
 interface ExtractedData {
   documentId: string;
   documentType: string;
-  extractedFields: Record<string, any>;
+  extractedFields: Record<string, unknown>;
   confidence: number;
   status: "success" | "failed" | "pending";
 }
@@ -27,7 +27,7 @@ export function MigrationReview({
   onImportSuccess,
 }: MigrationReviewProps) {
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editedValues, setEditedValues] = useState<Record<string, any>>(
+  const [editedValues, setEditedValues] = useState<Record<string, unknown>>(
     extractedData.extractedFields
   );
   const { toast } = useToast();

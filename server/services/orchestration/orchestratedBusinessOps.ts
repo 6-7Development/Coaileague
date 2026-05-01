@@ -186,7 +186,7 @@ export async function executeWithEscalation<T>(
     creditCost?: number;
   }
 ): Promise<T> {
-  const domain = (options?.domain || 'general') as any;
+  const domain = (options?.domain || 'general') as unknown;
   const maxRetries = options?.maxRetries ?? 2;
 
   const result = await automationOrchestration.executeAutomation(

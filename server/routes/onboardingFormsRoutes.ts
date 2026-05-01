@@ -297,7 +297,7 @@ router.get("/status", requireAuth, async (req: AuthenticatedRequest, res) => {
       success: true,
       status: submission?.status || "not_started",
       submittedAt: submission?.submittedAt || null,
-      currentStep: (submission?.formData as any)?.currentStep ?? 0,
+      currentStep: (submission?.formData as Record<string, unknown>)?.currentStep ?? 0,
     });
   } catch (err: unknown) {
     return res.status(500).json({ message: "Failed to fetch status" });

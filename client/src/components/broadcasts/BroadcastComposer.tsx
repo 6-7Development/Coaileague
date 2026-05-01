@@ -131,7 +131,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
 
   const onSubmit = async (data: BroadcastFormData) => {
     // Build target config
-    let targetConfig: any = { type: data.targetType };
+    let targetConfig: Record<string, unknown> = { type: data.targetType };
     
     if (data.targetType === 'individuals') {
       targetConfig.employeeIds = selectedEmployees;
@@ -140,7 +140,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
     }
 
     // Build action config
-    let actionConfig: any = { type: data.actionType };
+    let actionConfig: Record<string, unknown> = { type: data.actionType };
     
     if (data.actionType === 'link') {
       actionConfig.url = data.actionUrl;
@@ -407,7 +407,7 @@ export function BroadcastComposer({ open, onOpenChange, isPlatformLevel = false 
                   <div className="mt-2">
                     <Select
                       value={form.watch('feedbackFormType') || 'general'}
-                      onValueChange={(v) => form.setValue('feedbackFormType', v as any)}
+                      onValueChange={(v) => form.setValue('feedbackFormType', v as unknown)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Feedback type" />

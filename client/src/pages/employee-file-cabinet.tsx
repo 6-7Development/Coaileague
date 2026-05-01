@@ -52,7 +52,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 // Status badge configuration
-const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: string | React.ReactNode }> = {
   uploaded: { label: "Uploaded", variant: "outline", icon: Clock },
   pending_review: { label: "Pending Review", variant: "secondary", icon: Clock },
   approved: { label: "Approved", variant: "default", icon: CheckCircle },

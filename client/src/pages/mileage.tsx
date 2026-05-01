@@ -339,7 +339,7 @@ function RejectDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpen
 
 function TrinityPanel({ workspaceId }: { workspaceId: string }) {
   const { toast } = useToast();
-  const [result, setResult] = useState<{ recommendations: TrinityRec[]; summary: any } | null>(null);
+  const [result, setResult] = useState<{ recommendations: TrinityRec[]; summary: Record<string, unknown> } | null>(null);
   const [expanded, setExpanded] = useState(true);
 
   const mutation = useMutation({

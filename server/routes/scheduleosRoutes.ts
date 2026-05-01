@@ -191,7 +191,7 @@ router.get('/ai/status', requireAuth, async (req: AuthenticatedRequest, res) => 
           const [proposal] = await tx.insert(scheduleProposals).values({
             workspaceId: workspace.id,
             createdBy: userId,
-            aiResponse: aiResponse as any,
+            aiResponse: aiResponse as unknown,
             confidence: aiResponse.overallConfidence,
             status: 'auto_approved',
             approvedBy: userId,
@@ -214,7 +214,7 @@ router.get('/ai/status', requireAuth, async (req: AuthenticatedRequest, res) => 
         const [proposal] = await db.insert(scheduleProposals).values({
           workspaceId: workspace.id,
           createdBy: userId,
-          aiResponse: aiResponse as any,
+          aiResponse: aiResponse as unknown,
           confidence: aiResponse.overallConfidence,
           status: 'pending',
         }).returning();
@@ -256,7 +256,7 @@ router.get('/ai/status', requireAuth, async (req: AuthenticatedRequest, res) => 
         .offset(offset);
       
       const proposals = rawProposals.map(p => {
-        const aiResp = p.aiResponse as any;
+        const aiResp = p.aiResponse as unknown;
         
         let weekStart: Date | null = null;
         let weekEnd: Date | null = null;
@@ -342,7 +342,7 @@ router.get('/ai/status', requireAuth, async (req: AuthenticatedRequest, res) => 
         return res.status(400).json({ message: "Legal disclaimer must be acknowledged for proposals with <100% confidence" });
       }
       
-      const aiResponse = proposal.aiResponse as any;
+      const aiResponse = proposal.aiResponse as unknown;
       const shiftIdsCreated: string[] = [];
       
       await db.transaction(async (tx) => {

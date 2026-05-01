@@ -114,7 +114,7 @@ async function getWorkspaceOwner(workspaceId: string): Promise<{ id: string; ema
     WHERE wu.workspace_id = ${workspaceId} AND wu.role = 'org_owner'
     LIMIT 1
   `);
-  const row = (result as any[])?.[0];
+  const row = (result as unknown[])?.[0];
   return row ? { id: row.id, email: row.email, name: row.name } : null;
 }
 
@@ -123,7 +123,7 @@ async function getOfficerName(officerId: string): Promise<string> {
   const result = await typedQuery(sql`
     SELECT first_name || ' ' || last_name AS name FROM employees WHERE id = ${officerId} LIMIT 1
   `);
-  const row = (result as any[])?.[0];
+  const row = (result as unknown[])?.[0];
   return row?.name ?? 'Unknown Officer';
 }
 

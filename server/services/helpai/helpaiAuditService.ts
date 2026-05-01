@@ -64,7 +64,7 @@ export class HelpaiAuditService {
       action: entry.action,
       apiName: entry.apiName,
       status: entry.status,
-      requestPayload: (entry.requestPayload || {}) as any,
+      requestPayload: (entry.requestPayload || {}) as unknown,
       responseStatus: entry.responseStatus,
       responseMessage: entry.responseMessage,
       durationMs: entry.durationMs,
@@ -73,7 +73,7 @@ export class HelpaiAuditService {
       userAgent: entry.userAgent,
       requestId: entry.requestId,
       actionHash,
-      metadata: (entry.metadata || {}) as any,
+      metadata: (entry.metadata || {}) as unknown,
     };
 
     const [logged] = await db.insert(helpaiAuditLog).values(auditEntry).returning();
@@ -116,7 +116,7 @@ export class HelpaiAuditService {
 
     // Add optional filters
     if (options?.action) {
-      query = (query as Record<string,unknown>).where(eq(helpaiAuditLog.action, options.action as any));
+      query = (query as Record<string,unknown>).where(eq(helpaiAuditLog.action, options.action as unknown));
     }
     if (options?.status) {
       query = (query as Record<string,unknown>).where(eq(helpaiAuditLog.status, options.status));

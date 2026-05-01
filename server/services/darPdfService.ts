@@ -594,7 +594,7 @@ async function renderPhotoEvidence(doc: PDFKit.PDFDocument, photos: PhotoManifes
     // Caption
     if (photo.caption) {
       doc.moveDown(0.2);
-      doc.fontSize(9).fillColor(C.dark).text(`"${photo.caption}"`, 62, doc.y, { width: 490, oblique: true } as any);
+      doc.fontSize(9).fillColor(C.dark).text(`"${photo.caption}"`, 62, doc.y, { width: 490, oblique: true } as unknown);
       doc.moveDown(0.3);
     }
 
@@ -869,7 +869,7 @@ async function resolveClientName(workspaceId: string, clientId?: string | null, 
       const cid = (rows[0] as Record<string, unknown>)?.client_id;
       if (cid) {
         const crows = await q(`SELECT COALESCE(company_name, first_name || ' ' || last_name, 'Client') AS name FROM clients WHERE id=$1`, [cid]);
-        if (crows.length) return (crows[0] as any).name;
+        if (crows.length) return (crows[0] as unknown).name;
       }
     }
   } catch (err) {
@@ -886,10 +886,10 @@ export async function generateDarPdf(darId: string, workspaceId: string): Promis
   const dar = darRows[0] as unknown as DarData;
 
   const wsRows = await q(`SELECT name FROM workspaces WHERE id=$1`, [workspaceId]);
-  const orgName = (wsRows[0] as any)?.name || 'Security Organization';
+  const orgName = (wsRows[0] as unknown)?.name || 'Security Organization';
 
   const clientName = await resolveClientName(workspaceId, null, dar.site_id);
-  const supervisorName = await resolveSupervisor(workspaceId, (dar as any).shift_id);
+  const supervisorName = await resolveSupervisor(workspaceId, (dar as Record<string, unknown>).shift_id);
 
   // Build officer list (could be multiple co-assigned but DAR typically single)
   const officerNames = dar.employee_name ? [dar.employee_name] : ['On-Duty Officer'];
@@ -1052,7 +1052,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
   const dar = darRows[0] as unknown as ShiftDarData;
 
   const wsRows = await q(`SELECT name FROM workspaces WHERE id=$1`, [workspaceId]);
-  const orgName = (wsRows[0] as any)?.name || 'Security Organization';
+  const orgName = (wsRows[0] as unknown)?.name || 'Security Organization';
 
   const clientName = await resolveClientName(workspaceId, dar.client_id, null);
   const supervisorName = await resolveSupervisor(workspaceId, dar.shift_id);
@@ -1070,8 +1070,8 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
         [dar.shift_id]
       );
       if (shiftRows.length) {
-        siteIdForLookup = (shiftRows[0] as any).site_id || null;
-        if ((shiftRows[0] as any).site_name) siteName = (shiftRows[0] as any).site_name;
+        siteIdForLookup = (shiftRows[0] as unknown).site_id || null;
+        if ((shiftRows[0] as unknown).site_name) siteName = (shiftRows[0] as unknown).site_name;
       }
     } catch (err) {
       log.error('[DarPDF] siteName fetch failed:', err);
@@ -1313,7 +1313,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
       try {
         const shiftDate = dar.shift_start_time
           ? safeFullDate(dar.shift_start_time)
-          : safeFullDate((dar as any).created_at ?? new Date());
+          : safeFullDate((dar as Record<string, unknown>).created_at ?? new Date());
 
         const shiftTimeLabel =
           dar.shift_start_time && dar.shift_end_time
@@ -1331,7 +1331,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
           orgName,
           reportType: 'SHIFT TRANSPARENCY REPORT',
           reportId: dar.id,
-          reportDate: (dar as any).created_at ?? '',
+          reportDate: (dar as Record<string, unknown>).created_at ?? '',
           shiftDate,
           shiftTime: clockLabel,
           siteName,
@@ -1395,7 +1395,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
         // Visitor log
         renderVisitorTable(doc, visitors);
         renderKeyControlLostFoundSection(doc, keyControlLogs, lostFoundItems);
-        renderAuditFooterSection(doc, dar.id, (dar as any).content_hash || null);
+        renderAuditFooterSection(doc, dar.id, (dar as Record<string, unknown>).content_hash || null);
 
         // Signature block
         renderSignatureBlock(doc, dar.employee_name || 'Officer', supervisorName);

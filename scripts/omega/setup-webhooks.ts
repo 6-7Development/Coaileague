@@ -121,7 +121,7 @@ async function setupResendWebhooks(): Promise<void> {
     });
     if (listResp.ok) {
       const data = await listResp.json() as { data?: Array<{ url: string }> };
-      existingUrls = (data.data || []).map((w: any) => w.url);
+      existingUrls = (data.data || []).map((w: unknown) => w.url);
     }
   } catch {
     console.warn('  ⚠️  Could not list Resend webhooks — proceeding with registration');
@@ -244,11 +244,11 @@ async function setupTwilioWebhooks(): Promise<void> {
       smsMethod: 'POST',
       smsStatusCallback: smsCallback,
       smsStatusCallbackMethod: 'POST',
-    } as any);
+    } as unknown);
 
     // Fetch back and verify all 4 URLs match exactly
     const phoneNumber = await client.incomingPhoneNumbers(TWILIO_PHONE_NUMBER_SID).fetch();
-    const pn = phoneNumber as any;
+    const pn = phoneNumber as unknown;
 
     const verifications = [
       { label: 'Voice URL     ', expected: voiceUrl,      actual: pn.voiceUrl },
@@ -330,7 +330,7 @@ async function checkPlaid(): Promise<void> {
       check('PLAID:sandbox', true, 'Plaid sandbox reachable — keys are valid', '');
       console.log('   ℹ️  Set PLAID_ENV=production when ready for live transfers');
     } else {
-      const body = await resp.json().catch(() => ({})) as any;
+      const body = await resp.json().catch(() => ({})) as unknown;
       check('PLAID:sandbox', false, `Plaid returned HTTP ${resp.status}: ${body?.error_message || 'unknown'}`, 'Verify Plaid keys');
     }
   } catch (err : unknown) {

@@ -276,7 +276,7 @@ class OrchestrationStateMachine {
     // Create phase transition record
     const now = new Date();
     const phaseTransition: PhaseTransition = {
-      fromPhase: currentPhase as any,
+      fromPhase: currentPhase as unknown,
       toPhase: targetPhase,
       reason: request.reason ?? 'Transition requested',
       triggeredBy: request.triggeredBy,
@@ -305,8 +305,8 @@ class OrchestrationStateMachine {
     const [updated] = await db
       .update(orchestrationOverlays)
       .set({
-        phase: targetPhase as any,
-        previousPhase: currentPhase as any,
+        phase: targetPhase as unknown,
+        previousPhase: currentPhase as unknown,
         phaseEnteredAt: now,
         phaseTransitionCount: (overlay.phaseTransitionCount ?? 0) + 1,
         phaseHistory: phaseHistory,
@@ -438,7 +438,7 @@ class OrchestrationStateMachine {
           requiredPermissions: capabilities,
           grantedPermissions: grantedCapabilities,
           deniedPermissions: deniedCapabilities,
-          permissionResult: permResult as any,
+          permissionResult: permResult as unknown,
           permissionCheckedAt: new Date(),
           permissionCheckedBy: 'auth_service',
           permissionDeniedReason: combinedReason ?? null,

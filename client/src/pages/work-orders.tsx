@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ClipboardList, Clock, CheckCircle2, AlertCircle, FileText, Play, Camera } from "lucide-react";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   draft: { label: "Draft", color: "bg-slate-500", icon: FileText },
   pending_assignment: { label: "Pending", color: "bg-yellow-500", icon: Clock },
   active: { label: "Active", color: "bg-blue-500", icon: Play },

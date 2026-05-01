@@ -79,7 +79,7 @@ function StatCard({
 }
 
 function ACCDashboardPanel({ workspaceId }: { workspaceId: string }) {
-  const { data, isLoading } = useQuery<{ success: boolean; stats: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; stats: Record<string, unknown> }>({
     queryKey: ["/api/trinity/acc/stats"],
     enabled: !!workspaceId,
   });
@@ -239,7 +239,7 @@ function ACCDashboardPanel({ workspaceId }: { workspaceId: string }) {
 }
 
 function ThalamicDashboardPanel({ workspaceId }: { workspaceId: string }) {
-  const { data, isLoading } = useQuery<{ success: boolean; stats: any }>({
+  const { data, isLoading } = useQuery<{ success: boolean; stats: Record<string, unknown> }>({
     queryKey: ["/api/trinity/thalamic/stats"],
     enabled: !!workspaceId,
   });
@@ -576,7 +576,7 @@ export default function AIBrainDashboard() {
                     <label className="block text-sm font-medium mb-2">Entity Type</label>
                     <select
                       value={entityType}
-                      onChange={(e) => setEntityType(e.target.value as any)}
+                      onChange={(e) => setEntityType(e.target.value as string)}
                       className="w-full px-3 py-2 border rounded-md"
                       data-testid="select-entity-type"
                     >

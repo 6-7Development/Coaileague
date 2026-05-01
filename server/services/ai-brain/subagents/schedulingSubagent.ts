@@ -277,7 +277,7 @@ class SchedulingSubagentService {
       // Check maximum daily hours
       for (const shift of empShifts) {
         const hours = this.calculateShiftHours(shift.startTime, shift.endTime);
-        const maxDaily = laborLaws.find(l => (l as any).ruleType === 'max_daily_hours');
+        const maxDaily = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'max_daily_hours');
         
         if (maxDaily && hours > parseFloat(maxDaily.ruleValue)) {
           violations.push({
@@ -292,7 +292,7 @@ class SchedulingSubagentService {
         }
 
         // Check required breaks
-        const breakRule = laborLaws.find(l => (l as any).ruleType === 'required_break');
+        const breakRule = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'required_break');
         if (breakRule && hours >= parseFloat(breakRule.threshold || '6')) {
           warnings.push(`Employee ${employeeId}: ${hours}h shift requires ${(breakRule as Record<string,unknown>).ruleValue}min break`);
           appliedRules.push('required_break');
@@ -304,7 +304,7 @@ class SchedulingSubagentService {
         sum + this.calculateShiftHours(s.startTime, s.endTime), 0
       );
       
-      const maxWeekly = laborLaws.find(l => (l as any).ruleType === 'max_weekly_hours');
+      const maxWeekly = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'max_weekly_hours');
       if (maxWeekly && weeklyHours > parseFloat(maxWeekly.ruleValue)) {
         violations.push({
           ruleId: maxWeekly.id,
@@ -318,7 +318,7 @@ class SchedulingSubagentService {
       }
 
       // Check rest period between shifts
-      const restRule = laborLaws.find(l => (l as any).ruleType === 'min_rest_period');
+      const restRule = laborLaws.find(l => (l as Record<string, unknown>).ruleType === 'min_rest_period');
       if (restRule) {
         const sortedShifts = [...empShifts].sort((a, b) => 
           new Date(a.date).getTime() - new Date(b.date).getTime()

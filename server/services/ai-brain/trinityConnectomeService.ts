@@ -242,7 +242,7 @@ export async function buildSelfModelBlock(workspaceId: string): Promise<string> 
       fact_value: string;
       confidence: string;
       fact_type: string;
-    }> = (rows as any[]) || [];
+    }> = (rows as unknown[][]) || [];
 
     if (facts.length === 0) {
       const block = '';

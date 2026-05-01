@@ -35,8 +35,8 @@ export default function SRAPortalDashboard() {
   const hasError = isErrorWorkspace || isErrorOfficers || isErrorFindings;
 
   const workspace = workspaceData?.data;
-  const officers: any[] = officersData?.data || [];
-  const findings: any[] = findingsData?.data || [];
+  const officers: unknown[] = officersData?.data || [];
+  const findings: unknown[] = findingsData?.data || [];
 
   const expiredCards = officers.filter(o => {
     if (!o.guardCardExpiryDate) return false;

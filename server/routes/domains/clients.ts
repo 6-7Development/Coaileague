@@ -77,9 +77,9 @@ export function mountClientRoutes(app: Express): void {
       // Inject full context into session widget (spec §4)
       if (req.session) {
         req.session.userId = result.userId;
-        (req.session as any).clientId = result.clientId;
-        (req.session as any).tenantId = result.workspaceId;
-        (req.session as any).orgCode = result.orgCode;
+        (req.session as unknown).clientId = result.clientId;
+        (req.session as unknown).tenantId = result.workspaceId;
+        (req.session as unknown).orgCode = result.orgCode;
       }
 
       res.json({

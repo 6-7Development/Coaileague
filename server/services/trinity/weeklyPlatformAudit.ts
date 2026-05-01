@@ -333,7 +333,7 @@ class WeeklyPlatformAuditService {
         FROM workspaces
       `);
 
-      for (const row of (result as any[]) || []) {
+      for (const row of (result as unknown[]) || []) {
         const testRecords = Number(row.test_records) || 0;
         const testEmails = Number(row.test_emails) || 0;
         

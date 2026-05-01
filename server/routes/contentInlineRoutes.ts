@@ -132,7 +132,7 @@ router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY pt.completed_at DESC NULLS LAST
            LIMIT 50
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 3. Approved DARs for this client's sites — includes pdf_url.
@@ -156,7 +156,7 @@ router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY dar.created_at DESC
            LIMIT 100
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 4. Incidents — client-safe subset only (no internal investigation notes).
@@ -178,7 +178,7 @@ router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res
              AND ir.site_id::text = ANY(${sitesLiteral})
            ORDER BY ir.occurred_at DESC NULLS LAST
            LIMIT 50
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     // 5. Shift transparency PDFs — the client's primary proof-of-service.
@@ -200,7 +200,7 @@ router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res
              AND sh.site_id = ANY(${sitesLiteral})
            ORDER BY dar.created_at DESC
            LIMIT 30
-        `)) as any).rows
+        `)) as unknown).rows
       : [];
 
     res.json({ reports, guardTours, dars, incidents, transparencyPdfs });

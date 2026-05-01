@@ -901,7 +901,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
           and(
             eq(chatParticipants.isActive, true),
             gt(chatParticipants.updatedAt, tenMinutesAgo),
-            inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'] as any),
+            inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'] as unknown),
             isNull(platformRoles.revokedAt),
             eq(platformRoles.isSuspended, false)
           )
@@ -1819,7 +1819,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: `An officer called off their shift at ${shift.site_name || 'Unknown Site'} starting ${shiftTime}. Open shift needs coverage.`,
             workspaceId,
             metadata: { shiftId: shift.id, employeeId, siteId: shift.site_id },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
 
         return {
@@ -1866,7 +1866,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
           `UPDATE shifts SET employee_id = $1, status = 'scheduled', updated_at = NOW()
             WHERE id = $2 AND workspace_id = $3 AND employee_id IS NULL`,
           [employeeId, shift.id, workspaceId],
-        ).catch(() => ({ rowCount: 0 } as any));
+        ).catch(() => ({ rowCount: 0 } as unknown));
 
         if (!rowCount) {
           return { success: false, message: 'That shift was just claimed by someone else. Try again for the next available shift.' };
@@ -1987,7 +1987,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: (params.rawCommand || params.message || '').slice(0, 400),
             workspaceId,
             metadata: { employeeId },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
         return { success: true, message: "Message delivered — your supervisor has been notified." };
       }
@@ -2011,7 +2011,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             description: narrative.slice(0, 200),
             workspaceId,
             metadata: { incidentId, employeeId },
-          } as any);
+          } as unknown);
         } catch { /* non-fatal */ }
         return {
           success: true,

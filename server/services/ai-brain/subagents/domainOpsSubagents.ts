@@ -300,7 +300,7 @@ class SchemaOpsSubagent {
         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
       `);
       
-      const dbTableNames = new Set((dbTables as any[]).map(r => r.table_name));
+      const dbTableNames = new Set((dbTables as unknown[]).map(r => r.table_name));
       
       // Get tables from schema file
       const schemaComponents = await this.scanSchemaFile();
@@ -375,7 +375,7 @@ class SchemaOpsSubagent {
         SELECT tablename, indexdef FROM pg_indexes WHERE schemaname = 'public'
       `);
       const indexMap = new Map<string, string[]>();
-      for (const row of (allIndexes as any[])) {
+      for (const row of (allIndexes as unknown[])) {
         const existing = indexMap.get(row.tablename) || [];
         existing.push(row.indexdef);
         indexMap.set(row.tablename, existing);
@@ -383,7 +383,7 @@ class SchemaOpsSubagent {
       
       // Check for missing indexes on FK columns
       const missingIndexFKs: string[] = [];
-      for (const row of (fkQuery as any[])) {
+      for (const row of (fkQuery as unknown[])) {
         const { table_name, column_name } = row;
         const tableIndexes = indexMap.get(table_name) || [];
         const hasIndex = tableIndexes.some(def => def.includes(column_name));

@@ -101,7 +101,7 @@ spsNegotiationRouter.post('/', async (req: AuthenticatedRequest, res) => {
       clientPhone: input.clientPhone || null,
       clientCompanyName: input.clientCompanyName || null,
       serviceLocation: input.serviceLocation || null,
-      proposalData: (input.proposalData || {}) as any,
+      proposalData: (input.proposalData || {}) as unknown,
       status: 'active',
       clientAccessToken,
     }).returning();
@@ -208,7 +208,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
         messageRaw: input.messageRaw,
         messageAiEnhanced,
         aiSuggestionUsed: input.aiSuggestionUsed,
-        proposedTerms: proposedTerms as any,
+        proposedTerms: proposedTerms as unknown,
         agreementSignalDetected: agreementDetected,
       }).returning();
 
@@ -218,7 +218,7 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
           .set({
             agreementDetected: true,
             agreementDetectedAt: new Date(),
-            agreedTerms: proposedTerms as any,
+            agreedTerms: proposedTerms as unknown,
             updatedAt: new Date(),
           })
           .where(eq(spsNegotiationThreads.id, req.params.id));
@@ -315,11 +315,11 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: AuthenticatedR
         clientCompanyName: thread.clientCompanyName || null,
         clientContactName: thread.clientName,
         serviceLocation: thread.serviceLocation || null,
-        ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as any,
-        rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as any,
-        serviceType: (proposalData.serviceType || null) as any,
-        contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as any,
-        officersRequired: (proposalData.officersRequired || 1) as any,
+        ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as unknown,
+        rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as unknown,
+        serviceType: (proposalData.serviceType || null) as unknown,
+        contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as unknown,
+        officersRequired: (proposalData.officersRequired || 1) as unknown,
         negotiationThreadId: thread.id,
         stateCode: 'TX',
         formData: {
@@ -327,8 +327,8 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: AuthenticatedR
           agreedTerms,
           proposalData,
           sourceNegotiationId: thread.id,
-        } as any,
-        auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as any,
+        } as unknown,
+        auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as unknown,
       }).returning();
 
       // Conditional update prevents duplicate conversion on concurrent requests.

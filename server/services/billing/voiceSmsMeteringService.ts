@@ -233,7 +233,7 @@ export class VoiceSmsMeteringService {
         soft_cap_voice_warning_sent_at: new Date(),
         soft_cap_sms_warning_sent_at: new Date(),
         total_overage_charges_cents: 0,
-      } as any;
+      } as Record<string, unknown>;
     }
 
     const s = sub.rows[0];

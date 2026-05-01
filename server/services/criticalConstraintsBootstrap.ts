@@ -1583,9 +1583,9 @@ async function scanTimestampDefaultDrift(schemaTables: Record<string, unknown>):
     const candidateColumnNames: string[] = [];
     for (const col of tableCfg.columns) {
       if (!col.notNull) continue;
-      if (!(col as any).hasDefault) continue;
-      const colType = (col as any).columnType?.toLowerCase?.() ?? '';
-      const dataType = (col as any).dataType?.toLowerCase?.() ?? '';
+      if (!(col as Record<string, unknown>).hasDefault) continue;
+      const colType = (col as Record<string, unknown>).columnType?.toLowerCase?.() ?? '';
+      const dataType = (col as Record<string, unknown>).dataType?.toLowerCase?.() ?? '';
       const isTimeType =
         colType.includes('timestamp') ||
         dataType.includes('timestamp') ||

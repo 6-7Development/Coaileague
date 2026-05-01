@@ -201,7 +201,7 @@ async function phase1_schedule(officerPool: string[]) {
     SELECT COUNT(*) as n FROM shifts WHERE workspace_id = ${WS_ID} AND status = 'open'
     AND id LIKE 'sim-shift-%' AND notes LIKE '%BLOCKED%'
   `);
-  const blocked = Number((blockedCount?.rows?.[0] as any)?.n ?? 0);
+  const blocked = Number((blockedCount?.rows?.[0] as unknown)?.n ?? 0);
   rec({ name: 'Trinity Kill-Switch (Expired License)', phase: 'SCHEDULE',
     passed: blocked > 0,
     details: blocked > 0
@@ -226,7 +226,7 @@ async function phase2_time_entries(shiftIds: string[]) {
     ORDER BY start_time
   `);
 
-  for (const s of (assignedShifts.rows as any[])) {
+  for (const s of (assignedShifts.rows as unknown[][])) {
     const teId = `sim-te-${s.id}`;
     const clockIn  = new Date(s.start_time);
     const clockOut = new Date(s.end_time);
@@ -286,7 +286,7 @@ async function phase3_invoices() {
     `);
 
     let weekHours = 0;
-    for (const s of (weekShifts.rows as any[])) {
+    for (const s of (weekShifts.rows as unknown[][])) {
       const shiftStart = new Date(s.start_time);
       const shiftEnd   = new Date(s.end_time);
 
@@ -408,7 +408,7 @@ async function phase4_payroll(totalHoursWorked: number) {
     `);
 
     let periodTotal = 0;
-    const entries = (periodEntries.rows as any[]);
+    const entries = (periodEntries.rows as unknown[][]);
     for (const row of entries) {
       const empHours = Number(row.total_hours) || 0;
       const grossPay = Math.round(empHours * PAY_RATE * 100);
@@ -605,7 +605,7 @@ async function phase8_plaid() {
         language:     'en',
       }),
     });
-    const data = await resp.json() as any;
+    const data = await resp.json() as unknown;
     const ok   = !!data.link_token;
     rec({ name: 'Plaid Sandbox Link Token', phase: 'PLAID',
       passed: ok,
@@ -730,7 +730,7 @@ async function phase11_trinity_math() {
       headers: { 'x-test-key': 'dev-bypass-key-acme' },
     });
     if (resp.ok) {
-      const data = await resp.json() as any;
+      const data = await resp.json() as unknown;
       const hasNaN = Object.values(data).some(v => v !== null && isNaN(Number(v)));
       rec({ name: 'Worker Earnings: No NaN Values', phase: 'MATH',
         passed: !hasNaN,
@@ -762,7 +762,7 @@ async function phase11_trinity_math() {
   `);
 
   let mathErrors = 0;
-  for (const row of (invMath.rows as any[])) {
+  for (const row of (invMath.rows as unknown[][])) {
     const expected = Math.round(Number(row.quantity) * Number(row.unit_price));
     const actual   = Number(row.total_price);
     if (Math.abs(expected - actual) > 1) mathErrors++;
@@ -777,7 +777,7 @@ async function phase11_trinity_math() {
     SELECT id, total_gross_pay, employee_count FROM payroll_runs WHERE id LIKE 'sim-payroll-run-%'
   `);
   let payNaN = 0;
-  for (const row of (payMath.rows as any[])) {
+  for (const row of (payMath.rows as unknown[][])) {
     if (isNaN(Number(row.total_gross_pay))) payNaN++;
   }
   rec({ name: 'Payroll Runs: No NaN in gross pay', phase: 'MATH',

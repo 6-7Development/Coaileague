@@ -482,7 +482,7 @@ export const DIAGNOSTIC_SERVICE_REGISTRY: DiagnosticService[] = [
              COALESCE(SUM(total_tokens_used), 0)::bigint AS tokens
       FROM token_usage_monthly
       WHERE month_year = TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM')
-    `) as any;
+    `) as unknown;
     const workspacesActive = Number(row?.workspaces ?? 0);
     const tokensUsed = Number(row?.tokens ?? 0);
     return {

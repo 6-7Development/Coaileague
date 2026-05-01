@@ -89,7 +89,7 @@ export default function AuditChatdock() {
     onError: (err) => toast({ title: 'Revision failed', description: err?.message, variant: 'destructive' }),
   });
 
-  const drafts: any[] = draftsData?.drafts ?? [];
+  const drafts: unknown[] = draftsData?.drafts ?? [];
   const pendingDraft = drafts.find(d => d.status === 'pending_owner_review');
   const sentDrafts   = drafts.filter(d => d.sent_to_auditor);
 

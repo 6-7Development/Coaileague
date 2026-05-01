@@ -520,10 +520,10 @@ export function registerScheduleTimeclockActions() {
         for (let j = i + 1; j < recentEntries.length; j++) {
           const a = recentEntries[i];
           const b = recentEntries[j];
-          if ((a as any).employeeId === (b as any).employeeId) continue;
-          const timeDiff = Math.abs(new Date((b as any).clockIn).getTime() - new Date((a as any).clockIn).getTime());
+          if ((a as Record<string, unknown>).employeeId === (b as Record<string, unknown>).employeeId) continue;
+          const timeDiff = Math.abs(new Date((b as Record<string, unknown>).clockIn).getTime() - new Date((a as Record<string, unknown>).clockIn).getTime());
           if (timeDiff > 2 * 60000) break;
-          const pairKey = [(a as any).employeeId, (b as any).employeeId].sort().join('::');
+          const pairKey = [(a as Record<string, unknown>).employeeId, (b as Record<string, unknown>).employeeId].sort().join('::');
           if (!pairMap[pairKey]) pairMap[pairKey] = { count: 0, total: 0 };
           pairMap[pairKey].count++;
           pairMap[pairKey].total++;

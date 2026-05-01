@@ -65,8 +65,8 @@ class AiMeteringServiceImpl {
 
     setImmediate(() => {
       this._recordAiCallAsync(params).catch((err: unknown) => {
-        const aiMeteringErrMsg = (err as any)?.message || (err as any)?.detail || String(err);
-        const aiMeteringErrCode = (err as any)?.code || 'unknown';
+        const aiMeteringErrMsg = (err as Error)?.message || (err as Error)?.detail || String(err);
+        const aiMeteringErrCode = (err as Error)?.code || 'unknown';
         log.warn(`[AiMetering] record error (non-fatal, degrading) [${aiMeteringErrCode}]: ${aiMeteringErrMsg}`, { workspaceId: params.workspaceId });
       });
     });
@@ -132,7 +132,7 @@ class AiMeteringServiceImpl {
     ]);
 
     this._checkSoftCaps(params.workspaceId, tier, period, totalTokensK).catch((err: unknown) => {
-      log.warn('[AiMetering] soft cap check error:', (err as any)?.message);
+      log.warn('[AiMetering] soft cap check error:', (err as Error)?.message);
     });
   }
 
@@ -171,7 +171,7 @@ class AiMeteringServiceImpl {
         return { allowed: true, approaching: true, warning: `Trinity AI usage at ${pct}% of monthly budget.` };
       }
     } catch (err: unknown) {
-      log.warn('[AiMetering] checkUsageAllowed error (allowing):', (err as any)?.message);
+      log.warn('[AiMetering] checkUsageAllowed error (allowing):', (err as Error)?.message);
     }
 
     return { allowed: true };
@@ -192,7 +192,7 @@ class AiMeteringServiceImpl {
       const tier = await this._fetchWorkspaceTier(workspaceId);
       return this.checkUsageAllowed(workspaceId, tier, estimatedTokens);
     } catch (err: unknown) {
-      log.warn('[AiMetering] checkUsageAllowedById error (allowing):', (err as any)?.message);
+      log.warn('[AiMetering] checkUsageAllowedById error (allowing):', (err as Error)?.message);
       return { allowed: true };
     }
   }
@@ -277,7 +277,7 @@ class AiMeteringServiceImpl {
         periodEnd: p?.billing_period_end,
       };
     } catch (err: unknown) {
-      log.error('[AiMetering] getCurrentPeriodUsage error:', (err as any)?.message);
+      log.error('[AiMetering] getCurrentPeriodUsage error:', (err as Error)?.message);
       return null;
     }
   }
@@ -431,7 +431,7 @@ class AiMeteringServiceImpl {
             });
           }
         } catch (err: unknown) {
-          log.warn('[AiMetering] notification send error:', (err as any)?.message);
+          log.warn('[AiMetering] notification send error:', (err as Error)?.message);
         }
       }
     }

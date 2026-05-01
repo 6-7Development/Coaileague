@@ -68,7 +68,7 @@ async function run() {
     const { db } = await import('../../server/db');
     const { sql } = await import('drizzle-orm');
     const result = await db.execute(sql`SELECT current_database(), version()`);
-    const row = (result.rows || result)[0] as any;
+    const row = (result.rows || result)[0] as unknown;
     check('DB:connect', true, `Connected to: ${row?.current_database ?? 'ok'}`);
   } catch (err : unknown) {
     check('DB:connect', false, `FAILED: ${err.message}`);

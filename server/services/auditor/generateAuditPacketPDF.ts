@@ -139,7 +139,7 @@ Rules:
     });
 
     if (!response.ok) return data;
-    const res = await response.json() as any;
+    const res = await response.json() as unknown;
     const text: string = res?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return data;

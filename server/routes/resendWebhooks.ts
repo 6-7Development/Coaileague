@@ -1608,7 +1608,7 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
       hasContractAttachment,
     });
 
-    const pipelineTrace: any[] = [{ stage: 'A', name: 'Email Ingestion', result: stageAResult }];
+    const pipelineTrace: unknown[] = [{ stage: 'A', name: 'Email Ingestion', result: stageAResult }];
 
     let stageBResult = null;
     if (stageAResult.success && stageAResult.data?.isShiftRequest && stageAResult.data?.extractedShifts?.length > 0) {

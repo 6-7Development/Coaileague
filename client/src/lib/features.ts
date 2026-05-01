@@ -103,7 +103,7 @@ export const getFeatureName = (feature: keyof typeof FEATURES): string => {
 
 export const getFeaturesByTier = (tier: string): Feature[] => {
   const tierOrder = ['starter', 'professional', 'enterprise', 'elite'];
-  const tierIndex = tierOrder.indexOf(tier as any);
+  const tierIndex = tierOrder.indexOf(tier as string);
   
   return Object.values(FEATURES).filter(feature => {
     const featureTierIndex = tierOrder.indexOf(feature.tier);

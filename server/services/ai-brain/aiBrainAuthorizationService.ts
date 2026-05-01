@@ -212,14 +212,14 @@ class AIBrainAuthorizationService {
       const rows = await typedQuery(
         sql`SELECT workspace_id, paused_by, paused_at, reason FROM trinity_workspace_pauses WHERE is_active = true`
       );
-      for (const row of (rows as any[]) || []) {
+      for (const row of (rows as unknown[][]) || []) {
         this.workspacePauseMap.set(row.workspace_id as string, {
           pausedBy: row.paused_by as string,
           pausedAt: new Date(row.paused_at as string),
           reason: row.reason as string,
         });
       }
-      const count = (rows as any[]).length ?? 0;
+      const count = (rows as unknown[][]).length ?? 0;
       log.info(`Reloaded ${count} active workspace pause(s) from DB`);
     } catch (err: unknown) {
       log.error('Failed to reload workspace pauses from DB (non-blocking):', (err instanceof Error ? err.message : String(err)));
@@ -235,7 +235,7 @@ class AIBrainAuthorizationService {
       const rows = await typedQuery(
         sql`SELECT value FROM platform_config_registry WHERE domain = 'trinity' AND key = 'global_kill_switch' AND workspace_id = 'platform' AND is_active = true LIMIT 1`
       );
-      const row = (rows as any[])[0];
+      const row = (rows as unknown[][])[0];
       if (row?.value) {
         const state = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
         if (state.active) {

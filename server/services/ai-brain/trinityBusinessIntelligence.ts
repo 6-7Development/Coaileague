@@ -113,7 +113,7 @@ class TrinityBusinessIntelligence {
       .where(eq(invoices.workspaceId, workspaceId))
       .$dynamic();
 
-    const conditions: any[] = [eq(invoices.workspaceId, workspaceId)];
+    const conditions: unknown[] = [eq(invoices.workspaceId, workspaceId)];
 
     if (query.clientName) {
       conditions.push(
@@ -145,7 +145,7 @@ class TrinityBusinessIntelligence {
     }
 
     if (query.status) {
-      conditions.push(eq(invoices.status, query.status as any));
+      conditions.push(eq(invoices.status, query.status as unknown));
     }
 
     if (query.minAmount) {
@@ -292,7 +292,7 @@ class TrinityBusinessIntelligence {
           if (li.description) sampleDescriptions.push(li.description);
           if (li.unitPrice) { totalRate += Number(li.unitPrice); rateCount++; }
           if (li.descriptionData) {
-            const dd = li.descriptionData as any;
+            const dd = li.descriptionData as unknown;
             if (dd.location) allSites.add(dd.location);
             if (dd.sub_client_name) allSites.add(dd.sub_client_name);
             if (dd.officers) dd.officers.forEach((o: string) => allEmployees.add(o));
@@ -446,7 +446,7 @@ class TrinityBusinessIntelligence {
 
     const qbLines = lineItems.map((item, idx) => {
       let description = item.li.description;
-      const dd = item.li.descriptionData as any;
+      const dd = item.li.descriptionData as unknown;
 
       if (dd && (dd.officers || dd.location || dd.schedule_description)) {
         const parts: string[] = [];
@@ -1041,7 +1041,7 @@ export function registerBusinessIntelligenceActions(): void {
             workspaceId: request.workspaceId,
             userId: request.userId,
             payload: { ...request.payload, action: 'learn' },
-          } as any);
+          } as unknown);
           return settingsResult || { success: true, actionId: request.actionId, message: 'Preference forwarded to billing.settings', executionTimeMs: Date.now() - startTime };
         }
 

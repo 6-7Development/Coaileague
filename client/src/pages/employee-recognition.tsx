@@ -75,7 +75,7 @@ interface RecognitionFeedItem {
   awardedByName?: string;
 }
 
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, unknown> = {
   attendance: Clock,
   performance: TrendingUp,
   teamwork: Users,

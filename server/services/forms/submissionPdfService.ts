@@ -86,7 +86,7 @@ function safeString(v: unknown): string {
     // address_block payload { street, city, state, zip }
     const parts: string[] = [];
     for (const k of ['street', 'street2', 'city', 'state', 'zip', 'country']) {
-      if ((v as any)[k]) parts.push(String((v as any)[k]));
+      if ((v as unknown)[k]) parts.push(String((v as unknown)[k]));
     }
     if (parts.length) return parts.join(', ');
     try { return JSON.stringify(v); } catch { return ''; }
@@ -247,7 +247,7 @@ function renderSignatureBlock(
       // 220 x 64 frame with padding
       doc.image(buf, PAGE.ML + 16, y + 40, { fit: [220, 64], align: 'left', valign: 'top' });
     } catch (err) {
-      log.warn('[SubmissionPdf] Could not embed signature image:', (err as any)?.message);
+      log.warn('[SubmissionPdf] Could not embed signature image:', (err as Error)?.message);
       doc.fontSize(11).fillColor(PDF.dark).font('Helvetica-Oblique')
         .text(signer.signerName || 'signed electronically', PAGE.ML + 16, y + 50);
       doc.font('Helvetica');

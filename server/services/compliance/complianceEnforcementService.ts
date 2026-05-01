@@ -128,7 +128,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -197,7 +197,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -238,7 +238,7 @@ class ComplianceEnforcementService {
           liftReason: 'All required documents approved — compliance achieved',
         } as Record<string, unknown>)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ));
@@ -308,7 +308,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select()
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -339,7 +339,7 @@ class ComplianceEnforcementService {
       const [activeFreeze] = await tx.select()
         .from(accountFreezes)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ))
@@ -422,7 +422,7 @@ class ComplianceEnforcementService {
           relatedTicketId,
         } as Record<string, unknown>)
         .where(and(
-          eq(accountFreezes.entityType, entityType as any),
+          eq(accountFreezes.entityType, entityType as unknown),
           eq(accountFreezes.entityId, entityId),
           eq(accountFreezes.status, 'active'),
         ))
@@ -433,7 +433,7 @@ class ComplianceEnforcementService {
       await tx.update(complianceWindows)
         .set({ isFrozen: false, updatedAt: new Date() } as Record<string, unknown>)
         .where(and(
-          eq(complianceWindows.entityType, entityType as any),
+          eq(complianceWindows.entityType, entityType as unknown),
           eq(complianceWindows.entityId, entityId),
         ));
 
@@ -454,7 +454,7 @@ class ComplianceEnforcementService {
     const [window] = await db.select({ isFrozen: complianceWindows.isFrozen })
       .from(complianceWindows)
       .where(and(
-        eq(complianceWindows.entityType, entityType as any),
+        eq(complianceWindows.entityType, entityType as unknown),
         eq(complianceWindows.entityId, entityId),
       ))
       .limit(1);
@@ -599,7 +599,7 @@ class ComplianceEnforcementService {
 
     for (const win of allWindows) {
       const approvedDocs = (win.approvedDocTypes as string[]) || [];
-      const approvalDates = ((win as any).docApprovalDates as Record<string, string>) || {};
+      const approvalDates = ((win as Record<string, unknown>).docApprovalDates as Record<string, string>) || {};
 
       if (approvedDocs.length === 0) continue;
 
@@ -641,7 +641,7 @@ class ComplianceEnforcementService {
         affectedWindows.push(win.id);
 
         // ── Notify workspace manager + emit Trinity event ─────────────────
-        const wsId = (win as any).workspaceId as string | undefined;
+        const wsId = (win as Record<string, unknown>).workspaceId as string | undefined;
         if (wsId) {
           const expiredTypes = approvedDocs.filter(d => !updatedApproved.includes(d));
           universalNotificationEngine.sendNotification({

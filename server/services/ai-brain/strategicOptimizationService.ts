@@ -656,13 +656,13 @@ class StrategicOptimizationService {
       const emp = r.employee;
       const m: Record<string, unknown> | null = null; // employee_metrics merged into employees JSONB
 
-      const noShows = (m as any)?.noShowCount || 0;
-      const callIns = (m as any)?.lastMinuteCancellations || 0;
-      const lateArrivals = (m as any)?.tardinessCount || 0;
-      const totalShiftsAssigned = (m as any)?.totalShiftsAssigned || (m as any)?.shiftsCompleted || 0;
-      const shiftsCompleted = (m as any)?.shiftsCompleted || 0;
-      const clientComplaints = (m as any)?.clientComplaints || 0;
-      const clientPraise = (m as any)?.clientPraise || 0;
+      const noShows = (m as unknown)?.noShowCount || 0;
+      const callIns = (m as unknown)?.lastMinuteCancellations || 0;
+      const lateArrivals = (m as unknown)?.tardinessCount || 0;
+      const totalShiftsAssigned = (m as unknown)?.totalShiftsAssigned || (m as unknown)?.shiftsCompleted || 0;
+      const shiftsCompleted = (m as unknown)?.shiftsCompleted || 0;
+      const clientComplaints = (m as unknown)?.clientComplaints || 0;
+      const clientPraise = (m as unknown)?.clientPraise || 0;
       const attendanceRate = parseFloat(m?.attendanceRate?.toString() || '95');
       const yearsExperience = parseFloat(m?.yearsExperience?.toString() || '0');
 
@@ -699,7 +699,7 @@ class StrategicOptimizationService {
         recentPerformanceTrend: (m?.recentPerformanceTrend as 'improving' | 'stable' | 'declining') || 'stable',
         homeLatitude: emp.latitude ? parseFloat(emp.latitude.toString()) : undefined,
         homeLongitude: emp.longitude ? parseFloat(emp.longitude.toString()) : undefined,
-        maxCommuteDistance: (m as any)?.preferredMaxDistance || 50,
+        maxCommuteDistance: (m as unknown)?.preferredMaxDistance || 50,
       };
     });
   }

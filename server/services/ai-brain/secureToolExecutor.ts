@@ -297,7 +297,7 @@ class SecureToolExecutor {
     // Check workspace access if required
     if (policy.requiresWorkspaceAccess && callerContext.workspaceId) {
       try {
-        const hasAccess = await (aiBrainAuthorizationService as any).canAccessWorkspace(
+        const hasAccess = await (aiBrainAuthorizationService as Record<string, unknown>).canAccessWorkspace(
           callerContext.userId,
           callerContext.workspaceId,
           callerRole

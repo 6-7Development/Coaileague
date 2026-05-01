@@ -1326,7 +1326,7 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
         // Try OpenAI Whisper first (better accuracy, uses confirmed OPENAI_API_KEY)
         if (process.env.OPENAI_API_KEY && RecordingUrl) {
           try {
-            const fetch = (await import('node-fetch')).default as any;
+            const fetch = (await import('node-fetch')).default as unknown;
             const FormData = (await import('form-data')).default;
             // Download the recording from Twilio
             const audioResp = await fetch(RecordingUrl + '.mp3', {
@@ -1370,7 +1370,7 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
           try {
             const twilio = (await import('twilio')).default;
             const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-            await ((twilioClient.recordings(RecordingSid) as any).transcriptions.create as (
+            await ((twilioClient.recordings(RecordingSid) as unknown).transcriptions.create as (
               opts: { statusCallbackUrl?: string }
             ) => Promise<unknown>)({
               statusCallbackUrl: `${baseUrl}/api/voice/transcription-done`,
@@ -3212,7 +3212,7 @@ voiceRouter.post('/schedule-callback', twilioSignatureMiddleware, async (req: Re
             issue_summary: description.slice(0, 500),
             status: 'open',
             language: lang,
-          } as any,
+          } as unknown,
           workspaceId,
         });
       } catch (notifyErr: unknown) {
@@ -3402,7 +3402,7 @@ voiceRouter.post('/verify-employee-id-channel', twilioSignatureMiddleware, async
               : `CoAIleague — Employment verification. Ref ${ref}. Complete authorization: ${url}`).slice(0, 280),
             workspaceId,
             type: 'verify_employment_link',
-          } as any);
+          } as unknown);
           sent = true;
         } catch (err: unknown) {
           log.warn('[VoiceRoutes] /verify-employee-id-channel SMS failed:', err?.message);
@@ -4888,7 +4888,7 @@ voiceRouter.post('/owner-menu', twilioSignatureMiddleware, async (req: Request, 
           body: `[${subject}] Secure action link: ${url}`.slice(0, 280),
           workspaceId,
           type: 'owner_action_link',
-        } as any);
+        } as unknown);
         return true;
       } catch (err: unknown) {
         log.warn('[VoiceRoutes] /owner-menu SMS failed:', err?.message);

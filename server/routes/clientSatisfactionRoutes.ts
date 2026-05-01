@@ -26,7 +26,7 @@ router.get("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN clients c ON c.id = csr.client_id AND c.workspace_id = $1
                  LEFT JOIN employees e ON e.id = csr.conducted_by AND e.workspace_id = $1
                  WHERE csr.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     if (client_id) { query += ` AND csr.client_id = $2`; vals.push(client_id); }
     query += ` ORDER BY csr.check_in_date DESC`;
     const r = await db.$client.query(query, vals);
@@ -190,7 +190,7 @@ router.get("/concerns", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN clients c ON c.id = cc.client_id AND c.workspace_id = $1
                  LEFT JOIN employees e ON e.id = cc.assigned_to AND e.workspace_id = $1
                  WHERE cc.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (client_id) { query += ` AND cc.client_id = $${i++}`; vals.push(client_id); }
     if (status) { query += ` AND cc.status = $${i++}`; vals.push(status); }

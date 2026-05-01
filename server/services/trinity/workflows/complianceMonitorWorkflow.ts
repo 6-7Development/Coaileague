@@ -319,7 +319,7 @@ async function notifyExpiration(
         title: 'Certification expired',
         description: `${name}'s ${skill} has expired. Officer flagged as non-compliant.`,
         metadata: { employeeId: exp.employeeId, skillId: exp.skillId },
-      } as any);
+      } as unknown);
     } catch (err: unknown) {
       log.warn('[compliance] expired event publish failed:', err?.message);
     }
@@ -363,10 +363,10 @@ async function recordNotification(exp: Expiration, bucket: string): Promise<void
         employeeId: exp.employeeId,
         skillName: exp.skillName,
         daysRemaining: exp.daysRemaining,
-      } as any,
+      } as unknown,
       source: 'system',
       actorType: 'trinity',
-    } as any);
+    } as unknown);
   } catch (err: unknown) {
     log.warn('[compliance] notification record failed:', err?.message);
   }

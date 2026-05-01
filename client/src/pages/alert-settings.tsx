@@ -91,7 +91,7 @@ interface AlertHistory {
   createdAt: string;
 }
 
-const ALERT_TYPE_INFO: Record<AlertType, { label: string; description: string; icon: any; thresholdLabel: string; thresholdUnit: string }> = {
+const ALERT_TYPE_INFO: Record<AlertType, { label: string; description: string; icon: string | React.ReactNode; thresholdLabel: string; thresholdUnit: string }> = {
   overtime: {
     label: 'Overtime Alert',
     description: 'Alert when employee overtime exceeds threshold',
@@ -157,7 +157,7 @@ const SEVERITY_COLORS: Record<AlertSeverity, string> = {
   critical: 'bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/30',
 };
 
-const CHANNEL_INFO: Record<AlertChannel, { label: string; icon: any }> = {
+const CHANNEL_INFO: Record<AlertChannel, { label: string; icon: string | React.ReactNode }> = {
   in_app: { label: 'In-App', icon: Bell },
   email: { label: 'Email', icon: Mail },
   sms: { label: 'SMS', icon: Smartphone },

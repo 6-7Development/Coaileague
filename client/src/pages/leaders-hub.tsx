@@ -734,7 +734,7 @@ export default function LeadersHub() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <h4 className="font-semibold truncate">{task.title}</h4>
-                                    <Badge variant={getPriorityColor(task.priority) as any} className="shrink-0">
+                                    <Badge variant={getPriorityColor(task.priority) as string} className="shrink-0">
                                       {task.priority}
                                     </Badge>
                                   </div>
@@ -742,7 +742,7 @@ export default function LeadersHub() {
                                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                     <div className="flex items-center gap-1">
                                       <UserX className="h-3 w-3" />
-                                      {(task.employee as any).firstName ? `${(task.employee as any).firstName} ${(task.employee as any).lastName || ''}`.trim() : (task.employee as any).email}
+                                      {(task.employee as unknown).firstName ? `${(task.employee as unknown).firstName} ${(task.employee as unknown).lastName || ''}`.trim() : (task.employee as unknown).email}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />
@@ -966,12 +966,12 @@ export default function LeadersHub() {
                         <TableCell className="font-medium">{ticket.title}</TableCell>
                         <TableCell className="capitalize">{ticket.category?.replace('_', ' ')}</TableCell>
                         <TableCell>
-                          <Badge variant={getPriorityColor(ticket.priority) as any}>
+                          <Badge variant={getPriorityColor(ticket.priority) as string}>
                             {ticket.priority}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusColor(ticket.status) as any}>
+                          <Badge variant={getStatusColor(ticket.status) as string}>
                             {ticket.status}
                           </Badge>
                         </TableCell>

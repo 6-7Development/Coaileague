@@ -57,8 +57,8 @@ export class KnowledgeGraphRepository {
     try {
       const [result] = await db.insert(knowledgeEntities).values({
         id: entity.id,
-        type: entity.entityType as any,
-        domain: entity.domain as any,
+        type: entity.entityType as unknown,
+        domain: entity.domain as unknown,
         workspaceId: entity.workspaceId,
         name: entity.name,
         description: entity.content,
@@ -93,7 +93,7 @@ export class KnowledgeGraphRepository {
   async getEntitiesByDomain(domain: string, limit = 100): Promise<KnowledgeEntityRecord[]> {
     try {
       return await db.select().from(knowledgeEntities)
-        .where(eq(knowledgeEntities.domain, domain as any))
+        .where(eq(knowledgeEntities.domain, domain as unknown))
         .orderBy(desc(knowledgeEntities.usageCount))
         .limit(limit);
     } catch (error : unknown) {
@@ -104,7 +104,7 @@ export class KnowledgeGraphRepository {
 
   async getEntitiesByType(entityType: string, workspaceId?: string, limit = 100): Promise<KnowledgeEntityRecord[]> {
     try {
-      const conditions: unknown[] = [eq(knowledgeEntities.type, entityType as any)];
+      const conditions: unknown[] = [eq(knowledgeEntities.type, entityType as unknown)];
       if (workspaceId) conditions.push(eq(knowledgeEntities.workspaceId, workspaceId));
       return await db.select().from(knowledgeEntities)
         .where(and(...conditions))
@@ -143,7 +143,7 @@ export class KnowledgeGraphRepository {
         id: rel.id,
         sourceId: rel.sourceId,
         targetId: rel.targetId,
-        type: rel.relationship as any,
+        type: rel.relationship as unknown,
         strength: rel.strength ? Number(rel.strength) : 0.5,
         metadata: { bidirectional: rel.bidirectional || false, evidence: rel.evidence },
         createdBy: rel.createdBy || 'system',
@@ -239,10 +239,10 @@ export class A2AProtocolRepository {
         workspaceId: 'system',
         id: agent.id,
         name: agent.name,
-        role: agent.role as any,
-        status: (agent.status || 'active') as any,
+        role: agent.role as unknown,
+        status: (agent.status || 'active') as unknown,
         capabilities: agent.capabilities || [],
-        domain: (agent.domains?.[0] || 'general') as any,
+        domain: (agent.domains?.[0] || 'general') as unknown,
         trustScore: agent.trustLevel ? Number(agent.trustLevel) : 0.8,
         messagesSent: 0,
         messagesReceived: 0,
@@ -324,9 +324,9 @@ export class A2AProtocolRepository {
         id: message.id,
         fromAgent: message.senderId,
         toAgent: message.recipientId || 'broadcast',
-        type: message.messageType as any,
-        priority: (message.priority || 'normal') as any,
-        status: (message.status || 'pending') as any,
+        type: message.messageType as unknown,
+        priority: (message.priority || 'normal') as unknown,
+        status: (message.status || 'pending') as unknown,
         payload: { subject: message.subject, ...message.content },
         correlationId: message.correlationId,
         replyTo: message.replyTo,

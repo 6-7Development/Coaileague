@@ -437,7 +437,7 @@ class WorkflowApprovalService {
           .from(platformRoles)
           .where(
             and(
-              inArray(platformRoles.role, SUPPORT_ROLES as any),
+              inArray(platformRoles.role, SUPPORT_ROLES as unknown),
               isNull(platformRoles.revokedAt),
               eq(platformRoles.isSuspended, false)
             )
@@ -571,7 +571,7 @@ class WorkflowApprovalService {
     return db
       .select()
       .from(aiWorkflowApprovals)
-      .where(eq(aiWorkflowApprovals.status, status as any))
+      .where(eq(aiWorkflowApprovals.status, status as unknown))
       .orderBy(desc(aiWorkflowApprovals.createdAt))
       .limit(limit);
   }

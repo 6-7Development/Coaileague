@@ -541,30 +541,30 @@ export default function EmployeeOnboardingWizard() {
         if (!applicationId) {
           await createAppMutation.mutateAsync();
         } else {
-          await updateAppMutation.mutateAsync({ ...form } as any);
+          await updateAppMutation.mutateAsync({ ...form } as unknown);
         }
       } else if (step === 2) {
         await updateAppMutation.mutateAsync({
           emergencyContactName: form.emergencyContactName,
           emergencyContactPhone: form.emergencyContactPhone,
           emergencyContactRelation: form.emergencyContactRelation,
-        } as any);
+        } as unknown);
       } else if (step === 3) {
         await updateAppMutation.mutateAsync({
-          taxClassification: form.taxClassification as any,
+          taxClassification: form.taxClassification as unknown,
           filingStatus: form.filingStatus,
           multipleJobs: form.multipleJobs,
           dependentsAmount: form.dependentsAmount,
           otherIncome: form.otherIncome,
           extraWithholding: form.extraWithholding,
-        } as any);
+        } as unknown);
       } else if (step === 4) {
         await updateAppMutation.mutateAsync({
           bankName: form.bankName,
           routingNumber: form.routingNumber,
           accountNumber: form.accountNumber,
           accountType: form.accountType,
-        } as any);
+        } as unknown);
       } else if (step === 5) {
         // Credentials step — submit to /api/onboarding/certifications.
         // Non-fatal on failure; HR can collect manually later.
@@ -602,7 +602,7 @@ export default function EmployeeOnboardingWizard() {
           maxHoursPerWeek: form.maxHoursPerWeek ? parseInt(form.maxHoursPerWeek) : undefined,
           availabilityNotes: form.availabilityNotes,
           currentStep: 'work_availability',
-        } as any);
+        } as unknown);
       }
     } catch {
       // Error is displayed by mutation's onError callback; do not advance the step

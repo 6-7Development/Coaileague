@@ -118,7 +118,7 @@ router.get('/create-org/progress', async (req: AuthenticatedRequest, res) => {
     const result = await typedQuery(
       sql`SELECT progress_data FROM org_creation_progress WHERE user_id = ${userId} LIMIT 1`
     );
-    const row = result[0] as any;
+    const row = result[0] as unknown;
     const progress = row?.progress_data ?? null;
     res.json({ success: true, progress });
   } catch (error: unknown) {

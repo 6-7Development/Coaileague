@@ -162,7 +162,7 @@ export class SchedulingAI {
     const weekEndDate = new Date(request.weekStartDate);
     weekEndDate.setDate(weekEndDate.getDate() + 7);
     
-    const existingShifts: any[] = await db
+    const existingShifts: unknown[] = await db
       .select()
       .from(shifts)
       .where(

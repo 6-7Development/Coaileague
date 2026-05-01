@@ -486,7 +486,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: {} },
     output_schema: { type: 'object', properties: { status: { type: 'string' } } },
     handler: async () => ({ status: 'not_implemented' }),
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'insurance.expiry',
@@ -497,7 +497,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: {} },
     output_schema: { type: 'object', properties: { expiringPolicies: { type: 'array' } } },
     handler: async () => ({ expiringPolicies: [] }),
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'insurance.state_compliance',
@@ -508,7 +508,7 @@ export function registerMissingDomainActions(): void {
     input_schema: { type: 'object', properties: { state: { type: 'string' } } },
     output_schema: { type: 'object', properties: { compliant: { type: 'boolean' } } },
     handler: async () => ({ compliant: false }),
-  } as any);
+  } as unknown);
 
 
 
@@ -541,7 +541,7 @@ export function registerMissingDomainActions(): void {
     handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: 'stub', shiftStatus: 'open', coverageQueued: true };
     },
-  } as any);
+  } as unknown);
 
   helpaiOrchestrator.registerAction({
     actionId: 'calloff.resolve',
@@ -568,7 +568,7 @@ export function registerMissingDomainActions(): void {
     handler: async (params: Record<string, unknown>, ctx: unknown) => {
       return { callOffId: params.callOffId, status: 'resolved' };
     },
-  } as any);
+  } as unknown);
 
   log.info('[TrinityMissingDomainActions] Registered 18 missing domain actions: voice (3), forms (3), esignature (3), proposals (2), hr_docs (2), insurance (3), calloff (2)');
 }

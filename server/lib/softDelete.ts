@@ -20,7 +20,7 @@ const log = createLogger('softDelete');
 
 export interface SoftDeleteParams {
   /** The Drizzle table whose row to mark deleted. Must declare `deleted_at` + `deleted_by` columns. */
-  table: any;
+  table: Record<string, unknown>;
   /** The fully-qualified WHERE clause selecting the row(s) to mark deleted. Must include `workspace_id` per Section G. */
   where: SQL;
   /** ID of the user performing the deletion (for audit + `deleted_by`). */

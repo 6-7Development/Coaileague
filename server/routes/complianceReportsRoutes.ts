@@ -75,7 +75,7 @@ router.post("/generate", requireManager, async (req: AuthenticatedRequest, res) 
       .from(complianceReports)
       .where(and(
         eq(complianceReports.workspaceId, workspaceId),
-        eq(complianceReports.reportType, reportType as any),
+        eq(complianceReports.reportType, reportType as unknown),
         eq(complianceReports.periodStart, start),
         eq(complianceReports.periodEnd, end),
       ))
@@ -98,7 +98,7 @@ router.post("/generate", requireManager, async (req: AuthenticatedRequest, res) 
     const [report] = await db.insert(complianceReports).values({
       id: randomUUID(),
       workspaceId,
-      reportType: reportType as any,
+      reportType: reportType as unknown,
       reportTitle: reportMeta.label,
       description: reportMeta.description,
       periodStart: start,
@@ -110,12 +110,12 @@ router.post("/generate", requireManager, async (req: AuthenticatedRequest, res) 
       reportData: {
         ...reportPayload,
         checksum,
-      } as any,
+      } as unknown,
       summaryStats: {
         totalRecords: 0,
         complianceRate: 100,
         issuesFound: 0,
-      } as any,
+      } as unknown,
       regulations: reportMeta.regulations,
       jurisdiction: jurisdiction || "US-FEDERAL",
       hasViolations: false,

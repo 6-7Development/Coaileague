@@ -96,7 +96,7 @@ If ANY criterion is not met, verified must be false. Err on the side of caution 
       return { verified: false, reasoning: `Verification API error: ${response.status}. Please re-submit.` };
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const rawText: string = data?.content?.[0]?.text ?? '{}';
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { verified: false, reasoning: 'Could not parse Trinity verification response.' };

@@ -110,7 +110,7 @@ class SchemaParityService {
         // Try to get table name using Drizzle's helper
         let tableName: string | undefined;
         try {
-          tableName = getTableName(exportValue as any);
+          tableName = getTableName(exportValue as unknown);
         } catch {
           // Not a table - skip
           continue;
@@ -140,7 +140,7 @@ class SchemaParityService {
         
         // Get columns from Drizzle schema
         try {
-          const drizzleColumns = getTableColumns(exportValue as any);
+          const drizzleColumns = getTableColumns(exportValue as unknown);
           
           for (const [colKey, colDef] of Object.entries(drizzleColumns)) {
             // Get the actual column name
@@ -253,7 +253,7 @@ class SchemaParityService {
     for (const [exportName, exportValue] of Object.entries(schema)) {
       // pgEnum exports have enumName and enumValues properties
       if (exportValue && typeof exportValue === 'object') {
-        const enumObj = exportValue as any;
+        const enumObj = exportValue as unknown;
         if (enumObj.enumName && enumObj.enumValues) {
           enums[enumObj.enumName] = [...enumObj.enumValues];
         }
@@ -417,7 +417,7 @@ class SchemaParityService {
       const uniqueConstraints: string[] = [];
 
       for (const [colName, colDef] of Object.entries(columns)) {
-        const col = colDef as any;
+        const col = colDef as unknown;
         const snakeName = col.name || toSnakeCase(colName);
 
         const isArrayCol = col.columnType?.includes('Array') || col.dataType === 'array';

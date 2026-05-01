@@ -92,7 +92,7 @@ interface PricingTier {
 interface PricingData {
   tiers: PricingTier[];
   creditPacks: unknown[];
-  overages: any;
+  overages: Record<string, unknown>;
 }
 
 interface SubscriptionDetails {

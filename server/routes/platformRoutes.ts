@@ -776,8 +776,8 @@ router.get('/users/:userId', async (req: AuthenticatedRequest, res) => {
         workspaceName: r.workspace?.name,
         companyName: r.workspace?.companyName,
         role: r.employee.workspaceRole,
-        title: (r as any).employee.title,
-        department: (r as any).employee.department,
+        title: (r as Record<string, unknown>).employee.title,
+        department: (r as Record<string, unknown>).employee.department,
       })),
     });
   } catch (error: unknown) {
@@ -1538,7 +1538,7 @@ router.post('/team/agents/:userId/action', async (req: AuthenticatedRequest, res
         });
       });
     } else if (action === 'change_role') {
-      if (!newRole || !PLATFORM_ROLES_ORDERED.includes(newRole as any)) {
+      if (!newRole || !PLATFORM_ROLES_ORDERED.includes(newRole as string)) {
         return res.status(400).json({ error: 'Valid newRole required' });
       }
       const newRoleLevel = getPlatformRoleLevel(newRole);

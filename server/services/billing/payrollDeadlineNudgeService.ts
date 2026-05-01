@@ -93,7 +93,7 @@ export async function runPayrollDeadlineNudge(): Promise<NudgeResult> {
 
     const workspacesChecked = new Set(result.rows.map((r: unknown) => r.workspace_id)).size;
 
-    for (const run of result.rows as any[]) {
+    for (const run of result.rows as unknown[][]) {
       try {
         const hoursLeft = Math.max(0, Math.round(Number(run.hours_remaining)));
         const periodEnd = new Date(run.period_end);

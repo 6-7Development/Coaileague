@@ -110,10 +110,10 @@ export async function logWorkflowStart(
           trail: initialTrail,
           startedAt: startedAt.toISOString(),
           status: 'running',
-        } as any,
+        } as unknown,
         source: 'system',
         actorType: 'trinity',
-      } as any)
+      } as unknown)
       .returning({ id: auditLogs.id });
 
     return {
@@ -170,7 +170,7 @@ export async function logWorkflowStep(
     await db
       .update(auditLogs)
       .set({
-        metadata: { ...currentMeta, trail } as any,
+        metadata: { ...currentMeta, trail } as unknown,
       })
       .where(eq(auditLogs.id, record.id));
   } catch (err: unknown) {
@@ -232,7 +232,7 @@ export async function logWorkflowComplete(
       .set({
         success: params.success,
         errorMessage: params.errorMessage ?? null,
-        changesAfter: sanitizeForLog(params.result) as any,
+        changesAfter: sanitizeForLog(params.result) as unknown,
         metadata: {
           ...currentMeta,
           trail,
@@ -240,7 +240,7 @@ export async function logWorkflowComplete(
           finishedAt: finishedAt.toISOString(),
           durationMs,
           summary: params.summary ?? null,
-        } as any,
+        } as unknown,
       })
       .where(eq(auditLogs.id, record.id));
   } catch (err: unknown) {

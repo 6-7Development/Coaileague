@@ -274,7 +274,7 @@ export async function getUserCrossChannelContext(
     `, [workspaceId]),
   ]).then(([e, v, t]) => [e.rows, v.rows, t.rows]).catch(() => [[], [], []]);
 
-  const recentEmails = (emailRows as any[]).map(r => ({
+  const recentEmails = (emailRows as unknown[]).map(r => ({
     id: r.id,
     subject: r.subject || '(no subject)',
     folderType: r.folder_type,
@@ -283,7 +283,7 @@ export async function getUserCrossChannelContext(
     isRead: r.is_read,
   }));
 
-  const recentVoiceCalls = (voiceRows as any[]).map(r => ({
+  const recentVoiceCalls = (voiceRows as unknown[]).map(r => ({
     id: r.id,
     callerNumber: r.caller_number,
     status: r.status,
@@ -292,7 +292,7 @@ export async function getUserCrossChannelContext(
     trinityResolved: r.ai_resolved,
   }));
 
-  const openTickets = (ticketRows as any[]).map(r => ({
+  const openTickets = (ticketRows as unknown[]).map(r => ({
     id: r.id,
     subject: r.subject,
     status: r.status,
@@ -402,7 +402,7 @@ export async function executeSupportAction(payload: {
 }): Promise<{ success: boolean; result?: unknown; error?: string }> {
   try {
     const { supportActionRegistry } = await import('./supportActionRegistry');
-    const result = await supportActionRegistry.execute(payload as any);
+    const result = await supportActionRegistry.execute(payload as unknown);
     log.info(`[KnowledgeTools] Support action executed: ${payload.actionType} → success=${result.success}`);
     return { success: result.success, result };
   } catch (err: unknown) {

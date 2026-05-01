@@ -300,7 +300,7 @@ export default function OrgManagement() {
       const endpoint = endpoints[action];
       if (!endpoint) throw new Error('Unknown action');
       
-      const body: any = {};
+      const body: Record<string, unknown> = {};
       const resolvedUserId = member.userId || member.id;
       if (action === 'reset_password') {
         body.targetEmail = member.email;

@@ -103,7 +103,7 @@ router.get('/timeline', requirePlatformStaff, async (req: Request, res: Response
   try {
     const sessionId = (req.query.sessionId as string) || 'default';
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 500); // M06: clamp to 500
-    const authCtxT = req as any;
+    const authCtxT = req as unknown;
     const workspaceId = authCtxT.workspaceId || authCtxT.user?.currentWorkspaceId || authCtxT.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
 
@@ -127,7 +127,7 @@ router.get('/thoughts', requirePlatformStaff, async (req: Request, res: Response
     const runId = req.query.runId as string | undefined;
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 500); // M07: clamp to 500
     // Derive workspaceId from auth context — do not trust raw query param
-    const authCtx = req as any;
+    const authCtx = req as unknown;
     const workspaceId = authCtx.workspaceId || authCtx.user?.currentWorkspaceId || authCtx.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
 
@@ -160,7 +160,7 @@ router.get('/actions', requirePlatformStaff, async (req: Request, res: Response)
     const runId = req.query.runId as string | undefined;
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 500); // M08: clamp to 500
     // Derive workspaceId from auth context — do not trust raw query param
-    const authCtxA = req as any;
+    const authCtxA = req as unknown;
     const workspaceId = authCtxA.workspaceId || authCtxA.user?.currentWorkspaceId || authCtxA.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace context required' });
 

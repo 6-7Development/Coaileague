@@ -412,7 +412,7 @@ function PlatformRolesManager() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={getRoleBadgeVariant(assignment.role) as any}>
+                  <Badge variant={getRoleBadgeVariant(assignment.role) as string}>
                     {assignment.role.replace('_', ' ')}
                   </Badge>
                   <Button
@@ -523,7 +523,7 @@ interface SupportAuditLog {
   sessionId: string;
   action: string;
   severity: 'read' | 'write' | 'delete';
-  details: any;
+  details: Record<string, unknown>;
   createdAt: string;
 }
 

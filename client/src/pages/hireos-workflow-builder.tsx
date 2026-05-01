@@ -259,7 +259,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                 onCheckedChange={(checked) => setFormData({ 
                   ...formData, 
                   hasConditionalLogic: checked as boolean,
-                  conditionalLogic: checked ? ({ field: '', operator: 'equals', value: '', action: 'show' } as any) : null
+                  conditionalLogic: checked ? ({ field: '', operator: 'equals', value: '', action: 'show' } as unknown) : null
                 })}
                 data-testid="checkbox-conditional"
               />
@@ -280,7 +280,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                     <div>
                       <Label className="text-xs">Field</Label>
                       <Select
-                        value={(formData.conditionalLogic as any)?.field || ''}
+                        value={(formData.conditionalLogic as unknown)?.field || ''}
                         onValueChange={(value) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), field: value } as any
@@ -300,7 +300,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                     <div>
                       <Label className="text-xs">Operator</Label>
                       <Select
-                        value={(formData.conditionalLogic as any)?.operator || 'equals'}
+                        value={(formData.conditionalLogic as unknown)?.operator || 'equals'}
                         onValueChange={(value) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), operator: value } as any
@@ -320,7 +320,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
                       <Label className="text-xs">Value</Label>
                       <Input
                         placeholder="e.g., Truck Driver"
-                        value={(formData.conditionalLogic as any)?.value || ''}
+                        value={(formData.conditionalLogic as unknown)?.value || ''}
                         onChange={(e) => setFormData({
                           ...formData,
                           conditionalLogic: { ...(formData.conditionalLogic || {}), value: e.target.value } as any

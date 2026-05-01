@@ -131,7 +131,7 @@ const router = Router();
           const clockInTime = new Date(validated.clockIn);
           const clockOutTime = validated.clockOut ? new Date(validated.clockOut) : null;
 
-          const overlapConditions: any[] = [
+          const overlapConditions: unknown[] = [
             eq(timeEntriesTable.workspaceId, workspace.id),
             eq(timeEntriesTable.employeeId, validated.employeeId),
           ];

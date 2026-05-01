@@ -34,7 +34,7 @@ setTimeout(async () => {
     }
     await seedPlatformUpdates();
   } catch (err: unknown) {
-    log.warn('[WhatsNew] Deferred seed failed (non-fatal):', (err as any)?.message);
+    log.warn('[WhatsNew] Deferred seed failed (non-fatal):', (err as Error)?.message);
   }
 }, 120000);
 

@@ -64,7 +64,7 @@ async function getUserCalendarInfo(accessToken: string): Promise<{ email: string
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!resp.ok) throw new Error('Failed to fetch Google userinfo');
-  const data: any = await resp.json();
+  const data: Record<string, unknown> = await resp.json();
   return { email: data.email ?? '' };
 }
 

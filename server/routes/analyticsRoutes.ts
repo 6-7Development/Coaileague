@@ -408,7 +408,7 @@ router.get("/client-profitability", async (req: AuthenticatedRequest, res) => {
     .orderBy(sql`COALESCE(SUM(${timeEntries.billableAmount}), 0) DESC`);
 
     let invoiceDateFilter = "";
-    const invoiceParams: any[] = [workspaceId];
+    const invoiceParams: unknown[] = [workspaceId];
     let invIdx = 2;
     if (dateFrom) {
       invoiceDateFilter += ` AND i.issue_date >= $${invIdx}::timestamp`;

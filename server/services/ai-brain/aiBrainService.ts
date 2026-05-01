@@ -266,7 +266,7 @@ export class AIBrainService {
     const [job] = await db.insert(aiBrainJobs).values({
       workspaceId: request.workspaceId || null,
       userId: request.userId || null,
-      skill: request.skill as any,
+      skill: request.skill as unknown,
       input: request.input,
       priority: request.priority || 'normal',
       status: 'pending',
@@ -353,7 +353,7 @@ export class AIBrainService {
     let tokensUsed = 0;
 
     // Cast input to typed interface based on skill
-    const input = job.input as any;
+    const input = job.input as unknown;
 
     // Create a timeout promise that rejects after JOB_TIMEOUT_MS
     const timeoutPromise = new Promise((_, reject) => {
@@ -493,7 +493,7 @@ export class AIBrainService {
     const executionTime = Date.now() - startTime;
     await db.update(aiBrainJobs)
       .set({
-        status: finalStatus as any,
+        status: finalStatus as unknown,
         output,
         tokensUsed,
         confidenceScore,

@@ -1507,7 +1507,7 @@ export const universalAuditTrail = pgTable("universal_audit_trail", {
   entityId: varchar("entity_id"),
   entityName: varchar("entity_name", { length: 300 }),
   changeType: varchar("change_type", { length: 10 }).notNull().default("action"),
-  changes: jsonb("changes").$type<Record<string, { old: any; new: any }>>(),
+  changes: jsonb("changes").$type<Record<string, { old: Record<string, unknown>; new: unknown }>>(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
   sourceRoute: varchar("source_route", { length: 200 }),
   sourcePage: varchar("source_page", { length: 100 }),

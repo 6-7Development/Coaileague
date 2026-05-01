@@ -144,7 +144,7 @@ spsDocumentRouter.post('/', async (req: AuthenticatedRequest, res) => {
       contractTerm: input.contractTerm || null,
       officersRequired: input.officersRequired || null,
       stateCode: 'TX',
-      auditLog: [{ action: 'created', timestamp: new Date().toISOString(), by: (req.user)?.id }] as any,
+      auditLog: [{ action: 'created', timestamp: new Date().toISOString(), by: (req.user)?.id }] as unknown,
     }).returning();
 
     res.status(201).json({
@@ -217,9 +217,9 @@ spsDocumentRouter.patch('/:id', async (req: AuthenticatedRequest, res) => {
     if (!existing) return res.status(404).json({ error: 'Document not found' });
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (formData !== undefined) updates.formData = { ...(existing.formData as any || {}), ...formData };
-    if (signatures !== undefined) updates.signatures = { ...(existing.signatures as any || {}), ...signatures };
-    if (initials !== undefined) updates.initials = { ...(existing.initials as any || {}), ...initials };
+    if (formData !== undefined) updates.formData = { ...(existing.formData as Record<string, unknown> || {}), ...formData };
+    if (signatures !== undefined) updates.signatures = { ...(existing.signatures as unknown[] || {}), ...signatures };
+    if (initials !== undefined) updates.initials = { ...(existing.initials as unknown[] || {}), ...initials };
     if (status) updates.status = status;
     if (rest.employeeDob) updates.employeeDob = rest.employeeDob;
     if (rest.guardLicenseNumber) updates.guardLicenseNumber = rest.guardLicenseNumber;
@@ -230,7 +230,7 @@ spsDocumentRouter.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
     if (status === 'completed') {
       updates.completedAt = new Date();
-      const currentLog = (existing.auditLog as any[]) || [];
+      const currentLog = (existing.auditLog as Record<string, unknown>[]) || [];
       updates.auditLog = [...currentLog, { action: 'completed', timestamp: new Date().toISOString(), by: (req.user)?.id }];
     }
 
@@ -271,13 +271,13 @@ spsDocumentRouter.post('/:id/send', async (req: AuthenticatedRequest, res) => {
       .where(and(eq(spsDocuments.id, req.params.id), eq(spsDocuments.workspaceId, workspaceId)));
     if (!existing) return res.status(404).json({ error: 'Document not found' });
 
-    const currentLog = (existing.auditLog as any[]) || [];
+    const currentLog = (existing.auditLog as Record<string, unknown>[]) || [];
     const [doc] = await db.update(spsDocuments)
       .set({
         status: 'sent',
         sentAt: new Date(),
         updatedAt: new Date(),
-        auditLog: [...currentLog, { action: 'sent', timestamp: new Date().toISOString(), by: (req.user)?.id, sentTo: existing.recipientEmail }] as any,
+        auditLog: [...currentLog, { action: 'sent', timestamp: new Date().toISOString(), by: (req.user)?.id, sentTo: existing.recipientEmail }] as unknown,
       })
       .where(and(eq(spsDocuments.id, req.params.id), eq(spsDocuments.workspaceId, workspaceId)))
       .returning();
@@ -418,7 +418,7 @@ If this is a Texas guard card, confirm it appears to be an official Texas DPS Pr
     const [updated] = await db.update(spsDocuments)
       .set({
         idVerificationStatus: newStatus,
-        idVerificationData: verificationResult as any,
+        idVerificationData: verificationResult as unknown,
         updatedAt: new Date(),
       })
       .where(eq(spsDocuments.id, req.params.id))

@@ -422,7 +422,7 @@ class HRISIntegrationService {
 
       const connectionData: InsertPartnerConnection = {
         workspaceId,
-        partnerType: provider as any,
+        partnerType: provider as unknown,
         partnerName: config.name,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
@@ -489,7 +489,7 @@ class HRISIntegrationService {
         .where(
           and(
             eq(partnerConnections.workspaceId, workspaceId),
-            eq(partnerConnections.partnerType, provider as any)
+            eq(partnerConnections.partnerType, provider as unknown)
           )
         );
 
@@ -567,7 +567,7 @@ class HRISIntegrationService {
         .where(
           and(
             eq(partnerConnections.workspaceId, workspaceId),
-            eq(partnerConnections.partnerType, provider as any),
+            eq(partnerConnections.partnerType, provider as unknown),
             eq(partnerConnections.status, 'connected')
           )
         )
@@ -580,7 +580,7 @@ class HRISIntegrationService {
       const syncLog: InsertPartnerSyncLog = {
         workspaceId,
         partnerConnectionId: connection.id,
-        partnerType: provider as any,
+        partnerType: provider as unknown,
         syncType: options.fullSync ? 'full' : 'incremental',
         syncDirection: options.direction,
         status: 'running',
@@ -712,7 +712,7 @@ class HRISIntegrationService {
           .where(
             and(
               eq(partnerDataMappings.workspaceId, connection.workspaceId),
-              eq(partnerDataMappings.partnerType, provider as any),
+              eq(partnerDataMappings.partnerType, provider as unknown),
               eq(partnerDataMappings.entityType, entityType),
               eq(partnerDataMappings.partnerEntityId, this.getRemoteId(remoteRecord, provider))
             )
@@ -1014,7 +1014,7 @@ class HRISIntegrationService {
       .values({
         workspaceId: params.workspaceId,
         partnerConnectionId: params.connectionId,
-        partnerType: params.provider as any,
+        partnerType: params.provider as unknown,
         entityType: params.entityType,
         coaileagueEntityId: params.localId,
         partnerEntityId: params.remoteId,
@@ -1103,7 +1103,7 @@ class HRISIntegrationService {
             .where(
               and(
                 eq(partnerConnections.workspaceId, params.workspaceId),
-                eq(partnerConnections.partnerType, params.provider as any)
+                eq(partnerConnections.partnerType, params.provider as unknown)
               )
             )
             .orderBy(desc(partnerSyncLogs.createdAt))

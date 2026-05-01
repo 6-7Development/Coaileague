@@ -106,8 +106,8 @@ export function globalErrorHandler(
     return;
   }
 
-  if ((err as any).constraint || (err as NodeJS.ErrnoException)?.code?.startsWith('23')) {
-    log.warn('DB constraint violation', { path: req.path, code: (err as NodeJS.ErrnoException)?.code, constraint: (err as any).constraint, requestId: req.requestId });
+  if ((err as Error).constraint || (err as NodeJS.ErrnoException)?.code?.startsWith('23')) {
+    log.warn('DB constraint violation', { path: req.path, code: (err as NodeJS.ErrnoException)?.code, constraint: (err as Error).constraint, requestId: req.requestId });
     res.status(409).json(buildErrorResponse(req, 409, 'Data conflict — operation would violate a data constraint', 'DB_CONSTRAINT'));
     return;
   }

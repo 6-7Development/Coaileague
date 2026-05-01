@@ -33,7 +33,7 @@ export async function requirePlatformAdmin(req: PlatformRequest, res: Response, 
   }
 
   const role = await queryPlatformRole(req.user.id);
-  if (!role || !ADMIN_ROLES.includes(role as any)) {
+  if (!role || !ADMIN_ROLES.includes(role as unknown)) {
     return res.status(403).json({ 
       error: "Platform admin access required",
       currentRole: role 
@@ -52,7 +52,7 @@ export async function requireSupportStaff(req: PlatformRequest, res: Response, n
   }
 
   const role = await queryPlatformRole(req.user.id);
-  if (!role || !STAFF_ROLES.includes(role as any)) {
+  if (!role || !STAFF_ROLES.includes(role as unknown)) {
     return res.status(403).json({ 
       error: "Support staff or admin access required",
       currentRole: role 
@@ -67,6 +67,6 @@ export async function requireSupportStaff(req: PlatformRequest, res: Response, n
  */
 export async function hasPlatformAccess(userId: string): Promise<{ hasAccess: boolean; role: string | null }> {
   const role = await queryPlatformRole(userId);
-  const hasAccess = !!role && STAFF_ROLES.includes(role as any);
+  const hasAccess = !!role && STAFF_ROLES.includes(role as unknown);
   return { hasAccess, role };
 }

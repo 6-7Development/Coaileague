@@ -68,7 +68,7 @@ class TrinityRegulatoryService {
           ORDER BY severity DESC, state ASC, category ASC
         `);
 
-    return (result as any[]).map(r => ({
+    return (result as unknown[]).map(r => ({
       id: r.id,
       state: r.state,
       category: r.category,
@@ -192,7 +192,7 @@ class TrinityRegulatoryService {
       ORDER BY review_date ASC
     `);
 
-    return (result as any[]).map(r => ({
+    return (result as unknown[]).map(r => ({
       id: r.id,
       state: r.state,
       category: r.category,
@@ -215,8 +215,8 @@ class TrinityRegulatoryService {
       FROM regulatory_rules WHERE id = ${ruleId}
     `);
 
-    if (!(result as any[]).length) return `[Rule ${ruleId} not found]`;
-    const r = (result as any[])[0] as any;
+    if (!(result as unknown[]).length) return `[Rule ${ruleId} not found]`;
+    const r = (result as unknown[])[0] as unknown;
     const stateLabel = r.state === 'US' ? 'Federal Law' : `${r.state} State Law`;
     return `[${stateLabel}] ${r.rule_name} — ${r.statute_reference}${
       r.plain_english_summary ? ` | Plain English: ${r.plain_english_summary}` : ''
@@ -236,7 +236,7 @@ class TrinityRegulatoryService {
     const existing = await typedQuery(sql`
       SELECT rule_text FROM regulatory_rules WHERE id = ${ruleId}
     `);
-    const oldText = (existing as any[]).length ? ((existing as any[])[0] as any).rule_text : null;
+    const oldText = (existing as unknown[]).length ? ((existing as unknown[])[0] as unknown).rule_text : null;
 
     await db.insert(regulatoryUpdates).values({
       ruleId: ruleId,

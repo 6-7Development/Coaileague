@@ -176,7 +176,7 @@ export async function verifyRateCompleteness(workspaceId: string) {
       (SELECT default_billable_rate FROM workspaces WHERE id = ${workspaceId}) as workspace_default_billable
   `);
 
-  const rows = result as any;
+  const rows = result as unknown;
   const stats = Array.isArray(rows) ? rows[0] : (rows?.rows ? rows.rows[0] : rows);
 
   const totalEmployees = Number(stats.total_employees);

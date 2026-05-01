@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, ClipboardList, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
-const URGENCY_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const URGENCY_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   low:    { label: "Low",    color: "bg-muted/60 text-muted-foreground border-muted",          icon: Clock },
   normal: { label: "Normal", color: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",   icon: Clock },
   high:   { label: "High",   color: "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30", icon: AlertCircle },
@@ -63,7 +63,7 @@ export default function ServiceRequestsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       apiRequest("PATCH", `/api/service-requests/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/service-requests"] });

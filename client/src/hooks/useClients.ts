@@ -60,7 +60,7 @@ export function useCreateClient() {
 
 export function useUpdateClient() {
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+    mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
       return await apiRequest("PATCH", `/api/clients/${id}`, data);
     },
     onSuccess: () => {

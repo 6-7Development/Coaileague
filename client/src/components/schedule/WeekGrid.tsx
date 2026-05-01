@@ -561,7 +561,7 @@ export function WeekGrid({
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                           {(() => {
                             const pos = resolveEmployeePosition(emp);
-                            return pos ? pos.label : ((emp as any).position || 'Staff');
+                            return pos ? pos.label : ((emp as Record<string, unknown>).position || 'Staff');
                           })()}
                         </span>
                         {weekTotalHours > 0 && (

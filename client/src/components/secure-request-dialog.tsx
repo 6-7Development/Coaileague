@@ -23,7 +23,7 @@ export function SecureRequestDialog({
   requestMessage,
   onSubmit,
 }: SecureRequestDialogProps) {
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<unknown>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleSubmit = () => {

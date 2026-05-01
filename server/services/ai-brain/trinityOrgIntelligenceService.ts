@@ -902,7 +902,7 @@ class TrinityOrgIntelligenceService {
         SELECT payroll_schedule, payroll_day_of_week, payroll_day_of_month, payroll_cutoff_day
         FROM workspaces WHERE id = ${workspaceId} LIMIT 1
       `);
-      const wsPayroll = wsResult[0] as any;
+      const wsPayroll = wsResult[0] as unknown;
 
       if (wsPayroll) {
         patterns.push({

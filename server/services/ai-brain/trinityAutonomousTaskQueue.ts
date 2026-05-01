@@ -133,7 +133,7 @@ class TrinityAutonomousTaskQueue {
       return { success: false, escalated: false };
     }
 
-    const task = taskResult[0] as any;
+    const task = taskResult[0] as unknown;
     const attemptLog: AttemptRecord[] = JSON.parse(
       typeof task.attempt_log === 'string' ? task.attempt_log : JSON.stringify(task.attempt_log || [])
     );
@@ -207,7 +207,7 @@ class TrinityAutonomousTaskQueue {
       escalationReason: escalationReason,
     }).where(eq(trinityAutonomousTasks.id, taskId));
 
-    const taskData = taskResult[0] as any;
+    const taskData = taskResult[0] as unknown;
     const report = this.buildEscalationReport(taskId, taskData, attemptLog, lastFailureClass);
 
     return { success: false, escalated: true, report };
@@ -351,7 +351,7 @@ class TrinityAutonomousTaskQueue {
     .having(sql`SUM(EXTRACT(EPOCH FROM (${shifts.endTime} - ${shifts.startTime})) / 3600.0) >= 32`)
     .catch(() => []);
 
-    for (const officer of (approachingOTResult as any[])) {
+    for (const officer of (approachingOTResult as unknown[])) {
       const weekHours = parseFloat(String(officer.weekHours || '0'));
       const name = `${officer.firstName} ${officer.lastName}`;
 
@@ -495,7 +495,7 @@ class TrinityAutonomousTaskQueue {
       LIMIT 20
     `).catch(() => ([]));
 
-    const tasks: AutonomousTask[] = (result as any[]).map(r => ({
+    const tasks: AutonomousTask[] = (result as unknown[]).map(r => ({
       id: r.id,
       workspaceId: r.workspace_id,
       taskType: r.task_type,
@@ -553,7 +553,7 @@ class TrinityAutonomousTaskQueue {
       LIMIT ${limit}
     `).catch(() => ([]));
 
-    return (result as any[]).map(r => ({
+    return (result as unknown[]).map(r => ({
       id: r.id,
       workspaceId: r.workspace_id,
       taskType: r.task_type,

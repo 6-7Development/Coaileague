@@ -729,17 +729,17 @@ REASONING: [your analysis]`;
       GROUP BY trigger_reason
     `);
 
-    const row = (stats as any[])[0] as any;
+    const row = (stats as unknown[])[0] as unknown;
     
     return {
       totalLogs: parseInt(row?.total_logs || '0'),
       avgCalibratedConfidence: parseFloat(row?.avg_confidence || '0'),
       humanEscalations: parseInt(row?.human_escalations || '0'),
       byResolutionMethod: Object.fromEntries(
-        (byMethod as any[]).map(r => [r.resolution_method, parseInt(r.count)])
+        (byMethod as unknown[]).map(r => [r.resolution_method, parseInt(r.count)])
       ),
       byTriggerReason: Object.fromEntries(
-        (byReason as any[]).map(r => [r.trigger_reason, parseInt(r.count)])
+        (byReason as unknown[]).map(r => [r.trigger_reason, parseInt(r.count)])
       )
     };
   }

@@ -75,7 +75,7 @@ export default function SRAFindings() {
     queryFn: () => sraFetch("/api/sra/findings"),
   });
 
-  const findings: any[] = data?.data || [];
+  const findings: unknown[] = data?.data || [];
 
   const createMutation = useMutation({
     mutationFn: (body) => sraRequest("POST", "/api/sra/findings", body),
@@ -92,7 +92,7 @@ export default function SRAFindings() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: any }) => sraRequest("PATCH", `/api/sra/findings/${id}`, body),
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => sraRequest("PATCH", `/api/sra/findings/${id}`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/sra/findings"] }),
     onError: (error) => {
       setFormError(error.message || "Failed to update finding. Please try again.");

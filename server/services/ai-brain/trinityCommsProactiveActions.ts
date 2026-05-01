@@ -36,7 +36,7 @@ export function registerCommsProactiveActions() {
     const { userId, title, message, workspaceId, urgent } = params;
     if (!userId || !title || !message) return { error: 'userId, title, message required' };
     if (urgent) {
-      const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as any);
+      const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as unknown);
       return { sent: true, userId, result };
     }
     const result = await createNotification({ workspaceId, userId, type: 'alert', title, message, priority: 'normal',
@@ -119,7 +119,7 @@ export function registerCommsProactiveActions() {
       targetType: targetType || 'org',
       createdBy: createdBy || 'trinity-ai',
       sendNow: true,
-    } as any);
+    } as unknown);
     if ((broadcast as Record<string,unknown>)?.id) {
       await broadcastService.deliverBroadcast(((broadcast as {id?: string}).id), workspaceId).catch(() => null);
     }
@@ -159,9 +159,9 @@ export function registerCommsProactiveActions() {
     return {
       generatedAt: new Date().toISOString(),
       workspaceId,
-      openShiftsToday: parseInt(String((openShiftsToday[0] as any)?.count || 0)),
-      expiringCertsNext7Days: parseInt(String((expiringDocs[0] as any)?.count || 0)),
-      pendingPayrollApprovals: parseInt(String((pendingPayroll[0] as any)?.count || 0)),
+      openShiftsToday: parseInt(String((openShiftsToday[0] as unknown)?.count || 0)),
+      expiringCertsNext7Days: parseInt(String((expiringDocs[0] as unknown)?.count || 0)),
+      pendingPayrollApprovals: parseInt(String((pendingPayroll[0] as unknown)?.count || 0)),
       overdueInvoices: overdue.status === 'fulfilled' ? (overdue as Record<string,unknown>).value?.overdueCount || 0 : 'unavailable',
       revenueForecast: forecast.status === 'fulfilled' ? forecast.value : null,
       weeklyScheduleSummary: weeklyReport.status === 'fulfilled' ? weeklyReport.value : null,

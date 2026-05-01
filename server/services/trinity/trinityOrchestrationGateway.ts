@@ -1023,8 +1023,8 @@ export function trinityOrchestrationMiddleware() {
           operation as any,
           trinitySource,
           {
-            resourceId: (res as any).responseData?.id
-              || (res as any).responseData?.data?.id
+            resourceId: (res as Record<string, unknown>).responseData?.id
+              || (res as Record<string, unknown>).responseData?.data?.id
               || undefined,
             metadata: { method, endpoint, status: responseStatus },
           }

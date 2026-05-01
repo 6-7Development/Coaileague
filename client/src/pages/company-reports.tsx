@@ -137,7 +137,7 @@ export default function CompanyReports() {
         <Share2 className="h-4 w-4 mr-2" />
         Share
       </Button>
-      <Select onValueChange={(val) => exportMutation.mutate(val as any)}>
+      <Select onValueChange={(val) => exportMutation.mutate(val as string)}>
         <SelectTrigger className="w-full md:w-[140px]">
           <Download className="h-4 w-4 mr-2" />
           Export

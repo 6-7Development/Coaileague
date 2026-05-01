@@ -388,7 +388,7 @@ class TrinityAutonomousSchedulerService {
         trinityOrgIntelligenceService.learnOrgPatterns(config.workspaceId).catch(() => [] as unknown[]),
       ]);
       const workspaceTier = workspaceRow[0]?.tier || 'professional';
-      const orgPatterns: any[] = loadedOrgPatterns ?? [];
+      const orgPatterns: unknown[] = loadedOrgPatterns ?? [];
       // Build client-specific staffing overrides from learned patterns
       const clientMinStaffOverrides = new Map<string, Map<number, number>>();
       const employeeAvoidDays = new Map<string, Set<number>>();

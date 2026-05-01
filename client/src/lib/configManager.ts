@@ -28,14 +28,14 @@ export const configManager = {
   // API Endpoints
   getEndpoint,
   buildApiUrl,
-  getEndpointGroup: (category: string) => (API_ENDPOINTS as any)[category],
+  getEndpointGroup: (category: string) => (API_ENDPOINTS as unknown)[category],
   
   // Feature Toggles
   isFeatureEnabled,
   allFeaturesEnabled,
   anyFeatureEnabled,
   getEnabledFeatures: (category: string) => {
-    const group = (FEATURE_TOGGLES as any)[category];
+    const group = (FEATURE_TOGGLES as unknown)[category];
     if (!group) return [];
     return Object.entries(group)
       .filter(([_, value]) => value === true)
@@ -76,7 +76,7 @@ export const configManager = {
  */
 export function useConfigValue<T = any>(path: string): T {
   const parts = path.split(".");
-  let current: any = {
+  let current: Record<string, unknown> = {
     app: APP_CONFIG,
     api: API_ENDPOINTS,
     features: FEATURE_TOGGLES,

@@ -2,7 +2,7 @@ export function trimStrings<T extends Record<string, unknown>>(obj: T): T {
   const result = { ...obj };
   for (const key of Object.keys(result)) {
     if (typeof result[key] === 'string') {
-      (result as any)[key] = (result[key] as string).trim();
+      (result as unknown)[key] = (result[key] as string).trim();
     }
   }
   return result;

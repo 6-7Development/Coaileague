@@ -134,7 +134,7 @@ export default function ApplicantVisualCompliance() {
   }));
 
   const summary = summaryData?.summary;
-  const artifacts: any[] = artifactsData?.artifacts ?? [];
+  const artifacts: unknown[] = artifactsData?.artifacts ?? [];
 
   // Get the latest artifact for each slot type
   const latestByType: Record<string, unknown> = {};

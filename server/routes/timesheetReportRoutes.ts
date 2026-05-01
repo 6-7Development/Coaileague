@@ -288,7 +288,7 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
     if (report.summary.breakDeductions) {
       doc.text(`Break Deductions: ${(report as Record<string, unknown>).summary.breakDeductions.toFixed(2)} hours`);
     }
-    doc.text(`Status: Approved (${(report as Record<string, unknown>).summary.statusBreakdown?.approved || 0}) | Pending (${(report as Record<string, unknown>).summary.statusBreakdown?.pending || 0}) | (Rejected as any) (${(report.summary as any).statusBreakdown?.rejected || 0})`);
+    doc.text(`Status: Approved (${(report as Record<string, unknown>).summary.statusBreakdown?.approved || 0}) | Pending (${(report as Record<string, unknown>).summary.statusBreakdown?.pending || 0}) | (Rejected as unknown) (${(report.summary as unknown).statusBreakdown?.rejected || 0})`);
     doc.moveDown(2);
 
     doc.fontSize(14).text('Time Entries', { underline: true });
@@ -330,8 +330,8 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
         yPos += 20;
         doc.font('Helvetica').fontSize(8);
       }
-      const clockIn = (entry as Record<string,unknown>).clockIn ? new (Date as any)(entry.clockIn) : null;
-      const clockOut = (entry as Record<string,unknown>).clockOut ? new (Date as any)(entry.clockOut) : null;
+      const clockIn = (entry as Record<string,unknown>).clockIn ? new (Date as unknown)(entry.clockIn) : null;
+      const clockOut = (entry as Record<string,unknown>).clockOut ? new (Date as unknown)(entry.clockOut) : null;
 
       const rowData = [
         entry.employeeName || 'Unknown',

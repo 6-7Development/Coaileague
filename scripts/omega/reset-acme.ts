@@ -43,7 +43,7 @@ async function run() {
     AND id != ${SPS_ID}
     LIMIT 1
   `);
-  const acme = (rows.rows || rows)[0] as any;
+  const acme = (rows.rows || rows)[0] as unknown;
 
   if (!acme) {
     console.error('❌ ACME workspace not found. Cannot proceed.');

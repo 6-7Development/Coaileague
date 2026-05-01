@@ -692,7 +692,7 @@ class TrinityMemoryOptimizer {
           FROM ${sql.raw(tq.name)}
         `);
         
-        const row = ((stats as any[])[0] || { row_count: 0, oldest_age_days: 0, avg_age_days: 0 }) as {
+        const row = ((stats as unknown[])[0] || { row_count: 0, oldest_age_days: 0, avg_age_days: 0 }) as {
           row_count: number;
           oldest_age_days: number;
           avg_age_days: number;

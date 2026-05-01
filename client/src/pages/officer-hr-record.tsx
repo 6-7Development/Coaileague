@@ -19,7 +19,7 @@ import { Loader2, Plus, Star, AlertTriangle, FileText, User, ChevronLeft, Sparkl
 import { format } from "date-fns";
 import { Link } from "wouter";
 
-const NOTE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const NOTE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string | React.ReactNode }> = {
   commendation: { label: "Commendation", color: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30", icon: Star },
   concern: { label: "Concern", color: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30", icon: AlertTriangle },
   warning: { label: "Warning", color: "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30", icon: AlertTriangle },

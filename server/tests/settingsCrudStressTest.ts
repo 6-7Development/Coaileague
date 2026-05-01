@@ -612,7 +612,7 @@ async function phase8_multi_field_atomicity() {
   let allPersisted = true;
   let failedFields: string[] = [];
   for (const [key, expected] of Object.entries(testBatch)) {
-    const actual = (persisted as any)?.[key];
+    const actual = (persisted as unknown)?.[key];
     if (actual !== expected) {
       allPersisted = false;
       failedFields.push(`${key}: expected=${expected}, got=${actual}`);
@@ -632,7 +632,7 @@ async function phase8_multi_field_atomicity() {
 
   let allRestored = true;
   for (const [key, expected] of Object.entries(original)) {
-    if ((restored[0] as any)?.[key] !== expected) allRestored = false;
+    if ((restored[0] as unknown)?.[key] !== expected) allRestored = false;
   }
 
   record({
@@ -707,7 +707,7 @@ async function phase10_notification_toggle_roundtrip() {
 
   for (const channel of channels) {
     const current = await storage.getNotificationPreferences(user.id, ws.id);
-    const originalValue = (current as any)?.[channel] ?? true;
+    const originalValue = (current as unknown)?.[channel] ?? true;
 
     await storage.createOrUpdateNotificationPreferences(user.id, ws.id, { [channel]: !originalValue });
     const toggled = await storage.getNotificationPreferences(user.id, ws.id);
@@ -715,8 +715,8 @@ async function phase10_notification_toggle_roundtrip() {
     record({
       name: `Toggle ${channel}: ${originalValue} → ${!originalValue}`,
       phase: 'NOTIF_TOGGLE',
-      passed: (toggled as any)?.[channel] === !originalValue,
-      details: `Expected: ${!originalValue}, Got: ${(toggled as any)?.[channel]}`,
+      passed: (toggled as unknown)?.[channel] === !originalValue,
+      details: `Expected: ${!originalValue}, Got: ${(toggled as unknown)?.[channel]}`,
       severity: 'critical',
     });
 
@@ -741,7 +741,7 @@ async function phase11_storage_interface() {
   ];
 
   for (const method of requiredMethods) {
-    const exists = typeof (storage as any)[method] === 'function';
+    const exists = typeof (storage as unknown)[method] === 'function';
     record({
       name: `storage.${method} Exists`,
       phase: 'STORAGE',

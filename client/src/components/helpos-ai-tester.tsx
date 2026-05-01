@@ -219,7 +219,7 @@ export function CoAIleagueAiTester() {
                 !message.trim() || 
                 testAiMutation.isPending || 
                 switchWorkspaceMutation.isPending ||
-                (!user?.currentWorkspaceId && (workspaces as any[]).length > 1)
+                (!user?.currentWorkspaceId && (workspaces as unknown[]).length > 1)
               }
               style={{
                 background: "linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)",

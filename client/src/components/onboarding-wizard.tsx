@@ -21,7 +21,7 @@ interface OnboardingStep {
   title: string;
   description: string;
   screenshot?: string;
-  icon: any;
+  icon: string | React.ReactNode;
   features: string[];
   url?: string;
 }

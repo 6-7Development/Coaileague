@@ -42,7 +42,7 @@ export function registerSkillBridgeActions(): void {
   const listSkills: ActionHandler = {
     actionId: 'skills.list',
     name: 'List Available Skills',
-    category: 'intelligence' as any,
+    category: 'intelligence' as unknown,
     description:
       'Returns the manifests of every skill the caller is authorized to execute, after RBAC + tier checks. Used by Trinity to decide which skill to delegate work to.',
     requiredRoles: [],
@@ -73,13 +73,13 @@ export function registerSkillBridgeActions(): void {
   const getManifest: ActionHandler = {
     actionId: 'skills.get_manifest',
     name: 'Get Skill Manifest',
-    category: 'intelligence' as any,
+    category: 'intelligence' as unknown,
     description:
       'Returns the manifest for a single skill by id (capabilities, requiredTier, requiredRole, dependencies).',
     requiredRoles: [],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
-      const skillId = (request.payload as any)?.skillId || (request.payload as any)?.id;
+      const skillId = (request.payload as unknown)?.skillId || (request.payload as unknown)?.id;
       if (!skillId) {
         return {
           success: false,
@@ -111,7 +111,7 @@ export function registerSkillBridgeActions(): void {
   const skillHealth: ActionHandler = {
     actionId: 'skills.health',
     name: 'Skill Registry Health',
-    category: 'intelligence' as any,
+    category: 'intelligence' as unknown,
     description:
       'Returns total / healthy / unhealthy skill counts so Trinity can route around skills that are degraded.',
     requiredRoles: [],
@@ -141,14 +141,14 @@ export function registerSkillBridgeActions(): void {
   const skillExecute: ActionHandler = {
     actionId: 'skill.execute',
     name: 'Execute Skill',
-    category: 'intelligence' as any,
+    category: 'intelligence' as unknown,
     description:
       'Executes a registered skill by id. Routes through skillRegistry.executeSkill() so RBAC, tier gating, dependency checks, and audit logging fire automatically. Inputs: skillId, params (skill-specific).',
     requiredRoles: [],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
       const start = Date.now();
-      const skillId = (request.payload as any)?.skillId || (request.payload as any)?.id;
-      const params = (request.payload as any)?.params ?? (request.payload as any) ?? {};
+      const skillId = (request.payload as unknown)?.skillId || (request.payload as unknown)?.id;
+      const params = (request.payload as unknown)?.params ?? (request.payload as unknown) ?? {};
       if (!skillId) {
         return {
           success: false,

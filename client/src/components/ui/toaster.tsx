@@ -10,7 +10,7 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(({ id, title, description, action, variant, ...props }) => (
-        <Toast key={id} variant={variant as any} {...props}>
+        <Toast key={id} variant={variant as string} {...props}>
           {/* Icon slot */}
           {getToastIcon(variant as string)}
 

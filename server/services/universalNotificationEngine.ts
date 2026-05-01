@@ -37,7 +37,7 @@ async function deliverPushNotification(userId: string, title: string, body: stri
   try {
     const { NotificationDeliveryService } = await import('./notificationDeliveryService');
     await NotificationDeliveryService.send({
-      type: (options?.type as any) || 'system_alert',
+      type: (options?.type as unknown) || 'system_alert',
       workspaceId: options?.workspaceId || 'system',
       recipientUserId: userId,
       channel: 'push',
@@ -454,7 +454,7 @@ export class UniversalNotificationEngine {
           .values({
             workspaceId: payload.workspaceId,
             userId: payload.userId,
-            type: payload.type as any,
+            type: payload.type as unknown,
             title: enrichedTitle,
             message: enrichedMessage,
             actionUrl: payload.actionUrl,
@@ -542,7 +542,7 @@ export class UniversalNotificationEngine {
               .values({
                 workspaceId: payload.workspaceId,
                 userId: emp.userId,
-                type: payload.type as any,
+                type: payload.type as unknown,
                 title: rbacTitle,
                 message: personalMessage,
                 actionUrl: payload.actionUrl,
@@ -620,7 +620,7 @@ export class UniversalNotificationEngine {
               .values({
                 workspaceId: payload.workspaceId,
                 userId: emp.userId,
-                type: payload.type as any,
+                type: payload.type as unknown,
                 title: broadcastTitle,
                 message: personalMessage,
                 actionUrl: payload.actionUrl,
@@ -1080,7 +1080,7 @@ export class UniversalNotificationEngine {
         id: updateId,
         title: finalTitle,
         description: safeDescription,
-        category: safeCategory as any,
+        category: safeCategory as unknown,
         workspaceId: safeWorkspaceId || PLATFORM_WORKSPACE_ID,
         priority: payload.priority || 1,
         isNew: true,

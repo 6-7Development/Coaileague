@@ -283,7 +283,7 @@ export function registerOpsActions() {
       LEFT JOIN employee_payroll_info epi ON epi.employee_id = e.id
       WHERE e.workspace_id = ${workspaceId} AND e.status = 'active'
     `);
-    const pr = ((payrollInfoRows as any[])[0] || {}) as any;
+    const pr = ((payrollInfoRows as unknown[])[0] || {}) as unknown;
 
     const checks = {
       org: {

@@ -44,11 +44,11 @@ const log = createLogger('billingEnforcementMiddleware');
 export function requireBillingFeature(featureKey: string): RequestHandler {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const workspaceId = req.workspaceId || (req.user as any)?.workspaceId;
+      const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
       if (!workspaceId) return next(); // No workspace context — let route handle auth
 
       const tier = await getWorkspaceTier(workspaceId);
-      const activeAddons: string[] = (req as any).activeAddons || [];
+      const activeAddons: string[] = (req as Record<string, unknown>).activeAddons || [];
 
       const result = evaluateBillingFeatureGate({ tier, featureKey, activeAddons });
 
@@ -84,7 +84,7 @@ export function requireBillingFeature(featureKey: string): RequestHandler {
 export function requireBillingTier(minimumTier: BillingTierKey): RequestHandler {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const workspaceId = req.workspaceId || (req.user as any)?.workspaceId;
+      const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
       if (!workspaceId) return next();
 
       const tier = normalizeBillingTier(await getWorkspaceTier(workspaceId));
@@ -124,12 +124,12 @@ export const enforceClientPortalSeats: RequestHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const workspaceId = req.workspaceId || (req.user as any)?.workspaceId;
+    const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
     if (!workspaceId) return next();
 
     const tier = await getWorkspaceTier(workspaceId);
     // currentClientPortalSeats should be passed from route context or fetched
-    const currentSeats = (req as any).currentClientPortalSeats ?? 0;
+    const currentSeats = (req as Record<string, unknown>).currentClientPortalSeats ?? 0;
 
     const result = evaluateClientPortalSeatPolicy({
       tier,
@@ -172,11 +172,11 @@ export function enforceTokenPolicy(actionId: string): RequestHandler {
       // Core ops are never throttled regardless of token state
       if (isNeverThrottleAction(actionId)) return next();
 
-      const workspaceId = req.workspaceId || (req.user as any)?.workspaceId;
+      const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
       if (!workspaceId) return next();
 
       const tier = await getWorkspaceTier(workspaceId);
-      const usedTokensBefore = (req as any).workspaceTokensUsed ?? 0;
+      const usedTokensBefore = (req as Record<string, unknown>).workspaceTokensUsed ?? 0;
 
       const result = evaluateTokenUsagePolicy({
         workspaceId,
@@ -208,8 +208,8 @@ export function enforceTokenPolicy(actionId: string): RequestHandler {
 
       // Attach warning level for Trinity to surface proactive messages
       if (warningLevel !== 'none') {
-        (req as any).tokenWarningLevel = warningLevel;
-        (req as any).tokenUsagePercent = result.percentUsed;
+        (req as Record<string, unknown>).tokenWarningLevel = warningLevel;
+        (req as Record<string, unknown>).tokenUsagePercent = result.percentUsed;
       }
 
       next();
@@ -235,13 +235,13 @@ export const attachBillingContext: RequestHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const workspaceId = req.workspaceId || (req.user as any)?.workspaceId;
+    const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
     if (!workspaceId) return next();
 
     const tier = await getWorkspaceTier(workspaceId);
     const snapshot = getBillingTierSnapshot(tier);
-    (req as any).billingTier = tier;
-    (req as any).billingSnapshot = snapshot;
+    (req as Record<string, unknown>).billingTier = tier;
+    (req as Record<string, unknown>).billingSnapshot = snapshot;
 
     next();
   } catch (err: unknown) {

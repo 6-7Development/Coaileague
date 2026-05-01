@@ -169,12 +169,12 @@ export async function executePayrollAnomalyWorkflow(
           status: 'pending',
           updatedAt: new Date(),
           providerData: {
-            ...((run.providerData as any) ?? {}),
+            ...((run.providerData as unknown) ?? {}),
             trinityBlocked: true,
             trinityBlockReason: 'high-severity anomalies detected',
             trinityBlockedAt: new Date().toISOString(),
-          } as any,
-        } as any)
+          } as unknown,
+        } as unknown)
         .where(
           and(
             eq(payrollRuns.id, params.payrollRunId),
@@ -220,7 +220,7 @@ export async function executePayrollAnomalyWorkflow(
         highestSeverity,
         blocked,
       },
-    } as any);
+    } as unknown);
   } catch (err: unknown) {
     log.warn('[payroll-anomaly] event publish failed:', err?.message);
   }

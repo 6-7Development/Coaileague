@@ -483,7 +483,7 @@ class BillingStateManagerAgent {
 
     await db.update(invoiceLifecycleStates)
       .set({
-        currentState: newState as any,
+        currentState: newState as unknown,
         previousState: currentState,
         stateChangedAt: new Date(),
         stateChangedBy: options?.userId,

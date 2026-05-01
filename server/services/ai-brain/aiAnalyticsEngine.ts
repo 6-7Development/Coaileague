@@ -309,7 +309,7 @@ class ContextResolver {
 class GeminiClientWrapper {
   private genAI: GoogleGenerativeAI | null;
   private model: GenerativeModel | null;
-  private requestQueue: Array<{ resolve: Function; reject: Function; request: any }> = [];
+  private requestQueue: Array<{ resolve: Function; reject: Function; request: unknown }> = [];
   private isProcessing = false;
   private lastRequestTime = 0;
   private MIN_REQUEST_INTERVAL_MS = 100; // Rate limit: 10 requests/second max

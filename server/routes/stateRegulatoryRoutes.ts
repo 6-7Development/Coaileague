@@ -159,11 +159,10 @@ router.get('/workforce/guidance', requireAuth, async (req: AuthenticatedRequest,
     }
 
     const guidance = trinityWorkforceProtocol.getGuidanceForSituation(
-      situation as any,
-      workerType as any,
+      situation as unknown,
+      workerType as unknown,
       stateCode,
-      (validSeverities.includes(severity as string) ? severity : 'moderate') as any
-    );
+      (validSeverities.includes(severity as string) ? severity : 'moderate') as unknown);
     res.json(guidance);
   } catch (err: unknown) {
     res.status(500).json({ error: sanitizeError(err) });
@@ -182,7 +181,7 @@ router.get('/workforce/protocol/:workerType', requireAuth, async (req: Authentic
     if (!['employee', 'contractor'].includes(workerType)) {
       return res.status(400).json({ error: 'Invalid workerType. Must be "employee" or "contractor".' });
     }
-    const protocol = trinityWorkforceProtocol.getWorkerTypeProtocol(workerType as any);
+    const protocol = trinityWorkforceProtocol.getWorkerTypeProtocol(workerType as unknown);
     res.json(protocol);
   } catch (err: unknown) {
     res.status(500).json({ error: sanitizeError(err) });
@@ -244,7 +243,7 @@ router.get('/states/:stateCode', async (req, res) => {
 // POST /api/regulatory/states — platform admin creates state config
 router.post('/states', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    if (!(req as any).user?.isPlatformAdmin) return res.status(403).json({ error: 'Platform admin only' });
+    if (!(req as Record<string, unknown>).user?.isPlatformAdmin) return res.status(403).json({ error: 'Platform admin only' });
 
     const parsed = insertStateRegulatoryConfigSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
@@ -260,7 +259,7 @@ router.post('/states', requireAuth, async (req: AuthenticatedRequest, res) => {
 // PATCH /api/regulatory/states/:stateCode
 router.patch('/states/:stateCode', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    if (!(req as any).user?.isPlatformAdmin) return res.status(403).json({ error: 'Platform admin only' });
+    if (!(req as Record<string, unknown>).user?.isPlatformAdmin) return res.status(403).json({ error: 'Platform admin only' });
 
     const [updated] = await db
       .update(stateRegulatoryConfig)

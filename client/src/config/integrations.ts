@@ -222,7 +222,7 @@ export function isIntegrationEnabled(name: keyof typeof INTEGRATIONS): boolean {
  * Usage: getIntegrationUrl('stripe')
  */
 export function getIntegrationUrl(name: keyof typeof INTEGRATIONS): string {
-  return (INTEGRATIONS[name] as any)?.apiUrl || "";
+  return (INTEGRATIONS[name] as unknown)?.apiUrl || "";
 }
 
 /**
@@ -230,7 +230,7 @@ export function getIntegrationUrl(name: keyof typeof INTEGRATIONS): string {
  * Usage: getIntegrationApiKey('gemini')
  */
 export function getIntegrationApiKey(name: keyof typeof INTEGRATIONS): string | null {
-  const integration = INTEGRATIONS[name] as any;
+  const integration = INTEGRATIONS[name] as unknown;
   if (!integration?.apiKeyEnv) return null;
   
   // Get from environment - client-side only has access to VITE_ prefixed vars
@@ -267,5 +267,5 @@ export function getIntegrationForFeature(feature: string): string | null {
  */
 export function isFeatureSupported(feature: string): boolean {
   const integration = getIntegrationForFeature(feature);
-  return integration !== null && isIntegrationEnabled(integration as any);
+  return integration !== null && isIntegrationEnabled(integration as unknown);
 }

@@ -241,7 +241,7 @@ export class QuickBooksOAuthService {
     state: string,
     realmId: string,
     requestDomain?: string
-  ): Promise<{ workspaceId: string; connection: any }> {
+  ): Promise<{ workspaceId: string; connection: unknown }> {
     await this.cleanupExpiredStates();
     
     const [oauthState] = await db.select()

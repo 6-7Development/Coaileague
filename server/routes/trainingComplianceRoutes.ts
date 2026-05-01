@@ -83,7 +83,7 @@ router.get("/records", requireAuth, async (req: AuthenticatedRequest, res) => {
                  LEFT JOIN employees e ON e.id = etr.employee_id AND e.workspace_id = $1
                  LEFT JOIN training_requirements tr ON tr.id = etr.requirement_id
                  WHERE etr.workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (employee_id) { query += ` AND etr.employee_id = $${i++}`; vals.push(employee_id); }
     if (status) { query += ` AND etr.status = $${i++}`; vals.push(status); }

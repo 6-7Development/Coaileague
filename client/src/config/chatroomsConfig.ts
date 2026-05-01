@@ -272,5 +272,5 @@ export function getRoomOwnership(room: unknown): RoomOwnership {
 }
 
 export function isSupportRole(platformRole?: string | null): boolean {
-  return !!platformRole && SUPPORT_ROLES.includes(platformRole as any);
+  return !!platformRole && SUPPORT_ROLES.includes(platformRole as string);
 }

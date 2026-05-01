@@ -1414,7 +1414,7 @@ async function executeLookupTimesheets(
     const periodDays = args.periodDays || 7;
     const startDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(timeEntries.workspaceId, context.workspaceId),
       gte(timeEntries.clockIn, startDate),
     ];
@@ -1468,7 +1468,7 @@ async function executeLookupPayroll(
       return { success: false, data: null, error: 'Workspace context required' };
     }
 
-    const conditions: any[] = [eq(payrollRuns.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(payrollRuns.workspaceId, context.workspaceId)];
 
     if (args.payrollRunId) {
       conditions.push(eq(payrollRuns.id, args.payrollRunId));
@@ -1552,7 +1552,7 @@ async function executeLookupInvoices(
       }
     }
 
-    const conditions: any[] = [eq(invoices.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(invoices.workspaceId, context.workspaceId)];
 
     if (args.invoiceId) {
       conditions.push(eq(invoices.id, args.invoiceId));
@@ -1610,7 +1610,7 @@ async function executeLookupEmployees(
       return { success: false, data: null, error: 'Workspace context required' };
     }
 
-    const conditions: any[] = [eq(employees.workspaceId, context.workspaceId)];
+    const conditions: unknown[] = [eq(employees.workspaceId, context.workspaceId)];
 
     if (args.employeeId) {
       conditions.push(eq(employees.id, args.employeeId));
@@ -1835,7 +1835,7 @@ async function executeLookupIncidents(
   try {
     const daysBack = args.daysBack || 30;
     const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-    const conditions: any[] = [gte(securityIncidents.reportedAt, cutoff)];
+    const conditions: unknown[] = [gte(securityIncidents.reportedAt, cutoff)];
     if (context.workspaceId) conditions.push(eq(securityIncidents.workspaceId, context.workspaceId));
     if (args.status) conditions.push(eq(securityIncidents.status, args.status as unknown));
     if (args.severity) conditions.push(eq(securityIncidents.severity, args.severity as unknown));

@@ -485,7 +485,7 @@ async function handleInboundWebhook(
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
   // Check 1: Signature verification
-  const signatureValid = verifyResendSignature(rawBody, req.headers as any);
+  const signatureValid = verifyResendSignature(rawBody, req.headers as unknown);
   if (!signatureValid) {
     log.warn(`[InboundEmail] Invalid signature for ${targetAddress} — returning 401`);
     // Per spec: still return a safe response; 401 is acceptable for signature failure
@@ -541,7 +541,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
   // Step 1: Signature verification
-  if (!verifyResendSignature(rawBody, req.headers as any)) {
+  if (!verifyResendSignature(rawBody, req.headers as unknown)) {
     log.warn('[InboundEmail/root] Invalid signature');
     res.status(401).json({ error: 'Invalid webhook signature' });
     return;
@@ -954,7 +954,7 @@ inboundEmailRouter.post('/per-org', async (req: Request, res: Response) => {
       ? req.rawBody
       : Buffer.from(typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body));
 
-  const signatureValid = verifyResendSignature(rawBody, req.headers as any);
+  const signatureValid = verifyResendSignature(rawBody, req.headers as unknown);
   if (!signatureValid) {
     log.warn('[InboundEmail/per-org] Invalid signature');
     res.status(401).json({ error: 'Invalid webhook signature' });

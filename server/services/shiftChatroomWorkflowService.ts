@@ -1042,7 +1042,7 @@ class ShiftChatroomWorkflowService {
       for (const msg of officerMessages) {
         const time = format(new Date(msg.createdAt), 'HH:mm');
         if (msg.messageType === 'photo') {
-          const gps = (msg as any).metadata?.gps;
+          const gps = (msg as Record<string, unknown>).metadata?.gps;
           const gpsNote = gps ? ` [GPS: ${gps.lat?.toFixed(5)}, ${gps.lng?.toFixed(5)}]` : '';
           lines.push(`**${time}** — [PHOTO DOCUMENTATION]${gpsNote} ${msg.content || ''}`.trim());
         } else if (msg.messageType === 'report') {
@@ -1132,7 +1132,7 @@ class ShiftChatroomWorkflowService {
    * Get site info for shift
    */
   async getSiteInfo(shiftId: string): Promise<{
-    site: any | null;
+    site: unknown | null;
     contacts: unknown[];
     address: string | null;
   }> {

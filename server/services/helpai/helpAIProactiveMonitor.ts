@@ -194,7 +194,7 @@ class HelpAIProactiveMonitor {
           isNull(shifts.assignedEmployeeId)
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'uncovered_shift_imminent');
@@ -234,7 +234,7 @@ class HelpAIProactiveMonitor {
           )
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'officer_late_clock_in');
@@ -263,7 +263,7 @@ class HelpAIProactiveMonitor {
           notInArray(complianceDocuments.status, ['expired', 'revoked'])
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'license_expiring_soon');
@@ -295,7 +295,7 @@ class HelpAIProactiveMonitor {
           eq(chatMessages.senderType, 'client')
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'client_message_unread');
@@ -324,7 +324,7 @@ class HelpAIProactiveMonitor {
           lt(sql`COALESCE(${incidentReports.occurredAt}, ${incidentReports.updatedAt})`, sql`NOW() - INTERVAL '2 hours'`)
         ));
 
-      const count = parseInt(String((result[0] as any)?.count || '0'));
+      const count = parseInt(String((result[0] as unknown)?.count || '0'));
       if (count === 0) return [];
 
       const alreadySent = await this.isAlertRecentlySent(workspaceId, 'incident_report_incomplete');
@@ -421,7 +421,7 @@ class HelpAIProactiveMonitor {
         message: alert.description,
         severity: alert.priority === 'critical' ? 'critical' : alert.priority === 'high' ? 'warning' : 'info',
         source: 'helpai_proactive_monitor',
-      } as any);
+      } as unknown);
 
       if (alert.priority === 'critical' || alert.priority === 'high') {
         await trinityHelpaiCommandBus.sendAlert({

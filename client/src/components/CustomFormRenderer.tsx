@@ -52,8 +52,8 @@ export interface CustomFormTemplate {
 
 interface CustomFormRendererProps {
   template: CustomFormTemplate;
-  onSubmit: (data: Record<string, any>) => Promise<void>;
-  initialData?: Record<string, any>;
+  onSubmit: (data: Record<string, unknown>) => Promise<void>;
+  initialData?: Record<string, unknown>;
   submitLabel?: string;
 }
 
@@ -106,7 +106,7 @@ export function CustomFormRenderer({
     defaultValues: initialData,
   });
 
-  const handleSubmit = async (data: Record<string, any>) => {
+  const handleSubmit = async (data: Record<string, unknown>) => {
     setIsSubmitting(true);
     try {
       await onSubmit(data);

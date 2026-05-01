@@ -226,7 +226,7 @@ async function chaosStripeWebhookRace(
   return {
     row: {
       testCase: 'Stripe Webhook',
-      systematicResult: `declined→${(declined.stateAfter as any).status ?? '?'}, success→${(succeeded.stateAfter as any).status ?? '?'}`,
+      systematicResult: `declined→${(declined.stateAfter as unknown).status ?? '?'}, success→${(succeeded.stateAfter as unknown).status ?? '?'}`,
       semanticOutcome: gapFound
         ? 'State-drift detected between webhook payload and Synapse invoice state'
         : 'Synapse mirrored the Stripe sandbox state on both decline + retry',

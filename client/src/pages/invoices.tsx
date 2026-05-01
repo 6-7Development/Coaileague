@@ -1346,7 +1346,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} value={(field.value as any) ?? ''} aria-required="true" />
+                            <Input type="date" {...field} value={(field.value as unknown) ?? ''} aria-required="true" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1373,7 +1373,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.1" {...field} value={(field.value as any) ?? ''} />
+                          <Input type="number" step="0.1" {...field} value={(field.value as unknown) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1455,7 +1455,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} value={(field.value as any) ?? ''} data-testid="input-create-duedate" />
+                            <Input type="date" {...field} value={(field.value as unknown) ?? ''} data-testid="input-create-duedate" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1482,7 +1482,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.1" {...field} value={(field.value as any) ?? ''} data-testid="input-create-tax" />
+                          <Input type="number" step="0.1" {...field} value={(field.value as unknown) ?? ''} data-testid="input-create-tax" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

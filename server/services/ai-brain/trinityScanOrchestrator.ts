@@ -294,7 +294,7 @@ class TrinityScanOrchestrator {
       const gapCategories = new Map<string, { count: number; descriptions: string[] }>();
 
       for (const gap of gaps) {
-        const category = (gap as any).category || 'unknown';
+        const category = (gap as Record<string, unknown>).category || 'unknown';
         const current = gapCategories.get(category) || { count: 0, descriptions: [] };
         current.count++;
         if (gap.gapDescription && current.descriptions.length < 5) {

@@ -57,7 +57,7 @@ export function registerExtendedActions() {
           3: { wages: 0, fica: 0 },
           4: { wages: 0, fica: 0 },
         };
-        for (const row of (rows as any[])) {
+        for (const row of (rows as unknown[][])) {
           const q = Number(row.quarter);
           quarterMap[q] = { wages: Number(row.total_wages), fica: Number(row.total_fica) };
         }
@@ -200,7 +200,7 @@ export function registerExtendedActions() {
         let ytdEmployeeFICA = 0;
         let ytdFUTA = 0;
 
-        for (const row of (rows as any[])) {
+        for (const row of (rows as unknown[][])) {
           const gross = Number(row.ytd_gross);
           ytdGrossWages += gross;
           ytdEmployeeFICA += Number(row.employee_ss) + Number(row.employee_medicare);

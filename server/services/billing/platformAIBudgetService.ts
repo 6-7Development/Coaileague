@@ -290,7 +290,7 @@ class PlatformAIBudgetService {
   }): Promise<{ success: boolean; error?: string }> {
     try {
       const updates: string[] = ['updated_at = NOW()'];
-      const values: any[] = [params.provider];
+      const values: unknown[] = [params.provider];
       let paramIdx = 2;
 
       if (params.monthlyBudgetCents !== undefined) {

@@ -39,7 +39,7 @@ const log = createLogger('scheduleLiveNotifier');
  * as the root cause of shift notifications being "likely broken but
  * invisible". Observability only — no logic change.
  */
-function logNotifierError(label: string, err: any, extra?: Record<string, unknown>) {
+function logNotifierError(label: string, err: unknown, extra?: Record<string, unknown>) {
   log.error(label, {
     message: err instanceof Error ? err.message : String(err),
     code: err?.code,
@@ -322,10 +322,10 @@ export async function onSchedulePublished(params: {
         const employeeName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
 
         const shiftEntries = empShifts
-          .sort((a, b) => new Date((a as any).startTime).getTime() - new Date((b as any).startTime).getTime())
+          .sort((a, b) => new Date((a as Record<string, unknown>).startTime).getTime() - new Date((b as Record<string, unknown>).startTime).getTime())
           .map(s => {
-            const st = new Date((s as any).startTime);
-            const et = new Date((s as any).endTime);
+            const st = new Date((s as Record<string, unknown>).startTime);
+            const et = new Date((s as Record<string, unknown>).endTime);
             const dayName = DAYS[st.getDay()];
             const dateStr = `${MONTHS[st.getMonth()]} ${st.getDate()}`;
             const startStr = st.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -335,9 +335,9 @@ export async function onSchedulePublished(params: {
               date: dateStr,
               startTime: startStr,
               endTime: endStr,
-              siteName: (s as any).location || (s as any).siteName || 'TBD',
-              postTitle: (s as any).title || (s as any).postTitle || 'Security Officer',
-              specialInstructions: (s as any).notes || undefined,
+              siteName: (s as Record<string, unknown>).location || (s as Record<string, unknown>).siteName || 'TBD',
+              postTitle: (s as Record<string, unknown>).title || (s as Record<string, unknown>).postTitle || 'Security Officer',
+              specialInstructions: (s as Record<string, unknown>).notes || undefined,
             };
           });
 

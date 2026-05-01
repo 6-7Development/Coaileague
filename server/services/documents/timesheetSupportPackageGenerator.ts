@@ -132,7 +132,7 @@ function drawEntryTable(doc: PDFKit.PDFDocument, rows: JoinedTimesheetRow[]): vo
       doc.fontSize(7).font('Helvetica').fillColor('#374151');
     }
 
-    const entry = row.timeEntry as any;
+    const entry = row.timeEntry as unknown;
     const y = doc.y;
     const hours = getEntryHours(entry).toFixed(2);
     const values = [
@@ -180,7 +180,7 @@ export async function generateTimesheetSupportPackage(
       gte(timeEntries.clockIn, periodStart),
       lte(timeEntries.clockIn, periodEnd),
       ...(clientId ? [eq(timeEntries.clientId, clientId)] : []),
-      ...(status ? [eq(timeEntries.status, status as any)] : []),
+      ...(status ? [eq(timeEntries.status, status as unknown)] : []),
     ];
 
     const rows = await db.select({
@@ -196,8 +196,8 @@ export async function generateTimesheetSupportPackage(
       .where(and(...conditions))
       .orderBy(timeEntries.clockIn);
 
-    const totalHours = rows.reduce((sum, row) => sum + getEntryHours(row.timeEntry as any), 0);
-    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmountValue(row.timeEntry as any))));
+    const totalHours = rows.reduce((sum, row) => sum + getEntryHours(row.timeEntry as unknown), 0);
+    const totalBillable = formatCurrency(sumFinancialValues(rows.map(row => getBillableAmountValue(row.timeEntry as unknown))));
     const workspaceName = (workspace as Record<string,unknown>)?.companyName || (workspace as Record<string,unknown>)?.name || workspaceId;
     const periodLabel = `${formatDate(periodStart)} – ${formatDate(periodEnd)}`;
 

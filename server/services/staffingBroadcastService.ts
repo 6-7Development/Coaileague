@@ -232,7 +232,7 @@ export async function acceptShiftToken(token: string): Promise<AcceptTokenResult
     .where(isNull(broadcastRecipients.actionTakenAt));
 
   const recipient = allRecipients.find(r => {
-    const data = r.responseData as any;
+    const data = r.responseData as unknown;
     return safeTokenEqual(data?.token, token);
   });
 
@@ -240,7 +240,7 @@ export async function acceptShiftToken(token: string): Promise<AcceptTokenResult
     return { success: false, notFound: true };
   }
 
-  const data = recipient.responseData as any;
+  const data = recipient.responseData as unknown;
 
   // Check expiry
   if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
@@ -668,7 +668,7 @@ export async function resolveReplacementToken(
 
   // Find the matching record (token must match confirmToken OR declineToken)
   const match = rows.find((r) => {
-    const rd = r.responseData as any;
+    const rd = r.responseData as unknown;
     return safeTokenEqual(rd?.confirmToken, token) || safeTokenEqual(rd?.declineToken, token);
   });
 
@@ -676,7 +676,7 @@ export async function resolveReplacementToken(
     return { valid: false };
   }
 
-  const rd = match.responseData as any;
+  const rd = match.responseData as unknown;
 
   // Verify the token belongs to the expected action
   const isConfirmToken = safeTokenEqual(rd?.confirmToken, token);

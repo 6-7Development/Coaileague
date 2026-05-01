@@ -180,7 +180,7 @@ export function virusScanMiddleware(options: VirusScanOptions = {}): RequestHand
         // Call custom threat handler if provided
         if (options.onThreatDetected) {
           const failedFile = files.find(
-            (f) => (f as any).scanResult?.sha256Hash === mostSevere.result.sha256Hash
+            (f) => (f as Record<string, unknown>).scanResult?.sha256Hash === mostSevere.result.sha256Hash
           );
           options.onThreatDetected(
             mostSevere.result,

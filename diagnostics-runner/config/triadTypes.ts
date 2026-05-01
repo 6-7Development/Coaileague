@@ -220,7 +220,7 @@ export type TriadEventType =
 export interface TriadEvent {
   type: TriadEventType;
   crawlerType?: CrawlerType;
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string;
 }
 

@@ -27,7 +27,7 @@ export function requestTimeout(req: Request, res: Response, next: NextFunction):
 
   const timer = setTimeout(() => {
     if (res.headersSent) return;
-    const err: any = new Error(`Request timed out after ${ms}ms`);
+    const err: unknown = new Error(`Request timed out after ${ms}ms`);
     err.code = 'REQUEST_TIMEOUT';
     err.status = 408;
     next(err);

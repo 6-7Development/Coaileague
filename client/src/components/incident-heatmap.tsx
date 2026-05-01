@@ -41,7 +41,7 @@ function weightToColor(weight: number, max: number): string {
 
 function LeafletMap({ points, maxWeight }: { points: HeatPoint[]; maxWeight: number }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
+  const mapInstance = useRef<unknown>(null);
   const markersRef = useRef<any[]>([]);
 
   useEffect(() => {

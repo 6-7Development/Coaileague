@@ -259,7 +259,7 @@ async function runTrinityVisionAnalysis(
       return { status: 'flagged', confidenceScore: 0, reasoningText: `Vision API error: ${response.status}` };
     }
 
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const rawText: string = data?.content?.[0]?.text ?? '{}';
 
     // Parse JSON from Trinity's response (handle markdown code fences)

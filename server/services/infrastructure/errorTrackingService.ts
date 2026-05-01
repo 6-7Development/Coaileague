@@ -399,7 +399,7 @@ class ErrorTrackingService {
     // CATEGORY C — Raw SQL retained: Dynamic query execution for error tracking | Tables: dynamic | Verified: 2026-03-23
     const result = await typedQuery(query);
     const rows = Array.isArray(result) ? result : ((result as Record<string, unknown>).rows || []);
-    const count = (rows as any[])[0]?.count || 0;
+    const count = (rows as unknown[][])[0]?.count || 0;
     
     if (rule.condition === 'error_rate') {
       const rate = count / rule.windowMinutes;
@@ -475,16 +475,16 @@ class ErrorTrackingService {
         GROUP BY e.severity
       `);
 
-      const total = ((totalResult as Record<string,unknown>).rows as any[])[0]?.total || 0;
-      const critical = ((criticalResult as Record<string,unknown>).rows as any[])[0]?.total || 0;
+      const total = ((totalResult as Record<string,unknown>).rows as unknown[][])[0]?.total || 0;
+      const critical = ((criticalResult as Record<string,unknown>).rows as unknown[][])[0]?.total || 0;
       
       const errorsBySource: Record<string, number> = {};
-      for (const row of ((bySourceResult as Record<string,unknown>).rows as any[]) || []) {
+      for (const row of ((bySourceResult as Record<string,unknown>).rows as unknown[][]) || []) {
         errorsBySource[row.source] = row.count;
       }
       
       const errorsBySeverity: Record<string, number> = {};
-      for (const row of ((bySeverityResult as Record<string,unknown>).rows as any[]) || []) {
+      for (const row of ((bySeverityResult as Record<string,unknown>).rows as unknown[][]) || []) {
         errorsBySeverity[row.severity] = row.count;
       }
 
@@ -492,7 +492,7 @@ class ErrorTrackingService {
         totalErrors: total,
         criticalErrors: critical,
         errorRate: total / windowMinutes,
-        topErrors: (((topResult as Record<string,unknown>).rows as any[]) || []).map(r => ({
+        topErrors: (((topResult as Record<string,unknown>).rows as unknown[][]) || []).map(r => ({
           fingerprint: r.fingerprint,
           message: r.message,
           count: r.count,

@@ -563,7 +563,7 @@ export default function DocumentLibrary() {
     queryFn: () => apiFetch('/api/contracts', AnyResponse),
   });
 
-  const { data: contractStats } = useQuery<{ stats: any }>({
+  const { data: contractStats } = useQuery<{ stats: Record<string, unknown> }>({
     queryKey: ["/api/contracts/stats"],
     enabled: isContractsView,
     queryFn: () => apiFetch('/api/contracts/stats', AnyResponse),

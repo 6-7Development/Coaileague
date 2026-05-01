@@ -304,7 +304,7 @@ router.get('/search/by-number/:ticketNumber', requireAuth, attachWorkspaceId, as
     }
 
     // Build conditions
-    const conditions: any[] = [eq(supportTickets.ticketNumber, ticketNumber)];
+    const conditions: unknown[] = [eq(supportTickets.ticketNumber, ticketNumber)];
 
     // Workspace scoping for non-platform staff
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -316,7 +316,7 @@ router.get('/search/by-number/:ticketNumber', requireAuth, attachWorkspaceId, as
       where: and(...conditions),
     });
 
-    let ticket: any = rawTicket;
+    let ticket: unknown = rawTicket;
     if (rawTicket && (rawTicket as Record<string,unknown>).workspaceId) {
       const ws = await db.query.workspaces.findFirst({ where: eq(workspaces.id, (rawTicket as Record<string,unknown>).workspaceId) });
       ticket = { ...rawTicket, workspace: ws || null };
@@ -376,7 +376,7 @@ router.get('/search/by-status/:status', requireAuth, attachWorkspaceId, async (r
     const { page, limit, sortBy, sortOrder } = paginationResult.data;
 
     // Build conditions
-    const conditions: any[] = [eq(supportTickets.status, status)];
+    const conditions: unknown[] = [eq(supportTickets.status, status)];
 
     // Workspace scoping
     const isPlatformStaffUser = hasPlatformWideAccess(req.platformRole);
@@ -463,7 +463,7 @@ router.get('/search/by-requestor', requireAuth, attachWorkspaceId, async (req: A
     const { page, limit, sortBy, sortOrder } = paginationResult.data;
 
     // Build conditions
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       or(
         ilike(supportTickets.requestedBy, `%${requestor}%`),
         ilike(supportTickets.description, `%${requestor}%`)
@@ -676,7 +676,7 @@ router.get('/search/my-tickets', requireAuth, attachWorkspaceId, async (req: Aut
       userCondition = eq(supportTickets.reportedBy, userId);
     }
 
-    const conditions: any[] = [userCondition];
+    const conditions: unknown[] = [userCondition];
 
     // Optional status filter
     const status = req.query.status as string;

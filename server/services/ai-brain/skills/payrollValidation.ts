@@ -396,7 +396,7 @@ export class PayrollValidationSkill extends BaseSkill {
 
   private async generateAIInsights(
     issues: ValidationIssue[], 
-    summary: any,
+    summary: Record<string, unknown>,
     context: SkillContext
   ): Promise<string> {
     try {
@@ -453,7 +453,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
 
   private generateRecommendations(
     issues: ValidationIssue[],
-    summary: any, gapAnalysis: unknown): string[] {
+    summary: Record<string, unknown>, gapAnalysis: unknown): string[] {
     const recommendations: string[] = [];
 
     if (summary.criticalIssues > 0) {
@@ -482,7 +482,7 @@ Provide 2-3 sentences of actionable insights. Be specific and direct.`;
 
   private calculateConfidence(
     issues: ValidationIssue[],
-    summary: any, gapAnalysis: unknown): number {
+    summary: Record<string, unknown>, gapAnalysis: unknown): number {
     let confidence = 1.0;
 
     // Deduct for critical issues

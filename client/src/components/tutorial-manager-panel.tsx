@@ -21,7 +21,7 @@ interface Tutorial {
   id: string;
   title: string;
   category: 'account' | 'security' | 'password' | 'access' | 'verification';
-  icon: any;
+  icon: string | React.ReactNode;
   steps: string[];
   commands?: string[];
   difficulty: 'easy' | 'medium' | 'hard';

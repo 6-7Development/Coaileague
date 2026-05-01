@@ -145,7 +145,7 @@ function ActionLogCard({ log, onReview }: { log: AiBrainActionLog; onReview: (id
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>Created: {createdAt.toLocaleString()}</span>
               </div>
-              {(log as any).result !== 'REVIEWED' && (
+              {(log as Record<string, unknown>).result !== 'REVIEWED' && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -156,7 +156,7 @@ function ActionLogCard({ log, onReview }: { log: AiBrainActionLog; onReview: (id
                   Mark Reviewed
                 </Button>
               )}
-              {(log as any).result === 'REVIEWED' && (
+              {(log as Record<string, unknown>).result === 'REVIEWED' && (
                 <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Reviewed
@@ -193,7 +193,7 @@ export default function AIAuditLogViewer() {
     enabled: hasAccess,
   });
 
-  const { data: statsData } = useQuery<{ success: boolean; stats: any }>({
+  const { data: statsData } = useQuery<{ success: boolean; stats: Record<string, unknown> }>({
     queryKey: ['/api/ai/audit-logs/stats'],
     enabled: hasAccess,
   });

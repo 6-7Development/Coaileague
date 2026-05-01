@@ -308,7 +308,7 @@ class PlatformChangeMonitorService {
             platformStatus: 'operational',
             requiresAction: aiSummary.requiresAction,
             actionRequired: aiSummary.actionRequired,
-            detailedCategory: aiSummary.detailedCategory as any,
+            detailedCategory: aiSummary.detailedCategory as unknown,
             sourceType: aiSummary.sourceType as string,
             sourceName: aiSummary.sourceName,
             endUserSummary: aiSummary.endUserSummary,
@@ -481,8 +481,8 @@ class PlatformChangeMonitorService {
       }
     }
 
-    const prevHealth = previous.healthStatus as any;
-    const currHealth = current.healthStatus as any;
+    const prevHealth = previous.healthStatus as unknown;
+    const currHealth = current.healthStatus as unknown;
     
     if (prevHealth?.overall !== currHealth?.overall) {
       changes.push({
@@ -824,7 +824,7 @@ Respond ONLY with valid JSON:
     if (!category) return 'announcement'; // Default generic updates go to What's New
     
     // Direct match to valid enum value
-    if (PlatformChangeMonitorService.VALID_CATEGORIES.includes(category as any)) {
+    if (PlatformChangeMonitorService.VALID_CATEGORIES.includes(category as unknown)) {
       return category;
     }
     

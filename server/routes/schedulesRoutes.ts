@@ -232,7 +232,7 @@ router.post('/publish', requireManager, async (req: AuthenticatedRequest, res) =
             const day = start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
             const startT = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             const endT = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${day}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${startT} – ${endT}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${(s as any).location || (s as any).siteName || 'See schedule'}</td></tr>`;
+            return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${day}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${startT} – ${endT}</td><td style="padding:6px 12px;border-bottom:1px solid #e5e7eb;">${(s as Record<string, unknown>).location || (s as Record<string, unknown>).siteName || 'See schedule'}</td></tr>`;
           }).join('');
 
           await emailService.send({

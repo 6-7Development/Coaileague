@@ -383,7 +383,7 @@ async function trinityVerifyPaymentAmount(
     });
 
     if (!response.ok) return false;
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const text = data?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return false;

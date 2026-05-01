@@ -402,7 +402,7 @@ export async function markInvoicePaid(
   workspaceId: string,
   amountPaid?: number,
   paymentIntentId?: string
-): Promise<{ success: boolean; invoice: any }> {
+): Promise<{ success: boolean; invoice: unknown }> {
   const invoice = await db.query.invoices.findFirst({
     where: and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)),
   });

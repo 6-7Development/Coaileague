@@ -73,7 +73,7 @@ function SiteSelector({ workspaceId, onSelect }: { workspaceId: string | undefin
     enabled: !!workspaceId,
   });
 
-  const allSites: any[] = sites.data?.sites || [];
+  const allSites: unknown[] = sites.data?.sites || [];
   const filtered = search
     ? allSites.filter(s => `${s.name} ${s.client_name} ${s.city} ${s.state}`.toLowerCase().includes(search.toLowerCase()))
     : allSites;
@@ -140,7 +140,7 @@ function SiteSelector({ workspaceId, onSelect }: { workspaceId: string | undefin
 }
 
 // Address display after site selection
-function SelectedSiteInfo({ site }: { site: any }) {
+function SelectedSiteInfo({ site }: { site: Record<string, unknown> }) {
   if (!site) return null;
   return (
     <div className="flex items-start gap-2 p-2 rounded-md bg-muted/50 text-xs text-muted-foreground">
@@ -404,7 +404,7 @@ export default function RMSHub() {
   });
 
   const updateVisitor = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PUT", `/api/rms/visitors/${id}`, { ...data, workspaceId }),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiRequest("PUT", `/api/rms/visitors/${id}`, { ...data, workspaceId }),
     onSuccess: () => { invalidateAll(); toast({ title: "Visitor updated" }); },
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -464,7 +464,7 @@ export default function RMSHub() {
   });
 
   const transferCustody = useMutation({
-    mutationFn: ({ evidenceId, data }: { evidenceId: string; data: any }) => apiRequest("POST", `/api/rms/evidence/${evidenceId}/transfer`, { ...data, workspaceId }),
+    mutationFn: ({ evidenceId, data }: { evidenceId: string; data: Record<string, unknown> }) => apiRequest("POST", `/api/rms/evidence/${evidenceId}/transfer`, { ...data, workspaceId }),
     onSuccess: () => { invalidateAll(); queryClient.invalidateQueries({ queryKey: ["/api/rms/evidence", selectedEvidenceId, "custody"] }); toast({ title: "Custody transferred" }); },
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -667,7 +667,7 @@ export default function RMSHub() {
         const reader = new FileReader();
         reader.onload = async () => {
           const base64Data = reader.result as string;
-          const result: any = await uploadPhoto.mutateAsync({ base64Data, fileName: `${testId}-${Date.now()}.jpg`, category: 'visitor-photos' });
+          const result: unknown = await uploadPhoto.mutateAsync({ base64Data, fileName: `${testId}-${Date.now()}.jpg`, category: 'visitor-photos' });
           if (result?.url) onCapture(result.url);
         };
         reader.readAsDataURL(file);
@@ -731,7 +731,7 @@ export default function RMSHub() {
     );
   }
 
-  function VisitorDetailView({ visitor }: { visitor: any }) {
+  function VisitorDetailView({ visitor }: { visitor: Record<string, unknown> }) {
     if (!visitor) return null;
 
     const isOverdue = visitor.expected_departure && !visitor.checked_out_at && new Date(visitor.expected_departure) < new Date();
@@ -1618,8 +1618,8 @@ export default function RMSHub() {
           {viewIncident && (
             <div className="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
               <div className="flex gap-2 flex-wrap">
-                <Badge variant={(PRIORITY_COLORS[viewIncident.priority] || "outline") as any}>{viewIncident.priority}</Badge>
-                <Badge variant={(STATUS_COLORS[viewIncident.status] || "outline") as any}>{viewIncident.status}</Badge>
+                <Badge variant={(PRIORITY_COLORS[viewIncident.priority] || "outline") as string}>{viewIncident.priority}</Badge>
+                <Badge variant={(STATUS_COLORS[viewIncident.status] || "outline") as string}>{viewIncident.status}</Badge>
                 <span className="text-muted-foreground">{viewIncident.category?.replace(/_/g, " ")}</span>
               </div>
               <p className="font-semibold text-base">{viewIncident.title}</p>

@@ -16,7 +16,7 @@ function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Pro
   return {
     actionId,
     name: actionId,
-    category: category as any,
+    category: category as unknown,
     description: `Trinity action: ${actionId}`,
     requiredRoles: ['manager', 'owner', 'root_admin'],
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -288,8 +288,8 @@ export function registerTimesheetPayrollCycleActions() {
         deductions: (entry as unknown)[0]?.deductions,
         regularHours: entry[0].regularHours,
         overtimeHours: entry[0].overtimeHours,
-        periodStart: (entry[0] as any).periodStart,
-        periodEnd: (entry[0] as any).periodEnd,
+        periodStart: (entry[0] as unknown).periodStart,
+        periodEnd: (entry[0] as unknown).periodEnd,
       }
     };
   }));
@@ -457,7 +457,7 @@ export function registerTimesheetPayrollCycleActions() {
     // GAP-20 FIX: workspaceId added to WHERE so a Trinity action cannot void a foreign workspace's invoice.
     if (!invoiceId || !workspaceId) return { error: 'invoiceId and workspaceId required' };
     await db.update(invoices)
-      .set({ status: 'void', notes: `[VOIDED] ${reason || 'Trinity void and reissue'}`, updatedAt: new Date() } as any)
+      .set({ status: 'void', notes: `[VOIDED] ${reason || 'Trinity void and reissue'}`, updatedAt: new Date() } as unknown)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'invoice_voided',
@@ -475,7 +475,7 @@ export function registerTimesheetPayrollCycleActions() {
     if (!invoiceId || !workspaceId) return { error: 'invoiceId and workspaceId required' };
     const followUp = followupDate ? new Date(followupDate) : new Date(Date.now() + 5 * 86400000);
     await db.update(invoices)
-      .set({ notes: `[FOLLOWUP_SCHEDULED:${followUp.toISOString()}] ${message || 'Automated follow-up reminder'}`, updatedAt: new Date() } as any)
+      .set({ notes: `[FOLLOWUP_SCHEDULED:${followUp.toISOString()}] ${message || 'Automated follow-up reminder'}`, updatedAt: new Date() } as unknown)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)));
     await platformEventBus.publish({
       eventType: 'automation_completed',

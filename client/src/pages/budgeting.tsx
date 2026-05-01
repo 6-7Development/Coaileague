@@ -67,7 +67,7 @@ interface BudgetLine {
 }
 
 function ForecastDashboard() {
-  const { data, isLoading } = useQuery<{ historical: unknown[]; projected: unknown[]; summary: any }>({
+  const { data, isLoading } = useQuery<{ historical: unknown[]; projected: unknown[]; summary: Record<string, unknown> }>({
     queryKey: ['/api/analytics/forecast'],
   });
 

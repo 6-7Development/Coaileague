@@ -201,7 +201,7 @@ export default function Unavailability() {
                         <Badge className={getTypeColor(entry.requestType)}>
                           {entry.requestType.charAt(0).toUpperCase() + entry.requestType.slice(1)}
                         </Badge>
-                        <Badge variant={getStatusVariant(entry.status) as any}>
+                        <Badge variant={getStatusVariant(entry.status) as string}>
                           {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                         </Badge>
                       </div>

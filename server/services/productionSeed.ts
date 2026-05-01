@@ -609,9 +609,9 @@ export async function runProductionDataCleanup(): Promise<void> {
       db.select({ count: sql`COUNT(*)` }).from(orgLedger).where(eq(orgLedger.workspaceId, protectedWs)),
     ]);
 
-    const sentInvoicesCount = parseInt(String((sentInvoices[0] as any)?.count || '0'));
-    const payrollCount = parseInt(String((payrollEntriesCount[0] as any)?.count || '0'));
-    const ledgerCount = parseInt(String((ledgerEntries[0] as any)?.count || '0'));
+    const sentInvoicesCount = parseInt(String((sentInvoices[0] as unknown)?.count || '0'));
+    const payrollCount = parseInt(String((payrollEntriesCount[0] as unknown)?.count || '0'));
+    const ledgerCount = parseInt(String((ledgerEntries[0] as unknown)?.count || '0'));
 
     if (sentInvoicesCount > 0 || payrollCount > 0 || ledgerCount > 0) {
       log.error(`[BLOCKED] runProductionDataCleanup REFUSED — financial records exist in protected workspace:`);
@@ -676,7 +676,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         eq(employees.workspaceId, protectedWs),
         ...(GRANDFATHERED_OWNER ? [ne(employees.userId, GRANDFATHERED_OWNER)] : [])
       )) : [{ count: '0' }];
-    const sandboxEmpCount = parseInt(String((protectedEmp[0] as any)?.count || '0'));
+    const sandboxEmpCount = parseInt(String((protectedEmp[0] as unknown)?.count || '0'));
 
     // Count phantom users
     const phantomUserRows = await typedQuery<{ cnt: string }>(sql`

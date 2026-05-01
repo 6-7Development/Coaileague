@@ -212,7 +212,7 @@ const BUILT_IN_TEMPLATES: Record<string, { name: string; description: string; fi
 
 // ─── Field palette config ─────────────────────────────────────────────────────
 
-const FIELD_PALETTE: { type: FieldType; label: string; icon: any; group: string }[] = [
+const FIELD_PALETTE: { type: FieldType; label: string; icon: string | React.ReactNode; group: string }[] = [
   { type: "text", label: "Text Input", icon: Type, group: "Basic" },
   { type: "textarea", label: "Text Area", icon: AlignLeft, group: "Basic" },
   { type: "number", label: "Number", icon: Hash, group: "Basic" },
@@ -502,7 +502,7 @@ function FormBuilder({
   const [title, setTitle] = useState(initial?.name || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [category, setCategory] = useState<string>((initial as Record<string,unknown>)?.category || "onboarding");
-  const [fields, setFields] = useState<FormField[]>((initial?.template as any)?.fields || []);
+  const [fields, setFields] = useState<FormField[]>((initial?.template as unknown)?.fields || []);
   const [approverRole, setApproverRole] = useState<string>((initial as Record<string,unknown>)?.routingRules?.approverRole || "supervisor");
   const [requiresApproval, setRequiresApproval] = useState<boolean>((initial as Record<string,unknown>)?.routingRules?.requiresApproval ?? false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -585,7 +585,7 @@ function FormBuilder({
     if (!title.trim()) { toast({ title: "Form title required", variant: "destructive" }); return; }
     if (fields.length === 0) { toast({ title: "Add at least one field", variant: "destructive" }); return; }
     const routingRules = requiresApproval ? { requiresApproval: true, approverRole } : null;
-    onSave({ name: title, description, category, template: { fields }, isActive: true, routingRules } as any);
+    onSave({ name: title, description, category, template: { fields }, isActive: true, routingRules } as unknown);
   }
 
   // ─── Analytics Helpers ──────────────────────────────────────────────────
@@ -857,7 +857,7 @@ function SubmissionsViewer({ form, onBack }: { form: CustomForm; onBack: () => v
     onError: () => toast({ title: "Failed to update submission", variant: "destructive" }),
   });
 
-  const formFields: FormField[] = (form.template as any)?.fields || [];
+  const formFields: FormField[] = (form.template as unknown)?.fields || [];
 
   if (selectedSubmission) {
     const formData = selectedSubmission.formData || selectedSubmission.form_data || {};
@@ -1083,7 +1083,7 @@ function SubmissionsViewer({ form, onBack }: { form: CustomForm; onBack: () => v
 
 function FormCard({ form, onEdit, onDelete, onDuplicate, onViewSubmissions, analytics }:
   { form: CustomForm; onEdit: () => void; onDelete: () => void; onDuplicate: () => void; onViewSubmissions: () => void; analytics: any }) {
-  const fields = (form.template as any)?.fields || [];
+  const fields = (form.template as unknown)?.fields || [];
   const fieldCounts = fields.reduce((acc: Record<string, number>, f: FormField) => {
     acc[f.type] = (acc[f.type] || 0) + 1;
     return acc;
@@ -1177,7 +1177,7 @@ export default function AdminCustomForms() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/form-builder/forms/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => apiRequest("PATCH", `/api/form-builder/forms/${id}`, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/form-builder/forms"] }); toast({ title: "Form updated" }); setBuilderMode("list"); setEditingForm(null); },
     onError: () => toast({ title: "Failed to update form", variant: "destructive" }),
   });

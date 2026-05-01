@@ -335,7 +335,7 @@ export class APICrawler {
       });
       
       const responseTime = Date.now() - startTime;
-      let responseBody: any = null;
+      let responseBody: unknown = null;
       
       try {
         const text = await response.text();

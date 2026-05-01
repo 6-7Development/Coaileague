@@ -40,7 +40,7 @@ export class WorkflowRunner {
     console.log(`[Workflow] Starting: ${workflow.name}`);
     const startTime = Date.now();
     
-    const contextOptions: any = {
+    const contextOptions: Record<string, unknown> = {
       viewport: { width: 1920, height: 1080 },
       userAgent: 'DiagnosticsRunner/1.0 (Playwright)',
       ignoreHTTPSErrors: true

@@ -95,7 +95,7 @@ export default function EmployeeComplianceDetail() {
   const [selectedStateId, setSelectedStateId] = useState<string>("");
   const [addStateDialogOpen, setAddStateDialogOpen] = useState(false);
 
-  const { data: employeeData, isLoading: employeeLoading } = useQuery<{ success: boolean; employee: any }>({
+  const { data: employeeData, isLoading: employeeLoading } = useQuery<{ success: boolean; employee: unknown }>({
     queryKey: ['/api/employees', employeeId],
     enabled: !!employeeId,
   });

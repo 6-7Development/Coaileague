@@ -122,7 +122,7 @@ function COIRequestDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       onOpenChange(false);
       setForm({ reason: "", additionalInfo: "", clientName: "", certificateHolder: "" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -214,7 +214,7 @@ function RenewalRequestDialog({
       onOpenChange(false);
       setNotes("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -311,7 +311,7 @@ function ClientMessagesTab({ clientId }: { clientId: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/client-comms/portal/threads", clientId] });
       setCompose("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const selectedThread = threads.find(t => t.id === selectedId) || null;
@@ -531,7 +531,7 @@ function InvoicePaymentModal({ invoice, accessToken, onClose, onPaid }: InvoiceP
     setErrorMsg("");
     (async () => {
       try {
-        const data: any = await apiRequest(
+        const data: Record<string, unknown> = await apiRequest(
           "POST",
           `/api/portal/${accessToken}/invoice/${invoice.id}/create-payment-intent`
         );
@@ -744,7 +744,7 @@ export default function ClientPortal() {
       setPreRegForm({ expectedVisitorName: '', expectedVisitorCompany: '', visitorType: 'guest', siteName: '', expectedArrival: '', expectedDeparture: '', hostName: '', hostContact: '', reason: '' });
       setShowPreRegForm(false);
     },
-    onError: (err: any) => { toast({ title: 'Error', description: err.message, variant: 'destructive' }); },
+    onError: (err: unknown) => { toast({ title: 'Error', description: err.message, variant: 'destructive' }); },
   });
   const allVisitors = visitorsData?.visitors || [];
   const filteredVisitors = allVisitors.filter(v => {
@@ -792,7 +792,7 @@ export default function ClientPortal() {
       queryClient.invalidateQueries({ queryKey: ["/api/service-requests"] });
       setSvcReqForm({ requestType: "", description: "", urgency: "normal", requestedDate: "" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   // ── Settings ─────────────────────────────────────────────────────────────────
@@ -805,7 +805,7 @@ export default function ClientPortal() {
       toast({ title: "Profile Updated", description: "Your name has been updated successfully." });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
   const changePasswordMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/auth/change-password", {
@@ -816,7 +816,7 @@ export default function ClientPortal() {
       toast({ title: "Password Changed", description: "Your password has been updated. Please log in again." });
       setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword("");
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: unknown) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   // ── Phase 25 — Client Identity: CLT number + self-service PIN ───────────────
@@ -833,7 +833,7 @@ export default function ClientPortal() {
       setClientPinInput("");
       queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/client/self/status"] });
     },
-    onError: (e: any) => toast({
+    onError: (e: unknown) => toast({
       title: "Could not save PIN",
       description: e?.message || "Please try again",
       variant: "destructive",
@@ -845,7 +845,7 @@ export default function ClientPortal() {
       toast({ title: "Client PIN cleared" });
       queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/client/self/status"] });
     },
-    onError: (e: any) => toast({
+    onError: (e: unknown) => toast({
       title: "Could not clear PIN",
       description: e?.message || "Please try again",
       variant: "destructive",
@@ -853,7 +853,7 @@ export default function ClientPortal() {
   });
   // CLT-XXX-NNNNN — primary canonical identifier; clientCode is the optional
   // external QuickBooks-style code if the tenant maintains one separately.
-  const clientNumber = (currentClient as any)?.clientNumber || (currentClient as any)?.clientCode || null;
+  const clientNumber = (currentClient as unknown)?.clientNumber || (currentClient as unknown)?.clientCode || null;
   const copyClientNumber = () => {
     if (!clientNumber) return;
     navigator.clipboard.writeText(clientNumber);
@@ -871,7 +871,7 @@ export default function ClientPortal() {
       setSettingsFirstName((user as Record<string,unknown>).firstName || "");
       setSettingsLastName((user as Record<string,unknown>).lastName || "");
     }
-  }, [(user as any)?.firstName, (user as any)?.lastName]);
+  }, [(user as unknown)?.firstName, (user as unknown)?.lastName]);
 
   if (!currentClient) {
     const notFoundConfig: CanvasPageConfig = { id: "client-portal-not-found", title: "Client Dashboard", subtitle: "Client Account Not Found", category: "dashboard" };
@@ -893,7 +893,7 @@ export default function ClientPortal() {
     category: "dashboard",
   };
 
-  const reportTypeConfig: Record<string, { icon: any; color: string; label: string }> = {
+  const reportTypeConfig: Record<string, { icon: string | React.ReactNode; color: string; label: string }> = {
     billing_discrepancy: { icon: DollarSign, color: "text-amber-500", label: "Billing Discrepancy" },
     complaint: { icon: AlertTriangle, color: "text-red-500", label: "Complaint" },
     staff_issue: { icon: AlertCircle, color: "text-orange-500", label: "Staff Issue" },
@@ -1812,7 +1812,7 @@ export default function ClientPortal() {
                   </div>
                 ) : (
                   <div className="space-y-2" data-testid="client-pre-registrations-list">
-                    {preRegistrations.map((p: any) => (
+                    {preRegistrations.map((p: unknown) => (
                       <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-md border flex-wrap" data-testid={`card-client-prereg-${p.id}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -2261,7 +2261,7 @@ export default function ClientPortal() {
 
       {/* Floating DockChat Widget */}
       <DockChatWidget
-        orgWorkspaceId={(user as any)?.workspaceId || ""}
+        orgWorkspaceId={(user as unknown)?.workspaceId || ""}
         clientId={String(currentClient.id)}
         clientName={currentClient.companyName || `${currentClient.firstName || ""} ${currentClient.lastName || ""}`.trim()}
         clientEmail={currentClient.email || user?.email || ""}

@@ -318,7 +318,7 @@ class ApiKeyRotationService {
       // Get existing key
       const result = await db.select().from(managedApiKeys).where(eq(managedApiKeys.id, keyId));
       
-      const oldKey = ((result as Record<string, unknown>).rows as any[])[0];
+      const oldKey = ((result as Record<string, unknown>).rows as unknown[][])[0];
       if (!oldKey) {
         return { success: false, oldKeyId: keyId, error: 'Key not found' };
       }
@@ -441,7 +441,7 @@ class ApiKeyRotationService {
         SELECT * FROM managed_api_keys WHERE status = 'expiring_soon'
       `);
 
-      for (const key of (expiringResult as any[]) || []) {
+      for (const key of (expiringResult as unknown[]) || []) {
         try {
           await platformEventBus.publish({
             type: 'api_key_expiring',
@@ -472,7 +472,7 @@ class ApiKeyRotationService {
             AND status = 'expiring_soon'
         `);
 
-        for (const row of (result as any[]) || []) {
+        for (const row of (result as unknown[]) || []) {
           await this.rotateKey(row.id, 'system', 'Auto-rotation due to expiry');
         }
       } catch (error) {
@@ -530,7 +530,7 @@ class ApiKeyRotationService {
       
       // CATEGORY C — Raw SQL retained: Dynamic query execution | Tables: managed_api_keys | Verified: 2026-03-23
       const result = await typedQuery(query);
-      return (result as any[]).map(this.rowToManagedKey);
+      return (result as unknown[]).map(this.rowToManagedKey);
     } catch (error) {
       log.error('[ApiKeyRotation] Failed to get keys:', error);
       return [];

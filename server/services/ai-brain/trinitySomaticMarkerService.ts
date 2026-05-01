@@ -212,7 +212,7 @@ class TrinitySomaticMarkerService {
   async seedPlatformPatterns(): Promise<void> {
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: somatic_pattern_library | Verified: 2026-03-23
     const existing = await typedPool(`SELECT COUNT(*) as count FROM somatic_pattern_library WHERE workspace_id IS NULL`).catch(() => [{ count: '0' }]);
-    if (parseInt((existing as any[])[0]?.count || '0', 10) >= 5) return;
+    if (parseInt((existing as unknown[])[0]?.count || '0', 10) >= 5) return;
 
     const platformPatterns = [
       { coverage_risk: 1, high_severity: 1, client_impact: 1, repeat_situation: 1, urgency: 0.8 },

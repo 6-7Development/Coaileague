@@ -738,7 +738,7 @@ class TrinityChatService {
     ]);
 
     const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'there';
-    const workspaceRole = (workspaceMembership as any[])[0]?.role || null;
+    const workspaceRole = (workspaceMembership as unknown[])[0]?.role || null;
     const isManagerLevel = hasManagerAccess(workspaceRole);
     // Phase E: Supervisor role = level 3 (below manager at 4). They need site-scoped access,
     // not the full EMPLOYEE DATA ISOLATION block applied to officers.
@@ -1829,7 +1829,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         ...(dispatchMeta ? { dispatch: dispatchMeta } : {}),
         thalamicSignalId: thalamicSignal?.signalId,
         thalamicPriority: thalamicSignal?.priorityScore,
-      } as any,
+      } as unknown,
     };
   }
 
@@ -2283,7 +2283,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     mask: string | null;
   } | null> {
     try {
-      const result: any = await db.execute(sql`
+      const result: unknown = await db.execute(sql`
         SELECT plaid_item_id, plaid_access_token_encrypted
         FROM workspaces
         WHERE id = ${workspaceId}
@@ -2936,7 +2936,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         .limit(500);
 
       const entityTurns = turns.filter(t => {
-        const refs = (t as any).toolResults?.entityRefs;
+        const refs = (t as Record<string, unknown>).toolResults?.entityRefs;
         return refs && refs[entityKey] === entityId;
       });
 
@@ -3367,7 +3367,7 @@ If no significant insight, respond with:
 
       const lines: string[] = [];
 
-      const officerRows = (watchedOfficers as Record<string,unknown>).rows as any[];
+      const officerRows = (watchedOfficers as Record<string,unknown>).rows as unknown[][];
       for (const row of officerRows) {
         const name = `${row.first_name} ${row.last_name}`.trim();
         if (row.narrative_summary) {

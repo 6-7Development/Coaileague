@@ -72,7 +72,7 @@ interface BatchResult {
   results: Array<{ workspaceId: string; workspaceName: string; success: boolean; error?: string; payrollRunId?: string; invoiceCount?: number; totalAmount?: number }>;
 }
 
-function StatPill({ icon: Icon, value, label }: { icon: any; value: string | number; label: string }) {
+function StatPill({ icon: Icon, value, label }: { icon: string | React.ReactNode; value: string | number; label: string }) {
   return (
     <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
       <Icon size={14} className="shrink-0" />

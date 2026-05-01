@@ -223,7 +223,7 @@ class TrinityMilestoneDetector {
       WHERE sc.total > 0 AND w.total >= sc.total
         AND sc.total >= 10
     `);
-    return (rows as any[]).map(r => ({
+    return (rows as unknown[][]).map(r => ({
       employeeId: r.employee_id,
       employeeName: r.employee_name,
       firstName: r.first_name,
@@ -318,7 +318,7 @@ class TrinityMilestoneDetector {
       ORDER BY mt.created_at DESC
       LIMIT 100
     `);
-    return (rows as any[]);
+    return (rows as unknown[][]);
   }
 }
 

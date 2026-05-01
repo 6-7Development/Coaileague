@@ -300,7 +300,7 @@ function FieldRenderer({
   disabled,
 }: {
   field: TemplateField;
-  value: any;
+  value: unknown;
   onChange: (v) => void;
   error?: string;
   disabled?: boolean;
@@ -433,7 +433,7 @@ export function UniversalFormRenderer({
   const template = templateData?.template;
 
   // ── Load draft ──────────────────────────────────────────────────────────────
-  const { data: draftData, isLoading: draftLoading } = useQuery<{ draft: any }>({
+  const { data: draftData, isLoading: draftLoading } = useQuery<{ draft: unknown }>({
     queryKey: [`/api/document-forms/draft/${templateId}`],
     enabled: !!template && !readOnly,
     retry: false,

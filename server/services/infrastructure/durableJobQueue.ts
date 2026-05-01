@@ -207,7 +207,7 @@ class DurableJobQueueService {
         `);
         
         if (existing.length > 0) {
-          const existingJob = existing[0] as any;
+          const existingJob = existing[0] as unknown;
           log.info(`[DurableJobQueue] Job with idempotency key already exists: ${existingJob.id}`);
           return existingJob.id;
         }
@@ -373,7 +373,7 @@ class DurableJobQueueService {
         FOR UPDATE SKIP LOCKED
       `);
 
-      const jobs = ((result as Record<string, unknown>).rows as any[]) || [];
+      const jobs = ((result as Record<string, unknown>).rows as unknown[][]) || [];
       
       if (jobs.length === 0) return;
 
@@ -551,7 +551,7 @@ class DurableJobQueueService {
       deadLetter: 0,
     };
     
-    for (const row of (result as any[]) || []) {
+    for (const row of (result as unknown[]) || []) {
       switch (row.status) {
         case 'pending': stats.pending = row.count; break;
         case 'processing': stats.processing = row.count; break;

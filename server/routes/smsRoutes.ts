@@ -64,7 +64,7 @@ smsRouter.post('/send', requireWorkspaceRole(['org_owner', 'co_owner']), async (
       const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
       const id = await NotificationDeliveryService.send({
         idempotencyKey: `notif:sms:${employeeId}:${(type as string) || 'system_alert'}`,
-            type: (type as any) || 'system_alert',
+            type: (type as unknown) || 'system_alert',
         workspaceId,
         recipientUserId: employeeId,
         channel: 'sms',
@@ -87,7 +87,7 @@ smsRouter.post('/send', requireWorkspaceRole(['org_owner', 'co_owner']), async (
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
       idempotencyKey: `notif:sms:${user?.id || targetPhone}:${(type as string) || 'system_alert'}`,
-            type: (type as any) || 'system_alert',
+            type: (type as unknown) || 'system_alert',
       workspaceId,
       recipientUserId: user?.id || 'system',
       channel: 'sms',
@@ -131,7 +131,7 @@ smsRouter.post('/send-to-employee', requireManager, async (req: Request, res: Re
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
       idempotencyKey: `notif:sms:${employeeId}:${(type as string) || 'system_alert'}`,
-            type: (type as any) || 'system_alert',
+            type: (type as unknown) || 'system_alert',
       workspaceId,
       recipientUserId: employeeId,
       channel: 'sms',

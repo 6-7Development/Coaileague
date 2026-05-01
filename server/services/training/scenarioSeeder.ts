@@ -695,8 +695,8 @@ export class ScenarioSeederService {
    */
   async getTrainingStatus(workspaceId: string): Promise<{
     hasActiveScenario: boolean;
-    currentScenario: any | null;
-    currentRun: any | null;
+    currentScenario: unknown | null;
+    currentRun: unknown | null;
     shiftsRemaining: number;
     shiftsAssigned: number;
   }> {

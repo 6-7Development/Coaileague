@@ -275,8 +275,8 @@ export default function DocumentTemplatesPage() {
   });
 
   const parseFormBody = (f: typeof form) => {
-    let mergeFields: any = [];
-    let signatureFields: any = [];
+    let mergeFields: unknown = [];
+    let signatureFields: unknown = [];
     try { mergeFields = JSON.parse(f.mergeFields); } catch { /* keep default */ }
     try { signatureFields = JSON.parse(f.signatureFields); } catch { /* keep default */ }
     return {

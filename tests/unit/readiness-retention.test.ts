@@ -61,7 +61,7 @@ describe('decideRetentionAction', () => {
       regulatoryHold: false, now: NOW,
     });
     expect(deleteDecision.action).toBe('hard_delete');
-    expect((deleteDecision as any).reason).toBe('cancelled_30d_elapsed');
+    expect((deleteDecision as Record<string, unknown>).reason).toBe('cancelled_30d_elapsed');
   });
 
   it('no statusChangedAt defaults to retain (cannot reason about age)', () => {

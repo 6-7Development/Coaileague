@@ -546,10 +546,10 @@ export class QuickBooksIntegration {
       email: c.email,
       phone: c.phone,
       address: c.address ? {
-        line1: (c as any).address.street || (c as any).address.line1,
-        city: (c as any).address.city,
-        state: (c as any).address.state,
-        postalCode: (c as any).address.zip || (c as any).address.postalCode,
+        line1: (c as Record<string, unknown>).address.street || (c as Record<string, unknown>).address.line1,
+        city: (c as Record<string, unknown>).address.city,
+        state: (c as Record<string, unknown>).address.state,
+        postalCode: (c as Record<string, unknown>).address.zip || (c as Record<string, unknown>).address.postalCode,
       } : undefined,
     })));
 

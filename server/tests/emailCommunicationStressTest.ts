@@ -749,14 +749,14 @@ async function suiteEmailServiceMethods() {
 
   await test(`emailService has ${expectedMethods.length} expected send methods defined`, async () => {
     const { emailService } = await import('../services/emailService');
-    const missing = expectedMethods.filter(m => typeof (emailService as any)[m] !== 'function');
+    const missing = expectedMethods.filter(m => typeof (emailService as unknown)[m] !== 'function');
     if (missing.length > 0) throw new Error(`Missing methods: ${missing.join(', ')}`);
     pass(`emailService has ${expectedMethods.length} expected send methods defined`, `all ${expectedMethods.length} present`);
   });
 
   await test('emailService.sendVerificationEmail — correct signature (userId, email, token, firstName)', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendVerificationEmail'];
+    const fn = (emailService as unknown)['sendVerificationEmail'];
     if (typeof fn !== 'function') throw new Error('sendVerificationEmail not a function');
     if (fn.length < 3) throw new Error(`Expected ≥3 params, got ${fn.length}`);
     pass('emailService.sendVerificationEmail — correct signature');
@@ -764,21 +764,21 @@ async function suiteEmailServiceMethods() {
 
   await test('emailService.sendPasswordResetEmail — correct signature (userId, email, token, firstName)', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendPasswordResetEmail'];
+    const fn = (emailService as unknown)['sendPasswordResetEmail'];
     if (typeof fn !== 'function') throw new Error('sendPasswordResetEmail not a function');
     pass('emailService.sendPasswordResetEmail — correct signature');
   });
 
   await test('emailService.sendStaffingRequestAcknowledgment — staffing pipeline', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendStaffingRequestAcknowledgment'];
+    const fn = (emailService as unknown)['sendStaffingRequestAcknowledgment'];
     if (typeof fn !== 'function') throw new Error('sendStaffingRequestAcknowledgment not a function');
     pass('emailService.sendStaffingRequestAcknowledgment — staffing pipeline');
   });
 
   await test('emailService.sendClientPortalInvitation — client portal', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendClientPortalInvitation'];
+    const fn = (emailService as unknown)['sendClientPortalInvitation'];
     if (typeof fn !== 'function') throw new Error('sendClientPortalInvitation not a function');
     pass('emailService.sendClientPortalInvitation — client portal');
   });
@@ -901,11 +901,11 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Staffing Request → Acknowledgment + Status Updates chain', async () => {
     const { emailService } = await import('../services/emailService');
-    const ackFn = (emailService as any)['sendStaffingRequestAcknowledgment'];
-    const fulfillFn = (emailService as any)['sendStaffingRequestFulfilled'];
-    const unfulfillFn = (emailService as any)['sendStaffingRequestUnfulfilled'];
-    const statusFn = (emailService as any)['sendStaffingStatusUpdate'];
-    const summaryFn = (emailService as any)['sendStaffingCompletionSummary'];
+    const ackFn = (emailService as unknown)['sendStaffingRequestAcknowledgment'];
+    const fulfillFn = (emailService as unknown)['sendStaffingRequestFulfilled'];
+    const unfulfillFn = (emailService as unknown)['sendStaffingRequestUnfulfilled'];
+    const statusFn = (emailService as unknown)['sendStaffingStatusUpdate'];
+    const summaryFn = (emailService as unknown)['sendStaffingCompletionSummary'];
     if (!ackFn || !fulfillFn || !unfulfillFn || !statusFn || !summaryFn) {
       throw new Error('One or more staffing email methods missing');
     }
@@ -920,7 +920,7 @@ async function suiteE2EWorkflows() {
 
   await test('Workflow: Client Portal Invitation → sendClientPortalInvitation', async () => {
     const { emailService } = await import('../services/emailService');
-    const fn = (emailService as any)['sendClientPortalInvitation'];
+    const fn = (emailService as unknown)['sendClientPortalInvitation'];
     if (typeof fn !== 'function') throw new Error('sendClientPortalInvitation missing');
     pass('Workflow: Client Portal Invitation → sendClientPortalInvitation');
   });

@@ -2502,7 +2502,7 @@ class SubagentSupervisor {
       // Count by category to get domain popularity
       const domainCounts: Record<string, number> = {};
       recentTasks.forEach(t => {
-        const domain = (t as any).category || 'general';
+        const domain = (t as Record<string, unknown>).category || 'general';
         domainCounts[domain] = (domainCounts[domain] || 0) + 1;
       });
       
@@ -3592,7 +3592,7 @@ class SubagentSupervisor {
   private async handlePhaseFailure(
     telemetryId: string,
     phase: SubagentPhase,
-    error: any,
+    error: unknown,
     context: SubagentExecutionContext,
     subagent: AiSubagentDefinition,
     startTime: number,

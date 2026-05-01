@@ -16,7 +16,7 @@ interface Issue {
 
 interface IssueDetectionViewerProps {
   documentType: string;
-  extractedData: Record<string, any>;
+  extractedData: Record<string, unknown>;
   onIssuesDetected?: (issues: Issue[]) => void;
 }
 
@@ -116,7 +116,7 @@ export function IssueDetectionViewer({
                   <p className="text-xs text-muted-foreground">{issue.description}</p>
                 </div>
               </div>
-              <Badge variant={getSeverityColor(issue.severity) as any}>
+              <Badge variant={getSeverityColor(issue.severity) as string}>
                 {issue.severity}
               </Badge>
             </div>

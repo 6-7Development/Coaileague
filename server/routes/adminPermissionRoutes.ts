@@ -105,7 +105,7 @@ router.patch('/workspaces/:wsId/matrix', requireSupportManager, async (req, res)
   const knownFeature = FEATURE_REGISTRY.find((f) => f.key === featureKey);
   if (!knownFeature) return res.status(400).json({ error: `Unknown featureKey: ${featureKey}` });
 
-  if (!MATRIX_ROLES.includes(role as any)) {
+  if (!MATRIX_ROLES.includes(role as unknown)) {
     return res.status(400).json({
       error: `Role ${role} is not eligible for permission overrides.`,
     });
@@ -188,7 +188,7 @@ router.get('/workspaces/:wsId/users', requirePlatformStaff, async (req, res) => 
           ilike(employees.firstName, `%${search}%`),
           ilike(employees.lastName, `%${search}%`),
           ilike(employees.email, `%${search}%`),
-        ) as any,
+        ) as unknown,
       );
     }
 
@@ -224,7 +224,7 @@ router.patch('/workspaces/:wsId/users/:userId/role', requireSupportManager, asyn
 
   if (!workspaceRole) return res.status(400).json({ error: 'workspaceRole is required' });
 
-  if (!MATRIX_ROLES.includes(workspaceRole as any)) {
+  if (!MATRIX_ROLES.includes(workspaceRole as unknown)) {
     return res.status(400).json({
       error: `Role ${workspaceRole} is not a valid non-owner workspace role. Owner roles are managed separately.`,
     });

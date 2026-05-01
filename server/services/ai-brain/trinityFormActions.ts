@@ -242,7 +242,7 @@ export function registerFormActions() {
 
       if (!workspaceId) return { error: 'workspaceId is required' };
 
-      const conditions: any[] = [eq(customFormSubmissions.workspaceId, workspaceId)];
+      const conditions: unknown[] = [eq(customFormSubmissions.workspaceId, workspaceId)];
       if (formId) conditions.push(eq(customFormSubmissions.formId, formId));
       if (employeeId) conditions.push(eq(customFormSubmissions.submittedBy, employeeId));
       if (status) conditions.push(eq(customFormSubmissions.status, status));

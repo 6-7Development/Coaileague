@@ -346,7 +346,7 @@ class AIOrchestrationService {
         case 'openai':
           const openaiResult = await openaiClient.generate({
             prompt,
-            modelId: model.modelName as any,
+            modelId: model.modelName as unknown,
             systemPrompt: 'You are an AI assistant for a workforce management platform. Be precise, professional, and helpful.',
           });
           response = {
@@ -482,7 +482,7 @@ class AIOrchestrationService {
       const models = await db.select()
         .from(aiModels)
         .where(and(
-          eq(aiModels.provider, provider as any),
+          eq(aiModels.provider, provider as unknown),
           eq(aiModels.isActive, true)
         ));
       
@@ -699,7 +699,7 @@ class AIOrchestrationService {
       avgLatencyMs: r.ai_model_health.avgLatency24hMs ?? 0,
       successRate: parseFloat(r.ai_model_health.successRate24h?.toString() || '1'),
       errorCount1h: r.ai_model_health.errorCount1h ?? 0,
-      status: (r.ai_model_health.status as any) || 'healthy',
+      status: (r.ai_model_health.status as unknown) || 'healthy',
     }));
   }
 }

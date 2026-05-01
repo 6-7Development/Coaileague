@@ -106,7 +106,7 @@ class IntegrationPartnerService {
     const conditions = [];
 
     if (options?.category) {
-      conditions.push(eq(integrationMarketplace.category, options.category as any));
+      conditions.push(eq(integrationMarketplace.category, options.category as unknown));
     }
 
     if (options?.status === 'active') {
@@ -124,8 +124,8 @@ class IntegrationPartnerService {
 
     if (conditions.length > 0) {
       const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
-      query = query.where(whereClause as any) as any;
-      countQuery = countQuery.where(whereClause as any) as any;
+      query = query.where(whereClause as unknown) as unknown;
+      countQuery = countQuery.where(whereClause as unknown) as unknown;
     }
 
     const [totalResult] = await countQuery;
@@ -254,7 +254,7 @@ class IntegrationPartnerService {
       if (updates.developerEmail) updateData.developerEmail = updates.developerEmail;
 
       await db.update(integrationMarketplace)
-        .set(updateData as any)
+        .set(updateData as unknown)
         .where(eq(integrationMarketplace.id, partnerId));
 
       await this.logAudit(context.userId, 'update_partner', {

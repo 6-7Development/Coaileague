@@ -226,7 +226,7 @@ export default function CredentialWalletPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", issuingOrganization: "", certificationNumber: "", issuedDate: "", expiryDate: "", certificateUrl: "" });
 
-  const { data: walletData, isLoading: walletLoading } = useQuery<{ credentials: Credential[]; employee: any }>({
+  const { data: walletData, isLoading: walletLoading } = useQuery<{ credentials: Credential[]; employee: unknown }>({
     queryKey: ["/api/credentials/wallet"],
   });
 

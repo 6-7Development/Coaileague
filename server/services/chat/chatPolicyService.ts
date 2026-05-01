@@ -57,7 +57,7 @@ export function isSupportStaffRole(role: string | null | undefined): boolean {
  * Non-staff users cannot initiate unsolicited DMs to these roles.
  */
 export function isProtectedDirectMessageRole(role: string | null | undefined): boolean {
-  return PROTECTED_DM_TARGET_ROLES.includes(role as any);
+  return PROTECTED_DM_TARGET_ROLES.includes(role as string);
 }
 
 /**
@@ -100,7 +100,7 @@ export function canManageDirectMessageLifecycle(
     return { allowed: true };
   }
   // Managers can manage within their workspace
-  if (MANAGER_ROLES.includes(actorRole as any)) {
+  if (MANAGER_ROLES.includes(actorRole as string)) {
     return { allowed: true };
   }
   return { allowed: false, reason: 'Not a participant or manager' };

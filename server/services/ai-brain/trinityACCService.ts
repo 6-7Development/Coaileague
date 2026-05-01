@@ -300,7 +300,7 @@ class TrinityACCService {
       .where(eq((await import('@shared/schema')).employees.id, officerId))
       .limit(1);
 
-      const emp = result[0] as any;
+      const emp = result[0] as unknown;
       if (!emp) return null;
 
       const today = new Date();
@@ -322,7 +322,7 @@ class TrinityACCService {
   private async isEmployeeTerminated(employeeId: string, workspaceId: string): Promise<boolean> {
     try {
       // CATEGORY C — Raw SQL retained: LIMIT | Tables: employees | Verified: 2026-03-23
-      const [row] = await (typedQuery as any)(`
+      const [row] = await (typedQuery as unknown)(`
         SELECT status FROM employees
         WHERE id = $1 AND workspace_id = $2 LIMIT 1
       `, [employeeId, workspaceId]);
@@ -345,7 +345,7 @@ class TrinityACCService {
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       // CATEGORY C — Raw SQL retained: ILIKE | Tables: system_audit_logs | Verified: 2026-03-23
-      const [recentDecision] = await (typedQuery as any)(`
+      const [recentDecision] = await (typedQuery as unknown)(`
         SELECT action_type, metadata, created_at
         FROM system_audit_logs
         WHERE workspace_id = $1
@@ -356,7 +356,7 @@ class TrinityACCService {
           )
         ORDER BY created_at DESC
         LIMIT 1
-      ` as any, [
+      ` as unknown, [
         action.workspaceId,
         yesterday.toISOString(),
         `%${entityId}%`,
@@ -365,7 +365,7 @@ class TrinityACCService {
 
       if (!recentDecision) return null;
 
-      const rd = recentDecision as any;
+      const rd = recentDecision as unknown;
       const meta = typeof rd.metadata === 'string' ? JSON.parse(rd.metadata) : (rd.metadata || {});
 
       // Check for semantic contradiction — e.g., previously flagged as high-risk, now sending auto-confirmation

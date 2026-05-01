@@ -121,8 +121,8 @@ async function phase2_feature_showcase_sync() {
   const registryFeatureTypes = Object.values(PREMIUM_FEATURES).map(f => f.featureType);
   const registryTierCounts = { core: 0, premium: 0, elite: 0 };
   const showcaseTierCounts = { core: 0, premium: 0, elite: 0 };
-  registryFeatureTypes.forEach(t => (registryTierCounts as any)[t]++);
-  showcaseTiers.forEach(t => (showcaseTierCounts as any)[t]++);
+  registryFeatureTypes.forEach(t => (registryTierCounts as unknown)[t]++);
+  showcaseTiers.forEach(t => (showcaseTierCounts as unknown)[t]++);
 
   record({
     name: 'Showcase Has All 3 Tiers (core/premium/elite)',
@@ -271,7 +271,7 @@ async function phase4_credit_cost_every_feature() {
   ];
 
   for (const pair of criticalSyncPairs) {
-    const cmCost = (TOKEN_COSTS as any)[pair.creditKey];
+    const cmCost = (TOKEN_COSTS as unknown)[pair.creditKey];
     const bcCost = billingCreditCosts[pair.creditKey];
     const regCost = PREMIUM_FEATURES[pair.registryField]?.creditCost;
 
@@ -774,7 +774,7 @@ async function phase12_stripe_webhook_idempotency() {
   // CATEGORY C — Raw SQL retained: information_schema | Tables: information_schema | Verified: 2026-03-23
   const allTables = (await typedQuery(sql`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
-  `) as any).rows?.map((r: unknown) => r.table_name) || [];
+  `) as unknown).rows?.map((r: unknown) => r.table_name) || [];
 
   record({
     name: 'processed_stripe_events Table For Idempotency',

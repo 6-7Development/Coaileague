@@ -159,7 +159,7 @@ export class PlatformBillService {
           WHERE wa.workspace_id = ${workspaceId}
           AND wa.status = 'active'`
     );
-    return Number((result as any[])[0]?.total || 0);
+    return Number((result as unknown[])[0]?.total || 0);
   }
 }
 

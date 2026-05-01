@@ -44,7 +44,7 @@ const pageConfig: CanvasPageConfig = {
   icon: Route,
 };
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; className: string; icon: string | React.ReactNode }> = {
   active: { label: "Active", className: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800", icon: CheckCircle },
   paused: { label: "Paused", className: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", icon: Pause },
   archived: { label: "Archived", className: "bg-muted text-muted-foreground border-border", icon: Archive },

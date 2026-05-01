@@ -106,7 +106,7 @@ export function ScheduleFilters({
     const counts: Record<string, number> = {};
     POSITION_CATEGORIES.forEach(cat => {
       counts[cat.id] = employees.filter(emp => {
-        const pos = (emp as any).position ? getPositionById((emp as any).position) : undefined;
+        const pos = (emp as Record<string, unknown>).position ? getPositionById((emp as Record<string, unknown>).position) : undefined;
         return pos?.category === cat.id;
       }).length;
     });
@@ -116,7 +116,7 @@ export function ScheduleFilters({
   const armedCounts = useMemo(() => {
     let armed = 0, unarmed = 0;
     employees.forEach(emp => {
-      const pos = (emp as any).position ? getPositionById((emp as any).position) : undefined;
+      const pos = (emp as Record<string, unknown>).position ? getPositionById((emp as Record<string, unknown>).position) : undefined;
       if (pos?.armedStatus === 'armed') armed++;
       else if (pos?.armedStatus === 'unarmed') unarmed++;
     });

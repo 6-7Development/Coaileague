@@ -837,7 +837,7 @@ function MetricCard({ label, value, icon }: any) {
   );
 }
 
-function ApprovalCard({ approval }: { approval: any }) {
+function ApprovalCard({ approval }: { approval: Record<string, unknown> }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors" data-testid={`approval-${approval.id}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -867,7 +867,7 @@ function ApprovalCard({ approval }: { approval: any }) {
   );
 }
 
-function PatternCard({ pattern }: { pattern: any }) {
+function PatternCard({ pattern }: { pattern: Record<string, unknown> }) {
   return (
     <div className="border border-gray-200 rounded-lg p-4" data-testid={`pattern-${pattern.id}`}>
       <div className="flex items-start justify-between gap-2 mb-2">

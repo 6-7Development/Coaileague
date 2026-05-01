@@ -143,7 +143,7 @@ router.post('/intake/:sessionId/respond', requireAuth, async (req, res, next) =>
         sessionId, workspaceId, req.user?.id || 'unknown',
         flow.trinityAction, updatedData
       ).catch((err: unknown) => {
-        log.error('[TrinityIntake] Async action processing failed:', (err as any)?.message);
+        log.error('[TrinityIntake] Async action processing failed:', (err as Error)?.message);
       });
 
       return res.json({ complete: true, completionMessage: flow.completionMessage });
@@ -229,7 +229,7 @@ async function processTrinityIntakeAction(
 
     log.info(`[TrinityIntake] Action processed: ${actionType} for session ${sessionId}`);
   } catch (err: unknown) {
-    log.error('[TrinityIntake] Action processing error:', (err as any)?.message);
+    log.error('[TrinityIntake] Action processing error:', (err as Error)?.message);
   }
 }
 

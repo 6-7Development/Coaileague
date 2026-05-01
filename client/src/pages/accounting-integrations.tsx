@@ -29,7 +29,7 @@ interface AccountingIntegration {
   id: string;
   name: string;
   description: string;
-  icon: any;
+  icon: string | React.ReactNode;
   iconColor: string;
   features: string[];
   status: 'connected' | 'available' | 'coming_soon';

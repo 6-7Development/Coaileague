@@ -10,7 +10,7 @@ import { EventEmitter } from 'events';
 const changeEmitter = new EventEmitter();
 
 // Lazy import to avoid circular dependencies
-let configRegistry: any = null;
+let configRegistry: unknown = null;
 
 async function getConfigRegistry() {
   if (!configRegistry) {
@@ -37,7 +37,7 @@ export async function getFeatureToggle(path: string): Promise<boolean> {
   try {
     const config = await getFeatureToggles();
     const keys = path.split('.');
-    let value: any = config;
+    let value: unknown = config;
     for (const key of keys) {
       value = value?.[key];
     }

@@ -142,14 +142,14 @@ async function getSupportRoleTargets(
         .where(
           and(
             eq(workspaceMembers.workspaceId, workspaceId),
-            inArray(workspaceMembers.role, workspaceRoles as any)
+            inArray(workspaceMembers.role, workspaceRoles as unknown)
           )
         );
 
       for (const member of members) {
         const [u] = await db.select({ email: users.email }).from(users).where(eq(users.id, member.userId)).limit(1);
         targets.push({
-          role: member.role as any,
+          role: member.role as unknown,
           userId: member.userId,
           workspaceId,
           email: u?.email || undefined,
@@ -167,7 +167,7 @@ async function getSupportRoleTargets(
         .from(platformRoles)
         .where(
           and(
-            inArray(platformRoles.role, platformAdminRoles as any),
+            inArray(platformRoles.role, platformAdminRoles as unknown),
             isNull(platformRoles.revokedAt),
             eq(platformRoles.isSuspended, false)
           )
@@ -179,7 +179,7 @@ async function getSupportRoleTargets(
         const userWorkspaceId = u?.workspaceId || PLATFORM_WORKSPACE_ID;
         if (userWorkspaceId) {
           targets.push({
-            role: row.role as any,
+            role: row.role as unknown,
             userId: row.userId,
             workspaceId: userWorkspaceId,
             email: u?.email || undefined,

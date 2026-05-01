@@ -164,7 +164,7 @@ class AIBrainMasterOrchestrator {
           scope: 'workspace',
           title,
           message,
-          type: notificationType_db as any,
+          type: notificationType_db as unknown,
           isRead: false,
           actionUrl: '/dashboard',
           metadata,
@@ -3641,7 +3641,7 @@ class AIBrainMasterOrchestrator {
         
         const result = await helpaiOrchestrator.executeAction({
           actionId: `${step.category}.${step.action}`,
-          category: step.category as any,
+          category: step.category as unknown,
           name: step.action,
           payload: step.parameters,
           userId,
@@ -3865,7 +3865,7 @@ class AIBrainMasterOrchestrator {
   ): Promise<ActionResult> {
     const request: ActionRequest = {
       actionId,
-      category: actionId.split('.')[0] as any,
+      category: actionId.split('.')[0] as unknown,
       name: actionId,
       payload,
       userId,

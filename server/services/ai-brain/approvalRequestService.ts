@@ -84,7 +84,7 @@ class ApprovalRequestService {
   ) {
     const { decision, limit = 50, offset = 0, scope = 'employee' } = options;
 
-    const conditions: any[] = [eq(aiApprovalRequests.workspaceId, workspaceId)];
+    const conditions: unknown[] = [eq(aiApprovalRequests.workspaceId, workspaceId)];
 
     if (decision && decision.length > 0) {
       conditions.push(inArray(aiApprovalRequests.status, decision as any));
@@ -126,7 +126,7 @@ class ApprovalRequestService {
   }
 
   async getPendingCount(userId: string, workspaceId: string, scope: 'admin' | 'manager' | 'employee' = 'employee'): Promise<number> {
-    const conditions: any[] = [
+    const conditions: unknown[] = [
       eq(aiApprovalRequests.workspaceId, workspaceId),
       eq(aiApprovalRequests.status, 'pending')
     ];

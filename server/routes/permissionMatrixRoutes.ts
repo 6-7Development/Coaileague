@@ -89,7 +89,7 @@ router.patch('/', requireOwnerOrPlatformStaff, async (req, res) => {
     return res.status(400).json({ error: `Unknown featureKey: ${featureKey}` });
   }
 
-  if (!MATRIX_ROLES.includes(role as any)) {
+  if (!MATRIX_ROLES.includes(role as string)) {
     return res.status(400).json({
       error: `Role ${role} is not eligible for permission overrides. Owner roles are always granted full access.`,
     });

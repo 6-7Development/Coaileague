@@ -81,7 +81,7 @@ class TrinityScheduledScansService {
     this.dailyTimer = setTimeout(async () => {
       await this.runDailyForAllOrgs();
       // Reschedule every 24h after first run
-      this.dailyTimer = setInterval(() => this.runDailyForAllOrgs(), 24 * 60 * 60 * 1000) as any;
+      this.dailyTimer = setInterval(() => this.runDailyForAllOrgs(), 24 * 60 * 60 * 1000) as unknown;
     }, msUntilNext);
   }
 
@@ -121,7 +121,7 @@ class TrinityScheduledScansService {
     log.info(`${SCAN_LABEL} Weekly scan scheduled in ${Math.round(msUntilNext / 3600000)} hrs`);
     this.weeklyTimer = setTimeout(async () => {
       await this.runWeeklyForAllOrgs();
-      this.weeklyTimer = setInterval(() => this.runWeeklyForAllOrgs(), 7 * 24 * 60 * 60 * 1000) as any;
+      this.weeklyTimer = setInterval(() => this.runWeeklyForAllOrgs(), 7 * 24 * 60 * 60 * 1000) as unknown;
     }, msUntilNext);
   }
 
@@ -164,7 +164,7 @@ class TrinityScheduledScansService {
         this.monthlyTimer = safeSetTimeout(async () => {
           await this.runMonthlyForAllOrgs();
           reschedule();
-        }, delay) as any;
+        }, delay) as unknown;
       };
       reschedule();
     }, msUntilNext);

@@ -53,14 +53,14 @@ class TrinityNarrativeIdentityEngine {
     const exists = await typedPool(`
       SELECT 1 FROM trinity_narrative WHERE workspace_id = $1
     `, [workspaceId]).catch(() => []);
-    if ((exists as any[]).length > 0) return;
+    if ((exists as unknown[]).length > 0) return;
 
     // CATEGORY C — Raw SQL retained: LIMIT | Tables: workspaces | Verified: 2026-03-23
     const ws = await typedPool(`
       SELECT name, created_at FROM workspaces WHERE id = $1 LIMIT 1
     `, [workspaceId]).catch(() => []);
 
-    const orgName = (ws as any[])[0]?.name || 'this organization';
+    const orgName = (ws as unknown[])[0]?.name || 'this organization';
 
     // Converted to Drizzle ORM
     await db.insert(trinityNarrative).values({
@@ -111,9 +111,9 @@ class TrinityNarrativeIdentityEngine {
       `).catch(() => ({ rows: [{ count: 0 }] })),
     ]);
 
-    const calloffs = parseInt((calloffData.rows as any[])[0]?.count || '0', 10);
-    const actions = parseInt((actionsData.rows as any[])[0]?.count || '0', 10);
-    const incidents = parseInt((incidentsData.rows as any[])[0]?.count || '0', 10);
+    const calloffs = parseInt((calloffData.rows as unknown[][])[0]?.count || '0', 10);
+    const actions = parseInt((actionsData.rows as unknown[][])[0]?.count || '0', 10);
+    const incidents = parseInt((incidentsData.rows as unknown[][])[0]?.count || '0', 10);
 
     if (calloffs === 0 && actions === 0 && incidents === 0) {
       // Nothing meaningful to log — still touch last_updated so Trinity knows the cycle ran
@@ -224,10 +224,10 @@ class TrinityNarrativeIdentityEngine {
       `).catch(() => ({ rows: [{ answered: 0 }] }))
     ]);
 
-    const calloffs = parseInt((calloffData.rows as any[])[0]?.count || '0', 10);
-    const milestones = parseInt((milestoneData.rows as any[])[0]?.milestones || '0', 10);
-    const highPerformers = parseInt((coverageData.rows as any[])[0]?.count || '0', 10);
-    const discoveries = parseInt((curiosityData.rows as any[])[0]?.answered || '0', 10);
+    const calloffs = parseInt((calloffData.rows as unknown[][])[0]?.count || '0', 10);
+    const milestones = parseInt((milestoneData.rows as unknown[][])[0]?.milestones || '0', 10);
+    const highPerformers = parseInt((coverageData.rows as unknown[][])[0]?.count || '0', 10);
+    const discoveries = parseInt((curiosityData.rows as unknown[][])[0]?.answered || '0', 10);
 
     return {
       period,
@@ -253,7 +253,7 @@ class TrinityNarrativeIdentityEngine {
       .limit(3)
       .catch(() => []);
 
-    const newLearnings = (patterns as any[]).map((r: unknown) => r.lessonExtracted).filter(Boolean);
+    const newLearnings = (patterns as unknown[]).map((r: unknown) => r.lessonExtracted).filter(Boolean);
     const combined = [...new Set([...newLearnings, ...existing])];
     return combined.slice(0, 10);
   }

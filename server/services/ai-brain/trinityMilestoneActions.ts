@@ -57,7 +57,7 @@ export function registerMilestoneActions() {
 
     let query = db.select().from(employees).where(eq(employees.workspaceId, workspaceId));
     if (employeeId) {
-      query = db.select().from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.id, employeeId))) as any;
+      query = db.select().from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.id, employeeId))) as unknown;
     }
 
     const allEmployees = await query;
@@ -126,7 +126,7 @@ export function registerMilestoneActions() {
       inputParams: { employeeId, milestone, performanceScore: emp.performanceScore, monthsSincePayChange },
       createdAt: new Date(),
       updatedAt: new Date()
-    } as any);
+    } as unknown);
 
     await notifyOwner(workspaceId, title, message);
 
@@ -145,7 +145,7 @@ export function registerMilestoneActions() {
       query = db.select().from(employees).where(and(
         eq(employees.workspaceId, workspaceId),
         eq(employees.id, employeeId)
-      )) as any;
+      )) as unknown;
     }
 
     const eligible = [];

@@ -41,7 +41,7 @@ const pageConfig: CanvasPageConfig = {
   category: "operations",
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+const PRIORITY_CONFIG: Record<string, { label: string; className: string; icon: string | React.ReactNode }> = {
   normal: { label: "Normal", className: "bg-muted text-muted-foreground border-border", icon: Minus },
   high: { label: "High", className: "bg-orange-500/10 text-orange-700 border-orange-200", icon: ArrowUp },
   urgent: { label: "Urgent", className: "bg-red-500/10 text-red-700 border-red-200", icon: AlertTriangle },

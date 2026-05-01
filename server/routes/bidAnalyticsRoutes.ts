@@ -32,7 +32,7 @@ router.get("/proposals", requireAuth, async (req: AuthenticatedRequest, res) => 
                   END AS overdue_flag,
                   (EXTRACT(DAY FROM COALESCE(actual_close_date, NOW()) - created_at))::int AS days_open
                  FROM pipeline_deals WHERE workspace_id = $1`;
-    const vals: any[] = [wid];
+    const vals: unknown[] = [wid];
     let i = 2;
     if (stage) { query += ` AND stage = $${i++}`; vals.push(stage); }
     if (proposal_type) { query += ` AND proposal_type = $${i++}`; vals.push(proposal_type); }

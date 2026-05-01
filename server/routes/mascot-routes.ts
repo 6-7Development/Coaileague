@@ -1831,7 +1831,7 @@ router.get('/holiday/directives', requireTrinityAccess, async (req, res) => {
         startDay: null,
         endMonth: null,
         endDay: null,
-      } as any;
+      } as Record<string, unknown>;
     }
     
     // Ensure starDecorations has required fields for frontend

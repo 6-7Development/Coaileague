@@ -268,7 +268,7 @@ export default function HrDocumentRequests() {
 
   return (
     <CanvasHubPage config={pageConfig}>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as unknown)}>
         <TabsList className="mb-6" data-testid="tabs-document-requests">
           <TabsTrigger value="send" data-testid="tab-send">Send Requests</TabsTrigger>
           <TabsTrigger value="gaps" data-testid="tab-gaps">
@@ -315,7 +315,7 @@ export default function HrDocumentRequests() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{doc.label}</span>
-                                <Badge variant={URGENCY_COLORS[doc.urgency] as any} className="text-xs">{doc.urgency}</Badge>
+                                <Badge variant={URGENCY_COLORS[doc.urgency] as string} className="text-xs">{doc.urgency}</Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{doc.description}</p>
                               <div className="flex items-center gap-1 mt-1">
@@ -604,7 +604,7 @@ export default function HrDocumentRequests() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                          <Badge variant={statusCfg.color as any} className="gap-1 text-xs">
+                          <Badge variant={statusCfg.color as string} className="gap-1 text-xs">
                             {statusCfg.icon}
                             {statusCfg.label}
                           </Badge>

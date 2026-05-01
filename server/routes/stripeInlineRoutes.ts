@@ -39,7 +39,7 @@ setInterval(_pruneStripeEventCache, 60 * 60 * 1000).unref(); // hourly cleanup
 // Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
-    return (getStripe() as any)[prop];
+    return (getStripe() as unknown)[prop];
   },
 });
 
@@ -378,7 +378,7 @@ router.post('/create-subscription', requireAuth, async (req: AuthenticatedReques
     const { STRIPE_PRODUCTS, getPriceId } = await import('../stripe-config');
     
     const validTiers = ['starter', 'professional', 'business', 'enterprise'] as const;
-    if (!validTiers.includes(tier as any)) {
+    if (!validTiers.includes(tier as unknown)) {
       return res.status(400).json({ message: "Invalid tier" });
     }
     
@@ -405,7 +405,7 @@ router.post('/create-subscription', requireAuth, async (req: AuthenticatedReques
       invoice_settings: { default_payment_method: paymentMethodId },
     });
 
-    const stripePriceId = getPriceId(tier as any, 'monthly');
+    const stripePriceId = getPriceId(tier as unknown, 'monthly');
     
     const subscriptionParams: Record<string, unknown> = {
       customer: customerId,

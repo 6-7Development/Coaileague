@@ -529,7 +529,7 @@ export class ExecutionPipeline {
       // Mark current step as failed
       const currentStep = Object.entries(ctx.steps).find(([_, status]) => status === 'processing');
       if (currentStep) {
-        (ctx as any).steps[currentStep[0]] = 'failed';
+        (ctx as Record<string, unknown>).steps[currentStep[0]] = 'failed';
         ctx.failedAtStep = ['trigger', 'fetch', 'validate', 'process', 'mutate', 'confirm', 'notify'].indexOf(currentStep[0]) + 1;
       }
       

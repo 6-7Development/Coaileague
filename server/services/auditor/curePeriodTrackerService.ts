@@ -537,7 +537,7 @@ async function trinityVerifyCorrections(buffer: Buffer, mimeType: string): Promi
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 128, messages: [{ role: 'user', content }] }),
     });
     if (!response.ok) return false;
-    const data = await response.json() as any;
+    const data = await response.json() as unknown;
     const text = data?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return false;

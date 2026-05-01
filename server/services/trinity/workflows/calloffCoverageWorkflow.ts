@@ -400,7 +400,7 @@ export async function scanStaleCalloffWorkflows(): Promise<{
               ...meta,
               escalated_at: new Date().toISOString(),
               status: 'escalated',
-            } as any,
+            } as unknown,
           })
           .where(eq(auditLogs.id, row.id));
       } catch (err: unknown) {
@@ -572,7 +572,7 @@ async function publishCalloffEvent(params: {
         offersSent: params.offersSent,
         workflow: WORKFLOW_NAME,
       },
-    } as any);
+    } as unknown);
   } catch (err: unknown) {
     log.warn('[calloff] event bus publish failed (non-fatal):', err?.message);
   }
@@ -619,8 +619,8 @@ async function escalateToSupervisor(params: {
       workspaceId: params.workspaceId,
       title: 'Calloff escalation',
       description: body.summary,
-      metadata: body as any,
-    } as any);
+      metadata: body as unknown,
+    } as unknown);
   } catch (err: unknown) {
     log.warn('[calloff] escalation event publish failed:', err?.message);
   }

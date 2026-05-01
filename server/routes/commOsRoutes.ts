@@ -133,7 +133,7 @@ router.post('/rooms/:id/join', requireAuth, async (req: AuthenticatedRequest, re
       return res.status(401).json({ message: 'Unauthorized' });
     }
     
-    let room: any = await storage.getOrganizationChatRoom(roomId);
+    let room: unknown = await storage.getOrganizationChatRoom(roomId);
     let isSupportRoom = false;
     
     if (!room) {
@@ -237,7 +237,7 @@ router.get('/messages/search', requireAuth, async (req: AuthenticatedRequest, re
       if (query) {
         const searchTerm = (query as string).toLowerCase();
         filteredMessages = filteredMessages.filter(m => 
-          (m as any).messageContent?.toLowerCase().includes(searchTerm) ||
+          (m as Record<string, unknown>).messageContent?.toLowerCase().includes(searchTerm) ||
           m.senderName?.toLowerCase().includes(searchTerm)
         );
       }

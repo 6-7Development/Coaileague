@@ -43,7 +43,7 @@ spsPublicRouter.get('/:token', async (req, res) => {
 
     // Mark as viewed if first view
     if (doc.status === 'sent' || doc.status === 'draft') {
-      const currentLog = (doc.auditLog as any[]) || [];
+      const currentLog = (doc.auditLog as Record<string, unknown>[]) || [];
       await db.update(spsDocuments)
         .set({
           status: 'viewed',
@@ -54,7 +54,7 @@ spsPublicRouter.get('/:token', async (req, res) => {
             timestamp: new Date().toISOString(),
             ip: req.ip || req.headers['x-forwarded-for'],
             userAgent: req.headers['user-agent'],
-          }] as any,
+          }] as unknown,
         })
         .where(eq(spsDocuments.id, doc.id));
     }
@@ -111,9 +111,9 @@ spsPublicRouter.patch('/:token', async (req, res) => {
     const { formData, signatures, initials, fieldUpdates } = req.body;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
 
-    if (formData) updates.formData = { ...(doc.formData as any || {}), ...formData };
-    if (signatures) updates.signatures = { ...(doc.signatures as any || {}), ...signatures };
-    if (initials) updates.initials = { ...(doc.initials as any || {}), ...initials };
+    if (formData) updates.formData = { ...(doc.formData as Record<string, unknown> || {}), ...formData };
+    if (signatures) updates.signatures = { ...(doc.signatures as unknown[] || {}), ...signatures };
+    if (initials) updates.initials = { ...(doc.initials as unknown[] || {}), ...initials };
 
     // Update specific employee fields if provided
     if (fieldUpdates) {
@@ -155,7 +155,7 @@ spsPublicRouter.post('/:token/submit', async (req, res) => {
 
     const { formData, signatures, initials, signerName } = req.body;
 
-    const currentLog = (doc.auditLog as any[]) || [];
+    const currentLog = (doc.auditLog as Record<string, unknown>[]) || [];
     const finalAuditEntry = {
       action: 'submitted',
       signerName: signerName || doc.recipientName,
@@ -169,10 +169,10 @@ spsPublicRouter.post('/:token/submit', async (req, res) => {
         status: 'completed',
         completedAt: new Date(),
         updatedAt: new Date(),
-        formData: { ...(doc.formData as any || {}), ...(formData || {}) } as any,
-        signatures: { ...(doc.signatures as any || {}), ...(signatures || {}) } as any,
-        initials: { ...(doc.initials as any || {}), ...(initials || {}) } as any,
-        auditLog: [...currentLog, finalAuditEntry] as any,
+        formData: { ...(doc.formData as Record<string, unknown> || {}), ...(formData || {}) } as unknown,
+        signatures: { ...(doc.signatures as unknown[] || {}), ...(signatures || {}) } as unknown,
+        initials: { ...(doc.initials as unknown[] || {}), ...(initials || {}) } as unknown,
+        auditLog: [...currentLog, finalAuditEntry] as unknown,
       })
       .where(eq(spsDocuments.id, doc.id))
       .returning();
@@ -286,7 +286,7 @@ Analyze this ${documentType} image and extract information. Return ONLY valid JS
     await db.update(spsDocuments)
       .set({
         idVerificationStatus: newStatus,
-        idVerificationData: verificationResult as any,
+        idVerificationData: verificationResult as unknown,
         updatedAt: new Date(),
       })
       .where(eq(spsDocuments.id, doc.id));
@@ -359,7 +359,7 @@ spsPublicRouter.post('/proposal/:clientToken/reply', async (req, res) => {
         threadUpdates.agreementDetectedAt = new Date();
       }
       await tx.update(spsNegotiationThreads)
-        .set(threadUpdates as any)
+        .set(threadUpdates as unknown)
         .where(eq(spsNegotiationThreads.id, thread.id));
 
       return [newMsg];

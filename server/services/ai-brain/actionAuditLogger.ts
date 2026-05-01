@@ -68,9 +68,9 @@ export async function logActionAudit(input: ActionAuditInput): Promise<void> {
       entityId: input.entityId ?? null,
       success: input.success,
       errorMessage: input.errorMessage ?? null,
-      payload: sanitize(input.payload ?? null) as any,
-      changesBefore: sanitize(input.changesBefore ?? null) as any,
-      changesAfter: sanitize(input.changesAfter ?? null) as any,
+      payload: sanitize(input.payload ?? null) as unknown,
+      changesBefore: sanitize(input.changesBefore ?? null) as unknown,
+      changesAfter: sanitize(input.changesAfter ?? null) as unknown,
       metadata: {
         source: 'ai-brain',
         durationMs: input.durationMs ?? null,
@@ -82,7 +82,7 @@ export async function logActionAudit(input: ActionAuditInput): Promise<void> {
   } catch (err) {
     log.warn('[actionAuditLogger] Non-fatal: audit write failed', {
       actionId: input.actionId,
-      error: (err as any)?.message,
+      error: (err as Error)?.message,
     });
   }
 }

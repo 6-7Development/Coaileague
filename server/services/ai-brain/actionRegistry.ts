@@ -3941,7 +3941,7 @@ class AIBrainActionRegistry {
               entityType: 'billing_preference', entityId: entityId ?? null,
               success: true,
               message: `Learned ${preferenceType} for ${learnEntity} ${entityId || ''} (confidence: ${confidence || 'unknown'})`,
-              payload: request.payload as any, durationMs: Date.now() - start,
+              payload: request.payload as unknown, durationMs: Date.now() - start,
             });
             return createResult(request.actionId, true,
               `Learned ${preferenceType} preference for ${learnEntity} ${entityId || ''} (confidence: ${confidence || 'unknown'}, source: ${source || 'unknown'})`,
@@ -4052,7 +4052,7 @@ class AIBrainActionRegistry {
                    platform_fee_percentage, auto_payroll_enabled
             FROM workspaces WHERE id = ${request.workspaceId!} LIMIT 1
           `);
-          const settings = (result as any[])[0];
+          const settings = (result as unknown[])[0];
           return createResult(request.actionId, true,
             settings ? 'Workspace billing settings retrieved' : 'No billing settings found',
             settings || { payrollCycle: 'bi_weekly', defaultBillingCycle: 'monthly', defaultPaymentTerms: 'net_30' },
@@ -4269,7 +4269,7 @@ class AIBrainActionRegistry {
             FROM workspaces WHERE id = ${request.workspaceId} LIMIT 1
           `);
 
-          const row = (result as any[])[0];
+          const row = (result as unknown[])[0];
           if (!row) return createResult(request.actionId, false, 'Workspace not found', null, start);
 
           const tier = row.subscription_tier || 'free';

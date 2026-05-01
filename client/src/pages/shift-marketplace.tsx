@@ -601,7 +601,7 @@ function CoveragePoolTab() {
     onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const list: any[] = coverageData?.shifts || [];
+  const list: unknown[] = coverageData?.shifts || [];
 
   const stats = [
     { label: "Open", value: list.filter(s => s.status === "open").length, icon: ShoppingBag },

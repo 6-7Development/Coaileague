@@ -142,7 +142,7 @@ export async function createAuditLog(
       action: `${entityType}.${action}`,
       entityType,
       entityId,
-      changeType: (changeTypeMap[action] || 'action') as any,
+      changeType: (changeTypeMap[action] || 'action') as unknown,
       changes: changes ? { data: { old: null, new: changes } } : null,
       metadata: { endpoint: `${req.method} ${req.path}`, requestId: requestId || req.requestId, ...(options?.metadata || {}) },
       sourceRoute: `${req.method} ${req.path}`,
@@ -202,7 +202,7 @@ export async function createAuditLogFromContext(
       action: `${entityType}.${action}`,
       entityType,
       entityId,
-      changeType: (['create', 'update', 'delete'].includes(action) ? action : 'action') as any,
+      changeType: (['create', 'update', 'delete'].includes(action) ? action : 'action') as unknown,
       changes: changes ? { data: { old: null, new: changes } } : null,
       metadata: options?.metadata || {},
     }).catch((err: unknown) => log.warn('[AuditLog] Async write failed (non-blocking):', err?.message));

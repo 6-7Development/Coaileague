@@ -161,7 +161,7 @@ export default function TrainingCertificationPage() {
 
   // Module status based on certificates
   const certsByModule = new Map(myCerts.map(c => [
-    (c as any).cert?.moduleId ?? '',
+    (c as Record<string, unknown>).cert?.moduleId ?? '',
     c,
   ]));
 

@@ -110,7 +110,7 @@ router.post('/application', publicFormLimiter, async (req, res) => {
         userAgent: req.headers['user-agent'],
         position: (invite as Record<string,unknown>).position || applicationData.position || null,
         ...applicationData,
-      } as any);
+      } as unknown);
     });
 
     res.json(application);
@@ -746,7 +746,7 @@ router.post('/workspace-invite/register', async (req, res) => {
         lastName: resolvedLastName,
         email: normalizedEmail,
         phone: resolvedPhone || undefined,
-        workspaceRole: role as any,
+        workspaceRole: role as unknown,
         organizationalTitle: invite.organizationalTitle || undefined,
         isActive: true,
         hireDate: new Date(),
@@ -968,7 +968,7 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
         firstName: user.firstName || 'New',
         lastName: user.lastName || 'Member',
         email: user.email || '',
-        workspaceRole: role as any,
+        workspaceRole: role as unknown,
         isActive: true,
         hireDate: new Date(),
         payType: 'hourly',
@@ -1111,7 +1111,7 @@ router.post('/plaid/exchange', publicFormLimiter, async (req, res) => {
     await storage.updateOnboardingApplication(applicationId, workspaceId, {
       bankName: details.institutionName || '',
       accountType: details.accountType || 'checking',
-    } as any);
+    } as unknown);
 
     res.json({ success: true, institutionName: details.institutionName, mask: details.mask });
   } catch (err: unknown) {

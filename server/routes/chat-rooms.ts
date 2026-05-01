@@ -2636,7 +2636,7 @@ router.get(
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
-          content: (m as any).content,
+          content: (m as Record<string, unknown>).content,
           messageType: m.messageType,
           createdAt: m.createdAt,
         })),

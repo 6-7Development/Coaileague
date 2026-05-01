@@ -198,7 +198,7 @@ class TrinityCuriosityEngine {
       return { finding: 'No significant calloff patterns detected in the past 60 days.', confidence: 70, significance: 'low' };
     }
 
-    const topOffender = (rows as any[])[0];
+    const topOffender = (rows as unknown[][])[0];
     const finding = `${topOffender.first_name} ${topOffender.last_name} has ${topOffender.calloffs} no-shows in 60 days — the highest in the organization. ${rows.length > 1 ? `${rows.length - 1} other officer(s) also show elevated calloff frequency.` : ''}`;
     return { finding, confidence: 82, significance: rows.length > 2 ? 'high' : 'medium' };
   }
@@ -215,7 +215,7 @@ class TrinityCuriosityEngine {
         AND te.created_at > s.start_time + INTERVAL '10 minutes'
     `).catch(() => ({ rows: [{ late_count: 0 }] }));
 
-    const lateCount = parseInt((rows as any[])[0]?.late_count || '0', 10);
+    const lateCount = parseInt((rows as unknown[][])[0]?.late_count || '0', 10);
     if (lateCount === 0) {
       return { finding: 'No significant tardiness patterns detected in the past 30 days.', confidence: 65, significance: 'low' };
     }
@@ -244,11 +244,11 @@ class TrinityCuriosityEngine {
       LIMIT 3
     `).catch(() => ({ rows: [] }));
 
-    if (rows.length === 0 || parseInt((rows as any[])[0]?.calloffs || '0', 10) === 0) {
+    if (rows.length === 0 || parseInt((rows as unknown[][])[0]?.calloffs || '0', 10) === 0) {
       return { finding: 'No site-specific coverage problems identified.', confidence: 60, significance: 'low' };
     }
 
-    const top = (rows as any[])[0];
+    const top = (rows as unknown[][])[0];
     const rate = top.total_assignments > 0 ? Math.round((parseInt(top.calloffs, 10) / parseInt(top.total_assignments, 10)) * 100) : 0;
     return {
       finding: `${top.site_name || 'A key site'} has a ${rate}% no-show rate over 60 days (${top.calloffs} of ${top.total_assignments} assignments). This is the highest-risk site in the organization.`,
@@ -267,7 +267,7 @@ class TrinityCuriosityEngine {
         AND s.status IN ('no_show', 'calloff', 'cancelled')
     `).catch(() => ({ rows: [{ gaps: 0 }] }));
 
-    const gaps = parseInt((rows as any[])[0]?.gaps || '0', 10);
+    const gaps = parseInt((rows as unknown[][])[0]?.gaps || '0', 10);
     if (gaps === 0) return { finding: 'No uncovered shifts detected in the past 30 days.', confidence: 75, significance: 'low' };
 
     return {
@@ -303,7 +303,7 @@ class TrinityCuriosityEngine {
       WHERE workspace_id = ${workspaceId} AND status = 'queued' AND triggered_at >= NOW() - INTERVAL '7 days'
     `).catch(() => ({ rows: [{ count: 0 }] }));
 
-    if (parseInt((existing.rows as any[])[0]?.count || '0', 10) >= 10) return;
+    if (parseInt((existing.rows as unknown[][])[0]?.count || '0', 10) >= 10) return;
 
     // Check for unusual day-of-week patterns in calloffs
     // Converted to Drizzle ORM: INTERVAL → sql fragment
@@ -323,8 +323,8 @@ class TrinityCuriosityEngine {
 
     if (dayPatterns.length > 0) {
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const day = days[parseInt((dayPatterns as any[])[0].day_of_week, 10)] || 'Unknown';
-      const rate = (dayPatterns as any[])[0].total > 0 ? Math.round(((dayPatterns as any[])[0].calloffs / (dayPatterns as any[])[0].total) * 100) : 0;
+      const day = days[parseInt((dayPatterns as Record<string, unknown>[])[0].day_of_week, 10)] || 'Unknown';
+      const rate = (dayPatterns as Record<string, unknown>[])[0].total > 0 ? Math.round(((dayPatterns as Record<string, unknown>[])[0].calloffs / (dayPatterns as Record<string, unknown>[])[0].total) * 100) : 0;
       if (rate > 15) {
         await this.addCuriosityItem(
           workspaceId,
@@ -351,7 +351,7 @@ class TrinityCuriosityEngine {
       LIMIT 5
     `).catch(() => ({ rows: [] }));
 
-    return (rows as any[]).map(r => ({
+    return (rows as unknown[][]).map(r => ({
       id: r.id,
       workspaceId: r.workspace_id,
       question: r.question,

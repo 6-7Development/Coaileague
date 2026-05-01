@@ -41,7 +41,7 @@ class SuggestedChangesService {
   searchSuggestions(query: string, options?: { category?: string; tag?: string }): SuggestedChange[] {
     const lowerQuery = query.toLowerCase();
     
-    let results = listAllSuggestions(options as any);
+    let results = listAllSuggestions(options as unknown);
     
     // Filter by relevance to query
     results = results.filter(s => 
@@ -76,7 +76,7 @@ class SuggestedChangesService {
     category?: string;
     tag?: string;
   }): SuggestedChange[] {
-    return listAllSuggestions(options as any);
+    return listAllSuggestions(options as unknown);
   }
 
   /**
@@ -193,7 +193,7 @@ class SuggestedChangesService {
     };
 
     const filter = issueMap[issueType];
-    return filter ? listAllSuggestions(filter as any) : [];
+    return filter ? listAllSuggestions(filter as unknown) : [];
   }
 
   /**

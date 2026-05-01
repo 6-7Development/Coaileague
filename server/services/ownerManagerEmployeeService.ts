@@ -176,7 +176,7 @@ export async function ensureUserHasEmployeeRecord(
     await db.update(employees)
       .set({ 
         userId: user.id,
-        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
         organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
         updatedAt: new Date(),
       })
@@ -203,7 +203,7 @@ export async function ensureUserHasEmployeeRecord(
     await db.update(employees)
       .set({ 
         userId: user.id,
-        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+        workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
         organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
         updatedAt: new Date(),
       })
@@ -230,7 +230,7 @@ export async function ensureUserHasEmployeeRecord(
       phone: user.phone || null,
       role: ROLE_TO_JOB_TITLE[userRole] || 'Staff',
       organizationalTitle: ROLE_TO_ORG_TITLE[userRole] || 'staff',
-      workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as any,
+      workspaceRole: (ROLE_TO_WORKSPACE_ROLE[userRole] || 'staff') as unknown,
       workerType: 'employee',
       isActive: true,
       onboardingStatus: 'completed',

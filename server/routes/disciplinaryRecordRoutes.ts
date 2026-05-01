@@ -153,7 +153,7 @@ router.post('/trinity-intake', requireAuth, async (req: AuthenticatedRequest, re
 
     const result = await runDisciplinaryWorkflow({
       workspaceId,
-      initiatedBy: (req.user as any)?.id || '',
+      initiatedBy: (req.user as unknown)?.id || '',
       initiatedByRole: req.workspaceRole || '',
       subjectId,
       subjectType: subjectType || 'employee',
@@ -170,7 +170,7 @@ router.post('/trinity-intake', requireAuth, async (req: AuthenticatedRequest, re
 
     res.json({ success: true, ...result });
   } catch (err: unknown) {
-    log.error('[Disciplinary] Trinity intake failed:', (err as any)?.message);
+    log.error('[Disciplinary] Trinity intake failed:', (err as Error)?.message);
     res.status(500).json({ error: 'Trinity document generation failed' });
   }
 });
@@ -197,7 +197,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       });
     }
 
-    const userId = (req.user as any)?.id || '';
+    const userId = (req.user as unknown)?.id || '';
     const issuedAtIso = new Date().toISOString().slice(0, 10);
 
     // 1. Create the org_documents shell first so we have a document id for signing.
@@ -249,7 +249,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
           documentId: orgDoc.id,
           workspaceId,
           senderUserId: userId,
-          senderName: (req.user as any)?.email || 'Management',
+          senderName: (req.user as unknown)?.email || 'Management',
           recipients: [{
             email: firstSigner.targetEmail,
             name: firstSigner.role === 'employee' ? 'Subject' : 'Manager',
@@ -342,7 +342,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
       } for signature.`,
     });
   } catch (err: unknown) {
-    log.error('[Disciplinary] Finalize failed:', (err as any)?.message);
+    log.error('[Disciplinary] Finalize failed:', (err as Error)?.message);
     res.status(500).json({ error: 'Failed to finalize disciplinary record' });
   }
 });
@@ -351,7 +351,7 @@ router.post('/finalize', requireAuth, async (req: AuthenticatedRequest, res) => 
 router.get('/my', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId;
-    const userId = (req.user as any)?.id;
+    const userId = (req.user as unknown)?.id;
     if (!workspaceId || !userId) {
       return res.status(403).json({ error: 'Auth required' });
     }

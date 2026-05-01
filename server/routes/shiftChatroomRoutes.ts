@@ -474,8 +474,7 @@ router.post('/dar/:darId/legal-hold', async (req: AuthenticatedRequest, res) => 
             legalHoldSetBy: null,
             legalHoldSetAt: null,
             updatedAt: new Date(),
-          } as any
-      )
+          } as unknown)
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, hold ? 'legal_hold_set' : 'legal_hold_released');

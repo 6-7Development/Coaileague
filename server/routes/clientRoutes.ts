@@ -509,7 +509,7 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
     // 🧠 TRINITY: If billing rates changed, trigger downstream recalculation pipeline
     // Flags draft invoices, re-evaluates revenue projections and margin risk automatically
     const rateFields = ['armedBillRate', 'unarmedBillRate', 'overtimeBillRate', 'contractRate'];
-    const hasRateChange = rateFields.some(field => (validated as any)[field] !== undefined);
+    const hasRateChange = rateFields.some(field => (validated as unknown)[field] !== undefined);
     if (hasRateChange) {
       (async () => {
         try {
@@ -517,10 +517,10 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
           await helpaiOrchestrator.executeAction('settings.propagate_bill_rate_change', {
             clientId: req.params.id,
             workspaceId,
-            changedFields: rateFields.filter(f => (validated as any)[f] !== undefined),
+            changedFields: rateFields.filter(f => (validated as unknown)[f] !== undefined),
             newRates: Object.fromEntries(
-              rateFields.filter(f => (validated as any)[f] !== undefined)
-                .map(f => [f, (validated as any)[f]])
+              rateFields.filter(f => (validated as unknown)[f] !== undefined)
+                .map(f => [f, (validated as unknown)[f]])
             ),
             changedBy: req.user?.id,
           });
@@ -620,7 +620,7 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
     // Before any destructive action, Trinity's conscience considers financial,
     // legal, relational, and operational impact. Owners can override by
     // resubmitting with { deliberationApproved: true }.
-    const deliberationApproved = (req.body as any)?.deliberationApproved === true;
+    const deliberationApproved = (req.body as unknown)?.deliberationApproved === true;
     if (!deliberationApproved) {
       try {
         const { deliberate, persistDeliberationDocuments } =
@@ -757,9 +757,9 @@ router.post('/:id/deactivate', requireManagerOrPlatformStaff, async (req: Authen
             amountPaid: '0',
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             notes: `Final invoice generated on client offboarding — ${unbilledEntries.length} unbilled entries, ${totalUnbilledHours.toFixed(2)} hours at $${contractRate}/hr`,
-          } as any);
+          } as unknown);
 
-          await db.update(timeEntries as any)
+          await db.update(timeEntries as unknown)
             .set({ invoiceId: finalInvoiceId } as Record<string, unknown>)
             .where(and(
               inArray(((timeEntries as {id?: string}).id), unbilledEntries.map(e => e.id)),
@@ -1156,7 +1156,7 @@ router.get('/my-communications', requireAuth, async (req: AuthenticatedRequest, 
     const allReports = await clientPortalHelpAIService.getOrgReports(workspaceId, 200);
     const myReports = allReports.filter(r => {
       if (!userEmail) return false;
-      const reportEmail = (r as any).clientEmail || (r as any).guestEmail || '';
+      const reportEmail = (r as Record<string, unknown>).clientEmail || (r as Record<string, unknown>).guestEmail || '';
       return normalizeEmail(reportEmail) === normalizeEmail(userEmail);
     }).slice(0, limit);
 
@@ -1209,7 +1209,7 @@ router.post('/contract-renewal-request', requireAuth, async (req: AuthenticatedR
       },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] || null,
-    } as any);
+    } as unknown);
 
     await db.insert(notifications).values({
       workspaceId,
@@ -1271,7 +1271,7 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
       },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] || null,
-    } as any);
+    } as unknown);
 
     // Fire UNS notification to org managers
     await db.insert(notifications).values({
@@ -1309,7 +1309,7 @@ router.post('/coi-request', requireAuth, async (req: AuthenticatedRequest, res) 
         <p><strong>Additional Info:</strong> ${additionalInfo || 'None'}</p>
         <p>Please fulfill this request and upload the COI to the client's document portal.</p>`,
       },
-    }).catch(err => log.warn('[ClientRoutes] COI email queue failed:', (err as any)?.message));
+    }).catch(err => log.warn('[ClientRoutes] COI email queue failed:', (err as Error)?.message));
 
     res.json({
       success: true,
