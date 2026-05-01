@@ -732,7 +732,7 @@ export interface IStorage {
   getKpiAlerts(workspaceId: string): Promise<Record<string,unknown>[]>;
   updateKpiAlert(id: string, workspaceId: string, data: Record<string, unknown>): Promise<Record<string,unknown>>;
   deleteKpiAlert(id: string, workspaceId: string): Promise<boolean>;
-  triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<Record<string,unknown>>;
+  triggerKpiAlert(alertId: string, metricValue: number, entityData: unknown): Promise<Record<string,unknown>>;
   getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<Record<string,unknown>[]>;
   acknowledgeAlert(triggerId: string, userId: string): Promise<Record<string,unknown>>;
   
@@ -866,10 +866,10 @@ export interface IStorage {
   getSupportConversationForExport(conversationId: string, workspaceId?: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date } | null>;
   
   // Export AI Communications room with messages and members
-  getCommRoomForExport(roomId: string): Promise<{ room: any; messages: ChatMessage[]; members: unknown[]; exportedAt: Date } | null>;
+  getCommRoomForExport(roomId: string): Promise<{ room: unknown; messages: ChatMessage[]; members: unknown[]; exportedAt: Date } | null>;
   
   // Export private DM conversation with DECRYPTED messages (requires authorization)
-  getPrivateConversationForExport(conversationId: string, userId: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date; auditInfo: any } | null>;
+  getPrivateConversationForExport(conversationId: string, userId: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date; auditInfo: unknown } | null>;
   
   // ========================================================================
   // NOTIFICATIONS - REAL-TIME USER NOTIFICATIONS (Dual-Scope Model)
@@ -1529,7 +1529,7 @@ export class DatabaseStorage implements IStorage {
     if (result.length > 0) {
       // Cascade: cancel all future shifts for the deactivated employee
       await db.update(shifts)
-        .set({ status: 'cancelled' } as any)
+        .set({ status: 'cancelled' } as unknown)
         .where(and(
           eq(shifts.employeeId, id),
           eq(shifts.workspaceId, workspaceId),
@@ -1611,7 +1611,7 @@ export class DatabaseStorage implements IStorage {
           paymentTerms: "net_30",
           taxRate: "0.0000",
           roundHoursTo: "0.25",
-        } as any)
+        } as unknown)
         .onConflictDoNothing();
 
       return [createdClient];
@@ -1690,7 +1690,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Build sort column
-    let sortColumn: any;
+    let sortColumn: unknown;
     switch (sort) {
       case 'firstName':
         sortColumn = clients.firstName;
@@ -1810,10 +1810,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateClient(id: string, workspaceId: string, data: Partial<InsertClient>): Promise<Client | undefined> {
-    if ('billableHourlyRate' in data && (data as any).billableHourlyRate === null) {
+    if ('billableHourlyRate' in data && (data as unknown).billableHourlyRate === null) {
       throw new Error(`billableHourlyRate cannot be null or undefined for client ${id}`);
     }
-    if ('paymentTerms' in (data as any) && (data as any).paymentTerms === null) {
+    if ('paymentTerms' in (data as unknown) && (data as unknown).paymentTerms === null) {
       throw new Error(`paymentTerms cannot be null or undefined for client ${id}`);
     }
 
@@ -1836,7 +1836,7 @@ export class DatabaseStorage implements IStorage {
 
     const [client] = await db
       .update(clients)
-      .set(mergedRecord as any)
+      .set(mergedRecord as unknown)
       .where(and(
         eq(clients.id, id),
         eq(clients.workspaceId, workspaceId)
@@ -1848,7 +1848,7 @@ export class DatabaseStorage implements IStorage {
   async deleteClient(id: string, workspaceId: string): Promise<boolean> {
     // Cascade: cancel all future open/assigned shifts for this client before deletion
     await db.update(shifts)
-      .set({ status: 'cancelled' } as any)
+      .set({ status: 'cancelled' } as unknown)
       .where(and(
         eq(shifts.clientId, id),
         eq(shifts.workspaceId, workspaceId),
@@ -1865,7 +1865,7 @@ export class DatabaseStorage implements IStorage {
         isActive: false,
         deactivatedAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      } as unknown)
       .where(and(
         eq(clients.id, id),
         eq(clients.workspaceId, workspaceId),
@@ -2367,7 +2367,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'opened' as any,
+        status: 'opened' as unknown,
         openedAt: new Date(),
         updatedAt: new Date()
       })
@@ -2380,7 +2380,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'accepted' as any,
+        status: 'accepted' as unknown,
         acceptedAt: new Date(),
         isUsed: true,
         updatedAt: new Date()
@@ -2399,7 +2399,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         inviteToken: newToken,
         expiresAt: newExpiresAt,
-        status: 'sent' as any,
+        status: 'sent' as unknown,
         resentCount: (invite.resentCount || 0) + 1,
         lastResentAt: new Date(),
         updatedAt: new Date()
@@ -2413,7 +2413,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'revoked' as any,
+        status: 'revoked' as unknown,
         updatedAt: new Date()
       })
       .where(eq(onboardingInvites.id, id))
@@ -2428,7 +2428,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingInvites.workspaceId, workspaceId),
-          eq(onboardingInvites.status, status as any)
+          eq(onboardingInvites.status, status as unknown)
         )
       )
       .orderBy(desc(onboardingInvites.createdAt));
@@ -2440,7 +2440,7 @@ export class DatabaseStorage implements IStorage {
       .from(onboardingInvites)
       .where(
         and(
-          eq(onboardingInvites.status, 'sent' as any),
+          eq(onboardingInvites.status, 'sent' as unknown),
           sql`${onboardingInvites.expiresAt} < NOW()`
         )
       );
@@ -2450,14 +2450,14 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(onboardingInvites)
       .set({ 
-        status: 'expired' as any,
+        status: 'expired' as unknown,
         updatedAt: new Date()
       })
       .where(
         and(
           or(
-            eq(onboardingInvites.status, 'sent' as any),
-            eq(onboardingInvites.status, 'opened' as any)
+            eq(onboardingInvites.status, 'sent' as unknown),
+            eq(onboardingInvites.status, 'opened' as unknown)
           ),
           sql`${onboardingInvites.expiresAt} < NOW()`
         )
@@ -3016,7 +3016,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(auditLogs.entityType, filters.entityType));
     }
     if (filters?.action) {
-      conditions.push(eq(auditLogs.action, filters.action as any));
+      conditions.push(eq(auditLogs.action, filters.action as unknown));
     }
     if (filters?.startDate) {
       conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);
@@ -3047,15 +3047,15 @@ export class DatabaseStorage implements IStorage {
       .insert(auditLogs)
       .values({
         workspaceId: event.workspaceId,
-        rawAction: (event as any).eventType,
-        actorType: (event as any).actorType,
-        entityId: (event as any).aggregateId,
-        entityType: (event as any).aggregateType,
-        payload: (event as any).payload,
-        actionHash: (event as any).actionHash,
-        metadata: (event as any).metadata,
-        ipAddress: (event as any).ipAddress,
-        userAgent: (event as any).userAgent,
+        rawAction: (event as unknown).eventType,
+        actorType: (event as unknown).actorType,
+        entityId: (event as unknown).aggregateId,
+        entityType: (event as unknown).aggregateType,
+        payload: (event as unknown).payload,
+        actionHash: (event as unknown).actionHash,
+        metadata: (event as unknown).metadata,
+        ipAddress: (event as unknown).ipAddress,
+        userAgent: (event as unknown).userAgent,
       })
       .returning();
     
@@ -3091,13 +3091,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+      query = query.where(and(...conditions)) as unknown;
     }
 
-    query = query.orderBy(desc(auditLogs.createdAt)) as any;
+    query = query.orderBy(desc(auditLogs.createdAt)) as unknown;
 
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
 
     return await query;
@@ -3147,12 +3147,12 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         preparedAt: new Date(),
-        status: 'pending' as any, // Status remains pending, preparedAt!=null indicates prepared
+        status: 'pending' as unknown, // Status remains pending, preparedAt!=null indicates prepared
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any)
+        eq(writeAheadLog.status, 'pending' as unknown)
       ))
       .returning();
     
@@ -3175,12 +3175,12 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         committedAt: new Date(),
-        status: 'completed' as any,
+        status: 'completed' as unknown,
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any), // Must be in pending state (prepared has preparedAt)
+        eq(writeAheadLog.status, 'pending' as unknown), // Must be in pending state (prepared has preparedAt)
         isNotNull(writeAheadLog.preparedAt) // Must have been prepared
       ))
       .returning();
@@ -3204,14 +3204,14 @@ export class DatabaseStorage implements IStorage {
       .update(writeAheadLog)
       .set({ 
         rolledBackAt: new Date(),
-        status: 'rolled_back' as any,
+        status: 'rolled_back' as unknown,
         errorMessage,
         retryCount: sql`${writeAheadLog.retryCount} + 1`,
         updatedAt: new Date(),
       })
       .where(and(
         eq(writeAheadLog.transactionId, transactionId),
-        eq(writeAheadLog.status, 'pending' as any) // Can rollback from pending (before or after prepare)
+        eq(writeAheadLog.status, 'pending' as unknown) // Can rollback from pending (before or after prepare)
       ))
       .returning();
     
@@ -3681,7 +3681,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(ptoRequests.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(ptoRequests.status, filters.status as any));
+      conditions.push(eq(ptoRequests.status, filters.status as unknown));
     }
     
     return await db
@@ -4036,7 +4036,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(chatConversations.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(chatConversations.status, filters.status as any));
+      conditions.push(eq(chatConversations.status, filters.status as unknown));
     }
     
     return await db
@@ -4050,7 +4050,7 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(chatConversations).where(eq(chatConversations.workspaceId, workspaceId));
     
     if (filters?.status) {
-      query = (query as any).where(and(eq(chatConversations.workspaceId, workspaceId), eq(chatConversations.status, filters.status as any))) as any;
+      query = (query as unknown).where(and(eq(chatConversations.workspaceId, workspaceId), eq(chatConversations.status, filters.status as unknown))) as unknown;
     }
     
     return await query.orderBy(desc(chatConversations.lastMessageAt));
@@ -4810,12 +4810,12 @@ export class DatabaseStorage implements IStorage {
       ? and(eq(payrollRuns.id, id), eq(payrollRuns.workspaceId, workspaceId))
       : eq(payrollRuns.id, id);
     const condition = requiredPriorStatus
-      ? and(idCondition, eq(payrollRuns.status, requiredPriorStatus as any))
+      ? and(idCondition, eq(payrollRuns.status, requiredPriorStatus as unknown))
       : idCondition;
     const [updated] = await db
       .update(payrollRuns)
       .set({
-        status: status as any,
+        status: status as unknown,
         processedBy,
         processedAt: new Date(),
         updatedAt: new Date()
@@ -5107,7 +5107,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEscalationTicketStatus(id: string, status: string, resolvedBy?: string): Promise<EscalationTicket | undefined> {
     const updateData: Record<string, unknown> = {
-      status: status as any,
+      status: status as unknown,
       updatedAt: new Date()
     };
 
@@ -5248,7 +5248,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [eq(expenses.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(expenses.status, filters.status as any));
+      conditions.push(eq(expenses.status, filters.status as unknown));
     }
     if (filters?.employeeId) {
       conditions.push(eq(expenses.employeeId, filters.employeeId));
@@ -5566,7 +5566,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
   
-  async triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<Record<string,unknown>> {
+  async triggerKpiAlert(alertId: string, metricValue: number, entityData: unknown): Promise<Record<string,unknown>> {
     const { kpiAlerts, kpiAlertTriggers } = await import("@shared/schema");
     
     // Get the alert
@@ -6264,7 +6264,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(turnoverRiskScores.predictedTurnoverDate));
     
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
     
     return await query;
@@ -6309,11 +6309,11 @@ export class DatabaseStorage implements IStorage {
     ];
     
     if (documentType) {
-      conditions.push(eq(employeeDocuments.documentType, documentType as any));
+      conditions.push(eq(employeeDocuments.documentType, documentType as unknown));
     }
     
     if (status) {
-      conditions.push(eq(employeeDocuments.status, status as any));
+      conditions.push(eq(employeeDocuments.status, status as unknown));
     }
     
     return await db
@@ -7404,9 +7404,9 @@ export class DatabaseStorage implements IStorage {
       .insert(notifications)
       .values({
         userId,
-        scope: 'user' as any,
-        workspaceId: null as any,
-        type: type as any,
+        scope: 'user' as unknown,
+        workspaceId: null as unknown,
+        type: type as unknown,
         title,
         message,
         metadata,
@@ -7442,7 +7442,7 @@ export class DatabaseStorage implements IStorage {
           or(
             eq(notifications.workspaceId, workspaceId),
             isNull(notifications.workspaceId),
-            eq(notifications.scope, 'user' as any)
+            eq(notifications.scope, 'user' as unknown)
           )
         ))
         .orderBy(desc(notifications.createdAt))
@@ -7454,7 +7454,7 @@ export class DatabaseStorage implements IStorage {
         .from(notifications)
         .where(and(
           eq(notifications.userId, userId),
-          eq(notifications.scope, 'user' as any),
+          eq(notifications.scope, 'user' as unknown),
         ))
         .orderBy(desc(notifications.createdAt))
         .limit(limit)
@@ -7471,7 +7471,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         ),
         eq(notifications.isRead, false),
         isNull(notifications.clearedAt),
@@ -7492,7 +7492,7 @@ export class DatabaseStorage implements IStorage {
           eq(notifications.userId, userId),
           or(
             eq(notifications.workspaceId, workspaceId),
-            eq(notifications.scope, 'user' as any)
+            eq(notifications.scope, 'user' as unknown)
           ),
           eq(notifications.isRead, false),
           sql`${notifications.type} !== 'platform_update'`,
@@ -7504,7 +7504,7 @@ export class DatabaseStorage implements IStorage {
         .from(notifications)
         .where(and(
           eq(notifications.userId, userId),
-          eq(notifications.scope, 'user' as any),
+          eq(notifications.scope, 'user' as unknown),
           eq(notifications.isRead, false),
           sql`${notifications.type} !== 'platform_update'`,
         ));
@@ -7568,7 +7568,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
@@ -7601,7 +7601,7 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )
       );
     } else {
@@ -7671,13 +7671,13 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const result = await db
@@ -7716,9 +7716,9 @@ export class DatabaseStorage implements IStorage {
     const conditions = [
       eq(notifications.userId, userId),
       isNull(notifications.clearedAt),
-      not(eq(notifications.category, 'system_fix' as any)),
-      not(eq(notifications.category, 'hotpatch' as any)),
-      not(eq(notifications.category, 'admin_action' as any)),
+      not(eq(notifications.category, 'system_fix' as unknown)),
+      not(eq(notifications.category, 'hotpatch' as unknown)),
+      not(eq(notifications.category, 'admin_action' as unknown)),
     ];
     
     if (workspaceId) {
@@ -7726,13 +7726,13 @@ export class DatabaseStorage implements IStorage {
         or(
           eq(notifications.workspaceId, workspaceId),
           isNull(notifications.workspaceId),
-          eq(notifications.scope, 'user' as any)
+          eq(notifications.scope, 'user' as unknown)
         )!
       );
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const result = await db
@@ -7759,7 +7759,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (category) {
-      conditions.push(eq(notifications.category, category as any));
+      conditions.push(eq(notifications.category, category as unknown));
     }
     
     const results = await db
@@ -8175,11 +8175,11 @@ export class DatabaseStorage implements IStorage {
 
     if (filters?.sourceType) {
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      query = (query as any).where(eq(aiResponses.sourceType, filters.sourceType));
+      query = (query as unknown).where(eq(aiResponses.sourceType, filters.sourceType));
     }
     if (filters?.feature) {
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      query = (query as any).where(eq(aiResponses.feature, filters.feature));
+      query = (query as unknown).where(eq(aiResponses.feature, filters.feature));
     }
 
     query = query.orderBy(desc(aiResponses.createdAt));
@@ -8274,13 +8274,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(aiSuggestions.workspaceId, workspaceId));
 
     if (filters?.status) {
-      query = (query as any).where(eq(aiSuggestions.status, filters.status));
+      query = (query as unknown).where(eq(aiSuggestions.status, filters.status));
     }
     if (filters?.priority) {
-      query = (query as any).where(eq(aiSuggestions.priority, filters.priority));
+      query = (query as unknown).where(eq(aiSuggestions.priority, filters.priority));
     }
     if (filters?.type) {
-      query = (query as any).where(eq(aiSuggestions.suggestionType, filters.type));
+      query = (query as unknown).where(eq(aiSuggestions.suggestionType, filters.type));
     }
 
     query = query.orderBy(desc(aiSuggestions.createdAt));
@@ -8415,13 +8415,13 @@ export class DatabaseStorage implements IStorage {
     const conditions: (string | number | boolean | null)[] = [];
     
     if (filters?.type) {
-      conditions.push(eq(userFeedback.type, filters.type as any));
+      conditions.push(eq(userFeedback.type, filters.type as unknown));
     }
     if (filters?.status) {
-      conditions.push(eq(userFeedback.status, filters.status as any));
+      conditions.push(eq(userFeedback.status, filters.status as unknown));
     }
     if (filters?.priority) {
-      conditions.push(eq(userFeedback.priority, filters.priority as any));
+      conditions.push(eq(userFeedback.priority, filters.priority as unknown));
     }
     if (filters?.workspaceId) {
       conditions.push(eq(userFeedback.workspaceId, filters.workspaceId));
@@ -8433,27 +8433,27 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(userFeedback);
     
     if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+      query = query.where(and(...conditions)) as unknown;
     }
     
     const sortOrder = filters?.sortOrder === 'asc' ? 'asc' : 'desc';
     if (filters?.sortBy === 'votes') {
       query = sortOrder === 'desc' 
-        ? query.orderBy(desc(userFeedback.upvoteCount)) as any
-        : query.orderBy(userFeedback.upvoteCount) as any;
+        ? query.orderBy(desc(userFeedback.upvoteCount)) as unknown
+        : query.orderBy(userFeedback.upvoteCount) as unknown;
     } else if (filters?.sortBy === 'createdAt') {
       query = sortOrder === 'desc'
-        ? query.orderBy(desc(userFeedback.createdAt)) as any
-        : query.orderBy(userFeedback.createdAt) as any;
+        ? query.orderBy(desc(userFeedback.createdAt)) as unknown
+        : query.orderBy(userFeedback.createdAt) as unknown;
     } else {
-      query = query.orderBy(desc(userFeedback.createdAt)) as any;
+      query = query.orderBy(desc(userFeedback.createdAt)) as unknown;
     }
     
     if (filters?.limit) {
-      query = query.limit(filters.limit) as any;
+      query = query.limit(filters.limit) as unknown;
     }
     if (filters?.offset) {
-      query = query.offset(filters.offset) as any;
+      query = query.offset(filters.offset) as unknown;
     }
     
     return await query;
@@ -8477,7 +8477,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(userFeedback)
       .set({
-        status: status as any,
+        status: status as unknown,
         statusUpdatedBy: updatedBy,
         statusUpdatedAt: new Date(),
         statusNote: note,
@@ -8836,9 +8836,9 @@ export class DatabaseStorage implements IStorage {
     const safeData: Record<string, unknown> = {};
     if (data.actorType !== undefined) safeData.actionType = data.actorType;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (data.actionData !== undefined) safeData.actionData = (data as any).actionData;
+    if (data.actionData !== undefined) safeData.actionData = (data as unknown).actionData;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (data.result !== undefined) safeData.result = (data as any).result;
+    if (data.result !== undefined) safeData.result = (data as unknown).result;
     if (Object.keys(safeData).length === 0) return this.getAiBrainActionLog(id);
     const [updated] = await db
       .update(aiBrainActionLogs)
@@ -8958,12 +8958,12 @@ export class DatabaseStorage implements IStorage {
     // Redirected: support_audit_logs merged into audit_logs with metadata
     const [created] = await db.insert(auditLogs).values({
       workspaceId: log.workspaceId || 'system',
-      userId: (log as any).adminUserId,
-      action: 'support_action' as any,
+      userId: (log as unknown).adminUserId,
+      action: 'support_action' as unknown,
       entityType: 'support_audit',
       metadata: { ...log, logType: 'support_audit' },
     }).returning();
-    return { ...created, adminUserId: (log as any).adminUserId, sessionId: log.sessionId, action: log.action, severity: log.severity, timestamp: created.createdAt } as any;
+    return { ...created, adminUserId: (log as unknown).adminUserId, sessionId: log.sessionId, action: log.action, severity: log.severity, timestamp: created.createdAt } as unknown;
   }
 
   async getSupportAuditLogs(filters?: {
@@ -8985,8 +8985,8 @@ export class DatabaseStorage implements IStorage {
     if (filters?.endDate) conditions.push(sql`${auditLogs.createdAt} <= ${filters.endDate}`);
     
     let query = db.select().from(auditLogs).where(and(...conditions)).orderBy(desc(auditLogs.createdAt));
-    if (filters?.limit) query = query.limit(filters.limit) as any;
-    if (filters?.offset) query = query.offset(filters.offset) as any;
+    if (filters?.limit) query = query.limit(filters.limit) as unknown;
+    if (filters?.offset) query = query.offset(filters.offset) as unknown;
     
     const rows = await query;
     return rows.map(r => ({
@@ -8996,7 +8996,7 @@ export class DatabaseStorage implements IStorage {
       severity: (r as Record<string, unknown>).metadata?.severity,
       action: (r as Record<string, unknown>).metadata?.action,
       timestamp: r.createdAt,
-    })) as any[];
+    })) as unknown[];
   }
 
   async createEmployeeInvitation(data: InsertEmployeeInvitation): Promise<EmployeeInvitation> {
@@ -9004,7 +9004,7 @@ export class DatabaseStorage implements IStorage {
     const [invitation] = await db.insert(employeeInvitations).values({
       ...data,
       inviteToken: token,
-    } as any).returning();
+    } as unknown).returning();
     return invitation;
   }
 
@@ -9015,7 +9015,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEmployeeInvitation(id: string, data: Partial<InsertEmployeeInvitation>): Promise<EmployeeInvitation | undefined> {
     const [updated] = await db.update(employeeInvitations)
-      .set({ ...data, updatedAt: new Date() } as any)
+      .set({ ...data, updatedAt: new Date() } as unknown)
       .where(eq(employeeInvitations.id, id))
       .returning();
     return updated;

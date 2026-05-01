@@ -39,7 +39,7 @@ const ANALYTICS_TIER_OVERRIDES: Record<string, SubscriptionTier> = {
 };
 const DEFAULT_ANALYTICS_TIER: SubscriptionTier = 'professional';
 
-router.use((req: AuthenticatedRequest, res: any, next: any) => {
+router.use((req: AuthenticatedRequest, res: unknown, next: unknown) => {
   const path = req.path;
   const requiredTier: SubscriptionTier = ANALYTICS_TIER_OVERRIDES[path] ?? DEFAULT_ANALYTICS_TIER;
   return requirePlan(requiredTier)(req, res, next);
@@ -297,7 +297,7 @@ router.get("/stats", async (req: AuthenticatedRequest, res) => {
 
     res.json(statsPayload);
   } catch (error: unknown) {
-    const err = error as any;
+    const err = error as unknown;
     log.error("[analytics/stats] error:", {
       message: err?.message,
       code: err?.code,
@@ -602,9 +602,9 @@ router.get("/turnover", async (req: AuthenticatedRequest, res) => {
       ? Math.round(((terminatedCount / (months / 12)) / avgHeadcount) * 100 * 10) / 10
       : 0;
 
-    const avgActiveTenureDays = parseFloat(String((tenureResult as any)[0]?.avgActiveTenureDays ?? "0"));
-    const avgTermedTenureDays = parseFloat(String((tenureResult as any)[0]?.avgTermedTenureDays ?? "0"));
-    const medianTenureDays = parseFloat(String((tenureResult as any)[0]?.medianTenureDays ?? "0"));
+    const avgActiveTenureDays = parseFloat(String((tenureResult as unknown)[0]?.avgActiveTenureDays ?? "0"));
+    const avgTermedTenureDays = parseFloat(String((tenureResult as unknown)[0]?.avgTermedTenureDays ?? "0"));
+    const medianTenureDays = parseFloat(String((tenureResult as unknown)[0]?.medianTenureDays ?? "0"));
 
     const costPerHireEstimate = 4500;
     const estimatedTurnoverCost = terminatedCount * costPerHireEstimate;
@@ -951,7 +951,7 @@ router.get("/dashboard", async (req: AuthenticatedRequest, res) => {
       pendingInvoices: parseInt(invoiceRow.rows[0]?.pending_cnt || '0'),
       paidInvoices: parseInt(invoiceRow.rows[0]?.paid_cnt || '0'),
       comparison: { hoursChange: 0, revenueChange: 0, laborCostChange: 0 },
-      trends: trendsRows.rows.map((r: any) => ({
+      trends: trendsRows.rows.map((r: unknown) => ({
         period: new Date(r.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         hours: parseFloat(parseFloat(r.hours).toFixed(1)),
         revenue: 0,
@@ -1009,20 +1009,20 @@ router.get("/time-usage", async (req: AuthenticatedRequest, res) => {
       totalHours: parseFloat(totalHours.toFixed(1)),
       overtimeHours: parseFloat(parseFloat(totalRow.rows[0]?.ot_hours || '0').toFixed(1)),
       averageHoursPerDay: parseFloat((totalHours / dayCount).toFixed(1)),
-      byEmployee: byEmpRows.rows.map((r: any) => ({
+      byEmployee: byEmpRows.rows.map((r: unknown) => ({
         employeeId: r.employee_id,
         name: r.name,
         totalHours: parseFloat(parseFloat(r.total_hours).toFixed(1)),
         regularHours: parseFloat(parseFloat(r.regular_hours).toFixed(1)),
         overtimeHours: parseFloat(parseFloat(r.ot_hours).toFixed(1)),
       })),
-      byClient: byClientRows.rows.map((r: any) => ({
+      byClient: byClientRows.rows.map((r: unknown) => ({
         clientId: r.client_id,
         name: r.name,
         totalHours: parseFloat(parseFloat(r.total_hours).toFixed(1)),
         revenue: 0,
       })),
-      byDay: byDayRows.rows.map((r: any) => ({
+      byDay: byDayRows.rows.map((r: unknown) => ({
         date: new Date(r.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         hours: parseFloat(parseFloat(r.hours).toFixed(1)),
         employeeCount: parseInt(r.emp_count),
@@ -1079,8 +1079,8 @@ router.get("/scheduling", async (req: AuthenticatedRequest, res) => {
       fillRate: total > 0 ? parseFloat(((filled / total) * 100).toFixed(1)) : 0,
       coverageRate: total > 0 ? parseFloat(((completed / total) * 100).toFixed(1)) : 0,
       averageShiftDuration: parseFloat(parseFloat(summary.avg_duration || '0').toFixed(1)),
-      byStatus: byStatusRows.rows.map((r: any) => ({ status: r.status, count: parseInt(r.cnt) })),
-      byDay: byDayRows.rows.map((r: any) => ({ day: r.day, scheduled: parseInt(r.scheduled), completed: parseInt(r.completed) })),
+      byStatus: byStatusRows.rows.map((r: unknown) => ({ status: r.status, count: parseInt(r.cnt) })),
+      byDay: byDayRows.rows.map((r: unknown) => ({ day: r.day, scheduled: parseInt(r.scheduled), completed: parseInt(r.completed) })),
     }});
   } catch (err: unknown) {
     log.error('[analytics/scheduling]', (err instanceof Error ? err.message : String(err)));
@@ -1145,7 +1145,7 @@ router.get("/revenue", async (req: AuthenticatedRequest, res) => {
       .orderBy(sql`date_trunc('month',${invoices.createdAt})`),
     ]);
 
-    const s2 = (summaryRow as any)[0] || {};
+    const s2 = (summaryRow as unknown)[0] || {};
     const invoiced = parseFloat(String(s2.invoiced || '0'));
     const paid = parseFloat(String(s2.paid || '0'));
     const cnt = parseInt(String(s2.cnt || '0'));
@@ -1158,13 +1158,13 @@ router.get("/revenue", async (req: AuthenticatedRequest, res) => {
       collectionRate: invoiced > 0 ? parseFloat(((paid / invoiced) * 100).toFixed(1)) : 0,
       platformFees: 0,
       netRevenue: parseFloat(paid.toFixed(2)),
-      byClient: byClientRows.map((r: any) => ({
+      byClient: byClientRows.map((r: unknown) => ({
         clientId: r.clientId,
         name: r.name,
         invoiced: parseFloat(parseFloat(String(r.invoiced)).toFixed(2)),
         paid: parseFloat(parseFloat(String(r.paid)).toFixed(2)),
       })),
-      byMonth: byMonthRows.map((r: any) => ({
+      byMonth: byMonthRows.map((r: unknown) => ({
         month: r.month,
         invoiced: parseFloat(parseFloat(String(r.invoiced)).toFixed(2)),
         paid: parseFloat(parseFloat(String(r.paid)).toFixed(2)),
@@ -1216,7 +1216,7 @@ router.get("/employee-performance", async (req: AuthenticatedRequest, res) => {
     .orderBy(sql`completed_shifts DESC`)
     .limit(50);
 
-    const employeeStats = performanceRows.map((r: any) => {
+    const employeeStats = performanceRows.map((r: unknown) => {
       const total = parseInt(r.totalShifts);
       const completed = parseInt(r.completedShifts);
       const noShows = parseInt(r.noShows);
@@ -1235,7 +1235,7 @@ router.get("/employee-performance", async (req: AuthenticatedRequest, res) => {
     });
 
     const avgAttendance = employeeStats.length > 0
-      ? parseFloat((employeeStats.reduce((a: number, e: any) => a + e.attendanceRate, 0) / employeeStats.length).toFixed(1))
+      ? parseFloat((employeeStats.reduce((a: number, e: unknown) => a + e.attendanceRate, 0) / employeeStats.length).toFixed(1))
       : 0;
 
     res.json({ data: {
@@ -1296,14 +1296,14 @@ router.get("/insights", async (req: AuthenticatedRequest, res) => {
     const anomalies: (string | number | boolean | null)[] = [];
     const forecasts: (string | number | boolean | null)[] = [];
 
-    const totalHours = parseFloat(String(((hoursRow as any)[0]?.total ?? (hoursRow as any).rows?.[0]?.total) || '0'));
-    const otHours = parseFloat(String(((hoursRow as any)[0]?.ot ?? (hoursRow as any).rows?.[0]?.ot) || '0'));
+    const totalHours = parseFloat(String(((hoursRow as unknown)[0]?.total ?? (hoursRow as unknown).rows?.[0]?.total) || '0'));
+    const otHours = parseFloat(String(((hoursRow as unknown)[0]?.ot ?? (hoursRow as unknown).rows?.[0]?.ot) || '0'));
     const totalShifts = parseInt(shiftsRow.rows[0]?.total || '0');
     const noShows = parseInt(shiftsRow.rows[0]?.no_shows || '0');
     const cancelled = parseInt(shiftsRow.rows[0]?.cancelled || '0');
-    const overdue = parseFloat(String(((invoiceRow as any)[0]?.overdue ?? (invoiceRow as any).rows?.[0]?.overdue) || '0'));
-    const totalInvoiced = parseFloat(String(((invoiceRow as any)[0]?.total ?? (invoiceRow as any).rows?.[0]?.total) || '0'));
-    const employeesCount = parseInt(String((empRow as any)[0]?.count ?? (empRow as any).rows?.[0]?.count ?? "0"));
+    const overdue = parseFloat(String(((invoiceRow as unknown)[0]?.overdue ?? (invoiceRow as unknown).rows?.[0]?.overdue) || '0'));
+    const totalInvoiced = parseFloat(String(((invoiceRow as unknown)[0]?.total ?? (invoiceRow as unknown).rows?.[0]?.total) || '0'));
+    const employeesCount = parseInt(String((empRow as unknown)[0]?.count ?? (empRow as unknown).rows?.[0]?.count ?? "0"));
 
     if (otHours > 0) {
       const otPct = totalHours > 0 ? (otHours / totalHours) * 100 : 0;
@@ -1419,10 +1419,10 @@ router.get("/platform/credit-report", requirePlatformStaff, async (req: Authenti
       success: true,
       data: {
         platformTotals: {
-          totalTokensUsed: parseInt(String((totalsRes as any).rows?.[0]?.total_tokens_used || '0')),
-          totalTransactions: parseInt(String((totalsRes as any).rows?.[0]?.total_transactions || '0')),
-          activeWorkspaces: parseInt(String((totalsRes as any).rows?.[0]?.active_workspaces || '0')),
-          totalWorkspaces: parseInt(String((totalsRes as any).rows?.[0]?.total_workspaces || '0')),
+          totalTokensUsed: parseInt(String((totalsRes as unknown).rows?.[0]?.total_tokens_used || '0')),
+          totalTransactions: parseInt(String((totalsRes as unknown).rows?.[0]?.total_transactions || '0')),
+          activeWorkspaces: parseInt(String((totalsRes as unknown).rows?.[0]?.active_workspaces || '0')),
+          totalWorkspaces: parseInt(String((totalsRes as unknown).rows?.[0]?.total_workspaces || '0')),
         },
         usageByWorkspace: byWorkspaceRes.map(r => ({
           workspaceId: r.workspaceId,
@@ -1572,7 +1572,7 @@ router.get("/heatmap/ai-analysis", async (req: AuthenticatedRequest, res) => {
       const rows = shiftsRes.rows;
       const peakDay = rows[0] ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseInt(rows[0].day_of_week)] : 'N/A';
       const peakHour = rows[0] ? `${rows[0].hour_of_day}:00` : 'N/A';
-      const totalShifts = rows.reduce((s: number, r: any) => s + parseInt(r.shift_count || '0'), 0);
+      const totalShifts = rows.reduce((s: number, r: unknown) => s + parseInt(r.shift_count || '0'), 0);
 
       res.json({
         success: true,

@@ -112,7 +112,7 @@ async function getSessionFromRequest(request: IncomingMessage): Promise<Authenti
     // Look up session in PostgreSQL sessions table
     // CATEGORY C — Genuine schema mismatch: sessions table managed by connect-pg-simple, no Drizzle schema defined
     // NOTE: typedQuery returns T[] directly — DO NOT use .rows (that's only for pool.query / db.$client.query)
-    const rows = await typedQuery<{ sess: any }>(
+    const rows = await typedQuery<{ sess: unknown }>(
       sql`SELECT sess FROM sessions WHERE sid = ${sessionId} AND expire > NOW()`
     );
     
@@ -1027,7 +1027,7 @@ export function broadcastPlatformUpdateGlobal(update: {
   try {
     globalBroadcaster.broadcastPlatformUpdate({
       type: 'platform_update',
-      category: update.category as any,
+      category: update.category as unknown,
       title: update.title,
       description: update.description,
       priority: update.priority || 1,
@@ -1462,7 +1462,7 @@ export function setupWebSocket(server: Server) {
           return;
         }
 
-        const incomingMessageId = (payload as any).messageId;
+        const incomingMessageId = (payload as unknown).messageId;
         if (incomingMessageId && typeof incomingMessageId === 'string') {
           if (wsMessageIdempotencyCache.isDuplicate(incomingMessageId)) {
             log.debug('Duplicate message skipped', { messageId: incomingMessageId, type: payload.type });
@@ -1486,7 +1486,7 @@ export function setupWebSocket(server: Server) {
           case 'session_sync_register': {
             // Handle session sync registration for multi-device sync
             if (ws.serverAuth?.userId) {
-              const deviceType = (payload as any).deviceType || 'unknown';
+              const deviceType = (payload as unknown).deviceType || 'unknown';
               sessionSyncService.registerConnection(
                 ws.serverAuth.userId,
                 ws,
@@ -1528,7 +1528,7 @@ export function setupWebSocket(server: Server) {
               ws.send(JSON.stringify({ type: 'reconnect_sync_error', error: 'No workspace context' }));
               break;
             }
-            const lastEventTimestamp = Number((payload as any).lastEventTimestamp) || 0;
+            const lastEventTimestamp = Number((payload as unknown).lastEventTimestamp) || 0;
             const now = Date.now();
             const gapMs = lastEventTimestamp ? now - lastEventTimestamp : EVENT_BUFFER_TTL_MS + 1;
             if (gapMs > EVENT_BUFFER_TTL_MS || !lastEventTimestamp) {
@@ -1561,8 +1561,8 @@ export function setupWebSocket(server: Server) {
             }
             try {
               const { loneWorkerSafetyService } = await import('./services/automation/loneWorkerSafetyService');
-              const ackCheckId = (payload as any).checkId;
-              const ackEmployeeId = (payload as any).employeeId;
+              const ackCheckId = (payload as unknown).checkId;
+              const ackEmployeeId = (payload as unknown).employeeId;
               if (!ackCheckId || !ackEmployeeId) {
                 ws.send(JSON.stringify({
                   type: 'lone_worker_ack_result',
@@ -1597,7 +1597,7 @@ export function setupWebSocket(server: Server) {
               break;
             }
             
-            const trinityConversationId = (payload as any).conversationId;
+            const trinityConversationId = (payload as unknown).conversationId;
             if (!trinityConversationId) {
               ws.send(JSON.stringify({
                 type: 'trinity_agent_error',
@@ -1630,7 +1630,7 @@ export function setupWebSocket(server: Server) {
           case 'ws_authenticate': {
             // Token-based auth fallback — handles cases where session cookie lookup
             // failed at connection time (DB hiccup, cookie edge cases in Replit env)
-            const token = (payload as any).token;
+            const token = (payload as unknown).token;
             if (!token || typeof token !== 'string') {
               ws.send(JSON.stringify({ type: 'ws_auth_failed', reason: 'Missing token' }));
               break;
@@ -2059,7 +2059,7 @@ export function setupWebSocket(server: Server) {
               // Staff or other rooms: Load recent conversation history, filtering out join/leave noise
               const allMessages = await storage.getChatMessagesByConversation(conversationId);
               const staffMessages = allMessages
-                .filter((m: any) => {
+                .filter((m: unknown) => {
                   if (m.senderType !== 'system') return true;
                   const text = (m.message || '').toLowerCase();
                   return !(text.includes('joined') || text.includes('left') || text.includes('connected') || text.includes('disconnected'));
@@ -2215,10 +2215,10 @@ export function setupWebSocket(server: Server) {
                 // Get room modes from conversation metadata
                 const joinedConversation = await storage.getChatConversation(conversationId);
                 // @ts-expect-error — TS migration: fix in refactoring sprint
-                const roomModes = (joinedConversation?.metadata as any)?.modes || 
+                const roomModes = (joinedConversation?.metadata as unknown)?.modes || 
                                   (roomMode ? [roomMode] : [RoomMode.ORG]);
                 // @ts-expect-error — TS migration: fix in refactoring sprint
-                const activeBots = (joinedConversation?.metadata as any)?.activeBots || [];
+                const activeBots = (joinedConversation?.metadata as unknown)?.activeBots || [];
                 const roomName = joinedConversation?.subject || 'Chat Room';
                 
                 // Use staff-set MOTD if available, otherwise generate dynamically
@@ -2572,7 +2572,7 @@ export function setupWebSocket(server: Server) {
           }
 
           case 'leave_conversation': {
-            const leaveConvId = (payload as any).conversationId || ws.conversationId;
+            const leaveConvId = (payload as unknown).conversationId || ws.conversationId;
             if (leaveConvId) {
               conversationClients.get(leaveConvId)?.delete(ws);
               if (ws.conversationId === leaveConvId) {
@@ -3775,7 +3775,7 @@ export function setupWebSocket(server: Server) {
                     clients.forEach((client) => {
                       // Match by userName, email prefix, or userId
                       const clientName = client.userName || '';
-                      const clientEmail = (client as any).userEmail || '';
+                      const clientEmail = (client as unknown).userEmail || '';
                       const clientEmailPrefix = clientEmail.split('@')[0] || '';
                       
                       if (
@@ -3892,9 +3892,9 @@ export function setupWebSocket(server: Server) {
                   // Get room modes dynamically from conversation metadata
                   const helpConversation = await storage.getChatConversation(ws.conversationId);
                   // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const roomModes = (helpConversation?.metadata as any)?.modes || [];
+                  const roomModes = (helpConversation?.metadata as unknown)?.modes || [];
                   // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const activeBots = (helpConversation?.metadata as any)?.activeBots || [];
+                  const activeBots = (helpConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Import the chatroom command service for dynamic bot command help
                   const { formatHelpMessage, getCommandsForModes } = await import('./services/chatroomCommandService');
@@ -3933,7 +3933,7 @@ export function setupWebSocket(server: Server) {
                   
                   const cmdConversation = await storage.getChatConversation(ws.conversationId);
                   // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const cmdRoomModes = (cmdConversation?.metadata as any)?.modes || [RoomMode.ORG];
+                  const cmdRoomModes = (cmdConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
                   
                   ws.send(JSON.stringify({
                     type: 'system_message',
@@ -4010,8 +4010,8 @@ export function setupWebSocket(server: Server) {
                     actionName: 'helpai_chatroom_command',
                     commandUsed: '/helpai',
                     toolUsed: 'botAIService',
-                    inputPayload: { question: helpaiQuestion || null, conversationId: ws.conversationId } as any,
-                    outputPayload: { response: helpaiMsg.substring(0, 500), messageId: helpaiResponseMsg.id } as any,
+                    inputPayload: { question: helpaiQuestion || null, conversationId: ws.conversationId } as unknown,
+                    outputPayload: { response: helpaiMsg.substring(0, 500), messageId: helpaiResponseMsg.id } as unknown,
                     success: true,
                     workspaceId: ws.workspaceId || null,
                     userId: ws.userId || null,
@@ -4146,13 +4146,13 @@ export function setupWebSocket(server: Server) {
                   
                   const botConversation = await storage.getChatConversation(ws.conversationId);
                   // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const botRoomModes = (botConversation?.metadata as any)?.modes || [RoomMode.ORG];
+                  const botRoomModes = (botConversation?.metadata as unknown)?.modes || [RoomMode.ORG];
                   // @ts-expect-error — TS migration: fix in refactoring sprint
-                  const metadataBots = (botConversation?.metadata as any)?.activeBots || [];
+                  const metadataBots = (botConversation?.metadata as unknown)?.activeBots || [];
                   
                   // Merge metadata bots with live pool instances
                   const liveInstances = botsPool.getRoomBots(ws.conversationId);
-                  const liveBotIds = liveInstances.map((inst: any) => inst.botId);
+                  const liveBotIds = liveInstances.map((inst: unknown) => inst.botId);
                   const allActiveBots = [...new Set([...metadataBots, ...liveBotIds])];
                   
                   ws.send(JSON.stringify({
@@ -4310,7 +4310,7 @@ export function setupWebSocket(server: Server) {
                     
                     // Build context from articles
                     const context = relevantArticles
-                      .map((article: any, idx: number) => `[Article ${idx + 1}: ${article.title}]\n${article.content}`)
+                      .map((article: unknown, idx: number) => `[Article ${idx + 1}: ${article.title}]\n${article.content}`)
                       .join('\n\n');
                     
                     let aiResponse = '';
@@ -4347,7 +4347,7 @@ export function setupWebSocket(server: Server) {
                     // Fallback if AI unavailable
                     if (!aiResponse) {
                       aiResponse = relevantArticles.length > 0
-                        ? `I found ${relevantArticles.length} related articles:\n\n${relevantArticles.map((a: any) => `• ${a.title}\n  ${a.summary || a.content.substring(0, 200)}...`).join('\n\n')}`
+                        ? `I found ${relevantArticles.length} related articles:\n\n${relevantArticles.map((a: unknown) => `• ${a.title}\n  ${a.summary || a.content.substring(0, 200)}...`).join('\n\n')}`
                         : "I couldn't find any relevant information in the knowledge base. Please contact HR or your manager for assistance.";
                     }
                     
@@ -4358,14 +4358,14 @@ export function setupWebSocket(server: Server) {
                       query,
                       response: aiResponse,
                       responseTime: Date.now() - startTime,
-                      articlesRetrieved: relevantArticles.map((a: any) => a.id),
+                      articlesRetrieved: relevantArticles.map((a: unknown) => a.id),
                     });
                     
                     // Format response with article references
                     let formattedResponse = `🤖 **Answer**\n\n${aiResponse}`;
                     
                     if (relevantArticles.length > 0) {
-                      formattedResponse += `\n\n📚 **Sources:**\n${relevantArticles.slice(0, 3).map((a: any, idx: number) => 
+                      formattedResponse += `\n\n📚 **Sources:**\n${relevantArticles.slice(0, 3).map((a: unknown, idx: number) => 
                         `${idx + 1}. ${a.title}`
                       ).join('\n')}`;
                     }
@@ -4542,7 +4542,7 @@ export function setupWebSocket(server: Server) {
                         suspendedAt: new Date(),
                         suspendedBy: ws.userId,
                         updatedAt: new Date()
-                      } as any)
+                      } as unknown)
                       .where(eq(usersTable.id, targetUser.id));
                     
                     ws.send(JSON.stringify({ 
@@ -4587,7 +4587,7 @@ export function setupWebSocket(server: Server) {
                         suspendedAt: null,
                         suspendedBy: null,
                         updatedAt: new Date()
-                      } as any)
+                      } as unknown)
                       .where(eq(usersTable.id, targetUser.id));
                     
                     ws.send(JSON.stringify({ 
@@ -4624,7 +4624,7 @@ export function setupWebSocket(server: Server) {
                     );
                     
                     // Check suspension status from user record
-                    const isSuspended = (targetUser as any).isSuspended === true;
+                    const isSuspended = (targetUser as unknown).isSuspended === true;
                     
                     const statusMsg = `Staff Status: ${targetUsername}\n` +
                       `Role: ${platformRole || 'N/A'}\n` +
@@ -5549,7 +5549,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     const { botAIService: rAI } = await import('./bots/botAIService');
                     const reportMsgs = await storage.createChatMessage(ws.conversationId, 50);
                     // @ts-expect-error — TS migration: fix in refactoring sprint
-                    const reportText = (reportMsgs as any).filter(m => m.senderType === 'user' || m.senderType === 'customer').map(m => m.message).join('\n');
+                    const reportText = (reportMsgs as unknown).filter(m => m.senderType === 'user' || m.senderType === 'customer').map(m => m.message).join('\n');
                     const reportSummary = await rAI.generateReportSummary(ws.workspaceId, 'general', reportText, ws.userId);
                     const endReportMsg = await storage.createChatMessage({
                       conversationId: ws.conversationId, senderId: 'reportbot',
@@ -5818,16 +5818,16 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
               senderName: displayName,
               senderType: payload.senderType,
               message: sanitizedMessage,
-              messageType: (payload as any).messageType || 'text',
+              messageType: (payload as unknown).messageType || 'text',
               isPrivateMessage,
               recipientId,
             };
 
-            if ((payload as any).attachmentUrl) {
-              messageData.attachmentUrl = (payload as any).attachmentUrl;
-              messageData.attachmentName = (payload as any).attachmentName;
-              messageData.attachmentType = (payload as any).attachmentType;
-              messageData.attachmentSize = (payload as any).attachmentSize ? parseInt((payload as any).attachmentSize) : null;
+            if ((payload as unknown).attachmentUrl) {
+              messageData.attachmentUrl = (payload as unknown).attachmentUrl;
+              messageData.attachmentName = (payload as unknown).attachmentName;
+              messageData.attachmentType = (payload as unknown).attachmentType;
+              messageData.attachmentSize = (payload as unknown).attachmentSize ? parseInt((payload as unknown).attachmentSize) : null;
             }
 
             const savedMessage = await storage.createChatMessage(messageData);
@@ -5852,7 +5852,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                   const isShiftRoom = conv?.conversationType === 'shift_chat';
                   const isMeetingRoom = conv?.conversationType === 'open_chat' && /^meeting\s*—/i.test(conv?.subject || '');
 
-                  if (isShiftRoom || isMeetingRoom || (payload as any).attachmentType?.startsWith('image/')) {
+                  if (isShiftRoom || isMeetingRoom || (payload as unknown).attachmentType?.startsWith('image/')) {
                     const { shiftRoomBotOrchestrator } = await import('./services/bots/shiftRoomBotOrchestrator');
                     await shiftRoomBotOrchestrator.handleShiftRoomMessage({
                       conversationId: ws.conversationId!,
@@ -5861,12 +5861,12 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       senderName: displayName,
                       senderRole: ws.workspaceRole || ws.userType || 'employee',
                       message: sanitizedMessage,
-                      messageType: (payload as any).messageType || 'text',
-                      attachmentUrl: (payload as any).attachmentUrl,
-                      attachmentType: (payload as any).attachmentType,
-                      gpsLat: (payload as any).gpsLat ? parseFloat((payload as any).gpsLat) : undefined,
-                      gpsLng: (payload as any).gpsLng ? parseFloat((payload as any).gpsLng) : undefined,
-                      gpsAddress: (payload as any).gpsAddress,
+                      messageType: (payload as unknown).messageType || 'text',
+                      attachmentUrl: (payload as unknown).attachmentUrl,
+                      attachmentType: (payload as unknown).attachmentType,
+                      gpsLat: (payload as unknown).gpsLat ? parseFloat((payload as unknown).gpsLat) : undefined,
+                      gpsLng: (payload as unknown).gpsLng ? parseFloat((payload as unknown).gpsLng) : undefined,
+                      gpsAddress: (payload as unknown).gpsAddress,
                       messageId: savedMessage.id,
                     });
                   }
@@ -6031,10 +6031,10 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                 
                 // Rate limit: Prevent rapid-fire duplicate responses (3s cooldown per user)
                 const autoResponseKey = `helpai_response_${ws.userId}`;
-                const lastResponse = (globalThis as any)[autoResponseKey];
+                const lastResponse = (globalThis as unknown)[autoResponseKey];
                 const now = Date.now();
                 if (lastResponse && (now - lastResponse) < 3000) return;
-                (globalThis as any)[autoResponseKey] = now;
+                (globalThis as unknown)[autoResponseKey] = now;
                 
                 // TRINITY-POWERED RESPONSE: Use actual AI brain for intelligent conversation
                 // Brief delay feels natural (like the bot is "thinking")
@@ -6075,7 +6075,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                     const botRoomClients = conversationClients.get(ws.conversationId);
                     if (botRoomClients) {
                       const botMsgPayload = JSON.stringify({ type: 'new_message', message: botMsg });
-                      botRoomClients.forEach((rc: any) => {
+                      botRoomClients.forEach((rc: unknown) => {
                         if (rc.readyState === WebSocket.OPEN) rc.send(botMsgPayload);
                       });
                     }
@@ -6130,7 +6130,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                       const fallbackRoomClients = conversationClients.get(ws.conversationId);
                       if (fallbackRoomClients) {
                         const fPayload = JSON.stringify({ type: 'new_message', message: botMsg });
-                        fallbackRoomClients.forEach((rc: any) => {
+                        fallbackRoomClients.forEach((rc: unknown) => {
                           if (rc.readyState === WebSocket.OPEN) rc.send(fPayload);
                         });
                       }
@@ -6267,7 +6267,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
                 ircEmitter.away({
                   userId: ws.userId,
                   userName: ws.userName,
-                  awayMessage: (payload as any).message,
+                  awayMessage: (payload as unknown).message,
                   roomId, // Always include roomId for room-scoped broadcast
                 });
               }
@@ -7865,7 +7865,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
           }
 
           default: {
-            log.warn('Unhandled WebSocket message type', { type: (payload as any).type, payload });
+            log.warn('Unhandled WebSocket message type', { type: (payload as unknown).type, payload });
             break;
           }
         }
@@ -8530,7 +8530,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
       let clientCount = 0;
       wss.clients.forEach((client: WebSocket) => {
         if (client.readyState === WebSocket.OPEN) {
-          if ((client as any).trinityConversationId === conversationId) {
+          if ((client as unknown).trinityConversationId === conversationId) {
             client.send(payload);
             clientCount++;
           }
@@ -8548,7 +8548,7 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   log.info('Global broadcaster initialized');
 
   // Subscribe to Trinity stream events from GoalExecutionService
-  platformEventBus.on('trinity:stream', (payload: { conversationId: string; event: any }) => {
+  platformEventBus.on('trinity:stream', (payload: { conversationId: string; event: unknown }) => {
     if (payload?.conversationId && payload?.event) {
       broadcaster.broadcastTrinityAgentEvent(payload.conversationId, {
         type: payload.event.type,

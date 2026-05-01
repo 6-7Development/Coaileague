@@ -312,7 +312,7 @@ router.post('/automation/:type', sandboxDevBypass, async (req: Request, res: Res
       });
     }
 
-    const result = await sandboxQuickBooksSimulator.runAutomation(type as any);
+    const result = await sandboxQuickBooksSimulator.runAutomation(type as unknown);
     res.json(result);
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: sanitizeError(error) });
@@ -351,8 +351,8 @@ router.post('/run-complete-workflow', sandboxDevBypass, async (req: Request, res
     const dashboard = await sandboxQuickBooksSimulator.getDashboard();
     results.summary = {
       totalSteps: 4,
-      completedSteps: results.steps.filter((s: any) => s.status === 'completed').length,
-      failedSteps: results.steps.filter((s: any) => s.status === 'failed').length,
+      completedSteps: results.steps.filter((s: unknown) => s.status === 'completed').length,
+      failedSteps: results.steps.filter((s: unknown) => s.status === 'failed').length,
       dashboard,
     };
 
@@ -526,12 +526,12 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('7a. Query Existing QB Customers', 'ok', {
       found: existingQbCustomers.length,
-      samples: existingQbCustomers.slice(0, 5).map((c: any) => ({ id: c.Id, name: c.DisplayName })),
+      samples: existingQbCustomers.slice(0, 5).map((c: unknown) => ({ id: c.Id, name: c.DisplayName })),
     });
 
     for (const client of dbClients.slice(0, 3)) {
       const displayName = client.companyName || `${client.firstName} ${client.lastName}` || `Client-${client.id.slice(0, 8)}`;
-      const existing = existingQbCustomers.find((c: any) =>
+      const existing = existingQbCustomers.find((c: unknown) =>
         c.DisplayName === displayName || c.CompanyName === client.companyName
       );
       if (existing) {
@@ -561,8 +561,8 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('7a. Push Customers to QB', 'ok', {
       attempted: qbResults.customers.length,
-      succeeded: qbResults.customers.filter((c: any) => c.success).length,
-      matched: qbResults.customers.filter((c: any) => c.matched).length,
+      succeeded: qbResults.customers.filter((c: unknown) => c.success).length,
+      matched: qbResults.customers.filter((c: unknown) => c.matched).length,
       results: qbResults.customers,
     });
 
@@ -579,12 +579,12 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('7b. Query Existing QB Employees', 'ok', {
       found: existingQbEmployees.length,
-      samples: existingQbEmployees.slice(0, 5).map((e: any) => ({ id: e.Id, name: e.DisplayName })),
+      samples: existingQbEmployees.slice(0, 5).map((e: unknown) => ({ id: e.Id, name: e.DisplayName })),
     });
 
     for (const emp of dbEmployees.slice(0, 3)) {
       const displayName = `${emp.firstName} ${emp.lastName}`;
-      const existing = existingQbEmployees.find((e: any) =>
+      const existing = existingQbEmployees.find((e: unknown) =>
         e.DisplayName === displayName ||
         (e.GivenName === emp.firstName && e.FamilyName === emp.lastName)
       );
@@ -616,14 +616,14 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('7b. Push Employees to QB', 'ok', {
       attempted: qbResults.employees.length,
-      succeeded: qbResults.employees.filter((e: any) => e.success).length,
-      matched: qbResults.employees.filter((e: any) => e.matched).length,
+      succeeded: qbResults.employees.filter((e: unknown) => e.success).length,
+      matched: qbResults.employees.filter((e: unknown) => e.matched).length,
       results: qbResults.employees,
     });
 
     addLog('7c. Push Invoices to QB', 'starting', {});
     for (const inv of dbInvoices.slice(0, 3)) {
-      const customerRef = qbResults.customers.find((c: any) => c.clientId === inv.clientId && c.qbCustomerId);
+      const customerRef = qbResults.customers.find((c: unknown) => c.clientId === inv.clientId && c.qbCustomerId);
       const fallbackCustomer = existingQbCustomers[0];
       const invoicePayload = {
         Line: [{
@@ -662,7 +662,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('7c. Push Invoices to QB', 'ok', {
       attempted: qbResults.invoices.length,
-      succeeded: qbResults.invoices.filter((i: any) => i.success).length,
+      succeeded: qbResults.invoices.filter((i: unknown) => i.success).length,
       results: qbResults.invoices,
     });
 
@@ -677,7 +677,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
       const emp = await db.select().from(employees).where(eq(employees.id, entry.employeeId)).then(r => r[0]);
       if (!emp) continue;
 
-      const qbEmp = qbResults.employees.find((e: any) => e.employeeId === emp.id && e.qbEmployeeId);
+      const qbEmp = qbResults.employees.find((e: unknown) => e.employeeId === emp.id && e.qbEmployeeId);
       const fallbackEmployee = existingQbEmployees[0];
       const hours = parseFloat(entry.totalHours || '0');
       const wholeHours = Math.floor(hours);
@@ -708,7 +708,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     }
     addLog('8. Time Activities (Payroll Data)', 'ok', {
       attempted: qbTimeResults.length,
-      succeeded: qbTimeResults.filter((t: any) => t.success).length,
+      succeeded: qbTimeResults.filter((t: unknown) => t.success).length,
       results: qbTimeResults,
     });
 
@@ -718,10 +718,10 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
       realmId: connection.realmId,
       existingQbCustomers: existingQbCustomers.length,
       existingQbEmployees: existingQbEmployees.length,
-      customersPushed: { attempted: qbResults.customers.length, succeeded: qbResults.customers.filter((c: any) => c.success).length, matched: qbResults.customers.filter((c: any) => c.matched).length },
-      employeesPushed: { attempted: qbResults.employees.length, succeeded: qbResults.employees.filter((e: any) => e.success).length, matched: qbResults.employees.filter((e: any) => e.matched).length },
-      invoicesPushed: { attempted: qbResults.invoices.length, succeeded: qbResults.invoices.filter((i: any) => i.success).length },
-      timeActivitiesPushed: { attempted: qbTimeResults.length, succeeded: qbTimeResults.filter((t: any) => t.success).length },
+      customersPushed: { attempted: qbResults.customers.length, succeeded: qbResults.customers.filter((c: unknown) => c.success).length, matched: qbResults.customers.filter((c: unknown) => c.matched).length },
+      employeesPushed: { attempted: qbResults.employees.length, succeeded: qbResults.employees.filter((e: unknown) => e.success).length, matched: qbResults.employees.filter((e: unknown) => e.matched).length },
+      invoicesPushed: { attempted: qbResults.invoices.length, succeeded: qbResults.invoices.filter((i: unknown) => i.success).length },
+      timeActivitiesPushed: { attempted: qbTimeResults.length, succeeded: qbTimeResults.filter((t: unknown) => t.success).length },
     };
 
     addLog('9. Summary', 'complete', summary);
@@ -765,12 +765,12 @@ router.post('/test-lazy-sync', sandboxDevBypass, async (req: Request, res: Respo
       companyName: testClientCompany,
       email: `test-${Date.now()}@lazysync.test`,
       isActive: true,
-    } as any).returning();
+    } as unknown).returning();
     addLog('1. Create test client (no QB ID)', 'ok', {
       id: testClient.id,
       name: `LazySync TestClient-${testSuffix}`,
       companyName: testClientCompany,
-      quickbooksClientId: (testClient as any).quickbooksClientId || null,
+      quickbooksClientId: (testClient as unknown).quickbooksClientId || null,
     });
 
     addLog('2. Create test employee (no QB ID)', 'starting', {});
@@ -783,11 +783,11 @@ router.post('/test-lazy-sync', sandboxDevBypass, async (req: Request, res: Respo
       email: `lazysync-emp-${Date.now()}@test.local`,
       workerType: 'employee',
       isActive: true,
-    } as any).returning();
+    } as unknown).returning();
     addLog('2. Create test employee (no QB ID)', 'ok', {
       id: testEmployee.id,
       name: `${testFirstName} ${testLastName}`,
-      quickbooksEmployeeId: (testEmployee as any).quickbooksEmployeeId || null,
+      quickbooksEmployeeId: (testEmployee as unknown).quickbooksEmployeeId || null,
     });
 
     addLog('3. Lazy sync client → QB Customer', 'starting', {});
@@ -804,13 +804,13 @@ router.post('/test-lazy-sync', sandboxDevBypass, async (req: Request, res: Respo
     addLog('5. Verify DB updated', 'ok', {
       client: {
         id: updatedClient?.id,
-        quickbooksClientId: (updatedClient as any)?.quickbooksClientId || null,
-        quickbooksSyncStatus: (updatedClient as any)?.quickbooksSyncStatus || null,
+        quickbooksClientId: (updatedClient as unknown)?.quickbooksClientId || null,
+        quickbooksSyncStatus: (updatedClient as unknown)?.quickbooksSyncStatus || null,
       },
       employee: {
         id: updatedEmployee?.id,
-        quickbooksEmployeeId: (updatedEmployee as any)?.quickbooksEmployeeId || null,
-        quickbooksSyncStatus: (updatedEmployee as any)?.quickbooksSyncStatus || null,
+        quickbooksEmployeeId: (updatedEmployee as unknown)?.quickbooksEmployeeId || null,
+        quickbooksSyncStatus: (updatedEmployee as unknown)?.quickbooksSyncStatus || null,
       },
     });
 
@@ -832,7 +832,7 @@ router.post('/test-lazy-sync', sandboxDevBypass, async (req: Request, res: Respo
       employeeWasCreated: employeeResult.created,
       employeeWasMatched: employeeResult.matched,
       idempotencyPassed: !customerResult2.created && !employeeResult2.created,
-      dbUpdated: !!(updatedClient as any)?.quickbooksClientId && !!(updatedEmployee as any)?.quickbooksEmployeeId,
+      dbUpdated: !!(updatedClient as unknown)?.quickbooksClientId && !!(updatedEmployee as unknown)?.quickbooksEmployeeId,
     };
 
     addLog('7. Summary', 'complete', summary);

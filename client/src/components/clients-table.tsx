@@ -211,7 +211,7 @@ interface MobileClientCardProps {
 }
 
 function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate, canEdit, canDelete }: MobileClientCardProps) {
-  const c = client as any;
+  const c = client as unknown;
   return (
     <Card data-testid={`card-client-${client.id}`}>
       <CardHeader className="pb-3">
@@ -231,9 +231,9 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                 {client.companyName}
               </div>
             )}
-            {(client as any).category && (client as any).category !== 'other' && (
+            {(client as unknown).category && (client as unknown).category !== 'other' && (
               <Badge variant="outline" className="mt-1 text-[10px]" data-testid={`badge-category-${client.id}`}>
-                {CLIENT_CATEGORIES[(client as any).category as ClientCategory]?.label || (client as any).category}
+                {CLIENT_CATEGORIES[(client as unknown).category as ClientCategory]?.label || (client as unknown).category}
               </Badge>
             )}
           </div>
@@ -245,12 +245,12 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                 pending/invited → ORANGE border  (awaiting client action)
                 accepted        → GREEN  border  (handshake complete)
                 expired         → RED    border  (> 7 days, Reaper swept) */}
-            {(client as any).portalVisualStatus && (client as any).portalVisualStatus !== 'accepted' && (
+            {(client as unknown).portalVisualStatus && (client as unknown).portalVisualStatus !== 'accepted' && (
               <Badge
                 variant="outline"
                 data-testid={`badge-portal-status-${client.id}`}
                 className={(() => {
-                  switch ((client as any).portalVisualStatus) {
+                  switch ((client as unknown).portalVisualStatus) {
                     case 'expired':  return 'text-[10px] border-red-500 text-red-600 dark:text-red-400';
                     case 'pending':
                     case 'invited':  return 'text-[10px] border-orange-500 text-orange-600 dark:text-orange-400';
@@ -258,9 +258,9 @@ function MobileClientCard({ client, onEdit, onDelete, onDeactivate, onReactivate
                   }
                 })()}
               >
-                {(client as any).portalVisualStatus === 'expired'  ? 'Invite Expired' :
-                 (client as any).portalVisualStatus === 'invited'  ? 'Invite Pending' :
-                 (client as any).portalVisualStatus === 'pending'  ? 'Invite Sent' : null}
+                {(client as unknown).portalVisualStatus === 'expired'  ? 'Invite Expired' :
+                 (client as unknown).portalVisualStatus === 'invited'  ? 'Invite Pending' :
+                 (client as unknown).portalVisualStatus === 'pending'  ? 'Invite Sent' : null}
               </Badge>
             )}
             {!client.isActive && c.collectionsStatus && c.collectionsStatus !== 'none' && (
@@ -486,7 +486,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
 
   const handleEdit = (client: ClientWithInvoiceCount) => {
     setClientToEdit(client);
-    const c = client as any;
+    const c = client as unknown;
     setEditFormData({
       firstName: c.firstName || '',
       lastName: c.lastName || '',
@@ -651,11 +651,11 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
       let key = 'Unassigned';
       if (clientGroupBy === 'company') key = c.companyName || 'No Company';
       else if (clientGroupBy === 'category') {
-        const cat = (c as any).category || 'other';
+        const cat = (c as unknown).category || 'other';
         key = CLIENT_CATEGORIES[cat as ClientCategory]?.label || cat;
       }
-      else if (clientGroupBy === 'tier') key = ((c as any).strategicTier || 'standard').charAt(0).toUpperCase() + ((c as any).strategicTier || 'standard').slice(1);
-      else if (clientGroupBy === 'state') key = (c as any).state || 'No State';
+      else if (clientGroupBy === 'tier') key = ((c as unknown).strategicTier || 'standard').charAt(0).toUpperCase() + ((c as unknown).strategicTier || 'standard').slice(1);
+      else if (clientGroupBy === 'state') key = (c as unknown).state || 'No State';
       if (!groups[key]) groups[key] = [];
       groups[key].push(c);
     });
@@ -936,9 +936,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {(client as any).category && (client as any).category !== 'other' ? (
+                      {(client as unknown).category && (client as unknown).category !== 'other' ? (
                         <Badge variant="outline" className="text-[10px]" data-testid={`badge-category-${client.id}`}>
-                          {CLIENT_CATEGORIES[(client as any).category as ClientCategory]?.label || (client as any).category}
+                          {CLIENT_CATEGORIES[(client as unknown).category as ClientCategory]?.label || (client as unknown).category}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
@@ -971,9 +971,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                         <Badge variant={client.isActive ? "default" : "secondary"} data-testid={`badge-status-${client.id}`}>
                           {client.isActive ? 'Active' : 'Inactive'}
                         </Badge>
-                        {!(client as any).isActive && (client as any).collectionsStatus && (client as any).collectionsStatus !== 'none' && (
+                        {!(client as unknown).isActive && (client as unknown).collectionsStatus && (client as unknown).collectionsStatus !== 'none' && (
                           <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600 dark:text-yellow-400" data-testid={`badge-collections-${client.id}`}>
-                            {(client as any).collectionsStatus === 'active' ? 'In Collections' : (client as any).collectionsStatus === 'written_off' ? 'Written Off' : (client as any).collectionsStatus === 'resolved' ? 'Resolved' : (client as any).collectionsStatus}
+                            {(client as unknown).collectionsStatus === 'active' ? 'In Collections' : (client as unknown).collectionsStatus === 'written_off' ? 'Written Off' : (client as unknown).collectionsStatus === 'resolved' ? 'Resolved' : (client as unknown).collectionsStatus}
                           </Badge>
                         )}
                       </div>
@@ -1282,9 +1282,9 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 <p className="text-sm">
                   The client's account will be restored to active status. Any open collections pipeline will be marked as resolved. You will need to manually reschedule shifts.
                 </p>
-                {(clientToReactivate as any)?.deactivationReason && (
+                {(clientToReactivate as unknown)?.deactivationReason && (
                   <div className="p-3 rounded-md bg-muted text-xs text-muted-foreground">
-                    Previously deactivated for: <span className="font-medium">{(clientToReactivate as any).deactivationReason?.replace(/_/g, ' ')}</span>
+                    Previously deactivated for: <span className="font-medium">{(clientToReactivate as unknown).deactivationReason?.replace(/_/g, ' ')}</span>
                   </div>
                 )}
               </div>

@@ -30,7 +30,7 @@ function broadcast(req: AuthenticatedRequest, event: string, data: Record<string
     const wss = req.app?.locals?.wss;
     if (!wss) return;
     const workspaceId = wid(req);
-    wss.clients?.forEach((client: any) => {
+    wss.clients?.forEach((client: unknown) => {
       if (client.readyState === 1 && client.workspaceId === workspaceId) {
         client.send(JSON.stringify({ type: `safety:${event}`, data }));
       }
@@ -42,7 +42,7 @@ function broadcast(req: AuthenticatedRequest, event: string, data: Record<string
 
 // ─── PANIC / SOS ALERTS ──────────────────────────────────────────────────────
 
-safetyRouter.get("/panic", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/panic", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
@@ -55,7 +55,7 @@ safetyRouter.get("/panic", requireAuth, ensureWorkspaceAccess, async (req: Authe
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/panic", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/panic", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     // Input validation: prevent oversized strings and invalid coordinates
@@ -99,7 +99,7 @@ safetyRouter.post("/panic", requireAuth, ensureWorkspaceAccess, async (req: Auth
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/panic/:id/acknowledge", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/panic/:id/acknowledge", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { acknowledgedBy } = req.body;
@@ -127,7 +127,7 @@ safetyRouter.post("/panic/:id/acknowledge", requireAuth, ensureWorkspaceAccess, 
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/panic/:id/resolve", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/panic/:id/resolve", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { resolvedBy, responseNotes, cadCallId, incidentReportId } = req.body;
@@ -161,7 +161,7 @@ safetyRouter.post("/panic/:id/resolve", requireAuth, ensureWorkspaceAccess, asyn
 
 // ─── GEOFENCE ZONES ──────────────────────────────────────────────────────────
 
-safetyRouter.get("/geofences", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/geofences", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { siteId } = req.query;
@@ -188,7 +188,7 @@ const geofenceSchema = z.object({
   assignedEmployeeIds: z.array(z.string().uuid()).max(200).optional(),
 });
 
-safetyRouter.post("/geofences", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/geofences", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const parsed = geofenceSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
@@ -202,7 +202,7 @@ safetyRouter.post("/geofences", requireAuth, ensureWorkspaceAccess, async (req: 
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.patch("/geofences/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.patch("/geofences/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const { isActive, alertOnExit, alertOnEntry, radiusMeters, alertDelaySeconds } = req.body;
     await q(`UPDATE geofence_zones SET is_active=COALESCE($1,is_active), alert_on_exit=COALESCE($2,alert_on_exit), alert_on_entry=COALESCE($3,alert_on_entry), radius_meters=COALESCE($4,radius_meters), alert_delay_seconds=COALESCE($5,alert_delay_seconds), updated_at=NOW() WHERE id=$6 AND workspace_id=$7`,
@@ -212,14 +212,14 @@ safetyRouter.patch("/geofences/:id", requireAuth, ensureWorkspaceAccess, async (
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.delete("/geofences/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.delete("/geofences/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     await q(`DELETE FROM geofence_zones WHERE id=$1 AND workspace_id=$2`, [req.params.id, wid(req)]);
     res.json({ success: true });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/geofences/departure-alert", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/geofences/departure-alert", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { employeeId, employeeName, zoneId, latitude, longitude } = req.body;
@@ -233,7 +233,7 @@ safetyRouter.post("/geofences/departure-alert", requireAuth, ensureWorkspaceAcce
 
 // ─── SLA CONTRACTS ───────────────────────────────────────────────────────────
 
-safetyRouter.get("/sla", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/sla", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { clientId, isActive, limit = 50, offset = 0 } = req.query;
@@ -263,7 +263,7 @@ const slaSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
-safetyRouter.post("/sla", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/sla", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const parsed = slaSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
@@ -277,7 +277,7 @@ safetyRouter.post("/sla", requireAuth, ensureWorkspaceAccess, async (req: Authen
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.patch("/sla/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.patch("/sla/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const allowed = ["contractName","responseTimeMinutes","minCoverageHoursDaily","minOfficersPerShift","incidentReportHours","darSubmissionHours","isActive","notes"];
     const updates: string[] = [];
@@ -298,7 +298,7 @@ safetyRouter.patch("/sla/:id", requireAuth, ensureWorkspaceAccess, async (req: A
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.get("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { slaContractId, limit = 50 } = req.query;
@@ -310,7 +310,7 @@ safetyRouter.get("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (req
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { slaContractId, clientName, breachType, description, severity = "medium" } = req.body;
@@ -328,7 +328,7 @@ safetyRouter.post("/sla-breaches", requireAuth, ensureWorkspaceAccess, async (re
 // Checkr API integration is opt-in. Without a configured API key, all requests
 // return integration_required so the UI can direct users to Settings → Integrations.
 
-safetyRouter.post("/background-checks/request", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/background-checks/request", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   const checkrKey = process.env.CHECKR_API_KEY;
   if (!checkrKey) {
     return res.status(503).json({
@@ -350,7 +350,7 @@ safetyRouter.post("/background-checks/request", requireAuth, ensureWorkspaceAcce
   });
 });
 
-safetyRouter.get("/background-checks/:checkId", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/background-checks/:checkId", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   const checkrKey = process.env.CHECKR_API_KEY;
   if (!checkrKey) {
     return res.status(503).json({
@@ -363,7 +363,7 @@ safetyRouter.get("/background-checks/:checkId", requireAuth, ensureWorkspaceAcce
   res.json({ checkId: req.params.checkId, status: "pending", provider: "Checkr" });
 });
 
-safetyRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const [panics, geofences, sla, breaches] = await Promise.all([
@@ -378,7 +378,7 @@ safetyRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: Authe
 
 // ─── LONE WORKER CHECK-IN TIMER ────────────────────────────────────────────────
 
-safetyRouter.post("/lone-worker/start", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/lone-worker/start", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { employeeId, employeeName, intervalMinutes = 30, siteId, siteName, notes } = req.body;
@@ -393,7 +393,7 @@ safetyRouter.post("/lone-worker/start", requireAuth, ensureWorkspaceAccess, asyn
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/lone-worker/checkin", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/lone-worker/checkin", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { sessionId, employeeId, notes } = req.body;
@@ -410,7 +410,7 @@ safetyRouter.post("/lone-worker/checkin", requireAuth, ensureWorkspaceAccess, as
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.post("/lone-worker/end", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.post("/lone-worker/end", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const { sessionId, employeeId } = req.body;
@@ -423,7 +423,7 @@ safetyRouter.post("/lone-worker/end", requireAuth, ensureWorkspaceAccess, async 
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.get("/lone-worker/active", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/lone-worker/active", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`SELECT * FROM lone_worker_sessions WHERE workspace_id=$1 AND status='active' ORDER BY started_at DESC`, [workspaceId]);
@@ -431,7 +431,7 @@ safetyRouter.get("/lone-worker/active", requireAuth, ensureWorkspaceAccess, asyn
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-safetyRouter.get("/lone-worker/my-session", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+safetyRouter.get("/lone-worker/my-session", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: unknown) => {
   try {
     const workspaceId = wid(req);
     const employeeId = req.query.employeeId as string;

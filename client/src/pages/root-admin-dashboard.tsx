@@ -124,7 +124,7 @@ export default function RootAdminDashboard() {
   // Adaptive routing and platform detection
   const { navigate, scrollToAnchor } = useAdaptiveRoute();
   const platform = useDevicePlatform();
-  const platformRole = (user as any)?.platformRole as PlatformRole;
+  const platformRole = (user as unknown)?.platformRole as PlatformRole;
   
   // Get quick actions from registry
   const supportActions = useMemo(() => 
@@ -164,7 +164,7 @@ export default function RootAdminDashboard() {
   // GATEKEEPER: Block unauthorized users
   useEffect(() => {
     if (!isLoading) {
-      const platformRole = (user as any)?.platformRole;
+      const platformRole = (user as unknown)?.platformRole;
       if (platformRole !== 'root_admin' && platformRole !== 'sysop') {
         if (!user) {
           setLocation('/login');
@@ -312,7 +312,7 @@ export default function RootAdminDashboard() {
 
   // Get role-based title
   const getRoleTitle = () => {
-    const platformRole = (user as any)?.platformRole;
+    const platformRole = (user as unknown)?.platformRole;
     switch (platformRole) {
       case 'root':
         return 'System Platform Administrator';
@@ -342,9 +342,9 @@ export default function RootAdminDashboard() {
           data-testid="button-notifications-desktop"
         >
           <Bell className="h-5 w-5" />
-          {personalData && (personalData.assignedTickets + (personalData as any).newSupportTickets) > 0 && (
+          {personalData && (personalData.assignedTickets + (personalData as unknown).newSupportTickets) > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center text-white">
-              {personalData.assignedTickets + (personalData as any).newSupportTickets}
+              {personalData.assignedTickets + (personalData as unknown).newSupportTickets}
             </span>
           )}
         </Button>
@@ -353,7 +353,7 @@ export default function RootAdminDashboard() {
         {personalData && personalData.assignedTickets > 0 && (
           <DropdownMenuItem>
             <div className="flex flex-col gap-1">
-              <p className="font-medium">{(personalData as any).assignedTickets} Assigned Tickets</p>
+              <p className="font-medium">{(personalData as unknown).assignedTickets} Assigned Tickets</p>
               <p className="text-xs text-muted-foreground">View your assigned support tickets</p>
             </div>
           </DropdownMenuItem>
@@ -361,7 +361,7 @@ export default function RootAdminDashboard() {
         {personalData && personalData.newSupportTickets > 0 && (
           <DropdownMenuItem>
             <div className="flex flex-col gap-1">
-              <p className="font-medium">{(personalData as any).newSupportTickets} New Support Requests</p>
+              <p className="font-medium">{(personalData as unknown).newSupportTickets} New Support Requests</p>
               <p className="text-xs text-muted-foreground">New tickets require attention</p>
             </div>
           </DropdownMenuItem>
@@ -396,7 +396,7 @@ export default function RootAdminDashboard() {
               <div className="max-w-3xl">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
-                    {(stats as any)?.recentActivity?.length ? "Platform active" : "Low-activity window"}
+                    {(stats as unknown)?.recentActivity?.length ? "Platform active" : "Low-activity window"}
                   </Badge>
                 </div>
                 <h2 className="mt-3 text-lg sm:text-xl font-semibold text-foreground">
@@ -410,7 +410,7 @@ export default function RootAdminDashboard() {
                 <div className="rounded-lg border border-border/80 bg-background/80 p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Support queue</p>
                   <p className="mt-1 text-2xl font-semibold text-foreground">
-                    {(personalData?.assignedTickets ?? 0) + ((personalData as any)?.newSupportTickets ?? 0)}
+                    {(personalData?.assignedTickets ?? 0) + ((personalData as unknown)?.newSupportTickets ?? 0)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">Assigned plus new tickets</p>
                 </div>
@@ -422,7 +422,7 @@ export default function RootAdminDashboard() {
                 <div className="rounded-lg border border-border/80 bg-background/80 p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Next move</p>
                   <p className="mt-1 text-sm font-medium text-foreground">
-                    {(personalData?.assignedTickets ?? 0) > 0 || ((personalData as any)?.newSupportTickets ?? 0) > 0
+                    {(personalData?.assignedTickets ?? 0) > 0 || ((personalData as unknown)?.newSupportTickets ?? 0) > 0
                       ? "Work the support queue first"
                       : "Review system health and recent changes"}
                   </p>
@@ -600,10 +600,10 @@ export default function RootAdminDashboard() {
                   />
                 </div>
 
-                {userSearchResults && (userSearchResults as any[]).length > 0 && (
+                {userSearchResults && (userSearchResults as unknown[]).length > 0 && (
                   <ScrollArea className="h-[160px] border-2 border-border dark:border-gray-700 rounded-lg bg-muted/30 dark:bg-gray-800/50 p-2 shadow-sm">
                     <div className="space-y-1.5">
-                      {(userSearchResults as any[]).map((user) => (
+                      {(userSearchResults as unknown[]).map((user) => (
                         <div
                           key={user.id}
                           className="flex items-center justify-between gap-2 p-2 rounded-lg hover-elevate border-2 border-border bg-card shadow-sm"
@@ -696,10 +696,10 @@ export default function RootAdminDashboard() {
                   />
                 </div>
 
-                {workspaceSearchResults && (workspaceSearchResults as any[]).length > 0 && (
+                {workspaceSearchResults && (workspaceSearchResults as unknown[]).length > 0 && (
                   <ScrollArea className="h-[160px] border-2 border-border dark:border-gray-700 rounded-lg bg-muted/30 dark:bg-gray-800/50 p-2 shadow-sm">
                     <div className="space-y-1.5">
-                      {(workspaceSearchResults as any[]).map((workspace) => (
+                      {(workspaceSearchResults as unknown[]).map((workspace) => (
                         <div
                           key={workspace.id}
                           className="flex items-center justify-between gap-2 p-2 rounded-lg hover-elevate border-2 border-border bg-card shadow-sm"
@@ -847,7 +847,7 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold" data-testid="text-new-signups">
-              {(stats as any)?.newSignups || 0}
+              {(stats as unknown)?.newSignups || 0}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Signed up this month
@@ -864,10 +864,10 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold" data-testid="text-invoice-revenue">
-              ${Number.parseFloat(String((stats as any)?.monthlyRevenue ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Number.parseFloat(String((stats as unknown)?.monthlyRevenue ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {(stats as any)?.invoiceCount || 0} invoices generated
+              {(stats as unknown)?.invoiceCount || 0} invoices generated
             </p>
           </CardContent>
         </Card>
@@ -881,7 +881,7 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold" data-testid="text-platform-fees">
-              ${Number.parseFloat(String((stats as any)?.platformFees ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Number.parseFloat(String((stats as unknown)?.platformFees ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Total earnings this month
@@ -898,7 +898,7 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold text-orange-600" data-testid="text-open-tickets">
-              {(supportStats as any)?.openTickets || 0}
+              {(supportStats as unknown)?.openTickets || 0}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Open tickets
@@ -936,7 +936,7 @@ export default function RootAdminDashboard() {
                 <span className="text-xs">Database</span>
                 <Badge variant="secondary" className="bg-muted/10 text-blue-600 text-[10px] py-0 h-5">
                   <CheckCircle className="h-2.5 w-2.5 mr-1" />
-                  {(stats as any)?.systemHealth?.database || "healthy"}
+                  {(stats as unknown)?.systemHealth?.database || "healthy"}
                 </Badge>
               </div>
             </div>
@@ -954,15 +954,15 @@ export default function RootAdminDashboard() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs">Workspaces</span>
-                <span className="text-lg font-bold">{(stats as any)?.totalWorkspaces || 0}</span>
+                <span className="text-lg font-bold">{(stats as unknown)?.totalWorkspaces || 0}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs">Total Users</span>
-                <span className="text-lg font-bold">{(stats as any)?.totalUsers || 0}</span>
+                <span className="text-lg font-bold">{(stats as unknown)?.totalUsers || 0}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs">Subscriptions</span>
-                <span className="text-lg font-bold text-teal-600">{(stats as any)?.activeSubscriptions || 0}</span>
+                <span className="text-lg font-bold text-teal-600">{(stats as unknown)?.activeSubscriptions || 0}</span>
               </div>
             </div>
           </CardContent>
@@ -988,9 +988,9 @@ export default function RootAdminDashboard() {
                     <Cpu className="h-4 w-4 text-primary" />
                     <span>CPU Usage</span>
                   </div>
-                  <span className="font-bold">{(stats as any)?.systemHealth?.cpu || 0}%</span>
+                  <span className="font-bold">{(stats as unknown)?.systemHealth?.cpu || 0}%</span>
                 </div>
-                <Progress value={(stats as any)?.systemHealth?.cpu || 0} className="h-2" />
+                <Progress value={(stats as unknown)?.systemHealth?.cpu || 0} className="h-2" />
               </div>
 
               <div className="space-y-2">
@@ -999,9 +999,9 @@ export default function RootAdminDashboard() {
                     <HardDrive className="h-4 w-4 text-blue-500" />
                     <span>Memory</span>
                   </div>
-                  <span className="font-bold">{(stats as any)?.systemHealth?.memory || 0}%</span>
+                  <span className="font-bold">{(stats as unknown)?.systemHealth?.memory || 0}%</span>
                 </div>
-                <Progress value={(stats as any)?.systemHealth?.memory || 0} className="h-2" />
+                <Progress value={(stats as unknown)?.systemHealth?.memory || 0} className="h-2" />
               </div>
 
               <div className="space-y-2">
@@ -1012,7 +1012,7 @@ export default function RootAdminDashboard() {
                   </div>
                   <Badge variant="secondary" className="bg-muted/10 text-primary">
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    {(stats as any)?.systemHealth?.database || "healthy"}
+                    {(stats as unknown)?.systemHealth?.database || "healthy"}
                   </Badge>
                 </div>
               </div>
@@ -1023,7 +1023,7 @@ export default function RootAdminDashboard() {
                   <span>Uptime</span>
                 </div>
                 <span className="font-mono text-sm">
-                  {(stats as any)?.systemHealth?.uptime ? formatUptime((stats as any).systemHealth.uptime) : "0d 0h 0m"}
+                  {(stats as unknown)?.systemHealth?.uptime ? formatUptime((stats as unknown).systemHealth.uptime) : "0d 0h 0m"}
                 </span>
               </div>
             </CardContent>
@@ -1056,7 +1056,7 @@ export default function RootAdminDashboard() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {(stats as any)?.recentActivity?.map((activity: any, idx: any) => (
+                  {(stats as unknown)?.recentActivity?.map((activity: unknown, idx: unknown) => (
                     <div
                       key={idx}
                       className="flex items-start gap-3 p-3 rounded-lg hover-elevate border transition-colors"
@@ -1076,7 +1076,7 @@ export default function RootAdminDashboard() {
                       </span>
                     </div>
                   ))}
-                  {(!(stats as any)?.recentActivity || (stats as any).recentActivity.length === 0) && (
+                  {(!(stats as unknown)?.recentActivity || (stats as unknown).recentActivity.length === 0) && (
                     <div className="rounded-lg border border-dashed border-border p-5 text-center text-muted-foreground">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="font-medium text-foreground">No recent activity</p>

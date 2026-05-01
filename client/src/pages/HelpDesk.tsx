@@ -515,7 +515,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  // When staff requests secure info, open the dialog (if moderation enabled)
  if (CHAT_CONFIG.moderation.allowBan || CHAT_CONFIG.moderation.allowSilence || CHAT_CONFIG.moderation.allowKick) {
  setSecureRequest({
- type: request.type as any,
+ type: request.type as unknown,
  requestedBy: request.requestedBy,
  message: request.message,
  });
@@ -586,7 +586,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  });
 
  // Fetch MOTD — fires after WebSocket connects so it triggers on every session join
- const { data: motdResponse, error: motdError } = useQuery<{ motd: any, acknowledged: boolean }>({
+ const { data: motdResponse, error: motdError } = useQuery<{ motd: unknown, acknowledged: boolean }>({
  queryKey: ['/api/helpdesk/motd', isConnected],
  queryFn: async () => {
    const res = await secureFetch('/api/helpdesk/motd', { credentials: 'include' });
@@ -635,7 +635,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  });
 
  const updateBannerMutation = useMutation({
- mutationFn: async ({ id, data }: { id: string; data: any }) =>{
+ mutationFn: async ({ id, data }: { id: string; data: unknown }) =>{
  return await apiRequest('PATCH', `/api/promotional-banners/${id}`, data);
  },
  onSuccess: () =>{
@@ -719,7 +719,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  // Connected but no users (possible server issue)
  newStatus = 'error';
  newErrors = ['No users detected'];
- } else if (roomData && (roomData as any).status === 'closed') {
+ } else if (roomData && (roomData as unknown).status === 'closed') {
  newStatus = 'denied';
  newErrors = ['Chat room is closed'];
  } else {
@@ -790,7 +790,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
  // Room lifecycle state sync from WebSocket
  const workspaceRole = user?.workspaceRole as string | undefined;
- const userPlatformRoleForAccess = (user as any)?.platformRole as string | undefined;
+ const userPlatformRoleForAccess = (user as unknown)?.platformRole as string | undefined;
  const canManageRooms = hasManagerAccess(workspaceRole) || 
  ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(userPlatformRoleForAccess || '');
 
@@ -857,14 +857,14 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  enabled: messages.length >0,
  queryFn: () => apiFetch(`/api/chat/manage/conversations/${sessionId}/reactions`, AnyResponse),
  });
- const reactionsMap = (reactionsData as any)?.reactions || {};
+ const reactionsMap = (reactionsData as unknown)?.reactions || {};
 
  const { data: pinnedData } = useQuery({
  queryKey: ['/api/chat/manage/conversations', sessionId, 'pinned'],
  staleTime: 1000 * 60,
  queryFn: () => apiFetch(`/api/chat/manage/conversations/${sessionId}/pinned`, AnyResponse),
  });
- const pinnedMessages = (pinnedData as any)?.messages || [];
+ const pinnedMessages = (pinnedData as unknown)?.messages || [];
 
  const { data: chatSearchResults } = useQuery({
  queryKey: [`/api/chat/manage/conversations/${sessionId}/search`, { q: chatSearchQuery }],
@@ -872,7 +872,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  staleTime: 1000 * 10,
  queryFn: () => apiFetch(`/api/chat/manage/conversations/${sessionId}/search?q=${encodeURIComponent(chatSearchQuery)}`, AnyResponse),
  });
- const searchHits = (chatSearchResults as any)?.messages || [];
+ const searchHits = (chatSearchResults as unknown)?.messages || [];
  const searchHitIds = new Set(searchHits.map((m) =>m.id));
 
  const editMessageMutation = useMutation({
@@ -1625,8 +1625,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  return 'bg-card border border-border text-card-foreground';
  };
 
- const isStaff = user && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((user as any).platformRole);
- const userPlatformRole = (user as any)?.platformRole;
+ const isStaff = user && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((user as unknown).platformRole);
+ const userPlatformRole = (user as unknown)?.platformRole;
  const queueLength = queueData?.length || 0;
 
  // Role-based permission system
@@ -2189,7 +2189,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  let firstUnreadShown = false;
  return messages.map((msg, idx) =>{
  const isSelf = msg.senderId === user?.id;
- const role = (msg as any).role || 'guest';
+ const role = (msg as unknown).role || 'guest';
  const isSystem = msg.senderType === 'system' || msg.isSystemMessage;
 
  const prevMsg = idx >0 ? messages[idx - 1] : null;
@@ -2234,12 +2234,12 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  ? userName
  : (msg.senderName || 'User');
  
- const isPrivate = (msg as any).isPrivateMessage || false;
- const isAction = (msg as any).isActionMessage || (msg as any).messageType === 'action';
+ const isPrivate = (msg as unknown).isPrivateMessage || false;
+ const isAction = (msg as unknown).isActionMessage || (msg as unknown).messageType === 'action';
  const bubbleColor = getMessageBubbleColor(msg.senderType || 'customer', role, isSelf, isPrivate, isAction);
  const messageReadReceipt = readReceipts.get(msg.id);
  const msgReactions = msg.id ? (reactionsMap[msg.id] || []) : [];
- const parentMessage = (msg as any).parentMessage || null;
+ const parentMessage = (msg as unknown).parentMessage || null;
 
  const groupedRadius = isSelf
  ? (isGrouped ? 'rounded-l-lg rounded-r-md' : 'rounded-l-lg rounded-tr-lg rounded-br-sm')
@@ -2299,12 +2299,12 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  </div>
  )}
  
- {(msg as any).attachmentUrl && (
+ {(msg as unknown).attachmentUrl && (
  <div className="mb-1" data-testid={`attachment-display-${idx}`}>
  <MessageAttachment
- url={(msg as any).attachmentUrl}
- name={(msg as any).attachmentName}
- type={(msg as any).attachmentType}
+ url={(msg as unknown).attachmentUrl}
+ name={(msg as unknown).attachmentName}
+ type={(msg as unknown).attachmentType}
  />
  </div>
  )}
@@ -2322,7 +2322,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  </div>
  
  <div className={['flex items-center justify-end gap-1 mt-0.5', isSelf ? 'text-primary-foreground/70' : 'text-muted-foreground'].join(' ')}>
- {(msg as any).isEdited && (
+ {(msg as unknown).isEdited && (
  <span className="text-[9px] italic" data-testid={`edited-indicator-${idx}`}>(edited)</span>
  )}
  <span className="text-[9px] sm:text-[10px]">
@@ -2338,7 +2338,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
  {msgReactions.length >0 && (
  <div className="flex flex-wrap gap-1 mt-0.5 px-1" data-testid={`reactions-${idx}`}>
- {msgReactions.map((r: any, ri: number) =>{
+ {msgReactions.map((r: unknown, ri: number) =>{
  const ReactionIcon = REACTION_ICONS[r.emoji]?.icon;
  return (
  <button
@@ -2734,7 +2734,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  name: uniqueUsers.find(u =>u.id === selectedUserId)?.name || "User",
  subscriptionTier: "professional" as const,
  accountCreated: new Date().toISOString().split('T')[0],
- } as any}
+ } as unknown}
  previousTickets={[]}
  suggestedArticles={[]}
  />
@@ -3479,7 +3479,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
  email: user.email,
  status: 'active',
- tier: (user as any).subscriptionTier || 'free'
+ tier: (user as unknown).subscriptionTier || 'free'
  } : undefined}
  isStaff={isStaff}
  onAction={(action, data) =>{
@@ -3535,8 +3535,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <HelpDeskCommandBar
  userRole={
  isStaff ? 'staff' :
- (user as any)?.subscriptionTier ? 'subscriber' :
- (user as any)?.workspaceId ? 'org_user' :
+ (user as unknown)?.subscriptionTier ? 'subscriber' :
+ (user as unknown)?.workspaceId ? 'org_user' :
  'guest'
  }
  isStaff={isStaff || false}
@@ -3624,10 +3624,10 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <div className="text-center py-8">
  <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
  <p className="text-red-600 text-sm font-semibold">
- {(userContextError as any)?.error || (userContextError as any)?.message || 'User information not available'}
+ {(userContextError as unknown)?.error || (userContextError as unknown)?.message || 'User information not available'}
  </p>
- {(userContextError as any)?.suggestion && (
- <p className="text-muted-foreground dark:text-gray-400 dark:text-gray-400 text-xs mt-2">{(userContextError as any).suggestion}</p>
+ {(userContextError as unknown)?.suggestion && (
+ <p className="text-muted-foreground dark:text-gray-400 dark:text-gray-400 text-xs mt-2">{(userContextError as unknown).suggestion}</p>
  )}
  {selectedUserId && (
  <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg p-3">

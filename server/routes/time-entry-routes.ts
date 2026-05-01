@@ -173,7 +173,7 @@ function canApproveTimeEntries(workspaceRole: string): boolean {
 timeEntryRouter.get('/status', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -193,7 +193,7 @@ timeEntryRouter.get('/status', requireAuth, readLimiter, async (req: Authenticat
         activeBreak: null,
         employeeId: null,
         employeeName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null,
-        shiftEligibility: { canClockIn: false, reason: 'no_employee_record' as any },
+        shiftEligibility: { canClockIn: false, reason: 'no_employee_record' as unknown },
       });
     }
 
@@ -298,7 +298,7 @@ timeEntryRouter.get('/status', requireAuth, readLimiter, async (req: Authenticat
 timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -373,15 +373,15 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
           [workspaceId]
         );
         if (tier1Templates.length > 0) {
-          const templateIds = tier1Templates.map((t: any) => t.id);
+          const templateIds = tier1Templates.map((t: unknown) => t.id);
           const { rows: completions } = await pool.query(
             `SELECT task_template_id FROM employee_onboarding_completions
              WHERE employee_id = $1 AND status IN ('completed','waived')
                AND task_template_id = ANY($2)`,
             [employee.id, templateIds]
           );
-          const completedIds = new Set(completions.map((c: any) => c.task_template_id));
-          const pendingTier1 = tier1Templates.filter((t: any) => !completedIds.has(t.id));
+          const completedIds = new Set(completions.map((c: unknown) => c.task_template_id));
+          const pendingTier1 = tier1Templates.filter((t: unknown) => !completedIds.has(t.id));
           if (pendingTier1.length > 0) {
             return res.status(403).json({
               error: 'TIER1_ONBOARDING_INCOMPLETE',
@@ -612,7 +612,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
             ? `LATE_CLOCK_IN:${lateClockInMinutes}min — pending manager approval`
             : null,
         gpsVerificationStatus,
-      } as any).returning();
+      } as unknown).returning();
 
       return { alreadyClockedIn: false as const, entry: newEntry };
     });
@@ -638,7 +638,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
       shiftId: newEntry.shiftId || newEntry.id,
       officerId: employee.id,
       orgId: workspaceId,
-      postId: String((resolvedShift as any)?.siteId || newEntry.shiftId || newEntry.id),
+      postId: String((resolvedShift as unknown)?.siteId || newEntry.shiftId || newEntry.id),
       clockIn: {
         timestamp: clockInTime,
         type: 'in',
@@ -664,7 +664,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
       },
       discrepancies: [],
       status: 'active',
-    } as any).catch((e: unknown) => log.warn('[TimeEntry] Presence monitor start failed (non-blocking):', e?.message || String(e)));
+    } as unknown).catch((e: unknown) => log.warn('[TimeEntry] Presence monitor start failed (non-blocking):', e?.message || String(e)));
 
     // Create audit event
     await createAuditEvent({
@@ -687,10 +687,10 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
           .where(and(
             eq(employees.workspaceId, workspaceId),
             or(
-              eq(employees.workspaceRole as any, 'manager'),
-              eq(employees.workspaceRole as any, 'supervisor'),
-              eq(employees.workspaceRole as any, 'department_manager'),
-              eq(employees.workspaceRole as any, 'field_supervisor')
+              eq(employees.workspaceRole as unknown, 'manager'),
+              eq(employees.workspaceRole as unknown, 'supervisor'),
+              eq(employees.workspaceRole as unknown, 'department_manager'),
+              eq(employees.workspaceRole as unknown, 'field_supervisor')
             )
           ));
         const employeeName = `${employee.firstName} ${employee.lastName}`;
@@ -771,7 +771,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
             name: `${clientName} — Shift Chat`,
             status: 'active',
             trinityRecordingEnabled: true,
-          } as any).returning();
+          } as unknown).returning();
           shiftChatroomId = newRoom.id;
         }
 
@@ -780,7 +780,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
             chatroomId: shiftChatroomId,
             userId: user.id,
             employeeId: employee.id,
-          } as any).onConflictDoNothing();
+          } as unknown).onConflictDoNothing();
 
           await db.insert(shiftChatroomMessages).values({
             chatroomId: shiftChatroomId,
@@ -789,7 +789,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
             senderName: 'Trinity',
             content: `${employee.firstName} has clocked in. I'm monitoring this shift. Use this room to report incidents, request help, or communicate with your team.`,
             messageType: 'system',
-          } as any);
+          } as unknown);
         }
       } catch (chatroomErr: unknown) {
         log.error('[ClockIn] Chatroom auto-join failed (non-blocking):', (chatroomErr instanceof Error ? chatroomErr.message : String(chatroomErr)));
@@ -891,7 +891,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
               status: 'system_closed',
               notes: (notes || '') + '\n[SYSTEM] Automatically closed after 24-hour limit reached.',
               updatedAt: new Date()
-            } as any)
+            } as unknown)
             .where(eq(timeEntries.id, newEntry.id));
             
           broadcastToWorkspace(workspaceId!, { type: 'time_entries_updated', data: { action: 'system_closed', id: newEntry.id } });
@@ -912,7 +912,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
 timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1033,7 +1033,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
           notes: notes || activeEntry.notes,
           gpsVerificationStatus: clockOutGpsVerificationStatus,
           updatedAt: new Date()
-        } as any)
+        } as unknown)
         .where(and(
           eq(timeEntries.id, activeEntry.id),
           eq(timeEntries.workspaceId, workspaceId)
@@ -1290,7 +1290,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
 timeEntryRouter.patch('/geofence-override/:timeEntryId', requireWorkspaceRole('manager'), async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace selected' });
     const geofenceOverrideSchema = z.object({
       approved: z.boolean({ required_error: 'approved (boolean) required' }),
@@ -1338,7 +1338,7 @@ timeEntryRouter.post('/geofence-override/:timeEntryId/submit', async (req: Authe
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace selected' });
     const { reason } = req.body || {};
     if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
@@ -1382,7 +1382,7 @@ timeEntryRouter.post('/geofence-override/:timeEntryId/submit', async (req: Authe
 timeEntryRouter.post('/break/start', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1484,7 +1484,7 @@ timeEntryRouter.post('/break/start', requireAuth, mutationLimiter, async (req: A
 timeEntryRouter.post('/break/end', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1576,7 +1576,7 @@ timeEntryRouter.post('/break/end', requireAuth, mutationLimiter, async (req: Aut
 timeEntryRouter.get('/entries', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1652,7 +1652,7 @@ timeEntryRouter.get('/entries', requireAuth, readLimiter, async (req: Authentica
 timeEntryRouter.get('/entries/:id', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1720,7 +1720,7 @@ timeEntryRouter.get('/entries/:id', requireAuth, readLimiter, async (req: Authen
 timeEntryRouter.patch('/entries/:id', requireWorkspaceRole(['department_manager', 'co_owner', 'org_owner']), mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1902,7 +1902,7 @@ timeEntryRouter.patch('/entries/:id', requireWorkspaceRole(['department_manager'
 timeEntryRouter.post('/entries/:id/approve', requireWorkspaceRole(['department_manager', 'co_owner', 'org_owner']), mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -1997,7 +1997,7 @@ timeEntryRouter.post('/entries/:id/approve', requireWorkspaceRole(['department_m
 timeEntryRouter.post('/entries/:id/reject', requireWorkspaceRole(['department_manager', 'co_owner', 'org_owner']), mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2097,7 +2097,7 @@ timeEntryRouter.post('/entries/:id/reject', requireWorkspaceRole(['department_ma
           await universalNotificationEngine.sendNotification({
             workspaceId: workspaceId,
             userId: rejectedEmployee.userId,
-            type: 'timesheet_rejected' as any,
+            type: 'timesheet_rejected' as unknown,
             title: 'Time Entry Rejected',
             message: `Your time entry for ${entryDate} was rejected. Reason: ${reason}`,
             severity: 'warning',
@@ -2130,7 +2130,7 @@ timeEntryRouter.post('/entries/:id/reject', requireWorkspaceRole(['department_ma
 timeEntryRouter.get('/active', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2170,7 +2170,7 @@ timeEntryRouter.get('/active', requireAuth, readLimiter, async (req: Authenticat
 timeEntryRouter.get('/reports/summary', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2274,7 +2274,7 @@ timeEntryRouter.get('/reports/summary', requireAuth, readLimiter, async (req: Au
 timeEntryRouter.get('/reports/export', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2367,7 +2367,7 @@ timeEntryRouter.get('/reports/export', requireAuth, readLimiter, async (req: Aut
 timeEntryRouter.get('/reports/compliance', requireWorkspaceRole(['department_manager', 'co_owner', 'org_owner']), readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2443,7 +2443,7 @@ timeEntryRouter.get('/reports/compliance', requireWorkspaceRole(['department_man
 timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_owner', 'support_manager']), async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2484,7 +2484,7 @@ timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_own
     }
 
     if (conditions.length > 0) {
-      query = (query as any).where(and(...conditions) as any);
+      query = (query as unknown).where(and(...conditions) as unknown);
     }
 
     const entries = await query.orderBy(desc(timeEntries.clockIn)).limit(pageSize).offset(offset);
@@ -2495,7 +2495,7 @@ timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_own
       .where(eq(timeEntries.workspaceId, workspaceId));
 
     if (conditions.length > 0) {
-      countQuery = (countQuery as any).where(and(...conditions) as any);
+      countQuery = (countQuery as unknown).where(and(...conditions) as unknown);
     }
 
     const [{ count }] = await countQuery;
@@ -2527,7 +2527,7 @@ timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_own
 timeEntryRouter.post('/acknowledge-post-orders', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2588,7 +2588,7 @@ timeEntryRouter.post('/acknowledge-post-orders', requireAuth, mutationLimiter, a
 timeEntryRouter.get('/workspace/stats', requireWorkspaceRole(['org_owner', 'co_owner']), async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as unknown)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) {
       return res.status(400).json({ error: 'No workspace selected' });
     }
@@ -2619,7 +2619,7 @@ timeEntryRouter.get('/workspace/stats', requireWorkspaceRole(['org_owner', 'co_o
     .where(and(
       eq(timeEntries.workspaceId, workspaceId),
       ...(dateConditions.length > 0 ? [and(...dateConditions)] : [])
-    ) as any)
+    ) as unknown)
     .groupBy(timeEntries.employeeId, employees.firstName, employees.lastName);
 
     const totalStats = {

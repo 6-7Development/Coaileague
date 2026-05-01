@@ -42,7 +42,7 @@ async function auditShiftMutation(params: {
     workspaceId: params.workspaceId,
     userId: params.userId || 'system',
     userEmail: params.userEmail || 'system',
-    action: params.action as any,
+    action: params.action as unknown,
     entityType: 'shift',
     entityId: params.shiftId,
     changes: {
@@ -55,7 +55,7 @@ async function auditShiftMutation(params: {
     },
     ipAddress: params.ip,
     userAgent: undefined,
-  } as any).catch(() => null); // Non-fatal — never block shift mutation on audit failure
+  } as unknown).catch(() => null); // Non-fatal — never block shift mutation on audit failure
 }
 import { eq, and, gte, lte, sql, desc, asc, or, between, inArray, ne, isNull, lt } from "drizzle-orm";
 import { getUserPlatformRole, resolveWorkspaceForUser } from "../rbac";
@@ -106,7 +106,7 @@ function releaseBulkShiftLock(workspaceId: string) {
 }
 
 // Helper function to check shift access authorization
-async function validateShiftAccess(shiftId: string, employeeId: string, workspaceId: string, storageRef: any): Promise<{ authorized: boolean; shift?: unknown; reason?: string }> {
+async function validateShiftAccess(shiftId: string, employeeId: string, workspaceId: string, storageRef: unknown): Promise<{ authorized: boolean; shift?: unknown; reason?: string }> {
   const shift = await storageRef.getShift(shiftId, workspaceId);
   if (!shift) {
     return { authorized: false, reason: "Shift not found" };
@@ -191,7 +191,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
       const allShiftData = await storage.getShiftsByWorkspace(targetWorkspaceId, startDate, endDate, limit, offset);
       // For officers, strip draft shifts from the result (double-enforcement)
-      const shiftData = callerIsDraftVisible ? allShiftData : allShiftData.filter((s: any) => s.status !== 'draft');
+      const shiftData = callerIsDraftVisible ? allShiftData : allShiftData.filter((s: unknown) => s.status !== 'draft');
       
       const clientIds = [...new Set(shiftData.filter(s => s.clientId).map(s => s.clientId as string))];
       let clientNameMap: Record<string, string> = {};
@@ -246,7 +246,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         workspaceId, employee.id, todayStart, todayEnd
       );
 
-      const mapped = todayShifts.map((s: any) => {
+      const mapped = todayShifts.map((s: unknown) => {
         const start = new Date(s.startTime);
         const end = new Date(s.endTime);
         let status: 'upcoming' | 'active' | 'completed' = 'upcoming';
@@ -287,7 +287,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         workspaceId, employee.id, tomorrowStart, futureEnd
       );
 
-      const mapped = upcoming.map((s: any) => ({
+      const mapped = upcoming.map((s: unknown) => ({
         id: s.id,
         date: s.date || new Date(s.startTime).toISOString().split('T')[0],
         siteName: s.title || 'Shift',
@@ -349,7 +349,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
       // RBAC: Managers/owners can view any shift, employees can only view their assigned shifts
       const isManager = ['org_owner', 'co_owner', 'owner', 'admin', 'manager', 'org_manager', 'department_manager', 'support_staff', 'support_manager', 'platform_admin'].includes(workspaceRole || '');
-      const isAssigned = (shift as any).assignedEmployeeIds?.includes(req.employeeId || '') || shift.employeeId === req.employeeId;
+      const isAssigned = (shift as unknown).assignedEmployeeIds?.includes(req.employeeId || '') || shift.employeeId === req.employeeId;
       
       if (!isManager && !isAssigned) {
         return res.status(403).json({ error: 'Forbidden - not authorized to view this shift' });
@@ -360,7 +360,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       let client = null;
 
       const employeeIdsToFetch = Array.isArray(shift.assignedEmployeeIds) 
-        ? (shift as any).assignedEmployeeIds 
+        ? (shift as unknown).assignedEmployeeIds 
         : (shift.employeeId ? [shift.employeeId] : []);
 
       if (employeeIdsToFetch.length > 0) {
@@ -614,8 +614,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         for (const empId of assignedEmpIds2) {
           const weekShifts = await storage.getShiftsByEmployeeAndDateRange(workspaceId, empId, weekStart, weekEnd);
           const currentHours = weekShifts
-            .filter((s: any) => !['cancelled', 'draft'].includes(s.status))
-            .reduce((sum: number, s: any) => {
+            .filter((s: unknown) => !['cancelled', 'draft'].includes(s.status))
+            .reduce((sum: number, s: unknown) => {
               const sh = (new Date(s.endTime).getTime() - new Date(s.startTime).getTime()) / (1000 * 60 * 60);
               return sum + sh;
             }, 0);
@@ -741,7 +741,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       // assignment (employeeId) and the multi-employee array (assignedEmployeeIds).
       const allAssignedIds = new Set<string>([
         ...(shift.employeeId ? [shift.employeeId] : []),
-        ...((shift.assignedEmployeeIds && Array.isArray(shift.assignedEmployeeIds)) ? (shift as any).assignedEmployeeIds : []),
+        ...((shift.assignedEmployeeIds && Array.isArray(shift.assignedEmployeeIds)) ? (shift as unknown).assignedEmployeeIds : []),
       ]);
       if (allAssignedIds.size > 0) {
           for (const empId of allAssignedIds) {
@@ -752,7 +752,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
               await createNotification({
                 workspaceId,
                 userId: empId,
-                type: 'shift_assigned' as any,
+                type: 'shift_assigned' as unknown,
                 title: '📅 New Shift Assigned',
                 message: `You've been assigned to a shift on ${new Date(shift.startTime).toLocaleDateString()}`,
                 actionUrl: `/schedule`,
@@ -941,7 +941,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             await autonomousSchedulingDaemon.triggerManualRun(workspaceId, 'current_day');
             log.info(`[Trinity] Auto-fill triggered for uncovered shift ${shift.id} in workspace ${workspaceId}`);
           } catch (trinityErr: unknown) {
-            log.warn('[Trinity] Auto-fill trigger failed for new uncovered shift:', (trinityErr as any)?.message);
+            log.warn('[Trinity] Auto-fill trigger failed for new uncovered shift:', (trinityErr as unknown)?.message);
           }
         })();
       }
@@ -995,7 +995,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             const [emp] = await db.select().from(employees).where(eq(employees.id, shift.employeeId!)).limit(1);
             if (emp && emp.userId) {
               const empName = emp.lastName ? `${emp.firstName} ${emp.lastName}` : (emp.firstName || 'Officer');
-              const siteName = (shift as any).siteName || (shift as any).jobSiteName || shift.title || 'Site';
+              const siteName = (shift as unknown).siteName || (shift as unknown).jobSiteName || shift.title || 'Site';
               await shiftRoomBotOrchestrator.createShiftRoomOnAssignment({
                 workspaceId,
                 shiftId: shift.id,
@@ -1010,7 +1010,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
               });
             }
           } catch (roomErr: unknown) {
-            log.warn('[Shifts] Shift room auto-creation failed (non-blocking):', (roomErr as any)?.message);
+            log.warn('[Shifts] Shift room auto-creation failed (non-blocking):', (roomErr as unknown)?.message);
           }
         })();
       }
@@ -1049,17 +1049,17 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         ])) return;
       }
 
-      const newAssignees = (validated as any).assignedEmployeeIds || (validated.employeeId ? [validated.employeeId] : []);
+      const newAssignees = (validated as unknown).assignedEmployeeIds || (validated.employeeId ? [validated.employeeId] : []);
       if (newAssignees.length > 0) {
         const ineligibleEmployees: string[] = [];
         const invalidEmployees: string[] = [];
         const baseCerts = (validated.requiredCertifications as string[] | undefined) || [];
         // For PATCH: check if this or the existing shift is armed, auto-require armed cert
-        let shiftIsArmed = (validated as any).isArmed;
+        let shiftIsArmed = (validated as unknown).isArmed;
         let existingShiftForValidation = null;
         if (shiftIsArmed === undefined || validated.startTime === undefined || validated.endTime === undefined) {
           existingShiftForValidation = await storage.getShift(req.params.id, workspaceId);
-          if (shiftIsArmed === undefined) shiftIsArmed = (existingShiftForValidation as any)?.isArmed ?? false;
+          if (shiftIsArmed === undefined) shiftIsArmed = (existingShiftForValidation as unknown)?.isArmed ?? false;
         }
         
         const requiredCerts = shiftIsArmed && !baseCerts.includes('armed')
@@ -1122,7 +1122,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
       const isManualAssignment = !!(validated.employeeId && !validated.aiGenerated);
       if (isManualAssignment) {
-        (validated as any).isManuallyLocked = true;
+        (validated as unknown).isManuallyLocked = true;
       }
 
       // T004: Atomic shift assignment using transactions with FOR UPDATE
@@ -1205,7 +1205,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             code: 'SHIFT_OVERLAP_CONFLICT',
           });
         }
-        const e = err as any;
+        const e = err as unknown;
         if (e?.code === 'ILLEGAL_SHIFT_TRANSITION' || e?.statusCode === 422) {
           return res.status(422).json({ error: e.message, code: e.code });
         }
@@ -1223,7 +1223,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       // Trinity notes every manual correction to maintain accurate data lineage
       if (userId && shiftBeforeState) {
         const isManualEdit = isManualAssignment || Object.keys(validated).some(
-          k => k !== 'aiGenerated' && (validated as any)[k] !== undefined
+          k => k !== 'aiGenerated' && (validated as unknown)[k] !== undefined
         );
         if (isManualEdit) {
           try {
@@ -1377,7 +1377,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             const [emp] = await db.select().from(employees).where(eq(employees.id, shift.employeeId!)).limit(1);
             if (emp && emp.userId) {
               const empName = emp.lastName ? `${emp.firstName} ${emp.lastName}` : (emp.firstName || 'Officer');
-              const siteName = (shift as any).siteName || (shift as any).jobSiteName || shift.title || 'Site';
+              const siteName = (shift as unknown).siteName || (shift as unknown).jobSiteName || shift.title || 'Site';
               await shiftRoomBotOrchestrator.createShiftRoomOnAssignment({
                 workspaceId,
                 shiftId: shift.id,
@@ -1392,7 +1392,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
               });
             }
           } catch (roomErr: unknown) {
-            log.warn('[Shifts] Shift room auto-creation failed (non-blocking):', (roomErr as any)?.message);
+            log.warn('[Shifts] Shift room auto-creation failed (non-blocking):', (roomErr as unknown)?.message);
           }
         })();
       }
@@ -1569,7 +1569,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       
       const scoredCandidates = await scoreEmployeesForShift(workspaceId, {
         shiftId,
-        requiredSkills: (shift as any).requiredSkills || [],
+        requiredSkills: (shift as unknown).requiredSkills || [],
         requiredCertifications: shift.requiredCertifications || [],
         maxDistance: 50,
         maxPayRate: shift.payRate ? parseFloat(shift.payRate) : undefined,
@@ -1665,11 +1665,11 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       try {
         const { trinityDecisionLogger } = await import('../services/trinityDecisionLogger');
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        const chosenEmp = (employees as any).find(e => e.id === assignment.employeeId);
+        const chosenEmp = (employees as unknown).find(e => e.id === assignment.employeeId);
         const alternatives = result.assignments.length > 1
-          ? result.assignments.slice(1).map((a: any) => {
+          ? result.assignments.slice(1).map((a: unknown) => {
               // @ts-expect-error — TS migration: fix in refactoring sprint
-              const altEmp = (employees as any).find(e => e.id === a.employeeId);
+              const altEmp = (employees as unknown).find(e => e.id === a.employeeId);
               return {
                 employeeId: a.employeeId,
                 employeeName: altEmp ? `${altEmp.firstName} ${altEmp.lastName}` : a.employeeId,
@@ -1683,7 +1683,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
           shiftId,
           chosenEmployeeId: assignment.employeeId,
           chosenEmployeeName: chosenEmp ? `${chosenEmp.firstName} ${chosenEmp.lastName}` : assignment.employeeId,
-          reasoning: (assignment as any).reason || result.summary || `Selected with ${assignment.confidence}% confidence based on availability, proximity, overtime risk, and reliability score`,
+          reasoning: (assignment as unknown).reason || result.summary || `Selected with ${assignment.confidence}% confidence based on availability, proximity, overtime risk, and reliability score`,
           alternatives,
           contextSnapshot: {
             totalCandidatesEvaluated: topCandidates.length,
@@ -1714,7 +1714,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
       // 🔔 NOTIFICATION: Notify assigned employee
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      const employee = (employees as any).find(e => e.id === assignment.employeeId);
+      const employee = (employees as unknown).find(e => e.id === assignment.employeeId);
       if (employee?.email && updatedShift) {
         const startTime = new Date(updatedShift.startTime).toLocaleString('en-US', {
           dateStyle: 'full',
@@ -1886,7 +1886,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         workspaceId,
         shiftId,
         requestReason: fillRequestParsed.data.reason || "No qualified internal employees available",
-        requiredSkills: (shift as any).requiredSkills || [],
+        requiredSkills: (shift as unknown).requiredSkills || [],
         preferredSkills: fillRequestParsed.data.preferredSkills || [],
         maxPayRate: shift.payRate || fillRequestParsed.data.maxPayRate || "0",
         maxDistance: fillRequestParsed.data.maxDistance || 50,
@@ -2301,7 +2301,7 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
 
                   // Recalculate invoice totals
                   const updatedLineItems = await storage.getInvoiceLineItems(targetInvoice.id);
-                  const newSubtotal = updatedLineItems.reduce((sum: number, item: any) => sum + parseFloat(item.amount || '0'), 0);
+                  const newSubtotal = updatedLineItems.reduce((sum: number, item: unknown) => sum + parseFloat(item.amount || '0'), 0);
                   const taxRate = parseFloat(targetInvoice.taxRate || '0');
                   const newTaxAmount = newSubtotal * (taxRate / 100);
                   const newTotal = newSubtotal + newTaxAmount;
@@ -2470,7 +2470,7 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
         ),
       });
 
-      const empIds = acks.map((a: any) => a.employeeId).filter(Boolean);
+      const empIds = acks.map((a: unknown) => a.employeeId).filter(Boolean);
       const [empRows, shiftRow] = await Promise.all([
         empIds.length > 0
           ? db.query.employees.findMany({
@@ -2481,8 +2481,8 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
           where: eq(shifts.id, req.params.shiftId),
         }),
       ]);
-      const empMap = new Map((empRows as any[]).map(e => [e.id, e]));
-      const acknowledgments = acks.map((a: any) => ({
+      const empMap = new Map((empRows as unknown[]).map(e => [e.id, e]));
+      const acknowledgments = acks.map((a: unknown) => ({
         ...a,
         shift: shiftRow || null,
         employee: empMap.get(a.employeeId) || null,
@@ -2606,7 +2606,7 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
           const owner = await storage.getUser(workspace.ownerId);
           if (owner) {
             creatorInfo = {
-              name: (owner as any).displayName || owner.email,
+              name: (owner as unknown).displayName || owner.email,
               email: owner.email,
               role: 'owner'
             };
@@ -2822,7 +2822,7 @@ router.post('/:id/mark-calloff', requireEmployee, async (req: AuthenticatedReque
                             employeeId: employee.id,
                             distanceMeters: Math.round(distanceM),
                           },
-                        }).catch((notifErr: any) => {
+                        }).catch((notifErr: unknown) => {
                           log.warn('[ShiftGPS] Geofence notification failed (non-blocking):', notifErr?.message);
                         });
                       }
@@ -3145,7 +3145,7 @@ router.get("/offers/:offerId", requireAuth, async (req: AuthenticatedRequest, re
       return res.status(404).json({ error: 'Offer not found or has expired' });
     }
 
-    const meta = (notif as any).metadata || {};
+    const meta = (notif as unknown).metadata || {};
     const isAccepted = !!meta.accepted;
     const isDeclined = !!meta.declined;
 
@@ -3206,8 +3206,8 @@ router.post("/offers/:offerId/accept", requireAuth, async (req: AuthenticatedReq
         .where(and(eq(notifications.workspaceId, workspaceId), eq(notifications.relatedEntityId, offerId)))
         .limit(1);
       if (!existing) return res.status(404).json({ error: 'Offer not found' });
-      if ((existing as any).userId !== userId) return res.status(403).json({ error: 'This offer was not sent to you' });
-      const meta = (existing as any).metadata || {};
+      if ((existing as unknown).userId !== userId) return res.status(403).json({ error: 'This offer was not sent to you' });
+      const meta = (existing as unknown).metadata || {};
       if (meta.accepted) return res.json({ success: true, message: 'Already accepted' });
       if (meta.declined) return res.status(400).json({ error: 'This offer has already been declined' });
       return res.status(409).json({ error: 'Offer is no longer available' });
@@ -3218,13 +3218,13 @@ router.post("/offers/:offerId/accept", requireAuth, async (req: AuthenticatedReq
       workspaceId,
       userId,
       userEmail: req.user?.email || userId,
-      action: 'shift_offer_accepted' as any,
+      action: 'shift_offer_accepted' as unknown,
       entityType: 'shift_offer',
       entityId: offerId,
       changes: { who: userId, what: 'shift_offer_accepted', where: req.ip, when: new Date().toISOString(), why: 'Officer accepted via portal' },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'] || null,
-    } as any).catch(err => log.warn('[ShiftOffer] Audit log failed (non-fatal):', err));
+    } as unknown).catch(err => log.warn('[ShiftOffer] Audit log failed (non-fatal):', err));
 
     log.info(`[ShiftOffer] Officer ${userId} accepted offer ${offerId} in workspace ${workspaceId}`);
     return res.json({ success: true, message: 'Shift offer accepted. You will receive confirmation details shortly.' });
@@ -3259,7 +3259,7 @@ router.post("/offers/:offerId/decline", requireAuth, async (req: AuthenticatedRe
       return res.status(404).json({ error: 'Offer not found' });
     }
 
-    const currentMeta = (notif as any).metadata || {};
+    const currentMeta = (notif as unknown).metadata || {};
     if (currentMeta.declined) {
       return res.json({ success: true, message: 'Already declined' });
     }
@@ -3296,7 +3296,7 @@ router.post('/:id/proof-of-service', requireEmployee, async (req: AuthenticatedR
       proofOfServiceType: proofType || 'document',
       proofOfServiceNotes: notes || null,
       proofSubmittedAt: new Date().toISOString(),
-    } as any);
+    } as unknown);
     broadcastShiftUpdate(workspaceId, 'shift_updated', updated);
     res.json({ success: true, shift: updated });
   } catch (err: unknown) {

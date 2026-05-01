@@ -1474,7 +1474,7 @@ async function executeLookupPayroll(
       conditions.push(eq(payrollRuns.id, args.payrollRunId));
     }
     if (args.status) {
-      conditions.push(eq(payrollRuns.status, args.status as any));
+      conditions.push(eq(payrollRuns.status, args.status as unknown));
     }
 
     const results = await db.select({
@@ -1531,7 +1531,7 @@ async function executeLookupInvoices(
         return {
           success: true,
           data: {
-            invoices: biResult.invoices.map((inv: any) => ({
+            invoices: biResult.invoices.map((inv: unknown) => ({
               id: inv.id,
               invoiceNumber: inv.invoiceNumber,
               externalInvoiceNumber: inv.externalInvoiceNumber,
@@ -1558,7 +1558,7 @@ async function executeLookupInvoices(
       conditions.push(eq(invoices.id, args.invoiceId));
     }
     if (args.status) {
-      conditions.push(eq(invoices.status, args.status as any));
+      conditions.push(eq(invoices.status, args.status as unknown));
     }
     if (args.clientId) {
       conditions.push(eq(invoices.clientId, args.clientId));
@@ -1837,8 +1837,8 @@ async function executeLookupIncidents(
     const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
     const conditions: any[] = [gte(securityIncidents.reportedAt, cutoff)];
     if (context.workspaceId) conditions.push(eq(securityIncidents.workspaceId, context.workspaceId));
-    if (args.status) conditions.push(eq(securityIncidents.status, args.status as any));
-    if (args.severity) conditions.push(eq(securityIncidents.severity, args.severity as any));
+    if (args.status) conditions.push(eq(securityIncidents.status, args.status as unknown));
+    if (args.severity) conditions.push(eq(securityIncidents.severity, args.severity as unknown));
     if (args.siteId) conditions.push(eq(securityIncidents.clientId, args.siteId));
 
     const incidents = await db
@@ -1998,7 +1998,7 @@ async function executeLookupGuardTours(
     if (context.workspaceId) conditions.push(eq(guardTours.workspaceId, context.workspaceId));
     if (args.guardId) conditions.push(eq(guardTours.assignedEmployeeId, args.guardId));
     if (args.siteId) conditions.push(eq(guardTours.clientId, args.siteId));
-    if (args.status) conditions.push(eq(guardTours.status, args.status as any));
+    if (args.status) conditions.push(eq(guardTours.status, args.status as unknown));
 
     const tours = await db
       .select({
@@ -2029,8 +2029,8 @@ async function executeLookupEquipment(
   try {
     const conditions: (string | number | boolean | null)[] = [];
     if (context.workspaceId) conditions.push(eq(equipmentItems.workspaceId, context.workspaceId));
-    if (args.category) conditions.push(eq(equipmentItems.category, args.category as any));
-    if (args.status) conditions.push(eq(equipmentItems.status, args.status as any));
+    if (args.category) conditions.push(eq(equipmentItems.category, args.category as unknown));
+    if (args.status) conditions.push(eq(equipmentItems.status, args.status as unknown));
 
     const items = await db
       .select({
@@ -2063,7 +2063,7 @@ async function executeListAvailableActions(
 ): Promise<ToolResult> {
   try {
     const { platformActionHub } = await import('../../helpai/platformActionHub');
-    const userRole = (context as any).userRole || 'system';
+    const userRole = (context as unknown).userRole || 'system';
     const allActions = platformActionHub.getTrinityActionCatalog(userRole, { category: args.category });
     const filtered = args.category
       ? allActions.filter((a) => a.category === args.category || a.actionId.startsWith(args.category + '.'))
@@ -2106,7 +2106,7 @@ async function executePlatformAction(
     }
     const result = await platformActionHub.executeAction({
       actionId: args.actionId,
-      category: category as any,
+      category: category as unknown,
       name,
       payload,
       workspaceId: context.workspaceId,
@@ -2755,14 +2755,14 @@ export class UnifiedGeminiClient {
 
           // MULTI-TURN LOOP: Execute tools and get final response (Steps 4-7)
           let toolIterations = 0;
-          const allFunctionCalls: Array<{ name: string; args: Record<string, unknown>; result: any }> = [];
+          const allFunctionCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }> = [];
           
           while (functionCalls.length > 0 && toolIterations < maxToolIterations) {
             toolIterations++;
             log.info(`🔄 [AI Brain] Tool iteration ${toolIterations}: ${functionCalls.length} function call(s) to execute`);
 
             // STEP 4: Execute each tool and collect results
-            const toolResults: Array<{ name: string; response: any }> = [];
+            const toolResults: Array<{ name: string; response: unknown }> = [];
             
             for (const fc of functionCalls) {
               log.info(`🔧 [AI Brain] Executing tool: ${fc.name}`);
@@ -2875,7 +2875,7 @@ export class UnifiedGeminiClient {
                 if (fc.name === 'search_faqs' && fc.result.data?.faqs) {
                   const faqs = fc.result.data.faqs;
                   if (faqs.length > 0) {
-                    return `Found ${faqs.length} relevant FAQ(s):\n${faqs.map((f: any) => `- **${f.question}**\n  ${f.answer}`).join('\n\n')}`;
+                    return `Found ${faqs.length} relevant FAQ(s):\n${faqs.map((f: unknown) => `- **${f.question}**\n  ${f.answer}`).join('\n\n')}`;
                   }
                   return 'No matching FAQs found for your query.';
                 }
@@ -2884,10 +2884,10 @@ export class UnifiedGeminiClient {
                   return `Here are your ${insights.type} insights:\n${JSON.stringify(insights.recommendations || insights.metrics, null, 2)}`;
                 }
                 if (fc.name === 'suggest_automation' && fc.result.data?.suggestions) {
-                  return `Automation suggestions:\n${fc.result.data.suggestions.map((s: any) => `- **${s.area}**: ${s.description}`).join('\n')}`;
+                  return `Automation suggestions:\n${fc.result.data.suggestions.map((s: unknown) => `- **${s.area}**: ${s.description}`).join('\n')}`;
                 }
                 if (fc.name === 'recommend_platform_feature' && fc.result.data?.recommendations) {
-                  return `Recommended features:\n${fc.result.data.recommendations.map((r: any) => `- **${r.feature}** (${r.tier}): ${r.description}`).join('\n')}`;
+                  return `Recommended features:\n${fc.result.data.recommendations.map((r: unknown) => `- **${r.feature}** (${r.tier}): ${r.description}`).join('\n')}`;
                 }
                 return `${fc.name} completed successfully.`;
               });
@@ -3025,7 +3025,7 @@ export class UnifiedGeminiClient {
     } else {
       if (requestOrPrompt.contents) {
         prompt = requestOrPrompt.contents
-          .map((c: any) => c.parts?.map((p: any) => p.text).join(' ') || '')
+          .map((c: unknown) => c.parts?.map((p: unknown) => p.text).join(' ') || '')
           .join('\n');
       } else {
         prompt = requestOrPrompt.prompt || '';

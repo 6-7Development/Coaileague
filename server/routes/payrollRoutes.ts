@@ -86,7 +86,7 @@ router.use(rateLimitMiddleware(
     if (workspaceId) return `payroll-${workspaceId}`;
     return `payroll-ip-${req.ip}`;
   },
-  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as any
+  (req: AuthenticatedRequest) => (req.session?.plan || 'free') as unknown
 ));
 
 function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?: string; status?: number } {
@@ -153,14 +153,14 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       // Generate CSV
       const csvHeader = 'Employee Name,Period Start,Period End,Regular Hours,Overtime Hours,Hourly Rate,Gross Pay,Deductions,Federal Tax,State Tax,Social Security,Medicare,Net Pay,Date\n';
       
-      const employeeIds = [...new Set(entries.map((e: any) => e.employeeId))];
+      const employeeIds = [...new Set(entries.map((e: unknown) => e.employeeId))];
       const employeeMap = new Map();
       if (employeeIds.length > 0) {
         const emps = await db.select().from(employees).where(inArray(employees.id, employeeIds));
         emps.forEach(emp => employeeMap.set(emp.id, `${emp.firstName} ${emp.lastName}`));
       }
 
-      const csvRows = entries.map((e: any) => {
+      const csvRows = entries.map((e: unknown) => {
         const employeeName = employeeMap.get(e.employeeId) || e.employeeId;
         // RC4 (Phase 2): sumFinancialValues uses Decimal.js — eliminates 4-field floating-point accumulation.
         const deductions = formatCurrency(sumFinancialValues([e.federalTax || '0', e.stateTax || '0', e.socialSecurity || '0', e.medicare || '0']));
@@ -235,8 +235,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       // Phase 29 / Phase 27 guard: SELECT FOR UPDATE inside a transaction prevents
       // two concurrent managers from approving the same payroll proposal simultaneously.
-      let proposal: any;
-      let approvedProposal: any;
+      let proposal: unknown;
+      let approvedProposal: unknown;
       try {
         ({ proposal, approvedProposal } = await db.transaction(async (tx) => {
           // Lock the row — concurrent requests wait here instead of racing
@@ -308,7 +308,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       // FIX 7: Financial anomaly check on payroll approval — non-blocking warning
       let payrollAnomalyWarning: string | null = null;
-      const proposalData = (proposal as any).data ?? {};
+      const proposalData = (proposal as unknown).data ?? {};
       const payrollTotal = parseFloat(proposalData.totalGross ?? proposalData.totalAmount ?? proposalData.total ?? 0);
       const PAYROLL_ANOMALY_THRESHOLD = 100000;
       const PAYROLL_EXTREME_THRESHOLD = 500000;
@@ -340,7 +340,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         deliverWebhookEvent(userWorkspace.workspaceId, 'payroll.run_completed', {
           proposalId: id,
           approvedBy: userId,
-          totalGross: (proposal as any).data?.totalGross,
+          totalGross: (proposal as unknown).data?.totalGross,
           approvedAt: new Date().toISOString()
         });
       } catch (webhookErr: unknown) {
@@ -702,12 +702,12 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       }).catch(err => log.error('[BillingAudit] billing_audit_log write failed for payroll create', { error: err instanceof Error ? err.message : String(err) }));
       res.json({ ...payrollRun, complianceWarnings });
     } catch (error: unknown) {
-      if (error instanceof Error && (error as any).code === 'DUPLICATE_PAYROLL_RUN') {
+      if (error instanceof Error && (error as unknown).code === 'DUPLICATE_PAYROLL_RUN') {
         return res.status(409).json({
           message: sanitizeError(error),
-          code: (error as any).code,
-          existingRunId: (error as any).existingRunId,
-          existingRunStatus: (error as any).existingRunStatus,
+          code: (error as unknown).code,
+          existingRunId: (error as unknown).existingRunId,
+          existingRunStatus: (error as unknown).existingRunStatus,
         });
       }
       log.error("Error creating payroll run:", error);
@@ -1066,7 +1066,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
             const net = parseFloat(String(stub.netPay || 0)).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
             return une.send({
               workspaceId,
-              type: 'pay_stub_available' as any,
+              type: 'pay_stub_available' as unknown,
               title: 'Your Pay Stub is Ready',
               message: `Your pay stub for ${periodLabel} is available. Net pay: ${net}.`,
               severity: 'info',
@@ -1100,7 +1100,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
               const periodLabel = stub.payPeriodStart && stub.payPeriodEnd
                 ? `${new Date(stub.payPeriodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(stub.payPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
                 : 'This Pay Period';
-              const gross = parseFloat(String((stub as any).grossPay || stub.netPay || 0)).toFixed(2);
+              const gross = parseFloat(String((stub as unknown).grossPay || stub.netPay || 0)).toFixed(2);
               const net = parseFloat(String(stub.netPay || 0)).toFixed(2);
               const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
               await sendPayStubEmail(user.email, {
@@ -1140,7 +1140,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
           payrollRunId: id,
           processedBy: userId,
           totalGrossPay: updated.totalGrossPay,
-          totalNetPay: (updated as any).totalNet,
+          totalNetPay: (updated as unknown).totalNet,
           employeeCount,
         },
         visibility: 'manager',
@@ -1395,7 +1395,7 @@ router.get('/my-tax-forms', async (req: AuthenticatedRequest, res) => {
 
     res.json({
       employeeId: employee.id,
-      employeeName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
+      employeeName: `${(employee as unknown).firstName || ''} ${(employee as unknown).lastName || ''}`.trim(),
       forms: forms.map(f => ({
         id: f.id,
         formType: f.formType,
@@ -1769,8 +1769,8 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
           new Decimal('0')
         );
 
-        const preTax  = new Decimal(String((entry as any).preTaxDeductions  || '0'));
-        const postTax = new Decimal(String((entry as any).postTaxDeductions || '0'));
+        const preTax  = new Decimal(String((entry as unknown).preTaxDeductions  || '0'));
+        const postTax = new Decimal(String((entry as unknown).postTaxDeductions || '0'));
         const totalTaxes = fedTax.plus(stateTax).plus(socialSec).plus(medicare);
 
         // Net = Gross − PreTax − Taxes − PostTax − Garnishments (floor: $0)
@@ -1778,7 +1778,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
         if (newNetPay.lessThan(0)) newNetPay = new Decimal('0'); // Hard floor
 
         await db.update(payrollEntries)
-          .set({ netPay: newNetPay.toFixed(2) as any, updatedAt: new Date() })
+          .set({ netPay: newNetPay.toFixed(2) as unknown, updatedAt: new Date() })
           .where(eq(payrollEntries.id, payrollEntryId));
 
         // Re-aggregate run totals so the payroll run header stays correct
@@ -1789,7 +1789,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
           const runTotalNet   = runEntries.reduce((s, e) => s + parseFloat(String(e.netPay   || '0')), 0);
           const runTotalGross = runEntries.reduce((s, e) => s + parseFloat(String(e.grossPay || '0')), 0);
           await db.update(payrollRuns)
-            .set({ totalNetPay: runTotalNet.toFixed(2) as any, totalGrossPay: runTotalGross.toFixed(2) as any, updatedAt: new Date() })
+            .set({ totalNetPay: runTotalNet.toFixed(2) as unknown, totalGrossPay: runTotalGross.toFixed(2) as unknown, updatedAt: new Date() })
             .where(eq(payrollRuns.id, entry.payrollRunId));
         }
 
@@ -2544,7 +2544,7 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
           await db.update(payStubs).set({
             plaidTransferStatus: 'payment_held',
             updatedAt: new Date(),
-          } as any).where(eq(payStubs.id, stub.id)).catch((dbErr: unknown) => {
+          } as unknown).where(eq(payStubs.id, stub.id)).catch((dbErr: unknown) => {
             log.error('[PayrollRoute] Failed to stamp PAYMENT_HELD on pay stub:', { stubId: stub.id, error: dbErr });
           });
           results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: `PAYMENT_HELD — bank account not Plaid-verified: ${verification.status}` });
@@ -2581,17 +2581,17 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
             plaidTransferId: transfer.transferId,
             plaidTransferStatus: 'pending',
             updatedAt: new Date(),
-          } as any).where(eq(payStubs.id, stub.id));
+          } as unknown).where(eq(payStubs.id, stub.id));
         } catch (dbErr: unknown) {
           log.error(
             '[FinancialAudit] CRITICAL: Plaid transfer initiated but pay stub DB update failed — transfer ID may be orphaned. Manual reconciliation required.',
-            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, amount: netPay, runId, error: (dbErr as any)?.message }
+            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, amount: netPay, runId, error: (dbErr as unknown)?.message }
           );
           // Fall through: transfer IS in flight, we report it as retried despite tracking failure
         }
 
         platformEventBus.publish({
-          type: 'payroll_transfer_initiated' as any,
+          type: 'payroll_transfer_initiated' as unknown,
           category: 'payroll',
           title: 'ACH Transfer Retry Initiated',
           description: `Retry transfer ${transfer.transferId} initiated for employee ${empId}`,
@@ -2830,7 +2830,7 @@ router.get('/pre-run-checklist', async (req: AuthenticatedRequest, res) => {
     const { eq: eqI, and: andI, inArray: inArrayI, sql: sqlI } = await import('drizzle-orm');
 
     const workspace = await storage.getWorkspace(workspaceId);
-    const blob = (workspace?.billingSettingsBlob as any) || {};
+    const blob = (workspace?.billingSettingsBlob as unknown) || {};
     const cycle = blob.payrollCycle || 'bi-weekly';
 
     const { startOfWeek, endOfWeek, subDays: subDaysI, startOfMonth, endOfMonth } = await import('date-fns');
@@ -2977,10 +2977,10 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     const { workspaces: wsTable } = await import('@shared/schema');
     const [ws] = await db.select({
       name: wsTable.name,
-      companyName: (wsTable as any).companyName,
-      payrollBankRouting: (wsTable as any).payrollBankRouting,
-      payrollBankAccount: (wsTable as any).payrollBankAccount,
-      payrollBankName: (wsTable as any).payrollBankName,
+      companyName: (wsTable as unknown).companyName,
+      payrollBankRouting: (wsTable as unknown).payrollBankRouting,
+      payrollBankAccount: (wsTable as unknown).payrollBankAccount,
+      payrollBankName: (wsTable as unknown).payrollBankName,
     }).from(wsTable).where(eq(wsTable.id, workspaceId)).limit(1);
 
     const entries = await db.select({
@@ -3006,7 +3006,7 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     }
 
     // For each entry, prefer the canonical employee_bank_accounts record (encrypted), then fall back to employee_payroll_info
-    const employeeIds = entries.map(e => (e as any).employeeId).filter(Boolean);
+    const employeeIds = entries.map(e => (e as unknown).employeeId).filter(Boolean);
     const bankAccountRows = employeeIds.length > 0
       ? await db.select().from(employeeBankAccounts)
           .where(and(
@@ -3018,7 +3018,7 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     const bankAccountMap = new Map(bankAccountRows.map(r => [r.employeeId, r]));
 
     const decryptedEntries = entries.map(e => {
-      const canonical = bankAccountMap.get((e as any).employeeId);
+      const canonical = bankAccountMap.get((e as unknown).employeeId);
       if (canonical?.routingNumberEncrypted && canonical?.accountNumberEncrypted) {
         return {
           ...e,
@@ -3046,11 +3046,11 @@ router.get('/runs/:id/nacha', async (req: AuthenticatedRequest, res) => {
     }
 
     // Build a proper NACHA ACH PPD file
-    const companyName = ((ws as any)?.companyName || (ws as any)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
-    const originRoutingRaw = (ws as any)?.payrollBankRouting || '000000000';
+    const companyName = ((ws as unknown)?.companyName || (ws as unknown)?.name || 'COMPANY').substring(0, 16).padEnd(16, ' ');
+    const originRoutingRaw = (ws as unknown)?.payrollBankRouting || '000000000';
     // NACHA routing number: leading digit '1' + 8-digit bank routing = 9 chars
     const originRouting = `1${originRoutingRaw.replace(/\D/g, '').substring(0, 8).padEnd(8, '0')}`;
-    const originAccount = ((ws as any)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
+    const originAccount = ((ws as unknown)?.payrollBankAccount || '00000000000').replace(/\D/g, '').substring(0, 17).padEnd(17, ' ');
     const now = new Date();
     const fileDate = now.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
     const fileTime = now.toTimeString().slice(0, 5).replace(':', ''); // HHMM
@@ -3198,7 +3198,7 @@ function requireManagerOrOwn(req: AuthenticatedRequest, employeeOwnerId: string 
   return req.user?.id === employeeOwnerId;
 }
 
-function maskBankAccount(row: any) {
+function maskBankAccount(row: unknown) {
   return {
     id: row.id,
     workspaceId: row.workspaceId,

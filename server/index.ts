@@ -450,7 +450,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({
   limit: '10mb',
-  verify: (req: any, res, buf) => {
+  verify: (req: unknown, res, buf) => {
     // Capture raw body for webhook paths that need signature verification
     if (webhookPathsNeedingRawBody.some(path => req.path === path || req.path.startsWith(path))) {
       req.rawBody = buf.toString('utf8');
@@ -647,7 +647,7 @@ app.use(maintenanceStatusHeader);
 
 // Rate limiting middleware - applies per-tenant quotas on API routes
 app.use('/api', rateLimitMiddleware(
-  (req: any) => {
+  (req: unknown) => {
     const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     if (workspaceId) return String(workspaceId);
     const userId = req.session?.userId;
@@ -655,7 +655,7 @@ app.use('/api', rateLimitMiddleware(
     const ip = req.headers['x-forwarded-for'];
     return typeof ip === 'string' ? ip.split(',')[0].trim() : (req.ip || req.socket?.remoteAddress || 'anonymous');
   },
-  (req: any) => {
+  (req: unknown) => {
     const plan = req.session?.plan || req.session?.workspacePlan;
     if (plan && ['free', 'trial', 'starter', 'professional', 'business', 'enterprise', 'strategic'].includes(plan)) {
       return plan as 'free' | 'trial' | 'starter' | 'professional' | 'business' | 'enterprise' | 'strategic';
@@ -691,7 +691,7 @@ app.use((req, res, next) => {
     
     // Track metrics in monitoring service
     const userId = req.session?.userId;
-    const workspaceId = (req as any).workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
+    const workspaceId = (req as unknown).workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     
     monitoringService.trackRequest(
       path,
@@ -1629,7 +1629,7 @@ async function initializeBackgroundServices(): Promise<void> {
           category: 'integrations' as const,
           description: action.description,
           requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'org_owner'],
-          handler: async (request: any) => {
+          handler: async (request: unknown) => {
             const startTime = Date.now();
             try {
               const result = await action.handler(request.payload || {});
@@ -1808,7 +1808,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 // Handle uncaught exceptions - be resilient to Neon serverless errors
-process.on('uncaughtException', (err: any) => {
+process.on('uncaughtException', (err: unknown) => {
   const errMsg = err instanceof Error ? err.message : String(err);
   const errStack = err instanceof Error ? (err.stack || '').split('\n').slice(0,5).join(' | ') : '';
   log.error(`Uncaught exception: ${errMsg} | code=${err?.code || 'none'} | ${errStack.slice(0,200)}`);
@@ -1838,7 +1838,7 @@ process.on('uncaughtException', (err: any) => {
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason: any, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise) => {
   const reasonStr = String(reason);
   if (reasonStr.includes('timeout') || reasonStr.includes('connection') || 
       reasonStr.includes('57P01') || reasonStr.includes('terminating connection') ||
@@ -1883,7 +1883,7 @@ process.on('unhandledRejection', (reason: any, promise) => {
   // to break the service worker cache loop that causes the black screen.
   
   // /clear-sw → forces browser to unregister all service workers
-  app.get('/clear-sw', (_req: any, res: any) => {
+  app.get('/clear-sw', (_req: unknown, res: unknown) => {
     res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.send(`
@@ -1899,7 +1899,7 @@ self.addEventListener('activate', async () => {
   });
 
   // /sw-health → returns JSON so browser can check if server is alive
-  app.get('/sw-health', (_req: any, res: any) => {
+  app.get('/sw-health', (_req: unknown, res: unknown) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, ts: Date.now() });
   });
@@ -1916,7 +1916,7 @@ self.addEventListener('activate', async () => {
     const expressStaticMod = await import('express');
     const expressStatic = expressStaticMod.default.static;
     // Serve sw.js with no-cache so browser always gets latest version
-    app.get('/sw.js', (_req: any, res: any) => {
+    app.get('/sw.js', (_req: unknown, res: unknown) => {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.setHeader('Content-Type', 'application/javascript');
       res.sendFile(path.default.resolve(distPath, 'sw.js'));
@@ -1924,7 +1924,7 @@ self.addEventListener('activate', async () => {
     // Serve static assets (JS, CSS, images) — skips /api/* routes automatically
     app.use(expressStatic(distPath, { index: false }));
     // SPA catch-all: serve index.html for all non-API navigation requests
-    app.get('*', (req: any, res: any, next: any) => {
+    app.get('*', (req: unknown, res: unknown, next: unknown) => {
       if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
         return next();
       }
@@ -1938,7 +1938,7 @@ self.addEventListener('activate', async () => {
     log.info('[Startup] Early static serving registered — SPA routes handled before API middleware');
   } else {
     // dist/public not built yet — serve placeholder for all non-API routes
-    app.get('*', (req: any, res: any, next: any) => {
+    app.get('*', (req: unknown, res: unknown, next: unknown) => {
       if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) return next();
       res.status(200).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CoAIleague</title></head><body style="margin:0;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui"><div style="text-align:center"><h1 style="color:#7c3aed">CoAIleague</h1><p>Deploying... <button onclick="location.reload()" style="background:#7c3aed;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer">Reload</button></p></div><script>setTimeout(()=>location.reload(),15000)</script></body></html>');
     });
@@ -1968,12 +1968,12 @@ self.addEventListener('activate', async () => {
     // duplicating logic — they proxy to existing route handlers or query DB.
 
     // Trinity pending-approvals alias (actual handler lives in automationGovernanceRoutes)
-    app.get('/api/trinity/pending-approvals', requireAuth, async (req: any, res: any) => {
+    app.get('/api/trinity/pending-approvals', requireAuth, async (req: unknown, res: unknown) => {
       try {
         // Platform staff can query all workspaces or a specific one via ?workspaceId=
         // Workspace owners: resolved from ensureWorkspaceAccess session (or from DB fallback)
-        const isPlatformStaff = !!(req as any).platformRole ||
-          (req.user as any)?.role === 'platform_staff';
+        const isPlatformStaff = !!(req as unknown).platformRole ||
+          (req.user as unknown)?.role === 'platform_staff';
 
         let wid: string | undefined =
           req.workspaceId ||
@@ -2018,7 +2018,7 @@ self.addEventListener('activate', async () => {
     // so the UI can explain exactly what happened. On successful approval
     // we schedule a non-blocking executor that runs the action via
     // helpaiOrchestrator and records completion / broadcast.
-    app.post('/api/trinity/pending-approvals/:id/approve', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.post('/api/trinity/pending-approvals/:id/approve', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
       const { id } = req.params;
       const userId = req.user?.id || req.user?.userId || 'unknown';
@@ -2112,7 +2112,7 @@ self.addEventListener('activate', async () => {
 
             const result = await helpaiOrchestrator.executeAction({
               actionId: approval.action_type,
-              category: (payload as any).category || 'system',
+              category: (payload as unknown).category || 'system',
               name: approval.action_type,
               payload,
               workspaceId: wid,
@@ -2153,7 +2153,7 @@ self.addEventListener('activate', async () => {
     });
 
     // Trinity — reject endpoint, mirrors approve safety.
-    app.post('/api/trinity/pending-approvals/:id/reject', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.post('/api/trinity/pending-approvals/:id/reject', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
       const { id } = req.params;
       const userId = req.user?.id || req.user?.userId || 'unknown';
@@ -2208,7 +2208,7 @@ self.addEventListener('activate', async () => {
     });
 
     // Trinity activity endpoint — recent Trinity actions for activity center
-    app.get('/api/trinity/activity', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/trinity/activity', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       try {
@@ -2227,7 +2227,7 @@ self.addEventListener('activate', async () => {
     });
 
     // Compliance dashboard alias
-    app.get('/api/compliance/dashboard', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/compliance/dashboard', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       try {
@@ -2268,7 +2268,7 @@ self.addEventListener('activate', async () => {
     });
 
     // Calloffs alias — shifts with calloff status + replacement cascade info
-    app.get('/api/calloffs', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+    app.get('/api/calloffs', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
       if (!wid) return res.status(400).json({ error: 'workspaceId required' });
       const limit = Math.min(Number(req.query.limit) || 20, 100);
@@ -2402,7 +2402,7 @@ self.addEventListener('activate', async () => {
         error: staticErr?.message,
       });
       // Fallback: serve a bootstrap page for all non-API routes
-      app.use('*', (req: any, res: any) => {
+      app.use('*', (req: unknown, res: unknown) => {
         if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
           return res.status(503).json({ message: 'Service starting up', retry: true });
         }
@@ -2448,7 +2448,7 @@ self.addEventListener('activate', async () => {
     const { crawlerPrerenderMiddleware } = await import('./middleware/crawlerPrerender');
     app.use(crawlerPrerenderMiddleware);
     const viteRouter = express.Router();
-    await setupVite(viteRouter as any, server);
+    await setupVite(viteRouter as unknown, server);
     
     // Guard: only pass to Vite if NOT an API or WebSocket route
     app.use((req, res, next) => {
@@ -2575,7 +2575,7 @@ self.addEventListener('activate', async () => {
           WHERE status IN ('queued', 'in_progress')
           AND queued_at < NOW() - INTERVAL '5 minutes'
         `);
-        const count = (orphanResult as any).rowCount ?? 0;
+        const count = (orphanResult as unknown).rowCount ?? 0;
         if (count > 0) {
           log.warn(`[ORPHAN RECOVERY] Marked ${count} orphaned automation execution(s) as failed on startup`);
         } else {
@@ -2833,7 +2833,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity autonomously resolves any detected operational issue — shift coverage, compliance, notifications, account access, financial anomalies.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issue = request.payload?.issue;
           if (!issue?.type || !issue?.workspaceId) {
@@ -2856,7 +2856,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity resolves multiple detected issues in parallel across a workspace.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issues = request.payload?.issues;
           if (!Array.isArray(issues) || issues.length === 0) {
@@ -2889,7 +2889,7 @@ self.addEventListener('activate', async () => {
         category: 'support',
         description: 'Trinity runs a full PERCEIVE → REASON → ACT → VERIFY → LEARN deliberation cycle for complex operational issues.',
         requiredRoles: ['root_admin', 'deputy_admin', 'sysop', 'trinity_system'],
-        handler: async (request: any) => {
+        handler: async (request: unknown) => {
           const startTime = Date.now();
           const issue = request.payload?.issue;
           if (!issue?.type || !issue?.workspaceId) {

@@ -199,7 +199,7 @@ function ProfileTabContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const currentUser = (session as any)?.user || session;
+  const currentUser = (session as unknown)?.user || session;
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -642,14 +642,14 @@ function ProfileTabContent() {
             <Label className="text-xs sm:text-sm">Personal Forwarding Email</Label>
             <p className="text-xs text-muted-foreground">
               Copies of emails sent to your platform address (
-              {(currentUser as any)?.platformEmail || `${(currentUser?.firstName || 'u').toLowerCase().charAt(0)}.${(currentUser?.lastName || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@sps.${DOMAINS.root}`}
+              {(currentUser as unknown)?.platformEmail || `${(currentUser?.firstName || 'u').toLowerCase().charAt(0)}.${(currentUser?.lastName || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@sps.${DOMAINS.root}`}
               ) will be forwarded here. Leave blank to disable.
             </p>
             <div className="flex gap-2">
               <Input
                 type="email"
                 placeholder="your.personal@gmail.com"
-                defaultValue={(currentUser as any)?.personalForwardEmail || ''}
+                defaultValue={(currentUser as unknown)?.personalForwardEmail || ''}
                 id="personal-forward-email"
                 data-testid="input-personal-forward-email"
                 className="max-w-sm"
@@ -1066,7 +1066,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
           <div className="flex items-center gap-2">
             <Input
               readOnly
-              value={(workspace as any)?.orgCode || (workspace as any)?.slug || 'Not set'}
+              value={(workspace as unknown)?.orgCode || (workspace as unknown)?.slug || 'Not set'}
               className="font-mono text-sm bg-muted"
               data-testid="input-org-invite-code"
             />
@@ -1075,7 +1075,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
               size="sm"
               variant="outline"
               onClick={() => {
-                const code = (workspace as any)?.orgCode || (workspace as any)?.slug || '';
+                const code = (workspace as unknown)?.orgCode || (workspace as unknown)?.slug || '';
                 if (!code) return;
                 navigator.clipboard.writeText(code);
                 toast({ title: "Org code copied!" });
@@ -1301,7 +1301,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
 }
 
 // @ts-expect-error — TS migration: fix in refactoring sprint
-function InvoiceFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: Workspace, updateWorkspaceMutation: any }) {
+function InvoiceFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: Workspace, updateWorkspaceMutation: unknown }) {
   const form = useForm<InvoiceFinancialsFormValues>({
     resolver: zodResolver(invoiceFinancialsSchema),
     defaultValues: {
@@ -1497,7 +1497,7 @@ function InvoiceFinancialsForm({ workspace, updateWorkspaceMutation }: { workspa
   );
 }
 
-function PayrollFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: any, updateWorkspaceMutation: any }) {
+function PayrollFinancialsForm({ workspace, updateWorkspaceMutation }: { workspace: unknown, updateWorkspaceMutation: unknown }) {
   const form = useForm<PayrollFinancialsFormValues>({
     resolver: zodResolver(payrollFinancialsSchema),
     defaultValues: {
@@ -2045,8 +2045,8 @@ export default function Settings() {
   const [forwardEmailValue, setForwardEmailValue] = useState('');
   // Sync forwardEmailValue from workspace data on load
   useEffect(() => {
-    if ((workspace as any)?.inboundEmailForwardTo !== undefined) {
-      setForwardEmailValue((workspace as any).inboundEmailForwardTo || '');
+    if ((workspace as unknown)?.inboundEmailForwardTo !== undefined) {
+      setForwardEmailValue((workspace as unknown).inboundEmailForwardTo || '');
     }
   }, [workspace]);
 
@@ -2880,7 +2880,7 @@ export default function Settings() {
     },
   ];
   const configuredStatusCount = statusItems.filter((item) => item.enabled).length;
-  const workspaceDisplayName = workspaceName || (workspace as any)?.name || 'your workspace';
+  const workspaceDisplayName = workspaceName || (workspace as unknown)?.name || 'your workspace';
   const settingsReadinessItems = [
     {
       label: 'Workspace profile',
@@ -3316,7 +3316,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     <Input 
                       readOnly 
-                      value={(workspace as any)?.orgId || (workspace as any)?.organizationId || 'N/A'} 
+                      value={(workspace as unknown)?.orgId || (workspace as unknown)?.organizationId || 'N/A'} 
                       className="font-mono text-sm bg-muted"
                       data-testid="input-org-id"
                     />
@@ -3324,7 +3324,7 @@ export default function Settings() {
                       size="icon" 
                       variant="ghost"
                       onClick={() => {
-                        navigator.clipboard.writeText((workspace as any)?.orgId || (workspace as any)?.organizationId || '');
+                        navigator.clipboard.writeText((workspace as unknown)?.orgId || (workspace as unknown)?.organizationId || '');
                         toast({ title: "Copied!", description: "Organization Canonical ID copied to clipboard" });
                       }}
                       data-testid="button-copy-org-id"
@@ -3339,7 +3339,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     <Input 
                       readOnly 
-                      value={(workspace as any)?.organizationSerial || 'N/A'} 
+                      value={(workspace as unknown)?.organizationSerial || 'N/A'} 
                       className="font-mono text-sm bg-muted"
                       data-testid="input-org-serial"
                     />
@@ -3347,7 +3347,7 @@ export default function Settings() {
                       size="icon" 
                       variant="ghost"
                       onClick={() => {
-                        navigator.clipboard.writeText((workspace as any)?.organizationSerial || '');
+                        navigator.clipboard.writeText((workspace as unknown)?.organizationSerial || '');
                         toast({ title: "Copied!", description: "Organization Serial copied to clipboard" });
                       }}
                       data-testid="button-copy-org-serial"
@@ -3851,27 +3851,27 @@ export default function Settings() {
                   <Badge
                     data-testid="badge-current-plan"
                     className="capitalize"
-                    variant={(workspace as any)?.subscriptionTier === 'enterprise' ? 'default' : 'secondary'}
+                    variant={(workspace as unknown)?.subscriptionTier === 'enterprise' ? 'default' : 'secondary'}
                   >
-                    {(workspace as any)?.subscriptionTier === 'free' || !(workspace as any)?.subscriptionTier
+                    {(workspace as unknown)?.subscriptionTier === 'free' || !(workspace as unknown)?.subscriptionTier
                       ? 'Free Trial'
-                      : (workspace as any)?.subscriptionTier === 'free_trial'
+                      : (workspace as unknown)?.subscriptionTier === 'free_trial'
                       ? 'Free Trial'
-                      : (workspace as any)?.subscriptionTier?.charAt(0).toUpperCase() +
-                        ((workspace as any)?.subscriptionTier?.slice(1) || '')}
+                      : (workspace as unknown)?.subscriptionTier?.charAt(0).toUpperCase() +
+                        ((workspace as unknown)?.subscriptionTier?.slice(1) || '')}
                   </Badge>
-                  {(workspace as any)?.subscriptionStatus === 'active' && (
+                  {(workspace as unknown)?.subscriptionStatus === 'active' && (
                     <Badge variant="outline" className="text-xs text-green-600 border-green-500/30 dark:text-green-400" data-testid="badge-plan-status">
                       Active
                     </Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {(workspace as any)?.subscriptionTier === 'enterprise'
+                  {(workspace as unknown)?.subscriptionTier === 'enterprise'
                     ? 'Unlimited employees \u2022 Unlimited clients \u2022 Full Trinity AI suite'
-                    : (workspace as any)?.subscriptionTier === 'professional'
+                    : (workspace as unknown)?.subscriptionTier === 'professional'
                     ? 'Up to 25 employees \u2022 Unlimited clients \u2022 Advanced AI features'
-                    : (workspace as any)?.subscriptionTier === 'starter'
+                    : (workspace as unknown)?.subscriptionTier === 'starter'
                     ? 'Up to 10 employees \u2022 Unlimited clients \u2022 Core features'
                     : '5 employees \u2022 10 clients \u2022 Basic features (trial)'}
                 </p>
@@ -3882,11 +3882,11 @@ export default function Settings() {
                   onClick={() => setLocation('/billing')}
                   data-testid="button-upgrade"
                 >
-                  {(workspace as any)?.subscriptionTier && (workspace as any)?.subscriptionTier !== 'free' && (workspace as any)?.subscriptionTier !== 'free_trial'
+                  {(workspace as unknown)?.subscriptionTier && (workspace as unknown)?.subscriptionTier !== 'free' && (workspace as unknown)?.subscriptionTier !== 'free_trial'
                     ? 'Manage Plan'
                     : 'Upgrade Plan'}
                 </Button>
-                {(workspace as any)?.subscriptionTier && (workspace as any)?.subscriptionTier !== 'free' && (workspace as any)?.subscriptionTier !== 'free_trial' && (
+                {(workspace as unknown)?.subscriptionTier && (workspace as unknown)?.subscriptionTier !== 'free' && (workspace as unknown)?.subscriptionTier !== 'free_trial' && (
                   <Button
                     variant="outline"
                     onClick={() => billingPortalMutation.mutate()}

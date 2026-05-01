@@ -33,7 +33,7 @@ import {
 import { createNotification } from '../notificationService';
 import { evaluateTexasGatekeeper, type GatekeeperOutcome } from '../compliance/texasGatekeeper';
 
-function safeParseFloat(value: any, fallback: number = 0): number {
+function safeParseFloat(value: unknown, fallback: number = 0): number {
   if (value === null || value === undefined || value === '') return fallback;
   const parsed = parseFloat(String(value));
   return isNaN(parsed) ? fallback : parsed;
@@ -64,7 +64,7 @@ interface SchedulingConfig {
 
 interface ShiftPriority {
   shiftId: string;
-  shift: any;
+  shift: unknown;
   priorityScore: number;
   urgencyLevel: 'critical' | 'high' | 'medium' | 'low';
   factors: {
@@ -78,7 +78,7 @@ interface ShiftPriority {
 
 interface EmployeeScore {
   employeeId: string;
-  employee: any;
+  employee: unknown;
   score: number;
   breakdown: {
     reliabilityScore: number;
@@ -331,7 +331,7 @@ class TrinityAutonomousSchedulerService {
 
         if (preRunReasoning.decision === 'block') {
           session.status = 'completed';
-          (session as any).endTime = new Date();
+          (session as unknown).endTime = new Date();
           this.activeSessions.delete(sessionId);
           broadcastToWorkspace(config.workspaceId, {
             type: 'trinity_scheduling_blocked',
@@ -385,7 +385,7 @@ class TrinityAutonomousSchedulerService {
         this.loadHistoricalPatterns(config.workspaceId),
         db.select({ tier: workspaces.subscriptionTier }).from(workspaces).where(eq(workspaces.id, config.workspaceId)).limit(1),
         // FIX 6: Load org patterns so learned client/employee preferences inform decisions
-        trinityOrgIntelligenceService.learnOrgPatterns(config.workspaceId).catch(() => [] as any[]),
+        trinityOrgIntelligenceService.learnOrgPatterns(config.workspaceId).catch(() => [] as unknown[]),
       ]);
       const workspaceTier = workspaceRow[0]?.tier || 'professional';
       const orgPatterns: any[] = loadedOrgPatterns ?? [];
@@ -860,7 +860,7 @@ class TrinityAutonomousSchedulerService {
     }
   }
 
-  private isShiftWithinCoverageWindow(shift: any, client: any): boolean {
+  private isShiftWithinCoverageWindow(shift: unknown, client: unknown): boolean {
     if (!client) return true;
     if (!client.coverageType || client.coverageType === '24_7') return true;
 
@@ -1183,8 +1183,8 @@ class TrinityAutonomousSchedulerService {
     // Previously this was omitted causing 0-rate payroll rows for every AI-assigned shift.
     const assignedPayRate = (
       bestEmployee.employee.hourlyRate ||
-      (bestEmployee as any).employee.payRate ||
-      (bestEmployee as any).employee.currentHourlyRate ||
+      (bestEmployee as unknown).employee.payRate ||
+      (bestEmployee as unknown).employee.currentHourlyRate ||
       '0'
     ).toString();
 
@@ -1344,9 +1344,9 @@ class TrinityAutonomousSchedulerService {
    * Uses caching for DB lookups to avoid redundant queries during bulk scheduling
    */
   private async scoreEmployeesForShift(
-    shift: any,
+    shift: unknown,
     allEmployees: unknown[],
-    client: any,
+    client: unknown,
     config: SchedulingConfig,
     runTracker: RunAssignmentTracker,
     overtimeFallback: boolean = false
@@ -1808,7 +1808,7 @@ class TrinityAutonomousSchedulerService {
    * Legacy field names (compositeScore, attendanceRate, behaviorScore) are also checked for
    * any joined data from employeeMetrics.
    */
-  private calculateReliabilityScore(employee: any): number {
+  private calculateReliabilityScore(employee: unknown): number {
     // Primary: employees.performance_score (0-100 int)
     if (employee.performanceScore != null && employee.performanceScore !== '') {
       const val = safeParseFloat(employee.performanceScore, -1);
@@ -1836,7 +1836,7 @@ class TrinityAutonomousSchedulerService {
    * Calculate proximity score using haversine distance when coordinates available
    * Falls back to zip code matching or address city matching
    */
-  private calculateProximityScore(employee: any, client: any): number {
+  private calculateProximityScore(employee: unknown, client: unknown): number {
     const empLatRaw = employee.homeLatitude ?? employee.latitude ?? null;
     const empLngRaw = employee.homeLongitude ?? employee.longitude ?? null;
     const clientLatRaw = client?.latitude ?? client?.serviceAreaLat ?? null;
@@ -1879,7 +1879,7 @@ class TrinityAutonomousSchedulerService {
    * Primary: employees.performance_score (0-100 int) → employees.rating (0.0-5.0)
    * Legacy: performanceRating > lastReviewScore > qualityScore (for joined data)
    */
-  private calculatePerformanceScore(employee: any): number {
+  private calculatePerformanceScore(employee: unknown): number {
     // Primary: employees.performance_score (0-100 int, DB: performance_score)
     if (employee.performanceScore != null && employee.performanceScore !== '') {
       const val = safeParseFloat(employee.performanceScore, -1);
@@ -1910,7 +1910,7 @@ class TrinityAutonomousSchedulerService {
   /**
    * Calculate seniority score based on real hire date
    */
-  private calculateSeniorityScore(employee: any): number {
+  private calculateSeniorityScore(employee: unknown): number {
     const dateField = employee.hireDate || employee.startDate || employee.createdAt;
     if (!dateField) return 0.3;
     
@@ -1933,7 +1933,7 @@ class TrinityAutonomousSchedulerService {
    * Try contractor pool fallback — sends outreach emails to eligible contractors
    */
   private async tryContractorFallback(
-    shift: any,
+    shift: unknown,
     workspaceId: string
   ): Promise<AssignmentResult> {
     const contractors = await db.select()
@@ -2002,7 +2002,7 @@ class TrinityAutonomousSchedulerService {
       await db.insert(notifications).values({
         userId: 'system',
         workspaceId,
-        type: 'coverage_requested' as any,
+        type: 'coverage_requested' as unknown,
         title: 'Contractor Outreach Sent',
         message: `Trinity sent shift coverage requests to ${outreachSent} contractor(s) for ${clientName} on ${shiftDate} (${startTime}-${endTime}). ${eligible.length - outreachSent} failed.`,
         metadata: { shiftId: shift.id, outreachSent, totalEligible: eligible.length, errors: outreachErrors.length },
@@ -2141,7 +2141,7 @@ class TrinityAutonomousSchedulerService {
       return;
     }
 
-    const clientMap = new Map(allClients.map((c: any) => [c.id, c]));
+    const clientMap = new Map(allClients.map((c: unknown) => [c.id, c]));
 
     const gapsByClient = new Map<string, {
       clientName: string;
@@ -2437,7 +2437,7 @@ class TrinityAutonomousSchedulerService {
   }
 
   async evaluateShiftForTraining(
-    shift: any,
+    shift: unknown,
     allEmployees: unknown[],
     allClients: unknown[],
     workspaceId: string,
@@ -2445,13 +2445,13 @@ class TrinityAutonomousSchedulerService {
   ): Promise<{
     success: boolean;
     employeeId: string | null;
-    employee: any | null;
+    employee: unknown | null;
     confidence: number;
     reasoning: string;
     candidatesEvaluated: number;
     candidatesRejected: number;
     rejectionReasons: string[];
-    scoreBreakdown: any | null;
+    scoreBreakdown: unknown | null;
   }> {
     const client = allClients.find(c => c.id === shift.clientId);
 
@@ -2769,9 +2769,9 @@ export class TrinitySchedulingAI {
    * Get AI recommendation for complex scheduling decisions
    */
   async getAISchedulingRecommendation(context: {
-    shift: any;
-    topCandidates: { employee: any; score: number; reasoning: string }[];
-    clientPreferences: any;
+    shift: unknown;
+    topCandidates: { employee: unknown; score: number; reasoning: string }[];
+    clientPreferences: unknown;
     complianceIssues: string[];
     urgencyLevel: string;
     workspaceId: string;
@@ -2944,7 +2944,7 @@ export class SchedulerEscalationChainService {
    * Execute escalation chain when internal employees unavailable
    */
   async executeEscalation(
-    shift: any,
+    shift: unknown,
     workspaceId: string,
     tier: 1 | 2 | 3 | 4 | 5
   ): Promise<{

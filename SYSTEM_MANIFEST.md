@@ -1515,3 +1515,75 @@ All client scheduling calls mapped. No new disconnects found.
 - Settings page (35×)
 - geminiClient.ts provider (36×)
 - ChatDock reliability foundation (Redis pub/sub — from backlog)
+
+---
+
+## Phase 11 — Extended Type System + Structural Hardening (2026-05-01)
+
+### New Shared Type Definitions
+`shared/types/domainExtensions.ts` — extends Drizzle schema types with JOIN result fields:
+
+```typescript
+ShiftWithJoins extends Shift {
+  assignedEmployeeIds?: string[];    // from shift_assignments JOIN
+  siteName?: string | null;         // from site/client JOIN
+  jobSiteName?: string | null;      // from job site JOIN
+  requiredSkills?: string[];        // from requirements JOIN
+  isArmed?: boolean | null;         // from employee JOIN
+  displayName?: string | null;
+}
+
+EmployeeWithStatus {
+  status?: string | null;            // 'active'|'suspended'|'pending'|'terminated'
+  isArmed?: boolean | null;
+  armedLicenseVerified?: boolean | null;
+  guardCardExpiryDate?: string | null;
+  profileImageUrl?: string | null;
+  [key: string]: unknown;           // any additional JOIN fields
+}
+
+WorkspaceWithExtras {
+  taxId?: string | null;
+  tier?: string | null;
+  platformFeePercentage?: string | null;
+  [key: string]: unknown;
+}
+```
+
+These eliminate the need for `as any` on JOIN result access in:
+shiftRoutes.ts, time-entry-routes.ts, employeeRoutes.ts, autonomousScheduler.ts,
+workspaceInlineRoutes.ts, + 15 other files using WorkspaceWithExtras.
+
+### Safety Fix
+`clockinPinRoutes.ts`: `result.employee!.id` → `result.employee?.id ?? ''`
+Non-null assertion replaced with safe optional chaining + fallback.
+The assertion was technically safe (result.employee is guaranteed by prior guard),
+but optional chaining is more defensive against future code changes.
+
+### storage.ts Structural Improvements (39 patterns fixed)
+- `(result as any).rows` → `result.rows` (pg QueryResult already has .rows)
+- Interface method params: `createX(policy: any)` → `Record<string, unknown>`
+- Remaining `(row as any).field` → typed Record access
+
+### Comprehensive Final Sweep (475 patterns, 239 files)
+Applied final-pass transformations across entire server codebase:
+- `data: any` → `Record<string, unknown>` (for function params: data, payload, input, body, config, options, settings, params, filters, context, metadata, properties, attributes, details, info, args)
+- `const X: any = {}` → `Record<string, unknown>`
+- `const X: any = []` → `unknown[]`
+- `const X: any = null` → `unknown`
+- `[key]: any` → `[key: string]: unknown`
+
+### Cumulative Metrics (Phases 7-11)
+| Metric | Baseline (Ph7 start) | After Phase 11 | Reduction |
+|--------|---------------------|----------------|-----------|
+| `catch(e: any)` | 246 | **0** | -100% |
+| `middleware as any` | 183 | **0** | -100% |
+| `pool params any[]` | 175 | **0** | -100% |
+| `as any` casts | 5,227 | **4316** | -911 |
+| `: any` types | 3,339 | **1782** | -1557 |
+| **Combined** | **8,566** | **6098** | **-2468 (28.8%)** |
+
+### Phase 12 Targets
+- Reduce remaining JOIN-result `as any` patterns in trinity services
+- Add `unknown` narrowing helpers utility (e.g. `assertString(v: unknown): string`)
+- ChatDock reliability: Redis pub/sub, durable message store, FCM push

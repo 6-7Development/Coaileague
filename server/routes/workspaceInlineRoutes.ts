@@ -49,7 +49,7 @@ function sanitizeLogoFilename(original: string): string {
 
 const router = Router();
 
-function redactSensitiveWorkspaceFields(workspace: any, platformRole?: string): any {
+function redactSensitiveWorkspaceFields(workspace: unknown, platformRole?: string): any {
     if (platformRole === 'root_admin') {
       return workspace;
     }
@@ -75,7 +75,7 @@ function redactSensitiveWorkspaceFields(workspace: any, platformRole?: string): 
 
 async function applyAutomationUpdate(params: {
     workspaceId: string;
-    validated: any;
+    validated: unknown;
     scheduleField: 'invoiceSchedule' | 'payrollSchedule' | 'scheduleGenerationInterval';
     dayOfWeekField: 'invoiceDayOfWeek' | 'payrollDayOfWeek' | 'scheduleDayOfWeek';
     anchorField: 'invoiceBiweeklyAnchor' | 'payrollBiweeklyAnchor' | 'scheduleBiweeklyAnchor';
@@ -652,7 +652,7 @@ async function applyAutomationUpdate(params: {
       const beforeSnapshot: Record<string, unknown> = {};
       for (const backendKey of Object.values(fieldMapping)) {
         if (backendKey in filteredData) {
-          beforeSnapshot[backendKey] = (workspace as any)[backendKey];
+          beforeSnapshot[backendKey] = (workspace as unknown)[backendKey];
         }
       }
 
@@ -661,7 +661,7 @@ async function applyAutomationUpdate(params: {
       // Phase 7: audit all workspace settings changes unconditionally
       try {
         const { universalAudit } = await import('../services/universalAuditService');
-        const auditChanges: Record<string, { old: any; new: any }> = {};
+        const auditChanges: Record<string, { old: unknown; new: unknown }> = {};
         for (const [key, newVal] of Object.entries(filteredData)) {
           auditChanges[key] = { old: beforeSnapshot[key], new: newVal };
         }
@@ -1246,7 +1246,7 @@ async function applyAutomationUpdate(params: {
 
       try {
         const { emailProvisioningService } = await import('../services/email/emailProvisioningService');
-        const emailSlug = (newSubOrg as any).emailSlug || newSubOrg.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
+        const emailSlug = (newSubOrg as unknown).emailSlug || newSubOrg.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
         await emailProvisioningService.provisionWorkspaceAddresses(newSubOrg.id, emailSlug);
         log.info(`[SubOrg] Email addresses provisioned for sub-org ${newSubOrg.id}`);
       } catch (emailError: unknown) {
@@ -1311,7 +1311,7 @@ async function applyAutomationUpdate(params: {
           eq(workspaces.isSubOrg, true)
         ));
 
-      const buildNode = async (ws: any, isRoot: boolean) => {
+      const buildNode = async (ws: unknown, isRoot: boolean) => {
         const emps = await storage.getEmployeesByWorkspace(ws.id);
         const { clients } = await import('@shared/schema');
         const clientList = await db.select().from(clients).where(eq(clients.workspaceId, ws.id));
@@ -1693,10 +1693,10 @@ async function applyAutomationUpdate(params: {
           const invoiceResult = await generateWeeklyInvoices(wsId, new Date(), invoicePeriodDays);
 
           const invoiceCount = Array.isArray(invoiceResult) ? invoiceResult.length :
-            (invoiceResult as any)?.invoicesGenerated || 0;
+            (invoiceResult as unknown)?.invoicesGenerated || 0;
           const totalAmountStr = Array.isArray(invoiceResult)
-            ? sumFinancialValues(invoiceResult.map((inv: any) => inv.total || '0'))
-            : toFinancialString((invoiceResult as any)?.totalInvoiced || '0');
+            ? sumFinancialValues(invoiceResult.map((inv: unknown) => inv.total || '0'))
+            : toFinancialString((invoiceResult as unknown)?.totalInvoiced || '0');
 
           const feeForOrgStr = applyTax(totalAmountStr, ws?.platformFeePercentage || '3.00');
           platformFeeParts.push(feeForOrgStr);
@@ -1790,7 +1790,7 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
       JOIN employees e ON e.id = epi.employee_id
       WHERE e.workspace_id = ${workspaceId} AND e.status = 'active'
     `);
-    const pr = ((payrollInfoRows as any).rows?.[0] || {}) as any;
+    const pr = ((payrollInfoRows as unknown).rows?.[0] || {}) as unknown;
 
     // Build readiness report
     const orgChecks = [
@@ -1805,8 +1805,8 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
       { id: 'invoice_prefix', label: 'Invoice Number Prefix', ok: !!(ws as Record<string,unknown>).invoicePrefix, critical: false, section: 'invoice', tip: 'Prefix used in invoice numbers (e.g. INV-1000)' },
       { id: 'payment_terms', label: 'Payment Terms', ok: !!((ws as Record<string,unknown>).paymentTermsDays && (ws as Record<string,unknown>).paymentTermsDays > 0), critical: false, section: 'invoice', tip: 'Number of days clients have to pay (e.g. Net 30)' },
       { id: 'default_tax_rate', label: 'Default Tax Rate', ok: !!((ws as Record<string,unknown>).defaultTaxRate !== undefined), critical: false, section: 'invoice', tip: 'Applied to invoices unless overridden per client' },
-      { id: 'clients_missing_email', label: `Client Billing Emails (${(clientRows as any).missing_email || 0} missing)`, ok: Number((clientRows as any).missing_email || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a billing email cannot receive invoices' },
-      { id: 'clients_missing_rate', label: `Client Billable Rates (${(clientRows as any).missing_rate || 0} missing)`, ok: Number((clientRows as any).missing_rate || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a rate cannot be billed' },
+      { id: 'clients_missing_email', label: `Client Billing Emails (${(clientRows as unknown).missing_email || 0} missing)`, ok: Number((clientRows as unknown).missing_email || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a billing email cannot receive invoices' },
+      { id: 'clients_missing_rate', label: `Client Billable Rates (${(clientRows as unknown).missing_rate || 0} missing)`, ok: Number((clientRows as unknown).missing_rate || 0) === 0, critical: true, section: 'invoice', tip: 'Clients without a rate cannot be billed' },
     ];
 
     const payrollChecks = [
@@ -1846,10 +1846,10 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
         payrollSchedule: (ws as Record<string,unknown>).payrollSchedule || 'biweekly',
       },
       counts: {
-        totalClients: Number((clientRows as any).total || 0),
-        clientsMissingEmail: Number((clientRows as any).missing_email || 0),
-        clientsMissingRate: Number((clientRows as any).missing_rate || 0),
-        totalActiveEmployees: Number((empRows as any).total || 0),
+        totalClients: Number((clientRows as unknown).total || 0),
+        clientsMissingEmail: Number((clientRows as unknown).missing_email || 0),
+        clientsMissingRate: Number((clientRows as unknown).missing_rate || 0),
+        totalActiveEmployees: Number((empRows as unknown).total || 0),
         employeesMissingBank: Number(pr.missing_bank || 0),
         employeesMissingW4: Number(pr.missing_w4 || 0),
         employeesMissingI9: Number(pr.missing_i9 || 0),
