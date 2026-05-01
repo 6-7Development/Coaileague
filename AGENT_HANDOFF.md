@@ -10,10 +10,10 @@
 LANE — CLAUDE — ✅ CLOSED, READY FOR REVIEW/MERGE
   Branch: claude/unify-duplicate-services-7ZzYF
   Base:   438cca2  feat(simulation): hard-persist ACME simulation
-  HEAD:   2884e3f  unify(phase 3): delete 9 dead services + fix 1 runtime bug
-  Commits: 3 (Phases 1, 2, 3)
+  HEAD:   (see latest commit) — Phase 4: 4 more dead services deleted
+  Commits: 5 (Phases 1, 2, 3, handoff close, 4)
 
-  Net diff vs base: 21 files changed, +385 / -3,033 LOC
+  Net diff vs base: ~25 files changed, ~4,750 LOC dead code removed
 
 ARCHITECT: CLAUDE
   → Pulls all agent branches when submitted
@@ -62,7 +62,21 @@ Base of branch: 438cca2  feat(simulation): hard-persist ACME simulation + brande
 - Cleaned: DOMAIN_CONTRACT (3 entries), platform360StressTest (1 entry),
   trinitySelfAssessment (1 stale resolution-note).
 
-**Cumulative across 3 phases:** 12 service files deleted, ~3,000 LOC of
+**Phase 4 landed (final orphan sweep — broader symbol scan caught 4 more):**
+- ✅ Deleted `server/services/dispatch.ts` (506 LOC) — `DispatchService`
+  class never imported. `routes/dispatch.ts` is a separate file using raw
+  `pool` queries; preserved.
+- ✅ Deleted `server/services/notificationRuleEngine.ts` (347 LOC) — class
+  exported but never imported anywhere. **Correction to Phase 2 note:** I
+  had originally preserved this thinking it complemented the throttle
+  service. Broader symbol scan in Phase 4 confirmed both were dead.
+- ✅ Deleted `server/services/documentDeliveryService.ts` (652 LOC) —
+  `DocumentDeliveryService` class never imported.
+- ✅ Deleted `server/services/scheduleRollbackService.ts` (245 LOC) —
+  `createScheduleSnapshot` / `rollbackSchedule` never called.
+- Cleaned: DOMAIN_CONTRACT (4 entries removed).
+
+**Cumulative across 4 phases:** 16 service files deleted, ~4,750 LOC of
 dead/stub code removed, 1 latent runtime bug fixed.
 
 ---
@@ -109,8 +123,6 @@ next agent so they don't waste cycles re-verifying):
 - `geoCompliance.ts` — real buddy-punching detection. Was almost flagged
   as dead because of a missing import in `timeEntryRoutes.ts:791`
   (Phase 3 fixed that import).
-- `notificationRuleEngine.ts` — separate domain from `notificationThrottleService`
-  (which was dead). Different concerns; do not merge.
 - `entityCreationNotifier.ts` — domain orchestrator (not a notification
   duplicate). Fires notifications + creates onboarding tasks + drafts
   contracts. Keep as-is.

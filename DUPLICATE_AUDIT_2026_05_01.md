@@ -275,10 +275,10 @@ AND in registries (DOMAIN_CONTRACT, sourceOfTruthRegistry, stress tests).
 
 ## METRICS
 
-- Services in `server/services/` — **311** → **299** after three passes (12 deleted)
-- Routes in `server/routes/` — **329** (no route file deletions yet)
-- Files removed across phases — **12** dead/stub services
-- Total LOC of pure dead code removed — **~3,000 LOC**
+- Services in `server/services/` — **311** → **295** after four passes (16 deleted)
+- Routes in `server/routes/` — **329** (no route file deletions)
+- Files removed across phases — **16** dead/stub services
+- Total LOC of pure dead code removed — **~4,750 LOC**
 - Bugs fixed — **1** (missing GeoComplianceService import that would crash at runtime)
 
 ### Per-phase totals
@@ -288,3 +288,4 @@ AND in registries (DOMAIN_CONTRACT, sourceOfTruthRegistry, stress tests).
 | 1 | -1 file, +3 mod | -118 stub, +38 wiring |
 | 2 | -2 files, +2 mod | -328 dead, -47 dead helpers |
 | 3 | -9 files, +4 mod | -2,493 dead, -1 LOC bug fix |
+| 4 | -4 files, +1 mod | -1,750 dead |

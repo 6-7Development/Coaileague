@@ -325,7 +325,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/fieldOperations/shiftHandoffService.ts',
       'server/services/scheduleLiveNotifier.ts',
       'server/services/scheduleMigration.ts',
-      'server/services/scheduleRollbackService.ts',
       'server/services/scheduleSmartAI.ts',
       'server/services/scheduling/autonomousSchedulingDaemon.ts',
       'server/services/scheduling/historicalScheduleImporter.ts',
@@ -1215,7 +1214,6 @@ export const DOMAIN_CONTRACT = {
       'server/services/complianceMonitoring.ts',
       'server/services/complianceReports.ts',
       'server/services/darPdfService.ts',
-      'server/services/documentDeliveryService.ts',
       'server/services/documentExtraction.ts',
       'server/services/documentSigningService.ts',
       'server/services/geoCompliance.ts',
@@ -1625,7 +1623,6 @@ export const DOMAIN_CONTRACT = {
     services: [
       'server/services/aiGuardRails.ts',
       'server/services/dbMigrationService.ts',
-      'server/services/dispatch.ts',
       'server/services/migration.ts',
       'server/services/workspaceGuard.ts',
       'server/services/ops/panicAlertService.ts',
