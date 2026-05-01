@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { useLocation } from "wouter";
 import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
+import { EmployeeBlockingBanner } from "@/components/onboarding/employee-blocking-banner";
 
 // Platform role dashboards (lazy-loaded)
 const RootAdminDashboard     = lazy(() => import("./dashboards/RootAdminDashboard"));
@@ -89,7 +90,31 @@ export default function Dashboard() {
     if (!isLoading && isAuthenticated && user && !user.currentWorkspaceId) {
       setLocation("/onboarding/start");
     }
-  }, [isAuthenticated, isLoading, user, setLocation]);
+    // Resume mid-onboarding tenants. /api/auth/me now returns
+    // user.onboardingState; if the workspace exists but onboarding isn't
+    // fully complete, route the org owner to the next incomplete step
+    // instead of dropping them into a half-configured dashboard. Other
+    // roles see the OnboardingProgressBanner instead — they don't own the
+    // setup, so we don't force them to the wizard.
+    const isOwnerLike = (workspaceRole || "") === "org_owner" || (workspaceRole || "") === "co_owner";
+    const onboardingState = (user as any)?.onboardingState;
+    if (
+      !isLoading &&
+      isAuthenticated &&
+      isOwnerLike &&
+      onboardingState &&
+      onboardingState.fullyComplete === false &&
+      typeof window !== "undefined" &&
+      window.location.pathname === "/dashboard" &&
+      !window.location.search.includes("welcome=trinity_unlocked") &&
+      !window.location.search.includes("skipResume=1")
+    ) {
+      const nextKey = (onboardingState.requiredKeys || []).find?.(
+        (k: string) => onboardingState.stepsCompleted?.[k] !== true,
+      );
+      setLocation(nextKey ? `/onboarding-tasks?focus=${nextKey}` : "/onboarding-tasks");
+    }
+  }, [isAuthenticated, isLoading, user, workspaceRole, setLocation]);
 
   if (isLoading || !isAuthenticated) {
     return <LoadingSpinner />;
@@ -116,10 +141,27 @@ export default function Dashboard() {
     workspaceRole,
   );
 
+  // Surface work-eligibility blockers for worker-class roles. Managers /
+  // owners / admins shouldn't see this — they're not the ones with
+  // missing personal documents.
+  const showEmployeeBanner =
+    !isPlatformStaff &&
+    (workspaceRole === "" ||
+      workspaceRole === "employee" ||
+      workspaceRole === "staff" ||
+      workspaceRole === "contractor");
+
   return (
     <ErrorBoundary componentName="Dashboard">
       <Suspense fallback={<LoadingSpinner />}>
-        <DashboardComponent />
+        <>
+          {showEmployeeBanner && (
+            <div className="px-4 pt-4">
+              <EmployeeBlockingBanner />
+            </div>
+          )}
+          <DashboardComponent />
+        </>
       </Suspense>
     </ErrorBoundary>
   );

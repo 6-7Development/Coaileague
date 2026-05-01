@@ -34,6 +34,7 @@ import {
   hasAcceptedCurrentNda,
   recordNdaAcceptance,
   currentNdaVersion,
+  lastAcceptedNda,
   listWorkspacesForAuditor,
   auditorHasAuditForWorkspace,
   computeComplianceScore,
@@ -197,6 +198,20 @@ auditorRouter.get('/me', requireAuditor, async (req: any, res: Response) => {
 
 auditorRouter.get('/nda/current', requireAuditor, (_req: Request, res: Response) => {
   res.json({ ok: true, version: currentNdaVersion() });
+});
+
+// Returns the auditor's most recently accepted NDA version (if any) so the
+// modal can show version-bump context: "You previously accepted v{old} —
+// we've updated to v{new}, please re-sign." Returns { last: null } for
+// first-time auditors.
+auditorRouter.get('/nda/last-accepted', requireAuditor, async (req: any, res: Response) => {
+  try {
+    const last = await lastAcceptedNda(req.session.auditorId);
+    res.json({ ok: true, last, current: currentNdaVersion() });
+  } catch (err: any) {
+    log.warn('[Auditor] last-accepted lookup failed:', err?.message);
+    res.json({ ok: true, last: null, current: currentNdaVersion() });
+  }
 });
 
 auditorRouter.post('/nda/accept', requireAuditor, async (req: any, res: Response) => {

@@ -323,15 +323,40 @@ acceptHandoffRouter.post(
   async (req: any, res: any) => {
     try {
       const { token } = req.params;
-      
+
       if (!req.user?.id) {
         return res.status(401).json({ error: 'Authentication required to complete handoff' });
       }
 
-      const result = await assistedOnboardingService.completeHandoff(token, req.user?.id);
-      
+      // Identity gate: pass the authenticated user's email so the service
+      // can verify it matches the workspace's targetUserEmail. Closes the
+      // hole where any authenticated user with a leaked token could claim
+      // someone else's workspace.
+      const result = await assistedOnboardingService.completeHandoff(
+        token,
+        req.user.id,
+        req.user.email,
+      );
+
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(403).json({ error: result.error });
+      }
+
+      // Audit log — every handoff completion is a high-value milestone.
+      try {
+        const { storage } = await import('../storage');
+        await storage.createAuditLog({
+          userId: req.user.id,
+          workspaceId: result.workspaceId!,
+          action: 'workspace.handoff_completed',
+          entityType: 'workspace',
+          entityId: result.workspaceId!,
+          // @ts-expect-error — storage.createAuditLog is loose-typed
+          details: { workspaceName: result.workspaceName, claimingEmail: req.user.email },
+          ipAddress: req.ip || req.socket?.remoteAddress,
+        });
+      } catch (auditErr: any) {
+        log.warn('[AssistedOnboarding] Audit log failed (non-blocking):', auditErr?.message);
       }
 
       res.json({

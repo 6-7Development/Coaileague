@@ -223,6 +223,7 @@ const EmployeePacketPortal = lazy(() => import("@/pages/employee-packet-portal")
 const EmployeePackets = lazy(() => import("@/pages/employee-packets"));
 const TxServiceAgreement = lazy(() => import("@/pages/tx-service-agreement"));
 const Workspace = lazy(() => import("@/pages/workspace"));
+const SubOrgsPage = lazy(() => import("@/pages/sub-orgs"));
 const Billing = lazy(() => import("@/pages/billing"));
 const SubscriptionDashboard = lazy(() => import("@/pages/subscription-dashboard"));
 const UsageDashboard = lazy(() => import("@/pages/usage-dashboard"));
@@ -463,6 +464,7 @@ import { HeaderChatButton } from "@/components/header-chat-button";
 // REMOVED: FloatingSupportChat - Trinity button handles all support
 import { ChatroomNotificationListener } from "@/components/chatroom-notification-listener";
 import { SettingsSyncListener } from "@/components/settings-sync-listener";
+import { OnboardingProgressBanner } from "@/components/onboarding/onboarding-progress-banner";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
@@ -921,6 +923,7 @@ function AppContent() {
                 <Route path="/multi-company"><ErrorBoundary><MultiCompany /></ErrorBoundary></Route>
                 <Route path="/gate-duty"><ErrorBoundary><GateDuty /></ErrorBoundary></Route>
                 <Route path="/workspace"><ErrorBoundary><Workspace /></ErrorBoundary></Route>
+                <Route path="/sub-orgs"><ErrorBoundary><SubOrgsPage /></ErrorBoundary></Route>
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
@@ -1460,6 +1463,7 @@ function AppContent() {
                 <Route path="/multi-company"><ErrorBoundary><MultiCompany /></ErrorBoundary></Route>
                 <Route path="/gate-duty"><ErrorBoundary><GateDuty /></ErrorBoundary></Route>
                 <Route path="/workspace"><ErrorBoundary><Workspace /></ErrorBoundary></Route>
+                <Route path="/sub-orgs"><ErrorBoundary><SubOrgsPage /></ErrorBoundary></Route>
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
@@ -1972,6 +1976,7 @@ export default function App() {
                           <ServiceWorkerMessageListener />
                           <ChatroomNotificationListener />
                           <SettingsSyncListener />
+                          <OnboardingProgressBanner />
                           <LanguageSync />
                           <Suspense fallback={<PageLoader />}>
                             <PaymentEnforcementProvider><AppContent /></PaymentEnforcementProvider>

@@ -81,10 +81,20 @@ class AssistedOnboardingService {
   }
 
   /**
-   * Generate secure handoff token
+   * Generate secure handoff token (raw, returned to caller; only the SHA-256
+   * hash is persisted via hashHandoffToken).
    */
   private generateHandoffToken(): string {
     return crypto.randomBytes(32).toString('base64url');
+  }
+
+  /**
+   * Hash a handoff token for at-rest storage. We compare hashes during
+   * lookup so a database compromise does not expose every pending handoff.
+   * Mirrors the auditor invite token pattern in inviteRoutes.ts.
+   */
+  private hashHandoffToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   /**
@@ -154,6 +164,28 @@ class AssistedOnboardingService {
       }).returning();
 
       log.info(`[AssistedOnboarding] Created workspace ${workspace.id} for ${targetUserEmail} by support ${supportUserId}`);
+
+      // Audit log — assisted workspace creation is a high-value support
+      // action. Previously only log.info'd; now part of the audit trail.
+      try {
+        const { storage } = await import('../storage');
+        await storage.createAuditLog({
+          userId: supportUserId,
+          workspaceId: workspace.id,
+          action: 'workspace.assisted_created',
+          entityType: 'workspace',
+          entityId: workspace.id,
+          // @ts-expect-error — storage.createAuditLog is loose-typed
+          details: {
+            targetUserEmail,
+            targetUserName,
+            workspaceName: (workspace as any).name,
+            source: 'assisted_onboarding',
+          },
+        });
+      } catch (auditErr: unknown) {
+        log.warn('[AssistedOnboarding] Audit log failed (non-blocking):', (auditErr as any)?.message);
+      }
 
       try {
         const { provisionWorkspace } = await import('./workspaceProvisioningService');
@@ -329,14 +361,17 @@ class AssistedOnboardingService {
         return { success: false, error: 'No target user email configured' };
       }
 
-      // Generate secure token
+      // Generate secure token. Raw token goes into the email; only the
+      // SHA-256 hash lands in the DB so a compromised dump cannot replay
+      // every outstanding handoff.
       const token = this.generateHandoffToken();
+      const tokenHash = this.hashHandoffToken(token);
       const expiresAt = new Date(Date.now() + HANDOFF_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
-      // Store token and update status
+      // Store hashed token and update status
       await db.update(workspaces)
         .set({
-          handoffToken: token,
+          handoffToken: tokenHash,
           handoffTokenExpiry: expiresAt,
           handoffStatus: 'handoff_sent',
           handoffSentAt: new Date(),
@@ -391,12 +426,13 @@ class AssistedOnboardingService {
    * Complete handoff when target user claims the workspace
    * This transfers ownership from support staff to the actual user
    */
-  async completeHandoff(token: string, userId: string): Promise<HandoffCompleteResult> {
+  async completeHandoff(token: string, userId: string, claimingEmail?: string): Promise<HandoffCompleteResult> {
     try {
-      // Find workspace by token
+      // Lookup by hashed token (raw token only ever lives in the email).
+      const tokenHash = this.hashHandoffToken(token);
       const workspace = await db.query.workspaces.findFirst({
         where: and(
-          eq(workspaces.handoffToken, token),
+          eq(workspaces.handoffToken, tokenHash),
           eq(workspaces.handoffStatus, 'handoff_sent'),
         ),
       });
@@ -425,6 +461,17 @@ class AssistedOnboardingService {
 
       if (!user) {
         return { success: false, error: 'User not found' };
+      }
+
+      // Identity gate: the authenticated user (or claimingEmail if passed)
+      // MUST match the targetUserEmail this workspace was prepared for.
+      // Without this gate any authenticated user with a leaked token could
+      // claim someone else's workspace.
+      const expectedEmail = (workspace.targetUserEmail || '').toLowerCase().trim();
+      const actualEmail = (claimingEmail || user.email || '').toLowerCase().trim();
+      if (!expectedEmail || actualEmail !== expectedEmail) {
+        log.warn(`[AssistedOnboarding] Handoff identity mismatch on workspace ${workspace.id}: expected=${expectedEmail} actual=${actualEmail}`);
+        return { success: false, error: 'This handoff link is for a different email address. Sign in with the email it was sent to.' };
       }
 
       // Transfer ownership
@@ -540,16 +587,18 @@ class AssistedOnboardingService {
     error?: string;
   }> {
     try {
+      // Lookup by hash — raw token never persisted.
+      const tokenHash = this.hashHandoffToken(token);
       const workspace = await db.query.workspaces.findFirst({
-        where: eq(workspaces.handoffToken, token),
+        where: eq(workspaces.handoffToken, tokenHash),
       });
 
       if (!workspace) {
         return { valid: false, error: 'Invalid handoff token' };
       }
 
-      const expired = workspace.handoffTokenExpiry 
-        ? new Date() > workspace.handoffTokenExpiry 
+      const expired = workspace.handoffTokenExpiry
+        ? new Date() > workspace.handoffTokenExpiry
         : false;
 
       if (expired || workspace.handoffStatus === 'handoff_complete') {

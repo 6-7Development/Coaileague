@@ -735,6 +735,39 @@ async function onOnboardingCompleted(event: PlatformEvent): Promise<void> {
     },
     userId: ownerId,
   });
+
+  // In-app notification + WS broadcast so the user actually sees that
+  // Trinity unlocked. Previously the flag flipped silently and the user
+  // had no idea they could now reach /api/trinity/{intake,self-edit,swarm}.
+  if (ownerId) {
+    try {
+      const { notifications: notificationsTable } = await import('@shared/schema');
+      await db.insert(notificationsTable).values({
+        scope: 'workspace',
+        category: 'system',
+        workspaceId: String(workspaceId),
+        userId: ownerId,
+        type: 'onboarding_completed',
+        title: 'Trinity is ready',
+        message: 'Your workspace setup is complete. Trinity Swarm, intake flows, and self-edit are now unlocked.',
+        actionUrl: '/dashboard?welcome=trinity_unlocked',
+        relatedEntityType: 'workspace',
+        relatedEntityId: String(workspaceId),
+        metadata: { source: 'TrinityOnboardingCompletionHandler', completedAt: completedAt.toISOString() },
+      } as any).catch(() => null);
+    } catch (err: any) {
+      log.warn(`[TrinityEvents] onboarding-complete notification insert failed: ${err?.message}`);
+    }
+  }
+  try {
+    const { broadcastToWorkspace } = await import('../websocket');
+    broadcastToWorkspace(String(workspaceId), {
+      type: 'onboarding_completed',
+      workspaceId,
+      ownerId,
+      completedAt: completedAt.toISOString(),
+    });
+  } catch (_) { /* WS broadcast is best-effort */ }
 }
 
 /**

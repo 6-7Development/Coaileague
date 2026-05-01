@@ -1655,11 +1655,98 @@ router.post("/api/client-signup", async (req, res) => {
       })
       .onConflictDoNothing();
 
+    // Audit log — closes the gap where client signup was the only onboarding
+    // milestone that did not write to audit_logs.
+    try {
+      const { storage } = await import("../storage");
+      await storage.createAuditLog({
+        userId: newUser.id,
+        workspaceId: prospect.workspaceId,
+        action: "client.registered",
+        entityType: "client",
+        entityId: newClient.id,
+        // @ts-expect-error — storage.createAuditLog is loose-typed
+        details: {
+          email: newUser.email,
+          clientCode: newClient.clientCode,
+          companyName: newClient.companyName,
+          source: "client_signup",
+        },
+        ipAddress: req.ip || req.socket?.remoteAddress,
+      });
+    } catch (auditErr: unknown) {
+      log.warn("[ClientSignup] Audit log failed (non-blocking):", (auditErr as any)?.message);
+    }
+
+    // Publish workspace.created + onboarding_completed so Trinity sees the
+    // tenant. Previously these never fired for client signups, leaving the
+    // tenant invisible to Trinity (and onboardingFullyComplete stuck false).
+    try {
+      const { platformEventBus } = await import("../services/platformEventBus");
+      await platformEventBus.publish({
+        type: "workspace.created",
+        category: "automation",
+        title: "Client Workspace Activated",
+        description: `Client ${newUser.email} activated portal for workspace ${prospect.workspaceId}`,
+        workspaceId: prospect.workspaceId,
+        metadata: {
+          workspaceId: prospect.workspaceId,
+          ownerId: newUser.id,
+          source: "client_signup",
+        },
+      }).catch(() => null);
+      await platformEventBus.publish({
+        type: "onboarding_completed",
+        category: "automation",
+        title: "Client Onboarding Completed",
+        description: `Client portal activated for ${newClient.companyName || newUser.email}`,
+        workspaceId: prospect.workspaceId,
+        metadata: {
+          workspaceId: prospect.workspaceId,
+          ownerId: newUser.id,
+          completedAt: new Date().toISOString(),
+          source: "client_signup",
+        },
+      }).catch(() => null);
+    } catch (eventErr: unknown) {
+      log.warn("[ClientSignup] Event publish failed (non-blocking):", (eventErr as any)?.message);
+    }
+
+    // Welcome email so the client knows the portal is live and what to do.
+    try {
+      const { sendTrinityWelcomeEmail } = await import("../services/trinityWelcomeService");
+      await sendTrinityWelcomeEmail({
+        workspaceId: String(prospect.workspaceId),
+        userId: String(newUser.id),
+        userEmail: newUser.email!,
+        userType: "client",
+        workspaceName: String(newClient.companyName || prospect.companyName || "your workspace"),
+        userName: newUser.firstName || "there",
+      });
+    } catch (welcomeErr: unknown) {
+      log.warn("[ClientSignup] Welcome email failed (non-blocking):", (welcomeErr as any)?.message);
+    }
+
+    // Auto-authenticate so the client lands at /client-portal directly
+    // instead of having to enter credentials again on /login. Sets the same
+    // session shape that /api/auth/login produces.
+    try {
+      if (req.session) {
+        req.session.userId = newUser.id;
+        req.session.workspaceId = prospect.workspaceId;
+        req.session.workspaceRole = "client";
+      }
+    } catch (sessErr: unknown) {
+      log.warn("[ClientSignup] Session bootstrap failed (non-blocking):", (sessErr as any)?.message);
+    }
+
     res.json({
       success: true,
       message: "Account created successfully",
       clientCode: newClient.clientCode,
-      redirectTo: "/login",
+      // Auto-redirect straight to the portal — no second login required.
+      redirectTo: "/client-portal",
+      authenticated: Boolean(req.session?.userId),
     });
   } catch (error: unknown) {
     log.error("[ClientSignup] Error:", error);

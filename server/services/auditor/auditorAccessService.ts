@@ -683,6 +683,34 @@ export async function hasAcceptedCurrentNda(auditorId: string): Promise<boolean>
   return (r.rowCount ?? 0) > 0;
 }
 
+/**
+ * Returns the most recent NDA version the auditor has ever accepted, plus
+ * the timestamp. Used by the auditor portal to show version-bump context
+ * in the NDA modal — "You accepted v2025-01-01-v1; we've updated to
+ * v2026-04-19-v1, please re-sign."
+ */
+export async function lastAcceptedNda(auditorId: string): Promise<{
+  ndaVersion: string;
+  acceptedAt: string;
+} | null> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const r = await pool.query(
+    `SELECT nda_version, accepted_at
+       FROM auditor_nda_acceptances
+      WHERE auditor_id = $1
+      ORDER BY accepted_at DESC
+      LIMIT 1`,
+    [auditorId],
+  );
+  if ((r.rowCount ?? 0) === 0) return null;
+  const row = r.rows[0];
+  return {
+    ndaVersion: String(row.nda_version),
+    acceptedAt: new Date(row.accepted_at).toISOString(),
+  };
+}
+
 export async function recordNdaAcceptance(params: {
   auditorId: string;
   ip?: string;

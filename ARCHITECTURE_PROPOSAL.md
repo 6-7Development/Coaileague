@@ -302,3 +302,68 @@ server/
 5. **Which phase should we start with first?**
 
 Let me know if this organizational structure aligns with your vision, and I'll begin the implementation!
+
+---
+
+## Role Inventory & Trinity Unlock Matrix (May 2026)
+
+### Workspace roles (14)
+
+| Role | Tier | Landing page | Settings persistence | Trinity gates |
+|---|---|---|---|---|
+| `org_owner` | Owner | `/dashboard` | `workspaces.billingSettingsBlob` (write) | All |
+| `co_owner` | Owner | `/dashboard` | `workspaces.billingSettingsBlob` (write) | All |
+| `org_admin` | Admin | `/dashboard` | `workspaces.billingSettingsBlob` (requireManager) | All |
+| `org_manager` | Admin | `/dashboard` | `workspaces.billingSettingsBlob` (requireManager) | All |
+| `manager` | Manager | `/leaders-hub` | `workspaces.billingSettingsBlob` (requireManager) | All |
+| `department_manager` | Manager | `/leaders-hub` | Inherits parent `billingSettingsBlob` (sub-tenant) | All |
+| `supervisor` | Supervisor | `/leaders-hub` | Read-only | All |
+| `employee` | Worker | `/schedule` | Read-only | chat / session / crisis only |
+| `staff` | Worker | `/schedule` | Read-only | chat / session / crisis only |
+| `contractor` | External worker | `/schedule` | Read-only | chat / session / crisis only |
+| `vendor` | External counterparty | `/client-portal` | Read-only | chat / session / crisis only |
+| `client` | External customer | `/client-portal` | Read-only | chat / session / crisis only |
+| `auditor` | Regulatory | `/auditor/portal` | `auditor_settings` (own) | Read-only audit trails |
+| `co_auditor` | Regulatory | `/co-auditor/dashboard` | `auditor_settings` (own) | Read-only audit trails |
+
+### Trinity feature gating
+
+`requireOnboardingComplete` (`server/middleware/workspaceScope.ts`) returns
+`412 ONBOARDING_INCOMPLETE` until `workspaces.onboardingFullyComplete=true`.
+The flag flips when `POST /api/workspace/onboarding/complete` publishes
+`onboarding_completed`, consumed by `TrinityOnboardingCompletionHandler` in
+`server/services/trinityEventSubscriptions.ts`. Platform staff bypass.
+
+| Surface | Gated | Reason |
+|---|---|---|
+| `/api/trinity/intake` | YES | Production intake flows need a configured workspace |
+| `/api/trinity/self-edit` | YES | Customizing Trinity needs a configured workspace |
+| `/api/trinity/swarm` | YES | Multi-agent orchestration needs a configured workspace |
+| `/api/trinity/chat` | NO | Trial / mid-onboarding tenants need conversational help |
+| `/api/trinity/session` | NO | Session management must always work |
+| `/api/trinity/crisis` | NO | Emergency response must always work |
+
+### Onboarding signal flow (canonical)
+
+```
+Wizard step done
+      │
+      ▼
+POST /api/workspace/onboarding/step  →  workspaces.onboardingStepsCompleted +
+                                         onboardingCompletionPercent + audit_log
+      │
+      │ (when all required keys = true)
+      ▼
+POST /api/workspace/onboarding/complete  →  platformEventBus.publish('onboarding_completed')
+                                                 │
+                                                 ▼
+                            TrinityOnboardingCompletionHandler
+                              · flip workspaces.onboardingFullyComplete = true
+                              · seed thalamic_log
+                              · insert in-app notification
+                              · broadcastToWorkspace('onboarding_completed')
+                                                 │
+                                                 ▼
+                  <OnboardingProgressBanner /> morphs into celebration card
+                  and /api/trinity/{intake,self-edit,swarm} unlock.
+```

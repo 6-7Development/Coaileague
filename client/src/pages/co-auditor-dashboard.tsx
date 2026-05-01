@@ -117,6 +117,20 @@ function NdaGate({
 }): JSX.Element {
   const { toast } = useToast();
   const [signatureName, setSignatureName] = useState("");
+
+  // Pull the auditor's most recently accepted version (if any) so the
+  // modal can show version-bump context — "You accepted v{old}; we've
+  // updated to v{new}." Returns last:null for first-time auditors.
+  const { data: lastAcceptedData } = useQuery<{
+    ok: boolean;
+    last: { ndaVersion: string; acceptedAt: string } | null;
+    current: string;
+  }>({
+    queryKey: ["/api/auditor/nda/last-accepted"],
+  });
+  const isVersionBump =
+    !!lastAcceptedData?.last && lastAcceptedData.last.ndaVersion !== version;
+
   const mut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/auditor/nda/accept", { signatureName }),
     onSuccess: () => {
@@ -134,10 +148,20 @@ function NdaGate({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            Auditor Non-Disclosure Agreement
+            {isVersionBump ? "Updated NDA — Re-Acceptance Required" : "Auditor Non-Disclosure Agreement"}
           </DialogTitle>
           <DialogDescription>
-            Version {version}. You must accept before viewing tenant data.
+            {isVersionBump ? (
+              <>
+                You previously accepted version <span className="font-mono">{lastAcceptedData?.last?.ndaVersion}</span> on{" "}
+                {lastAcceptedData?.last?.acceptedAt
+                  ? new Date(lastAcceptedData.last.acceptedAt).toLocaleDateString()
+                  : "an earlier date"}
+                . We've updated the NDA to <span className="font-mono">{version}</span>. Please re-sign to continue.
+              </>
+            ) : (
+              <>Version {version}. You must accept before viewing tenant data.</>
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-64 overflow-y-auto text-sm space-y-2 border rounded-md p-3 bg-muted/30">
@@ -504,13 +528,27 @@ function AuditorSettingsPanel(): JSX.Element {
   }, [data]);
 
   const saveMut = useMutation({
-    mutationFn: () => apiRequest("PATCH", "/api/auditor/settings", form),
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", "/api/auditor/settings", form);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = body?.error || body?.message || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+      return body;
+    },
     onSuccess: () => {
       toast({ title: "Settings saved", description: "Your auditor preferences are stored." });
       queryClient.invalidateQueries({ queryKey: ["/api/auditor/settings"] });
     },
     onError: (err: any) => {
-      toast({ title: "Could not save settings", description: err?.message || "Try again.", variant: "destructive" });
+      // Surface the server's specific reason (e.g. "No active audit for this
+      // workspace") instead of a generic "Could not save settings".
+      toast({
+        title: "Could not save settings",
+        description: err?.message || "Try again in a moment.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -685,6 +723,37 @@ export default function CoAuditorDashboard() {
   const workspaces = workspacesResp?.workspaces ?? [];
   const audits = auditsResp?.audits ?? [];
 
+  // Audit-window-closing alert: any open audit whose closes_at is within
+  // the next 5 days. Client-side derivation — no extra endpoint needed.
+  const closingSoon = audits.filter((a) => {
+    if (a.status !== "open" && a.status !== "active" && a.status !== "pending_review") return false;
+    if (!a.closes_at) return false;
+    const closesAt = new Date(a.closes_at).getTime();
+    const now = Date.now();
+    const fiveDays = 5 * 24 * 60 * 60 * 1000;
+    return closesAt > now && closesAt - now <= fiveDays;
+  });
+
+  const extendMut = useMutation({
+    mutationFn: async (auditId: string) => {
+      const res = await apiRequest("POST", `/api/auditor/audits/${auditId}/extend`, { days: 30 });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      return body;
+    },
+    onSuccess: () => {
+      toast({ title: "Audit extended", description: "The audit window has been extended by 30 days." });
+      qc.invalidateQueries({ queryKey: ["/api/auditor/me/audits"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not extend audit",
+        description: err?.message || "Try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const [showRequest, setShowRequest] = useState(false);
   const [drawerWorkspaceId, setDrawerWorkspaceId] = useState<string | null>(null);
   const [drawerCompany, setDrawerCompany] = useState<string | null>(null);
@@ -750,6 +819,42 @@ export default function CoAuditorDashboard() {
             <Button variant="ghost" onClick={logout}>Sign out</Button>
           </div>
         </header>
+
+        {closingSoon.length > 0 && (
+          <Card className="bg-amber-900/20 border-amber-500/40" data-testid="banner-audit-closing-soon">
+            <CardContent className="py-3 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 text-sm space-y-1">
+                <p className="font-medium text-amber-100">
+                  {closingSoon.length === 1 ? "Audit closing soon" : `${closingSoon.length} audits closing soon`}
+                </p>
+                <ul className="text-amber-200/80 text-xs space-y-1">
+                  {closingSoon.slice(0, 3).map((a) => {
+                    const closesAt = new Date(a.closes_at);
+                    const days = Math.max(0, Math.ceil((closesAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+                    return (
+                      <li key={a.id} className="flex items-center justify-between gap-3">
+                        <span className="truncate">
+                          Audit {a.id.slice(0, 8)} on workspace {a.workspace_id.slice(0, 8)} closes in <strong>{days}d</strong>
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-500/40 text-amber-100 hover:bg-amber-500/10"
+                          onClick={() => extendMut.mutate(a.id)}
+                          disabled={extendMut.isPending}
+                          data-testid={`button-extend-${a.id}`}
+                        >
+                          {extendMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Extend 30d"}
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showRequest && (
           <Card className="bg-slate-900 border-slate-800">

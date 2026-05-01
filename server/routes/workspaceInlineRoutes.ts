@@ -169,10 +169,23 @@ async function applyAutomationUpdate(params: {
         }
       }
 
+      // Onboarding gate on switch — if the destination workspace hasn't
+      // finished setup, surface a 412 so the client can route the user to
+      // the resume-onboarding flow instead of dropping them into a half-
+      // configured dashboard. Platform staff bypass (debug surface).
+      if (!isPlatformStaffUser && workspace.onboardingFullyComplete === false) {
+        return res.status(412).json({
+          message: 'Workspace onboarding is not complete. Finish setup before switching in.',
+          code: 'ONBOARDING_INCOMPLETE',
+          workspaceId,
+          resumeUrl: '/onboarding/start',
+        });
+      }
+
       await storage.updateUser(userId, {
         currentWorkspaceId: workspaceId,
       });
-      
+
       // SECURITY: Regenerate session ID on workspace switch to prevent session fixation.
       // An attacker who obtained the pre-switch session token must not be able to
       // use it after the switch — the new session ID invalidates the old one.

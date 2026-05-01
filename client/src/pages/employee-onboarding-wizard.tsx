@@ -566,8 +566,22 @@ export default function EmployeeOnboardingWizard() {
           accountType: form.accountType,
         } as any);
       } else if (step === 5) {
-        // Credentials step — submit to /api/onboarding/certifications.
-        // Non-fatal on failure; HR can collect manually later.
+        // Credentials step — DPS license + government ID. Required before
+        // advancing because Texas DPS regulations make the employee
+        // ineligible for solo posts without it. Soft-fail on the network
+        // call (HR can collect later) but BLOCK if the user hasn't even
+        // provided a license number + at least one ID scan.
+        const hasMinimumCredentials =
+          (form.licenseType || form.guardCardNumber) &&
+          (form.guardCardScanBase64 || form.idFrontBase64);
+        if (!hasMinimumCredentials) {
+          toast({
+            title: "DPS credentials required",
+            description: "Enter your license number and upload at least one credential scan (guard card or ID front).",
+            variant: "destructive",
+          });
+          return;
+        }
         if (applicationId && workspaceId) {
           try {
             await fetch('/api/onboarding/certifications', {

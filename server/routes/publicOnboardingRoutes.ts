@@ -761,23 +761,48 @@ router.post('/workspace-invite/register', async (req, res) => {
         createdAt: new Date(),
       });
 
-      const [emp] = await tx.insert(employees).values({
-        workspaceId: invite.workspaceId,
-        userId,
-        firstName: resolvedFirstName,
-        lastName: resolvedLastName,
-        email: normalizedEmail,
-        phone: resolvedPhone || undefined,
-        workspaceRole: role as any,
-        organizationalTitle: invite.organizationalTitle || undefined,
-        isActive: true,
-        hireDate: new Date(),
-        // Default payroll classification so payroll readiness scanner doesn't flag immediately
-        payType: 'hourly',
-        workerType: 'employee',
-        onboardingStatus: 'in_progress',
-      }).returning({ id: employees.id });
-      newEmployeeId = emp?.id ?? null;
+      // Vendors are external counterparties (suppliers), not internal
+      // workforce. They land at /client-portal and have no schedule, no
+      // payroll, no shift access. Writing them into `employees` polluted
+      // RBAC + payroll readiness scans. We now store them in `clients`
+      // with a vendor flag instead, mirroring the client-signup pattern.
+      if (role === 'vendor') {
+        // Vendor = external supplier. Stored in `clients` (the workspace's
+        // ledger of external counterparties) with a "VND-" code prefix so
+        // billing/AR queries can filter. Membership role on workspace_members
+        // remains 'vendor' for RBAC; not duplicated into `employees`.
+        const cryptoMod2 = await import('crypto');
+        const { clients: clientsTable } = await import('@shared/schema');
+        await tx.insert(clientsTable).values({
+          workspaceId: invite.workspaceId,
+          userId,
+          clientCode: `VND-${cryptoMod2.randomBytes(3).toString('hex').toUpperCase()}`,
+          firstName: resolvedFirstName,
+          lastName: resolvedLastName,
+          email: normalizedEmail,
+          phone: resolvedPhone || undefined,
+          companyName: invite.organizationalTitle || undefined,
+        } as any).onConflictDoNothing();
+      } else {
+        const [emp] = await tx.insert(employees).values({
+          workspaceId: invite.workspaceId,
+          userId,
+          firstName: resolvedFirstName,
+          lastName: resolvedLastName,
+          email: normalizedEmail,
+          phone: resolvedPhone || undefined,
+          workspaceRole: role as any,
+          organizationalTitle: invite.organizationalTitle || undefined,
+          isActive: true,
+          hireDate: new Date(),
+          // Default payroll classification so payroll readiness scanner doesn't flag immediately.
+          // Contractor is `1099`/`workerType=contractor`; everyone else (employee/staff/manager) is `hourly`/`employee`.
+          payType: role === 'contractor' ? 'contractor' : 'hourly',
+          workerType: role === 'contractor' ? 'contractor' : 'employee',
+          onboardingStatus: 'in_progress',
+        }).returning({ id: employees.id });
+        newEmployeeId = emp?.id ?? null;
+      }
 
       await tx.update(workspaceInvites)
         .set({ status: 'accepted', acceptedByUserId: userId, acceptedAt: new Date() })
@@ -928,6 +953,29 @@ router.post('/workspace-invite/register', async (req, res) => {
           }).catch(() => null);
         }
       } catch (_) { /* non-blocking */ }
+
+      // Welcome email for the new joiner — extends sendTrinityWelcomeEmail
+      // to every role (employee/staff/contractor/vendor/manager etc.), not
+      // just tenant owners. Picks the closest userType template.
+      try {
+        const { sendTrinityWelcomeEmail } = await import('../services/trinityWelcomeService');
+        const userType: 'tenant_owner' | 'client' | 'employee' =
+          role === 'org_owner' || role === 'co_owner'
+            ? 'tenant_owner'
+            : role === 'vendor' || role === 'client'
+              ? 'client'
+              : 'employee';
+        await sendTrinityWelcomeEmail({
+          workspaceId: invite.workspaceId,
+          userId,
+          userEmail: normalizedEmail,
+          userType,
+          workspaceName: workspace.name,
+          userName: resolvedFirstName || 'there',
+        });
+      } catch (welcomeErr: any) {
+        log.warn('[PublicOnboarding] Welcome email failed (non-blocking):', welcomeErr?.message);
+      }
     }).catch(() => null);
 
     res.json({

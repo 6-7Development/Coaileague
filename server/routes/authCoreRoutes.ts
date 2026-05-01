@@ -1458,6 +1458,32 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
         employeeId: req.session?.employeeId || employeeId || null,
         workspaceName: req.session?.workspaceName || null,
       },
+      // Onboarding state — saves a separate /api/workspace/onboarding/progress
+      // round-trip on every page load. Lets the layout shell decide whether to
+      // show the OnboardingProgressBanner / resume-to-step redirect.
+      onboardingState: await (async () => {
+        try {
+          if (!effectiveWorkspaceId) return null;
+          const { db: dbInner } = await import('../db');
+          const { workspaces: wsTable } = await import('@shared/schema');
+          const { eq: eqOp } = await import('drizzle-orm');
+          const [ws] = await dbInner.select({
+            stepsCompleted: wsTable.onboardingStepsCompleted,
+            percent: wsTable.onboardingCompletionPercent,
+            fullyComplete: wsTable.onboardingFullyComplete,
+            fullyCompleteAt: wsTable.onboardingFullyCompleteAt,
+          }).from(wsTable).where(eqOp(wsTable.id, effectiveWorkspaceId)).limit(1);
+          if (!ws) return null;
+          return {
+            stepsCompleted: ws.stepsCompleted || {},
+            percent: ws.percent ?? 0,
+            fullyComplete: ws.fullyComplete === true,
+            fullyCompleteAt: ws.fullyCompleteAt,
+          };
+        } catch (_) {
+          return null;
+        }
+      })(),
     },
   });
   } catch (error: any) {

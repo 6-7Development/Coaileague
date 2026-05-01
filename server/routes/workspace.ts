@@ -882,6 +882,23 @@ router.post('/onboarding/step', requireAuth, async (req: AuthenticatedRequest, r
       onboardingCompletionPercent: percent,
     }).where(eq(workspaces.id, workspaceId));
 
+    // Audit each step completion so abandonment patterns are analyzable and
+    // the milestone trail matches the audit_logs invariant in RBAC_MATRIX.
+    try {
+      await storage.createAuditLog({
+        userId: req.user?.id || null,
+        workspaceId,
+        action: parsed.completed ? 'onboarding_step.completed' : 'onboarding_step.uncompleted',
+        entityType: 'workspace',
+        entityId: workspaceId,
+        // @ts-expect-error — storage.createAuditLog is loose-typed
+        details: { stepKey: parsed.key, percent, requiredDone, totalRequired: REQUIRED_ONBOARDING_KEYS.length },
+        ipAddress: req.ip || (req as any).socket?.remoteAddress,
+      });
+    } catch (auditErr: unknown) {
+      log.warn('[Onboarding Step] Audit log failed (non-blocking):', (auditErr as any)?.message);
+    }
+
     res.json({
       stepsCompleted: next,
       percent,
@@ -928,6 +945,24 @@ router.post('/onboarding/complete', requireAuth, async (req: AuthenticatedReques
     }).catch((err: unknown) => {
       log.error('[Onboarding Complete] event publish failed:', (err as any)?.message);
     });
+
+    // Audit the completion milestone too (the Trinity handler writes to
+    // thalamic_log but not audit_logs; this row is what RBAC compliance
+    // checks scan for).
+    try {
+      await storage.createAuditLog({
+        userId: userId || null,
+        workspaceId,
+        action: 'onboarding.completed',
+        entityType: 'workspace',
+        entityId: workspaceId,
+        // @ts-expect-error — storage.createAuditLog is loose-typed
+        details: { workspaceName: ws.name, stepsCompleted: ws.steps || {} },
+        ipAddress: req.ip || (req as any).socket?.remoteAddress,
+      });
+    } catch (auditErr: unknown) {
+      log.warn('[Onboarding Complete] Audit log failed (non-blocking):', (auditErr as any)?.message);
+    }
 
     res.json({ ok: true });
   } catch (err: unknown) {

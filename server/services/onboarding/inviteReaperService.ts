@@ -68,7 +68,30 @@ export async function runInviteReaper(): Promise<void> {
     log.warn('[Reaper] employee_invitations sweep failed (non-fatal):', err);
   }
 
-  log.info(`[Reaper] Daily sweep complete — ${reaped} invites expired`);
+  // Orphan-user cleanup: occasionally a user row is created during invite
+  // acceptance but the post-creation steps (workspace_members insert, email
+  // provisioning) fail and leave a user with no membership and no email
+  // slug. Vacuum them after 7 days so they don't accumulate forever and
+  // don't block re-registration with the same email.
+  let orphans = 0;
+  try {
+    const orphanResult = await pool.query(`
+      DELETE FROM users u
+       WHERE u.created_at < $1
+         AND NOT EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.user_id = u.id)
+         AND NOT EXISTS (SELECT 1 FROM employees e WHERE e.user_id = u.id)
+         AND (u.email_slug IS NULL OR u.email_slug = '')
+         AND u.password_hash IS NOT NULL
+    `, [cutoff]);
+    orphans = (orphanResult as any).rowCount || 0;
+    if (orphans > 0) {
+      log.info(`[Reaper] Vacuumed ${orphans} orphan users (no membership, no email slug, > 7 days old)`);
+    }
+  } catch (err) {
+    log.warn('[Reaper] orphan-user vacuum failed (non-fatal):', err);
+  }
+
+  log.info(`[Reaper] Daily sweep complete — ${reaped} invites expired, ${orphans} orphan users vacuumed`);
 }
 
 export function registerInviteReaperCron(scheduler: { register: Function }): void {
