@@ -16,6 +16,7 @@ import {
 import { eq, and, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { createLogger } from '../../lib/logger';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('ComplianceEnforcement');
 
 
@@ -542,8 +543,8 @@ router.get("/compliance-score/:employeeId", requireAuth, requireManagerRole, asy
         where: and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)),
       });
       if (employee) {
-        const stateCode = (employee as any).stateCode || 'CA';
-        const guardType = ((employee as any).guardType || 'unarmed') as 'armed' | 'unarmed';
+        const stateCode = (employee as EmployeeWithStatus).stateCode || 'CA';
+        const guardType = ((employee as EmployeeWithStatus).guardType || 'unarmed') as 'armed' | 'unarmed';
         const empDocs = await db.select()
           .from(employeeDocuments)
           .where(and(eq(employeeDocuments.employeeId, employeeId), eq(employeeDocuments.workspaceId, workspaceId)));

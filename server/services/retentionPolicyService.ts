@@ -109,7 +109,7 @@ export async function runRetentionScan(): Promise<{
       FROM workspaces
   `);
 
-  const inputs: RetentionInput[] = r.rows.map((row: any) => ({
+  const inputs: RetentionInput[] = r.rows.map((row: unknown) => ({
     workspaceId: row.workspace_id,
     status: (row.status as WorkspaceStatus) ?? 'active',
     statusChangedAt: row.status_changed_at ? new Date(row.status_changed_at) : null,

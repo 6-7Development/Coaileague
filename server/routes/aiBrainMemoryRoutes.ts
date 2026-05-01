@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 /**
  * AI BRAIN MEMORY & LEARNING ROUTES
  * ==================================
@@ -26,7 +27,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * GET /api/ai-brain/memory/profile
    * Get user memory profile for intelligent context
    */
-  app.get("/api/ai-brain/memory/profile", requireAuth, async (req: any, res: any) => {
+  app.get("/api/ai-brain/memory/profile", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const profile = await trinityMemoryService.getUserMemoryProfile(
         req.userId!,
@@ -43,7 +44,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * GET /api/ai-brain/memory/context
    * Get memory context for AI prompts
    */
-  app.get("/api/ai-brain/memory/context", requireAuth, async (req: any, res: any) => {
+  app.get("/api/ai-brain/memory/context", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const context = await trinityMemoryService.buildMemoryContext(
         req.userId!,
@@ -62,7 +63,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * Get AI tool capability catalog with success metrics
    * REQUIRES workspaceId for tenant isolation
    */
-  app.get("/api/ai-brain/tools/catalog", requireAuth, async (req: any, res: any) => {
+  app.get("/api/ai-brain/tools/catalog", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || (req.query.workspaceId as string | undefined);
       
@@ -91,7 +92,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * Get recommended tools based on context
    * REQUIRES workspaceId for tenant isolation
    */
-  app.get("/api/ai-brain/tools/recommended", requireAuth, async (req: any, res: any) => {
+  app.get("/api/ai-brain/tools/recommended", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || (req.query.workspaceId as string | undefined);
       
@@ -133,7 +134,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * Refresh tool catalog metrics from automation ledger
    * REQUIRES workspaceId for tenant isolation - returns workspace-scoped refresh
    */
-  app.post("/api/ai-brain/tools/catalog/refresh", requireAuth, async (req: any, res: any) => {
+  app.post("/api/ai-brain/tools/catalog/refresh", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || (req.query.workspaceId as string | undefined);
       
@@ -162,7 +163,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * Get relevant shared insights for cross-bot learning
    * REQUIRES workspaceId for tenant isolation
    */
-  app.get("/api/ai-brain/insights/relevant", requireAuth, async (req: any, res: any) => {
+  app.get("/api/ai-brain/insights/relevant", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || (req.query.workspaceId as string | undefined);
       
@@ -195,7 +196,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * POST /api/ai-brain/insights/share
    * Share a learning insight for cross-bot knowledge
    */
-  app.post("/api/ai-brain/insights/share", requireAuth, async (req: any, res: any) => {
+  app.post("/api/ai-brain/insights/share", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sourceAgent, insightType, workspaceScope, title, content, confidence, applicableScenarios } = req.body;
       
@@ -223,7 +224,7 @@ export function registerAiBrainMemoryRoutes(app: Express, requireAuth: any) {
    * POST /api/ai-brain/insights/record-usage
    * Record insight usage for effectiveness tracking
    */
-  app.post("/api/ai-brain/insights/record-usage", requireAuth, async (req: any, res: any) => {
+  app.post("/api/ai-brain/insights/record-usage", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { insightId, wasEffective } = req.body;
       

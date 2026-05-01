@@ -395,7 +395,7 @@ class NotificationStateManager {
   async onNewNotification(
     userId: string,
     workspaceId: string,
-    notification: any
+    notification: unknown
   ): Promise<void> {
     try {
       const newCounts = await this.getUnreadCounts(userId, workspaceId);

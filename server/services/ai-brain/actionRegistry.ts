@@ -622,7 +622,7 @@ class AIBrainActionRegistry {
               data: {
                 shiftId: openShift.id,
                 step: 'assigning',
-                message: `Assigning to ${assignment.employeeName} (score: ${(assignment as any).assignment.toFixed(0)})...`,
+                message: `Assigning to ${assignment.employeeName} (score: ${(assignment as Record<string, unknown>).assignment.toFixed(0)})...`,
                 progress: 80,
                 assignedEmployee: {
                   id: assignment.employeeId,
@@ -1041,7 +1041,7 @@ class AIBrainActionRegistry {
           entityType: 'shift', entityId: 'bulk',
           success: true,
           message: `Trinity bulk-published \${published.length} shift(s) — notification dispatched to workspace`,
-          changesAfter: { count: published.length, shiftIds: published.map(s => s.id) } as any,
+          changesAfter: { count: published.length, shiftIds: published.map(s => s.id) } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1293,7 +1293,7 @@ class AIBrainActionRegistry {
           entityId: employeeId,
           success: true,
           message: 'Employee updated',
-          changesBefore: before as any,
+          changesBefore: before as Record<string, unknown>,
           changesAfter: updated as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
@@ -1391,7 +1391,7 @@ class AIBrainActionRegistry {
         }
         const { universalAuditService } = await import('../universalAuditService');
         const history = await universalAuditService.getEntityHistory('employee', employeeId, request.workspaceId, limit);
-        const lifecycleEvents = history.filter((e: any) =>
+        const lifecycleEvents = history.filter((e: unknown) =>
           ['employee.activated', 'employee.suspended', 'employee.terminated', 'employee.rehired', 'employee.deactivated', 'employee.reactivated'].includes(e.action)
         );
         return createResult(request.actionId, true, `Lifecycle history retrieved for employee ${employeeId}`, { employeeId, total: lifecycleEvents.length, history: lifecycleEvents }, start);
@@ -1525,7 +1525,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'client', entityId: p.clientId ?? null,
           success: true, message: `Portal invite sent to ${p.email}`,
-          payload: { email: p.email, clientId: p.clientId } as any, durationMs: Date.now() - start,
+          payload: { email: p.email, clientId: p.clientId } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, `Portal invite sent to ${p.email}`, { email: p.email, clientId: p.clientId }, start);
       },
@@ -1550,7 +1550,7 @@ class AIBrainActionRegistry {
             lte(shifts.startTime, in14Days),
             isNull(shifts.employeeId),
           ),
-          with: { client: true } as any,
+          with: { client: true } as Record<string, unknown>,
           orderBy: [shifts.startTime],
         });
 
@@ -1793,7 +1793,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'notification', entityId: null,
           success: true, message: `Notification sent: ${title}`,
-          payload: { effectiveSeverity, effectiveType, targetUserIds: targetUserIds.length } as any,
+          payload: { effectiveSeverity, effectiveType, targetUserIds: targetUserIds.length } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
 
@@ -1835,7 +1835,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'notification', entityId: null,
             success: true, message: `Cleared ${totalCleared} notifications for user ${userId}`,
-            payload: { clearedNotifications, clearedAlerts } as any, durationMs: Date.now() - start,
+            payload: { clearedNotifications, clearedAlerts } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
@@ -1858,7 +1858,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'notification', entityId: null,
             success: true, message: `Marked all notifications read for user ${userId}`,
-            payload: { acknowledgedAlerts } as any, durationMs: Date.now() - start,
+            payload: { acknowledgedAlerts } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(
             request.actionId,
@@ -2002,7 +2002,7 @@ class AIBrainActionRegistry {
             await logActionAudit({ actionId: request.actionId, workspaceId, userId: request.userId,
               userRole: request.userRole, platformRole: request.platformRole, entityType: 'shift', entityId: shiftId,
               success: false, errorMessage: `COMPLIANCE_VIOLATION: Guard card \${detail}`,
-              payload: { shiftId, employeeId, reason: 'guard_card_expired' } as any, durationMs: Date.now() - start });
+              payload: { shiftId, employeeId, reason: 'guard_card_expired' } as Record<string, unknown>, durationMs: Date.now() - start });
             return createResult(request.actionId, false,
               `COMPLIANCE_VIOLATION: \${emp.firstName} \${emp.lastName}'s guard card \${detail}. Cannot assign. Renew card first (Texas OC 1702).`, null, start);
           }
@@ -2066,7 +2066,7 @@ class AIBrainActionRegistry {
             userRole: request.userRole, platformRole: request.platformRole,
             entityType: 'shift', entityId: shiftId,
             success: false, errorMessage: 'CONCURRENT_MODIFICATION: Shift was filled by concurrent request',
-            payload: { shiftId, employeeId } as any, durationMs: Date.now() - start,
+            payload: { shiftId, employeeId } as Record<string, unknown>, durationMs: Date.now() - start,
           });
           return createResult(request.actionId, false,
             'CONCURRENT_MODIFICATION: Another manager just filled this shift while you were assigning. DB-level race caught.', null, start);
@@ -2236,7 +2236,7 @@ class AIBrainActionRegistry {
             entityType: 'invoice',
             success: false,
             errorMessage: `Approval required: ${approvalDecision.rationale} Required role: ${approvalDecision.requiredRole}.`,
-            payload: { clientId, amount, decision: approvalDecision } as any,
+            payload: { clientId, amount, decision: approvalDecision } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(
@@ -2572,7 +2572,7 @@ class AIBrainActionRegistry {
             entityId: invoiceId,
             success: true,
             message: `${inserted.length} line items appended to invoice`,
-            changesAfter: { lineItemsAppended: inserted.length, appendedTotalCents } as any,
+            changesAfter: { lineItemsAppended: inserted.length, appendedTotalCents } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
 
@@ -2742,7 +2742,7 @@ class AIBrainActionRegistry {
           entityId: invoiceId,
           success: true,
           message: 'Invoice voided via dual-AI gate',
-          changesBefore: existing as any,
+          changesBefore: existing as Record<string, unknown>,
           changesAfter: updated as Record<string, unknown>,
           payload: { reason },
           durationMs: Date.now() - start,
@@ -3108,7 +3108,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'invitation', entityId: invitation.id,
           success: true, message: `Invitation sent to ${email} (${firstName} ${lastName})`,
-          changesAfter: { email, firstName, lastName, role } as any, durationMs: Date.now() - start,
+          changesAfter: { email, firstName, lastName, role } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, 'Invitation sent successfully', { invitationId: invitation.id }, start);
       },
@@ -3412,7 +3412,7 @@ class AIBrainActionRegistry {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'employee', entityId: null,
           success: true, message: `Bulk import: ${imported.length} employees created, ${errors.length} errors`,
-          changesAfter: { importedCount: imported.length, errorCount: errors.length } as any,
+          changesAfter: { importedCount: imported.length, errorCount: errors.length } as Record<string, unknown>,
           durationMs: Date.now() - start,
         });
         return createResult(
@@ -3804,7 +3804,7 @@ class AIBrainActionRegistry {
             entityType: 'memory', entityId: null,
             success,
             message: `Memory optimization: ${totalDeleted} deleted, ${totalDecayed} decayed, ${totalConsolidated} consolidated`,
-            changesAfter: { totalDeleted, totalDecayed, totalConsolidated, failures: failures.length } as any,
+            changesAfter: { totalDeleted, totalDecayed, totalConsolidated, failures: failures.length } as Record<string, unknown>,
             durationMs: Date.now() - start,
           });
           return createResult(request.actionId, success,
@@ -5015,7 +5015,7 @@ export function registerUniversalIdActions(): void {
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'system', entityId: null,
           success: true, message: summary,
-          changesAfter: { orgs, clients, employees, users } as any, durationMs: Date.now() - start,
+          changesAfter: { orgs, clients, employees, users } as Record<string, unknown>, durationMs: Date.now() - start,
         });
         return createResult(request.actionId, true, summary, { orgs, clients, employees, users }, start);
       } catch (error: unknown) {

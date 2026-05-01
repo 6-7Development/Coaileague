@@ -168,9 +168,9 @@ router.get('/license-expiry', async (req: AuthenticatedRequest, res: Response) =
       ),
     ]);
 
-    const bucket30 = expiring.rows.filter((r: any) => r.bucket === '30d');
-    const bucket60 = expiring.rows.filter((r: any) => r.bucket === '60d');
-    const bucket90 = expiring.rows.filter((r: any) => r.bucket === '90d');
+    const bucket30 = expiring.rows.filter((r: unknown) => r.bucket === '30d');
+    const bucket60 = expiring.rows.filter((r: unknown) => r.bucket === '60d');
+    const bucket90 = expiring.rows.filter((r: unknown) => r.bucket === '90d');
 
     return res.json({
       success: true,
@@ -219,8 +219,8 @@ router.get('/client-health', async (req: AuthenticatedRequest, res: Response) =>
       .catch(() => ({ rows: [] }))
     );
 
-    const highRisk = data.rows.filter((r: any) => r.churn_risk === 'high');
-    const mediumRisk = data.rows.filter((r: any) => r.churn_risk === 'medium');
+    const highRisk = data.rows.filter((r: unknown) => r.churn_risk === 'high');
+    const mediumRisk = data.rows.filter((r: unknown) => r.churn_risk === 'medium');
 
     return res.json({
       success: true,
@@ -472,7 +472,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     if (req.query.format === 'csv') {
       const headers = 'date,metric,value\n';
-      const rows = data.rows.map((r: any) => `${r.snapshot_date},${r.metric_name},${r.metric_value}`).join('\n');
+      const rows = data.rows.map((r: unknown) => `${r.snapshot_date},${r.metric_name},${r.metric_value}`).join('\n');
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="analytics-${reportType}-${new Date().toISOString().slice(0,10)}.csv"`);
       return res.send(headers + rows);

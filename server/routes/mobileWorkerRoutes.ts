@@ -198,7 +198,7 @@ incidentsRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       if (photos.length > MAX_PHOTOS) {
         return res.status(400).json({ message: `Maximum ${MAX_PHOTOS} photos allowed` });
       }
-      photos = photos.filter((p: any) => typeof p === 'string' && p.length < 2000);
+      photos = photos.filter((p: unknown) => typeof p === 'string' && p.length < 2000);
     } else {
       photos = undefined;
     }

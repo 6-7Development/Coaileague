@@ -86,6 +86,7 @@ import { trinityPrefrontalCortex, type OrgSurvivalState, type OrgMode } from './
 import { trinityLimbicSystem, type EmotionalSignal } from './trinityLimbicSystem';
 import { trinitySocialGraphEngine } from './trinitySocialGraphEngine';
 import { trinityGlobalWorkspace } from './trinityGlobalWorkspace';
+import type { EmployeeComplianceRecord } from '@shared/types/domainExtensions';
 const log = createLogger('TrinityChatService');
 
 // === MODULE-SCOPE CONSTANTS ===
@@ -2026,20 +2027,20 @@ Do NOT skip steps — decompose fully before concluding.`;
 
       db
         .select({
-          guardCardNumber: (employeeComplianceRecords as any).guardCardNumber,
-          guardCardExpirationDate: (employeeComplianceRecords as any).guardCardExpirationDate,
-          guardCardStatus: (employeeComplianceRecords as any).guardCardStatus,
-          isArmed: (employeeComplianceRecords as any).isArmed,
-          armedLicenseNumber: (employeeComplianceRecords as any).armedLicenseNumber,
-          armedLicenseExpiration: (employeeComplianceRecords as any).armedLicenseExpiration,
-          overallStatus: (employeeComplianceRecords as any).overallStatus,
-          complianceScore: (employeeComplianceRecords as any).complianceScore,
+          guardCardNumber: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardNumber,
+          guardCardExpirationDate: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardExpirationDate,
+          guardCardStatus: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardStatus,
+          isArmed: (employeeComplianceRecords as EmployeeComplianceRecord).isArmed,
+          armedLicenseNumber: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseNumber,
+          armedLicenseExpiration: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseExpiration,
+          overallStatus: (employeeComplianceRecords as EmployeeComplianceRecord).overallStatus,
+          complianceScore: (employeeComplianceRecords as EmployeeComplianceRecord).complianceScore,
         })
         .from(employeeComplianceRecords)
         .where(
           and(
-            eq((employeeComplianceRecords as any).workspaceId, workspaceId),
-            eq((employeeComplianceRecords as any).employeeId, emp.id)
+            eq((employeeComplianceRecords as EmployeeComplianceRecord).workspaceId, workspaceId),
+            eq((employeeComplianceRecords as EmployeeComplianceRecord).employeeId, emp.id)
           )
         )
         .limit(1),
@@ -2704,7 +2705,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     // Add metacognition context
     if (recentInsights?.length > 0) {
       // FIX 4: Contradiction enforcement — surface detected contradictions BEFORE executing any action
-      const contradictionInsights = recentInsights.filter((ins: any) => ins.insightType === 'contradiction');
+      const contradictionInsights = recentInsights.filter((ins: unknown) => ins.insightType === 'contradiction');
       if (contradictionInsights.length > 0) {
         basePrompt += `\n\nCRITICAL — DETECTED CONTRADICTIONS IN THIS CONVERSATION:\n`;
         contradictionInsights.forEach((ins: any, i: number) => {
@@ -2713,7 +2714,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         basePrompt += `\nIMPORTANT RULE: Before executing ANY action or making ANY change, you MUST explicitly surface these contradictions to the user and ask them to clarify before proceeding. Do not silently resolve contradictions — always ask.\n`;
       }
 
-      const nonContradictionInsights = recentInsights.filter((ins: any) => ins.insightType !== 'contradiction');
+      const nonContradictionInsights = recentInsights.filter((ins: unknown) => ins.insightType !== 'contradiction');
       if (nonContradictionInsights.length > 0) {
         basePrompt += `\n\nRECENT INSIGHTS YOU'VE NOTICED ABOUT THIS USER:\n`;
         nonContradictionInsights.forEach((insight: any, i: number) => {
@@ -2726,7 +2727,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     if (memoryProfile) {
       basePrompt += `\n\nMEMORY PROFILE:\n`;
       if (memoryProfile.frequentTopics?.length > 0) {
-        basePrompt += `- Frequently discusses: ${memoryProfile.frequentTopics.map((t: any) => t.topic).join(', ')}\n`;
+        basePrompt += `- Frequently discusses: ${memoryProfile.frequentTopics.map((t: unknown) => t.topic).join(', ')}\n`;
       }
       if (memoryProfile.preferences?.communicationStyle) {
         basePrompt += `- Prefers ${memoryProfile.preferences.communicationStyle} communication\n`;
@@ -2887,7 +2888,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     }
 
     if (toolCalls && toolCalls.length > 0) {
-      turnData.toolCalls = toolCalls.map((tc: any) => ({
+      turnData.toolCalls = toolCalls.map((tc: unknown) => ({
         name: tc.name,
         args: tc.args,
         success: tc.result?.success ?? true,
@@ -3129,7 +3130,7 @@ If no significant insight, respond with:
       if (fenceMatch) rawText = fenceMatch[1].trim();
       // Also strip leading/trailing ` if present
       rawText = rawText.replace(/^`+|`+$/g, '').trim();
-      const parsed = JSON.parse(rawText || '{"detected": false}');
+      const parsed: unknown = JSON.parse(rawText || '{"detected": false}');
 
       if (parsed.detected && parsed.type && parsed.content) {
         await db.insert(trinityMetacognitionLog).values({

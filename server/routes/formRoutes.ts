@@ -393,7 +393,7 @@ router.get("/form-templates/available", requireAuth, async (req: AuthenticatedRe
     let customForms: (string | number | boolean | null)[] = [];
     if (workspaceId) {
       try {
-        customForms = (await storage.getCustomFormsByOrganization(workspaceId)).map((f: any) => ({
+        customForms = (await storage.getCustomFormsByOrganization(workspaceId)).map((f: unknown) => ({
           id: `custom-${f.id}`,
           name: f.name,
           description: f.description,

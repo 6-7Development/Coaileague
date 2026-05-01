@@ -35,6 +35,7 @@ import { createLogger } from '../../lib/logger';
 import { scheduleNonBlocking } from '../../lib/scheduleNonBlocking';
 import { detectEmailLanguage } from '../trinityVoice/smsLanguageDetector';
 import { PLATFORM_WORKSPACE_ID } from '../billing/billingConstants';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityInboundEmailProcessor');
 
 
@@ -228,7 +229,7 @@ async function resolveSender(fromEmail: string): Promise<ResolvedSender | null> 
   const [client] = await db.select({
     id: clients.id,
     workspaceId: clients.workspaceId,
-    name: (clients as any).name,
+    name: (clients as ClientWithExtras).name,
   })
     .from(clients)
     .where(ilike(clients.email, fromEmail))
@@ -329,7 +330,7 @@ Body: ${bodyText.slice(0, 1500)}`,
     });
 
     const text = (response as Record<string, unknown>).trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
-    const parsed = JSON.parse(text);
+    const parsed: unknown = JSON.parse(text);
     return { data: parsed, confidence: Number(parsed.confidence) || 0 };
   } catch (err: unknown) {
     log.warn('[InboundProcessor] Trinity extraction error:', err.message);

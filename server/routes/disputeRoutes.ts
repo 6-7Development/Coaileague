@@ -345,13 +345,13 @@ router.get('/disputeable-items', async (req: AuthenticatedRequest, res) => {
     ]);
 
     res.json({
-      reviews: reviews.map((r: any) => ({
+      reviews: reviews.map((r: unknown) => ({
         id: r.id,
         type: 'performance_review',
         title: `${r.reviewType} Review - ${r.reviewPeriodStart ? new Date(r.reviewPeriodStart).toLocaleDateString() : 'N/A'}`,
         date: r.completedAt || r.createdAt,
       })),
-      writeups: writeUps.map((w: any) => ({
+      writeups: writeUps.map((w: unknown) => ({
         id: w.id,
         type: 'report_submission',
         title: w.reportNumber || 'Incident Report',

@@ -23,6 +23,7 @@ import {
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, count, isNull } from "drizzle-orm";
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('scheduleos');
 
 
@@ -232,7 +233,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
 
     log.info(`[AI Scheduling] Billed ${aiResult.tokensUsed} tokens to workspace ${wsId}`);
 
-    const validationResult = JSON.parse(aiResult.content || '{}');
+    const validationResult: unknown = JSON.parse(aiResult.content || '{}');
 
     // FAIL FAST: If GPT-4 validation fails, reject the schedule
     if (validationResult.valid === false) {
@@ -241,7 +242,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
     }
 
     // 7. Transform solver output into shift objects with full metadata
-    const generatedShifts = solvedSchedule.assignments.map((assignment: any): any => {
+    const generatedShifts = solvedSchedule.assignments.map((assignment: unknown): any => {
       const emp = employeeIntelligence.find(e => e.employeeId === assignment.employeeId);
       const shiftReq = request.shiftRequirements[assignment.shiftIndex];
       const shiftHours = (shiftReq.endTime.getTime() - shiftReq.startTime.getTime()) / (1000 * 60 * 60);
@@ -272,7 +273,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
       success: true,
       scheduleDate: request.weekStartDate,
       shiftsGenerated: generatedShifts.length,
-      employeesScheduled: new Set(generatedShifts.map((s: any) => s.employeeId)).size,
+      employeesScheduled: new Set(generatedShifts.map((s: unknown) => s.employeeId)).size,
       conflicts: solvedSchedule.conflicts,
       warnings: validationResult.warnings || [],
       recommendations: validationResult.recommendations || [],
@@ -554,7 +555,7 @@ Analyze the solution quality and provide:
         const onTimeClockInRate = totalShifts > 0 ? (onTimeCount / totalShifts) * 100 : 100;
 
         // Calculate no-call-no-show (scheduled shift with no time entry)
-        const noCallNoShowCount = shiftsForEmployee.filter((shift: any) => {
+        const noCallNoShowCount = shiftsForEmployee.filter((shift: unknown) => {
           const hasTimeEntry = timeEntriesData.some((te: any) => {
             const clockInTime = new Date(te.clockIn);
             const shiftStart = new Date(shift.startTime);
@@ -846,8 +847,8 @@ ${idx + 1}. ${emp.employeeName} (ID: ${emp.employeeId})
    ├─ Years of Service: ${emp.yearsOfService.toFixed(1)} years (joined ${emp.employmentStartDate.toLocaleDateString()})
    ├─ Location: ${emp.homeCity}, ${emp.homeState} ${emp.homeZipCode}
    ├─ Availability: ${Object.entries(emp.availability)
-     .filter(([_, v]: any) => v.available)
-     .map(([k, v]: any) => {
+     .filter(([_, v]: [string, unknown]) => v.available)
+     .map(([k, v]: [string, unknown]) => {
        const day = k.substring(0, 3).toUpperCase();
        return v.startTime && v.endTime ? `${day} (${v.startTime}-${v.endTime})` : day;
      })
@@ -879,7 +880,7 @@ ${jobSites.map(site => `
 ═══════════════════════════════════════════════════════════════════════════════
 EXISTING SHIFTS (avoid conflicts)
 ═══════════════════════════════════════════════════════════════════════════════
-${existingShifts.length > 0 ? existingShifts.map((s: any) => `
+${existingShifts.length > 0 ? existingShifts.map((s: unknown) => `
 - Employee ${s.employeeId}: ${new Date(s.startTime).toLocaleString()} → ${new Date(s.endTime).toLocaleString()}
 `).join('\n') : 'None'}
 
@@ -1251,7 +1252,7 @@ RESPONSE FORMAT (JSON)
 
       const clientIds = [...new Set(shiftClients.map(s => s.clientId).filter(Boolean))] as string[];
       const clientRates = clientIds.length > 0
-        ? await db.select({ id: clients.id, billableRate: (clients as any).billableRate })
+        ? await db.select({ id: clients.id, billableRate: (clients as ClientWithExtras).billableRate })
             .from(clients)
             .where(sql`${clients.id} = ANY(ARRAY[${sql.join(clientIds.map(id => sql`${id}::uuid`), sql`, `)}])`)
         : [];

@@ -6,6 +6,7 @@ import { recurringScheduleTemplates } from '../scheduling/recurringScheduleTempl
 import { autonomousSchedulingDaemon } from '../scheduling/autonomousSchedulingDaemon';
 import { platformEventBus } from '../platformEventBus';
 import { createLogger } from '../../lib/logger';
+import type { EmployeeComplianceRecord } from '@shared/types/domainExtensions';
 const log = createLogger('trinityScheduleTimeclockActions');
 
 function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
@@ -72,14 +73,14 @@ export function registerScheduleTimeclockActions() {
 
     // 3. Guard card / compliance expiry check
     const [compliance] = await db.select({
-      guardCardStatus: (employeeComplianceRecords as any).guardCardStatus,
-      guardCardExpirationDate: (employeeComplianceRecords as any).guardCardExpirationDate,
-      overallStatus: (employeeComplianceRecords as any).overallStatus,
+      guardCardStatus: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardStatus,
+      guardCardExpirationDate: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardExpirationDate,
+      overallStatus: (employeeComplianceRecords as EmployeeComplianceRecord).overallStatus,
     })
       .from(employeeComplianceRecords)
       .where(and(
-        eq((employeeComplianceRecords as any).workspaceId, workspaceId),
-        eq((employeeComplianceRecords as any).employeeId, employeeId),
+        eq((employeeComplianceRecords as EmployeeComplianceRecord).workspaceId, workspaceId),
+        eq((employeeComplianceRecords as EmployeeComplianceRecord).employeeId, employeeId),
       ))
       .limit(1);
 
@@ -212,7 +213,7 @@ export function registerScheduleTimeclockActions() {
   helpaiOrchestrator.registerAction(mkAction('scheduling.publish', async (params) => {
     const { workspaceId, shiftIds, weekOf } = params;
     if (!workspaceId) return { error: 'workspaceId required' };
-    let whereClause: any;
+    let whereClause: unknown;
     if (shiftIds && Array.isArray(shiftIds) && shiftIds.length > 0) {
       whereClause = and(eq(shifts.workspaceId, workspaceId), sql`${shifts.id} = ANY(${shiftIds})`);
     } else if (weekOf) {
@@ -460,8 +461,8 @@ export function registerScheduleTimeclockActions() {
         shiftId: sql`time_entries.shift_id`,
       }).from(timeEntries).where(eq(timeEntries.id, clockEntryId)).limit(1).catch(() => []);
 
-      if (entry && (entry as any).clockIn) {
-        const clockInTime = new Date((entry as any).clockIn);
+      if (entry && (entry as unknown).clockIn) {
+        const clockInTime = new Date((entry as unknown).clockIn);
         const window2min = new Date(clockInTime.getTime() - 2 * 60000);
         const window2minAfter = new Date(clockInTime.getTime() + 2 * 60000);
 
@@ -475,7 +476,7 @@ export function registerScheduleTimeclockActions() {
           .where(and(
             eq(timeEntries.workspaceId, workspaceId),
             ne(timeEntries.id, clockEntryId),
-            ne(timeEntries.employeeId, (entry as any).employeeId),
+            ne(timeEntries.employeeId, (entry as unknown).employeeId),
             gte(timeEntries.clockIn, window2min),
             lte(timeEntries.clockIn, window2minAfter),
           ))
@@ -489,12 +490,12 @@ export function registerScheduleTimeclockActions() {
             if ((n as any).employeeId && !affectedOfficers.includes((n as any).employeeId)) {
               affectedOfficers.push((n as any).employeeId);
             }
-            const sameDevice = (entry as any).deviceId && (n as any).deviceId && (entry as any).deviceId === (n as any).deviceId;
+            const sameDevice = (entry as unknown).deviceId && (n as any).deviceId && (entry as unknown).deviceId === (n as any).deviceId;
             if (sameDevice) {
               flags.push(`Same device ID used to clock in two different officers — high buddy punch indicator`);
             }
           }
-          if ((entry as any).employeeId) affectedOfficers.push((entry as any).employeeId);
+          if ((entry as unknown).employeeId) affectedOfficers.push((entry as unknown).employeeId);
         }
       }
     } else {

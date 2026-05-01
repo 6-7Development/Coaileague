@@ -791,7 +791,7 @@ class AutonomousFixPipelineService {
           // Convert reflection patches to valid PatchOperation format
           // Reflection format: {operation, file, search, replace, line}
           // PatchOperation format: {type, file, startLine, endLine, oldContent, newContent, description}
-          patchesToApply = revisedPatches.map((p: any): PatchOperation => ({
+          patchesToApply = revisedPatches.map((p: unknown): PatchOperation => ({
             type: (p.operation || 'replace') as 'insert' | 'delete' | 'replace',
             file: p.file,
             startLine: p.line,

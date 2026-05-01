@@ -54,7 +54,7 @@ const router = Router();
       const csvHeader = showPayRates
         ? 'Employee ID,Client ID,Clock In,Clock Out,Total Hours,Hourly Rate,Total Amount,Status,Billable\n'
         : 'Employee ID,Client ID,Clock In,Clock Out,Total Hours,Status,Billable\n';
-      const csvRows = entries.map((e: any) => {
+      const csvRows = entries.map((e: unknown) => {
         const base = `${e.employeeId},${e.clientId || ''},${format(new Date(e.clockIn), 'yyyy-MM-dd HH:mm')},${e.clockOut ? format(new Date(e.clockOut), 'yyyy-MM-dd HH:mm') : ''},${e.totalHours || ''}`;
         if (showPayRates) {
           return `${base},${e.hourlyRate || ''},${e.totalAmount || ''},${e.status || 'pending'},${e.billableToClient ? 'Yes' : 'No'}`;
@@ -163,7 +163,7 @@ const router = Router();
         }
 
         const [entry] = await tx.insert(timeEntriesTable)
-          .values(validated as any)
+          .values(validated)
           .returning();
         return { overlapping: false, entry } as const;
       });

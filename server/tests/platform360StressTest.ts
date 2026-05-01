@@ -118,7 +118,7 @@ async function phase1_auth_system_completeness() {
     SELECT column_name FROM information_schema.columns 
     WHERE table_name = 'users' ORDER BY ordinal_position
   `);
-  const userCols = (usersTbl as any[]).map((r: any) => r.column_name) || [];
+  const userCols = (usersTbl as any[]).map((r: unknown) => r.column_name) || [];
   const requiredUserCols = ['id', 'email', 'password_hash'];
   const hasAllUserCols = requiredUserCols.every(c => userCols.includes(c));
   record({
@@ -162,7 +162,7 @@ async function phase2_crud_entity_schemas() {
       SELECT column_name FROM information_schema.columns 
       WHERE table_name = ${entity.table} ORDER BY ordinal_position
     `);
-    const cols = (colResult as any[]).map((r: any) => r.column_name) || [];
+    const cols = (colResult as any[]).map((r: unknown) => r.column_name) || [];
     const hasAllCols = entity.requiredCols.every(c => cols.includes(c));
     
     record({
@@ -294,7 +294,7 @@ async function phase4_stripe_webhook_handlers() {
     SELECT column_name FROM information_schema.columns 
     WHERE table_name = 'processed_stripe_events' ORDER BY ordinal_position
   `);
-  const peColumns = (processedEventsTable as any[]).map((r: any) => r.column_name) || [];
+  const peColumns = (processedEventsTable as any[]).map((r: unknown) => r.column_name) || [];
   record({
     name: 'Processed Stripe Events Table Exists',
     phase: 'STRIPE_WEBHOOKS',

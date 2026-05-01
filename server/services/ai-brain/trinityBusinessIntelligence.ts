@@ -460,7 +460,7 @@ class TrinityBusinessIntelligence {
           parts.push(dd.schedule_description);
         }
         if (dd.service_dates && dd.service_dates.length > 0) {
-          parts.push(dd.service_dates.map((d: any) => `${d.date} ${d.time}`).join('; '));
+          parts.push(dd.service_dates.map((d: unknown) => `${d.date} ${d.time}`).join('; '));
         }
         if (parts.length > 0) {
           description = parts.join(' | ');

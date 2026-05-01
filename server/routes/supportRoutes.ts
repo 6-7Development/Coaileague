@@ -88,7 +88,7 @@ router.post('/create-ticket', async (req, res) => {
     }
 
     const fullDescription = conversationHistory && Array.isArray(conversationHistory)
-      ? `${description}\n\n--- Conversation History ---\n${conversationHistory.map((m: any) => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}`
+      ? `${description}\n\n--- Conversation History ---\n${conversationHistory.map((m: unknown) => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}`
       : description;
 
     const ticketNumber = `TKT-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -519,12 +519,12 @@ router.get('/escalated', requirePlatformStaff, async (req: AuthenticatedRequest,
       orderBy: (tickets, { desc }) => [desc(tickets.escalatedAt)],
     });
 
-    const wsIds = [...new Set(rawTickets.map((t: any) => t.workspaceId).filter(Boolean))];
+    const wsIds = [...new Set(rawTickets.map((t: unknown) => t.workspaceId).filter(Boolean))];
     const wsRows = wsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, wsIds) })
       : [];
     const wsMap = new Map((wsRows as any[]).map(w => [w.id, w]));
-    const tickets = rawTickets.map((t: any) => ({ ...t, workspace: wsMap.get(t.workspaceId) || null }));
+    const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: wsMap.get(t.workspaceId) || null }));
 
     res.json(tickets);
   } catch (error) {
@@ -543,12 +543,12 @@ router.get('/priority-queue', requirePlatformStaff, async (req: AuthenticatedReq
       orderBy: (tickets, { asc }) => [asc(tickets.createdAt)],
     });
 
-    const pqWsIds = [...new Set(rawTickets.map((t: any) => t.workspaceId).filter(Boolean))];
+    const pqWsIds = [...new Set(rawTickets.map((t: unknown) => t.workspaceId).filter(Boolean))];
     const pqWsRows = pqWsIds.length > 0
       ? await db.query.workspaces.findMany({ where: inArray(workspaces.id, pqWsIds) })
       : [];
     const pqWsMap = new Map((pqWsRows as any[]).map(w => [w.id, w]));
-    const tickets = rawTickets.map((t: any) => ({ ...t, workspace: pqWsMap.get(t.workspaceId) || null }));
+    const tickets = rawTickets.map((t: unknown) => ({ ...t, workspace: pqWsMap.get(t.workspaceId) || null }));
 
     const tierWeights: Record<string, number> = {
       'strategic': 50,
@@ -782,7 +782,7 @@ router.post('/tickets/:id/generate-summary', requirePlatformStaff, async (req, r
       }
 
       const conversationText = messages
-        .map((m: any) => `${m.senderName || 'Support Agent'}: ${m.message}`)
+        .map((m: unknown) => `${m.senderName || 'Support Agent'}: ${m.message}`)
         .join('\n');
 
       const summaryPrompt = `Please provide a concise executive summary of this support conversation in 2-3 sentences, focusing on:
@@ -1561,9 +1561,9 @@ router.get('/my-workspace-history', async (req: AuthenticatedRequest, res) => {
       supportActions: actions.rows,
       summary: {
         totalTickets: tickets.rows.length,
-        openTickets: tickets.rows.filter((t: any) => t.status === 'open').length,
-        resolvedByTrinity: tickets.rows.filter((t: any) => t.resolution_method === 'trinity_auto').length,
-        escalated: tickets.rows.filter((t: any) => t.status === 'escalated').length
+        openTickets: tickets.rows.filter((t: unknown) => t.status === 'open').length,
+        resolvedByTrinity: tickets.rows.filter((t: unknown) => t.resolution_method === 'trinity_auto').length,
+        escalated: tickets.rows.filter((t: unknown) => t.status === 'escalated').length
       }
     });
   } catch (err) {

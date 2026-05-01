@@ -148,7 +148,7 @@ router.post("/sites/:siteId/versions", requireAuth, async (req: AuthenticatedReq
          WHERE sa.site_id = $1 AND sa.workspace_id = $2 AND e.status = 'active'`,
         [siteId, wid]
       ).catch(() => ({ rows: [] }));
-      officerIds = empR.rows.map((r: any) => r.id);
+      officerIds = empR.rows.map((r: unknown) => r.id);
     }
 
     const id = `pov-${randomUUID()}`;
@@ -381,7 +381,7 @@ router.get("/versions/:versionId/pending", requireAuth, async (req: Authenticate
     const acked = (await db.$client.query(
       `SELECT employee_id FROM post_order_version_acknowledgments WHERE post_order_version_id = $1`,
       [versionId]
-    )).rows.map((r: any) => r.employee_id);
+    )).rows.map((r: unknown) => r.employee_id);
 
     const pending = officers.filter((id: string) => !acked.includes(id));
     if (!pending.length) return res.json([]);

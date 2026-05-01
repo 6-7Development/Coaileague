@@ -14,6 +14,7 @@ import { getTaxRules } from './tax/taxRulesRegistry';
 import { createLogger } from '../lib/logger';
 import { employeeTaxForms } from '@shared/schema';
 import { saveToVault } from './documents/businessFormsVaultService';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('taxFormGeneratorService');
 
 
@@ -257,9 +258,9 @@ export class TaxFormGeneratorService {
         employerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
         employerName: (workspace as any).companyName || workspace.name || 'Employer',
         employerAddress: (workspace as any).address || '',
-        employeeSSN: maskSSN(payrollInfo?.ssn || (employee as any).ssn || ''),
-        employeeName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
-        employeeAddress: (employee as any).address || '',
+        employeeSSN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
+        employeeName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
+        employeeAddress: (employee as EmployeeWithStatus).address || '',
         taxYear,
         wages: aggregated.totalWages,
         federalTaxWithheld: aggregated.federalTaxWithheld,
@@ -269,7 +270,7 @@ export class TaxFormGeneratorService {
         medicareTaxWithheld: aggregated.medicareTaxWithheld,
         stateTaxWithheld: aggregated.stateTaxWithheld,
         stateWages: aggregated.totalWages,
-        state: payrollInfo?.stateOfResidence || (employee as any).state || '',
+        state: payrollInfo?.stateOfResidence || (employee as EmployeeWithStatus).state || '',
         box12Entries,
       };
 
@@ -350,9 +351,9 @@ export class TaxFormGeneratorService {
         payerEIN: (workspace as any).taxId || (workspace as any).ein || 'XX-XXXXXXX',
         payerName: (workspace as any).companyName || workspace.name || 'Payer',
         payerAddress: (workspace as any).address || '',
-        recipientTIN: maskSSN(payrollInfo?.ssn || (employee as any).ssn || ''),
-        recipientName: `${(employee as any).firstName || ''} ${(employee as any).lastName || ''}`.trim(),
-        recipientAddress: (employee as any).address || '',
+        recipientTIN: maskSSN(payrollInfo?.ssn || (employee as EmployeeWithStatus).ssn || ''),
+        recipientName: `${(employee as EmployeeWithStatus).firstName || ''} ${(employee as EmployeeWithStatus).lastName || ''}`.trim(),
+        recipientAddress: (employee as EmployeeWithStatus).address || '',
         taxYear,
         nonemployeeCompensation: aggregated.totalWages,
         federalTaxWithheld: aggregated.federalTaxWithheld,

@@ -487,7 +487,7 @@ async function phase8_credit_persistence_tables() {
     ORDER BY table_name
   `);
 
-  const foundTables = (tableCheck as any).rows?.map((r: any) => r.table_name) || [];
+  const foundTables = (tableCheck as any).rows?.map((r: unknown) => r.table_name) || [];
   const missingTables = requiredTables.filter(t => !foundTables.includes(t));
 
   record({
@@ -505,7 +505,7 @@ async function phase8_credit_persistence_tables() {
     SELECT column_name FROM information_schema.columns 
     WHERE table_name = 'workspace_credits' ORDER BY ordinal_position
   `);
-  const credColNames = (wsCredCols as any).rows?.map((r: any) => r.column_name) || [];
+  const credColNames = (wsCredCols as any).rows?.map((r: unknown) => r.column_name) || [];
   const requiredCols = ['workspace_id', 'current_balance', 'monthly_allocation'];
   const hasAllCols = requiredCols.every(c => credColNames.includes(c));
 
@@ -522,7 +522,7 @@ async function phase8_credit_persistence_tables() {
     SELECT column_name FROM information_schema.columns 
     WHERE table_name = 'credit_transactions' ORDER BY ordinal_position
   `);
-  const txColNames = (txCols as any).rows?.map((r: any) => r.column_name) || [];
+  const txColNames = (txCols as any).rows?.map((r: unknown) => r.column_name) || [];
   const txRequired = ['workspace_id', 'amount', 'feature_key', 'transaction_type'];
   const txHasAll = txRequired.every(c => txColNames.includes(c));
 

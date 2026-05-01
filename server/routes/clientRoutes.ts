@@ -152,7 +152,7 @@ router.get('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest,
         const inviteMap = new Map<string, typeof latestInvites[0]>();
         for (const inv of latestInvites) {
           const existing = inviteMap.get(inv.clientId);
-          if (!existing || new Date(inv.createdAt as any) > new Date(existing.createdAt as any)) {
+          if (!existing || new Date(String(inv.createdAt)) > new Date(String(existing.createdAt))) {
             inviteMap.set(inv.clientId, inv);
           }
         }
@@ -163,8 +163,8 @@ router.get('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest,
         enrichedData = result.data.map(client => {
           const inv = inviteMap.get(client.id);
           if (!inv) return client;
-          const isExpired = now > new Date(inv.expiresAt as any).getTime() ||
-            (now - new Date(inv.createdAt as any).getTime() > SEVEN_DAYS);
+          const isExpired = now > new Date(String(inv.expiresAt)).getTime() ||
+            (now - new Date(String(inv.createdAt)).getTime() > SEVEN_DAYS);
           const visualStatus = inv.isUsed ? 'accepted'
             : isExpired ? 'expired'
             : 'invited';
@@ -364,7 +364,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     if (validated.email) {
       const { emailService } = await import('../services/emailService');
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as any).name || 'Valued Client', validated.companyName || '', workspace.name || '');
+      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as Record<string, unknown>).name || 'Valued Client', validated.companyName || '', workspace.name || '');
       NotificationDeliveryService.send({ idempotencyKey: `notif:client:${client.id}:welcome`,
             type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
         .catch(err => log.error('[Client Creation] Failed to queue welcome email:', err));
@@ -378,7 +378,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
           userEmail: validated.email,
           userType: 'client',
           workspaceName: workspace.name || 'Your Organization',
-          userName: (validated as any).name || validated.companyName || 'Valued Client',
+          userName: (validated as Record<string, unknown>).name || validated.companyName || 'Valued Client',
           customContext: { tenantName: workspace.name || 'Your Organization' },
         });
       } catch (trinityEmailErr) {
@@ -390,7 +390,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     entityCreationNotifier.notifyNewClient({
       clientId: client.id,
       workspaceId,
-      name: (validated as any).name || validated.companyName || 'New Client',
+      name: (validated as Record<string, unknown>).name || validated.companyName || 'New Client',
       contactEmail: validated.email,
       address: validated.address,
       createdBy: userId || 'system',
@@ -406,7 +406,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       const emailSlug = wsRow.rows[0]?.email_slug;
       if (emailSlug) {
         const { emailProvisioningService } = await import('../services/email/emailProvisioningService');
-        const clientName = validated.companyName || (validated as any).name || `client-${client.id.slice(0, 8)}`;
+        const clientName = validated.companyName || (validated as Record<string, unknown>).name || `client-${client.id.slice(0, 8)}`;
         await emailProvisioningService.reserveClientEmailAddress(
           workspaceId,
           client.id,
@@ -426,7 +426,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     try {
       const { platformEventBus } = await import('../services/platformEventBus');
       const clientRates = await storage.getClientRates(workspaceId, client.id);
-      const contractRate = (clientRates as any)?.[0]?.rate || null;
+      const contractRate = (clientRates as Record<string, unknown>[])?.[0]?.rate || null;
       platformEventBus.publish({
         type: 'client.created',
         workspaceId,
@@ -464,8 +464,8 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
     }
     const validated = validationResult.data;
 
-    if ((validated as any).billableRate !== undefined) {
-      if (businessRuleResponse(res, [validateBillingRate((validated as any).billableRate, 'billableRate')])) return;
+    if ((validated as Record<string, unknown>).billableRate !== undefined) {
+      if (businessRuleResponse(res, [validateBillingRate((validated as Record<string, unknown>).billableRate, 'billableRate')])) return;
     }
 
     // Fetch current client state BEFORE update so we can detect deactivation

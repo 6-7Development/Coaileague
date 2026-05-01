@@ -466,7 +466,7 @@ export async function getAuditLogsReport(filters: ReportFilters & { action?: str
     offset: filters.offset || 0,
   });
 
-  const logUserIds = [...new Set(rawLogs.map((l: any) => l.userId).filter(Boolean))];
+  const logUserIds = [...new Set(rawLogs.map((l: unknown) => l.userId).filter(Boolean))];
   const logUsers = logUserIds.length > 0
     ? await db.query.users.findMany({
         where: inArray(users.id, logUserIds),
@@ -474,7 +474,7 @@ export async function getAuditLogsReport(filters: ReportFilters & { action?: str
       })
     : [];
   const logUserMap = new Map(logUsers.map(u => [u.id, u]));
-  const logs = rawLogs.map((l: any) => ({ ...l, user: logUserMap.get(l.userId) || null }));
+  const logs = rawLogs.map((l: unknown) => ({ ...l, user: logUserMap.get(l.userId) || null }));
 
   // Group by action type
   const actionCounts = logs.reduce((acc: Record<string, number>, log: any) => {
@@ -483,7 +483,7 @@ export async function getAuditLogsReport(filters: ReportFilters & { action?: str
   }, {});
 
   return {
-    logs: logs.map((log: any) => ({
+    logs: logs.map((log: unknown) => ({
       id: log.id,
       timestamp: log.createdAt,
       action: log.action,

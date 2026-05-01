@@ -1503,7 +1503,7 @@ ${rawBody.substring(0, 2000)}
             subject: inboundEmail.subject || '(no subject)',
             bodyText: emailBody,
             bodyHtml: inboundEmail.html || undefined,
-            attachments: (inboundEmail.attachments || []).map((a: any) => ({
+            attachments: (inboundEmail.attachments || []).map((a: unknown) => ({
               filename: a.filename || a.name || 'attachment',
               contentType: a.contentType || a.content_type || 'application/octet-stream',
               size: a.size,
@@ -1589,7 +1589,7 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
     }
 
     const hasAttachments = (testEmail.attachments?.length || 0) > 0;
-    const attachmentNames = testEmail.attachments?.map((a: any) => a.filename || a.name || 'unnamed') || [];
+    const attachmentNames = testEmail.attachments?.map((a: unknown) => a.filename || a.name || 'unnamed') || [];
     const hasContractAttachment = attachmentNames.some((name: string) => 
       /contract|agreement|sow|terms|proposal/i.test(name)
     );

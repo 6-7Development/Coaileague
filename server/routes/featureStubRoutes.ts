@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 /**
  * featureStubRoutes.ts
  * ════════════════════
@@ -24,7 +26,7 @@ const log = createLogger('FeatureStubs');
 const router = Router();
 
 function stub(feature: string, eta?: string) {
-  return async (req: AuthenticatedRequest, res: any) => {
+  return async (req: AuthenticatedRequest, res: Response) => {
     log.info(`[FeatureStub] ${feature} accessed by workspace ${req.workspaceId || 'unknown'}`);
     // Fire Trinity demand-tracking event non-blocking
     Promise.resolve().then(async () => {

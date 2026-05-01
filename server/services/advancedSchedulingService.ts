@@ -638,7 +638,7 @@ export async function getSwapRequests(
     },
   });
 
-  return requests as any;
+  return requests;
 }
 
 export async function getSwapRequestById(

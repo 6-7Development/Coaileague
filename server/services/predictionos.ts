@@ -208,7 +208,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
 
       log.info(`[PredictionOS] Billed ${result.tokensUsed} tokens to workspace ${wsId}`);
       
-      const aiResponse = JSON.parse(result.content || "{}");
+      const aiResponse: unknown = JSON.parse(result.content || "{}");
       
       return {
         riskScore: aiResponse.riskScore || 0,
@@ -374,7 +374,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
 
       log.info(`[PredictionOS] Billed ${costResult.tokensUsed} tokens to workspace ${wsId}`);
       
-      const aiResponse = JSON.parse(costResult.content || "{}");
+      const aiResponse: unknown = JSON.parse(costResult.content || "{}");
       
       const predictedCost = aiResponse.predictedCost || budgetedCost;
       const variancePercentage = aiResponse.variancePercentage || 0;

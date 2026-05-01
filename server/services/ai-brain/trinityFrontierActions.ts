@@ -191,7 +191,7 @@ export function registerTrinityFrontierActions(orchestrator: any): void {
         actionId: request.actionId,
         message: allOperational 
           ? 'All 5 frontier capabilities operational'
-          : `${diagnostics.checks.filter((c: any) => c.status !== 'operational').length} capability issue(s) detected`,
+          : `${diagnostics.checks.filter((c: unknown) => c.status !== 'operational').length} capability issue(s) detected`,
         data: diagnostics,
         executionTimeMs: Date.now() - startTime
       };

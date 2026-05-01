@@ -179,8 +179,8 @@ router.get("/safety-checks/recent", requireAuth, async (req: AuthenticatedReques
         data = typeof r.summary === 'string' ? JSON.parse(r.summary) : {};
       } catch { data = {}; }
       const items = data.items || {};
-      const passCount = Object.values(items).filter((v: any) => v === 'pass').length;
-      const failCount = Object.values(items).filter((v: any) => v === 'fail').length;
+      const passCount = Object.values(items).filter((v: unknown) => v === 'pass').length;
+      const failCount = Object.values(items).filter((v: unknown) => v === 'fail').length;
       return {
         id: r.id,
         siteName: data.location ? `${data.location.lat}, ${data.location.lng}` : 'Unknown Site',

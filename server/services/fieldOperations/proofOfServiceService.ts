@@ -413,7 +413,7 @@ class ProofOfServiceService {
         ...payload.compliance,
         reviewedAt: payload.compliance?.reviewedAt ? toDate(payload.compliance.reviewedAt) : undefined,
       },
-      chainOfCustody: (payload.chainOfCustody || []).map((e: any) => ({
+      chainOfCustody: (payload.chainOfCustody || []).map((e: unknown) => ({
         ...e, timestamp: toDate(e.timestamp),
       })),
       capturedAt: toDate(payload.capturedAt),

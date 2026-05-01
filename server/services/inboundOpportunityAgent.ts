@@ -711,7 +711,7 @@ If NOT a staffing request, use isShiftRequest: false.`;
       // Find JSON object in response
       const jsonMatch = cleanText.match(/\{[^{}]*"isShiftRequest"[^{}]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return {
           isShiftRequest: parsed.isShiftRequest === true,
           confidence: parsed.confidence || 0.8,
@@ -816,7 +816,7 @@ Return ONLY the JSON array, no markdown, no explanations.`;
       log.info('[InboundOpportunityAgent] Raw shift extraction:', result.text);
       log.info('[InboundOpportunityAgent] Cleaned shift JSON:', cleanText);
       
-      let parsed: any;
+      let parsed: unknown;
       try {
         parsed = JSON.parse(cleanText);
       } catch (parseErr) {
@@ -1064,7 +1064,7 @@ Return ONLY the JSON array, no markdown, no explanations.`;
           const offerExpiresAt = (processResult as any).offerExpiresAt || new Date(Date.now() + 2 * 60 * 60 * 1000);
 
           // Get employee emails for all offer recipients
-          const employeeIds = createdOffers.map((o: any) => o.employeeId);
+          const employeeIds = createdOffers.map((o: unknown) => o.employeeId);
           if (employeeIds.length === 0) {
             notifications.push('dashboard:staffing_offers_sent');
             return notifications;
@@ -1150,7 +1150,7 @@ Return ONLY the JSON array, no markdown, no explanations.`;
           const notifyCtx = processResult.notificationContext;
           if (notifyCtx?.senderEmail) {
             try {
-              const assignedNames = createdOffers.map((o: any) => {
+              const assignedNames = createdOffers.map((o: unknown) => {
                 const emp = employeeMap.get(o.employeeId);
                 return emp ? `${emp.firstName} ${emp.lastName}` : 'Staff Member';
               }).join(', ');
@@ -1274,7 +1274,7 @@ Consider: qualifications match, reliability history, preference match, availabil
         temperature: 0.2,
       });
       
-      const parsed = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
+      const parsed: unknown = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
       
       return {
         matches: Array.isArray(parsed) ? parsed : [],
@@ -1742,7 +1742,7 @@ Return JSON:
         temperature: 0.1,
       });
       
-      const parsed = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
+      const parsed: unknown = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
       
       return {
         decision: parsed.decision || 'REVIEW',
@@ -2079,7 +2079,7 @@ Write a concise, professional email. Return JSON:
         temperature: 0.3,
       });
       
-      const parsed = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
+      const parsed: unknown = JSON.parse(result.text.replace(/```json\n?|\n?```/g, '').trim());
       
       return {
         subject: parsed.subject || `Shift Confirmation - ${shift.shiftDate}`,

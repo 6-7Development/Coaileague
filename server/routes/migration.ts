@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 /**
  * CoAIleague Data Migration API — Employee CSV Import
  *
@@ -191,7 +193,7 @@ const upload = multer({
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
-migrationRouter.post("/upload", upload.single("file"), localVirusScan, (req: AuthenticatedRequest, res: any) => {
+migrationRouter.post("/upload", upload.single("file"), localVirusScan, (req: AuthenticatedRequest, res: Response) => {
   try {
     cleanExpiredJobs();
     if (!req.file) {
@@ -220,7 +222,7 @@ migrationRouter.post("/upload", upload.single("file"), localVirusScan, (req: Aut
   }
 });
 
-migrationRouter.post("/analyze/:jobId", (req: AuthenticatedRequest, res: any) => {
+migrationRouter.post("/analyze/:jobId", (req: AuthenticatedRequest, res: Response) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found or expired (jobs expire after 2 hours)" });
   if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: "Access denied" });
@@ -232,7 +234,7 @@ migrationRouter.post("/analyze/:jobId", (req: AuthenticatedRequest, res: any) =>
   });
 });
 
-migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: any) => {
+migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: Response) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found or expired" });
   if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: "Access denied" });
@@ -338,7 +340,7 @@ migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: an
   }
 });
 
-migrationRouter.get("/jobs", (req: AuthenticatedRequest, res: any) => {
+migrationRouter.get("/jobs", (req: AuthenticatedRequest, res: Response) => {
   cleanExpiredJobs();
   const workspaceId: string = req.workspaceId!;
   const workspaceJobs = Array.from(jobs.values())
@@ -352,7 +354,7 @@ migrationRouter.get("/jobs", (req: AuthenticatedRequest, res: any) => {
   res.json({ jobs: workspaceJobs });
 });
 
-migrationRouter.get("/records/:jobId", (req: AuthenticatedRequest, res: any) => {
+migrationRouter.get("/records/:jobId", (req: AuthenticatedRequest, res: Response) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found or expired" });
   if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: "Access denied" });
@@ -362,7 +364,7 @@ migrationRouter.get("/records/:jobId", (req: AuthenticatedRequest, res: any) => 
   });
 });
 
-migrationRouter.post("/cancel/:jobId", (req: AuthenticatedRequest, res: any) => {
+migrationRouter.post("/cancel/:jobId", (req: AuthenticatedRequest, res: Response) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found or expired" });
   if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: "Access denied" });

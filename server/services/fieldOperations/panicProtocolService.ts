@@ -409,7 +409,7 @@ function buildEmergencySummary(
     firstResponderId: event.firstAcknowledgedBy ?? null,
     escalationCount: event.escalationCount,
     smsAttempts: attempts.length,
-    smsSuccessful: attempts.filter((a: any) => a.sent).length,
+    smsSuccessful: attempts.filter((a: unknown) => a.sent).length,
     status: 'resolved',
     resolutionNotes: notes,
     generatedAt: resolvedAt.toISOString(),

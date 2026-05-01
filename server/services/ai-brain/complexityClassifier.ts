@@ -134,7 +134,7 @@ export async function classifyComplexity(
     if (fenceMatch) raw = fenceMatch[1].trim();
     raw = raw.replace(/^`+|`+$/g, '').trim();
 
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
     const complexity: ComplexityLevel = ['low', 'medium', 'high'].includes(parsed.complexity)
       ? parsed.complexity : 'medium';
     const domain: ComplexityDomain['domain'] = [

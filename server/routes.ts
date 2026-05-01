@@ -491,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // to give developers a reliable 1-click login even when the main flow has issues.
   // NEVER active in production — gated by isProductionEnv() which checks Railway env.
   if (!isProductionEnv()) {
-    app.post('/api/dev/quick-login', async (req: any, res: any) => {
+    app.post('/api/dev/quick-login', async (req: AuthenticatedRequest, res: Response) => {
       try {
         const { account } = req.body || {};
         const { pool: devPool } = await import('./db');
@@ -1053,13 +1053,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── ACTIVE-OPERATIONS: same bypass — all workspace members can poll this ──
   // TrinityThoughtBar calls /api/trinity/active-operations on every dashboard load.
   // Must NOT go through requireTrinityAccess (platform staff only) or it 403s every user.
-  app.use('/api/trinity/active-operations', requireAuth, ensureWorkspaceAccess, (req: any, res: any) => {
+  app.use('/api/trinity/active-operations', requireAuth, ensureWorkspaceAccess, (req: AuthenticatedRequest, res: Response) => {
     // Inline handler — imports universalStepLogger to get active orchestrations
     import('./services/orchestration/universalStepLogger').then(({ universalStepLogger }) => {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: 'workspaceId required' });
       const active = universalStepLogger.getActiveOrchestrations(workspaceId);
-      const operations = active.map((ctx: any) => ({
+      const operations = active.map((ctx: unknown) => ({
         orchestrationId: ctx.orchestrationId,
         domain: ctx.domain,
         actionName: ctx.actionName,
@@ -1067,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentStep: ctx.steps?.[ctx.steps.length - 1]?.step || 'TRIGGER',
         stepStatus: ctx.steps?.[ctx.steps.length - 1]?.status || 'pending',
         progress: ctx.steps?.length > 0
-          ? Math.round((ctx.steps.filter((s: any) => s.status === 'completed').length / ctx.steps.length) * 100)
+          ? Math.round((ctx.steps.filter((s: unknown) => s.status === 'completed').length / ctx.steps.length) * 100)
           : 0,
         modelUsed: ctx.metadata?.modelUsed || 'claude',
       }));

@@ -1734,7 +1734,7 @@ class AIBrainMasterOrchestrator {
               
               // Check for missing break (>6 hours without break)
               // Using breakDurationMinutes from schema (cast to any for optional field access)
-              const breakDuration = (entry as any).breakDurationMinutes || 0;
+              const breakDuration = (entry as unknown).breakDurationMinutes || 0;
               if (hours > 6 && !breakDuration) {
                 violations.push({
                   type: 'missing_break',

@@ -260,7 +260,7 @@ router.get("/dashboard", requireAuth, async (req: AuthenticatedRequest, res) => 
       [wid]
     );
 
-    const churnRisks = clients.rows.filter((c: any) =>
+    const churnRisks = clients.rows.filter((c: unknown) =>
       c.latest_score && c.previous_score &&
       parseFloat(c.previous_score) - parseFloat(c.latest_score) >= 0.5
     );

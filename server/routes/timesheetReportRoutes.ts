@@ -332,9 +332,9 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
       }
 
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      const clockIn = (entry as any).clockIn ? new (Date as any)(entry.clockIn) : null;
+      const clockIn = (entry as unknown).clockIn ? new (Date as any)(entry.clockIn) : null;
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      const clockOut = (entry as any).clockOut ? new (Date as any)(entry.clockOut) : null;
+      const clockOut = (entry as unknown).clockOut ? new (Date as any)(entry.clockOut) : null;
 
       const rowData = [
         entry.employeeName || 'Unknown',

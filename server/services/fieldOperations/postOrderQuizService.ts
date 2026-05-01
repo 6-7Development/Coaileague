@@ -255,7 +255,7 @@ class PostOrderQuizService {
     if (!ack.acknowledgedAt) return false;
 
     try {
-      const content = JSON.parse(ack.content);
+      const content: unknown = JSON.parse(ack.content);
       return content.passed === true;
     } catch {
       return !!ack.acknowledgedAt;

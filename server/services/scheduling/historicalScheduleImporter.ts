@@ -98,7 +98,7 @@ class HistoricalScheduleImporterService {
 
       // Map column names (flexible matching)
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      const mappedRecords: ImportedShift[] = records.map((record: any, index: number) => {
+      const mappedRecords: ImportedShift[] = records.map((record: unknown, index: number) => {
         try {
           return this.mapCSVRecord(record, options);
         } catch (e: unknown) {
@@ -197,7 +197,7 @@ class HistoricalScheduleImporterService {
   /**
    * Map CSV record to ImportedShift
    */
-  private mapCSVRecord(record: any, options: Record<string, unknown>): ImportedShift {
+  private mapCSVRecord(record: unknown, options: Record<string, unknown>): ImportedShift {
     // Flexible column name matching
     const getField = (names: string[]): string => {
       for (const name of names) {

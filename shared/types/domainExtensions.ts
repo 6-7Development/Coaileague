@@ -67,6 +67,14 @@ export interface EmployeeWithStatus {
   hourlyRate?: string | null;
   color?: string | null;
   profileImageUrl?: string | null;
+  // Scheduling & availability fields
+  schedulingScore?: number | null;
+  travelRadiusMiles?: number | null;
+  availabilityMode?: string | null;
+  armedLicenseNumber?: string | null;
+  armedLicenseExpiration?: string | Date | null;
+  guardCardNumber?: string | null;
+  guardCardExpirationDate?: string | Date | null;
   [key: string]: unknown;          // Allow additional JOIN fields
 }
 
@@ -81,5 +89,43 @@ export interface WorkspaceWithExtras {
   tier?: string | null;
   taxId?: string | null;
   platformFeePercentage?: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Client extended type — includes fields from JOINs and compliance records.
+ */
+export interface ClientWithExtras {
+  id: string;
+  workspaceId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  isActive?: boolean | null;
+  requiresArmed?: boolean | null;
+  armedBillRate?: string | number | null;
+  unarmedBillRate?: string | number | null;
+  requiredLicenseTypes?: string[] | null;
+  minOfficerSchedulingScore?: number | null;
+  overtimeBillRate?: string | number | null;
+  holidayBillRate?: string | number | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Employee compliance record extended type — includes license/credential fields.
+ */
+export interface EmployeeComplianceRecord {
+  id?: string;
+  employeeId?: string;
+  workspaceId?: string;
+  isArmed?: boolean | null;
+  armedLicenseNumber?: string | null;
+  armedLicenseExpiration?: string | Date | null;
+  guardCardNumber?: string | null;
+  guardCardExpirationDate?: string | Date | null;
+  licenseType?: string | null;
+  licenseExpiry?: string | Date | null;
+  certificationLevel?: string | null;
   [key: string]: unknown;
 }

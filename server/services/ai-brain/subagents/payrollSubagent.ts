@@ -803,7 +803,7 @@ class PayrollSubagentService {
       try {
         // Collect source time entry IDs for atomic claim.
         // timeData is the full rows from fetchTimeEntries — all have .id.
-        const sourceTimeEntryIds = [...new Set(timeData.map((t: any) => t.id as string))];
+        const sourceTimeEntryIds = [...new Set(timeData.map((t: unknown) => t.id as string))];
 
         // ── Atomic transaction: create draft run → stage entries → submit ────
         // Routed through the canonical AtomicFinancialLockService so the

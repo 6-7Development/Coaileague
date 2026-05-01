@@ -40,6 +40,7 @@ import {
 import { eq, and, gte, lte, lt, gt, isNull, isNotNull, sql, desc, asc, or, ne, inArray, notInArray } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 import { multiplyFinancialValues, addFinancialValues, toFinancialString } from '../financialCalculator';
+import type { EmployeeWithStatus, ClientWithExtras, EmployeeComplianceRecord } from '@shared/types/domainExtensions';
 const log = createLogger('trinityIntelligenceLayers');
 
 // ============================================================================
@@ -50,7 +51,7 @@ function mkLayer(layer: string, actionId: string, fn: (params: Record<string, un
   return {
     actionId,
     name: actionId,
-    category: layer as any,
+    category: layer as string,
     description: `Trinity Intelligence Layer — ${layer} — ${actionId}`,
     inputSchema: { type: 'object' as const, properties: {} },
     handler: async (req: ActionRequest): Promise<ActionResult> => {
@@ -166,11 +167,11 @@ export function registerSchedulingCognitionActions() {
     for (const site of Object.keys(siteSummaries)) {
       const days = siteSummaries[site].peakDays;
       siteSummaries[site].rankedDays = Object.entries(days)
-        .sort(([,a]: any, [,b]: any) => b - a)
+        .sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
         .map(([day, count]) => ({ day, shiftsPerWeek: Math.round((count as number) / weeksBack * 10) / 10 }));
     }
 
-    const forecasts = Object.entries(siteSummaries).map(([clientId, summary]: any) => ({
+    const forecasts = Object.entries(siteSummaries).map(([k, v]: [string, unknown]) => ({
       clientId,
       totalShiftsAnalyzed: summary.totalShifts,
       weeksAnalyzed: weeksBack,
@@ -218,12 +219,12 @@ export function registerSchedulingCognitionActions() {
       db.select({
         firstName: employees.firstName, lastName: employees.lastName,
         performanceScore: employees.performanceScore, rating: employees.rating,
-        schedulingScore: (employees as any).schedulingScore,
+        schedulingScore: (employees as EmployeeWithStatus).schedulingScore,
         hourlyRate: employees.hourlyRate, overtimeRate: employees.overtimeRate,
-        isArmed: (employees as any).isArmed, armedLicenseVerified: (employees as any).armedLicenseVerified,
-        guardCardVerified: (employees as any).guardCardVerified,
-        travelRadiusMiles: (employees as any).travelRadiusMiles,
-        availabilityMode: (employees as any).availabilityMode,
+        isArmed: (employees as EmployeeWithStatus).isArmed, armedLicenseVerified: (employees as EmployeeWithStatus).armedLicenseVerified,
+        guardCardVerified: (employees as EmployeeWithStatus).guardCardVerified,
+        travelRadiusMiles: (employees as EmployeeWithStatus).travelRadiusMiles,
+        availabilityMode: (employees as EmployeeWithStatus).availabilityMode,
         availabilityPercentage: employees.availabilityPercentage,
         latitude: employees.latitude, longitude: employees.longitude,
         workerType: employees.workerType, position: employees.position,
@@ -235,11 +236,11 @@ export function registerSchedulingCognitionActions() {
       db.select({
         companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName,
         contractRate: clients.contractRate, contractRateType: clients.contractRateType,
-        requiresArmed: (clients as any).requiresArmed,
-        armedBillRate: (clients as any).armedBillRate, unarmedBillRate: (clients as any).unarmedBillRate,
+        requiresArmed: (clients as ClientWithExtras).requiresArmed,
+        armedBillRate: (clients as ClientWithExtras).armedBillRate, unarmedBillRate: (clients as ClientWithExtras).unarmedBillRate,
         requiredCertifications: clients.requiredCertifications,
-        requiredLicenseTypes: (clients as any).requiredLicenseTypes,
-        minOfficerSchedulingScore: (clients as any).minOfficerSchedulingScore,
+        requiredLicenseTypes: (clients as ClientWithExtras).requiredLicenseTypes,
+        minOfficerSchedulingScore: (clients as ClientWithExtras).minOfficerSchedulingScore,
         maxDrivingDistance: clients.maxDrivingDistance,
         siteDifficultyLevel: clients.siteDifficultyLevel,
         latitude: clients.latitude, longitude: clients.longitude,
@@ -249,15 +250,15 @@ export function registerSchedulingCognitionActions() {
         .limit(1),
 
       db.select({
-        isArmed: (employeeComplianceRecords as any).isArmed,
-        armedLicenseNumber: (employeeComplianceRecords as any).armedLicenseNumber,
-        armedLicenseExpiration: (employeeComplianceRecords as any).armedLicenseExpiration,
-        guardCardNumber: (employeeComplianceRecords as any).guardCardNumber,
-        guardCardExpirationDate: (employeeComplianceRecords as any).guardCardExpirationDate,
-        guardCardStatus: (employeeComplianceRecords as any).guardCardStatus,
+        isArmed: (employeeComplianceRecords as EmployeeComplianceRecord).isArmed,
+        armedLicenseNumber: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseNumber,
+        armedLicenseExpiration: (employeeComplianceRecords as EmployeeComplianceRecord).armedLicenseExpiration,
+        guardCardNumber: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardNumber,
+        guardCardExpirationDate: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardExpirationDate,
+        guardCardStatus: (employeeComplianceRecords as EmployeeComplianceRecord).guardCardStatus,
       })
         .from(employeeComplianceRecords)
-        .where(and(eq((employeeComplianceRecords as any).workspaceId, workspaceId), eq((employeeComplianceRecords as any).employeeId, employeeId)))
+        .where(and(eq((employeeComplianceRecords as EmployeeComplianceRecord).workspaceId, workspaceId), eq((employeeComplianceRecords as EmployeeComplianceRecord).employeeId, employeeId)))
         .limit(1),
     ]);
 
@@ -301,8 +302,8 @@ export function registerSchedulingCognitionActions() {
     // ── Profitability analysis ────────────────────────────────────────────────
     const payRate = Number(emp.hourlyRate || 0);
     const billRate = requiresArmed
-      ? Number((client as any).armedBillRate || client.contractRate || 0)
-      : Number((client as any).unarmedBillRate || client.contractRate || 0);
+      ? Number((client as ClientWithExtras).armedBillRate || client.contractRate || 0)
+      : Number((client as ClientWithExtras).unarmedBillRate || client.contractRate || 0);
     const profitMarginDollar = billRate > 0 ? Math.round((billRate - payRate) * 100) / 100 : null;
     const profitMarginPct = billRate > 0 && payRate > 0 ? Math.round(((billRate - payRate) / billRate) * 1000) / 10 : null;
     const profitabilityScore = profitMarginPct === null ? 70 : profitMarginPct >= 30 ? 100 : profitMarginPct >= 20 ? 85 : profitMarginPct >= 10 ? 65 : profitMarginPct > 0 ? 40 : 0;
@@ -311,7 +312,7 @@ export function registerSchedulingCognitionActions() {
     const perfScore = (emp as any).schedulingScore || emp.performanceScore || 75;
     const rating = Number(emp.rating || 4);
     const siteExperiencePct = totalShifts > 0 ? (siteShifts / totalShifts) * 100 : 0;
-    const minScoreRequired = Number((client as any).minOfficerSchedulingScore || 0);
+    const minScoreRequired = Number((client as ClientWithExtras).minOfficerSchedulingScore || 0);
     const meetsMinScore = perfScore >= minScoreRequired;
 
     // ── Availability check ────────────────────────────────────────────────────
@@ -343,7 +344,7 @@ export function registerSchedulingCognitionActions() {
       employeeId,
       clientId,
       officerName: `${emp.firstName} ${emp.lastName}`,
-      siteName: (client as any).companyName || `${client.firstName} ${client.lastName}`,
+      siteName: (client as ClientWithExtras).companyName || `${client.firstName} ${client.lastName}`,
       tier,
       compositeScore,
       disqualifiers,
@@ -380,12 +381,12 @@ export function registerSchedulingCognitionActions() {
     let clientData: unknown = null;
     if (clientId) {
       const [c] = await db.select({
-        requiresArmed: (clients as any).requiresArmed,
-        minOfficerSchedulingScore: (clients as any).minOfficerSchedulingScore,
+        requiresArmed: (clients as ClientWithExtras).requiresArmed,
+        minOfficerSchedulingScore: (clients as ClientWithExtras).minOfficerSchedulingScore,
         maxDrivingDistance: clients.maxDrivingDistance,
         latitude: clients.latitude, longitude: clients.longitude,
         requiredCertifications: clients.requiredCertifications,
-        requiredLicenseTypes: (clients as any).requiredLicenseTypes,
+        requiredLicenseTypes: (clients as ClientWithExtras).requiredLicenseTypes,
         siteDifficultyLevel: clients.siteDifficultyLevel,
       }).from(clients).where(and(eq(clients.workspaceId, workspaceId), eq(clients.id, clientId))).limit(1);
       clientData = c || null;
@@ -419,11 +420,11 @@ export function registerSchedulingCognitionActions() {
       db.select({
         id: employees.id, firstName: employees.firstName, lastName: employees.lastName,
         hourlyRate: employees.hourlyRate,
-        isArmed: (employees as any).isArmed, armedLicenseVerified: (employees as any).armedLicenseVerified,
-        guardCardVerified: (employees as any).guardCardVerified,
-        travelRadiusMiles: (employees as any).travelRadiusMiles,
-        schedulingScore: (employees as any).schedulingScore,
-        availabilityMode: (employees as any).availabilityMode,
+        isArmed: (employees as EmployeeWithStatus).isArmed, armedLicenseVerified: (employees as EmployeeWithStatus).armedLicenseVerified,
+        guardCardVerified: (employees as EmployeeWithStatus).guardCardVerified,
+        travelRadiusMiles: (employees as EmployeeWithStatus).travelRadiusMiles,
+        schedulingScore: (employees as EmployeeWithStatus).schedulingScore,
+        availabilityMode: (employees as EmployeeWithStatus).availabilityMode,
         latitude: employees.latitude, longitude: employees.longitude,
       })
         .from(employees)
@@ -505,9 +506,9 @@ export function registerSchedulingCognitionActions() {
     // If specific officer+client pair requested
     if (employeeId && clientId) {
       const [emp, client] = await Promise.all([
-        db.select({ firstName: employees.firstName, lastName: employees.lastName, hourlyRate: employees.hourlyRate, overtimeRate: employees.overtimeRate, workerType: employees.workerType, isArmed: (employees as any).isArmed })
+        db.select({ firstName: employees.firstName, lastName: employees.lastName, hourlyRate: employees.hourlyRate, overtimeRate: employees.overtimeRate, workerType: employees.workerType, isArmed: (employees as EmployeeWithStatus).isArmed })
           .from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.id, employeeId))).limit(1),
-        db.select({ companyName: clients.companyName, contractRate: clients.contractRate, armedBillRate: (clients as any).armedBillRate, unarmedBillRate: (clients as any).unarmedBillRate, overtimeBillRate: (clients as any).overtimeBillRate, clientOvertimeMultiplier: clients.clientOvertimeMultiplier })
+        db.select({ companyName: clients.companyName, contractRate: clients.contractRate, armedBillRate: (clients as ClientWithExtras).armedBillRate, unarmedBillRate: (clients as ClientWithExtras).unarmedBillRate, overtimeBillRate: (clients as ClientWithExtras).overtimeBillRate, clientOvertimeMultiplier: clients.clientOvertimeMultiplier })
           .from(clients).where(and(eq(clients.workspaceId, workspaceId), eq(clients.id, clientId))).limit(1),
       ]);
       if (!emp[0] || !client[0]) return { error: 'Employee or client not found' };
@@ -539,8 +540,8 @@ export function registerSchedulingCognitionActions() {
 
     // Workspace-wide profitability scan — rank all active officer/client combinations by margin
     const [allEmp, allClients] = await Promise.all([
-      db.select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName, hourlyRate: employees.hourlyRate, isArmed: (employees as any).isArmed }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true))).limit(50),
-      db.select({ id: clients.id, companyName: clients.companyName, contractRate: clients.contractRate, armedBillRate: (clients as any).armedBillRate, unarmedBillRate: (clients as any).unarmedBillRate }).from(clients).where(and(eq(clients.workspaceId, workspaceId), eq(clients.isActive, true))).limit(20),
+      db.select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName, hourlyRate: employees.hourlyRate, isArmed: (employees as EmployeeWithStatus).isArmed }).from(employees).where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true))).limit(50),
+      db.select({ id: clients.id, companyName: clients.companyName, contractRate: clients.contractRate, armedBillRate: (clients as ClientWithExtras).armedBillRate, unarmedBillRate: (clients as ClientWithExtras).unarmedBillRate }).from(clients).where(and(eq(clients.workspaceId, workspaceId), eq(clients.isActive, true))).limit(20),
     ]);
 
     const summary = {
@@ -574,9 +575,9 @@ export function registerSchedulingCognitionActions() {
     const [client, allEmp, weekLoad] = await Promise.all([
       db.select({
         companyName: clients.companyName, contractRate: clients.contractRate,
-        requiresArmed: (clients as any).requiresArmed,
-        armedBillRate: (clients as any).armedBillRate, unarmedBillRate: (clients as any).unarmedBillRate,
-        minOfficerSchedulingScore: (clients as any).minOfficerSchedulingScore,
+        requiresArmed: (clients as ClientWithExtras).requiresArmed,
+        armedBillRate: (clients as ClientWithExtras).armedBillRate, unarmedBillRate: (clients as ClientWithExtras).unarmedBillRate,
+        minOfficerSchedulingScore: (clients as ClientWithExtras).minOfficerSchedulingScore,
         maxDrivingDistance: clients.maxDrivingDistance,
         requiredCertifications: clients.requiredCertifications,
         siteDifficultyLevel: clients.siteDifficultyLevel,
@@ -585,10 +586,10 @@ export function registerSchedulingCognitionActions() {
 
       db.select({
         id: employees.id, firstName: employees.firstName, lastName: employees.lastName,
-        hourlyRate: employees.hourlyRate, schedulingScore: (employees as any).schedulingScore,
-        isArmed: (employees as any).isArmed, armedLicenseVerified: (employees as any).armedLicenseVerified,
-        travelRadiusMiles: (employees as any).travelRadiusMiles,
-        availabilityMode: (employees as any).availabilityMode,
+        hourlyRate: employees.hourlyRate, schedulingScore: (employees as EmployeeWithStatus).schedulingScore,
+        isArmed: (employees as EmployeeWithStatus).isArmed, armedLicenseVerified: (employees as EmployeeWithStatus).armedLicenseVerified,
+        travelRadiusMiles: (employees as EmployeeWithStatus).travelRadiusMiles,
+        availabilityMode: (employees as EmployeeWithStatus).availabilityMode,
         availabilityPercentage: employees.availabilityPercentage,
         latitude: employees.latitude, longitude: employees.longitude,
         workerType: employees.workerType,

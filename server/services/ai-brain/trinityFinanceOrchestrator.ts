@@ -390,7 +390,7 @@ async function buildFinancialSnapshot(workspaceId: string): Promise<FinancialSna
       const { trinityQuickBooksSnapshotService } = await import('./trinityQuickBooksSnapshot');
       const snap = await trinityQuickBooksSnapshotService.getFinancialSnapshot(workspaceId);
 
-      const arTotal = snap.arAging.reduce((s: any, b: any) => s + b.totalAmount, 0);
+      const arTotal = snap.arAging.reduce((s: Record<string, unknown>, b: unknown) => s + b.totalAmount, 0);
       const overdueCount = snap.overdueInvoices.length;
 
       let lastSyncAge = 'never';
@@ -664,7 +664,7 @@ async function buildReconciliationReport(workspaceId: string): Promise<{
       const { trinityQuickBooksSnapshotService } = await import('./trinityQuickBooksSnapshot');
       const snap = await trinityQuickBooksSnapshotService.getFinancialSnapshot(workspaceId);
 
-      qbArTotal = snap.arAging.reduce((s: any, b: any) => s + b.totalAmount, 0);
+      qbArTotal = snap.arAging.reduce((s: Record<string, unknown>, b: unknown) => s + b.totalAmount, 0);
       hoursVariance = snap.hoursReconciliation.variance;
       revenueVariance = qbArTotal - internalOutstanding;
 

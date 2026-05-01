@@ -33,7 +33,7 @@ export const timeAnomalyDetection = {
         LIMIT 20
       `, [workspaceId]);
 
-      missing.forEach((r: any) => anomalies.push({
+      missing.forEach((r: unknown) => anomalies.push({
         type: 'missing_clock_out',
         employeeId: r.employee_id,
         timeEntryId: r.id,
@@ -56,7 +56,7 @@ export const timeAnomalyDetection = {
         LIMIT 10
       `, [workspaceId]);
 
-      longShifts.forEach((r: any) => anomalies.push({
+      longShifts.forEach((r: unknown) => anomalies.push({
         type: 'long_shift',
         employeeId: r.employee_id,
         timeEntryId: r.id,

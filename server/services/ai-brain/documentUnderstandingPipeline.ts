@@ -388,12 +388,12 @@ Only include fields where data was found. Estimate confidence based on data clar
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return {
-          employees: (parsed.employees || []).map((e: any) => ({ ...e, confidence: parsed.confidence || 0.7 })),
-          schedules: (parsed.schedules || []).map((s: any) => ({ ...s, confidence: parsed.confidence || 0.7 })),
-          positions: (parsed.positions || []).map((p: any) => ({ ...p, confidence: parsed.confidence || 0.7 })),
-          contacts: (parsed.contacts || []).map((c: any) => ({ ...c, confidence: parsed.confidence || 0.7 })),
+          employees: (parsed.employees || []).map((e: unknown) => ({ ...e, confidence: parsed.confidence || 0.7 })),
+          schedules: (parsed.schedules || []).map((s: unknown) => ({ ...s, confidence: parsed.confidence || 0.7 })),
+          positions: (parsed.positions || []).map((p: unknown) => ({ ...p, confidence: parsed.confidence || 0.7 })),
+          contacts: (parsed.contacts || []).map((c: unknown) => ({ ...c, confidence: parsed.confidence || 0.7 })),
           confidence: parsed.confidence || 0.7,
           warnings: parsed.warnings || []
         };

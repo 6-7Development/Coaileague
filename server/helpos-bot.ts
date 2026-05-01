@@ -244,7 +244,7 @@ async function searchFaqsForBot(
       LIMIT ${limit}
     `);
     
-    return results.rows.map((row: any) => ({
+    return results.rows.map((row: unknown) => ({
       id: row.id,
       question: row.question,
       answer: row.answer,

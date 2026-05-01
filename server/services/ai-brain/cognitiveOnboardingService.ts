@@ -380,7 +380,7 @@ class CognitiveOnboardingService {
 
     try {
       // Decode and validate state
-      const statePayload = JSON.parse(Buffer.from(state, 'base64url').toString());
+      const statePayload: unknown = JSON.parse(Buffer.from(state, 'base64url').toString());
       const workspaceId = statePayload.workspaceId;
 
       // Exchange code for token
@@ -771,7 +771,7 @@ Return JSON with:
     return schemas[dataType] || '{}';
   }
 
-  private applyMapping(record: any, mapping: Record<string, string>): any {
+  private applyMapping(record: unknown, mapping: Record<string, string>): any {
     const result: Record<string, unknown> = {};
     for (const [source, target] of Object.entries(mapping)) {
       if (record[source] !== undefined) {
@@ -783,7 +783,7 @@ Return JSON with:
     return result;
   }
 
-  private defaultMapping(record: any, dataType: DataSyncType): any {
+  private defaultMapping(record: unknown, dataType: DataSyncType): any {
     // Basic field name normalization
     const normalized: Record<string, unknown> = { externalId: record.Id || record.id };
     

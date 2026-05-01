@@ -15,6 +15,7 @@ import { db } from "../db";
 import { and, eq, inArray, notExists, sql } from 'drizzle-orm';
 import { typedExec, typedQuery } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('developmentSeed');
 import {
   workspaceMembers,
@@ -213,7 +214,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       for (const client of acmeClients) {
         await tx.execute(sql`
           INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, email, phone, address, city, state, postal_code, country, contract_rate, contract_rate_type, poc_name, poc_phone, poc_email, poc_title, is_agency, created_at, updated_at)
-          VALUES (${client.id}, ${DEV_SENTINEL_WORKSPACE}, ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, ${(client as any).isAgency || false}, NOW(), NOW())
+          VALUES (${client.id}, ${DEV_SENTINEL_WORKSPACE}, ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, ${(client as ClientWithExtras).isAgency || false}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }

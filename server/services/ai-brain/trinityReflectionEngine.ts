@@ -321,18 +321,18 @@ Respond ONLY with this JSON (no markdown, no explanation):
         throw new Error('No JSON found in response');
       }
       
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       
       // Validate and normalize revisedPatches
       let revisedPatches: unknown[] | undefined;
       if (Array.isArray(parsed.revisedPatches) && parsed.revisedPatches.length > 0) {
-        const normalized = parsed.revisedPatches.map((patch: any) => ({
+        const normalized = parsed.revisedPatches.map((patch: unknown) => ({
           file: patch.file || '',
           operation: patch.operation || 'replace',
           search: patch.search || '',
           replace: patch.replace || '',
           line: patch.line,
-        })).filter((p: any) => p.file && (p.search || p.line));
+        })).filter((p: unknown) => p.file && (p.search || p.line));
         
         if (normalized.length > 0) {
           revisedPatches = normalized;

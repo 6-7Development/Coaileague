@@ -160,7 +160,7 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
       
       if (!contractor) return res.status(403).json({ error: "Contractor not in your workspace" });
 
-      const values = dates.map((d: any) => ({
+      const values = dates.map((d: unknown) => ({
         contractorId,
         availableDate: d.date,
         availableStartTime: d.startTime,

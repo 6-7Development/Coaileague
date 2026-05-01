@@ -449,7 +449,7 @@ router.post(
             return user;
           })
         );
-        additionalParticipantRecords = participantRecords.filter((u: any) => u !== null);
+        additionalParticipantRecords = participantRecords.filter((u: unknown) => u !== null);
       }
 
       // D04: Atomic room creation — conversation + wrapper + creator-owner participant
@@ -501,7 +501,7 @@ router.post(
         });
 
         if (additionalParticipantRecords.length > 0) {
-          const validParticipants = additionalParticipantRecords.map((user: any) => ({
+          const validParticipants = additionalParticipantRecords.map((user: unknown) => ({
             conversationId: conv.id,
             workspaceId,
             participantId: user.id,
@@ -1252,8 +1252,8 @@ router.post(
             .from(users)
             .where(inArray(users.id, participantIds)),
         ]);
-        const alreadyIn = new Set(existingRows.map((r: any) => r.participantId));
-        const userMap = new Map(userRows.map((u: any) => [u.id, u]));
+        const alreadyIn = new Set(existingRows.map((r: unknown) => r.participantId));
+        const userMap = new Map(userRows.map((u: unknown) => [u.id, u]));
         const canInvite = role === 'org_admin' || role === 'org_owner' || role === 'co_owner';
         const toInsert = participantIds
           .filter((pid: string) => !alreadyIn.has(pid) && userMap.has(pid))
@@ -1269,7 +1269,7 @@ router.post(
           });
         if (toInsert.length > 0) {
           await db.insert(chatParticipants).values(toInsert);
-          addedParticipants.push(...toInsert.map((r: any) => r.participantId));
+          addedParticipants.push(...toInsert.map((r: unknown) => r.participantId));
         }
       }
 

@@ -11,6 +11,7 @@ import { db } from '../db';
 import { clients, employees, shifts, invoices, employeeCertifications } from '@shared/schema';
 import { eq, and, gte, count, sql } from 'drizzle-orm';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('EmailEntityContext');
 const router = Router();
@@ -30,7 +31,7 @@ router.get('/api/email/entity-context', requireAuth, async (req: AuthenticatedRe
       id: clients.id,
       name: clients.companyName,
       contactEmail: clients.contactEmail,
-      billingRate: (clients as any).billingRate,
+      billingRate: (clients as ClientWithExtras).billingRate,
     })
       .from(clients)
       .where(and(

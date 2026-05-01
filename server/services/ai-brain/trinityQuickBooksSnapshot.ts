@@ -27,6 +27,7 @@ import {
 import { TTLCache } from './cacheUtils';
 import { createLogger } from '../../lib/logger';
 import { partnerSyncLogs } from '@shared/schema';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityQuickBooksSnapshot');
 
 export interface ARAgingBucket {
@@ -267,7 +268,7 @@ class TrinityQuickBooksSnapshotService {
             .from(clients)
             .where(eq(clients.id, inv.clientId))
             .limit(1);
-          if (client) clientName = (client as any).companyName || `(${(client as any).firstName || ""} as (any) as any) ${(client as any).lastName || ""}`.trim() || "Unknown";
+          if (client) clientName = (client as ClientWithExtras).companyName || `(${(client as ClientWithExtras).firstName || ""} as (any) as any) ${(client as ClientWithExtras).lastName || ""}`.trim() || "Unknown";
         }
         
         const daysOverdue = inv.dueDate 

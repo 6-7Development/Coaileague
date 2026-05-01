@@ -39,7 +39,7 @@ export const auditorService = {
         policyCompliance: policies.rows,
         summary: {
           totalIncidents: incidents.rows.length,
-          openIncidents: incidents.rows.filter((r: any) => r.status === 'open').length,
+          openIncidents: incidents.rows.filter((r: unknown) => r.status === 'open').length,
           documentsSigned: signatures.rows.length,
           activePolicies: policies.rows.length,
         },

@@ -232,6 +232,7 @@ router.post("/api/auth/register", async (req, res) => {
 
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 // ── Phase 53: Concurrent session registry (stub — full impl in sessionWorkspaceService) ──
 async function registerSession(
@@ -576,7 +577,7 @@ router.post("/api/auth/login", async (req, res) => {
     if (user.role === 'client') {
       try {
         const [clientRecord] = await db
-          .select({ id: clients.id, clientOnboardingStatus: (clients as any).clientOnboardingStatus })
+          .select({ id: clients.id, clientOnboardingStatus: (clients as ClientWithExtras).clientOnboardingStatus })
           .from(clients)
           .where(eq(clients.userId, user.id))
           .limit(1);

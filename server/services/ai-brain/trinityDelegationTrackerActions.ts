@@ -165,11 +165,11 @@ export function registerDelegationTrackerActions() {
 
     const tasks = await query.catch(() => []);
     let filtered = tasks;
-    if (taskType) filtered = filtered.filter((t: any) => t.inputParams?.taskType === taskType);
-    if (assignedTo) filtered = filtered.filter((t: any) => t.inputParams?.assignedTo === assignedTo);
+    if (taskType) filtered = filtered.filter((t: unknown) => t.inputParams?.taskType === taskType);
+    if (assignedTo) filtered = filtered.filter((t: unknown) => t.inputParams?.assignedTo === assignedTo);
     if (overdueOnly) {
       const now = new Date();
-      filtered = filtered.filter((t: any) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now && t.status === 'awaiting_approval');
+      filtered = filtered.filter((t: unknown) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now && t.status === 'awaiting_approval');
     }
     return {
       tasks: filtered,
@@ -225,11 +225,11 @@ export function registerDelegationTrackerActions() {
       ? and(eq(orchestrationRuns.workspaceId, workspaceId), eq(orchestrationRuns.category, 'operational_task'), eq(orchestrationRuns.status, 'awaiting_approval'))
       : and(eq(orchestrationRuns.category, 'operational_task'), eq(orchestrationRuns.status, 'awaiting_approval'));
     const pendingTasks = await db.select().from(orchestrationRuns).where(whereClause).catch(() => []);
-    const overdue = pendingTasks.filter((t: any) => {
+    const overdue = pendingTasks.filter((t: unknown) => {
       const dueBy = t.inputParams?.dueBy;
       return dueBy && new Date(dueBy) < now;
     });
-    const overdueSummary = overdue.map((t: any) => ({
+    const overdueSummary = overdue.map((t: unknown) => ({
       taskId: t.id,
       taskType: t.inputParams?.taskType,
       assignedTo: t.inputParams?.assignedTo,
@@ -316,9 +316,9 @@ export function registerDelegationTrackerActions() {
         const { timesheetId, employeeId, periodStart, periodEnd } = context;
         if (timesheetId) {
           const [entry] = await db.select({ status: timeEntries.status }).from(timeEntries).where(eq(timeEntries.id, timesheetId)).limit(1).catch(() => []);
-          verified = (entry as any)?.status === 'approved';
-          verificationDetails = verified ? 'Timesheet status confirmed as approved' : `Timesheet status is '${(entry as any)?.status || 'unknown'}' — not yet approved`;
-          verificationData = { timesheetId, status: (entry as any)?.status };
+          verified = (entry as unknown)?.status === 'approved';
+          verificationDetails = verified ? 'Timesheet status confirmed as approved' : `Timesheet status is '${(entry as unknown)?.status || 'unknown'}' — not yet approved`;
+          verificationData = { timesheetId, status: (entry as unknown)?.status };
         } else if (employeeId && periodStart && periodEnd) {
           const pending = await db.select({ id: timeEntries.id }).from(timeEntries)
             .where(and(eq(timeEntries.workspaceId, ws), eq(timeEntries.employeeId, employeeId), eq(timeEntries.status as any, 'pending')))
@@ -440,7 +440,7 @@ export function registerDelegationTrackerActions() {
     const params_ = (task as any).inputParams || {};
     const timeline = [
       { event: 'Task Created', timestamp: (task as any).createdAt, actor: (task as any).userId, detail: `Assigned to ${params_.assignedToName || params_.assignedTo}, due ${params_.dueBy}` },
-      ...(params_.escalationHistory || []).map((h: any) => ({ event: `Status/Escalation: L${h.level || '-'}`, timestamp: h.timestamp, actor: h.updatedBy || h.escalatedTo || 'system', detail: h.reason || h.note || '' })),
+      ...(params_.escalationHistory || []).map((h: unknown) => ({ event: `Status/Escalation: L${h.level || '-'}`, timestamp: h.timestamp, actor: h.updatedBy || h.escalatedTo || 'system', detail: h.reason || h.note || '' })),
       ...((task as any).completedAt ? [{ event: 'Loop Closed', timestamp: (task as any).completedAt, actor: (task as any).outputResult?.closedBy || 'trinity-ai', detail: (task as any).outputResult?.outcome || '' }] : []),
     ].sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
     return { task, steps, timeline, stepCount: steps.length };

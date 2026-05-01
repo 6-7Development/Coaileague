@@ -285,7 +285,7 @@ class DurableJobQueueService {
         log.error('[DurableJobQueue] OMEGA-L8 DLQ ALERT: Stale dead-letter jobs detected (>4 hours unresolved)', {
           count: staleJobs.length,
           oldestJobId: staleJobs[0]?.id,
-          types: [...new Set(staleJobs.map((j: any) => j.type))],
+          types: [...new Set(staleJobs.map((j: unknown) => j.type))],
           alertTarget: 'support@coaileague.com',
         });
         // Best-effort structured alert via trinityAutonomousNotifier (non-blocking)
@@ -296,15 +296,15 @@ class DurableJobQueueService {
             severity: 'critical',
             category: 'performance',
             title: `DLQ Sentinel: ${staleJobs.length} stale dead-letter job(s) — unresolved >4 hours`,
-            description: `Job types affected: ${[...new Set(staleJobs.map((j: any) => j.type))].join(', ')}. Oldest job ID: ${staleJobs[0]?.id}. Immediate ops review required.`,
+            description: `Job types affected: ${[...new Set(staleJobs.map((j: unknown) => j.type))].join(', ')}. Oldest job ID: ${staleJobs[0]?.id}. Immediate ops review required.`,
             suggestedAction: 'Review dead-letter jobs in the DLQ dashboard. Retry or escalate as appropriate.',
             autoFixAvailable: false,
             autoFixRisk: 'low',
             metadata: {
               staleJobCount: staleJobs.length,
-              jobTypes: [...new Set(staleJobs.map((j: any) => j.type))],
+              jobTypes: [...new Set(staleJobs.map((j: unknown) => j.type))],
               oldestJobId: staleJobs[0]?.id,
-              sampleJobs: staleJobs.slice(0, 5).map((j: any) => ({ id: j.id, type: j.type, error: j.error })),
+              sampleJobs: staleJobs.slice(0, 5).map((j: unknown) => ({ id: j.id, type: j.type, error: j.error })),
             },
           });
         });

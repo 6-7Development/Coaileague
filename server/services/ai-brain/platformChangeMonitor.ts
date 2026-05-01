@@ -658,7 +658,7 @@ Respond ONLY with valid JSON:
       
       if (jsonMatch) {
         try {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           // Sanitize title - remove "undefined" literals and ensure valid title
           let safeTitle = parsed.title?.substring(0, 70) || '';
           safeTitle = safeTitle.replace(/undefined/gi, '').trim();

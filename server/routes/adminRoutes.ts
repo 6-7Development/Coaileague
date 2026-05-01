@@ -1580,11 +1580,11 @@ router.get('/support/org/:orgId/overview', async (req: AuthenticatedRequest, res
       workspace: workspace ? { id: workspace.id, name: workspace.name, status: (workspace as WorkspaceWithExtras).status, plan: workspace.subscriptionTier } : null,
       counts: {
         employees: employeesList.length,
-        activeEmployees: employeesList.filter((e: any) => e.isActive).length,
+        activeEmployees: employeesList.filter((e: unknown) => e.isActive).length,
         shifts: shiftsList.length,
         timeEntries: timeEntries.length,
         invoices: invoices.length,
-        unpaidInvoices: invoices.filter((i: any) => i.status !== 'paid').length,
+        unpaidInvoices: invoices.filter((i: unknown) => i.status !== 'paid').length,
         clients: clientsList.length,
       },
     });
@@ -1631,33 +1631,33 @@ router.get('/support/platform-search', async (req: AuthenticatedRequest, res) =>
     const results: (string | number | boolean | null)[] = [];
     if (!type || type === 'users') {
       const allUsers = await db.select().from(users);
-      const matchedUsers = allUsers.filter((u: any) =>
+      const matchedUsers = allUsers.filter((u: unknown) =>
         (u.email && u.email.toLowerCase().includes(query)) ||
         (u.firstName && u.firstName.toLowerCase().includes(query)) ||
         (u.lastName && u.lastName.toLowerCase().includes(query)) ||
         (u.username && u.username.toLowerCase().includes(query))
       ).slice(0, 20);
-      results.push(...matchedUsers.map((u: any) => ({ type: 'user', id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim(), email: u.email, username: u.username })));
+      results.push(...matchedUsers.map((u: unknown) => ({ type: 'user', id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim(), email: u.email, username: u.username })));
     }
     if (!type || type === 'workspaces') {
       const allWorkspaces = await db.select().from(workspaces);
-      const matchedWs = allWorkspaces.filter((w: any) =>
+      const matchedWs = allWorkspaces.filter((w: unknown) =>
         (w.name && w.name.toLowerCase().includes(query)) ||
         (w.id && w.id.toLowerCase().includes(query))
       ).slice(0, 20);
-      results.push(...matchedWs.map((w: any) => ({ type: 'workspace', id: w.id, name: w.name, status: w.status, plan: w.subscriptionTier })));
+      results.push(...matchedWs.map((w: unknown) => ({ type: 'workspace', id: w.id, name: w.name, status: w.status, plan: w.subscriptionTier })));
     }
     if (!type || type === 'employees') {
       const allWorkspaces = await db.select().from(workspaces);
       for (const ws of allWorkspaces.slice(0, 50)) {
         const employeesList = await storage.getEmployeesByWorkspace(ws.id);
-        const matched = employeesList.filter((e: any) =>
+        const matched = employeesList.filter((e: unknown) =>
           (e.firstName && e.firstName.toLowerCase().includes(query)) ||
           (e.lastName && e.lastName.toLowerCase().includes(query)) ||
           (e.email && e.email.toLowerCase().includes(query)) ||
           (e.employeeNumber && e.employeeNumber.toLowerCase().includes(query))
         );
-        results.push(...matched.map((e: any) => ({ type: 'employee', id: e.id, name: `${e.firstName || ''} ${e.lastName || ''}`.trim(), email: e.email, workspaceId: ws.id, workspaceName: ws.name, employeeNumber: e.employeeNumber })));
+        results.push(...matched.map((e: unknown) => ({ type: 'employee', id: e.id, name: `${e.firstName || ''} ${e.lastName || ''}`.trim(), email: e.email, workspaceId: ws.id, workspaceName: ws.name, employeeNumber: e.employeeNumber })));
       }
     }
     await storage.createAuditLog({
@@ -2317,7 +2317,7 @@ router.get('/scheduler/jobs', async (req: AuthenticatedRequest, res) => {
       const history = byJob.get(j.jobName) ?? [];
       const last = history[0] ?? null;
       const lastCompleted = history.find((h: any) => h.status === 'completed') ?? null;
-      const recentFailures = history.filter((h: any) => h.status === 'failed').length;
+      const recentFailures = history.filter((h: unknown) => h.status === 'failed').length;
       return {
         jobName: j.jobName,
         description: j.description,

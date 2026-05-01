@@ -736,7 +736,7 @@ export async function listWorkspacesForAuditor(auditorId: string): Promise<Array
       ORDER BY MAX(aa.opened_at) DESC NULLS LAST`,
     [auditorId],
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     workspaceId: row.workspace_id,
     companyName: row.company_name,
     activeAudits: Number(row.active_audits || 0),
@@ -921,7 +921,7 @@ export async function getComplianceTrend(workspaceId: string): Promise<Array<{
         ORDER BY recorded_at ASC`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       score: Number(row.score),
       recordedAt: row.recorded_at,
     }));

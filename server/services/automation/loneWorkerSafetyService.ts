@@ -6,6 +6,7 @@ import { universalNotificationEngine } from '../universalNotificationEngine';
 import { broadcastToWorkspace } from '../../websocket';
 import { createLogger } from '../../lib/logger';
 import { withDistributedLock, LOCK_KEYS } from '../distributedLock';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 
 const log = createLogger('LoneWorkerSafety');
 
@@ -559,7 +560,7 @@ class LoneWorkerSafetyService {
         .where(
           and(
             eq(employees.workspaceId, check.workspaceId),
-            (employees as any).workspaceRole
+            (employees as EmployeeWithStatus).workspaceRole
           )
         );
 

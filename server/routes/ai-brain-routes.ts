@@ -210,7 +210,7 @@ aiBrainRouter.get('/patterns', requireAuth, async (req: Request, res: Response) 
 
     // Extract patterns: skill type, success rate, frequency
     const patterns = recentJobs
-      .reduce((acc: unknown[], job: any) => {
+      .reduce((acc: unknown[], job: unknown) => {
         const existing = acc.find(p => p.skill === job.skill);
         if (existing) {
           existing.count++;
@@ -256,7 +256,7 @@ aiBrainRouter.get('/jobs/recent', requireAuth, async (req: Request, res: Respons
       .orderBy(desc(aiBrainJobs.createdAt))
       .limit(limitVal);
 
-    const formatted = recentJobs.map((job: any) => ({
+    const formatted = recentJobs.map((job: unknown) => ({
       id: job.id,
       skill: job.skill,
       status: job.status || 'pending',

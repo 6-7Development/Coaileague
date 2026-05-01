@@ -16,6 +16,7 @@ import { employees, invoices, clients, payrollRuns, aiBrainActionLogs } from '@s
 import { and, eq, gte, lte, sql, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 import { isDeliverableEmployee } from '../../lib/isDeliverableEmployee';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('preExecutionValidator');
 
 
@@ -117,7 +118,7 @@ export async function validateBeforeExecution(
           id: employees.id,
           isActive: employees.isActive,
           terminationDate: employees.terminationDate,
-          status: (employees as any).status,   // 'active'|'inactive'|'terminated'|'suspended'
+          status: (employees as EmployeeWithStatus).status,   // 'active'|'inactive'|'terminated'|'suspended'
           firstName: employees.firstName,
           lastName: employees.lastName,
         })

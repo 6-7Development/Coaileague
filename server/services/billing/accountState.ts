@@ -1,3 +1,4 @@
+import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
 import { db } from '../../db';
 import {
   workspaces,
@@ -70,7 +71,7 @@ export class AccountStateService {
     if ((newState === 'suspended' || newState === 'requires_support') && isBillingExemptByRecord(workspace)) {
       await logExemptedAction({ workspaceId, action: `account_state_transition_blocked:${newState}`, metadata: { requestedState: newState, reason: 'founder_exemption', blockedReason: reason } });
       log.warn('EXEMPTED: Blocked account state transition for founder workspace', { workspaceId, requestedState: newState });
-      return workspace as any;
+      return workspace as WorkspaceWithExtras;
     }
 
     const previousState = workspace.accountState || 'active';
@@ -79,7 +80,7 @@ export class AccountStateService {
     if (newState !== 'active' && isBillingExemptByRecord(workspace)) {
       await logExemptedAction({ workspaceId, action: `account_state_transition_blocked:${newState}`, metadata: { requestedState: newState, reason: 'founder_exemption', blockedReason: reason } });
       log.warn('EXEMPTED: Blocked account state transition for founder workspace', { workspaceId, requestedState: newState });
-      return workspace as any;
+      return workspace as WorkspaceWithExtras;
     }
 
     // Validate state transition

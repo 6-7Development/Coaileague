@@ -345,7 +345,7 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
         workspaceId,
         senderUserId: userId,
         senderName,
-        recipients: recipients.map((r: any) => ({
+        recipients: recipients.map((r: unknown) => ({
           email: r.email,
           name: r.name,
           userId: r.userId,

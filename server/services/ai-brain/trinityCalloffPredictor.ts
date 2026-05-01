@@ -140,7 +140,7 @@ class TrinityCalloffPredictor {
   /**
    * Score a single officer-shift combination for calloff risk.
    */
-  private scoreCalloffRisk(row: any): CalloffRisk {
+  private scoreCalloffRisk(row: unknown): CalloffRisk {
     const factors: string[] = [];
     let riskScore = 0.10; // baseline
 
@@ -253,7 +253,7 @@ class TrinityCalloffPredictor {
   /**
    * Score a single site for overall operational risk.
    */
-  private scoreSiteRisk(row: any): SiteRiskScore {
+  private scoreSiteRisk(row: unknown): SiteRiskScore {
     const factors: string[] = [];
     let riskScore = 0.10;
 

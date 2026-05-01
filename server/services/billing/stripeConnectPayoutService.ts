@@ -283,13 +283,13 @@ class StripeConnectPayoutService {
         amount: amountCents,
         currency: 'usd',
         destination: connectAccountId,
-        description: `Payroll: ${(entry as any).periodStart} - ${(entry as any).periodEnd}`,
+        description: `Payroll: ${(entry as unknown).periodStart} - ${(entry as unknown).periodEnd}`,
         metadata: {
           payrollEntryId,
           employeeId: entry.employeeId,
           workspaceId,
-          periodStart: (entry as any).periodStart?.toISOString() || '',
-          periodEnd: (entry as any).periodEnd?.toISOString() || '',
+          periodStart: (entry as unknown).periodStart?.toISOString() || '',
+          periodEnd: (entry as unknown).periodEnd?.toISOString() || '',
         },
         // GAP-57 FIX: Deterministic idempotency key scoped to payrollEntryId.
         // crypto.randomUUID() generates a NEW key on every retry, so Stripe won't
@@ -371,7 +371,7 @@ class StripeConnectPayoutService {
           workspaceId,
           payoutId: payrollEntryId,
           payoutAmountCents: amountCents,
-          recipientName: `${(entry as any).firstName || ''} ${(entry as any).lastName || ''}`.trim() || undefined,
+          recipientName: `${(entry as unknown).firstName || ''} ${(entry as unknown).lastName || ''}`.trim() || undefined,
         });
         if (feeResult.success && feeResult.amountCents > 0) {
           log.info(`[StripeConnect] Payout fee charged: $${(feeResult.amountCents / 100).toFixed(2)} for entry ${payrollEntryId}`);

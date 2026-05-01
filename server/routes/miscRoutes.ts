@@ -63,6 +63,7 @@ import OpenAI from "openai";
 import { createLogger } from '../lib/logger';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { PLATFORM } from '../config/platformConfig';
+import type { EmployeeWithStatus, ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('MiscRoutes');
 
 const ALLOWED_AUDIO_MIME_TYPES = [
@@ -808,7 +809,7 @@ router.get("/api/identity/me", requireAuth, async (req: AuthenticatedRequest, re
               id: employee.id,
               workspaceRole: employee.workspaceRole || employee.role,
               position: employee.position,
-              department: (employee as any).department,
+              department: (employee as EmployeeWithStatus).department,
             }
           : null,
       },
@@ -1265,7 +1266,7 @@ router.post("/api/search", requireAuth, async (req, res) => {
         type: "client",
         id: client.id,
         title: client.companyName,
-        subtitle: (client as any).industry || "Client",
+        subtitle: (client as ClientWithExtras).industry || "Client",
         relevance: 0.85,
       });
     }
@@ -1709,7 +1710,7 @@ router.get("/api/search/suggestions", requireAuth, async (req: AuthenticatedRequ
       .select({
         id: clients.id,
         companyName: clients.companyName,
-        industry: (clients as any).industry,
+        industry: (clients as ClientWithExtras).industry,
       })
       .from(clients)
       .where(and(eq(clients.workspaceId, workspaceId), ilike(clients.companyName, pattern)))
@@ -1975,8 +1976,8 @@ router.post("/api/safety-checks", requireAuth, async (req: AuthenticatedRequest,
     const userId = req.userId || req.user?.id;
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
     const { items, notes, location, timestamp } = req.body;
-    const passCount = Object.values(items || {}).filter((v: any) => v === "pass").length;
-    const failCount = Object.values(items || {}).filter((v: any) => v === "fail").length;
+    const passCount = Object.values(items || {}).filter((v: unknown) => v === "pass").length;
+    const failCount = Object.values(items || {}).filter((v: unknown) => v === "fail").length;
     const record = {
       id: randomUUID(),
       workspaceId,

@@ -151,7 +151,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: Aut
     
     const tasks: (string | number | boolean | null)[] = [];
     
-    pendingPTO.forEach((pto: any) => {
+    pendingPTO.forEach((pto: unknown) => {
       tasks.push({
         id: pto.id,
         title: `PTO Request: ${pto.leaveType || 'Time Off'}`,
@@ -168,7 +168,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: Aut
       });
     });
     
-    pendingDiscrepancies.forEach((disc: any) => {
+    pendingDiscrepancies.forEach((disc: unknown) => {
       tasks.push({
         id: disc.id,
         title: `Time Adjustment: ${disc.discrepancyType || 'Review Required'}`,
@@ -185,7 +185,7 @@ router.get("/leaders/pending-tasks", requireAuth, requireLeader, async (req: Aut
       });
     });
     
-    openEscalations.forEach((esc: any) => {
+    openEscalations.forEach((esc: unknown) => {
       tasks.push({
         id: esc.id,
         title: esc.title || 'Escalation',

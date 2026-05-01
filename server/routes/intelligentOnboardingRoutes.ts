@@ -63,11 +63,11 @@ async function recalcTenantProgress(workspaceId: string) {
   const progRow = progRows[0];
 
   const completed: string[] = progRow?.steps_completed || [];
-  const required = stepRows.filter((s: any) => s.required);
-  const completedRequired = required.filter((s: any) => completed.includes(s.step_key));
+  const required = stepRows.filter((s: unknown) => s.required);
+  const completedRequired = required.filter((s: unknown) => completed.includes(s.step_key));
   const pct = required.length > 0 ? Math.round((completedRequired.length / required.length) * 100) : 0;
 
-  const remaining = stepRows.map((s: any) => s.step_key).filter((k: string) => !completed.includes(k));
+  const remaining = stepRows.map((s: unknown) => s.step_key).filter((k: string) => !completed.includes(k));
   const currentStep = remaining[0] || null;
   const status = pct === 0 ? 'not_started' : pct === 100 ? 'complete' : 'in_progress';
 
@@ -98,11 +98,11 @@ async function recalcEmployeeProgress(workspaceId: string, employeeId: string) {
   const progRow = progRows[0];
 
   const completed: string[] = progRow?.steps_completed || [];
-  const required = stepRows.filter((s: any) => s.required);
-  const completedRequired = required.filter((s: any) => completed.includes(s.step_key));
+  const required = stepRows.filter((s: unknown) => s.required);
+  const completedRequired = required.filter((s: unknown) => completed.includes(s.step_key));
   const pct = required.length > 0 ? Math.round((completedRequired.length / required.length) * 100) : 0;
 
-  const remaining = stepRows.map((s: any) => s.step_key).filter((k: string) => !completed.includes(k));
+  const remaining = stepRows.map((s: unknown) => s.step_key).filter((k: string) => !completed.includes(k));
   const status = pct === 0 ? 'invited' : pct === 100 ? 'complete' : 'in_progress';
 
   await query(
@@ -691,8 +691,8 @@ intelligentOnboardingRouter.get('/required-documents', async (req: Authenticated
     );
 
     const result = stepRows
-      .filter((s: any) => required.includes(s.step_key) || completed.has(s.step_key))
-      .map((s: any) => ({
+      .filter((s: unknown) => required.includes(s.step_key) || completed.has(s.step_key))
+      .map((s: unknown) => ({
         id: s.step_key,
         displayName: s.title,
         category: s.document_type || 'compliance',

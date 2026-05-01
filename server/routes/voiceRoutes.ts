@@ -280,7 +280,7 @@ export async function initializeVoiceTables(): Promise<void> {
             SELECT column_name FROM information_schema.columns
             WHERE table_name = 'workspaces' ORDER BY ordinal_position LIMIT 50
           `);
-          const colNames = wsColumns.rows.map((r: any) => r.column_name);
+          const colNames = wsColumns.rows.map((r: unknown) => r.column_name);
 
           if (colNames.includes('id') && colNames.includes('name')) {
             await client.query(`

@@ -213,7 +213,7 @@ class SchemaParityService {
       AND table_type = 'BASE TABLE'
     `);
     
-    return new Set(result.map((row: any) => row.table_name));
+    return new Set(result.map((row: unknown) => row.table_name));
   }
   
   /**
@@ -226,7 +226,7 @@ class SchemaParityService {
       WHERE typtype = 'e'
     `);
     
-    return new Set(result.map((row: any) => row.typname));
+    return new Set(result.map((row: unknown) => row.typname));
   }
   
   /**
@@ -241,7 +241,7 @@ class SchemaParityService {
       AND table_name = ${tableName}
     `);
     
-    return new Set(result.map((row: any) => row.column_name));
+    return new Set(result.map((row: unknown) => row.column_name));
   }
   
   /**

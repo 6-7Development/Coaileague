@@ -233,14 +233,14 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       
       if (responses && typeof responses === 'object') {
         // Calculate engagement score based on rating questions (1-5 scale)
-        const ratingResponses = Object.values(responses).filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
+        const ratingResponses = Object.values(responses).filter((r: unknown) => typeof r === 'number' && r >= 1 && r <= 5);
         if (ratingResponses.length > 0) {
           const avgRating = ratingResponses.reduce((sum: number, r: any) => sum + r, 0) / ratingResponses.length;
           engagementScore = (avgRating / 5) * 100; // Convert 1-5 scale to 0-100
         }
         
         // Calculate sentiment score from text responses (simplified - in production would use AI)
-        const textResponses = Object.values(responses).filter((r: any) => typeof r === 'string' && r.length > 0);
+        const textResponses = Object.values(responses).filter((r: unknown) => typeof r === 'string' && r.length > 0);
         if (textResponses.length > 0) {
           // Improved sentiment: count word occurrences (not just presence)
           const combinedText = textResponses.join(' ').toLowerCase();
@@ -910,7 +910,7 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
           )),
       ]);
 
-      const alreadyScoredSet = new Set(existingScores.map((s: any) => s.employeeId));
+      const alreadyScoredSet = new Set(existingScores.map((s: unknown) => s.employeeId));
       const engTimeCountMap = new Map<string, number>();
       const engShiftCountMap = new Map<string, number>();
       for (const te of allTeTimeEntries) engTimeCountMap.set(te.employeeId, (engTimeCountMap.get(te.employeeId) || 0) + 1);
@@ -1028,8 +1028,8 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       const workspaceId = req.workspaceId!;
       const scores = await employeeBehaviorScoring.getWorkspaceScores(workspaceId);
       const employees = await storage.getEmployeesByWorkspace(workspaceId);
-      const employeeMap = new Map(employees.map((e: any) => [e.id, e]));
-      const enriched = scores.map((s: any) => ({
+      const employeeMap = new Map(employees.map((e: unknown) => [e.id, e]));
+      const enriched = scores.map((s: unknown) => ({
         ...s,
         employeeName: employeeMap.get(s.employeeId)?.name || 'Unknown',
         employeeRole: employeeMap.get(s.employeeId)?.position || '',
@@ -1047,8 +1047,8 @@ const employeeBehaviorScoring = EmployeeBehaviorScoringService.getInstance();
       const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 10), 500);
       const scores = await employeeBehaviorScoring.getTopPerformers(workspaceId, limit);
       const employees = await storage.getEmployeesByWorkspace(workspaceId);
-      const employeeMap = new Map(employees.map((e: any) => [e.id, e]));
-      const enriched = scores.map((s: any) => ({
+      const employeeMap = new Map(employees.map((e: unknown) => [e.id, e]));
+      const enriched = scores.map((s: unknown) => ({
         ...s,
         employeeName: employeeMap.get(s.employeeId)?.name || 'Unknown',
         employeeRole: employeeMap.get(s.employeeId)?.position || '',

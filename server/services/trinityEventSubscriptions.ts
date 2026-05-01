@@ -23,6 +23,7 @@ const log = createLogger("trinityEventSubscriptions");
 import { employees, shifts, workspaces, clients, users, auditLogs } from '@shared/schema';
 import { eq, and, inArray, gte, sql } from 'drizzle-orm';
 import { PLATFORM } from '../config/platformConfig';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 
 const APP_URL = process.env.APP_BASE_URL || PLATFORM.appUrl;
 
@@ -204,11 +205,11 @@ async function onGPSViolation(event: PlatformEvent): Promise<void> {
 
     if (employee?.supervisorId) {
       const supervisor = await db.query.employees.findFirst({
-        where: eq(employees.id, (employee as any).supervisorId),
+        where: eq(employees.id, (employee as EmployeeWithStatus).supervisorId),
       });
 
       if (supervisor?.phone) {
-        await NotificationDeliveryService.send({ type: 'schedule_notification', workspaceId: workspaceId || 'system', recipientUserId: (employee as any).supervisorId || supervisor.phone, channel: 'sms', body: { to: supervisor.phone, body: `GPS ALERT: ${employee.firstName} ${employee.lastName} attempted clock-in ${Math.round(distance)}m from ${siteName}. Possible fraud attempt.` } });
+        await NotificationDeliveryService.send({ type: 'schedule_notification', workspaceId: workspaceId || 'system', recipientUserId: (employee as EmployeeWithStatus).supervisorId || supervisor.phone, channel: 'sms', body: { to: supervisor.phone, body: `GPS ALERT: ${employee.firstName} ${employee.lastName} attempted clock-in ${Math.round(distance)}m from ${siteName}. Possible fraud attempt.` } });
       }
     }
   } catch (err: unknown) {

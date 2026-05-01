@@ -525,7 +525,7 @@ class ErrorTrackingService {
         LIMIT ${limit}
       `);
       
-      return result.map((row: any) => ({
+      return result.map((row: unknown) => ({
         id: row.id,
         fingerprint: row.fingerprint,
         message: row.message,

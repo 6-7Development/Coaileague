@@ -1139,8 +1139,8 @@ router.post('/submissions/:id/forward', requireAuth, async (req: Request, res: R
     const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
 
     const fieldRows = fields
-      .filter((f: any) => f.type !== 'signature')
-      .map((f: any) => {
+      .filter((f: unknown) => f.type !== 'signature')
+      .map((f: unknown) => {
         const key = f.name || f.id || f.label;
         const val = data[key] ?? data[f.label] ?? '—';
         return `<tr><td style="padding:6px 12px;background:#f9fafb;font-size:12px;color:#6b7280;width:38%;">${f.label}</td><td style="padding:6px 12px;font-size:13px;color:#111827;">${val}</td></tr>`;

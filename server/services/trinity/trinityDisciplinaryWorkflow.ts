@@ -308,7 +308,7 @@ function parseDraftJSON(text: string): DraftCore | null {
   const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace < 0 || lastBrace <= firstBrace) return null;
   try {
-    const obj = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    const obj: unknown = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
     if (!obj.documentContent || !obj.severityLevel) return null;
     return {
       documentTitle: String(obj.documentTitle || 'Disciplinary Document'),

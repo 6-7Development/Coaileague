@@ -148,7 +148,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
           LIMIT 20`,
         [workspaceId]
       );
-      const managerIds: string[] = mgrRes.rows.map((r: any) => r.user_id).filter(Boolean);
+      const managerIds: string[] = mgrRes.rows.map((r: unknown) => r.user_id).filter(Boolean);
       const isHighPriority = parsed.data.urgency === 'urgent' || parsed.data.urgency === 'high';
       await Promise.allSettled(
         managerIds.flatMap((recipientUserId) => [

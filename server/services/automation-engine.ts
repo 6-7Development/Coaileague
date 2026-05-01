@@ -35,6 +35,7 @@ import {
 } from './automation-schemas';
 import { ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { multiplyFinancialValues, toFinancialString } from './financialCalculator';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 export interface GeminiResponse<T = any> {
   decision: T;
@@ -132,7 +133,7 @@ function resolveInvoiceRate(client: Client, entries: TimeEntry[]): { rate: numbe
   }
 
   const candidateRates: Array<[unknown, string]> = [
-    [(client as any).billableHourlyRate, 'client.billableHourlyRate'],
+    [(client as ClientWithExtras).billableHourlyRate, 'client.billableHourlyRate'],
     [client.contractRate, 'client.contractRate'],
     [client.unarmedBillRate, 'client.unarmedBillRate'],
     [client.armedBillRate, 'client.armedBillRate'],
@@ -322,7 +323,7 @@ export class AutomationEngine {
       let reasoning = 'AI decision';
       
       try {
-        const parsed = JSON.parse(rawText);
+        const parsed: unknown = JSON.parse(rawText);
         const validation = schema.safeParse(parsed);
         
         if (!validation.success) {
@@ -1083,7 +1084,7 @@ Return ONLY valid JSON (no markdown):
       }
 
       const text = aiResult.text || '{}';
-      const extracted = JSON.parse(text);
+      const extracted: unknown = JSON.parse(text);
 
       // Log the migration action
       await auditLogger.logEvent(

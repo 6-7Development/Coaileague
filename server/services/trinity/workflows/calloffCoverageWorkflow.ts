@@ -637,7 +637,7 @@ async function fetchWorkspaceSupervisors(workspaceId: string): Promise<string[]>
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch (err: unknown) {
     log.info('[calloff] supervisor lookup skipped:', err?.message);
     return [];
@@ -658,8 +658,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch (err: unknown) {
     // `role`/`is_supervisor` may not exist; fall back to any active phone for an owner/manager.
     try {
@@ -675,8 +675,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
         [workspaceId],
       );
       return r.rows
-        .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-        .filter((row: any) => row.employeeId && row.phone);
+        .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+        .filter((row: unknown) => row.employeeId && row.phone);
     } catch (fallbackErr: unknown) {
       log.info('[calloff] supervisor phone fallback skipped:', fallbackErr?.message);
       return [];

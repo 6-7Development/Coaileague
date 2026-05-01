@@ -84,7 +84,7 @@ class TrinityCuriosityEngine {
   }
 
   /** Investigate a queued curiosity item using available data */
-  private async investigateItem(workspaceId: string, row: any): Promise<CuriosityItem> {
+  private async investigateItem(workspaceId: string, row: unknown): Promise<CuriosityItem> {
     // CATEGORY C — Raw SQL retained: AI brain engine status UPDATE | Tables: curiosity_queue | Verified: 2026-04-10
     await typedPoolExec(`
       UPDATE curiosity_queue SET status = 'investigating' WHERE id = $1 AND workspace_id = $2

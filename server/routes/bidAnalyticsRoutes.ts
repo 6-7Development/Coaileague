@@ -119,20 +119,20 @@ router.post("/analytics/generate", requireAuth, mutationLimiter, async (req: Aut
       [wid, periodStart, periodEnd]
     )).rows;
 
-    const won = deals.filter((d: any) => d.stage === 'won');
-    const lost = deals.filter((d: any) => d.stage === 'lost');
-    const noResp = deals.filter((d: any) => !['won','lost'].includes(d.stage) && new Date(d.created_at) < new Date(Date.now() - 14 * 86400000));
+    const won = deals.filter((d: unknown) => d.stage === 'won');
+    const lost = deals.filter((d: unknown) => d.stage === 'lost');
+    const noResp = deals.filter((d: unknown) => !['won','lost'].includes(d.stage) && new Date(d.created_at) < new Date(Date.now() - 14 * 86400000));
 
     const closedCount = won.length + lost.length;
     const winRate = closedCount > 0 ? Math.round((won.length / closedCount) * 1000) / 10 : 0;
 
-    const allValues = deals.map((d: any) => parseFloat(d.estimated_monthly_value || d.estimated_annual_value || 0));
+    const allValues = deals.map((d: unknown) => parseFloat(d.estimated_monthly_value || d.estimated_annual_value || 0));
     const avgValue = allValues.length ? allValues.reduce((a: number, b: number) => a + b, 0) / allValues.length : 0;
-    const totalPipeline = deals.filter((d: any) => !['won','lost'].includes(d.stage)).reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
+    const totalPipeline = deals.filter((d: unknown) => !['won','lost'].includes(d.stage)).reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
     const totalWon = won.reduce((s: number, d: any) => s + parseFloat(d.estimated_monthly_value || 0), 0);
 
     // Average days to close
-    const closeTimes = won.concat(lost).filter((d: any) => d.actual_close_date && d.created_at).map((d: any) =>
+    const closeTimes = won.concat(lost).filter((d: unknown) => d.actual_close_date && d.created_at).map((d: unknown) =>
       (new Date(d.actual_close_date).getTime() - new Date(d.created_at).getTime()) / 86400000
     );
     const avgDays = closeTimes.length ? closeTimes.reduce((a: number, b: number) => a + b, 0) / closeTimes.length : 0;

@@ -136,7 +136,7 @@ const DEFAULT_NEVER_THROTTLE_ACTIONS = [
 ];
 
 function configAny(): any {
-  return BILLING as any;
+  return BILLING;
 }
 
 export function normalizeBillingTier(tier: string | null | undefined): BillingTierKey {

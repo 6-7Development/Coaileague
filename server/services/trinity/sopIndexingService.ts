@@ -126,7 +126,7 @@ export async function getSOPContextForTrinity(
     );
     if (!rows.length) return '';
 
-    const sections = rows.map((r: any) => {
+    const sections = rows.map((r: unknown) => {
       const text = topic
         ? extractRelevantSection(r.extracted_text, topic, 500)
         : (r.extracted_text || '').slice(0, 300);

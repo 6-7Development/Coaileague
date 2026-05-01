@@ -290,7 +290,7 @@ async function findLongShiftClockouts(): Promise<WellnessCandidate[]> {
         AND e.phone IS NOT NULL
       LIMIT 100`,
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     timeEntryId: row.time_entry_id,
     workspaceId: row.workspace_id,
     employeeId: row.employee_id,
@@ -449,7 +449,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }

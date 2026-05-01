@@ -106,7 +106,7 @@ export class IssueDetectionService {
   /**
    * Evaluate a single rule against data
    */
-  private evaluateRule(rule: any, data: Record<string, unknown>): boolean {
+  private evaluateRule(rule: unknown, data: Record<string, unknown>): boolean {
     return rule.conditions.some((condition: any) => {
       const fieldValue = data[condition.field];
 
@@ -157,9 +157,9 @@ export class IssueDetectionService {
   /**
    * Find which fields have issues
    */
-  private findAffectedFields(rule: any, data: Record<string, unknown>): string[] {
+  private findAffectedFields(rule: unknown, data: Record<string, unknown>): string[] {
     return rule.conditions
-      .map((condition: any) => {
+      .map((condition: unknown) => {
         const fieldValue = data[condition.field];
         if (condition.operator === "missingField" && (fieldValue === undefined || fieldValue === null)) {
           return condition.field;
@@ -229,7 +229,7 @@ export class IssueDetectionService {
       if (result.success && result.text) {
         const jsonMatch = result.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const aiAnalysis = JSON.parse(jsonMatch[0]);
+          const aiAnalysis: unknown = JSON.parse(jsonMatch[0]);
 
           // Add AI-detected issues
           if (aiAnalysis.additionalIssues) {

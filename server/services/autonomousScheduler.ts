@@ -1413,11 +1413,11 @@ async function runWeeklyScheduleGeneration() {
                             if (!isArmedShift) return true; // unarmed shifts — always valid
                             const officer = empMap.get(a.employeeId);
                             if (!officer) return false;
-                            const isArmedOfficer = (officer as any).isArmed && (officer as any).armedLicenseVerified;
-                            const guardCardExpiry = (officer as any).guardCardExpiryDate;
+                            const isArmedOfficer = (officer as EmployeeWithStatus).isArmed && (officer as EmployeeWithStatus).armedLicenseVerified;
+                            const guardCardExpiry = (officer as EmployeeWithStatus).guardCardExpiryDate;
                             const licenseExpired = guardCardExpiry && new Date(guardCardExpiry) < now;
                             if (!isArmedOfficer || licenseExpired) {
-                              log.warn(`[Scheduler] Armed shift ${a.shiftId} — officer ${a.employeeId} ineligible: armed=${(officer as any).isArmed}, verified=${(officer as any).armedLicenseVerified}, expired=${licenseExpired}`);
+                              log.warn(`[Scheduler] Armed shift ${a.shiftId} — officer ${a.employeeId} ineligible: armed=${(officer as EmployeeWithStatus).isArmed}, verified=${(officer as EmployeeWithStatus).armedLicenseVerified}, expired=${licenseExpired}`);
                               return false;
                             }
                             return true;
@@ -2090,7 +2090,7 @@ async function runRoomAutoClose() {
           },
           async () => ({
             roomsClosed: rooms.length,
-            roomIds: rooms.map((r: any) => r.id),
+            roomIds: rooms.map((r: unknown) => r.id),
           })
         );
 
@@ -2151,21 +2151,21 @@ async function runLateFeeApplication() {
     const { gt, and: andOp, isNotNull, sql: drizzleSql } = await import('drizzle-orm');
 
     const activeWs = await db
-      .select({ id: wsTable.id, lateFeePercentage: (wsTable as any).lateFeePercentage, lateFeeDays: (wsTable as any).lateFeeDays })
+      .select({ id: wsTable.id, lateFeePercentage: (wsTable as Record<string, unknown>).lateFeePercentage, lateFeeDays: (wsTable as Record<string, unknown>).lateFeeDays })
       .from(wsTable)
       .where(
         andOp(
-          (wsTable as any).lateFeePercentage ? gt((wsTable as any).lateFeePercentage, 0) : drizzleSql`1=1`,
-          drizzleSql`(${wsTable as any}.subscription_status IS NULL OR ${wsTable as any}.subscription_status != 'suspended')`
+          (wsTable as Record<string, unknown>).lateFeePercentage ? gt((wsTable as Record<string, unknown>).lateFeePercentage, 0) : drizzleSql`1=1`,
+          drizzleSql`(${wsTable as Record<string, unknown>}.subscription_status IS NULL OR ${wsTable as Record<string, unknown>}.subscription_status != 'suspended')`
         )
       );
 
     for (const ws of activeWs) {
       try {
-        const lateFeePercentage = parseFloat(String((ws as any).lateFeePercentage || 0));
+        const lateFeePercentage = parseFloat(String((ws as Record<string, unknown>).lateFeePercentage || 0));
         if (lateFeePercentage <= 0) continue;
 
-        const lateFeeDays = parseInt(String((ws as any).lateFeeDays || 30), 10);
+        const lateFeeDays = parseInt(String((ws as Record<string, unknown>).lateFeeDays || 30), 10);
         const results = await invoiceService.applyLateFees(ws.id, {
           gracePeriodDays: lateFeeDays,
           lateFeeType: 'percentage',

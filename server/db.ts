@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { RETRIES } from './config/platformConfig';
 import { createLogger } from './lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('Database');
 
@@ -161,7 +162,7 @@ pool.on('connect', (client) => {
 
   // Phase 39 — Slow query detection: wrap client.query to log queries over 500ms
   const _origQuery = client.query.bind(client);
-  (client as any).query = function slowQueryWrapper(...args: unknown[]) {
+  (client as ClientWithExtras).query = function slowQueryWrapper(...args: unknown[]) {
     const start = Date.now();
     const result = _origQuery(...args);
     const captureSlowQuery = (duration: number) => {

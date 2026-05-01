@@ -253,7 +253,7 @@ class TrinityNarrativeIdentityEngine {
       .limit(3)
       .catch(() => []);
 
-    const newLearnings = (patterns as any[]).map((r: any) => r.lessonExtracted).filter(Boolean);
+    const newLearnings = (patterns as any[]).map((r: unknown) => r.lessonExtracted).filter(Boolean);
     const combined = [...new Set([...newLearnings, ...existing])];
     return combined.slice(0, 10);
   }

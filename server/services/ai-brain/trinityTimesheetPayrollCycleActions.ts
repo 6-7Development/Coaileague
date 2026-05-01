@@ -285,7 +285,7 @@ export function registerTimesheetPayrollCycleActions() {
         payrollRunId,
         grossPay: entry[0].grossPay,
         netPay: entry[0].netPay,
-        deductions: (entry as any)[0]?.deductions,
+        deductions: (entry as unknown)[0]?.deductions,
         regularHours: entry[0].regularHours,
         overtimeHours: entry[0].overtimeHours,
         periodStart: (entry[0] as any).periodStart,

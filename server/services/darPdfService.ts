@@ -1103,7 +1103,7 @@ export async function generateShiftTransparencyPdf(darId: string, workspaceId: s
        ORDER BY created_at ASC`,
       [dar.chatroom_id]
     );
-    photos = photoRows.map((r: any) => {
+    photos = photoRows.map((r: unknown) => {
       const gps = r.metadata?.gps;
       return {
         timestamp: new Date(r.created_at).toISOString(),

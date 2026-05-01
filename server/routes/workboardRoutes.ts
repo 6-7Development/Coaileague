@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 /**
  * AI Brain Workboard Routes
  * 
@@ -18,7 +19,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
    * Submit a new task to the AI Brain Workboard
    * Central entry point for all AI orchestration requests
    */
-  app.post('/api/workboard/submit', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/workboard/submit', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { requestContent, requestType, priority, notifyVia, metadata, executionMode } = req.body;
       const userId = req.userId!;
@@ -64,7 +65,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
    * - manager: team tasks (same workspace)
    * - employee: own tasks only
    */
-  app.get('/api/workboard/tasks', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/workboard/tasks', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.userId!;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -135,7 +136,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get a single task by ID
    */
-  app.get('/api/workboard/tasks/:taskId', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/workboard/tasks/:taskId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { taskId } = req.params;
       const userId = req.userId!;
@@ -183,7 +184,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Cancel a pending task
    */
-  app.post('/api/workboard/tasks/:taskId/cancel', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/workboard/tasks/:taskId/cancel', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { taskId } = req.params;
       const userId = req.userId!;
@@ -204,7 +205,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Retry a failed task
    */
-  app.post('/api/workboard/tasks/:taskId/retry', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/workboard/tasks/:taskId/retry', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { taskId } = req.params;
 
@@ -224,7 +225,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get workboard statistics for the workspace
    */
-  app.get('/api/workboard/stats', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/workboard/stats', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -248,7 +249,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Check if workspace can use Fast Mode
    */
-  app.get('/api/ai-brain/fast-mode/status', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -279,7 +280,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get active Fast Mode tasks for workspace
    */
-  app.get('/api/ai-brain/fast-mode/active', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/active', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -302,7 +303,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get Fast Mode execution status for a specific task
    */
-  app.get('/api/ai-brain/fast-mode/task/:taskId', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/task/:taskId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { taskId } = req.params;
       
@@ -322,7 +323,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get Fast Mode value comparison for display
    */
-  app.get('/api/ai-brain/fast-mode/value', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/value', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
@@ -343,7 +344,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
    * Execute task with Velocity Engine (Map-Reduce architecture)
    * Enhanced parallel orchestration with decomposition, parallel execution, and consolidation
    */
-  app.post('/api/ai-brain/fast-mode/velocity', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-brain/fast-mode/velocity', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { content, availableAgents } = req.body;
       const userId = req.userId!;
@@ -394,7 +395,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get Velocity Engine stats (cache, config)
    */
-  app.get('/api/ai-brain/fast-mode/velocity/stats', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/velocity/stats', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const stats = fastModeService.getVelocityStats();
       res.json(stats);
@@ -412,7 +413,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
    * Get cost estimate before execution (Credit Governor)
    * Shows users exactly what they'll spend before committing
    */
-  app.post('/api/ai-brain/fast-mode/estimate', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-brain/fast-mode/estimate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { content, tier, selectedAgents } = req.body;
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
@@ -442,7 +443,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get ROI analytics for workspace (proves Fast Mode value)
    */
-  app.get('/api/ai-brain/fast-mode/roi', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/roi', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
       const { period } = req.query;
@@ -468,7 +469,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Get available Fast Mode tiers and their benefits
    */
-  app.get('/api/ai-brain/fast-mode/tiers', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.get('/api/ai-brain/fast-mode/tiers', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const tiers = fastModeService.getTiers();
       res.json({ tiers });
@@ -481,7 +482,7 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: Authenti
   /**
    * Generate success digest for a completed task
    */
-  app.post('/api/ai-brain/fast-mode/digest', requireAuth, async (req: AuthenticatedRequest, res: any) => {
+  app.post('/api/ai-brain/fast-mode/digest', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { taskId, executionTimeMs, tier, agentResults, creditsUsed, creditsSavedFromCache } = req.body;
 

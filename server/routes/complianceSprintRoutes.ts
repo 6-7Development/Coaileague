@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 /**
  * Compliance Sprint API Routes — Phases F, G, H
  * CoAIleague Legal/Safety Sprint
@@ -29,7 +30,7 @@ complianceSprintRouter.post(
   "/handbook/audit",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { documentText, documentTitle, documentId } = req.body;
       if (!documentText || typeof documentText !== "string") {
@@ -56,7 +57,7 @@ complianceSprintRouter.get(
   "/handbook/audit/workspace",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const audits = await auditWorkspaceHandbooks(wid(req));
       res.json({ audits, count: audits.length, auditedAt: new Date().toISOString() });
@@ -73,7 +74,7 @@ complianceSprintRouter.get(
   "/contracts/integrity/report",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const report = await generateContractIntegrityReport(wid(req));
       res.json(report);
@@ -88,7 +89,7 @@ complianceSprintRouter.get(
   "/contracts/:id/integrity",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const result = await verifyContractIntegrity(req.params.id, wid(req));
       res.json(result);
@@ -103,7 +104,7 @@ complianceSprintRouter.post(
   "/contracts/:id/snapshot",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { changeType = "amended", changeSummary = "Manual snapshot" } = req.body;
       const snapshot = await snapshotContract({
@@ -126,7 +127,7 @@ complianceSprintRouter.get(
   "/contracts/expirations",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const alerts = await scanContractExpirations(wid(req));
       res.json({ alerts, count: alerts.length, scannedAt: new Date().toISOString() });
@@ -143,7 +144,7 @@ complianceSprintRouter.post(
   "/translate/text",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { text, sourceLanguage = "en", targetLanguage, context } = req.body;
       if (!text || !targetLanguage) {
@@ -172,7 +173,7 @@ complianceSprintRouter.post(
   "/translate/incident/:id",
   requireAuth,
   ensureWorkspaceAccess,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { targetLanguage = "es" } = req.body;
       if (!["en", "es"].includes(targetLanguage)) {
@@ -196,7 +197,7 @@ complianceSprintRouter.post(
 complianceSprintRouter.get(
   "/translate/ui-strings/:language",
   requireAuth,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { language } = req.params;
       if (!["en", "es"].includes(language)) {
@@ -218,7 +219,7 @@ complianceSprintRouter.get(
 complianceSprintRouter.get(
   "/verification/sprint-status",
   requireAuth,
-  async (req: AuthenticatedRequest, res: any) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       res.json({
         reportedAt: new Date().toISOString(),

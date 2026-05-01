@@ -143,7 +143,7 @@ Rules:
     const text: string = res?.content?.[0]?.text ?? '{}';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return data;
-    const modified = JSON.parse(match[0]);
+    const modified: unknown = JSON.parse(match[0]);
     return {
       workspace:  modified.workspace  ?? data.workspace,
       guards:     modified.guards     ?? data.guards,

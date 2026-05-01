@@ -135,7 +135,7 @@ To execute an action, respond with JSON in format:
         const actionMatch = response.match(/\{"action":\s*"([^"]+)",\s*"params":\s*(\{[^}]*\})\}/);
         if (actionMatch) {
           const actionId = actionMatch[1];
-          const params = JSON.parse(actionMatch[2]);
+          const params: unknown = JSON.parse(actionMatch[2]);
           
           try {
             const result = await aiBrainMasterOrchestrator.executeActionWithNotification(
@@ -208,7 +208,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
     const workflows = aiBrainWorkflowExecutor.listWorkflows();
     const tests = aiBrainTestRunner.listTests();
     
-    const categories = actions.reduce((acc: Record<string, number>, action: any) => {
+    const categories = actions.reduce((acc: Record<string, number>, action: unknown) => {
       const category = action.category || 'other';
       acc[category] = (acc[category] || 0) + 1;
       return acc;
@@ -218,7 +218,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
       actions: {
         total: actions.length,
         byCategory: categories,
-        list: actions.map((a: any) => ({
+        list: actions.map((a: unknown) => ({
           id: a.actionId,
           name: a.name,
           category: a.category,
@@ -241,7 +241,7 @@ aiBrainConsoleRouter.get('/capabilities', requireSupportRole, async (req: Authen
           acc[t.category] = (acc[t.category] || 0) + 1;
           return acc;
         }, {}),
-        list: tests.map((t: any) => ({
+        list: tests.map((t: unknown) => ({
           id: t.id,
           name: t.name,
           category: t.category,

@@ -1790,3 +1790,58 @@ Patterns targeted:
 | `as any` | 5,227 | 4023 | -1204 |
 | `: any` | 3,339 | 1782 | -1557 |
 | **Combined** | **8,566** | **5805** | **-2761 (32.2%)** |
+
+---
+
+## Phase 14 — Dangerous any Elimination + Type Safety Hardening (2026-05-01)
+
+### Focus: any patterns that cause REAL runtime failures
+
+**Dangerous Pattern 1: `res: any` in handler signatures (103 fixed, 18 files)**
+Route handlers typed `(req: any, res: any)` lose all Express type safety.
+Replaced with `(req: AuthenticatedRequest, res: Response)` throughout.
+Prevents: wrong status code types, missing res.json() enforcement, 
+lost IntelliSense on response methods.
+
+**Dangerous Pattern 2: `.values(X as any)` Drizzle bypass (5 files fixed)**
+5 route files bypassed Drizzle's schema validation with `.values(validated as any)`.
+This allowed malformed data to reach DB inserts without type checking.
+Fixed: alertConfigRoutes, chat-management, invoiceRoutes, timeEntryRoutes, billingSettingsRoutes.
+
+**Dangerous Pattern 3: `return X as any` (4 fixes)**
+`return requests as any` (advancedSchedulingService), `return workspace as any` (×2 accountState),
+`return BILLING as any` (billingTiersRegistry) — all replaced with proper types.
+
+**New Domain Types (shared/types/domainExtensions.ts)**
+- `ClientWithExtras` — extends client with `requiresArmed`, `armedBillRate`, 
+  `unarmedBillRate`, `requiredLicenseTypes`, `minOfficerSchedulingScore`
+- `EmployeeComplianceRecord` — license fields: `armedLicenseNumber`, `guardCardNumber`,
+  `armedLicenseExpiration`, `guardCardExpirationDate`
+- `EmployeeWithStatus` — extended with `schedulingScore`, `travelRadiusMiles`,
+  `availabilityMode`, `armedLicenseNumber`, `guardCardNumber`
+
+Applied across 38 files: 162 `as any` casts replaced with typed domain types.
+
+**Client URL Fix**
+- `apiEndpoints.ts`: `/api/ai-brain/predict` → `/api/analytics/bi/predictive`
+
+**Structural any sweep (442 removed, 163 files)**
+- `Object.entries/map/filter/forEach/reduce` callbacks typed properly
+- Interface properties: `x?: any` → `x?: unknown`
+- Async callback params: `(action: any)`, `(step: any)`, `(task: any)` → `unknown`
+
+### Regression Fix
+Bad regex substitution introduced `\1 \2` backreferences in destructuring:
+`.map(([k, v]: any)` became `.map(([\1, \2]: [string, unknown])` in 2 files.
+Fixed: `scheduleos.ts`, `trinityIntelligenceLayers.ts` — destructuring restored.
+
+### All-Time TypeScript Metrics
+| Metric | Baseline (Ph7) | After Phase 14 | Reduction |
+|--------|----------------|----------------|-----------|
+| `as any` casts | 5,227 | 3780 | -1447 |
+| `: any` types | 3,339 | 1248 | -2091 |
+| **Combined** | **8,566** | **5028** | **-3538 (41.3%)** |
+| `catch(e: any)` | 246 | **0** | -100% |
+| `.values(X as any)` | 9 | **0** | -100% |
+| `res: any` handlers | 95 | **0** | -100% |
+| `return X as any` | 4 | **0** | -100% |

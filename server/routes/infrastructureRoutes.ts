@@ -132,7 +132,7 @@ router.get('/health', async (req: Request, res: Response) => {
     
     // Format circuits for frontend (handle case where circuits property doesn't exist)
     const circuitList = (circuitHealth as any).circuits || [];
-    const circuits = circuitList.map((c: any) => ({
+    const circuits = circuitList.map((c: unknown) => ({
       name: c.name || 'unknown',
       displayName: c.displayName || c.name || 'Unknown Circuit',
       state: c.state || 'CLOSED',
@@ -147,7 +147,7 @@ router.get('/health', async (req: Request, res: Response) => {
     
     // Format SLA services for frontend (handle case where services property doesn't exist)
     const serviceList = (slaCompliance as any).services || [];
-    const slaServices = serviceList.map((s: any) => ({
+    const slaServices = serviceList.map((s: unknown) => ({
       serviceId: s.serviceId || 'unknown',
       displayName: s.displayName || 'Unknown Service',
       tier: s.tier || 'standard',
@@ -163,9 +163,9 @@ router.get('/health', async (req: Request, res: Response) => {
     // Calculate aggregate stats using actual returned properties
     const aggregateStats = {
       totalCircuits: circuits.length,
-      closedCircuits: circuits.filter((c: any) => c.state === 'CLOSED').length,
-      openCircuits: circuits.filter((c: any) => c.state === 'OPEN').length,
-      halfOpenCircuits: circuits.filter((c: any) => c.state === 'HALF_OPEN').length,
+      closedCircuits: circuits.filter((c: unknown) => c.state === 'CLOSED').length,
+      openCircuits: circuits.filter((c: unknown) => c.state === 'OPEN').length,
+      halfOpenCircuits: circuits.filter((c: unknown) => c.state === 'HALF_OPEN').length,
       overallHealth: circuitHealth.healthy ? 'healthy' : 'degraded',
       slaCompliance: (slaCompliance as any).overallCompliance ?? slaCompliance.overallHealth ?? 'healthy',
     };

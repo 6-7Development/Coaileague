@@ -307,7 +307,7 @@ class ReinforcementLearningLoop {
     const knowledgeEntityIds: string[] = [
       ...(contextWindow.entityIds || []),
       ...(contextWindow.knowledgeIds || []),
-    ].filter((id: any) => typeof id === 'string' && id.length > 0);
+    ].filter((id: unknown) => typeof id === 'string' && id.length > 0);
 
     if (knowledgeEntityIds.length >= 2) {
       if (outcome === 'success') {

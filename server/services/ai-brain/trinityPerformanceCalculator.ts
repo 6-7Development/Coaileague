@@ -21,6 +21,7 @@ import { officerPerformanceScores } from '@shared/schema/domains/workforce/exten
 import { employees } from '@shared/schema/domains/workforce/index';
 import { dailyActivityReports, shifts, timeEntries } from '@shared/schema';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityPerformanceCalculator');
 
 export interface PerformanceScores {
@@ -74,7 +75,7 @@ class TrinityPerformanceCalculator {
       { score: attendance.score, weight: 0.30 },
       { score: reports.qualityScore, weight: 0.10 },
       { score: reports.submissionScore, weight: 0.10 },
-      ...(client !== null ? [{ score: (client as any).score, weight: 0.15 }] : []),
+      ...(client !== null ? [{ score: (client as ClientWithExtras).score, weight: 0.15 }] : []),
       { score: responseTime.score, weight: 0.10 },
     ];
     const totalWeight = weightedScores.reduce((sum, s) => sum + s.weight, 0);
@@ -93,7 +94,7 @@ class TrinityPerformanceCalculator {
       attendanceScore: attendance.score,
       reportQualityScore: reports.qualityScore,
       reportSubmissionScore: reports.submissionScore,
-      clientSatisfactionScore: client !== null ? (client as any).score : null,
+      clientSatisfactionScore: client !== null ? (client as ClientWithExtras).score : null,
       responseTimeScore: responseTime.score,
       supervisorInputScore: null,
       compositeScore: composite,

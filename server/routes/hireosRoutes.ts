@@ -10,6 +10,7 @@ import { employeeDocumentOnboardingService } from "../services/employeeDocumentO
 import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
 import { z } from 'zod';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('HireosRoutes');
 
 
@@ -463,7 +464,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
     doc.text(`Name: ${employee.firstName} ${employee.lastName}`);
     doc.text(`Email: ${employee.email}`);
     doc.text(`Position: ${employee.position || 'N/A'}`);
-    doc.text(`Department: ${(employee as any).department || 'N/A'}`);
+    doc.text(`Department: ${(employee as EmployeeWithStatus).department || 'N/A'}`);
     doc.text(`Employee ID: ${employee.id}`);
     doc.moveDown();
 
@@ -600,7 +601,7 @@ router.get('/documents/:employeeId/packet', requireAuth, requireHRManager, async
           const documentPDF = await PDFLib.load(documentBuffer);
           const copiedPages = await masterPDF.copyPages(documentPDF, documentPDF.getPageIndices());
           
-          copiedPages.forEach((page: any) => {
+          copiedPages.forEach((page: unknown) => {
             masterPDF.addPage(page);
           });
         } else if (document.fileType?.startsWith('image/')) {
@@ -830,8 +831,8 @@ router.get('/employee/:employeeId/hiring-score', requireManager, async (req: Aut
     const onboardingStatus = await employeeDocumentOnboardingService.checkWorkEligibility(employeeId);
 
     const behaviorScore = {
-      reliabilityScore: (employee as any).reliabilityScore ?? 100,
-      attendanceRate: (employee as any).attendanceRate ?? 100,
+      reliabilityScore: (employee as EmployeeWithStatus).reliabilityScore ?? 100,
+      attendanceRate: (employee as EmployeeWithStatus).attendanceRate ?? 100,
       complianceScore: onboardingStatus.eligible ? 100 : Math.max(0, 50 - (onboardingStatus.reasons?.length || 0) * 10),
       overallScore: Math.round(
         ((employee.reliabilityScore ?? 100) * 0.4) +

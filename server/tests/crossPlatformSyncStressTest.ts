@@ -740,7 +740,7 @@ async function phase11_db_reflects_config() {
     WHERE table_schema = 'public'
     ORDER BY table_name
   `);
-  const allTables = (tableCheck as any).rows?.map((r: any) => r.table_name) || [];
+  const allTables = (tableCheck as any).rows?.map((r: unknown) => r.table_name) || [];
 
   for (const [feature, table] of Object.entries(featureTables)) {
     const exists = allTables.includes(table);
@@ -774,7 +774,7 @@ async function phase12_stripe_webhook_idempotency() {
   // CATEGORY C — Raw SQL retained: information_schema | Tables: information_schema | Verified: 2026-03-23
   const allTables = (await typedQuery(sql`
     SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
-  `) as any).rows?.map((r: any) => r.table_name) || [];
+  `) as any).rows?.map((r: unknown) => r.table_name) || [];
 
   record({
     name: 'processed_stripe_events Table For Idempotency',
@@ -951,7 +951,7 @@ async function phase14_runtime_api_validation() {
   });
 
   if (packsResp.status === 200 && Array.isArray(packsResp.body)) {
-    const apiPackCredits = packsResp.body.map((p: any) => p.credits).sort((a: number, b: number) => a - b);
+    const apiPackCredits = packsResp.body.map((p: unknown) => p.credits).sort((a: number, b: number) => a - b);
     const configPackCredits = CREDIT_PACKAGES.map(p => p.credits).sort((a, b) => a - b);
     const packsMatch = JSON.stringify(apiPackCredits) === JSON.stringify(configPackCredits);
     record({

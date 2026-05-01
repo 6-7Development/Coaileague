@@ -25,6 +25,7 @@ import { complianceEnforcementService } from '../compliance/complianceEnforcemen
 import { createNotification } from '../notificationService';
 import { briefingChannelService } from '../briefingChannelService';
 import { helpaiOrchestrator } from '../helpai/platformActionHub';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 export interface BriefItem {
   rank?: number;
@@ -283,12 +284,12 @@ class TrinityProactiveScannerService {
 
     // 5c. Active collections pipeline
     try {
-      const activeCollections = await db.select({ id: clients.id, companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName, collectionsStatus: (clients as any).collectionsStatus, collectionAttemptCount: (clients as any).collectionAttemptCount })
+      const activeCollections = await db.select({ id: clients.id, companyName: clients.companyName, firstName: clients.firstName, lastName: clients.lastName, collectionsStatus: (clients as ClientWithExtras).collectionsStatus, collectionAttemptCount: (clients as ClientWithExtras).collectionAttemptCount })
         .from(clients)
-        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as any).collectionsStatus as any, 'active')))
+        .where(and(eq(clients.workspaceId, workspaceId), eq((clients as ClientWithExtras).collectionsStatus as any, 'active')))
         .catch(() => []);
       if (activeCollections.length > 0) {
-        const names = activeCollections.slice(0, 3).map((c: any) => c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown').join(', ');
+        const names = activeCollections.slice(0, 3).map((c: unknown) => c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown').join(', ');
         const more = activeCollections.length > 3 ? ` (+${activeCollections.length - 3} more)` : '';
         alerts.push(`${activeCollections.length} client(s) in active collections: ${names}${more}. Review payment status and follow up.`);
       }
@@ -969,7 +970,7 @@ class TrinityProactiveScannerService {
             ) as any,
           } as any).catch(() => null);
           if (entry) {
-            const hasIssues = !(entry as any).clockOut || (entry as any).totalMinutes > 600 || (entry as any).totalMinutes < 0;
+            const hasIssues = !(entry as unknown).clockOut || (entry as unknown).totalMinutes > 600 || (entry as unknown).totalMinutes < 0;
             if (!hasIssues) {
               await db.update(timeEntries)
                 .set({ status: 'approved', updatedAt: new Date() } as any)
@@ -978,7 +979,7 @@ class TrinityProactiveScannerService {
               return { handled: true, event: 'timesheet_submitted', autoApproved: true };
             } else {
               await db.update(timeEntries)
-                .set({ status: 'flagged', notes: '[AUTO_FLAGGED] Anomaly detected: ' + (!(entry as any).clockOut ? 'missing clock-out' : (entry as any).totalMinutes > 600 ? 'shift >10 hours' : 'invalid duration'), updatedAt: new Date() } as any)
+                .set({ status: 'flagged', notes: '[AUTO_FLAGGED] Anomaly detected: ' + (!(entry as unknown).clockOut ? 'missing clock-out' : (entry as unknown).totalMinutes > 600 ? 'shift >10 hours' : 'invalid duration'), updatedAt: new Date() } as any)
                 .where(and(eq(timeEntries.id, payload.timeEntryId), eq(timeEntries.workspaceId, workspaceId)))
                 .catch(() => null);
               return { handled: true, event: 'timesheet_submitted', autoApproved: false, flagged: true };
@@ -1200,7 +1201,7 @@ class TrinityProactiveScannerService {
         .from(orchestrationRuns)
         .where(and(eq(orchestrationRuns.workspaceId, workspaceId), eq(orchestrationRuns.category, 'operational_task'), eq(orchestrationRuns.status, 'awaiting_approval')))
         .catch(() => []);
-      const overdueDelegated = overdueTasksRaw.filter((t: any) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now);
+      const overdueDelegated = overdueTasksRaw.filter((t: unknown) => t.inputParams?.dueBy && new Date(t.inputParams.dueBy) < now);
       if (overdueDelegated.length > 0) {
         items.push({ urgency: 'high', title: `${overdueDelegated.length} delegated task(s) past due`, detail: `Trinity assigned these tasks but completion has not been verified. Escalation may be needed.`, actionHint: 'Use task.track_overdue then task.escalate for each overdue task', score: 72 });
       }
@@ -1435,7 +1436,7 @@ class TrinityProactiveScannerService {
 
     // 1. AR collection rate milestone (≥95% last 30 days)
     try {
-      const result: any = await db.execute(sql`
+      const result: Record<string, unknown> = await db.execute(sql`
         SELECT
           CASE WHEN COALESCE(SUM(total::numeric), 0) = 0 THEN 0
           ELSE (SUM(CASE WHEN status = 'paid' THEN total::numeric ELSE 0 END)
@@ -1460,7 +1461,7 @@ class TrinityProactiveScannerService {
 
     // 2. Clean payroll run (last run in past 7 days completed without anomalies)
     try {
-      const result: any = await db.execute(sql`
+      const result: Record<string, unknown> = await db.execute(sql`
         SELECT status, run_date
         FROM payroll_runs
         WHERE workspace_id = ${workspaceId}
@@ -1482,7 +1483,7 @@ class TrinityProactiveScannerService {
 
     // 3. Officer turnaround (recovering trajectory in temporal entity arcs)
     try {
-      const result: any = await db.execute(sql`
+      const result: Record<string, unknown> = await db.execute(sql`
         SELECT e.first_name, e.last_name, tea.trajectory, tea.narrative_summary
         FROM temporal_entity_arcs tea
         JOIN employees e ON e.id = tea.entity_id
@@ -1505,7 +1506,7 @@ class TrinityProactiveScannerService {
 
     // 4. New contract won in last 48 hours
     try {
-      const result: any = await db.execute(sql`
+      const result: Record<string, unknown> = await db.execute(sql`
         SELECT title, client_name, created_at
         FROM contracts
         WHERE workspace_id = ${workspaceId}

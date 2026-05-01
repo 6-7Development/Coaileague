@@ -103,7 +103,7 @@ router.get("/client-reports", requireAuth, async (req: AuthenticatedRequest, res
        WHERE workspace_id = ${workspaceId}
          AND client_id = ${clientId}
     `);
-    const clientSiteIds: string[] = ((siteRows as any).rows || []).map((r: any) => r.id);
+    const clientSiteIds: string[] = ((siteRows as any).rows || []).map((r: unknown) => r.id);
 
     // Helper: produce a SQL array literal for inArray-style filters without
     // dropping down to the dynamic drizzle `inArray` builder.

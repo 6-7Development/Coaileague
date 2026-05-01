@@ -218,7 +218,7 @@ router.get("/compliance-grid", requireAuth, async (req: AuthenticatedRequest, re
       }
     }
 
-    const grid = officers.map((officer: any) => ({
+    const grid = officers.map((officer: unknown) => ({
       officer,
       certifications: requirements.map((req: AuthenticatedRequest) => {
         const rec = recordMap[officer.id]?.[req.id];
@@ -405,7 +405,7 @@ router.get("/tcole-compliance", requireAuth, async (req: AuthenticatedRequest, r
     const endOfYear = new Date(now.getFullYear(), 11, 31);
     const daysUntilDeadline = Math.ceil((endOfYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    const compliance = r.rows.map((row: any) => {
+    const compliance = r.rows.map((row: unknown) => {
       const hoursAccumulated = parseFloat(row.hours_completed);
       const hoursRemaining = requiredHours - hoursAccumulated;
       const urgency =
@@ -478,7 +478,7 @@ router.post("/tcole-alerts", requireAuth, async (req: AuthenticatedRequest, res)
     if (count > 0) {
       // Batch into one notification per workspace — not one per officer
       const officerLines = belowRequired.rows
-        .map((o: any) => {
+        .map((o: unknown) => {
           const completed = parseFloat(o.hours_completed);
           const remaining = requiredHours - completed;
           return `${o.first_name} ${o.last_name} — ${completed}/${requiredHours} hrs (${remaining.toFixed(1)} remaining)`;
@@ -502,7 +502,7 @@ router.post("/tcole-alerts", requireAuth, async (req: AuthenticatedRequest, res)
         idempotencyKey: `tcole-compliance-${wid}-${activeThreshold}-${today}`,
         metadata: {
           officerCount: count,
-          officerIds: belowRequired.rows.map((o: any) => o.id),
+          officerIds: belowRequired.rows.map((o: unknown) => o.id),
           requiredHours,
           daysUntilYearEnd: diffDays,
           threshold: activeThreshold,

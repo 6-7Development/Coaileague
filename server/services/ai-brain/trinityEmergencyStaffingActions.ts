@@ -284,7 +284,7 @@ export function registerEmergencyStaffingActions() {
       stepType: 'action',
       status: 'completed',
       inputData: { assignments },
-      outputData: { shiftIds: createdShifts.map((s: any) => s.id) },
+      outputData: { shiftIds: createdShifts.map((s: unknown) => s.id) },
       workspaceId,
       createdAt: new Date(),
       updatedAt: new Date(),

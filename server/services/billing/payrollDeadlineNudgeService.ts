@@ -91,7 +91,7 @@ export async function runPayrollDeadlineNudge(): Promise<NudgeResult> {
       ORDER BY pr.period_end ASC
     `);
 
-    const workspacesChecked = new Set(result.rows.map((r: any) => r.workspace_id)).size;
+    const workspacesChecked = new Set(result.rows.map((r: unknown) => r.workspace_id)).size;
 
     for (const run of result.rows as any[]) {
       try {

@@ -281,7 +281,7 @@ export function registerInfraActions() {
         const receipt = await quickbooksReceiptService.createPayrollReceipt({
           workspaceId,
           payrollRunId: run.id,
-          entries: lines.map((line: any) => ({
+          entries: lines.map((line: unknown) => ({
             id: line.id,
             employeeName: line.employeeName || `Employee ${line.employeeId}`,
             hours: parseFloat(line.regularHours || '0') + parseFloat(line.overtimeHours || '0'),

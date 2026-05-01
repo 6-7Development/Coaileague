@@ -457,14 +457,14 @@ export class AIGuardRails {
   } {
     const relevantLogs = Array.from(this.auditLog.values())
       .flat()
-      .filter((log: any) => 
+      .filter((log: unknown) => 
         log.context?.workspaceId === workspaceId &&
         new Date(log.timestamp).getTime() > Date.now() - days * 86400000
       );
 
-    const successfulOps = relevantLogs.filter((log: any) => log.result?.success).length;
+    const successfulOps = relevantLogs.filter((log: unknown) => log.result?.success).length;
     const totalCredits = relevantLogs.reduce((sum: number, log: any) => sum + (log.result?.creditsUsed || 0), 0);
-    const suspicious = relevantLogs.filter((log: any) => log.type === 'SUSPICIOUS_INPUT').length;
+    const suspicious = relevantLogs.filter((log: unknown) => log.type === 'SUSPICIOUS_INPUT').length;
 
     return {
       totalOperations: relevantLogs.length,

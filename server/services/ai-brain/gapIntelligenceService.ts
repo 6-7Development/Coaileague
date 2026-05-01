@@ -699,7 +699,7 @@ class GapIntelligenceService {
     // Get top issues from metadata if available
     const topIssues = summary.topIssues || [];
     const topIssuesSummary = topIssues.length > 0
-      ? topIssues.slice(0, 3).map((issue: any) => 
+      ? topIssues.slice(0, 3).map((issue: unknown) => 
           `• ${issue.file || issue.location || 'Unknown'}: ${issue.message?.substring(0, 60) || issue.type}...`
         ).join('\n')
       : '';

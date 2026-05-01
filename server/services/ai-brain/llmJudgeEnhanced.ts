@@ -375,13 +375,13 @@ Respond with JSON:
         responseFormat: 'json',
       });
 
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       
       return {
         riskScore: parsed.overallRiskScore || 50,
         confidence: parsed.confidence || 0.7,
         reasoning: parsed.reasoning || 'Evaluation completed',
-        criteria: (parsed.criteria || []).map((c: any) => ({
+        criteria: (parsed.criteria || []).map((c: unknown) => ({
           name: c.name,
           score: c.score || 50,
           weight: RISK_CRITERIA.find(rc => rc.name === c.name)?.weight || 0.1,

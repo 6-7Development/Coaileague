@@ -168,7 +168,7 @@ export async function getStrongestEdges(
       ORDER  BY strength DESC
       LIMIT  ${limit}
     `);
-    return (rows as any[]).map((r: any) => ({
+    return (rows as any[]).map((r: unknown) => ({
       sourceId: r.source_id,
       targetId: r.target_id,
       type: r.type,

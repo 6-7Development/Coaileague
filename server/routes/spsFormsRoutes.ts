@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 /**
  * SPS 10-Step Employee Onboarding Routes — /api/sps/forms
  *
@@ -387,7 +389,7 @@ spsFormsRouter.get('/:id', async (req, res) => {
 });
 
 // ── PUT /:id/save-draft ───────────────────────────────────────────────────────
-const saveDraftHandler = async (req: AuthenticatedRequest, res: any) => {
+const saveDraftHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = resolveWorkspace(req);
     if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });

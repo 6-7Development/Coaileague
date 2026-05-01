@@ -228,7 +228,7 @@ class LLMJudgeEvaluator {
       });
 
       // Parse response
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       
       // Calculate criteria scores
       const criteriaScores = this.calculateCriteriaScores(request.criteria, parsed.scores || {});

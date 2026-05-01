@@ -113,7 +113,7 @@ class TrinityIncubationEngine {
     return results;
   }
 
-  private async processSingleProblem(workspaceId: string, row: any): Promise<IncubatingProblem> {
+  private async processSingleProblem(workspaceId: string, row: unknown): Promise<IncubatingProblem> {
     const history: IncubationAttempt[] = row.incubation_approach_history || [];
     const cycleNumber = history.length;
     const approachIndex = cycleNumber % INCUBATION_APPROACHES.length;

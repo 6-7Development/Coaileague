@@ -486,7 +486,7 @@ export function registerReportAnalyticsActions(): void {
       .groupBy(sql`time_entries.employee_id`)
       .orderBy(sql`SUM(time_entries.total_hours::numeric) DESC`);
     const rows = await baseQuery.catch(() => []);
-    return { periodDays, since, employees: rows.map((r: any) => ({
+    return { periodDays, since, employees: rows.map((r: unknown) => ({
       employeeId: r.employeeId,
       totalHours: +(parseFloat(String(r.totalHoursSum || 0))).toFixed(1),
       shiftsWorked: parseInt(String(r.entryCount || 0)),

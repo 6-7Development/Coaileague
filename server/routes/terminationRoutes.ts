@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { requireAuth } from "../auth";
@@ -13,7 +14,7 @@ const log = createLogger('TerminationRoutes');
 
 const router = Router();
 
-async function requireManagerForTermination(req: AuthenticatedRequest, res: any): Promise<{ workspace: any } | null> {
+async function requireManagerForTermination(req: AuthenticatedRequest, res: Response): Promise<{ workspace: any } | null> {
   const userId = req.user?.id || req.user?.claims?.sub;
   if (!userId) { res.status(401).json({ message: "Unauthorized" }); return null; }
   const platformRole = await getUserPlatformRole(userId);

@@ -14,6 +14,7 @@ import { smsService } from "./smsService";
 import { universalNotificationEngine } from "./universalNotificationEngine";
 import { MANAGER_ROLES } from "@shared/lib/rbac/roleDefinitions";
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('incidentRoutingService');
 
 
@@ -297,8 +298,8 @@ export class IncidentRoutingService {
 
     if (data.shiftId && (severity === 'critical' || severity === 'high')) {
       const client = await this.getClientContact(data.shiftId);
-      if (client && (client as any).isEnterprise) {
-        const contactEmail = (client as any).contactEmail || (client as any).email;
+      if (client && (client as ClientWithExtras).isEnterprise) {
+        const contactEmail = (client as ClientWithExtras).contactEmail || (client as ClientWithExtras).email;
         if (contactEmail) {
           try {
             await platformEventBus.publish({

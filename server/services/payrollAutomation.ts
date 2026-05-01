@@ -1364,9 +1364,9 @@ export class PayrollAutomationEngine {
       allTimeEntryIds.push(...employeeSummary.entries.map(e => e.timeEntryId));
 
       // Detect manually-edited entries — record in payroll audit notes so ledger is never blind
-      const editedEntries = employeeSummary.entries.filter((e: any) => e.manuallyEdited);
+      const editedEntries = employeeSummary.entries.filter((e: unknown) => e.manuallyEdited);
       if (editedEntries.length > 0) {
-        const reasons = editedEntries.map((e: any) => e.manualEditReason).filter(Boolean).join('; ');
+        const reasons = editedEntries.map((e: unknown) => e.manualEditReason).filter(Boolean).join('; ');
         const note = reasons
           ? `AUDIT: ${editedEntries.length} time entr${editedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before payroll. Reason(s): ${reasons}`
           : `AUDIT: ${editedEntries.length} time entr${editedEntries.length === 1 ? 'y was' : 'ies were'} manually corrected before payroll.`;

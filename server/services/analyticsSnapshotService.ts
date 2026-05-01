@@ -450,7 +450,7 @@ export function registerAnalyticsBIActions(): void {
         )
         ORDER BY hs.composite_score ASC
       `, [workspaceId]).catch(() => null);
-      const highRisk = (data?.rows ?? []).filter((r: any) => r.churn_risk === 'high').length;
+      const highRisk = (data?.rows ?? []).filter((r: unknown) => r.churn_risk === 'high').length;
       return { success: true, actionId: request.actionId, message: `${highRisk} high-churn-risk client(s)`, data: { clients: data?.rows ?? [], highRiskCount: highRisk } };
     },
   });

@@ -353,7 +353,7 @@ async function createInvoiceFromBillableSummary(
           clientName: clientSummary.clientName,
           unbilledHours,
           entryCount: clientSummary.entries.length,
-          timeEntryIds: clientSummary.entries.map((e: any) => e.timeEntryId),
+          timeEntryIds: clientSummary.entries.map((e: unknown) => e.timeEntryId),
           // severity moved to metadata for type safety
         },
       }),
@@ -431,7 +431,7 @@ async function createInvoiceFromBillableSummary(
             employeeName,
             clientId: entries[0]?.clientId,
             unbilledHours: entries.reduce((h: number, e: any) => h + (e.totalHours || 0), 0),
-            timeEntryIds: entries.map((e: any) => e.timeEntryId),
+            timeEntryIds: entries.map((e: unknown) => e.timeEntryId),
             // severity in event metadata
           },
         }),
@@ -449,7 +449,7 @@ async function createInvoiceFromBillableSummary(
     let holidayAmount = 0;
     const rateSources = new Set<string>();
     // Collect all time entry IDs for this employee's grouped entries
-    const allEntryIds: string[] = entries.map((e: any) => e.timeEntryId).filter(Boolean);
+    const allEntryIds: string[] = entries.map((e: unknown) => e.timeEntryId).filter(Boolean);
     // Use the earliest clock-in date as the service date for these line items
     const earliestClockIn: Date | null = entries.reduce((earliest: Date | null, e: any) => {
       if (!e.clockIn) return earliest;
@@ -473,13 +473,13 @@ async function createInvoiceFromBillableSummary(
     
     // Detect manually-edited entries — flag them in line items + emit platform event
     // This closes the gap where billing was blind to manager corrections
-    const manuallyEditedEntries = entries.filter((e: any) => e.manuallyEdited);
+    const manuallyEditedEntries = entries.filter((e: unknown) => e.manuallyEdited);
     const hasManualEdits = manuallyEditedEntries.length > 0;
     const manualEditSuffix = hasManualEdits ? ' [MANAGER CORRECTED]' : '';
 
     if (hasManualEdits) {
       const reasons = manuallyEditedEntries
-        .map((e: any) => e.manualEditReason)
+        .map((e: unknown) => e.manualEditReason)
         .filter(Boolean)
         .join('; ');
       const desc = reasons
@@ -496,7 +496,7 @@ async function createInvoiceFromBillableSummary(
             employeeId,
             employeeName,
             clientId: entries[0]?.clientId,
-            editedEntryIds: manuallyEditedEntries.map((e: any) => e.timeEntryId),
+            editedEntryIds: manuallyEditedEntries.map((e: unknown) => e.timeEntryId),
             totalEditedEntries: manuallyEditedEntries.length,
             reasons,
             // severity in event metadata

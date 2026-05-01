@@ -207,7 +207,7 @@ router.post('/', requireAuth, requireRole(['org_owner', 'co_owner', 'manager', '
           );
           if (recipients.length > 10) {
             const { queueSMS } = await import('../services/sms/smsQueueService');
-            const messages = recipients.map((r: any) => ({
+            const messages = recipients.map((r: unknown) => ({
               workspaceId,
               to: r.phone,
               body: smsBody,

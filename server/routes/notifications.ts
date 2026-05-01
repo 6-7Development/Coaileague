@@ -133,16 +133,16 @@ router.get('/api/notifications/combined', requireAuth, async (req, res) => {
       // Filter out cleared notifications AND platform_update type notifications.
       // platform_update notifications duplicate the platform_updates entries already
       // returned separately - showing both causes users to see the same update twice.
-      const notifications = allNotifications.filter((n: any) => !n.clearedAt && n.type !== 'platform_update');
-      const trueUnreadNotifications = notifications.filter((n: any) => !n.isRead).length;
+      const notifications = allNotifications.filter((n: unknown) => !n.clearedAt && n.type !== 'platform_update');
+      const trueUnreadNotifications = notifications.filter((n: unknown) => !n.isRead).length;
       
       // Filter out viewed/cleared platform updates - once user clicks "Clear All",
       // platform updates marked as viewed should not reappear
-      const platformUpdatesData = platformUpdatesDataRaw.filter((u: any) => !u.isViewed);
+      const platformUpdatesData = platformUpdatesDataRaw.filter((u: unknown) => !u.isViewed);
       
       // Filter out acknowledged maintenance alerts
-      const unreadAlerts = maintenanceAlerts.filter((a: any) => !a.isAcknowledged).length;
-      const activeMaintenanceAlerts = maintenanceAlerts.filter((a: any) => !a.isAcknowledged);
+      const unreadAlerts = maintenanceAlerts.filter((a: unknown) => !a.isAcknowledged).length;
+      const activeMaintenanceAlerts = maintenanceAlerts.filter((a: unknown) => !a.isAcknowledged);
       
       // Get gap intelligence findings for PLATFORM SUPPORT ROLES ONLY
       // SECURITY: Explicitly deny gap findings to workspace/org roles

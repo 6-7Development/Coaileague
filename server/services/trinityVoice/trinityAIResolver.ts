@@ -72,7 +72,7 @@ export interface AIResolverResult {
 async function parseResolverJSON(text: string): Promise<{ canResolve: boolean; answer: string; escalationReason?: string } | null> {
   try {
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed: unknown = JSON.parse(cleaned);
     if (typeof parsed.canResolve === 'boolean' && typeof parsed.answer === 'string') {
       return parsed;
     }
@@ -84,7 +84,7 @@ async function parseResolverJSON(text: string): Promise<{ canResolve: boolean; a
   const jsonMatch = text.match(/\{[\s\S]*"canResolve"[\s\S]*"answer"[\s\S]*\}/);
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       if (typeof parsed.canResolve === 'boolean' && typeof parsed.answer === 'string') {
         return parsed;
       }

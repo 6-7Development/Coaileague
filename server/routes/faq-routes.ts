@@ -343,7 +343,7 @@ app.post('/api/helpos/faqs/search/semantic', readLimiter, requireAuth, async (re
 
     // Calculate cosine similarity for each FAQ
     const faqsWithSimilarity = allFaqs.map(faq => {
-      const faqVector = JSON.parse(faq.embeddingVector!);
+      const faqVector: unknown = JSON.parse(faq.embeddingVector!);
       const similarity = cosineSimilarity(queryVector, faqVector);
       return {
         ...faq,
@@ -446,7 +446,7 @@ app.post('/api/helpos/faqs/generate/from-ticket', requirePlatformStaff, async (r
       return res.status(503).json({ message: result.error || 'AI service unavailable' });
     }
 
-    const suggestion = JSON.parse(result.content || '{}');
+    const suggestion: unknown = JSON.parse(result.content || '{}');
 
     // Generate embedding for the suggested answer
     const embClient = getEmbeddingClient();
@@ -516,7 +516,7 @@ app.post('/api/helpos/faqs/generate/from-conversation', requirePlatformStaff, as
       return res.status(503).json({ message: result.error || 'AI service unavailable' });
     }
 
-    const refined = JSON.parse(result.content || '{}');
+    const refined: unknown = JSON.parse(result.content || '{}');
 
     // Generate embedding
     const embClient2 = getEmbeddingClient();
@@ -741,7 +741,7 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
       try {
         const jsonMatch = geminiResponse.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           rankings = parsed.rankings || [];
         }
       } catch (parseError) {

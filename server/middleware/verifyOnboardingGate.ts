@@ -20,6 +20,7 @@ import { db } from '../db';
 import { clients } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 
 const log = createLogger('VerifyOnboardingGate');
 
@@ -60,7 +61,7 @@ export async function verifyOnboardingGate(
 
   try {
     const [clientRecord] = await db
-      .select({ id: clients.id, clientOnboardingStatus: (clients as any).clientOnboardingStatus })
+      .select({ id: clients.id, clientOnboardingStatus: (clients as ClientWithExtras).clientOnboardingStatus })
       .from(clients)
       .where(eq(clients.userId, userId))
       .limit(1);

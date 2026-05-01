@@ -60,7 +60,7 @@ platformActionHub.registerAction({
     try {
       const requiredTypes = ['general_liability', 'workers_compensation', 'professional_liability'];
       const result = await pool.query(`SELECT DISTINCT policy_type FROM insurance_policies WHERE workspace_id = $1 AND is_active = true AND expiration_date > CURRENT_DATE`, [ws]);
-      const coveredTypes = result.rows.map((r: any) => r.policy_type);
+      const coveredTypes = result.rows.map((r: unknown) => r.policy_type);
       const missingTypes = requiredTypes.filter(t => !coveredTypes.includes(t));
       const complianceScore = Math.round(((requiredTypes.length - missingTypes.length) / requiredTypes.length) * 100);
       return { success: true, actionId: 'insurance.state_compliance', message: `${complianceScore}% compliance`, executionTimeMs: Date.now() - t, data: { complianceScore, missingTypes, coveredTypes } };

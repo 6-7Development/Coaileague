@@ -499,7 +499,7 @@ class ApiKeyRotationService {
     });
   }
 
-  private rowToManagedKey(row: any): ManagedKey {
+  private rowToManagedKey(row: unknown): ManagedKey {
     return {
       id: row.id,
       name: row.name,

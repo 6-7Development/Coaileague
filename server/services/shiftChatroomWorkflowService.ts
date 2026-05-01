@@ -1017,7 +1017,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Compile DAR content from messages
    */
-  private compileDARContent(shift: any, messages: unknown[], employeeName: string = 'Unknown'): string {
+  private compileDARContent(shift: Record<string, unknown>, messages: unknown[], employeeName: string = 'Unknown'): string {
     const lines: string[] = [
       `# DAILY ACTIVITY REPORT`,
       ``,
@@ -1084,7 +1084,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Generate DAR summary
    */
-  private generateDARSummary(shift: any, messages: unknown[]): string {
+  private generateDARSummary(shift: Record<string, unknown>, messages: unknown[]): string {
     const photoCount = messages.filter(m => m.messageType === 'photo').length;
     const activityCount = messages.filter(m => {
       const meta = m.metadata as any;
@@ -1119,7 +1119,7 @@ class ShiftChatroomWorkflowService {
   /**
    * Generate chatroom name
    */
-  private generateChatroomName(shift: any, employee?: unknown): string {
+  private generateChatroomName(shift: Record<string, unknown>, employee?: unknown): string {
     const dateStr = format(new Date(shift.startTime), 'MMM d');
     const timeStr = format(new Date(shift.startTime), 'h:mma');
     

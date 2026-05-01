@@ -1032,7 +1032,7 @@ const router = Router();
       const exportData = {
         title: data.conversation.subject || 'Support Conversation',
         subtitle: `Conversation ID: ${conversationId}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
@@ -1118,7 +1118,7 @@ const router = Router();
       const exportData = {
         title: data.room.name || 'Chat Room',
         subtitle: `Room ID: ${roomId}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
@@ -1134,7 +1134,7 @@ const router = Router();
             start: new Date(data.messages[0].createdAt),
             end: new Date(data.messages[data.messages.length - 1].createdAt),
           } : undefined,
-          participants: data.members?.map((m: any) => m.memberName).filter(Boolean) || [],
+          participants: data.members?.map((m: unknown) => m.memberName).filter(Boolean) || [],
         },
       };
 
@@ -1213,7 +1213,7 @@ const router = Router();
       const exportData = {
         title: 'Private Conversation - CONFIDENTIAL',
         subtitle: `Conversation ID: ${conversationId} • Audit Request: ${data.auditInfo?.auditRequestId || 'N/A'}`,
-        messages: data.messages.map((m: any) => ({
+        messages: data.messages.map((m: unknown) => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,

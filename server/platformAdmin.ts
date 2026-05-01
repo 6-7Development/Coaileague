@@ -170,7 +170,7 @@ export async function getPlatformStats(req: Request, res: Response) {
       .orderBy(desc(workspaces.createdAt))
       .limit(5);
 
-    recentSignups.forEach((workspace: any) => {
+    recentSignups.forEach((workspace: unknown) => {
       recentActivity.push({
         type: "signup",
         description: `New workspace: ${workspace.name}`,

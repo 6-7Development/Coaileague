@@ -553,7 +553,7 @@ export async function supportLookup(query: string): Promise<Array<{
       .where(eq(externalIdentifiers.externalId, trimmed.toUpperCase()))
       .limit(10);
 
-    return results.map((r: any) => ({
+    return results.map((r: unknown) => ({
       entityType: r.entityType,
       entityId: r.entityId,
       externalId: r.externalId,
@@ -571,7 +571,7 @@ export async function supportLookup(query: string): Promise<Array<{
       .limit(10);
 
     if (idResults.length > 0) {
-      return idResults.map((r: any) => ({
+      return idResults.map((r: unknown) => ({
         entityType: r.entityType,
         entityId: r.entityId,
         externalId: r.externalId,
@@ -604,7 +604,7 @@ export async function supportLookup(query: string): Promise<Array<{
     .where(sql`LOWER(${users.email}) = LOWER(${trimmed})`)
     .limit(10);
 
-  return userResults.map((u: any) => ({
+  return userResults.map((u: unknown) => ({
     entityType: 'user',
     entityId: u.id,
     email: u.email,

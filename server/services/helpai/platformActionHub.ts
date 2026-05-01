@@ -968,7 +968,7 @@ class PlatformActionHub {
           return { success: false, actionId: request.actionId, message: 'clientId required', executionTimeMs: Date.now() - startTime };
         }
         const entities = await knowledgeGraphRepository.getEntitiesByType('client_preference', workspaceId || request.workspaceId);
-        const clientEntities = entities.filter((e: any) => {
+        const clientEntities = entities.filter((e: unknown) => {
           const attrs = e.attributes as any;
           return attrs?.clientId === clientId;
         });
@@ -1274,7 +1274,7 @@ class PlatformActionHub {
         const resultRows = result as any[];
 
         const categoryCounts: Record<string, number> = {};
-        resultRows.forEach((r: any) => { categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1; });
+        resultRows.forEach((r: unknown) => { categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1; });
         const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
 
         return {
@@ -1288,7 +1288,7 @@ class PlatformActionHub {
               days,
               topCategory,
               categoryCounts,
-              criticalCount: resultRows.filter((r: any) => r.priority === 'critical').length,
+              criticalCount: resultRows.filter((r: unknown) => r.priority === 'critical').length,
             }
           },
           executionTimeMs: Date.now() - startTime,

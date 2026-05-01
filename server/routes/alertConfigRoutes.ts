@@ -93,7 +93,7 @@ router.put('/config/:type', async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id || req.user?.claims?.sub;
     const created = await db
       .insert(kpiAlerts)
-      .values({ ...safeBody, alertType: type, workspaceId, createdBy: userId } as any)
+      .values({ ...safeBody, alertType: type, workspaceId, createdBy: userId })
       .returning();
     res.json(created[0]);
   } catch (err) {

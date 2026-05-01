@@ -161,12 +161,12 @@ Respond with valid JSON array only.`
 
       const aiContent = insightsAiResult.success ? insightsAiResult.content || '{}' : '{}';
       try {
-        const aiInsightsData = JSON.parse(aiContent);
+        const aiInsightsData: unknown = JSON.parse(aiContent);
         const insightsList = aiInsightsData.insights || [];
 
         // Batch insert all insights in one query instead of N sequential inserts
         if (insightsList.length > 0) {
-          const insertRows = insightsList.map((insight: any) => ({
+          const insertRows = insightsList.map((insight: unknown) => ({
             workspaceId,
             title: insight.title || 'AI-Generated Insight',
             category: insight.category || 'efficiency_improvement',

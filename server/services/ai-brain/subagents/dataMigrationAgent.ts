@@ -205,7 +205,7 @@ Respond with JSON only:
         throw new Error('Failed to parse column mapping');
       }
 
-      const mapping = JSON.parse(jsonMatch[0]);
+      const mapping: unknown = JSON.parse(jsonMatch[0]);
       const detectedType = extractionType === 'auto' ? mapping.detectedType : extractionType;
       
       const transformedData = this.applyColumnMapping(data, mapping.columnMapping, detectedType);
@@ -273,11 +273,11 @@ Respond with JSON:
           throw new Error('Failed to parse extracted data');
         }
 
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return {
-          employees: parsed.employees?.filter((e: any) => e.firstName || e.lastName) || [],
-          teams: parsed.teams?.filter((d: any) => d.name) || [],
-          schedules: parsed.schedules?.filter((s: any) => s.date && s.employeeName) || [],
+          employees: parsed.employees?.filter((e: unknown) => e.firstName || e.lastName) || [],
+          teams: parsed.teams?.filter((d: unknown) => d.name) || [],
+          schedules: parsed.schedules?.filter((s: unknown) => s.date && s.employeeName) || [],
           rawText: formData.text,
           confidence: parsed.confidence || 0.5,
           warnings: parsed.warnings || [],
@@ -503,7 +503,7 @@ Only include arrays that have data. If no data found for a category, omit that a
         return { confidence: 0, warnings: [], errors: ['No valid JSON found in response'] };
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
       return {
         employees: parsed.employees || [],
         teams: parsed.teams || [],
@@ -989,10 +989,10 @@ Respond with JSON only:
 
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
+          const parsed: unknown = JSON.parse(jsonMatch[0]);
           complianceStatus = parsed.status || 'passed';
           if (parsed.checks) {
-            parsed.checks.forEach((check: any) => {
+            parsed.checks.forEach((check: unknown) => {
               if (!check.passed) {
                 complianceNotes.push(`${check.rule}: ${check.note}`);
               }

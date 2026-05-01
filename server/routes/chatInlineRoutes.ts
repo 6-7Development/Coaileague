@@ -19,6 +19,7 @@ import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
 import { PLATFORM } from '../config/platformConfig';
 import { summonHelpAIForConversation } from '../services/botSummonService';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('ChatInlineRoutes');
 
 
@@ -633,7 +634,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No officers are currently on duty.';
         } else {
           narrative = `**${units.length} officer${units.length !== 1 ? 's' : ''} on duty:**\n\n` +
-            units.map((u: any) => `• **${u.employee_name}** (${u.unit_identifier}) — ${u.current_status}${u.current_site_name ? ` at ${u.current_site_name}` : ''}`).join('\n');
+            units.map((u: unknown) => `• **${u.employee_name}** (${u.unit_identifier}) — ${u.current_status}${u.current_site_name ? ` at ${u.current_site_name}` : ''}`).join('\n');
         }
       } else if (intent.actionId === 'cad.get_active_calls') {
         const calls = Array.isArray(data) ? data : [];
@@ -641,7 +642,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No active CAD calls at this time.';
         } else {
           narrative = `**${calls.length} active call${calls.length !== 1 ? 's' : ''}:**\n\n` +
-            calls.map((c: any) => `• **${c.call_number}** — P${c.priority} ${c.call_type} at ${c.site_name || c.location || 'unknown'} [${c.status}]`).join('\n');
+            calls.map((c: unknown) => `• **${c.call_number}** — P${c.priority} ${c.call_type} at ${c.site_name || c.location || 'unknown'} [${c.status}]`).join('\n');
         }
       } else if (intent.actionId === 'cad.suggest_dispatch') {
         const { suggestion, reason } = data;
@@ -660,7 +661,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No recent panic alerts on record.';
         } else {
           narrative = `**${alerts.length} recent panic alert${alerts.length !== 1 ? 's' : ''}:**\n\n` +
-            alerts.map((a: any) => `• **${a.alert_number}** — ${a.employee_name} at ${a.site_name || 'unknown'} [${a.status}]`).join('\n');
+            alerts.map((a: unknown) => `• **${a.alert_number}** — ${a.employee_name} at ${a.site_name || 'unknown'} [${a.status}]`).join('\n');
         }
       } else if (intent.actionId === 'rms.get_incidents_by_site') {
         const incidents = Array.isArray(data) ? data : [];
@@ -668,7 +669,7 @@ router.post('/trinity-field-query', async (req: AuthenticatedRequest, res) => {
           narrative = 'No incidents found for that location.';
         } else {
           narrative = `**${incidents.length} incident${incidents.length !== 1 ? 's' : ''}:**\n\n` +
-            incidents.slice(0, 5).map((i: any) => `• **${i.report_number}** — ${i.category} (${i.priority}) at ${i.site_name || 'unknown'} [${i.status}]`).join('\n') +
+            incidents.slice(0, 5).map((i: unknown) => `• **${i.report_number}** — ${i.category} (${i.priority}) at ${i.site_name || 'unknown'} [${i.status}]`).join('\n') +
             (incidents.length > 5 ? `\n\n_...and ${incidents.length - 5} more_` : '');
         }
       } else if (intent.actionId === 'rms.get_officer_incident_history') {
@@ -1021,7 +1022,7 @@ router.get('/tickets/:id', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as any).platformRole || '');
+    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as EmployeeWithStatus).platformRole || '');
 
     if (!isStaff) {
       if (ticket.employeeId !== employee.id && ticket.clientId !== employee.id) {
@@ -1070,7 +1071,7 @@ router.get('/tickets', async (req: AuthenticatedRequest, res) => {
     const workspaceId = employee.workspaceId;
     let tickets = await storage.getSupportTickets(workspaceId);
 
-    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as any).platformRole || '');
+    const isStaff = employee && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((employee as EmployeeWithStatus).platformRole || '');
 
     if (!isStaff) {
       tickets = tickets.filter(t =>

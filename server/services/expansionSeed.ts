@@ -64,7 +64,7 @@ export async function runExpansionSeed(): Promise<{ success: boolean; message: s
   // MODULE 1 — POST ORDER VERSIONS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const officerIds = employees.slice(0, 4).map((e: any) => e.id);
+  const officerIds = employees.slice(0, 4).map((e: unknown) => e.id);
 
   // Site 1: 3 versions
   await q(`INSERT INTO post_order_versions (id,workspace_id,site_id,version_number,title,content,change_summary,effective_date,created_by,is_current,requires_acknowledgment,acknowledgment_deadline,officers_required_to_acknowledge,acknowledged_count,pending_count,created_at)

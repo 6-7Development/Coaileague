@@ -273,7 +273,7 @@ async function findOverdueInvoices(workspaceId: string): Promise<OverdueInvoice[
       LIMIT 50`,
     [workspaceId],
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     id: row.id,
     invoiceNumber: row.invoice_number || row.id.slice(0, 8),
     balance: Number(row.balance || 0),
@@ -310,7 +310,7 @@ async function findExpiringContracts(workspaceId: string): Promise<ExpiringContr
         LIMIT 30`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       id: row.id,
       title: row.title,
       daysUntilExpiry: Number(row.days_until_expiry || 0),
@@ -354,7 +354,7 @@ async function findChurnRiskClients(workspaceId: string): Promise<ChurnClient[]>
         LIMIT 30`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       id: row.id,
       name: row.name,
       daysInactive: Number(row.days_inactive || 0),
@@ -389,7 +389,7 @@ async function findUnfilledShifts(workspaceId: string): Promise<UnfilledShift[]>
         LIMIT 30`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       id: row.id,
       title: row.title,
       startTime: new Date(row.start_time),
@@ -406,7 +406,7 @@ async function listActiveWorkspaces(): Promise<string[]> {
   const r = await pool.query(
     `SELECT id FROM workspaces WHERE COALESCE(is_active, true) = true LIMIT 5000`,
   );
-  return r.rows.map((row: any) => row.id);
+  return r.rows.map((row: unknown) => row.id);
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -422,7 +422,7 @@ async function fetchOwners(workspaceId: string): Promise<string[]> {
         LIMIT 10`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -440,7 +440,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -460,8 +460,8 @@ async function fetchOwnerContacts(workspaceId: string): Promise<Array<{ employee
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

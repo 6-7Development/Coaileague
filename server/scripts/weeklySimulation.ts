@@ -350,7 +350,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       entriesProcessed: billableResult.entriesProcessed,
       clientSummaries: billableResult.clientSummaries.length,
       totalBillableAmount: billableResult.totalBillableAmount,
-      byClient: billableResult.clientSummaries.map((cs: any) => ({
+      byClient: billableResult.clientSummaries.map((cs: unknown) => ({
         clientName: cs.clientName,
         totalHours: cs.totalHours,
         regularHours: cs.totalRegularHours,
@@ -474,7 +474,7 @@ export async function runWeeklySimulation(): Promise<WeeklySimulationReport> {
       entriesProcessed: payrollAggResult.entriesProcessed,
       employeeSummaries: payrollAggResult.employeeSummaries.length,
       totalPayrollAmount: payrollAggResult.totalPayrollAmount,
-      byEmployee: payrollAggResult.employeeSummaries.map((es: any) => ({
+      byEmployee: payrollAggResult.employeeSummaries.map((es: unknown) => ({
         employeeName: es.employeeName,
         totalHours: es.totalHours,
         regularHours: es.totalRegularHours,

@@ -271,7 +271,7 @@ Always prioritize user safety and data integrity.`,
     try {
       const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[1]);
+        const parsed: unknown = JSON.parse(jsonMatch[1]);
         return {
           reportId,
           severity: parsed.severity || 'medium',

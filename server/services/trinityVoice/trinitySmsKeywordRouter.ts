@@ -535,7 +535,7 @@ async function handleSchedule(fromPhone: string): Promise<string> {
       return `Trinity: ${firstName}, no shifts scheduled in the next 7 days. Reply REQUEST <details> if you think that's wrong.`;
     }
 
-    const lines = r.rows.map((row: any) => {
+    const lines = r.rows.map((row: unknown) => {
       const start = new Date(row.start_time);
       const day = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       const time = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

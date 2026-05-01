@@ -310,7 +310,7 @@ Decide how Trinity should resolve this. Return JSON:
 
       const text = response.text?.trim() ?? '';
       const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-      const parsed = JSON.parse(cleaned);
+      const parsed: unknown = JSON.parse(cleaned);
 
       return {
         recommendedTier: parsed.recommendedTier ?? 'escalated',

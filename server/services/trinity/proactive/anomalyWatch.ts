@@ -165,7 +165,7 @@ async function findGpsFraud(workspaceId: string): Promise<Anomaly[]> {
       [workspaceId, GPS_FRAUD_WINDOW_MIN],
     );
     return r.rows
-      .map((row: any) => {
+      .map((row: unknown) => {
         const km = haversineKm(
           Number(row.lat_a),
           Number(row.lng_a),
@@ -187,7 +187,7 @@ async function findGpsFraud(workspaceId: string): Promise<Anomaly[]> {
           details: { pair: [row.id_a, row.id_b], kmApart: km, minutesApart: row.minutes_apart },
         } as Anomaly;
       })
-      .filter((a: any): a is Anomaly => !!a);
+      .filter((a: unknown): a is Anomaly => !!a);
   } catch (err: unknown) {
     log.warn('[anomalyWatch] gps_fraud lookup failed:', err?.message);
     return [];
@@ -214,7 +214,7 @@ async function findCoverageGaps(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 50`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'coverage_gap' as AnomalyCode,
       severity: 'high' as AnomalySeverity,
@@ -250,7 +250,7 @@ async function findIncidentPatterns(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'incident_pattern' as AnomalyCode,
       severity: 'medium' as AnomalySeverity,
@@ -297,7 +297,7 @@ async function findGhostEmployees(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 30`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'ghost_employee' as AnomalyCode,
       severity: 'low' as AnomalySeverity,
@@ -346,7 +346,7 @@ async function findBillingAnomalies(workspaceId: string): Promise<Anomaly[]> {
         LIMIT 30`,
       [workspaceId, BILLING_ANOMALY_PCT],
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       workspaceId,
       code: 'billing_anomaly' as AnomalyCode,
       severity: 'medium' as AnomalySeverity,
@@ -521,7 +521,7 @@ async function listActiveWorkspaces(): Promise<string[]> {
   const r = await pool.query(
     `SELECT id FROM workspaces WHERE COALESCE(is_active, true) = true LIMIT 5000`,
   );
-  return r.rows.map((row: any) => row.id);
+  return r.rows.map((row: unknown) => row.id);
 }
 
 async function fetchManagers(workspaceId: string): Promise<string[]> {
@@ -536,7 +536,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -556,8 +556,8 @@ async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ emp
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

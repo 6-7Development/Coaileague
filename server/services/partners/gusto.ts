@@ -10,6 +10,7 @@ import { eq, and } from 'drizzle-orm';
 import { gustoOAuthService } from '../oauth/gusto';
 import { withUsageTracking, withBatchUsageTracking } from '../../middleware/usageTracking';
 import { createLogger } from '../../lib/logger';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('gusto');
 
 
@@ -222,7 +223,7 @@ export class GustoService {
       first_name: employee.firstName,
       last_name: employee.lastName,
       email: employee.email,
-      jobs: (employee as any).payRate ? [
+      jobs: (employee as EmployeeWithStatus).payRate ? [
         {
           title: employee.position || 'Employee',
           rate: Number(employee.payRate),
@@ -444,7 +445,7 @@ export class GustoService {
 
       timeActivities.push({
         employee_id: employeeMapping.partnerEntityId,
-        date: (entry as any).periodEnd.toISOString().split('T')[0],
+        date: (entry as unknown).periodEnd.toISOString().split('T')[0],
         hours_worked: Number(entry.regularHours || 0) + Number(entry.overtimeHours || 0),
       });
     }

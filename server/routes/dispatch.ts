@@ -31,8 +31,8 @@ router.get('/incidents', requireAuth, ensureWorkspaceAccess, async (req: Authent
       incidents: rows,
       stats: {
         total: rows.length,
-        active: rows.filter((r: any) => ['queued','dispatched','en_route','on_scene'].includes(r.status)).length,
-        emergency: rows.filter((r: any) => r.priority === 'emergency').length,
+        active: rows.filter((r: unknown) => ['queued','dispatched','en_route','on_scene'].includes(r.status)).length,
+        emergency: rows.filter((r: unknown) => r.priority === 'emergency').length,
       }
     });
   } catch (err: unknown) { res.status(500).json({ error: err.message }); }

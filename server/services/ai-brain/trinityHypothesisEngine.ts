@@ -223,7 +223,7 @@ class TrinityHypothesisEngine {
         queries.push('overtime_rate_workspace');
       }
       if (data.siteMargins) {
-        const criticalSites = data.siteMargins.filter((s: any) => s.status === 'critical').length;
+        const criticalSites = data.siteMargins.filter((s: unknown) => s.status === 'critical').length;
         if (criticalSites > 0) {
           hypotheses[1].posteriorProbability += 15;
           hypotheses[1].supportingEvidence.push(`${criticalSites} site(s) with critical margin indicate bill rate issues.`);

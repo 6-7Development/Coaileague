@@ -232,7 +232,7 @@ async function tryResolveOnboardingStuck(
   let actionsPerformed = 0;
 
   // Reset any stuck tasks
-  for (const task of progress.rows.filter((t: any) => t.status === 'stuck' || t.status === 'error')) {
+  for (const task of progress.rows.filter((t: unknown) => t.status === 'stuck' || t.status === 'error')) {
     const r = await executeSupportAction({
       actionType: 'support.onboarding.reset_task',
       workspaceId,
@@ -436,7 +436,7 @@ async function handleAuditorHelpAI(
       if (!rows.length) {
         return { reply: 'No officers have licenses expiring within 60 days.', resolved: true };
       }
-      const summary = rows.map((r: any) => {
+      const summary = rows.map((r: unknown) => {
         const expiry = r.guard_card_expiry_date ? new Date(r.guard_card_expiry_date).toLocaleDateString() : 'N/A';
         return `• ${r.name} (${r.employee_number || 'N/A'}) — ${r.is_armed ? 'Armed' : 'Unarmed'} — Expires: ${expiry}`;
       }).join('\n');
@@ -464,7 +464,7 @@ async function handleAuditorHelpAI(
         [workspaceId],
       );
       if (!rows.length) return { reply: 'No active officers found in this workspace.', resolved: true };
-      const summary = rows.map((r: any) => {
+      const summary = rows.map((r: unknown) => {
         const status = (r.guard_card_status || 'unknown').replace(/_/g, ' ');
         const expiry = r.guard_card_expiry_date ? new Date(r.guard_card_expiry_date).toLocaleDateString() : 'N/A';
         return `• ${r.name} (${r.employee_number || 'N/A'}) — ${r.is_armed ? 'Armed' : 'Unarmed'} — ${status} — Expires: ${expiry}`;
@@ -491,7 +491,7 @@ async function handleAuditorHelpAI(
         [workspaceId],
       );
       if (!rows.length) return { reply: 'No incident reports on file.', resolved: true };
-      const summary = rows.map((r: any) =>
+      const summary = rows.map((r: unknown) =>
         `• ${r.incident_number || 'N/A'} — ${new Date(r.incident_date).toLocaleDateString()} — ${r.incident_type || 'general'} — ${r.severity || 'low'} — Officer: ${r.officer_name || 'Unknown'}`,
       ).join('\n');
       return { reply: `Recent incident reports (last 25):\n\n${summary}`, resolved: true };

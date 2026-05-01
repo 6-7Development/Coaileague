@@ -315,7 +315,7 @@ platformConfigValuesRouter.get('/domains', requireAuth, async (_req: Request, re
       WHERE domain IS NOT NULL
       ORDER BY domain ASC
     `);
-    res.json({ domains: result.rows.map((r: any) => r.domain) });
+    res.json({ domains: result.rows.map((r: unknown) => r.domain) });
   } catch (err: unknown) {
     res.status(500).json({ error: 'Failed to load domains' });
   }

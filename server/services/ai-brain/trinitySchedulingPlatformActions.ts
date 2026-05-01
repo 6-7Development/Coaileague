@@ -89,7 +89,7 @@ export function registerSchedulingPlatformActions() {
           lte(shifts.endTime, to),
           ne(shifts.status, 'cancelled'),
         ));
-      busyIds = new Set(conflicting.map((c: any) => c.employeeId).filter(Boolean));
+      busyIds = new Set(conflicting.map((c: unknown) => c.employeeId).filter(Boolean));
       available = allActive.filter(e => !busyIds.has(e.id));
     }
 

@@ -353,7 +353,7 @@ export function registerExtendedActions() {
           ? `ALARM: ${missedClockIns.length} missed clock-ins detected!\n` 
           : "All employees have clocked in correctly.";
         
-        missedClockIns.forEach((m: any) => {
+        missedClockIns.forEach((m: unknown) => {
           alertText += `- ${m.name} missed shift at ${m.site} (Started: ${new Date(m.shiftStart).toLocaleTimeString()})\n`;
         });
 

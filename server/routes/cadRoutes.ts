@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 import { Router } from "express";
 import { db } from "../db";
 import { requireAuth } from "../auth";
@@ -49,7 +50,7 @@ async function q(text: string, params: (string | number | boolean | null)[] = []
 
 // CAD CALLS
 
-cadRouter.get("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+cadRouter.get("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { status, priority, siteId, limit = 50, offset = 0 } = req.query;
@@ -67,7 +68,7 @@ cadRouter.get("/calls", requireAuth, ensureWorkspaceAccess, async (req: Authenti
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-cadRouter.post("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+cadRouter.post("/calls", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { callType, priority = 2, siteId, siteName, locationDescription, callerName, callerPhone, callerType, incidentDescription, createdBy, latitude, longitude } = req.body;
@@ -100,7 +101,7 @@ cadRouter.post("/calls", requireAuth, ensureWorkspaceAccess, async (req: Authent
 
 // GEOFENCE DEPARTURES
 
-cadRouter.get("/geofence-departures", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+cadRouter.get("/geofence-departures", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`
@@ -115,7 +116,7 @@ cadRouter.get("/geofence-departures", requireAuth, ensureWorkspaceAccess, async 
 
 // STATS
 
-cadRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+cadRouter.get("/stats", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const [active, today, byStatus, departures] = await Promise.all([

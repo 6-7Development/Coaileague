@@ -239,7 +239,7 @@ async function buildSnapshot(workspaceId: string): Promise<WeeklyBriefSnapshot> 
   const firstUncovered = uncoveredRows.rows[0] ? new Date(uncoveredRows.rows[0].start_time) : null;
   const topDays = uncoveredRows.rows
     .slice(0, 3)
-    .map((r: any) =>
+    .map((r: unknown) =>
       new Date(r.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
     );
 
@@ -354,7 +354,7 @@ async function listActiveWorkspaces(): Promise<string[]> {
   const r = await pool.query(
     `SELECT id FROM workspaces WHERE COALESCE(is_active, true) = true LIMIT 5000`,
   );
-  return r.rows.map((row: any) => row.id);
+  return r.rows.map((row: unknown) => row.id);
 }
 
 interface OwnerRecipient {
@@ -374,7 +374,7 @@ async function fetchOwnerRecipients(workspaceId: string): Promise<OwnerRecipient
         LIMIT 5`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => ({ userId: row.user_id, email: row.email || null }));
+    return r.rows.map((row: unknown) => ({ userId: row.user_id, email: row.email || null }));
   } catch (err: unknown) {
     log.warn('[weeklyBrief] owner lookup failed:', err?.message);
     return [];

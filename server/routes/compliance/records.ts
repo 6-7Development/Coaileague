@@ -182,9 +182,9 @@ router.get("/stats", requireAuth, async (req: AuthenticatedRequest, res: Respons
     const stats = {
       totalEmployees: (records as any).length,
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      compliantEmployees: records.filter((r: any) => r.status === 'verified').length,
+      compliantEmployees: records.filter((r: unknown) => r.status === 'verified').length,
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      pendingReview: records.filter((r: any) => r.status === 'pending').length,
+      pendingReview: records.filter((r: unknown) => r.status === 'pending').length,
       expiringWithin30Days,
       expiringWithin90Days,
       documentsUploaded: documents.length,

@@ -52,7 +52,7 @@ ${reviewText}`;
       throw new Error(result.error || 'Sentiment analysis failed');
     }
 
-    const parsed = JSON.parse(result.text);
+    const parsed: unknown = JSON.parse(result.text);
 
     // Persist sentiment to history for trend analysis
     await persistSentimentHistory({
@@ -118,7 +118,7 @@ ${ticketText}`;
       throw new Error(result.error || 'Sentiment analysis failed');
     }
 
-    const parsed = JSON.parse(result.text);
+    const parsed: unknown = JSON.parse(result.text);
     const shouldEscalate = parsed.urgency === 'critical' || parsed.score < -0.5;
 
     // Persist sentiment to history with escalation action insights
@@ -188,7 +188,7 @@ ${disputeText}`;
       throw new Error(result.error || 'Sentiment analysis failed');
     }
 
-    const parsed = JSON.parse(result.text);
+    const parsed: unknown = JSON.parse(result.text);
 
     // Persist dispute sentiment with resolution insights
     await persistSentimentHistory({

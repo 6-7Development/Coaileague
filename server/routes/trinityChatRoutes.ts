@@ -295,7 +295,7 @@ router.get('/thought-stream', attachWorkspaceId, requireTrinityAccess, async (re
       currentPhase,
       isThinking: rows.length > 0,
       lastThoughtAt: mostRecent?.createdAt ?? null,
-      thoughts: rows.map((r: any) => ({
+      thoughts: rows.map((r: unknown) => ({
         id: r.id,
         thoughtType: r.thoughtType,
         content: String(r.content ?? '').substring(0, 240),

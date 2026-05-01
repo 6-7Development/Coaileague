@@ -118,7 +118,7 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
         }
 
         const topCandidates = getTopCandidates(scoredCandidates, 5);
-        const vettedEmployees = topCandidates.map((c: any) => c.fullEmployee);
+        const vettedEmployees = topCandidates.map((c: unknown) => c.fullEmployee);
 
         const aiResult = await scheduleSmartAI({
           openShifts: [shift],

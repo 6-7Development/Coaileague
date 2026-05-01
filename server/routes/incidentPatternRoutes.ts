@@ -81,7 +81,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
     // ── PATTERN 1: Same type at 3+ sites in 30 days (multi-site pattern) ──
     const last30 = new Date();
     last30.setDate(last30.getDate() - 30);
-    const recent = incidents.filter((i: any) => new Date(i.created_at) >= last30);
+    const recent = incidents.filter((i: unknown) => new Date(i.created_at) >= last30);
 
     const byType: Record<string, Set<string>> = {};
     const typeIncidents: Record<string, string[]> = {};
@@ -112,8 +112,8 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
                recommended_action, status, created_by, created_at)
              VALUES ($1,$2,$3,'multi_site',$4,$5,$6,$7,$8,$9,$10,'active','trinity',NOW())`,
             [id, wid, type, JSON.stringify(sitesArr), incIds.length,
-             recent.filter((i: any) => typeIncidents[type].includes(i.id)).at(-1)?.occurred_at,
-             recent.filter((i: any) => typeIncidents[type].includes(i.id))[0]?.occurred_at,
+             recent.filter((i: unknown) => typeIncidents[type].includes(i.id)).at(-1)?.occurred_at,
+             recent.filter((i: unknown) => typeIncidents[type].includes(i.id))[0]?.occurred_at,
              `I have identified a pattern of ${type} incidents across ${sites.size} sites in the past 30 days. This may indicate a systemic issue requiring a company-wide policy response.`,
              risk,
              `Review ${type} prevention protocols across all affected sites. Consider enhanced coverage or officer briefings.`]
@@ -162,7 +162,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
     }
 
     // ── PATTERN 3: Time-based clustering ────────────────────────────────────
-    const midnightIncs = incidents.filter((i: any) => {
+    const midnightIncs = incidents.filter((i: unknown) => {
       const h = new Date(i.occurred_at).getHours();
       return h >= 0 && h <= 3;
     });
@@ -173,7 +173,7 @@ router.post("/analyze", requireAuth, async (req: AuthenticatedRequest, res) => {
         [wid]
       );
       if (existing.rows.length === 0) {
-        const sitesInvolved = [...new Set(midnightIncs.map((i: any) => i.site_id).filter(Boolean))];
+        const sitesInvolved = [...new Set(midnightIncs.map((i: unknown) => i.site_id).filter(Boolean))];
         const id = `ip-${randomUUID()}`;
         await db.$client.query(
           `INSERT INTO incident_patterns

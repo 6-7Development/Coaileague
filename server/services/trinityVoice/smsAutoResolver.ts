@@ -199,7 +199,7 @@ async function getEmployeeContext(employeeId: string, workspaceId: string): Prom
     const parts: string[] = [];
 
     if (scheduleRows.rows.length > 0) {
-      const shifts = scheduleRows.rows.map((r: any) => {
+      const shifts = scheduleRows.rows.map((r: unknown) => {
         const d = new Date(r.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         const t = new Date(r.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         return `${d} at ${t}${r.location ? ` (${r.location})` : ''}`;

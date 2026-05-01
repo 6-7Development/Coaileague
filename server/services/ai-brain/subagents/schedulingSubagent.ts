@@ -485,7 +485,7 @@ Generate a JSON schedule with format:
       // Parse AI response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         
         // Calculate metrics
         const schedule = parsed.schedule || [];
@@ -591,7 +591,7 @@ Generate a JSON schedule with format:
         }
 
         return {
-          schedule: schedule.map((s: any) => ({
+          schedule: schedule.map((s: unknown) => ({
             ...s,
             employeeName: employeeData.find(e => e.id === s.employeeId)?.firstName || 'Unknown',
             date: new Date(s.date),

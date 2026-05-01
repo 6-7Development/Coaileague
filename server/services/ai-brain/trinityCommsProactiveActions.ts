@@ -336,18 +336,18 @@ export function registerCommsProactiveActions() {
     }).catch(() => []);
     const { users } = await import('../../../shared/schema');
     const { eq: eqOp, inArray: inArrayOp } = await import('drizzle-orm');
-    const userIds = members.map((m: any) => m.userId).filter(Boolean);
+    const userIds = members.map((m: unknown) => m.userId).filter(Boolean);
     const userRows = userIds.length > 0
       ? await db.query.users.findMany({
           where: (u, { inArray }) => inArray(u.id, userIds),
           columns: { id: true, email: true, firstName: true, lastName: true },
         }).catch(() => [])
       : [];
-    const userMap = new Map(userRows.map((u: any) => [u.id, u]));
+    const userMap = new Map(userRows.map((u: unknown) => [u.id, u]));
     return {
       workspaceId,
       member_count: members.length,
-      members: members.slice(0, 10).map((m: any) => {
+      members: members.slice(0, 10).map((m: unknown) => {
         const user = userMap.get(m.userId);
         return {
           userId: m.userId,
@@ -424,15 +424,15 @@ export function registerCommsProactiveActions() {
       where: (m, { eq }) => eq(m.workspaceId, workspaceId),
     }).catch(() => []);
     const { users: usersTable } = await import('../../../shared/schema');
-    const memberUserIds = members.map((m: any) => m.userId).filter(Boolean);
+    const memberUserIds = members.map((m: unknown) => m.userId).filter(Boolean);
     const mfaUsers = memberUserIds.length > 0
       ? await db.query.users.findMany({
           where: (u, { inArray }) => inArray(u.id, memberUserIds),
           columns: { id: true, mfaEnabled: true },
         }).catch(() => [])
       : [];
-    const mfaUserMap = new Map(mfaUsers.map((u: any) => [u.id, u]));
-    const mfaEnabled = members.filter((m: any) => mfaUserMap.get(m.userId)?.mfaEnabled).length;
+    const mfaUserMap = new Map(mfaUsers.map((u: unknown) => [u.id, u]));
+    const mfaEnabled = members.filter((m: unknown) => mfaUserMap.get(m.userId)?.mfaEnabled).length;
     const mfaDisabled = members.length - mfaEnabled;
     return {
       workspaceId,
@@ -476,9 +476,9 @@ export function registerCommsProactiveActions() {
     const members = await db.query.workspaceMembers.findMany({
       where: (m, { eq }) => eq(m.workspaceId, workspaceId),
     }).catch(() => []);
-    const adminCount = members.filter((m: any) => m.role === 'admin' || m.role === 'owner').length;
-    const managerCount = members.filter((m: any) => m.role === 'manager').length;
-    const staffCount = members.filter((m: any) => !['admin', 'owner', 'manager'].includes(m.role)).length;
+    const adminCount = members.filter((m: unknown) => m.role === 'admin' || m.role === 'owner').length;
+    const managerCount = members.filter((m: unknown) => m.role === 'manager').length;
+    const staffCount = members.filter((m: unknown) => !['admin', 'owner', 'manager'].includes(m.role)).length;
     return {
       workspaceId,
       admins: adminCount,

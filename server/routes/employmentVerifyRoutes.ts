@@ -64,7 +64,7 @@ interface TicketPayload {
 function parseTicketDescription(description: string | null | undefined): TicketPayload {
   if (!description) return {};
   try {
-    const parsed = JSON.parse(description);
+    const parsed: unknown = JSON.parse(description);
     return typeof parsed === 'object' && parsed !== null ? (parsed as TicketPayload) : {};
   } catch {
     return {};

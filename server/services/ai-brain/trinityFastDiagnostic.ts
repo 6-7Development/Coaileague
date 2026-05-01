@@ -106,7 +106,7 @@ async function collectDatabaseMetrics(): Promise<Record<string, unknown>> {
 async function collectSubagentMetrics(): Promise<Record<string, unknown>> {
   try {
     const allSubagents = await subagentSupervisor.getAllSubagents();
-    const activeCount = allSubagents.filter((s: any) => s.isActive).length;
+    const activeCount = allSubagents.filter((s: unknown) => s.isActive).length;
     
     return {
       totalSubagents: allSubagents.length,
@@ -215,7 +215,7 @@ Be concise but thorough. Focus on actionable insights. Format your response with
     const jsonMatch = analysis.match(/\[[\s\S]*?\]/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed)) {
           findings.push(...parsed.map(f => ({
             ...f,

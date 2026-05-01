@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 import { Router, Request } from "express";
 import crypto from 'crypto';
 import { storage } from "../storage";
@@ -606,7 +608,7 @@ router.post('/mfa/regenerate-backup-codes', async (req: AuthenticatedRequest, re
 
 // WS Auth Token — issues a 60-second one-time token for WebSocket authentication
 // Needed when session cookie lookup fails at WS connection time (DB hiccup, Replit env edge cases)
-async function issueWsToken(req: AuthenticatedRequest, res: any) {
+async function issueWsToken(req: AuthenticatedRequest, res: Response) {
   const userId = req.user?.id || req.session?.userId;
   const workspaceId = req.user?.workspaceId || req.session?.workspaceId || req.session?.currentWorkspaceId;
   const role = req.user?.role || req.session?.workspaceRole;

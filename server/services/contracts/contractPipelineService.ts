@@ -77,7 +77,7 @@ async function loadSignersFromDB(contractId: string): Promise<ContractSigner[]> 
     .select()
     .from(clientContractSignatures)
     .where(eq(clientContractSignatures.contractId, contractId));
-  return rows.map((r: any) => ({
+  return rows.map((r: unknown) => ({
     id: r.id,
     contractId: r.contractId,
     signerRole: r.signerRole,

@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 import { Router } from "express";
 import { AuthenticatedRequest } from '../rbac';
 import { pool, db } from "../db";
@@ -70,7 +71,7 @@ const createSchema = z.object({
   occurredAt: z.string().optional().nullable(),
 });
 
-incidentPipelineRouter.post("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.post("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const userId = uid(req);
@@ -197,7 +198,7 @@ incidentPipelineRouter.post("/", requireAuth, ensureWorkspaceAccess, async (req:
   }
 });
 
-incidentPipelineRouter.get("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.get("/", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -227,7 +228,7 @@ incidentPipelineRouter.get("/", requireAuth, ensureWorkspaceAccess, async (req: 
   }
 });
 
-incidentPipelineRouter.get("/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.get("/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(
@@ -272,7 +273,7 @@ function hasManagerRole(req: AuthenticatedRequest): boolean {
   return false;
 }
 
-incidentPipelineRouter.post("/:id/trinity-polish", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+incidentPipelineRouter.post("/:id/trinity-polish", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!hasManagerRole(req)) {
       return res.status(403).json({ error: "Insufficient permissions. Manager or above role required to use Trinity polish." });

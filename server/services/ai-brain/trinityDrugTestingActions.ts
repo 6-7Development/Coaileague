@@ -13,6 +13,7 @@ import { orchestrationRuns, employees, clients, shifts } from '@shared/schema';
 import { eq, and, sql, gte } from 'drizzle-orm';
 import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityDrugTestingActions');
 
 function mkAction(actionId: string, fn: (params: Record<string, unknown>, request: ActionRequest) => Promise<unknown>): ActionHandler {
@@ -234,7 +235,7 @@ export function registerDrugTestingActions() {
     if (!client) throw new Error(`Client ${clientId} not found`);
 
     // Assuming client has a requirements or notes field to check
-    const requirements = (client as any).notes || (client as any).requirements || '';
+    const requirements = (client as ClientWithExtras).notes || (client as ClientWithExtras).requirements || '';
     const structured = {
       drugTestingRequired: requirements.toLowerCase().includes('drug test'),
       backgroundCheckRequired: requirements.toLowerCase().includes('background'),

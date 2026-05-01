@@ -299,7 +299,7 @@ class BotCommandExecutorService {
         .where(like(auditLogs.action, 'bot_command_%'))
         .orderBy(desc(auditLogs.createdAt))
         .limit(limit);
-      return logs.filter((log: any) => {
+      return logs.filter((log: unknown) => {
         const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
         return details?.botId === botId;
       });

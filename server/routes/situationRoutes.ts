@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 import { Router } from "express";
 import { AuthenticatedRequest } from '../rbac';
 import { pool } from "../db";
@@ -19,7 +20,7 @@ async function q(text: string, params: (string | number | boolean | null)[] = []
   return r.rows;
 }
 
-situationRouter.get("/guards", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+situationRouter.get("/guards", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const guards = await q(
@@ -40,7 +41,7 @@ situationRouter.get("/guards", requireAuth, ensureWorkspaceAccess, async (req: A
       [workspaceId]
     );
 
-    const mapped = guards.map((g: any) => ({
+    const mapped = guards.map((g: unknown) => ({
       id: g.id,
       name: g.name,
       role: g.role || "guard",
@@ -56,7 +57,7 @@ situationRouter.get("/guards", requireAuth, ensureWorkspaceAccess, async (req: A
   }
 });
 
-situationRouter.get("/incidents", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+situationRouter.get("/incidents", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const incidents = await q(
@@ -77,7 +78,7 @@ situationRouter.get("/incidents", requireAuth, ensureWorkspaceAccess, async (req
   }
 });
 
-situationRouter.get("/open-shifts", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+situationRouter.get("/open-shifts", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const shifts = await q(
@@ -101,7 +102,7 @@ situationRouter.get("/open-shifts", requireAuth, ensureWorkspaceAccess, async (r
   }
 });
 
-situationRouter.get("/summary", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+situationRouter.get("/summary", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
 

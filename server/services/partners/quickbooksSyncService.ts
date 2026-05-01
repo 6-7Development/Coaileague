@@ -1502,8 +1502,8 @@ export class QuickBooksSyncService {
       linked: (syncResult as any).linked.length,
       alreadyExist: (syncResult as any).skipped.length,
       details: [
-        ...(syncResult as any).created.map((e: any) => `Created employee record for ${e.role}: ${e.email} (${e.id})`),
-        ...(syncResult as any).linked.map((e: any) => `Linked user ${e.email} to existing employee record (${e.firstName} ${e.lastName})`),
+        ...(syncResult as any).created.map((e: unknown) => `Created employee record for ${e.role}: ${e.email} (${e.id})`),
+        ...(syncResult as any).linked.map((e: unknown) => `Linked user ${e.email} to existing employee record (${e.firstName} ${e.lastName})`),
       ]
     };
     
@@ -1897,7 +1897,7 @@ export class QuickBooksSyncService {
       throw new Error('Invalid webhook signature');
     }
 
-    let event: any;
+    let event: unknown;
     try {
       event = JSON.parse(payload);
     } catch {
@@ -2043,11 +2043,11 @@ export class QuickBooksSyncService {
       let recordsProcessed = 0;
 
       for (const queryResponse of response.CDCResponse || []) {
-        const customers: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Customer)
+        const customers: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Customer)
           .flatMap((q: any) => q.Customer) || [];
-        const employees: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Employee)
+        const employees: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Employee)
           .flatMap((q: any) => q.Employee) || [];
-        const invoiceEntities: any[] = queryResponse.QueryResponse?.filter((q: any) => q.Invoice)
+        const invoiceEntities: any[] = queryResponse.QueryResponse?.filter((q: unknown) => q.Invoice)
           .flatMap((q: any) => q.Invoice) || [];
 
         recordsProcessed += customers.length + employees.length + invoiceEntities.length;
@@ -2444,7 +2444,7 @@ Respond in JSON format:
       
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         
         // LLM Judge validation for retry decisions
         if (parsed.action === 'RETRY' && context.retryCount >= 2) {

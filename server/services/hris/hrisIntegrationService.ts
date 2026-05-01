@@ -394,7 +394,7 @@ class HRISIntegrationService {
     const config = this.getProviderConfig(provider);
 
     try {
-      const statePayload = JSON.parse(Buffer.from(state, 'base64url').toString());
+      const statePayload: unknown = JSON.parse(Buffer.from(state, 'base64url').toString());
       const workspaceId = statePayload.workspaceId;
 
       const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`] || '';
@@ -928,7 +928,7 @@ class HRISIntegrationService {
     }
   }
 
-  private getRemoteId(record: any, provider: HRISProvider): string {
+  private getRemoteId(record: unknown, provider: HRISProvider): string {
     const idFields = ['id', 'Id', 'uuid', 'employee_id', 'worker_id'];
     for (const field of idFields) {
       if (record[field]) return String(record[field]);

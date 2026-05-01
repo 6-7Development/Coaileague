@@ -737,7 +737,7 @@ class TrinitySelfEditGovernanceService {
             workspaceId: p.workspaceId || undefined,
             userId: meta.userId || undefined,
             // Hydrate full ProposedChange objects including code content
-            proposedChanges: (meta.proposedChanges || []).map((c: any) => ({
+            proposedChanges: (meta.proposedChanges || []).map((c: unknown) => ({
               file: c.file,
               operation: c.operation,
               oldContent: c.oldContent,

@@ -95,7 +95,7 @@ export async function runSundayWeeklyReports(): Promise<void> {
 
           // Build a concise text summary from the report data
           const totalHours = (report.entries ?? []).reduce((s: number, e: any) => s + (e.totalHours || 0), 0);
-          const totalEmployees = new Set((report.entries ?? []).map((e: any) => e.employeeId)).size;
+          const totalEmployees = new Set((report.entries ?? []).map((e: unknown) => e.employeeId)).size;
           const otHours = (report.entries ?? []).reduce((s: number, e: any) => s + (e.overtimeHours || 0), 0);
           const summary = `Weekly report for period ${period}: ${totalEmployees} employee(s) worked a total of ${totalHours.toFixed(1)} hours (${otHours.toFixed(1)} OT).`;
 

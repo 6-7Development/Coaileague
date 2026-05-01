@@ -352,7 +352,7 @@ Required JSON structure:
 
       // 1. Try direct JSON.parse (clean responses from jsonMode)
       try {
-        const direct = JSON.parse(text);
+        const direct: unknown = JSON.parse(text);
         if (direct && typeof direct === 'object' && direct.decision) {
           return this.buildDecisionFromParsed(direct, perceptionThoughtId);
         }
@@ -367,7 +367,7 @@ Required JSON structure:
       // 3. Try to extract a complete JSON object
       const jsonMatch = stripped.match(/\{[\s\S]*\}/) || rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         return this.buildDecisionFromParsed(parsed, perceptionThoughtId);
       }
 

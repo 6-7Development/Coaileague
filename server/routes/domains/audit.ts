@@ -1,3 +1,5 @@
+import { type Response } from 'express';
+import type { AuthenticatedRequest } from '../rbac';
 // Domain Audit & Platform Ops — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api-docs, /api/audit/*, /api/dashboard, /api/analytics,
@@ -54,7 +56,7 @@ export function mountAuditRoutes(app: Express): void {
   app.use("/api-docs", apiDocsRouter);
 
   // Inline audit trail handlers (universalAudit service)
-  app.get("/api/audit/trail", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/trail", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -73,7 +75,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/entity/:type/:id", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/entity/:type/:id", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       const { type, id } = req.params;
@@ -83,7 +85,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/user/:userId", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/user/:userId", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       const { userId } = req.params;
@@ -93,7 +95,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/bot/:botName", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/bot/:botName", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -104,7 +106,7 @@ export function mountAuditRoutes(app: Express): void {
     } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
   });
 
-  app.get("/api/audit/workspace/summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/workspace/summary", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -115,7 +117,7 @@ export function mountAuditRoutes(app: Express): void {
 
   // Compliance export for workspace audit history.
   // GET /api/audit/export?start=&end=&format=csv|json
-  app.get("/api/audit/export", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/audit/export", requireAuth, ensureWorkspaceAccess, requireManager, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const workspaceId = req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
@@ -159,7 +161,7 @@ export function mountAuditRoutes(app: Express): void {
       };
 
       const header = 'timestamp,action,actorType,actorId,entityType,entityId,payload\n';
-      const rows = logs.map((logEntry: any) => ([
+      const rows = logs.map((logEntry: unknown) => ([
         escapeCsv(logEntry.createdAt),
         escapeCsv(logEntry.action),
         escapeCsv(logEntry.actorType),

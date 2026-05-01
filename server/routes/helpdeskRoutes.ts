@@ -415,8 +415,8 @@ router.get('/queue', async (req: AuthenticatedRequest, res) => {
         userName: entry.userName || 'User',
         position: index + 1,
         estimatedWaitMinutes: entry.estimatedWaitMinutes || 5,
-        priority: (entry as any).priorityLevel || 'normal',
-        userType: (entry as any).userType || 'guest',
+        priority: (entry as unknown).priorityLevel || 'normal',
+        userType: (entry as unknown).userType || 'guest',
         waitTimeMinutes,
       };
     });

@@ -67,7 +67,7 @@ router.get('/approvals', requireAuth, ensureWorkspaceAccess, async (req: Authent
       ORDER BY ga.created_at DESC
       LIMIT 50
     `, [req.workspaceId]);
-    res.json({ approvals: rows, pending: rows.filter((r: any) => r.status === 'pending').length });
+    res.json({ approvals: rows, pending: rows.filter((r: unknown) => r.status === 'pending').length });
   } catch (err: unknown) { res.status(500).json({ error: err.message }); }
 });
 

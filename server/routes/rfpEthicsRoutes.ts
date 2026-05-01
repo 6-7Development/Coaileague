@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 import { Router } from "express";
 import { AuthenticatedRequest } from '../rbac';
 import { pool } from "../db";
@@ -24,7 +25,7 @@ async function q(text: string, params: (string | number | boolean | null)[] = []
 
 // ─── ANONYMOUS ETHICS REPORTS (public — no auth required) ────────────────────
 
-rfpEthicsRouter.post("/ethics/report", async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/ethics/report", async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Phase 7 security audit: client-supplied workspaceId removed.
     // Anonymous reporters must identify the company via a verified
@@ -59,7 +60,7 @@ rfpEthicsRouter.post("/ethics/report", async (req: AuthenticatedRequest, res: an
       const aiResult = await meteredGemini.generate({ workspaceId: workspaceId || "system", userId: "anonymous", feature: "ethics_triage", prompt });
       const jsonMatch = (aiResult as any)?.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed: unknown = JSON.parse(jsonMatch[0]);
         aiCategory = parsed.category || aiCategory;
         aiSeverityScore = parsed.severity_score || aiSeverityScore;
         aiRouting = parsed.routing || aiRouting;
@@ -72,7 +73,7 @@ rfpEthicsRouter.post("/ethics/report", async (req: AuthenticatedRequest, res: an
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.get("/ethics/followup/:token", async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.get("/ethics/followup/:token", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const rows = await q(`SELECT report_code, category, severity, status, resolution, resolved_at, created_at FROM anonymous_reports WHERE follow_up_token = $1`, [req.params.token]);
     if (!rows.length) return res.status(404).json({ error: "Report not found" });
@@ -80,7 +81,7 @@ rfpEthicsRouter.get("/ethics/followup/:token", async (req: AuthenticatedRequest,
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.get("/ethics/reports", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.get("/ethics/reports", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
@@ -92,7 +93,7 @@ rfpEthicsRouter.get("/ethics/reports", requireAuth, ensureWorkspaceAccess, async
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.patch("/ethics/reports/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.patch("/ethics/reports/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { status, resolution, assignedTo } = req.body;
     await q(`UPDATE anonymous_reports SET status=COALESCE($1,status), resolution=COALESCE($2,resolution), assigned_to=COALESCE($3,assigned_to), resolved_at=CASE WHEN $1='resolved' THEN NOW() ELSE resolved_at END, updated_at=NOW() WHERE id=$4`,
@@ -104,7 +105,7 @@ rfpEthicsRouter.patch("/ethics/reports/:id", requireAuth, ensureWorkspaceAccess,
 
 // ─── RFP DOCUMENTS ────────────────────────────────────────────────────────────
 
-rfpEthicsRouter.get("/rfp", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.get("/rfp", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
@@ -116,7 +117,7 @@ rfpEthicsRouter.get("/rfp", requireAuth, ensureWorkspaceAccess, async (req: Auth
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.get("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.get("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const rows = await q(`SELECT * FROM rfp_documents WHERE id=$1 AND workspace_id=$2`, [req.params.id, wid(req)]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
@@ -124,7 +125,7 @@ rfpEthicsRouter.get("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req: 
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.post("/rfp", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/rfp", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { clientName, clientContactName, clientContactEmail, rfpTitle, rfpDescription, requirements, deadline, estimatedValue, coverageHoursRequired, officerCountRequired, specialRequirements, createdBy } = req.body;
@@ -138,7 +139,7 @@ rfpEthicsRouter.post("/rfp", requireAuth, ensureWorkspaceAccess, async (req: Aut
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.post("/rfp/:id/generate-proposal", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/rfp/:id/generate-proposal", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const rows = await q(`SELECT * FROM rfp_documents WHERE id=$1 AND workspace_id=$2`, [req.params.id, workspaceId]);
@@ -153,7 +154,7 @@ rfpEthicsRouter.post("/rfp/:id/generate-proposal", requireAuth, ensureWorkspaceA
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.patch("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.patch("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const allowed = ["status","proposalDraft","winLoss","winLossReason","notes","signingDocumentId","signedAt"];
     const updates: string[] = [];
@@ -176,7 +177,7 @@ rfpEthicsRouter.patch("/rfp/:id", requireAuth, ensureWorkspaceAccess, async (req
 
 // ─── SHIFT COVERAGE MARKETPLACE ───────────────────────────────────────────────
 
-rfpEthicsRouter.get("/coverage-marketplace", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.get("/coverage-marketplace", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { status, limit = 50, offset = 0 } = req.query;
@@ -188,7 +189,7 @@ rfpEthicsRouter.get("/coverage-marketplace", requireAuth, ensureWorkspaceAccess,
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.post("/coverage-marketplace", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/coverage-marketplace", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);
     const { shiftId, siteName, shiftDate, shiftStart, shiftEnd, payRate, requiredCertifications, notes } = req.body;
@@ -201,7 +202,7 @@ rfpEthicsRouter.post("/coverage-marketplace", requireAuth, ensureWorkspaceAccess
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.post("/coverage-marketplace/:id/claim", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/coverage-marketplace/:id/claim", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { claimedByEmployeeId, claimedByName } = req.body;
     const existing = await q(`SELECT * FROM shift_coverage_claims WHERE id=$1 AND workspace_id=$2`, [req.params.id, wid(req)]);
@@ -214,7 +215,7 @@ rfpEthicsRouter.post("/coverage-marketplace/:id/claim", requireAuth, ensureWorks
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
-rfpEthicsRouter.post("/coverage-marketplace/:id/approve", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+rfpEthicsRouter.post("/coverage-marketplace/:id/approve", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { approvedBy } = req.body;
     await q(`UPDATE shift_coverage_claims SET status='approved', approved_by=$1, approved_at=NOW(), updated_at=NOW() WHERE id=$2 AND workspace_id=$3`,

@@ -27,6 +27,7 @@ import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityPortalActions');
 
 function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
@@ -58,9 +59,9 @@ export function registerPortalActions(): void {
     // Verify client belongs to this workspace
     const [client] = await db.select({
       id: clients.id,
-      companyName: (clients as any).companyName,
+      companyName: (clients as ClientWithExtras).companyName,
       email: clients.email,
-      portalAccessEnabled: (clients as any).portalAccessEnabled,
+      portalAccessEnabled: (clients as ClientWithExtras).portalAccessEnabled,
     }).from(clients)
       .where(and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)));
 
@@ -105,9 +106,9 @@ export function registerPortalActions(): void {
     return {
       client: {
         id: client.id,
-        name: (client as any).companyName || client.email,
+        name: (client as ClientWithExtras).companyName || client.email,
         email: client.email,
-        portalAccessEnabled: (client as any).portalAccessEnabled,
+        portalAccessEnabled: (client as ClientWithExtras).portalAccessEnabled,
       },
       portalStatus,
       lastAccessed: portalAccess?.lastAccessedAt || null,

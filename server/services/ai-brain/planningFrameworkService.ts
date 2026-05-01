@@ -526,7 +526,7 @@ Respond as JSON:
     return this.buildPlanFromResponse(planId, request, {
       steps: parsed.synthesis?.finalSteps || [],
       confidence: parsed.synthesis?.confidence || 0.7,
-      reasoningSteps: parsed.approaches?.map((a: any) => `Approach: ${a.strategy}`) || [],
+      reasoningSteps: parsed.approaches?.map((a: unknown) => `Approach: ${a.strategy}`) || [],
     }, 'tree_of_thought');
   }
 
@@ -599,7 +599,7 @@ Respond as JSON:
     return this.buildPlanFromResponse(planId, request, {
       steps,
       confidence: parsed.confidence || 0.8,
-      reasoningSteps: (parsed.subgoals || []).map((sg: any) => `Subgoal: ${sg.name} - ${sg.description}`),
+      reasoningSteps: (parsed.subgoals || []).map((sg: unknown) => `Subgoal: ${sg.name} - ${sg.description}`),
     }, 'decomposition');
   }
 

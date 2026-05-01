@@ -178,7 +178,7 @@ async function findExpirationsInBucket(
           AND e.is_active = true
         LIMIT 500`,
     );
-    return r.rows.map((row: any) => ({
+    return r.rows.map((row: unknown) => ({
       skillId: row.skill_id,
       workspaceId: row.workspace_id,
       employeeId: row.employee_id,
@@ -383,7 +383,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
         LIMIT 20`,
       [workspaceId],
     );
-    return r.rows.map((row: any) => row.user_id).filter(Boolean);
+    return r.rows.map((row: unknown) => row.user_id).filter(Boolean);
   } catch {
     return [];
   }
@@ -403,8 +403,8 @@ async function fetchManagerContacts(workspaceId: string): Promise<Array<{ employ
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
-      .filter((row: any) => row.employeeId && row.phone);
+      .map((row: unknown) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: unknown) => row.employeeId && row.phone);
   } catch {
     return [];
   }

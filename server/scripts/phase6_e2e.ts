@@ -69,7 +69,7 @@ async function run() {
       FROM invoice_line_items 
       WHERE invoice_id = ${inv.id}
     `);
-    const amounts = (lineRows.rows as any[]).map((l: any) => toFinancialString(l.amount));
+    const amounts = (lineRows.rows as any[]).map((l: unknown) => toFinancialString(l.amount));
     const computedSubtotal = formatCurrency(calculateInvoiceTotal(amounts));
     const storedSubtotal = parseFloat(inv.subtotal).toFixed(2);
     const storedTax = parseFloat(inv.tax_amount).toFixed(2);

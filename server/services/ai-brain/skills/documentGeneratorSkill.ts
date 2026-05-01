@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 
 import { createLogger } from '../../../lib/logger';
 import { PLATFORM } from '../../../config/platformConfig';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('documentGeneratorSkill');
 
 interface DocumentGenerationParams {
@@ -152,7 +153,7 @@ class DocumentGeneratorSkill extends BaseSkill {
           firstName: employees.firstName,
           lastName: employees.lastName,
           position: employees.position,
-          payRate: (employees as any).payRate,
+          payRate: (employees as EmployeeWithStatus).payRate,
           isActive: employees.isActive,
         }).from(employees).where(eq(employees.workspaceId, wsId)).limit(200);
         data.employees = empList;
@@ -199,7 +200,7 @@ class DocumentGeneratorSkill extends BaseSkill {
 
     if (params.documentType === 'report' || params.documentType === 'analysis') {
       if (rawData.employees?.length > 0) {
-        const activeCount = rawData.employees.filter((e: any) => e.isActive).length;
+        const activeCount = rawData.employees.filter((e: unknown) => e.isActive).length;
         const avgPayRate = rawData.employees.reduce((sum: number, e: any) => sum + (parseFloat(e.payRate) || 0), 0) / (rawData.employees.length || 1);
 
         sections.push({
@@ -224,7 +225,7 @@ class DocumentGeneratorSkill extends BaseSkill {
           data: {
             totalClients: rawData.clients.length,
             byStatus: this.groupBy(rawData.clients, 'isActive'),
-            clients: rawData.clients.map((c: any) => ({
+            clients: rawData.clients.map((c: unknown) => ({
               name: c.companyName,
               isActive: c.isActive,
             })),
@@ -233,7 +234,7 @@ class DocumentGeneratorSkill extends BaseSkill {
       }
 
       if (rawData.sites?.length > 0) {
-        const activeSites = rawData.sites.filter((s: any) => s.isActive).length;
+        const activeSites = rawData.sites.filter((s: unknown) => s.isActive).length;
         sections.push({
           title: 'Site Operations',
           type: 'key_value',
@@ -334,7 +335,7 @@ Requirements:
     }
 
     if (data.employees) {
-      const active = data.employees.filter((e: any) => e.isActive).length;
+      const active = data.employees.filter((e: unknown) => e.isActive).length;
       parts.push(`Workforce: ${data.employees.length} total employees, ${active} active`);
     }
 
@@ -343,7 +344,7 @@ Requirements:
     }
 
     if (data.sites) {
-      const active = data.sites.filter((s: any) => s.isActive).length;
+      const active = data.sites.filter((s: unknown) => s.isActive).length;
       parts.push(`Operations: ${data.sites.length} sites, ${active} active`);
     }
 

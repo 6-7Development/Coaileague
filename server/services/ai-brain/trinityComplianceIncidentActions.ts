@@ -7,6 +7,7 @@ import { incidentRoutingService } from '../incidentRoutingService';
 import { getComplianceReport } from '../timesheetReportService';
 import { createNotification } from '../notificationService';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('trinityComplianceIncidentActions');
 
 function mkAction(actionId: string, fn: (params: Record<string, unknown>) => Promise<unknown>): ActionHandler {
@@ -159,8 +160,8 @@ export function registerComplianceIncidentActions() {
     if (!workspaceId || !incidentId) return { error: 'workspaceId and incidentId required' };
     if (clientId) {
       const client = await db.query.clients?.findFirst({ where: eq(clients.id, clientId) } as any).catch(() => null);
-      const clientUserId = typeof (client as any)?.userId === 'string' ? (client as any).userId : undefined;
-      if (client && (client as any).email && clientUserId) {
+      const clientUserId = typeof (client as any)?.userId === 'string' ? (client as ClientWithExtras).userId : undefined;
+      if (client && (client as ClientWithExtras).email && clientUserId) {
         await createNotification({
           workspaceId,
           userId: clientUserId,
@@ -168,7 +169,7 @@ export function registerComplianceIncidentActions() {
           title: 'Incident Report Filed at Your Site',
           message: message || `An incident has been filed and routed to your assigned supervisor. Incident ID: ${incidentId}`,
           priority: 'high',
-          metadata: { incidentId, clientId, clientEmail: (client as any).email },
+          metadata: { incidentId, clientId, clientEmail: (client as ClientWithExtras).email },
           idempotencyKey: `incident-${String(Date.now())}-${clientUserId}`,
         }).catch(() => null);
       }
@@ -227,14 +228,14 @@ export function registerComplianceIncidentActions() {
     if (!client) return { error: 'Client/site not found' };
     return {
       clientId,
-      name: (client as any).companyName || `${(client as any).firstName} ${(client as any).lastName}`,
-      address: (client as any).address,
-      latitude: (client as any).latitude,
-      longitude: (client as any).longitude,
-      geofenceRadius: (client as any).geofenceRadius || 200,
-      billingRate: (client as any).hourlyBillingRate,
-      minimumCoverage: (client as any).minimumCoverage,
-      postOrders: (client as any).postOrders,
+      name: (client as ClientWithExtras).companyName || `${(client as ClientWithExtras).firstName} ${(client as ClientWithExtras).lastName}`,
+      address: (client as ClientWithExtras).address,
+      latitude: (client as ClientWithExtras).latitude,
+      longitude: (client as ClientWithExtras).longitude,
+      geofenceRadius: (client as ClientWithExtras).geofenceRadius || 200,
+      billingRate: (client as ClientWithExtras).hourlyBillingRate,
+      minimumCoverage: (client as ClientWithExtras).minimumCoverage,
+      postOrders: (client as ClientWithExtras).postOrders,
     };
   }));
 
@@ -546,7 +547,7 @@ export function registerComplianceIncidentActions() {
         return {
           stateCode: sc,
           regulatoryBody: config?.regulatoryBody || 'Unknown',
-          licenseTypes: config?.licenseTypes?.map((lt: any) => lt.code) || [],
+          licenseTypes: config?.licenseTypes?.map((lt: unknown) => lt.code) || [],
           renewalPeriodMonths: config?.licenseRenewalPeriodMonths || 24,
           expiringDocumentsNext60Days: expiringInState,
           armedRequiresSeparateLicense: config?.licenseTypes?.some((lt: any) => lt.armedAllowed && lt.code !== 'GUARD_CARD') ?? true,

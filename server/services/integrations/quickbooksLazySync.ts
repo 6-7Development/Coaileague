@@ -40,6 +40,7 @@ import { eq, and } from 'drizzle-orm';
 import { INTEGRATIONS } from '@shared/platformConfig';
 import { quickbooksOAuthService } from '../oauth/quickbooks';
 import { createLogger } from '../../lib/logger';
+import type { ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('quickbooksLazySync');
 
 
@@ -276,7 +277,7 @@ async function findExistingQBRecord(
   entityType: QBEntityType,
   displayName: string,
   email?: string | null
-): Promise<{ record: any; matchedBy: 'email' | 'displayName' } | null> {
+): Promise<{ record: unknown; matchedBy: 'email' | 'displayName' } | null> {
   if (email) {
     const byEmail = await findByEmail(conn, entityType, email);
     if (byEmail) return { record: byEmail, matchedBy: 'email' };
@@ -365,8 +366,8 @@ async function ensureCustomer(clientId: string, workspaceId: string): Promise<La
   const conn = await getQBConnection(workspaceId);
   if (!conn) return { success: false, qbId: null, created: false, matched: false, error: 'QuickBooks not connected', retryable: true };
 
-  const existingQbId = (client as any).quickbooksClientId;
-  const storedRealmId = (client as any).quickbooksRealmId;
+  const existingQbId = (client as ClientWithExtras).quickbooksClientId;
+  const storedRealmId = (client as ClientWithExtras).quickbooksRealmId;
   if (existingQbId && verifyEnvironment(conn, storedRealmId)) {
     return { success: true, qbId: existingQbId, created: false, matched: false };
   }
@@ -375,9 +376,9 @@ async function ensureCustomer(clientId: string, workspaceId: string): Promise<La
   }
 
   const validation = validateRequiredFields('customer', {
-    firstName: (client as any).firstName,
-    lastName: (client as any).lastName,
-    companyName: (client as any).companyName,
+    firstName: (client as ClientWithExtras).firstName,
+    lastName: (client as ClientWithExtras).lastName,
+    companyName: (client as ClientWithExtras).companyName,
     name: client.companyName || `${client.firstName} ${client.lastName}`,
     email: client.email,
   });
@@ -403,7 +404,7 @@ async function ensureCustomer(clientId: string, workspaceId: string): Promise<La
 
     const created = await qbCreate(conn.apiBase, conn.realmId, conn.accessToken, 'customer', {
       DisplayName: displayName,
-      CompanyName: (client as any).companyName || displayName,
+      CompanyName: (client as ClientWithExtras).companyName || displayName,
       PrimaryEmailAddr: client.email ? { Address: client.email } : undefined,
       PrimaryPhone: client.phone ? { FreeFormNumber: client.phone } : undefined,
     });

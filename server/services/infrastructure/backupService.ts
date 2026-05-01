@@ -425,7 +425,7 @@ class BackupService {
         LIMIT ${limit}
       `);
       
-      return result.map((row: any) => ({
+      return result.map((row: unknown) => ({
         id: row.id,
         type: row.type,
         status: row.status,

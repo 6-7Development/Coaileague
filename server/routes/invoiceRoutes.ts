@@ -374,7 +374,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
           const billingCycle = clientRate.subscriptionFrequency || 'monthly';
           
           // Get last invoice for this client
-          const clientInvoices = allInvoices.filter((inv: any) => inv.clientId === client.id);
+          const clientInvoices = allInvoices.filter((inv: unknown) => inv.clientId === client.id);
           const lastInvoice = clientInvoices.sort((a: any, b: any) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
@@ -467,7 +467,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
                 workspaceId: workspace.id,
                 clientId: client.id,
                 invoiceId: inv.id,
-                timeEntryIds: unbilledEntries.map((e: any) => e.id),
+                timeEntryIds: unbilledEntries.map((e: unknown) => e.id),
                 tx,
               });
             } catch (stageErr) {
@@ -608,7 +608,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
         return res.status(422).json({
           message: `Invoice has ${zeroAmountItems.length} line item(s) with a zero amount. Correct or remove them before sending.`,
           code: 'ZERO_AMOUNT_LINE_ITEMS',
-          zeroItems: zeroAmountItems.map((i: any) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
+          zeroItems: zeroAmountItems.map((i: unknown) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })),
         });
       }
 
@@ -939,7 +939,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       const invoice = await db.transaction(async (tx) => {
         const createdInvoice = await tx
           .insert(invoices)
-          .values(validated as any)
+          .values(validated)
           .returning()
           .then(rows => rows[0]);
 

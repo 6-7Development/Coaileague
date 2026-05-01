@@ -246,7 +246,7 @@ export function filterEmployeeForResponse<T extends Record<string, unknown>>(
 ): T {
   return filterSensitiveFields(employee, {
     ...context,
-    entityOwnerId: (employee as any).userId,
+    entityOwnerId: (employee as EmployeeWithStatus).userId,
   });
 }
 

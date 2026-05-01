@@ -97,7 +97,7 @@ export class EmployeeOnboardingPipelineService {
       data: data || null,
     };
 
-    const completedCount = steps.filter((s: any) => s.status === 'completed').length;
+    const completedCount = steps.filter((s: unknown) => s.status === 'completed').length;
     const currentStep = completedCount;
     const allDone = completedCount === steps.length;
 
@@ -138,7 +138,7 @@ export class EmployeeOnboardingPipelineService {
     }).catch((err) => log.warn('[employeeOnboardingPipelineService] Fire-and-forget failed:', err));
 
     // Check if all Tier 1 blocking steps are complete → trigger activation
-    const tier1Blocking = steps.filter((s: any) => s.tier === 1 && s.blocking);
+    const tier1Blocking = steps.filter((s: unknown) => s.tier === 1 && s.blocking);
     const tier1Done = tier1Blocking.every((s: any) => s.status === 'completed');
 
     if (tier1Done && pipeline.entity_type === 'employee') {
@@ -205,7 +205,7 @@ export class EmployeeOnboardingPipelineService {
     if (!pipeline) throw new Error('Pipeline not found');
 
     const steps = pipeline.steps as any[];
-    const completed = steps.filter((s: any) => s.status === 'completed').length;
+    const completed = steps.filter((s: unknown) => s.status === 'completed').length;
     const percent = Math.round((completed / steps.length) * 100);
 
     // Determine current tier
@@ -213,8 +213,8 @@ export class EmployeeOnboardingPipelineService {
     const currentTier = pendingBlocking?.tier ?? 3;
 
     const blockers = steps
-      .filter((s: any) => s.blocking && s.status === 'pending' && s.tier <= currentTier)
-      .map((s: any) => s.title);
+      .filter((s: unknown) => s.blocking && s.status === 'pending' && s.tier <= currentTier)
+      .map((s: unknown) => s.title);
 
     return {
       totalSteps: steps.length,

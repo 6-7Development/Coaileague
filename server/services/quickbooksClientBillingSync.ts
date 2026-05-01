@@ -16,6 +16,7 @@ import { platformEventBus } from './platformEventBus';
 import { INTEGRATIONS } from '@shared/platformConfig';
 import { ensureQuickBooksRecord } from './integrations/quickbooksLazySync';
 import { createLogger } from '../lib/logger';
+import type { EmployeeWithStatus, ClientWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('quickbooksClientBillingSync');
 
 
@@ -124,7 +125,7 @@ export async function syncInvoiceToQuickBooks(invoiceId: string): Promise<SyncRe
     return { success: false, error: 'Client not found' };
   }
 
-  let qbCustomerId = (client as any).quickbooksClientId || (client as any).qbCustomerId;
+  let qbCustomerId = (client as ClientWithExtras).quickbooksClientId || (client as ClientWithExtras).qbCustomerId;
 
   if (!qbCustomerId) {
     log.info(`[QBSync] Client ${client.id} has no QB ID - attempting lazy sync...`);
@@ -327,11 +328,11 @@ export async function syncPayrollToQuickBooks(payrollRunId: string): Promise<Syn
         continue;
       }
 
-      let qbEmployeeId = (employee as any).quickbooksEmployeeId;
+      let qbEmployeeId = (employee as EmployeeWithStatus).quickbooksEmployeeId;
 
       if (!qbEmployeeId) {
         log.info(`[QBPayrollSync] Employee ${employee.id} has no QB ID - attempting lazy sync...`);
-        const workerType = (employee as any).workerType;
+        const workerType = (employee as EmployeeWithStatus).workerType;
         const entityType = workerType === 'contractor' ? 'vendor' : 'employee';
         const lazySyncResult = await ensureQuickBooksRecord(entityType as any, employee.id, payrollRun.workspaceId);
         if (lazySyncResult.success && lazySyncResult.qbId) {

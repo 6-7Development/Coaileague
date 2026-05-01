@@ -194,7 +194,7 @@ router.get(['/token-breakdown', '/usage-breakdown'], requireAuth, async (req: Au
       [billingWorkspaceId, monthYear],
     );
 
-    res.json(result.rows.map((r: any) => ({
+    res.json(result.rows.map((r: unknown) => ({
       featureKey: r.featureKey,
       featureName: r.featureName,
       tokensUsed: Number(r.tokensUsed),
@@ -245,7 +245,7 @@ router.get(['/token-log', '/transactions'], requireAuth, async (req: Authenticat
       [billingWorkspaceId, limit, offset],
     );
 
-    res.json(result.rows.map((r: any) => ({
+    res.json(result.rows.map((r: unknown) => ({
       id: r.id,
       workspaceId: r.workspaceId,
       userId: r.userId,

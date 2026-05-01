@@ -1200,26 +1200,26 @@ router.get('/ai-usage/summary', async (req: AuthenticatedRequest, res: Response)
         totalCredits: parseInt(totals.total_credits),
         avgResponseMs: Math.round(parseFloat(totals.avg_response_ms)),
       },
-      byCallType: byTypeResult.rows.map((r: any) => ({
+      byCallType: byTypeResult.rows.map((r: unknown) => ({
         callType: r.call_type,
         calls: parseInt(r.calls),
         tokens: parseInt(r.tokens),
         credits: parseInt(r.credits),
         avgMs: Math.round(parseFloat(r.avg_ms)),
       })),
-      dailyTrend: trendResult.rows.map((r: any) => ({
+      dailyTrend: trendResult.rows.map((r: unknown) => ({
         day: r.day,
         calls: parseInt(r.calls),
         tokens: parseInt(r.tokens),
         credits: parseInt(r.credits),
       })),
-      topUsers: topUsersResult.rows.map((r: any) => ({
+      topUsers: topUsersResult.rows.map((r: unknown) => ({
         userId: r.user_id,
         userRole: r.user_role,
         calls: parseInt(r.calls),
         credits: parseInt(r.credits),
       })),
-      peripheralAwareness: peripheralResult.rows.map((r: any) => ({
+      peripheralAwareness: peripheralResult.rows.map((r: unknown) => ({
         category: r.item_category,
         timesSurfaced: parseInt(r.times_surfaced),
       })),

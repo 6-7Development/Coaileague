@@ -329,7 +329,7 @@ Provide a JSON response with:
         responseFormat: 'json',
       });
 
-      const parsed = JSON.parse(response.response || '{}');
+      const parsed: unknown = JSON.parse(response.response || '{}');
       return {
         summary: parsed.summary || 'Unable to generate critique',
         details: parsed.details || [],

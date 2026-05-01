@@ -23,6 +23,7 @@ import {
 import { createLogger } from '../lib/logger';
 import { saveToVault } from './documents/businessFormsVaultService';
 import { hoursBetween } from './scheduling/schedulingMath';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 const log = createLogger('paystubService');
 
 
@@ -135,7 +136,7 @@ export class PaystubService {
     const overtimeHours = this.roundCurrency(Math.max(0, totalHours - 40));
 
     // RC4 (Phase 2): All pay arithmetic via FinancialCalculator (Decimal.js).
-    const rateStr = toFinancialString(String((employee as any).hourlyRate || (employee as any).payRate || '0'));
+    const rateStr = toFinancialString(String((employee as EmployeeWithStatus).hourlyRate || (employee as EmployeeWithStatus).payRate || '0'));
     const regularRateStr = rateStr;
     const overtimeRateStr = multiplyFinancialValues(rateStr, '1.5');
 

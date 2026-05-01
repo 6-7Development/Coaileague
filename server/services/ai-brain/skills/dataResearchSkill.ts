@@ -247,7 +247,7 @@ class DataResearchSkill extends BaseSkill {
 
       case 'invoices': {
         const { summary, data } = sourceData;
-        const overdue = data.filter((i: any) => i.status === 'overdue' || i.status === 'past_due');
+        const overdue = data.filter((i: unknown) => i.status === 'overdue' || i.status === 'past_due');
         if (overdue.length > 0) {
           const overdueAmount = overdue.reduce((sum: number, inv: any) =>
             sum + (parseFloat(inv.total?.toString() || '0') || 0), 0);
@@ -266,7 +266,7 @@ class DataResearchSkill extends BaseSkill {
 
       case 'shifts': {
         const { summary, data } = sourceData;
-        const unassigned = data.filter((s: any) => !s.employeeId && s.status !== 'completed' && s.status !== 'cancelled');
+        const unassigned = data.filter((s: unknown) => !s.employeeId && s.status !== 'completed' && s.status !== 'cancelled');
         if (unassigned.length > 0) {
           findings.push({
             category: 'operations',

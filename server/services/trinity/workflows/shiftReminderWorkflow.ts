@@ -131,7 +131,7 @@ async function findShiftsInWindow(
         AND s.start_time <  NOW() + INTERVAL '${leadMinutes + toleranceMinutes} minutes'
       LIMIT 500`,
   );
-  return r.rows.map((row: any) => ({
+  return r.rows.map((row: unknown) => ({
     shiftId: row.shift_id,
     workspaceId: row.workspace_id,
     employeeId: row.employee_id,

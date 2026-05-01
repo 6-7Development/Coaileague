@@ -1,3 +1,4 @@
+import { type Response } from 'express';
 // Domain Scheduling — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api/scheduler, /api/schedules, /api/scheduling, /api/shifts,
@@ -34,7 +35,7 @@ const log = createLogger('SchedulingDomain');
 
 export function mountSchedulingRoutes(app: Express): void {
   // Internal-only auto-fill endpoint (localhost IP + service key required)
-  app.post("/api/trinity/scheduling/auto-fill-internal", async (req: AuthenticatedRequest, res: any) => {
+  app.post("/api/trinity/scheduling/auto-fill-internal", async (req: AuthenticatedRequest, res: Response) => {
     const ip = req.ip || req.connection?.remoteAddress || "";
     const isLocal = ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
     if (!isLocal) return res.status(403).json({ message: "Internal only" });
@@ -94,7 +95,7 @@ export function mountSchedulingRoutes(app: Express): void {
   app.use("/api/trinity-staffing", requireAuth, ensureWorkspaceAccess, trinityStaffingRouter);
   app.use("/api/public/trinity-staffing", trinityStaffingPublicRouter);
   app.use("/api/trinity/scheduling", requireAuth, ensureWorkspaceAccess, trinitySchedulingRouter);
-  app.get("/api/shift-handoff/pending", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: any) => {
+  app.get("/api/shift-handoff/pending", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });

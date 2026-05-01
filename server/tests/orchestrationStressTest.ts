@@ -101,7 +101,7 @@ async function phase1_db_table_coverage() {
     AND table_name = ANY(ARRAY[${sql.raw(requiredTables.map(t => `'${t}'`).join(','))}])
     ORDER BY table_name
   `);
-  const found = new Set(extractRows(res).map((r: any) => r.table_name));
+  const found = new Set(extractRows(res).map((r: unknown) => r.table_name));
   const missing = requiredTables.filter(t => !found.has(t));
 
   record({
@@ -120,7 +120,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'helpai_sessions' ORDER BY ordinal_position
   `);
-  const haCols = new Set(extractRows(helpaiCols).map((r: any) => r.column_name));
+  const haCols = new Set(extractRows(helpaiCols).map((r: unknown) => r.column_name));
   // Actual columns: id, ticket_number, workspace_id, user_id, state, queue_position, was_escalated, satisfaction_score
   const requiredHACols = ['id', 'workspace_id', 'user_id', 'state', 'ticket_number', 'was_escalated', 'satisfaction_score'];
   const missingHACols = requiredHACols.filter(c => !haCols.has(c));
@@ -138,7 +138,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'workspace_credits' ORDER BY ordinal_position
   `);
-  const ccols = new Set(extractRows(creditCols).map((r: any) => r.column_name));
+  const ccols = new Set(extractRows(creditCols).map((r: unknown) => r.column_name));
   const requiredCCols = ['workspace_id', 'current_balance', 'monthly_allocation', 'total_credits_spent'];
   const missingCCols = requiredCCols.filter(c => !ccols.has(c));
   record({
@@ -155,7 +155,7 @@ async function phase1_db_table_coverage() {
     SELECT column_name FROM information_schema.columns
     WHERE table_name = 'workspaces' AND column_name IN ('subscription_tier','subscription_status','id','name')
   `);
-  const wsColNames = new Set(extractRows(wsCols).map((r: any) => r.column_name));
+  const wsColNames = new Set(extractRows(wsCols).map((r: unknown) => r.column_name));
   record({
     name: 'Workspaces Has Subscription Tier',
     phase: 'DB_TABLES',

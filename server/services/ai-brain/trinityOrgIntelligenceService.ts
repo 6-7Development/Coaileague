@@ -1477,7 +1477,7 @@ class TrinityOrgIntelligenceService {
           lines.push(`Report pattern "${p.value.category}": ${p.value.totalReports} reports, ${p.value.resolutionRate}% resolved, ${p.value.escalationRate}% escalated${p.value.recurringThemes?.length ? ', themes: ' + p.value.recurringThemes.join(', ') : ''}`);
           break;
         case 'conversation_learning':
-          lines.push(`Conversation insights: ${p.value.totalSessionsAnalyzed} sessions analyzed, ${p.value.businessModeRatio}% business mode${p.value.topConcerns?.length ? ', top concerns: ' + p.value.topConcerns.map((c: any) => c.topic).join(', ') : ''}${p.value.topDecisions?.length ? ', decisions: ' + p.value.topDecisions.map((d: any) => d.action).join(', ') : ''}`);
+          lines.push(`Conversation insights: ${p.value.totalSessionsAnalyzed} sessions analyzed, ${p.value.businessModeRatio}% business mode${p.value.topConcerns?.length ? ', top concerns: ' + p.value.topConcerns.map((c: unknown) => c.topic).join(', ') : ''}${p.value.topDecisions?.length ? ', decisions: ' + p.value.topDecisions.map((d: unknown) => d.action).join(', ') : ''}`);
           break;
       }
     }

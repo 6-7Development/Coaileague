@@ -1537,7 +1537,7 @@ Return ONLY valid JSON:
       .replace(/\s*```\s*$/, '')
       .trim();
 
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
     if (parsed.verdict && ['approve', 'deny', 'escalate_to_management'].includes(parsed.verdict)) {
       verdict = parsed.verdict as HelpAIEvaluation['verdict'];
       reasoning = parsed.reasoning || reasoning;

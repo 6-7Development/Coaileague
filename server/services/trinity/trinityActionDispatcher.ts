@@ -330,7 +330,7 @@ Use null for values you cannot determine. Return {} if nothing can be extracted.
 
     if (!response.success || !response.text) return base;
     const clean = response.text.replace(/```json|```/g, '').trim();
-    const extracted = JSON.parse(clean);
+    const extracted: unknown = JSON.parse(clean);
     return { ...base, ...extracted };
   } catch {
     return base;

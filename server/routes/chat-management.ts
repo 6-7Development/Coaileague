@@ -1174,7 +1174,7 @@ router.post(
       }));
 
       if (participantValues.length > 0) {
-        await db.insert(chatParticipants).values(participantValues as any);
+        await db.insert(chatParticipants).values(participantValues);
       }
 
       await db.insert(roomEvents).values({

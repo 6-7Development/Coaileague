@@ -53,6 +53,7 @@ import { eq, sql, and, inArray } from 'drizzle-orm';
 import { NotificationDeliveryService } from '../notificationDeliveryService';
 import { MANAGER_ROLES, OWNER_ROLES } from '@shared/lib/rbac/roleDefinitions';
 import { isDeliverableEmployee } from '../../lib/isDeliverableEmployee';
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 
 /**
  * Canonical liability notice returned with every panic API response and
@@ -279,7 +280,7 @@ class PanicAlertService {
         firstName: employees.firstName,
         lastName: employees.lastName,
         isActive: employees.isActive,
-        status: (employees as any).status,
+        status: (employees as EmployeeWithStatus).status,
       })
       .from(employees)
       .where(

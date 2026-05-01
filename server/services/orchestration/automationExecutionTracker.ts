@@ -552,7 +552,7 @@ Return as JSON array: [{ "step": 1, "description": "..." }]`;
         maxOutputTokens: 200,
       });
 
-      const parsed = JSON.parse(result.text || '[]');
+      const parsed: unknown = JSON.parse(result.text || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       log.warn('[AutomationExecutionTracker] Remediation steps generation failed:', error);
