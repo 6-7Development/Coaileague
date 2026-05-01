@@ -421,8 +421,10 @@ export function UniversalFormRenderer({
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [vaultDoc, setVaultDoc] = useState<{ id: string; documentNumber: string | null } | null>(null);
   const [gpsData, setGpsData] = useState<GpsData | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ── Fetch template ──────────────────────────────────────────────────────────
   const { data: templateData, isLoading: templateLoading, isError: templateError } = useQuery<{ template: DocumentTemplate }>({
@@ -479,6 +481,17 @@ export function UniversalFormRenderer({
     };
   }, [template, readOnly, triggerSave]);
 
+  // Auto-scroll the active section tab into view (matters when there are
+  // many sections and the tab strip is horizontally scrollable on mobile).
+  useEffect(() => {
+    const container = tabsScrollRef.current;
+    if (!container) return;
+    const active = container.querySelector<HTMLElement>(`[data-section-tab="${currentSectionIdx}"]`);
+    if (active && typeof active.scrollIntoView === "function") {
+      active.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [currentSectionIdx, template]);
+
   // ── Submit ──────────────────────────────────────────────────────────────────
   const submitMutation = useMutation({
     mutationFn: async (payload: { formData: Record<string, any>; gpsData: GpsData | null }) => {
@@ -493,8 +506,16 @@ export function UniversalFormRenderer({
       if (result.success) {
         setSubmitted(true);
         setSubmissionId(result.submissionId);
+        if (result.vaultId) {
+          setVaultDoc({ id: result.vaultId, documentNumber: result.documentNumber ?? null });
+        }
         onComplete?.(result.submissionId);
-        toast({ title: "Document Submitted", description: "Your document has been submitted successfully." });
+        toast({
+          title: "Document Submitted",
+          description: result.documentNumber
+            ? `Saved to your safe as ${result.documentNumber}.`
+            : "Your document has been submitted successfully.",
+        });
       } else {
         toast({ title: "Submission Error", description: result.error ?? "Unknown error", variant: "destructive" });
       }
@@ -581,20 +602,53 @@ export function UniversalFormRenderer({
   // ── Success state ───────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-16 text-center max-w-md mx-auto" data-testid="form-success">
+      <div className="flex flex-col items-center justify-center gap-6 py-16 px-4 text-center max-w-md mx-auto" data-testid="form-success">
         <CheckCircle className="w-16 h-16 text-green-600" />
         <div>
           <h2 className="text-xl font-semibold mb-2">Document Submitted</h2>
-          <p className="text-muted-foreground text-sm mb-1">Your document has been submitted successfully.</p>
+          <p className="text-muted-foreground text-sm mb-1">
+            Your signed document has been saved to your document safe.
+          </p>
+          {vaultDoc?.documentNumber && (
+            <p className="text-xs text-muted-foreground font-mono mt-2">
+              Document #: <span className="font-semibold text-foreground">{vaultDoc.documentNumber}</span>
+            </p>
+          )}
           {submissionId && (
-            <p className="text-xs text-muted-foreground font-mono">Reference: {submissionId}</p>
+            <p className="text-[10px] text-muted-foreground/70 font-mono mt-1">Ref: {submissionId}</p>
           )}
         </div>
         <VerificationStamp
           data={buildVerificationData({ gpsData: gpsData, documentId: submissionId ?? undefined })}
         />
+        {vaultDoc?.id && (
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              type="button"
+              variant="default"
+              className="w-full"
+              onClick={() => window.open(`/api/document-vault/${vaultDoc.id}/preview`, "_blank")}
+              data-testid="button-open-in-safe"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              View in Document Safe
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                const url = `/api/document-vault/${vaultDoc.id}/download`;
+                window.location.href = url;
+              }}
+              data-testid="button-download-after-submit"
+            >
+              Download PDF
+            </Button>
+          </div>
+        )}
         {onCancel && (
-          <Button variant="outline" onClick={onCancel} data-testid="button-close-after-submit">
+          <Button variant="ghost" onClick={onCancel} data-testid="button-close-after-submit">
             Close
           </Button>
         )}
@@ -648,15 +702,22 @@ export function UniversalFormRenderer({
         </div>
         <Progress value={progress} className="h-1.5" data-testid="form-progress" />
 
-        {/* Section tabs — compact pill list */}
-        <div className="flex gap-1 flex-wrap" data-testid="section-tabs">
+        {/* Section tabs — single-line, horizontally scrollable on mobile,
+            wraps on desktop. Auto-scrolls the active tab into view so it
+            never disappears off-screen on long-section forms. */}
+        <div
+          ref={tabsScrollRef}
+          className="flex gap-1 sm:flex-wrap overflow-x-auto sm:overflow-visible scrollbar-none -mx-1 px-1 snap-x snap-mandatory"
+          data-testid="section-tabs"
+        >
           {sections.map((sec, idx) => (
             <button
               key={sec.id}
               type="button"
+              data-section-tab={idx}
               onClick={() => !readOnly && setCurrentSectionIdx(idx)}
               className={cn(
-                "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                "text-xs px-2 py-1 rounded-full border transition-colors whitespace-nowrap snap-start shrink-0",
                 idx === currentSectionIdx
                   ? "bg-primary text-primary-foreground border-primary"
                   : idx < currentSectionIdx
@@ -679,10 +740,14 @@ export function UniversalFormRenderer({
         </div>
       )}
 
-      {/* Section content */}
-      <div className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto pb-32">
+      {/* Section content — bottom padding clears the fixed nav bar
+          (90px) plus the device home-indicator safe-area. */}
+      <div
+        className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
+      >
         {currentSection && (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto min-w-0">
             <h2 className="text-lg font-semibold mb-1" data-testid="section-title">
               {currentSection.title}
             </h2>
@@ -715,9 +780,14 @@ export function UniversalFormRenderer({
         )}
       </div>
 
-      {/* Fixed bottom navigation bar */}
+      {/* Fixed bottom navigation bar — honors iOS home-indicator safe-area
+          so the Submit/Next button is never clipped under the gesture bar. */}
       {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3" data-testid="form-nav-bar">
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          data-testid="form-nav-bar"
+        >
           <div className="flex items-center gap-2">
             {!isFirst && (
               <Button

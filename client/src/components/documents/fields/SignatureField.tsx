@@ -2,12 +2,23 @@
  * SignatureField — Canvas-based drawn signature
  * Works with mouse on desktop, touch on mobile.
  * Stores as base64 PNG.
+ *
+ * Grade-A polish:
+ *   - useIsMobile (responsive to rotation, not a one-shot innerWidth read)
+ *   - ResizeObserver re-inits canvas on rotate/resize while preserving strokes
+ *   - h-[100dvh] + safe-area-inset-bottom modal so iOS Safari URL bar
+ *     and home indicator don't clip the Save button
+ *   - Native passive:false touchmove listeners + body scroll lock so
+ *     finger-drag actually draws instead of scrolling the page
+ *   - Rehydrates a previously saved signature when the canvas re-mounts
+ *     (modal close/reopen) by passing initialData in the React key
  */
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Pen, Eraser, CheckCircle } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SignatureFieldProps {
   id: string;
@@ -34,28 +45,73 @@ function SignatureCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
-  const [hasContent, setHasContent] = useState(false);
+  const [hasContent, setHasContent] = useState<boolean>(!!initialData);
 
-  useEffect(() => {
+  // Re-initialise canvas backing store at the current measured width while
+  // preserving existing strokes (snapshotted to a data URL first). Called on
+  // mount and again whenever ResizeObserver fires (rotation, sheet resize).
+  const initCanvas = useCallback((preserve: boolean) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * devicePixelRatio;
-    canvas.height = height * devicePixelRatio;
-    const ctx = canvas.getContext("2d")!;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
+    if (rect.width === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    // Snapshot existing strokes so they survive the resize
+    let snapshot: string | null = null;
+    if (preserve && (canvas.width > 0 && canvas.height > 0)) {
+      try { snapshot = canvas.toDataURL("image/png"); } catch { snapshot = null; }
+    }
+
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    if (initialData) {
+    const sourceUrl = snapshot ?? initialData ?? null;
+    if (sourceUrl) {
       const img = new Image();
-      img.onload = () => { ctx.drawImage(img, 0, 0, rect.width, height); };
-      img.src = initialData;
-      setHasContent(true);
+      img.onload = () => {
+        ctx.clearRect(0, 0, rect.width, height);
+        ctx.drawImage(img, 0, 0, rect.width, height);
+      };
+      img.src = sourceUrl;
     }
-  }, []);
+  }, [height, strokeColor, initialData]);
+
+  useEffect(() => {
+    initCanvas(false);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Re-init on container resize (orientation change, sheet snap-points)
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => initCanvas(true));
+      ro.observe(canvas);
+    }
+
+    // Native passive:false handlers so we can preventDefault touchmove and
+    // actually draw instead of having the browser scroll the page.
+    const native = (e: TouchEvent) => { if (isDrawing.current) e.preventDefault(); };
+    canvas.addEventListener("touchstart", native, { passive: false });
+    canvas.addEventListener("touchmove", native, { passive: false });
+
+    return () => {
+      ro?.disconnect();
+      canvas.removeEventListener("touchstart", native);
+      canvas.removeEventListener("touchmove", native);
+    };
+  }, [initCanvas]);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
@@ -67,9 +123,10 @@ function SignatureCanvas({
   };
 
   const startDraw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const pos = getPos(e, canvas);
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
@@ -79,9 +136,10 @@ function SignatureCanvas({
 
   const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing.current) return;
-    e.preventDefault();
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const pos = getPos(e, canvas);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
@@ -94,13 +152,16 @@ function SignatureCanvas({
   const stopDraw = useCallback(() => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     onChange(canvas.toDataURL("image/png"));
   }, [onChange]);
 
   const clear = () => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
     ctx.clearRect(0, 0, rect.width, height);
     setHasContent(false);
@@ -149,7 +210,16 @@ export function SignatureField({
   mobileModal = true,
 }: SignatureFieldProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const isMobile = window.innerWidth < 768;
+  const isMobile = useIsMobile();
+
+  // Body-scroll lock while signing on mobile so finger-drag draws instead of
+  // scrolling the underlying form. Restored on close/unmount.
+  useEffect(() => {
+    if (!modalOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [modalOpen]);
 
   const handleChange = (data: string | null) => {
     onChange(data && data.length > 100 ? data : null);
@@ -202,20 +272,30 @@ export function SignatureField({
             Tap to Sign
           </Button>
           <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogContent className="max-w-full h-screen flex flex-col p-4 gap-3">
+            <DialogContent
+              className="max-w-full h-[100dvh] flex flex-col p-4 gap-3"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+            >
               <div className="pr-24 sm:pr-28">
                 <h2 className="text-base font-semibold">{label}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Sign with your finger in the box below</p>
               </div>
               <div className="flex-1 flex flex-col">
+                {/* Key includes initialData presence so the canvas re-mounts and
+                    rehydrates when an existing signature is being re-signed. */}
                 <SignatureCanvas
+                  key={`sig-${id}-${value ? "rehydrate" : "fresh"}`}
                   onChange={handleChange}
+                  initialData={value}
                   height={300}
                 />
               </div>
               <Button
                 className="w-full"
-                onClick={() => setModalOpen(false)}
+                onClick={() => {
+                  if ("vibrate" in navigator) navigator.vibrate(8);
+                  setModalOpen(false);
+                }}
                 data-testid={`button-done-signature-${id}`}
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
@@ -225,7 +305,11 @@ export function SignatureField({
           </Dialog>
         </>
       ) : (
-        <SignatureCanvas onChange={handleChange} initialData={value} />
+        <SignatureCanvas
+          key={`sig-${id}-${value ? "rehydrate" : "fresh"}`}
+          onChange={handleChange}
+          initialData={value}
+        />
       )}
 
       {error && (
