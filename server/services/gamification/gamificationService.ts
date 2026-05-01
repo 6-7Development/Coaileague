@@ -101,4 +101,25 @@ export const gamificationService = {
     log.info(`[Gamification] Reset ${period} points for workspace ${workspaceId}`);
     return count;
   },
+
+  /**
+   * Reset weekly points for ALL workspaces — invoked by the autonomous
+   * scheduler's weekly cron. Without a workspaceId this would be a noop on
+   * the per-workspace reset above.
+   */
+  async resetWeeklyPoints() {
+    await db.update(employeePoints).set({ weeklyPoints: 0 });
+    log.info('[Gamification] Reset weekly points for ALL workspaces');
+    return { ok: true };
+  },
+
+  /**
+   * Reset monthly points for ALL workspaces — invoked by the autonomous
+   * scheduler's monthly cron.
+   */
+  async resetMonthlyPoints() {
+    await db.update(employeePoints).set({ monthlyPoints: 0 });
+    log.info('[Gamification] Reset monthly points for ALL workspaces');
+    return { ok: true };
+  },
 };

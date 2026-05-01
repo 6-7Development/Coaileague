@@ -742,9 +742,14 @@ class AIBrainActionRegistry {
         if (!shiftId) return createResult(request.actionId, false, 'shiftId required', null, start);
         if (!workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
 
-        // STATE LOCK: Load current shift before making any changes
-        const [current] = await db.select({ status: shifts.status, startTime: shifts.startTime, endTime: shifts.endTime })
-          .from(shifts).where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))).limit(1);
+        // STATE LOCK: Load current shift before making any changes. updatedAt
+        // is required for the optimistic-concurrency check below.
+        const [current] = await db.select({
+          status: shifts.status,
+          startTime: shifts.startTime,
+          endTime: shifts.endTime,
+          updatedAt: shifts.updatedAt,
+        }).from(shifts).where(and(eq(shifts.id, shiftId), eq(shifts.workspaceId, workspaceId))).limit(1);
         if (!current) return createResult(request.actionId, false, 'Shift not found', null, start);
 
         const TERMINAL_STATES = ['in_progress', 'started', 'completed', 'no_show', 'calloff'];
@@ -787,7 +792,7 @@ class AIBrainActionRegistry {
         const { expectedUpdatedAt } = request.payload || {};
         if (expectedUpdatedAt) {
           const expectedMs = new Date(expectedUpdatedAt).getTime();
-          const actualMs = current.updatedAt ? new Date(current.updatedAt as string).getTime() : 0;
+          const actualMs = current.updatedAt ? new Date(current.updatedAt as unknown as string | Date).getTime() : 0;
           // Allow 1s tolerance for clock skew
           if (Math.abs(actualMs - expectedMs) > 1000) {
             return createResult(request.actionId, false,

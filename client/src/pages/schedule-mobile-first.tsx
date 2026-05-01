@@ -5,7 +5,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { startOfWeek, addDays, addWeeks, format, isToday } from 'date-fns';
@@ -1443,10 +1443,10 @@ function ScheduleMobileFirstInner({ defaultViewMode }: { defaultViewMode?: 'my' 
   );
 }
 
-export default function ScheduleMobileFirst() {
+export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMode?: 'my' | 'full' | 'pending' } = {}) {
   return (
     <ErrorBoundary componentName="ScheduleMobileFirst">
-      <ScheduleMobileFirstInner />
+      <ScheduleMobileFirstInner defaultViewMode={defaultViewMode} />
     </ErrorBoundary>
   );
 }

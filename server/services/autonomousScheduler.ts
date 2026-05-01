@@ -66,6 +66,7 @@ import { scanOverdueI9s } from './ai-brain/trinityDocumentActions';
 import { weeklyPlatformAudit } from './trinity/weeklyPlatformAudit';
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from './billing/billingConstants';
+import { gamificationService } from './gamification/gamificationService';
 
 const log = createLogger('AutonomousScheduler');
 

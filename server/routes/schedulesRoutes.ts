@@ -96,6 +96,8 @@ router.get('/week/stats', requireAuth, async (req: AuthenticatedRequest, res) =>
 router.post('/publish', requireManager, async (req: any, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
+    // Bound by ensureWorkspaceAccess in the parent mount.
+    const workspaceId: string = req.workspaceId!;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
     const workspace = await storage.getWorkspace(workspaceId);
@@ -296,6 +298,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
 router.post('/unpublish', requireManager, async (req: any, res) => {
   try {
     const userId = req.user?.id || req.user?.claims?.sub;
+    const workspaceId: string = req.workspaceId!;
     const userWorkspace = await storage.getWorkspaceMemberByUserId(userId);
     if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
     const workspace = await storage.getWorkspace(workspaceId);

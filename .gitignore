@@ -16,3 +16,4 @@ sim_output/server.log
 sim_output/server.pid
 sim_output/run-dev.sh
 sim_output/verifier-run-*.log
+sim_output/tsc-*.log

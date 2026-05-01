@@ -192,6 +192,35 @@ async function main() {
       { workspaceId: WS, reason: 'sandbox', targetEmployeeId: 'dev-acme-emp-marcus' });
   }
 
+  // ── 19. Schedules publish/unpublish — these used to crash with
+  //          ReferenceError: workspaceId is not defined.
+  await check('POST /api/schedules/unpublish (workspaceId binding)', 'POST',
+    '/api/schedules/unpublish', [200, 400, 404],
+    { workspaceId: WS,
+      weekStart: new Date(Date.now() + 14 * 86400_000).toISOString(),
+      weekEnd:   new Date(Date.now() + 21 * 86400_000).toISOString(),
+    });
+
+  // ── 20. Duplicate-reminder — should now report alreadySent, not 404.
+  // First fire a reminder against any shift; second call must distinguish
+  // the duplicate case from "shift not found".
+  const remShift = await call('GET',
+    `/api/shifts?workspaceId=${WS}&limit=200`);
+  const assignedShift = remShift.data?.data?.find?.((s) => s.employeeId);
+  if (assignedShift) {
+    // Burn the reminder once (might already be sent or fresh — either way
+    // the SECOND call is the contract we care about).
+    await call('POST', `/api/shifts/${assignedShift.id}/send-reminder`,
+      { workspaceId: WS });
+    await check('POST /api/shifts/:id/send-reminder DUPLICATE (no misleading 404)',
+      'POST', `/api/shifts/${assignedShift.id}/send-reminder`, 200,
+      { workspaceId: WS },
+      (d) => d?.alreadySent === true || d?.success === true);
+  } else {
+    record('POST /api/shifts/:id/send-reminder DUPLICATE (skipped — no assigned shift)',
+      true, 'no assigned shift in first 200 results');
+  }
+
   return summary();
 }
 

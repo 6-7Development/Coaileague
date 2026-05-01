@@ -33,7 +33,7 @@ export interface ReminderResult {
   employeeId: string;
   employeeName: string;
   email: string;
-  status: 'sent' | 'partial' | 'failed';
+  status: 'sent' | 'partial' | 'failed' | 'duplicate';
   message: string;
   channels: {
     email?: { sent: boolean; error?: string };
@@ -115,9 +115,20 @@ export async function sendShiftReminder(
     .returning({ id: idempotencyKeys.id });
 
   if (inserted.length === 0) {
-    // Another cron run already sent this reminder — skip silently
+    // Another cron run / API call already sent this reminder — return a
+    // distinguishable result so callers can differentiate duplicate-skip
+    // from "shift not found" (both used to return null, which the API
+    // route mistranslated to 404).
     log.info(`[ShiftReminders] Reminder already sent for shift ${shiftId}, skipping duplicate`);
-    return null;
+    return {
+      shiftId,
+      employeeId: '',
+      employeeName: '',
+      email: '',
+      status: 'duplicate',
+      message: 'Reminder already sent within the dedupe window',
+      channels: {},
+    };
   }
 
   const [shift] = await db

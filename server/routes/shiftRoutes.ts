@@ -1192,7 +1192,6 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
           const [updated] = await tx
             .update(shifts)
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             .set({ ...validated, updatedAt: new Date() })
             .where(eq(shifts.id, req.params.id))
             .returning();
@@ -3074,11 +3073,17 @@ router.post("/:shiftId/send-reminder", requireManager, async (req: Authenticated
     const result = await shiftRemindersService.sendShiftReminder(shiftId, workspaceId);
 
     if (!result) {
-      return res.status(404).json({ error: 'Shift not found' });
+      return res.status(404).json({ error: 'Shift not found or has no assigned employee' });
     }
 
-    res.json({ 
-      success: result.status === 'sent', 
+    if (result.status === 'duplicate') {
+      // 200 with explicit duplicate marker — caller can show "already sent"
+      // toast instead of a misleading "shift not found" error.
+      return res.status(200).json({ success: true, alreadySent: true, data: result });
+    }
+
+    res.json({
+      success: result.status === 'sent',
       data: result,
     });
   } catch (error: unknown) {
@@ -3317,7 +3322,6 @@ router.post('/:id/proof-of-service', requireEmployee, async (req: AuthenticatedR
     if (!shift) return res.status(404).json({ message: 'Shift not found' });
     // Store proof reference on shift record
     const updated = await storage.updateShift(req.params.id, workspaceId, {
-      // @ts-expect-error — TS migration: proofOfService field
       proofOfServiceUrl: fileUrl || null,
       proofOfServiceType: proofType || 'document',
       proofOfServiceNotes: notes || null,

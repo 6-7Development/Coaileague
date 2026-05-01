@@ -535,13 +535,13 @@ export function CalendarSyncDialog({ open, onOpenChange, employeeId }: CalendarS
                     </label>
                   </div>
 
-                  {uploadedFile && (
+                  {uploadedFile != null && (
                     <div className="flex items-center justify-between gap-2 bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center gap-2">
                         <CalendarIcon className="h-5 w-5 text-primary" />
-                        <span className="text-sm font-medium">{uploadedFile.name}</span>
+                        <span className="text-sm font-medium">{uploadedFile!.name}</span>
                         <Badge variant="secondary">
-                          {(uploadedFile.size / 1024).toFixed(1)} KB
+                          {(uploadedFile!.size / 1024).toFixed(1)} KB
                         </Badge>
                       </div>
                       <Button

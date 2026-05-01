@@ -1686,8 +1686,9 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
     if (!shift.employeeId) {
       return { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5', dot: '#ef4444', label: 'Open — needs fill' };
     }
-    // Cancelled
-    if (shift.status === 'cancelled' || shift.status === 'denied') {
+    // Cancelled / called-off → grey treatment.
+    // ("denied" is no longer in the shift status enum — covered by deniedAt + status='draft'.)
+    if (shift.status === 'cancelled' || shift.status === 'calloff' || shift.deniedAt) {
       return { bg: '#f9fafb', text: '#6b7280', border: '#d1d5db', dot: '#9ca3af', label: 'Cancelled' };
     }
     // Currently clocked in — active green
