@@ -317,4 +317,10 @@ If you only have time to read three files before merging, read these:
 
 ---
 
+## DEFERRED WORK — full punch list in `DEFERRED_WORK_DOCUMENT_SYSTEM.md`
+
+24 items deferred from this sprint, sorted P0 → P2 with acceptance criteria and effort estimates. P0 items (D1–D5) include the watermark wiring, image embedding in DAR/incident PDFs, multi-signer support, idempotency on remaining vault writes, and migrating the legacy SPS AES-CBC encryption to the new GCM envelope. Read that file before scheduling the next sprint so nothing falls through the cracks.
+
+---
+
 — Claude (lane), 2026-05-01
