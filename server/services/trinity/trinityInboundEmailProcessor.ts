@@ -180,10 +180,8 @@ export function detectCategoryFromRecipient(toEmail: string): EmailCategory {
   // T010 FIX: billing@ and staffing@ were falling through to 'unknown' — now correctly routed.
   // @ts-expect-error — TS migration: fix in refactoring sprint
   if (local === 'billing' || local === 'invoice' || local === 'invoices' || local === 'accounts') return 'billing';
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (local === 'staffing' || local === 'staff' || local === 'scheduling' || local === 'payroll') return 'staffing';
   // L4 Fallback: Route general operations emails to staffing for triage
-  // @ts-expect-error — TS migration: fix in refactoring sprint
   if (local === 'ops' || local === 'operations' || local === 'schedule') return 'staffing';
 
   // L3 CRM: Route calloffs@ to CRM for lead creation if no officer found

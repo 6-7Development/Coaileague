@@ -22,7 +22,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { LogoMark } from '@/components/ui/coaileague-logo-mark';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 import { TrinityEnhancedThoughtProcess } from '@/components/trinity-enhanced';
-import { type SpiritualGuidance } from '@/config/trinity';
+import { type SpiritualConfig as SpiritualGuidance } from '@/config/trinity';
 
 interface Message {
   id: string;

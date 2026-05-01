@@ -175,7 +175,7 @@ export function ConsentModal({ open, onAccepted }: ConsentModalProps) {
                     <p className="font-medium text-sm leading-snug break-words">{agreement.title}</p>
                     <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       <span className="text-xs text-muted-foreground">v{agreement.version}</span>
-                      {agreement.requires_explicit_signature && (
+                      {agreement.requiresExplicitSignature && (
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 py-0 leading-none">
                           Sig. Required
                         </Badge>

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { requirePlatformAdmin } from '../auth';
+import { requirePlatformAdmin } from '../rbac';
 import { serviceControlManager, OrchestrationServiceName } from '../services/ai-brain/serviceControl';
 import { workflowLedger } from '../services/ai-brain/workflowLedger';
 import { commitmentManager } from '../services/ai-brain/commitmentManager';

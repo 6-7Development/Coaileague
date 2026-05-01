@@ -214,7 +214,6 @@ incidentPipelineRouter.get("/", requireAuth as any, ensureWorkspaceAccess as any
 
     const countQuery = query.replace("SELECT *", "SELECT COUNT(*) as total");
     const countRows = await q(countQuery, params);
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const total = parseInt(countRows[0]?.total || "0", 10);
 
     query += ` ORDER BY incident_number DESC LIMIT $${i++} OFFSET $${i++}`;
@@ -328,7 +327,6 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
       legalFlags.push({ flag: "Trespass/Unauthorized Access", severity: "medium", recommendation: "Document all evidence of unauthorized entry and notify property owner" });
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     const revisionCount = (incident.trinity_revision_count || 0) + 1;
 
     // Tenant isolation: enforce workspace_id atomically (TRINITY.md §1)

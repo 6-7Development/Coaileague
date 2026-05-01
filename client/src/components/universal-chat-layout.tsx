@@ -22,6 +22,36 @@ import { useLocation } from "wouter";
 import { MOBILE_CONFIG } from "@/config/mobileConfig";
 import type { ChatMessage } from "@shared/schema";
 
+// Inline helpers — promoted to dedicated files when tested in isolation.
+function MessageTextWithIcons({ text }: { text: string | null | undefined }): JSX.Element {
+  return <>{text ?? ''}</>;
+}
+
+function StaffNameDisplay({ name, className }: { name: string; className?: string }): JSX.Element {
+  return <span className={className}>{name}</span>;
+}
+
+interface MobileUserActionSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  username: string;
+  userId: string;
+  userRole: string;
+  isStaff?: boolean;
+  onCommandExecute?: (cmd: string, args: any) => void;
+  onKickUser?: (userId: string, reason?: string) => void;
+  onSilenceUser?: (userId: string, durationMinutes: number) => void;
+  onUnsilenceUser?: (userId: string) => void;
+  onChangePassword?: (userId: string) => void;
+  onPromoteUser?: (userId: string) => void;
+}
+
+function MobileUserActionSheet(_props: MobileUserActionSheetProps): JSX.Element | null {
+  // Action sheet rendering is owned by the parent layout when open;
+  // this is the no-op placeholder until the sheet UI ships.
+  return null;
+}
+
 interface User {
   id: string;
   name: string;

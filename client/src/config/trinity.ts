@@ -37,6 +37,18 @@ export type ConversationMode = 'business';
 
 // TRINITY_MODES removed — Trinity decides internally, no mode toggle
 
+export interface SpiritualConfig {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface AccountabilityConfig {
+  id: string;
+  label: string;
+  description: string;
+}
+
 export const SPIRITUAL_GUIDANCE_OPTIONS: SpiritualConfig[] = [
   {
     id: 'none',

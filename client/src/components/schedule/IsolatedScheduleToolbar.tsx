@@ -18,9 +18,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Plus, Menu, Filter, ChevronDown, Wand2, 
-  ToggleLeft, ToggleRight, Sparkles, Loader2, X, Users, MapPin, CopyPlus
+import {
+  Plus, Menu, Filter, ChevronDown, Wand2,
+  ToggleLeft, ToggleRight, Sparkles, Loader2, X, Users, MapPin, CopyPlus, Zap,
 } from 'lucide-react';
 import { TrinityIconStatic } from '@/components/trinity-button';
 import { ViewModeToggle } from './ViewModeToggle';

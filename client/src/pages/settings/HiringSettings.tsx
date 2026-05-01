@@ -11,14 +11,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, ShieldCheck, Brain, Network } from "lucide-react";
 
 interface HiringSettings {
-  workspaceId: string;
-  crossTenantScreeningEnabled: boolean;
-  autoScoreOnApply: boolean;
-  autoDeclineBelowScore: number | null;
-  autoAdvanceAboveScore: number | null;
-  licenseSponsorshipAvailable: boolean;
-  defaultStateJurisdiction: string;
-  updatedAt: string | null;
+  workspaceId?: string;
+  crossTenantScreeningEnabled?: boolean;
+  autoScoreOnApply?: boolean;
+  autoDeclineBelowScore?: number | null;
+  autoAdvanceAboveScore?: number | null;
+  licenseSponsorshipAvailable?: boolean;
+  defaultStateJurisdiction?: string;
+  updatedAt?: string | null;
 }
 
 const STATE_CODES = ["TX", "FL", "CA", "NY", "GA", "NC", "AZ", "NV", "IL", "OH", "PA", "VA", "CO", "WA"];
@@ -79,6 +79,9 @@ export default function HiringSettingsPage() {
       </div>
     );
   }
+  // After the guard above, form is guaranteed non-null. Capture it as
+  // `f` so JSX expressions can deref without nag-asserting on every use.
+  const f: HiringSettings = form!;
 
   const handleThresholdChange = (field: 'autoDeclineBelowScore' | 'autoAdvanceAboveScore', raw: string) => {
     if (raw === '') {
@@ -123,7 +126,7 @@ export default function HiringSettingsPage() {
               </p>
             </div>
             <Switch
-              checked={form.autoScoreOnApply}
+              checked={f.autoScoreOnApply}
               onCheckedChange={(v) => setForm({ ...form, autoScoreOnApply: v })}
               data-testid="switch-auto-score"
             />
@@ -145,7 +148,7 @@ export default function HiringSettingsPage() {
                 min={0}
                 max={100}
                 placeholder="e.g. 80"
-                value={form.autoAdvanceAboveScore ?? ''}
+                value={f.autoAdvanceAboveScore ?? ''}
                 onChange={(e) => handleThresholdChange('autoAdvanceAboveScore', e.target.value)}
                 data-testid="input-auto-advance"
               />
@@ -163,7 +166,7 @@ export default function HiringSettingsPage() {
                 min={0}
                 max={100}
                 placeholder="e.g. 40"
-                value={form.autoDeclineBelowScore ?? ''}
+                value={f.autoDeclineBelowScore ?? ''}
                 onChange={(e) => handleThresholdChange('autoDeclineBelowScore', e.target.value)}
                 data-testid="input-auto-decline"
               />
@@ -189,7 +192,7 @@ export default function HiringSettingsPage() {
               </p>
             </div>
             <Switch
-              checked={form.licenseSponsorshipAvailable}
+              checked={f.licenseSponsorshipAvailable}
               onCheckedChange={(v) => setForm({ ...form, licenseSponsorshipAvailable: v })}
               data-testid="switch-sponsorship"
             />
@@ -203,7 +206,7 @@ export default function HiringSettingsPage() {
             <select
               id="state"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.defaultStateJurisdiction}
+              value={f.defaultStateJurisdiction}
               onChange={(e) => setForm({ ...form, defaultStateJurisdiction: e.target.value })}
               data-testid="select-state"
             >
@@ -233,7 +236,7 @@ export default function HiringSettingsPage() {
               </p>
             </div>
             <Switch
-              checked={form.crossTenantScreeningEnabled}
+              checked={f.crossTenantScreeningEnabled}
               onCheckedChange={(v) => setForm({ ...form, crossTenantScreeningEnabled: v })}
               data-testid="switch-cross-tenant"
             />
@@ -243,7 +246,7 @@ export default function HiringSettingsPage() {
 
       <div className="flex justify-end gap-2">
         <Button
-          onClick={() => saveMutation.mutate(form)}
+          onClick={() => saveMutation.mutate(f)}
           disabled={saveMutation.isPending}
           data-testid="button-save-hiring-settings"
         >

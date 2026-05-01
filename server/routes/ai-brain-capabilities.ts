@@ -10,8 +10,8 @@
  */
 
 import express, { Router, Request, Response } from 'express';
-// @ts-expect-error — TS migration: fix in refactoring sprint
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import { type AuthenticatedRequest } from '../rbac';
 import {
   serviceController,
   featureToggleManager,

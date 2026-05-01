@@ -156,6 +156,11 @@ interface UnifiedEmail {
   aiPriority?: number;
   aiActionItems?: string[];
   aiMeetingSuggestion?: { date: string; time: string; subject: string } | null;
+  // Optional fields used by Trinity inbound classification UI; not yet
+  // part of the core unified email type but referenced by the canvas.
+  senderType?: 'employee' | 'client' | 'vendor' | 'unknown';
+  folderType?: 'inbox' | 'staffing' | 'careers' | 'support' | 'compliance' | string;
+  category?: string;
 }
 
 interface AIInsight {
@@ -1253,7 +1258,8 @@ function MobileAIInsights({
   const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
     if (!email) return;
     // Build a natural-language command for Trinity to execute
-    const entityName = entityData?.entity?.name ?? senderEmail;
+    const actionSenderEmail = email.fromAddress ?? '';
+    const entityName = email.fromName ?? actionSenderEmail;
     const prompt = `Email context: ${email.subject || 'No subject'} from ${entityName}. Action requested: ${action.label}. ${action.description}`;
     try {
       const res = await secureFetch('/api/ai-brain/chat', {
@@ -1262,11 +1268,9 @@ function MobileAIInsights({
         credentials: 'include',
         body: JSON.stringify({
           message: prompt,
-          context: { 
+          context: {
             source: 'email_entity_panel',
-            senderEmail,
-            entityId: entityData?.entity?.id,
-            entityType: entityData?.entity?.type,
+            senderEmail: actionSenderEmail,
             emailId: email.id,
             actionIcon: action.icon,
           },
@@ -1758,7 +1762,8 @@ function AIContextRail({
   const executeTrinityAction = async (action: {label: string; description: string; icon: string}) => {
     if (!email) return;
     // Build a natural-language command for Trinity to execute
-    const entityName = entityData?.entity?.name ?? senderEmail;
+    const actionSenderEmail = email.fromAddress ?? '';
+    const entityName = email.fromName ?? actionSenderEmail;
     const prompt = `Email context: ${email.subject || 'No subject'} from ${entityName}. Action requested: ${action.label}. ${action.description}`;
     try {
       const res = await secureFetch('/api/ai-brain/chat', {
@@ -1767,11 +1772,9 @@ function AIContextRail({
         credentials: 'include',
         body: JSON.stringify({
           message: prompt,
-          context: { 
+          context: {
             source: 'email_entity_panel',
-            senderEmail,
-            entityId: entityData?.entity?.id,
-            entityType: entityData?.entity?.type,
+            senderEmail: actionSenderEmail,
             emailId: email.id,
             actionIcon: action.icon,
           },

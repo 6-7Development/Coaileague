@@ -7,19 +7,21 @@ import { createContext, useContext, type ReactNode } from 'react';
 
 interface SimpleModeContextType {
   isSimpleMode: boolean;
+  isLoading: boolean;
   toggleSimpleMode: () => void;
   setSimpleMode: (value: boolean) => void;
 }
 
 const SimpleModeContext = createContext<SimpleModeContextType>({
   isSimpleMode: false,        // Always full mode
+  isLoading: false,
   toggleSimpleMode: () => {},  // No-op
   setSimpleMode: () => {},     // No-op
 });
 
 export function SimpleModeProvider({ children }: { children: ReactNode }) {
   return (
-    <SimpleModeContext.Provider value={{ isSimpleMode: false, toggleSimpleMode: () => {}, setSimpleMode: () => {} }}>
+    <SimpleModeContext.Provider value={{ isSimpleMode: false, isLoading: false, toggleSimpleMode: () => {}, setSimpleMode: () => {} }}>
       {children}
     </SimpleModeContext.Provider>
   );

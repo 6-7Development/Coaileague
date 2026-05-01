@@ -42,7 +42,7 @@ import {
   listRegulatorNotificationsForWorkspace,
 } from '../services/auditor/auditorAccessService';
 
-import { requireAuth, requireManager , requireAuditor } from '../rbac';
+import { requireAuth, requireManager } from '../rbac';
 const log = createLogger('AuditorRoutes');
 export const auditorRouter = Router();
 
@@ -414,8 +414,8 @@ auditorRouter.post('/invite-link', requireManager, async (req: any, res) => {
     const domain = process.env.RAILWAY_PUBLIC_DOMAIN || 'app.coaileague.com';
     const inviteUrl = 'https://' + domain + '/auditor/claim/' + token;
     try {
-      const { sendEmail } = await import('../services/email/resendService');
-      await sendEmail({ to: email, subject: 'Audit Access — CoAIleague',
+      const { emailService } = await import('../services/emailService');
+      await emailService.sendEmail({ to: email, subject: 'Audit Access — CoAIleague',
         html: '<h2>Auditor Access</h2><p><a href="' + inviteUrl + '">Click to claim your auditor access</a></p><p>Expires in ' + String(expiresInDays) + ' days.</p>' });
     } catch(emailErr) { log.warn('[AuditorInvite] Email failed:', emailErr); }
     res.json({ success: true, inviteUrl, token: token.slice(0,8)+'...', expiresAt });

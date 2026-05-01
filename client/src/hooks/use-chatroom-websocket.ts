@@ -815,7 +815,7 @@ export function useChatroomWebSocket(
     };
   }, [userId, conversationId, bus, sendJoin]);
 
-  const sendMessage = useCallback((messageText: string, senderName: string, senderType: 'customer' | 'support' | 'system' = 'support', attachment?: { url: string; name: string; type?: string; size?: number }) => {
+  const sendMessage = useCallback((messageText: string, senderName: string, senderType: 'customer' | 'support' | 'system' | 'bot' = 'support', attachment?: { url: string; name: string; type?: string; size?: number }) => {
     if (!bus.isConnected()) {
       setError('Not connected to chat server');
       return;

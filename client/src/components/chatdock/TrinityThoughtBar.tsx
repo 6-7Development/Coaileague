@@ -315,7 +315,7 @@ export function TrinityThoughtBar({
   let colors: typeof TRINITY_FALLBACK_COLORS = TRINITY_FALLBACK_COLORS;
   try {
     const _c = getBroadcastColor("trinity", state);
-    if (_c && typeof _c.primary === "string") colors = _c;
+    if (_c && typeof _c.primary === "string") colors = _c as typeof TRINITY_FALLBACK_COLORS;
   } catch { /* use fallback */ }
   const hasAutonomousScheduleActivity = !!activeSchedulingOperation;
   const isTrinityActive = isProcessing || state === "active" || hasAutonomousScheduleActivity;
@@ -458,7 +458,7 @@ export function TrinityThoughtBar({
 
         {/* Left-center: Current action */}
         <div className="flex-shrink-0 w-52 min-w-0">
-          <div style={{ fontSize: "10px", color: (colors?.dim ?? TRINITY_FALLBACK_COLORS.dim) === "#7C3AED33" ? "#8B5CF6" : (colors?.text ?? TRINITY_FALLBACK_COLORS.text), letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1px" }}>
+          <div style={{ fontSize: "10px", color: ((colors?.dim ?? TRINITY_FALLBACK_COLORS.dim) as string) === "#7C3AED33" ? "#8B5CF6" : (colors?.text ?? TRINITY_FALLBACK_COLORS.text), letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "1px" }}>
             {currentTrinityAction 
               ? `TRINITY ACTION (${currentTrinityAction.domain.toUpperCase()})`
               : state === "critical" ? "CRITICAL ALERT" : state === "fallback" ? "FALLBACK MODE" : "CURRENT ACTION"}

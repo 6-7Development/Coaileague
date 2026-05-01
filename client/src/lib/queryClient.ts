@@ -287,14 +287,14 @@ export const getQueryFn: <T>(options: {
       await new Promise(resolve => setTimeout(resolve, waitMs));
       const retryRes = await fetch(url, { credentials: 'include' });
       if (retryRes.ok) {
-        return deepToCamel(await retryRes.json()) as T;
+        return deepToCamel(await retryRes.json()) as unknown;
       }
       throw new ApiError(429, 'RATE_LIMITED', 'Too many requests — please try again in a moment.');
     }
 
     await throwIfResNotOk(res);
     // Incoming: snake_case → camelCase on every GET response
-    return deepToCamel(await res.json()) as T;
+    return deepToCamel(await res.json()) as unknown;
   };
 
 export const queryClient = new QueryClient({

@@ -60,7 +60,8 @@ import {
   ImagePlus,
   History,
   Upload,
-} from 'lucide-react';;
+  X as XIcon,
+} from 'lucide-react';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
 // Adapter: makes TrinityLogo compatible with Lucide icon props
 const TrinityIcon = ({ className }: { className?: string }) => <TrinityLogo size={14} />;
@@ -1045,10 +1046,13 @@ function TrinityModal({ onClose }: TrinityModalProps) {
   const chatMutation = useMutation({
     mutationFn: async (payload: { message: string; images?: string[] }) => {
       simulateThinking();
-      
+
       setAgentModeActive(true);
       agentState.startExecution();
-      
+
+      // Trinity is unified — every chat is in 'business' mode for the
+      // session column default; the mode toggle was retired.
+      const mode = 'business' as const;
       const pageContext = {
         currentPage: location,
         pageTitle: document.title,
@@ -1521,7 +1525,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                       </div>
                     </div>
                   ))}
-                  {isThinking && <ThinkingVisualization steps={thinkingSteps} mode={mode} />}
+                  {isThinking && <ThinkingVisualization steps={thinkingSteps} mode="business" />}
                 </div>
               </ScrollArea>
             )}
@@ -1846,7 +1850,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                     </div>
                   </div>
                 ))}
-                {isThinking && <ThinkingVisualization steps={thinkingSteps} mode={mode} />}
+                {isThinking && <ThinkingVisualization steps={thinkingSteps} mode="business" />}
               </div>
             </ScrollArea>
 
