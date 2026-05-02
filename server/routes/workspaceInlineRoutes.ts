@@ -23,6 +23,7 @@ import { typedQuery } from '../lib/typedSql';
 import { sumFinancialValues, applyTax, toFinancialString } from '../services/financialCalculator';
 import { createLogger } from '../lib/logger';
 import { z } from 'zod';
+import { verifyPersisted, PersistenceVerificationError } from '../utils/persistenceHandshake';
 const log = createLogger('WorkspaceInlineRoutes');
 
 // ---- Logo upload setup ----
@@ -1220,6 +1221,27 @@ async function applyAutomationUpdate(params: {
         industryGroupId: parentWs.industryGroupId,
         subIndustryId: parentWs.subIndustryId,
       }).returning();
+
+      // Persistence handshake: confirm the sub-org row is visible with the
+      // correct parent and isSubOrg flag before applying parent-side updates.
+      try {
+        await verifyPersisted(
+          workspaces,
+          and(
+            eq(workspaces.id, newSubOrg.id),
+            eq(workspaces.parentWorkspaceId, currentWsId),
+            eq(workspaces.isSubOrg, true),
+          )!,
+          { label: 'sub_org', description: `id=${newSubOrg.id} parent=${currentWsId}` },
+        );
+      } catch (verifyErr) {
+        log.error(`[SubOrg] Persistence handshake failed for sub-org ${newSubOrg.id}:`, verifyErr instanceof Error ? verifyErr.message : String(verifyErr));
+        return res.status(503).json({
+          message: 'Sub-organization could not be confirmed in the database. Please try again in a few seconds.',
+          error: 'PERSISTENCE_VERIFICATION_FAILED',
+          retryable: verifyErr instanceof PersistenceVerificationError ? verifyErr.retryable : true,
+        });
+      }
 
       await db.update(workspaces)
         .set({
