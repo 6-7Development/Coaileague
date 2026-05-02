@@ -1,6 +1,51 @@
 # COAILEAGUE — MASTER AGENT HANDOFF
 # ONE FILE — update in place.
-# Last updated: 2026-05-01 — Claude (architect, continuous session monitoring)
+# Last updated: 2026-05-02 — Claude (frontend audit pass, branch claude/audit-frontend-ui-Aho9f)
+
+---
+
+## FRONTEND AUDIT — 2026-05-02 (claude/audit-frontend-ui-Aho9f)
+
+### Surface
+- Pages on disk: 344 · Components: 308 · Hooks: 68
+- App.tsx: 308 lazy imports · 594 `<Route>` declarations
+- esbuild client bundle: **0 errors, 0 warnings** after fixes (was 0 errors / 2 warnings)
+
+### Audits Performed (parallel sub-agents)
+| Audit | Result |
+|---|---|
+| Orphan pages (in pages/, not imported by App.tsx) | 27 candidates → only 2 truly dead after cross-codebase grep (rest are dashboard barrels, role-routers, ComingSoon aliases) |
+| Stub onClick handlers (`() => {}`, console.log only, alert only) | 0 found across 344 pages + 308 components |
+| `<form>` without onSubmit / preventDefault-only handlers | 0 found (90 preventDefault calls all paired with mutations) |
+| `useMutation` missing onError/onSuccess | 0 found (917 mutations all wired) |
+| Dead navigation (`setLocation` to unregistered route) | 0 found (all 90+ navigation calls map to a route in App.tsx) |
+| Broken imports (`@/...` → non-existent file) | 1 broken import found + fixed |
+| TS / esbuild duplicate-key warnings | 2 found + fixed |
+
+### Issues Found & Fixed
+| # | File | Issue | Fix |
+|---|---|---|---|
+| F-1 | `client/src/App.tsx:331` | `CoAuditorClaim` aliased to `ComingSoon` while real page existed at `pages/co-auditor-claim.tsx` (real form, posts to `/api/auditor/claim`). Auditor invite emails link to `/co-auditor/claim?token=` but were dead-ending on a placeholder. | Replaced alias with `lazy(() => import("@/pages/co-auditor-claim"))` |
+| F-2 | `client/src/pages/support-command-console.tsx` | Page had broken import to non-existent `@/components/trinity-reasoning-panel`. Page was orphan — zero references anywhere in `client/src/`. | Deleted the orphan file (would have crashed on first lazy load if ever wired) |
+| F-3 | `client/src/hooks/useTrinityTasks.ts` (approvalsQuery) | Duplicate `retry` keys — `retry: 1` then `retry: false` (silently overridden). | Removed `retry: 1`, kept `retry: false` to match peer queries |
+| F-4 | `client/src/hooks/useTrinityTasks.ts` (complianceQuery) | Duplicate `retry: false` keys (pure copy-paste). | Removed redundant key |
+
+### Remaining Indirect-Reachability Pages (Not Issues)
+The following are imported via barrels/lazy-routers, NOT App.tsx — verified intentional:
+- 13 role dashboards in `pages/dashboards/*` → routed through `pages/dashboard.tsx` lazy switch
+- `pages/sra/SRAPortalLayout.tsx` → consumed by SRAPortalDashboard
+- `pages/onboarding.tsx` → URL-pattern check in universal-header
+- `pages/platform-users.tsx` → linked from quickActions data
+- `pages/site-survey.tsx`, `pages/visitor-management.tsx` → intentional ComingSoon aliases
+
+### Verification
+- `npx esbuild --bundle client/src/App.tsx`: ✅ clean
+- `npx esbuild --bundle client/src/main.tsx`: ✅ clean
+- All 594 routes in App.tsx point to importable, existent component constants
+- All 917 mutations have onError/onSuccess paths
+- All form submissions wired to mutate calls with toast feedback
+
+---
 
 ---
 
