@@ -22,10 +22,9 @@ import {
   DEFAULT_FINANCIAL_THRESHOLDS,
 } from '../../server/services/ai-brain/financialApprovalThresholds';
 
-// Ensure the AI Brain action registry is fully initialized before any test
-// that queries helpaiOrchestrator.getAction(...). Registration was moved out
-// of the constructor and into the async initialize() method (called from
-// server/index.ts at boot), so unit tests must await it explicitly.
+// Action registry is now async-init (used to register synchronously in the
+// constructor). Initialize once for the whole suite so tests that look up
+// invoice actions via helpaiOrchestrator.getAction(...) find them.
 beforeAll(async () => {
   const { aiBrainActionRegistry } = await import(
     '../../server/services/ai-brain/actionRegistry'
