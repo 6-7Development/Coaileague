@@ -9,12 +9,22 @@
  *   1. Distant ambient halo (very faint, slow pulse)
  *   2. Saturn outer ring  — 36 particles, 11s orbit, tilted 15°
  *   3. Saturn inner ring  — 24 particles, 7s orbit, tilted -8°
- *   4. TrinityAnimatedLogo (arms + core) — spinning CW
+ *   4. TrinityOrbitalAvatar (arms + core + dual orbital arcs) — randomly tumbling
  *   5. Inner corona ring  — 12 particles, 4s orbit, opposite direction
  */
 
-import { useState, useEffect } from "react";
-import { TrinityAnimatedLogo } from "@/components/ui/trinity-animated-logo";
+import { useState, useEffect, useMemo } from "react";
+import { TrinityOrbitalAvatar } from "@/components/ui/trinity-animated-logo";
+
+/** Tumble variants — one is picked randomly each time the splash mounts so
+ *  the center mark never animates exactly the same way twice. */
+const TUMBLE_VARIANTS = [
+  "tumble-x 6s ease-in-out infinite",
+  "tumble-y 6s ease-in-out infinite",
+  "tumble-z 5s linear infinite",
+  "tumble-figure8 8s ease-in-out infinite",
+  "tumble-pulse 3s ease-in-out infinite",
+];
 
 const PLATFORM_NAME = "CoAIleague";
 
@@ -64,6 +74,10 @@ const COMET_RING  = ellipseParticles(6,  88, 38, -20);
 
 export function LoadingScreen() {
   const [msgIdx, setMsgIdx] = useState(0);
+  const tumble = useMemo(
+    () => TUMBLE_VARIANTS[Math.floor(Math.random() * TUMBLE_VARIANTS.length)],
+    [],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -167,9 +181,20 @@ export function LoadingScreen() {
           </g>
         </svg>
 
-        {/* LAYER 4: Trinity logo — center */}
-        <div style={{ position: "relative", zIndex: 10, width: 120, height: 120 }}>
-          <TrinityAnimatedLogo size={120} state="loading" alwaysAnimate={true} />
+        {/* LAYER 4: Trinity orbital avatar — center, randomly tumbling */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 10,
+            width: 132,
+            height: 132,
+            animation: tumble,
+            transformStyle: "preserve-3d",
+            perspective: 600,
+            willChange: "transform",
+          }}
+        >
+          <TrinityOrbitalAvatar size={132} state="loading" />
         </div>
 
         {/* LAYER 5: Inner corona — 14 particles, 4s orbit CW close-in */}
@@ -286,6 +311,11 @@ export function LoadingScreen() {
         @keyframes letter-wobble      { 0%,100%{transform:skewX(0)}20%{transform:skewX(-10deg)translateX(-3px)}50%{transform:skewX(8deg)translateX(3px)}80%{transform:skewX(-4deg)} }
         @keyframes letter-slide-right { 0%,100%{transform:translateX(0)}30%{transform:translateX(6px)rotate(8deg)}60%{transform:translateX(-2px)rotate(-3deg)} }
         @keyframes letter-float       { 0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)} }
+        @keyframes tumble-x        { 0%{transform:rotateX(0deg)}100%{transform:rotateX(360deg)} }
+        @keyframes tumble-y        { 0%{transform:rotateY(0deg)}100%{transform:rotateY(360deg)} }
+        @keyframes tumble-z        { 0%{transform:rotate(0deg)}100%{transform:rotate(360deg)} }
+        @keyframes tumble-figure8  { 0%,100%{transform:rotateX(0)rotateY(0)}25%{transform:rotateX(180deg)rotateY(90deg)}50%{transform:rotateX(360deg)rotateY(180deg)}75%{transform:rotateX(180deg)rotateY(270deg)} }
+        @keyframes tumble-pulse    { 0%,100%{transform:rotate(0deg)scale(1)}50%{transform:rotate(180deg)scale(1.08)} }
       `}</style>
     </div>
   );
