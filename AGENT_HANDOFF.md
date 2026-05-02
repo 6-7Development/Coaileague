@@ -1,6 +1,49 @@
 # COAILEAGUE — MASTER AGENT HANDOFF
 # ONE FILE — update in place.
-# Last updated: 2026-05-02 — Claude (frontend audit pass, branch claude/audit-frontend-ui-Aho9f)
+# Last updated: 2026-05-02 — Claude (full-stack validation pass, branch claude/audit-frontend-ui-Aho9f)
+
+---
+
+## FULL-STACK VALIDATION PASS — 2026-05-02
+
+### Pipelines Run (all on freshly-installed deps)
+| Pipeline | Result | Notes |
+|---|---|---|
+| `npm install` | ✅ 1101 packages, 27s | clean (after retry — first try hit a transient registry 404) |
+| `npm run build` (vite + esbuild) | ✅ 4670 modules transformed, 23.99s | server + client bundles emitted |
+| `npx vitest run` (full workspace) | ✅ **17 files passed / 0 failed**, 196 tests passed | 8 files + 55 tests skipped (require real DB / running HTTP server — `describe.skipIf(!serverAvailable)`) |
+| `npx tsx tests/integration/platform.test.ts` (static-analysis) | ✅ **31/31 passing — ALL SYSTEMS GO** | was 28/31 before this pass |
+| `npx tsc --noEmit` | ⚠️ 24,115 pre-existing errors in 4,211 files (debt) | my changes added **0** new errors; build still produces 0-error JS via esbuild's looser type stripping |
+
+### Issues Found & Fixed This Pass
+| # | File | Issue | Fix |
+|---|---|---|---|
+| F-1 | `client/src/App.tsx:331` | `CoAuditorClaim` aliased to `ComingSoon` while real page exists at `pages/co-auditor-claim.tsx` (posts to `/api/auditor/claim`, used by auditor invite emails). | Replaced alias with real lazy import |
+| F-2 | `client/src/pages/support-command-console.tsx` | Orphan page (zero refs anywhere in `client/src/`) with broken import to non-existent `@/components/trinity-reasoning-panel`. | Deleted |
+| F-3 | `client/src/hooks/useTrinityTasks.ts` | Two duplicate `retry` keys (silently overridden) in `approvalsQuery` + `complianceQuery`. | Removed redundant keys |
+| F-4 | `tests/unit/trinity-workflows-17c.test.ts` | 5 tests failing because they assumed `aiBrainActionRegistry.initialize()` had been called, but `actionRegistry` no longer self-registers on import. | Added `beforeAll` that initializes the registry once for the suite. **All 30 tests now pass.** |
+| F-5 | `client/src/pages/universal-schedule.tsx` (BANDAID-02) | Two raw `fetch()` calls (lines 447, 946) that bypass CSRF — should use `secureFetch`. | Switched both to `secureFetch` |
+| F-6 | `server/services/scheduling/trinityAutonomousScheduler.ts` (GC-01) | No explicit `guardCardExpiryDate` / `guardCardStatus` hard-block in the auto-scheduler. Texas OC 1702 §1702.161 requires every officer to hold a current commission. | Added new check 0.a: refuses to auto-assign if `guardCardExpiryDate` lapsed or `guardCardStatus` not active/verified. Reasons recorded in `disqualifyReasons` with the OC §1702 citation. |
+| F-7 | `server/services/scheduling/trinityAutonomousScheduler.ts` (WHY-01) | Trinity completion broadcast lacked `aiSummary` (plain English), `whyUnfilled` (per-shift reason), and `fillRate` percentage. | Added all three fields to the `trinity_scheduling_completed` WS payload. Added `failedShiftDetails` to `SchedulingSession.progress` and populated it on each skip. |
+| F-8 | `vitest.workspace.ts` | `tests/security/**` and `tests/integration/**` weren't included in any project, so they silently never ran. | Added a new `security` project for `tests/security/**`. Excluded `tests/integration/platform.test.ts` from vitest (it's a stand-alone static-analysis script that calls `process.exit`) — runs via `npx tsx`. |
+
+### Audit Summary (sub-agent driven)
+- **Pages**: 344 — orphan scan found 2 truly dead (only `co-auditor-claim` shadow + `support-command-console` orphan, both fixed)
+- **Components**: 308 · **Hooks**: 68
+- **Routes in `App.tsx`**: 594 — all resolve to importable, existent component constants
+- **Mutations**: 917 scanned — all have `onError`/`onSuccess` paths
+- **Forms**: 90+ `preventDefault` calls all paired with mutate calls
+- **Stub onClick / unwired buttons**: 0 found
+- **Dead navigation (`setLocation`/`Link to=`)**: 0 unmatched
+- **Broken imports**: 1 found, fixed (F-2)
+
+### Companion Map
+- `SYSTEM_MAP_FRONT_TO_BACK.md` (new) — request lifecycle, layer-by-layer file inventory across `client/src/`, `shared/`, `server/`. Use it as the entry-point map when navigating any new task.
+
+### What is NOT verified (still needs a human or staged env)
+- **Browser smoke test** of `/co-auditor/claim?token=…` — needs a running server + browser
+- **Full `tsc --noEmit` clean** — 24,115 pre-existing strict-type errors (debt), build is unaffected
+- **Tests requiring real Postgres** — 55 tests skipped via `describe.skipIf(!serverAvailable)`; need a deployed env
 
 ---
 

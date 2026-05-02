@@ -15,12 +15,22 @@
  * with simulated payloads.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   requiresFinancialApproval,
   actorMeetsApprovalRequirement,
   DEFAULT_FINANCIAL_THRESHOLDS,
 } from '../../server/services/ai-brain/financialApprovalThresholds';
+
+// Action registry is now async-init (used to register synchronously in the
+// constructor). Initialize once for the whole suite so tests that look up
+// invoice actions via helpaiOrchestrator.getAction(...) find them.
+beforeAll(async () => {
+  const { aiBrainActionRegistry } = await import(
+    '../../server/services/ai-brain/actionRegistry'
+  );
+  await aiBrainActionRegistry.initialize();
+});
 
 // ─── Audit 3 — Amount-threshold approval gate ────────────────────────────────
 
