@@ -72,8 +72,7 @@ import { employeeDocumentOnboardingService } from "../services/employeeDocumentO
 import { checkSchedulingEligibility, checkRequiredCertifications } from "../services/compliance/trinityComplianceEngine";
 import { shiftRoomBotOrchestrator } from "../services/bots/shiftRoomBotOrchestrator";
 import { createLogger } from '../lib/logger';
-import type { ShiftWithJoins } from '@shared/types/domainExtensions';
-import type { WorkspaceWithExtras } from '@shared/types/domainExtensions';
+import type { ShiftWithJoins, EmployeeWithStatus, WorkspaceWithExtras } from '@shared/types/domainExtensions';
 const log = createLogger('ShiftRoutes');
 
 
@@ -592,7 +591,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             details: { restViolations, overriddenBy: userId, overrideTimestamp: new Date().toISOString() },
           });
         } catch (err: unknown) {
-          log.warn('[Shifts] Failed to broadcast WebSocket update', { error: err.message });
+          log.warn('[Shifts] Failed to broadcast WebSocket update', { error: err instanceof Error ? err.message : String(err) });
         }
       }
 
@@ -658,7 +657,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             },
           });
         } catch (err: unknown) {
-          log.warn('[Shifts] Failed to broadcast WebSocket update', { error: err.message });
+          log.warn('[Shifts] Failed to broadcast WebSocket update', { error: err instanceof Error ? err.message : String(err) });
         }
       }
 
@@ -732,7 +731,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
           date: shift.date,
         });
       } catch (webhookErr: unknown) {
-        log.warn('[Shifts] Failed to log webhook error to audit log', { error: webhookErr.message });
+        log.warn('[Shifts] Failed to log webhook error to audit log', { error: webhookErr instanceof Error ? webhookErr.message : String(webhookErr) });
       }
 
       // Notify assigned employees about new shift
@@ -1760,8 +1759,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         message: "Smart AI successfully assigned employee to shift"
       });
     } catch (error: unknown) {
-      if (error.code === 'SHIFT_ALREADY_CLAIMED') {
-        return res.status(409).json({ message: sanitizeError(error), code: error.code });
+      if ((error as NodeJS.ErrnoException).code === 'SHIFT_ALREADY_CLAIMED') {
+        return res.status(409).json({ message: sanitizeError(error), code: (error as NodeJS.ErrnoException).code });
       }
       log.error("Error in AI Fill:", error);
       res.status(error.statusCode || 500).json({ message: sanitizeError(error) || "Failed to auto-assign shift" });

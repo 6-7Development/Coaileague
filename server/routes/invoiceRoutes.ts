@@ -576,7 +576,7 @@ router.post('/auto-generate', async (req: AuthenticatedRequest, res) => {
       // ── WRITE-PROTECT: Closed invoices cannot be re-sent ──────────────────────
       // GAP-31 FIX: Added 'refunded' — a refunded invoice must not be re-sent to client.
       const SEND_BLOCKED_STATUSES = ['paid', 'void', 'cancelled', 'refunded', 'disputed'] as const;
-      if (SEND_BLOCKED_STATUSES.includes((invoice as Record<string, unknown>).status)) {
+      if (SEND_BLOCKED_STATUSES.includes((invoice as {status: string}).status)) {
         return res.status(403).json({
           message: "This record has been closed and cannot be modified",
           code: 'RECORD_CLOSED',
@@ -2858,7 +2858,13 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
         clientId: portal.clientId,
         source: 'client_portal',
       },
-    });
+      // Idempotency key scoped to the invoice + amount + 6h window.
+      // - invoiceId binds the intent to one invoice.
+      // - amountCents prevents collision if balance was paid down between calls.
+      // - 6h bucket lets clients legitimately retry within the same window
+      //   (browser refresh, network drop) without spawning duplicate intents,
+      //   while still allowing a fresh intent if Stripe's stored one expires.
+    }, { idempotencyKey: `pi-portal-${invoiceId}-${amountCents}-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}` });
 
     // Store the paymentIntentId on the invoice so the webhook can match and mark paid
     await db.update(invoices)

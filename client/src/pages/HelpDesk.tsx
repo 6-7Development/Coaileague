@@ -129,7 +129,7 @@ import { QueueManagerPanel } from "@/components/queue-manager-panel";
 import { TutorialManagerPanel } from "@/components/tutorial-manager-panel";
 import { PriorityManagerPanel } from "@/components/priority-manager-panel";
 import { AccountSupportPanel } from "@/components/account-support-panel";
-import { MotdDialog } from "@/components/motd-dialog";
+import { MotdDialog, type MotdMessage } from "@/components/motd-dialog";
 import { AnimatedStatusBar } from "@/components/animated-status-bar";
 import { ChatAgreementModal } from "@/components/chat-agreement-modal";
 import { UserDiagnosticsPanel } from "@/components/user-diagnostics-panel";
@@ -373,7 +373,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  const [showAccountPanel, setShowAccountPanel] = useState(false);
  const [aiEnabled, setAiEnabled] = useState(false);
  const [showMotd, setShowMotd] = useState(false);
- const [motdData, setMotdData] = useState<null>(null);
+ const [motdData, setMotdData] = useState<MotdMessage | null>(null);
  // REMOVED: Agreement and terms dialogs - chatroom is now publicly accessible without barriers
  const [showDiagnostics, setShowDiagnostics] = useState(false);
  const [diagnosticsUserId, setDiagnosticsUserId] = useState<string | null>(null);
@@ -586,7 +586,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  });
 
  // Fetch MOTD — fires after WebSocket connects so it triggers on every session join
- const { data: motdResponse, error: motdError } = useQuery<{ motd: unknown, acknowledged: boolean }>({
+ const { data: motdResponse, error: motdError } = useQuery<{ motd: MotdMessage | null, acknowledged: boolean }>({
  queryKey: ['/api/helpdesk/motd', isConnected],
  queryFn: async () => {
    const res = await secureFetch('/api/helpdesk/motd', { credentials: 'include' });
@@ -1003,7 +1003,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  try { sessionStorage.setItem('helpai_session_id', session.sessionId); } catch {}
  }
  }).catch((err) => {
-   const isOffline = !navigator.onLine || (err instanceof TypeError && err.message === 'Failed to fetch');
+   const isOffline = !navigator.onLine || (err instanceof TypeError && err instanceof Error ? err.message : String(err) === 'Failed to fetch');
    if (isOffline) {
      toast({
        title: "HelpAI is offline",

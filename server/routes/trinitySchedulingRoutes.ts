@@ -16,6 +16,20 @@ const log = createLogger('TrinitySchedulingRoutes');
 
 const router = Router();
 
+// Payload contract for /auto-fill — keeps client and server in lockstep.
+// Any field added to the front-end mutation must be added here too.
+const autoFillBodySchema = z.object({
+  shiftIds: z.array(z.string().uuid()).optional(),
+  weekStart: z.string().datetime().optional(),
+  weekEnd: z.string().datetime().optional(),
+  prioritizeBy: z.enum(['urgency', 'value', 'chronological']).default('urgency'),
+  useContractorFallback: z.boolean().default(true),
+  mode: z.enum(['current_day', 'current_week', 'next_week', 'full_month', 'full_quarter']).optional(),
+  respectAvailability: z.boolean().default(true),
+  maxShiftsPerEmployee: z.number().int().min(0).max(50).default(0),
+  stateCode: z.string().length(2).optional(),
+});
+
 router.get('/insights', async (req: AuthenticatedRequest, res) => {
     try {
       const userId: string | undefined = req.user?.id || req.user?.claims?.sub || req.session?.userId;
@@ -108,25 +122,31 @@ router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id || req.user?.id;
       // Use middleware-resolved workspaceId first, fall back to DB lookup
-      const workspaceId: string = req.workspaceId || 
+      const workspaceId: string = req.workspaceId ||
         (await storage.getWorkspaceMemberByUserId(userId))?.workspaceId ||
         (await storage.getWorkspaceByOwnerId(userId))?.id || '';
       if (!workspaceId) return res.status(404).json({ message: "Workspace not found" });
       const userWorkspace = { workspaceId };
-      
-      const { shiftIds, weekStart, weekEnd, prioritizeBy = 'urgency', useContractorFallback = true } = req.body;
-      
+
+      // Validate payload — fields with .default() are guaranteed defined after parse.
+      const parsed = autoFillBodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: 'Invalid auto-fill payload',
+          issues: parsed.error.flatten(),
+        });
+      }
+      const { shiftIds, weekStart, weekEnd, prioritizeBy, useContractorFallback, respectAvailability, maxShiftsPerEmployee } = parsed.data;
+
       const { trinityAutonomousScheduler } = await import('../services/scheduling/trinityAutonomousScheduler');
       const { broadcastToWorkspace } = await import('../websocket');
-      
+
       const startTime = Date.now();
       const sessionId = `trinity-ai-autofill-${Date.now()}`;
-      
-      
-      let mode: 'current_day' | 'current_week' | 'next_week' | 'full_month' | 'full_quarter' = 'full_month';
-      if (req.body.mode === 'full_quarter') {
-        mode = 'full_quarter';
-      } else if (weekStart && weekEnd) {
+
+
+      let mode: 'current_day' | 'current_week' | 'next_week' | 'full_month' | 'full_quarter' = parsed.data.mode || 'full_month';
+      if (!parsed.data.mode && weekStart && weekEnd) {
         const start = new Date(weekStart);
         const end = new Date(weekEnd);
         const daysSpan = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
@@ -136,7 +156,50 @@ router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
         else if (daysSpan <= 45) mode = 'full_month';
         else mode = 'full_quarter';
       }
-      
+
+      // SLA gate — block auto-fill window outright if any urgent ticket is at
+      // SLA risk (the per-shift gate inside trinityAutonomousScheduler will
+      // still re-check each individual shift, but this catches the workspace-
+      // wide emergency state before we burn AI tokens proposing assignments).
+      try {
+        const openTickets = await db.query.supportTickets.findMany({
+          where: and(
+            eq(supportTickets.workspaceId, userWorkspace.workspaceId),
+            inArray(supportTickets.status, ['open', 'in_progress']),
+          ),
+        });
+        const ticketsForGate = openTickets.map((t) => ({
+          id: t.id,
+          priority: t.priority ?? 'normal',
+          createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+          firstResponseAt: t.firstResponseAt ? new Date(t.firstResponseAt) : null,
+        }));
+        // Probe with a 1-hour window starting now — purely to surface
+        // workspace-level SLA blackouts (urgent-at-risk).
+        const probe = trinitySchedulerWithSLA.evaluateShift(
+          userWorkspace.workspaceId,
+          {
+            startTime: new Date(),
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
+            employeeId: 'sla-probe',
+          },
+          ticketsForGate,
+        );
+        const urgentBlackout = (probe.conflicts || []).find(
+          (c) => c.priority === 'urgent' && /Urgent ticket at SLA risk/i.test(c.reason),
+        );
+        if (urgentBlackout) {
+          return res.status(409).json({
+            success: false,
+            reason: 'sla_urgent_blackout',
+            message: 'Auto-fill blocked: an urgent support ticket is at SLA risk. Resolve the ticket before bulk scheduling.',
+            conflict: urgentBlackout,
+          });
+        }
+      } catch (gateErr: unknown) {
+        log.warn('[Trinity AutoFill] SLA gate probe failed (non-fatal, proceeding):', (gateErr as Error)?.message);
+      }
+
       const initialOpenShifts = await db.select({ count: sql<number>`count(*)` })
         .from(shifts)
         .where(and(
@@ -145,7 +208,7 @@ router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
           gte(shifts.startTime, new Date())
         ));
       const totalShiftsCount = Number(initialOpenShifts[0]?.count || 0);
-      
+
       broadcastToWorkspace(userWorkspace.workspaceId, {
         type: 'trinity_scheduling_started',
         sessionId,
@@ -153,8 +216,8 @@ router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
         message: 'I\'m analyzing shifts with intelligent scheduling...',
         timestamp: Date.now(),
       });
-      
-      res.json({ 
+
+      res.json({
         success: true,
         sessionId,
         message: `Trinity is processing ${totalShiftsCount} open shifts. Progress updates via WebSocket.`,
@@ -167,10 +230,10 @@ router.post('/auto-fill', async (req: AuthenticatedRequest, res) => {
         workspaceId: userWorkspace.workspaceId,
         userId: userId,
         mode,
-        prioritizeBy: prioritizeBy as 'urgency' | 'value' | 'chronological',
+        prioritizeBy,
         useContractorFallback,
-        maxShiftsPerEmployee: 0,
-        respectAvailability: true,
+        maxShiftsPerEmployee,
+        respectAvailability,
       }).then(result => {
         broadcastToWorkspace(userWorkspace.workspaceId, {
           type: 'trinity_scheduling_http_complete',
@@ -371,10 +434,10 @@ router.get('/pending-approvals', requireAuth, async (req: AuthenticatedRequest, 
     const { eq, and, desc } = await import('drizzle-orm');
     const pending = await db.select().from(trinityProposedActions)
       .where(and(
-        eq((trinityProposedActions as Record<string, unknown>).workspaceId, workspaceId),
-        eq((trinityProposedActions as Record<string, unknown>).status, 'pending'),
+        eq((trinityProposedActions as {workspaceId: string}).workspaceId, workspaceId),
+        eq((trinityProposedActions as {status: string}).status, 'pending'),
       ))
-      .orderBy(desc((trinityProposedActions as Record<string, unknown>).createdAt))
+      .orderBy(desc((trinityProposedActions as {createdAt: Date}).createdAt))
       .limit(50);
     res.json({ approvals: pending });
   } catch (err: unknown) {
@@ -396,11 +459,11 @@ router.post('/pending-approvals/:id/approve', requireManager, async (req: Authen
     const { eq } = await import('drizzle-orm');
     const [updated] = await db.update(trinityProposedActions as unknown)
       .set({ status: 'approved', approvedBy: userId, approvedAt: new Date() } as unknown)
-      .where(eq((trinityProposedActions as Record<string, unknown>).id, id))
+      .where(eq((trinityProposedActions as {id: string}).id, id))
       .returning();
     res.json({ success: true, approval: updated });
   } catch (err: unknown) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -418,11 +481,11 @@ router.post('/pending-approvals/:id/reject', requireManager, async (req: Authent
     const { eq } = await import('drizzle-orm');
     const [updated] = await db.update(trinityProposedActions as unknown)
       .set({ status: 'rejected', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: reason } as unknown)
-      .where(eq((trinityProposedActions as Record<string, unknown>).id, id))
+      .where(eq((trinityProposedActions as {id: string}).id, id))
       .returning();
     res.json({ success: true, approval: updated });
   } catch (err: unknown) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

@@ -101,15 +101,15 @@ export class CostAggregationService {
     
     // Calculate partner API costs (all partners)
     const partnerUsage = await db.select({
-      totalCost: sql<number>`COALESCE(SUM(CAST(${partnerApiUsageEvents.totalCost} AS DECIMAL)), 0)`,
+      totalCost: sql<number>`COALESCE(SUM(CAST(${apiUsageEvents.totalCost} AS DECIMAL)), 0)`,
       totalCalls: sql<number>`COUNT(*)`,
     })
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       );
     
@@ -168,16 +168,16 @@ export class CostAggregationService {
     endDate: Date
   ): Promise<{ cost: number; calls: number }> {
     const result = await db.select({
-      totalCost: sql<number>`COALESCE(SUM(CAST(${partnerApiUsageEvents.totalCost} AS DECIMAL)), 0)`,
+      totalCost: sql<number>`COALESCE(SUM(CAST(${apiUsageEvents.totalCost} AS DECIMAL)), 0)`,
       totalCalls: sql<number>`COUNT(*)`,
     })
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          sql`${partnerApiUsageEvents.partnerType} = ${partnerType}`,
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          sql`${apiUsageEvents.partnerType} = ${partnerType}`,
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       );
     
@@ -307,18 +307,18 @@ export class CostAggregationService {
     endDate.setUTCHours(23, 59, 59, 999);
     
     const result = await db.select({
-      totalCost: sql<number>`COALESCE(SUM(CAST(${partnerApiUsageEvents.totalCost} AS DECIMAL)), 0)`,
+      totalCost: sql<number>`COALESCE(SUM(CAST(${apiUsageEvents.totalCost} AS DECIMAL)), 0)`,
       totalCalls: sql<number>`COUNT(*)`,
-      successfulCalls: sql<number>`COUNT(*) FILTER (WHERE ${partnerApiUsageEvents.success} = true)`,
-      failedCalls: sql<number>`COUNT(*) FILTER (WHERE ${partnerApiUsageEvents.success} = false)`,
-      avgResponseTime: sql<number>`AVG(${partnerApiUsageEvents.responseTimeMs})`,
+      successfulCalls: sql<number>`COUNT(*) FILTER (WHERE ${apiUsageEvents.success} = true)`,
+      failedCalls: sql<number>`COUNT(*) FILTER (WHERE ${apiUsageEvents.success} = false)`,
+      avgResponseTime: sql<number>`AVG(${apiUsageEvents.responseTimeMs})`,
     })
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       );
     

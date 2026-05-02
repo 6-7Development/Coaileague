@@ -5,7 +5,7 @@ import { approvalRequestService } from "../services/ai-brain/approvalRequestServ
 import { requireAuth } from '../auth';
 import { getUserPlatformRole, AuthenticatedRequest} from '../rbac';
 import { db } from "../db";
-import { sql, eq, and } from "drizzle-orm";
+import { sql, eq, and, desc } from "drizzle-orm";
 import { shifts, expenses } from "@shared/schema";
 import { timeOffRequests, timesheetEditRequests } from "@shared/schema";
 import { createLogger } from '../lib/logger';
@@ -302,7 +302,7 @@ router.get('/pending', requireAuth, async (req: AuthenticatedRequest, res) => { 
       .limit(50);
     res.json(pending);
   } catch (err: unknown) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -325,7 +325,7 @@ router.put('/:id/review', requireAuth, async (req: AuthenticatedRequest, res) =>
     if (!updated) return res.status(404).json({ error: 'Edit request not found' });
     res.json({ success: true, request: updated });
   } catch (err: unknown) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

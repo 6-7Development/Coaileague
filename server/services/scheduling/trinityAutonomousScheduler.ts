@@ -201,6 +201,7 @@ interface SchedulingSession {
     assignedShifts: number;
     failedShifts: number;
     skippedShifts: number;
+    failedShiftDetails?: Array<{ shiftId: string; reason: string }>;
   };
   thoughtLog: string[];
   dayProgress: Map<string, { total: number; filled: number }>;
@@ -565,7 +566,11 @@ class TrinityAutonomousSchedulerService {
           } else {
             session.progress.failedShifts++;
             session.progress.skippedShifts = (session.progress.skippedShifts || 0) + 1;
-            
+            (session.progress.failedShiftDetails ??= []).push({
+              shiftId: priorityShift.shiftId,
+              reason: result.reasoning,
+            });
+
             this.throttledBroadcast(config.workspaceId, sessionId, {
               type: 'trinity_scheduling_progress',
               sessionId,
@@ -619,6 +624,20 @@ class TrinityAutonomousSchedulerService {
         });
       }
 
+      // Plain-English summary + per-shift "why unfilled" reasons so the UI can
+      // surface what Trinity actually did without scraping the thoughtLog.
+      const whyUnfilled = (session.progress.failedShiftDetails ?? []).slice(0, 50).map(d => ({
+        shiftId: d.shiftId,
+        reason: d.reason,
+      }));
+      const filledCount = session.progress.assignedShifts;
+      const failedCount = session.progress.failedShifts;
+      const totalForRate = session.progress.totalShifts || 0;
+      const fillRate = totalForRate > 0 ? Math.round((filledCount / totalForRate) * 100) : 0;
+      const aiSummary = filledCount === 0 && failedCount === 0
+        ? 'Trinity found no open shifts in this window.'
+        : `Trinity filled ${filledCount} of ${totalForRate} open shifts (fillRate ${fillRate}%, ${Math.round(avgConfidence * 100)}% avg confidence). ${failedCount} could not be filled — see whyUnfilled for the per-shift reason.`;
+
       // Broadcast completion
       broadcastToWorkspace(config.workspaceId, {
         type: 'trinity_scheduling_completed',
@@ -629,11 +648,15 @@ class TrinityAutonomousSchedulerService {
         totalShifts: session.progress.totalShifts,
         openShiftsRemaining: session.progress.failedShifts,
         duration: Date.now() - session.startTime.getTime(),
+        aiSummary,
+        whyUnfilled,
+        fillRate,
         summary: {
           openShiftsFilled: session.progress.assignedShifts,
           openShiftsSkipped: session.progress.skippedShifts || session.progress.failedShifts,
           openShiftsRemaining: session.progress.failedShifts,
           avgConfidence: Math.round(avgConfidence * 100),
+          fillRate,
         },
       });
 
@@ -1491,6 +1514,22 @@ class TrinityAutonomousSchedulerService {
       const empComplianceScore = safeParseFloat(employee.complianceScore, 100);
       if (empComplianceScore < 60) {
         disqualifyReasons.push(`Compliance hard-block: score ${empComplianceScore.toFixed(0)}/100 (minimum 60 required for auto-assignment)`);
+      }
+
+      // 0.a Guard card expiry hard block (Texas OC 1702 §1702.161 — every officer must hold
+      // a current commission). We refuse to auto-assign if the guardCardExpiryDate has lapsed
+      // or guardCardStatus indicates anything other than active. Explicit, named check so
+      // PII keys (guardCardExpiryDate / guardCardStatus) appear in audit logs.
+      const guardCardExpiryDate = (employee as { guardCardExpiryDate?: string | Date | null }).guardCardExpiryDate ?? null;
+      const guardCardStatus = (employee as { guardCardStatus?: string | null }).guardCardStatus ?? null;
+      if (guardCardExpiryDate) {
+        const expiry = new Date(guardCardExpiryDate as string | Date);
+        if (!Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()) {
+          disqualifyReasons.push(`Texas OC 1702 hard block: guard card expired ${expiry.toISOString().slice(0, 10)} (guardCardExpiryDate)`);
+        }
+      }
+      if (guardCardStatus && guardCardStatus !== 'active' && guardCardStatus !== 'verified') {
+        disqualifyReasons.push(`Texas OC 1702 hard block: guardCardStatus=${guardCardStatus} (must be active/verified)`);
       }
 
       // 0.b Texas Regulatory Gatekeeper (OC Ch. 1702 — §1702.161 / §1702.163 / §1702.201 / §1702.323)

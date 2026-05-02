@@ -1422,8 +1422,8 @@ class PlatformActionHub {
            AND DATE(clock_in) BETWEEN $2 AND $3`,
           [workspaceId, start, end]
         );
-        const totalHours = parseFloat((preCheckResult as unknown as string[])[0]?.total_hours || '0');
-        const entryCount = parseInt((preCheckResult as unknown as string[])[0]?.entry_count || '0');
+        const totalHours = parseFloat((preCheckResult as string[])[0]?.total_hours || '0');
+        const entryCount = parseInt((preCheckResult as string[])[0]?.entry_count || '0');
 
         if (entryCount === 0 || totalHours === 0) {
           return {
@@ -2861,7 +2861,7 @@ class PlatformActionHub {
       
       // Mark idempotency as failed to allow retry
       if (idempotencyKey) {
-        idempotencyService.markFailed(idempotencyKey, error.message);
+        idempotencyService.markFailed(idempotencyKey, error instanceof Error ? error.message : String(error));
       }
       
       // Notify support of failed action if critical
@@ -2915,9 +2915,9 @@ class PlatformActionHub {
   /**
    * Check if user role is authorized for action using role hierarchy
    */
-  private isAuthorized(userRole: string, requiredRoles: string[]): boolean {
-    // Empty requiredRoles means the action is open to any authenticated caller.
-    if (requiredRoles.length === 0) return true;
+  private isAuthorized(userRole: string, requiredRoles: string[] | undefined): boolean {
+    // Empty / unset requiredRoles means the action is open to any authenticated caller.
+    if (!requiredRoles || requiredRoles.length === 0) return true;
 
     // Canonical role hierarchy — all roles must exist in workspaceRoleEnum or platformRoleEnum.
     // Levels are additive: higher number = more privilege.
@@ -3236,7 +3236,7 @@ class PlatformActionHub {
   private async notifySupportOfFailure(request: ActionRequest, error: Error): Promise<void> {
     // Create notification for support users
     // In a full implementation, this would query for support users and notify them
-    log.info(`[Platform Action Hub] ALERT: Action ${request.actionId} failed: ${error.message}`);
+    log.info(`[Platform Action Hub] ALERT: Action ${request.actionId} failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   /**

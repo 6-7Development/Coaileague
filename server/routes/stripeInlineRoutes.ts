@@ -274,8 +274,8 @@ router.post('/pay-invoice', requireAuth, async (req: AuthenticatedRequest, res) 
           // DB ledger: record in financial_processing_fees so platformBillService sees it
           import('../services/billing/financialProcessingFeeService').then(({ financialProcessingFeeService }) =>
             financialProcessingFeeService.recordInvoiceFee({ workspaceId: workspace.id, referenceId: invoice.id })
-              .catch((err: Error) => log.warn('[PayInvoice] Fee ledger record failed (non-blocking):', err.message))
-          ).catch((err: Error) => log.warn('[PayInvoice] Fee ledger import failed:', err.message));
+              .catch((err: Error) => log.warn('[PayInvoice] Fee ledger record failed (non-blocking):', err instanceof Error ? err.message : String(err)))
+          ).catch((err: Error) => log.warn('[PayInvoice] Fee ledger import failed:', err instanceof Error ? err.message : String(err)));
         }
       } catch (feeErr: unknown) {
         log.warn('[PayInvoice] Middleware fee charge failed (non-blocking):', feeErr?.message);
@@ -369,7 +369,7 @@ router.post('/create-subscription', requireAuth, async (req: AuthenticatedReques
         // Subscription exists but is not active (cancelled, past_due) — fall through to create new.
       } catch (subLookupErr: unknown) {
         // Stripe does not know this ID — the stored value is stale. Clear it and continue.
-        log.warn(`[CreateSubscription] Stale stripeSubscriptionId on workspace ${workspace.id}: ${subLookupErr.message}`);
+        log.warn(`[CreateSubscription] Stale stripeSubscriptionId on workspace ${workspace.id}: ${subLookupErr instanceof Error ? subLookupErr.message : String(subLookupErr)}`);
         await storage.updateWorkspace(workspace.id, { stripeSubscriptionId: null });
       }
     }
@@ -465,8 +465,8 @@ router.post('/create-subscription', requireAuth, async (req: AuthenticatedReques
           stripeCustomerId: workspace.stripeCustomerId || undefined,
           workspaceName: workspace.name,
         },
-      }).catch((err: Error) => log.warn('[Stripe] subscription_created publish failed (non-blocking):', err.message))
-    ).catch((err: Error) => log.warn('[Stripe] subscription_created import failed:', err.message));
+      }).catch((err: Error) => log.warn('[Stripe] subscription_created publish failed (non-blocking):', err instanceof Error ? err.message : String(err)))
+    ).catch((err: Error) => log.warn('[Stripe] subscription_created import failed:', err instanceof Error ? err.message : String(err)));
 
     res.json({ 
       success: true,
@@ -488,7 +488,19 @@ router.post('/webhook', async (req: AuthenticatedRequest, res) => {
     if (!sig || typeof sig !== 'string') {
       return res.status(401).send('Unauthorized - Invalid signature');
     }
-    const payload = req.rawBody || JSON.stringify(req.body);
+    // Stripe signature verification requires the EXACT bytes Stripe sent.
+    // express.json's `verify` hook captures rawBody for /api/stripe/webhook
+    // (see server/index.ts ~line 451). If rawBody is missing here it means the
+    // verify hook didn't run (route mounted before the parser, or the path was
+    // not in `webhookPathsNeedingRawBody`). Re-stringifying req.body would
+    // silently corrupt the payload (key reordering, whitespace) and every
+    // signature check below would fail or, worse, succeed by coincidence on a
+    // forged event. Reject loudly instead.
+    if (!req.rawBody) {
+      log.error('[Stripe Webhook] rawBody not captured — express.json verify hook is misconfigured. Refusing to verify against re-serialized body.');
+      return res.status(500).send('Webhook misconfigured: rawBody required for signature verification');
+    }
+    const payload = req.rawBody;
 
     // Try test webhook secret first, then live — same endpoint handles both environments.
     const testSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -547,7 +559,7 @@ router.post('/webhook', async (req: AuthenticatedRequest, res) => {
         return res.status(500).json({ error: `Handler failed: ${mainWebhookResult.error}` });
       }
     } catch (routeErr: unknown) {
-      log.error('[Stripe Webhook] Main pipeline threw for event:', event.type, routeErr.message);
+      log.error('[Stripe Webhook] Main pipeline threw for event:', event.type, routeErr instanceof Error ? routeErr.message : String(routeErr));
       if (MONEY_CRITICAL_EVENTS.has(event.type)) {
         return res.status(500).json({ error: `Handler error: ${sanitizeError(routeErr)}` });
       }

@@ -1,3 +1,4 @@
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 import { helpaiOrchestrator, type ActionHandler, type ActionRequest, type ActionResult } from '../helpai/platformActionHub';
 import { db } from '../../db';
 import { timeEntries, payrollRuns, payrollEntries, invoices, invoiceLineItems, employees, shifts, workspaces } from '@shared/schema';
@@ -151,7 +152,7 @@ export function registerTimesheetPayrollCycleActions() {
       await AtomicFinancialLockService.assertCanModify(timeEntryId);
     } catch (err) {
       if (err instanceof FinancialLockConflict) {
-        return { error: err.message, code: 'FINANCIAL_LOCK', reason: err.reason };
+        return { error: err instanceof Error ? err.message : String(err), code: 'FINANCIAL_LOCK', reason: err.reason };
       }
       throw err;
     }

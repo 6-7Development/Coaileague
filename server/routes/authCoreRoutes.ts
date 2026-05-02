@@ -78,10 +78,10 @@ import {
   recordFailedLogin,
   recordIpAuthFailure,
   recordSuccessfulLogin,
-  requireAuth,
   resetPassword,
   validatePassword,
   verifyEmailToken,
+  verifyPassword,
   requireAuth,
 } from "../auth";
 import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole , type AuthenticatedRequest} from "../rbac";
@@ -92,6 +92,7 @@ import { systemAuditLogs } from "@shared/schema";
 import { rotateCsrfToken } from "../middleware/csrf";
 import { verifyRecaptcha } from "../services/recaptchaService";
 import { mutationLimiter } from "../middleware/rateLimiter";
+import { verifyMfaToken } from "../services/auth/mfa";
 
 const router = Router();
 
@@ -177,7 +178,7 @@ router.post("/api/auth/register", async (req, res) => {
       );
     } catch (emailError: unknown) {
       // Log but don't fail registration - user can request resend later
-      log.warn(`[Registration] Verification email failed for ${newUser.email}:`, emailError.message);
+      log.warn(`[Registration] Verification email failed for ${newUser.email}:`, emailError instanceof Error ? emailError.message : String(emailError));
     }
 
     // Auto-login after registration - CRITICAL: Rotate session ID and explicitly save to database
@@ -265,12 +266,46 @@ async function registerSession(
 }
 
 // ── Phase 53 Session & MFA Stubs (pending full implementation) ────────────────
+const PENDING_MFA_TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 function issuePendingMfaToken(userId: string): string {
   // Issue a short-lived token for MFA verification step
   // In full implementation this would be a signed JWT with 5min expiry
-  const crypto = require('crypto');
   return Buffer.from(userId + ':' + Date.now()).toString('base64url');
 }
+
+function validatePendingMfaToken(token: string): string {
+  let decoded: string;
+  try {
+    decoded = Buffer.from(token, 'base64url').toString('utf-8');
+  } catch {
+    throw new Error('Invalid pending MFA token');
+  }
+  const idx = decoded.lastIndexOf(':');
+  if (idx < 0) throw new Error('Invalid pending MFA token');
+  const userId = decoded.slice(0, idx);
+  const issuedAt = Number(decoded.slice(idx + 1));
+  if (!userId || !Number.isFinite(issuedAt)) {
+    throw new Error('Invalid pending MFA token');
+  }
+  if (Date.now() - issuedAt > PENDING_MFA_TOKEN_TTL_MS) {
+    throw new Error('Pending MFA token expired');
+  }
+  return userId;
+}
+
+// Platform support roles that require the SMS-OTP gate after password+TOTP login.
+// Kept as a Set so the auth flow's `.has(role)` check is O(1).
+const SUPPORT_PLATFORM_ROLES = new Set<string>([
+  'root_admin',
+  'deputy_admin',
+  'sysop',
+  'sysops',
+  'support_manager',
+  'support_agent',
+  'compliance_officer',
+  'co_admin',
+]);
 
 function isMfaMandatory(role: string): boolean {
   // Mandatory MFA roles — platform admin roles require MFA setup
@@ -415,7 +450,7 @@ router.post("/api/auth/resend-verification", async (req, res) => {
         undefined
       );
     } catch (emailError: unknown) {
-      log.warn(`[ResendVerification] Email send failed for ${user.email}:`, emailError.message);
+      log.warn(`[ResendVerification] Email send failed for ${user.email}:`, emailError instanceof Error ? emailError.message : String(emailError));
     }
 
     res.json({ message: "If an unverified account exists, a verification link has been sent" });
@@ -810,7 +845,7 @@ router.post("/api/auth/login", async (req, res) => {
       });
     }
     const errMsg = error instanceof Error ? error.message : String(error);
-    const errStack = error instanceof Error ? error.stack?.split('\n').slice(0,5).join(' >> ') : '';
+    const errStack = error instanceof Error ? error instanceof Error ? error.stack : undefined?.split('\n').slice(0,5).join(' >> ') : '';
     log.error("Login error:", errMsg, errStack);
     res.status(500).json({ 
       message: "Login failed",
@@ -1009,7 +1044,7 @@ router.post("/api/mfa/admin-reset", requireAuth, async (req: AuthenticatedReques
     await adminResetUserMfa(targetUserId, actorId, role, workspaceId);
     return res.json({ success: true, message: `2FA reset for user ${targetUserId}. They will need to re-enroll.` });
   } catch (err: unknown) {
-    log.error('[MFA AdminReset] error:', err.message);
+    log.error('[MFA AdminReset] error:', err instanceof Error ? err.message : String(err));
     return res.status(500).json({ error: 'Failed to reset MFA. Please try again.' });
   }
 });
@@ -1755,7 +1790,7 @@ router.post("/api/auth/change-password", requireAuth, mutationLimiter, async (re
       const { authService: _authSvc } = await import('../services/authService');
       await _authSvc.logoutAllSessions(user.id);
     } catch (sessionErr: unknown) {
-      log.error('[AuthCoreRoutes] Failed to invalidate sessions after password change:', sessionErr.message);
+      log.error('[AuthCoreRoutes] Failed to invalidate sessions after password change:', sessionErr instanceof Error ? sessionErr.message : String(sessionErr));
     }
     // Destroy the current session last (after persisting the password update)
     req.session.destroy(() => {});

@@ -359,7 +359,7 @@ class ContractPipelineService {
    */
   async createTemplate(input: InsertClientContractTemplate): Promise<ClientContractTemplate> {
     const [template] = await db
-      .insert(clientContractTemplates)
+      .insert(contractDocuments)
       .values(input)
       .returning();
     
@@ -370,16 +370,16 @@ class ContractPipelineService {
    * Get all templates for a workspace
    */
   async getTemplates(workspaceId: string, category?: string): Promise<ClientContractTemplate[]> {
-    const conditions = [eq(clientContractTemplates.workspaceId, workspaceId)];
+    const conditions = [eq(contractDocuments.workspaceId, workspaceId)];
     if (category) {
-      conditions.push(eq(clientContractTemplates.category, category));
+      conditions.push(eq(contractDocuments.category, category));
     }
     
     return db
       .select()
-      .from(clientContractTemplates)
+      .from(contractDocuments)
       .where(and(...conditions))
-      .orderBy(desc(clientContractTemplates.createdAt));
+      .orderBy(desc(contractDocuments.createdAt));
   }
   
   /**
@@ -388,8 +388,8 @@ class ContractPipelineService {
   async getTemplate(templateId: string): Promise<ClientContractTemplate | null> {
     const [template] = await db
       .select()
-      .from(clientContractTemplates)
-      .where(eq(clientContractTemplates.id, templateId));
+      .from(contractDocuments)
+      .where(eq(contractDocuments.id, templateId));
     return template || null;
   }
   
@@ -398,9 +398,9 @@ class ContractPipelineService {
    */
   async updateTemplate(templateId: string, updates: Partial<InsertClientContractTemplate>): Promise<ClientContractTemplate | null> {
     const [template] = await db
-      .update(clientContractTemplates)
+      .update(contractDocuments)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(clientContractTemplates.id, templateId))
+      .where(eq(contractDocuments.id, templateId))
       .returning();
     return template || null;
   }
@@ -410,9 +410,9 @@ class ContractPipelineService {
    */
   async deleteTemplate(templateId: string): Promise<boolean> {
     const [template] = await db
-      .update(clientContractTemplates)
+      .update(contractDocuments)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(clientContractTemplates.id, templateId))
+      .where(eq(contractDocuments.id, templateId))
       .returning();
     return !!template;
   }
@@ -471,9 +471,9 @@ class ContractPipelineService {
     // Increment template usage if using a template
     if (input.templateId) {
       await db
-        .update(clientContractTemplates)
+        .update(contractDocuments)
         .set({ usageCount: sql`usage_count + 1` })
-        .where(eq(clientContractTemplates.id, input.templateId));
+        .where(eq(contractDocuments.id, input.templateId));
     }
     
     return { contract, overageCredits: usageResult.overageCredits };
@@ -982,7 +982,7 @@ class ContractPipelineService {
         title: contract.title,
       },
       metadata: { source: 'ContractPipelineService' },
-    }).catch((err: unknown) => log.warn('[ContractPipeline] Failed to publish contract_executed:', err.message));
+    }).catch((err: unknown) => log.warn('[ContractPipeline] Failed to publish contract_executed:', err instanceof Error ? err.message : String(err)));
 
     // Trinity notification — inform the contract owner
     if (contract.createdBy) {
@@ -1027,7 +1027,7 @@ class ContractPipelineService {
       });
       log.info(`[ContractPipeline] Executed PDF stored to GCS: ${gcsObjectPath}`);
     } catch (pdfErr: unknown) {
-      log.warn(`[ContractPipeline] Executed PDF generation/upload failed (non-fatal): ${pdfErr.message}`);
+      log.warn(`[ContractPipeline] Executed PDF generation/upload failed (non-fatal): ${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)}`);
     }
 
     // ── Bridge to org_documents library ──────────────────────────────────────
@@ -1088,7 +1088,7 @@ class ContractPipelineService {
           }).catch((emailErr: unknown) => log.warn(`[ContractPipeline] Executed copy email failed for ${signer.signerEmail}: ${emailErr?.message}`));
         }
       } catch (emailErr: unknown) {
-        log.warn(`[ContractPipeline] Failed to send executed copy emails: ${emailErr.message}`);
+        log.warn(`[ContractPipeline] Failed to send executed copy emails: ${emailErr instanceof Error ? emailErr.message : String(emailErr)}`);
       }
     })();
 
@@ -1173,7 +1173,7 @@ class ContractPipelineService {
             }
           }, 0);
         } catch (invErr: unknown) {
-          log.warn(`[ContractPipeline] Auto-invoice creation failed (non-fatal): ${invErr.message}`);
+          log.warn(`[ContractPipeline] Auto-invoice creation failed (non-fatal): ${invErr instanceof Error ? invErr.message : String(invErr)}`);
         }
       })();
     }

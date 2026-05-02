@@ -38,6 +38,7 @@ import {
   executePayrollAnomalyWorkflow,
   runPayrollAnomalyScan,
 } from './payrollAnomalyWorkflow';
+import { verifyTOPSScreenshot } from './topsVerificationWorkflow';
 
 const log = createLogger('workflowOrchestrator');
 
@@ -92,7 +93,7 @@ const executeCalloffAction: ActionHandler = {
         ? ok(request.actionId, result.summary, result, start)
         : fail(request.actionId, result.summary, start);
     } catch (err: unknown) {
-      return fail(request.actionId, `Calloff workflow error: ${err.message}`, start);
+      return fail(request.actionId, `Calloff workflow error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -120,7 +121,7 @@ const scanStaleCalloffsAction: ActionHandler = {
         start,
       );
     } catch (err: unknown) {
-      return fail(request.actionId, `Stale calloff sweep error: ${err.message}`, start);
+      return fail(request.actionId, `Stale calloff sweep error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -146,7 +147,7 @@ const missedClockInAction: ActionHandler = {
         `calls=${result.callsPlaced}, escalated=${result.escalated}, resolved=${result.resolved}`;
       return ok(request.actionId, summary, result, start);
     } catch (err: unknown) {
-      return fail(request.actionId, `Missed clock-in sweep error: ${err.message}`, start);
+      return fail(request.actionId, `Missed clock-in sweep error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -170,7 +171,7 @@ const sendShiftRemindersAction: ActionHandler = {
       const summary = `Shift reminders: 4h=${result.fourHourSent}, 1h=${result.oneHourSent} (scanned=${result.scanned})`;
       return ok(request.actionId, summary, result, start);
     } catch (err: unknown) {
-      return fail(request.actionId, `Shift reminder sweep error: ${err.message}`, start);
+      return fail(request.actionId, `Shift reminder sweep error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -205,7 +206,7 @@ const invoiceLifecycleAction: ActionHandler = {
         ? ok(request.actionId, result.summary, result, start)
         : fail(request.actionId, result.summary, start);
     } catch (err: unknown) {
-      return fail(request.actionId, `Invoice lifecycle error: ${err.message}`, start);
+      return fail(request.actionId, `Invoice lifecycle error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -233,7 +234,7 @@ const complianceScanAction: ActionHandler = {
         start,
       );
     } catch (err: unknown) {
-      return fail(request.actionId, `Compliance scan error: ${err.message}`, start);
+      return fail(request.actionId, `Compliance scan error: ${err instanceof Error ? err.message : String(err)}`, start);
     }
   },
 };
@@ -278,7 +279,52 @@ const payrollAnomalyAction: ActionHandler = {
         ? ok(request.actionId, result.summary, result, start)
         : fail(request.actionId, result.summary, start);
     } catch (err: unknown) {
-      return fail(request.actionId, `Payroll anomaly workflow error: ${err.message}`, start);
+      return fail(request.actionId, `Payroll anomaly workflow error: ${err instanceof Error ? err.message : String(err)}`, start);
+    }
+  },
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Action: trinity.verify_tops_screenshot
+// ──────────────────────────────────────────────────────────────────────────────
+
+const topsVerificationAction: ActionHandler = {
+  actionId: 'trinity.verify_tops_screenshot',
+  name: 'Trinity TOPS License Screenshot Verification',
+  category: 'compliance',
+  description:
+    'Verify a Texas DPS TOPS portal screenshot uploaded by an officer. ' +
+    'Uses Claude vision to authenticate the image, extract license data, ' +
+    'cross-check against the employee record, and assign tier ' +
+    '(licensed_pending_card or substantially_complete) when verified. ' +
+    'Armed officers always require manual review.',
+  requiredRoles: ['supervisor', 'manager', 'org_owner', 'root_admin'],
+  handler: async (request: ActionRequest): Promise<ActionResult> => {
+    const start = Date.now();
+    try {
+      const { employeeId, imageBase64, imageMimeType, isArmed } = request.payload || {};
+      const workspaceId = request.workspaceId;
+      const uploadedByUserId = request.userId;
+      if (!workspaceId) return fail(request.actionId, 'workspaceId required', start);
+      if (!employeeId) return fail(request.actionId, 'employeeId required', start);
+      if (!imageBase64 || !imageMimeType) return fail(request.actionId, 'imageBase64 and imageMimeType required', start);
+      if (!uploadedByUserId) return fail(request.actionId, 'uploadedByUserId required', start);
+
+      const result = await verifyTOPSScreenshot({
+        employeeId,
+        workspaceId,
+        imageBase64,
+        imageMimeType,
+        uploadedByUserId,
+        isArmed: !!isArmed,
+      });
+
+      const summary = result.status === 'verified'
+        ? `TOPS verified — tier=${result.tierAssigned}, name=${result.detectedName}`
+        : `TOPS ${result.status} — flags=[${result.flags.join(', ')}]`;
+      return ok(request.actionId, summary, result as Record<string, unknown>, start);
+    } catch (err: unknown) {
+      return fail(request.actionId, `TOPS verification error: ${(err as Error)?.message || 'unknown'}`, start);
     }
   },
 };
@@ -295,11 +341,12 @@ export function registerTrinityWorkflowActions(): void {
   helpaiOrchestrator.registerAction(invoiceLifecycleAction);
   helpaiOrchestrator.registerAction(complianceScanAction);
   helpaiOrchestrator.registerAction(payrollAnomalyAction);
+  helpaiOrchestrator.registerAction(topsVerificationAction);
   log.info(
-    '[TrinityWorkflows] Registered 7 Phase 20 workflow actions: ' +
+    '[TrinityWorkflows] Registered 8 Phase 20 workflow actions: ' +
       'execute_calloff_coverage, scan_stale_calloffs, missed_clockin_check, ' +
       'send_shift_reminders, run_invoice_lifecycle, run_compliance_scan, ' +
-      'process_payroll_anomalies',
+      'process_payroll_anomalies, verify_tops_screenshot',
   );
 }
 
@@ -314,4 +361,5 @@ export {
   runComplianceMonitorWorkflow,
   executePayrollAnomalyWorkflow,
   runPayrollAnomalyScan,
+  verifyTOPSScreenshot,
 };

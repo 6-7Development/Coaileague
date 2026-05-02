@@ -8,6 +8,7 @@
  * PDF is WORM-locked on save (immutable via metadata flag).
  */
 
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 import PDFDocument from 'pdfkit';
 import { db } from '../../db';
 import {
@@ -146,7 +147,7 @@ class ReportBotPdfService {
         attachmentUrl: m.attachmentUrl,
         isBot: m.senderType === 'bot' || m.isSystemMessage || false,
         createdAt: new Date(m.createdAt || Date.now()),
-        metadata: (m as Record<string, unknown>).metadata,
+        metadata: (m as {metadata: Record<string, unknown>}).metadata,
       }));
 
       // ── Quality scan on officer messages ─────────────────────────────────

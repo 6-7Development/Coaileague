@@ -16,7 +16,7 @@
 
 import { sanitizeError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../rbac';
-import { Router, Response} from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { onboardingPipelineService, type PipelineStatus } from '../services/onboardingPipelineService';
 import { isFeatureEnabled } from '@shared/platformConfig';
 import { PLATFORM } from '../config/platformConfig';
@@ -44,7 +44,7 @@ function releaseBulkImportLock(workspaceId: string) {
   bulkImportLocks.delete(workspaceId);
 }
 
-const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: Response, next: unknown) => {
+const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!isFeatureEnabled('enableOnboardingPipeline')) {
     return res.status(403).json({ 
       error: 'Onboarding pipeline feature is not enabled',
@@ -54,7 +54,7 @@ const ensureOnboardingEnabled = (req: AuthenticatedRequest, res: Response, next:
   next();
 };
 
-const requireWorkspace = (req: AuthenticatedRequest, res: Response, next: unknown) => {
+const requireWorkspace = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const workspaceId = req.workspaceId || req.user?.workspaceId || req.session?.workspaceId;
   if (!workspaceId) {
     return res.status(403).json({ error: 'No workspace selected' });
@@ -95,9 +95,9 @@ onboardingRouter.get('/tasks', ensureOnboardingEnabled, requireWorkspace, async 
 onboardingRouter.post('/tasks/:taskId/skip', ensureOnboardingEnabled, requireWorkspace, async (req: AuthenticatedRequest, res) => {
   try {
     const { taskId } = req.params;
-    
+
     const task = await onboardingPipelineService.skipTask(req.workspaceId, taskId);
-    
+
     res.json({
       success: true,
       message: 'Task skipped',
@@ -108,6 +108,31 @@ onboardingRouter.post('/tasks/:taskId/skip', ensureOnboardingEnabled, requireWor
     res.status(500).json({ error: sanitizeError(error) });
   }
 });
+
+// Task completion — both URL forms are accepted because the setup-guide panel
+// (`POST /api/onboarding/complete-task/:taskId`) and the onboarding tasks page
+// (`POST /api/onboarding/tasks/:taskId/complete`) call different shapes.
+const handleCompleteTask = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { taskId } = req.params;
+    const completedBy = req.user?.id ?? req.session?.userId;
+    const progress = await onboardingPipelineService.completeTask(
+      req.workspaceId,
+      taskId,
+      completedBy,
+    );
+    res.json({
+      success: true,
+      message: 'Task completed',
+      data: progress,
+    });
+  } catch (error: unknown) {
+    log.error('[Onboarding] Error completing task:', error);
+    res.status(500).json({ error: sanitizeError(error) });
+  }
+};
+onboardingRouter.post('/tasks/:taskId/complete', ensureOnboardingEnabled, requireWorkspace, handleCompleteTask);
+onboardingRouter.post('/complete-task/:taskId', ensureOnboardingEnabled, requireWorkspace, handleCompleteTask);
 
 // OMEGA-L1: signupLimiter (3/hr per IP) caps trial workspace provisioning at the route level.
 // Applied here (inside the auth-protected onboarding router) because the route itself
@@ -333,10 +358,6 @@ import { db } from '../db';
 import { and, eq } from 'drizzle-orm';
 import { orgOnboardingTasks } from '@shared/schema';
 
-/**
- * POST /api/onboarding/complete-task/:taskId
- * Quick task completion for setup guide panel
- */
 const ONBOARDING_PROGRESS_KEY = 'create_org_progress';
 
 const createOrgProgressSchema = z.object({

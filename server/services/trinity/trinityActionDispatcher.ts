@@ -161,9 +161,39 @@ const ACTION_INTENT_PATTERNS: Array<{
     extract: () => ({}),
     reason: 'Clock out requested',
   },
-  // Billing
+  // Billing — order matters: most specific verbs first so "void invoice" wins
+  // over "invoice" alone, and "mark paid" wins over "invoice" alone.
+  // Each actionId below MUST have a registered handler (see actionRegistry.ts
+  // and trinityInvoiceEmailActions.ts). Refund is NOT yet implemented — see
+  // SYSTEM_MAP "Known Debt" before adding a refund pattern here.
   {
-    pattern: /\b(send|email|generate|issue)\b.{0,20}invoice/i,
+    pattern: /\b(void|cancel|nullify)\b.{0,20}invoice/i,
+    actionId: 'billing.invoice_void',
+    risk: 'high',
+    category: 'billing',
+    extract: () => ({}),
+    reason: 'Void invoice requested — irreversible, queued for approval',
+  },
+  {
+    // Canonical handler is billing.invoice_status with payload.status='paid'.
+    pattern: /\b(mark|record|log)\b.{0,20}(invoice|payment).{0,20}(paid|received|settled)/i,
+    actionId: 'billing.invoice_status',
+    risk: 'medium',
+    category: 'billing',
+    extract: () => ({ status: 'paid' }),
+    reason: 'Mark invoice paid requested',
+  },
+  {
+    // Resend = re-send the same invoice email. Same handler as new send.
+    pattern: /\b(resend|re-send|send again)\b.{0,20}invoice/i,
+    actionId: 'billing.invoice_send',
+    risk: 'low',
+    category: 'billing',
+    extract: () => ({ resend: true }),
+    reason: 'Resend invoice requested',
+  },
+  {
+    pattern: /\b(send|email|issue|deliver)\b.{0,20}invoice/i,
     actionId: 'billing.invoice_send',
     risk: 'medium',
     category: 'billing',
@@ -171,7 +201,7 @@ const ACTION_INTENT_PATTERNS: Array<{
     reason: 'Send invoice requested',
   },
   {
-    pattern: /\b(create|generate|make)\b.{0,20}invoice/i,
+    pattern: /\b(create|generate|make|draft)\b.{0,20}invoice/i,
     actionId: 'billing.invoice_create',
     risk: 'medium',
     category: 'billing',
@@ -381,6 +411,24 @@ async function executeImmediate(
   return result;
 }
 
+// Categorical refusal patterns — Trinity is NOT a public-safety service.
+// These are matched BEFORE the regular intent-pattern table so no other
+// pattern (e.g. notify.send) can absorb a 911-dial request. The dispatcher
+// returns a "blocked" status with the canonical disclaimer; nothing is
+// queued, executed, or audited as an action attempt.
+const PUBLIC_SAFETY_REFUSAL_PATTERNS: RegExp[] = [
+  /\b(?:call|dial|contact|notify|page|alert)\s+(?:9-?1-?1|police|cops|sheriff|sapd|ambulance|paramedics?|ems|emts?|fire(?:fighters?| dept| department)?)\b/i,
+  /\bdispatch\s+(?:9-?1-?1|police|cops|sheriff|ambulance|paramedics?|ems|fire(?:fighters?)?|emergency|first responders?)\b/i,
+  /\b(?:guarantee|promise|assure|ensure)\s+(?:my|your|his|her|their|the\s+\w+'s?)\s+safety\b/i,
+];
+
+const PUBLIC_SAFETY_REFUSAL_MESSAGE =
+  '\n\n🚫 I cannot call 911, dispatch emergency services, or guarantee ' +
+  'anyone\'s safety. A human supervisor is always required. ' +
+  'If anyone is in immediate danger, call 9-1-1 directly. ' +
+  'If you want me to *notify* your on-call supervisor, ask me to do that ' +
+  'instead and I\'ll page them.';
+
 /**
  * Primary entrypoint for chat / voice / email intent dispatch.
  */
@@ -391,6 +439,20 @@ export async function dispatchFromChat(
 ): Promise<DispatchResult> {
   if (!message || !context.workspaceId) {
     return { detected: false, executed: false, queued: false, status: 'none' };
+  }
+
+  // PUBLIC SAFETY BOUNDARY — refuse 911-dial / safety-guarantee intents
+  // outright. This must run BEFORE detectIntent so a vague "tell everyone
+  // we'll keep them safe" doesn't get absorbed by the notify.send pattern.
+  if (PUBLIC_SAFETY_REFUSAL_PATTERNS.some((re) => re.test(message))) {
+    log.warn('[Dispatcher] Public-safety boundary refusal', { workspaceId: context.workspaceId });
+    return {
+      detected: true,
+      executed: false,
+      queued: false,
+      status: 'blocked',
+      appendToResponse: PUBLIC_SAFETY_REFUSAL_MESSAGE,
+    };
   }
 
   const intent = detectIntent(message);

@@ -1,5 +1,4 @@
 import { type Response } from 'express';
-import type { AuthenticatedRequest } from '../rbac';
 /**
  * CoAIleague Data Migration API — Employee CSV Import
  *
@@ -309,7 +308,7 @@ migrationRouter.post("/import/:jobId", async (req: AuthenticatedRequest, res: Re
         }).onConflictDoNothing();
         importedCount++;
       } catch (rowErr: unknown) {
-        importErrors.push({ row: record.row, error: rowErr.message });
+        importErrors.push({ row: record.row, error: rowErr instanceof Error ? rowErr.message : String(rowErr) });
       }
     }
     job.status = importErrors.length === rows.length ? "failed" : "completed";

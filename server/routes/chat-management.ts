@@ -17,6 +17,7 @@ import { AuthenticatedRequest } from "../rbac";
 import { requireAuth } from "../auth";
 import rateLimit from "express-rate-limit";
 import { supportRooms, organizationChatRooms } from "@shared/schema";
+import { storage } from "../storage";
 import { broadcastUserScopedNotification } from "../services/chat/broadcaster";
 import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
@@ -287,7 +288,7 @@ router.post(
           }
         }
       } catch (err: unknown) {
-        log.warn('[ChatManagement] Non-critical error in management action', { error: err.message });
+        log.warn('[ChatManagement] Non-critical error in management action', { error: err instanceof Error ? err.message : String(err) });
       }
 
       res.json({ success: true, message: "Left conversation" });
@@ -1558,9 +1559,13 @@ router.post(
       const { id: messageId } = req.params;
       const { targetConversationId } = req.body;
       const userId = authReq.user?.id;
+      const workspaceId = authReq.workspaceId || authReq.user?.workspaceId;
 
       if (!userId) {
         return res.status(401).json({ error: "Authentication required" });
+      }
+      if (!workspaceId) {
+        return res.status(400).json({ error: "workspaceId required" });
       }
 
       if (!targetConversationId) {

@@ -1,6 +1,7 @@
 // Time Platform - Universal Time Tracking & Clock System
 // Comprehensive time tracking with clock in/out, break management, and approval workflow
 
+import type { EmployeeWithStatus } from '@shared/types/domainExtensions';
 import { Router } from 'express';
 import { db } from "../db";
 import { aiBrainService } from "../services/ai-brain/aiBrainService";
@@ -35,7 +36,7 @@ import { requireAuth } from "../auth";
 import { requireWorkspaceRole, type AuthenticatedRequest } from "../rbac";
 import { readLimiter, mutationLimiter } from "../middleware/rateLimiter";
 import { universalNotificationEngine } from "../services/universalNotificationEngine";
-import { db, pool } from '../db';
+import { pool } from '../db';
 import { checkSchedulingEligibility } from '../services/compliance/trinityComplianceEngine';
 import { storage } from '../storage';
 import { createLogger } from '../lib/logger';
@@ -515,7 +516,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
           });
         }
       } catch (licenseErr : unknown) {
-        log.warn('[ClockIn] License check error (non-blocking):', licenseErr.message);
+        log.warn('[ClockIn] License check error (non-blocking):', licenseErr instanceof Error ? licenseErr.message : String(licenseErr));
       }
     }
 
@@ -830,7 +831,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
         longitude: newEntry.clockInLongitude
       });
     } catch (webhookErr : unknown) {
-      log.warn('[TimeEntry] Failed to log webhook error to audit log', { error: webhookErr.message });
+      log.warn('[TimeEntry] Failed to log webhook error to audit log', { error: webhookErr instanceof Error ? webhookErr.message : String(webhookErr) });
     }
 
     platformEventBus.publish({
@@ -1152,7 +1153,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
         longitude: longitude || null
       });
     } catch (webhookErr : unknown) {
-      log.warn('[TimeEntry] Failed to log webhook error to audit log', { error: webhookErr.message });
+      log.warn('[TimeEntry] Failed to log webhook error to audit log', { error: webhookErr instanceof Error ? webhookErr.message : String(webhookErr) });
     }
 
     platformEventBus.publish({
