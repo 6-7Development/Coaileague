@@ -5,7 +5,7 @@ import { approvalRequestService } from "../services/ai-brain/approvalRequestServ
 import { requireAuth } from '../auth';
 import { getUserPlatformRole, AuthenticatedRequest} from '../rbac';
 import { db } from "../db";
-import { sql, eq, and } from "drizzle-orm";
+import { sql, eq, and, desc } from "drizzle-orm";
 import { shifts, expenses } from "@shared/schema";
 import { timeOffRequests, timesheetEditRequests } from "@shared/schema";
 import { createLogger } from '../lib/logger';
