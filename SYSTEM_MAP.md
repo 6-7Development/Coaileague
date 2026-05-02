@@ -358,19 +358,50 @@ registerRoutes(app):
 ### 11. SUPPORT — server/routes/domains/support.ts
 **Prefix:** `/api/platform, /api/support/*, /api/help`
 **Auth:** requireAuth + platform staff guards
+**Support roles (canonical, used by `requireSupportRole` / `AALV_SUPPORT_ROLES`):**
+`root_admin`, `deputy_admin`, `sysop`, `support_manager`, `support_agent`
+(`Bot` is added in `trinityNotificationRoutes.ts` for Trinity-originated calls.)
+
 | Route File | Mounts At | Purpose |
 |---|---|---|
-| supportActionRoutes.ts | /api | Support actions |
-| support-command-console.ts | /api/support/command | Command console |
-| support-chat.ts | /api/support/chat | Support chat |
+| supportActionRoutes.ts | /api | Support actions registry + execute |
+| support-command-console.ts | /api/support/command | Trinity command console (test-broadcast, force-whats-new, force-notification, broadcast-message, maintenance-mode, force-sync) — all `requireSupportRole` |
+| support-chat.ts | /api/support/chat | Support chat (incl. guest ticket intake) |
 | ticketSearchRoutes.ts | /api/tickets | Ticket search |
 | supportRoutes.ts (29 ep) | /api/support | Support CRUD |
-| helpdeskRoutes.ts (31 ep) | /api/helpdesk | Helpdesk mgmt |
-| service-control.ts | /api/platform/services | Platform services |
+| helpdeskRoutes.ts (31 ep) | /api/helpdesk | Helpdesk mgmt + MOTD |
+| endUserControlRoutes.ts | /api/end-user-controls | Suspend/unsuspend/freeze workspaces + end users (`requireSupportRole`) |
+| trinityNotificationRoutes.ts | /api/trinity-notifications | What's-new, support-escalation, insight, batch-send (`requireSupportRole`) |
+| adminPermissionRoutes.ts | /api/admin/permissions | Permission matrix mutations (`requireSupportManager`) |
+| service-control.ts | /api/platform/services | Per-workspace service suspend (platform staff) |
 | financialAdminRoutes.ts | /api/financial-admin | Financial admin |
 | helpAITriageRoutes.ts | /api/helpai-triage | HelpAI triage |
-| adminWorkspaceDetailsRoutes.ts | /api/admin/workspace-details | Admin tools |
-| trinityOrgStateRoutes.ts | /api/trinity/org-state | Org state |
+| adminWorkspaceDetailsRoutes.ts | /api/admin/workspace-details | Admin workspace deep-dive |
+| trinityOrgStateRoutes.ts | /api/trinity/org-state | Org state snapshot + refresh |
+| aiRoutes.ts (AALV) | /api/ai/audit-log | AI audit log viewer (`AALV_SUPPORT_ROLES` gate) |
+| chat-rooms.ts (gated tabs) | /api/chat-rooms | Support-only sections gated to support roles |
+
+**Frontend pages → server route map (support surface):**
+| Page | Route | Calls |
+|---|---|---|
+| `pages/support.tsx` | `/support` | `/api/support/chat/guest-ticket`, `/api/health/summary` |
+| `pages/my-tickets.tsx` | `/my-tickets` | `/api/helpdesk/tickets/me` |
+| `pages/support-queue.tsx` | `/support/queue` | `/api/helpdesk/queue` |
+| `pages/support-bug-dashboard.tsx` | `/support/bugs` | `/api/support/bugs` |
+| `pages/support-chatrooms.tsx` | `/support/chatrooms` | `/api/helpdesk/chatrooms` |
+| `pages/support-ai-console.tsx` | `/support/ai-console` (RBAC: platform_staff) | `/api/helpai/orchestrator/*`, `/api/quick-fixes/*` |
+| `pages/HelpDesk.tsx` | `/chat/:roomId`, `/helpdesk` | `/api/helpdesk/motd`, `/api/helpdesk/queue`, `/api/helpdesk/users/:id/context` |
+| `pages/admin-ticket-reviews.tsx` | `/admin/ticket-reviews` | `/api/helpdesk/reviews` |
+| `pages/admin-helpai.tsx` | `/admin/helpai` | `/api/admin/helpai/*` |
+| `pages/role-management.tsx` | `/role-management` | `/api/employees`, role-label hooks |
+| `pages/end-user-controls.tsx` | `/end-user-controls` | `/api/end-user-controls/*` (suspend, freeze, toggle-ai-brain, access-config, freeze/unfreeze user, suspend/reactivate employee) |
+| `pages/admin/support-console.tsx` | `/admin/support-console` | `/api/support/escalated`, `/api/support/priority-queue`, `/api/admin/search`, `/api/support/actions/registry`, `/api/support/actions/execute`, `/api/admin/workspaces/:id/details` |
+| `pages/admin/support-console-tickets.tsx` | `/admin/support-console/tickets` | `/api/support/escalated` |
+| `pages/admin/support-console-workspace.tsx` | `/admin/support-console/workspace?id=…` | `/api/admin/workspaces/:id/details`, `/api/trinity/org-state/:id`, `/api/support/actions/registry`, `/api/support/actions/execute` |
+
+**Orphan / dead-code candidates flagged this pass:**
+- `pages/support-command-console.tsx` (1559 lines) — exports `SupportCommandConsole`, no router entry, no consumer. The legacy redirect `/support/console → /support/ai-console` and `/trinity/command-center → /support/ai-console` indicates `support-ai-console.tsx` is the canonical replacement. Decide: route it at `/support/command-console` or delete.
+- Server `supportCommandRouter` (test-broadcast, force-whats-new, force-notification, etc.) is mounted but its endpoints have no current frontend consumer — same uncertainty as above.
 
 ---
 
