@@ -161,9 +161,39 @@ const ACTION_INTENT_PATTERNS: Array<{
     extract: () => ({}),
     reason: 'Clock out requested',
   },
-  // Billing
+  // Billing — order matters: most specific verbs first so "void invoice" wins
+  // over "invoice" alone, and "mark paid" wins over "invoice" alone.
+  // Each actionId below MUST have a registered handler (see actionRegistry.ts
+  // and trinityInvoiceEmailActions.ts). Refund is NOT yet implemented — see
+  // SYSTEM_MAP "Known Debt" before adding a refund pattern here.
   {
-    pattern: /\b(send|email|generate|issue)\b.{0,20}invoice/i,
+    pattern: /\b(void|cancel|nullify)\b.{0,20}invoice/i,
+    actionId: 'billing.invoice_void',
+    risk: 'high',
+    category: 'billing',
+    extract: () => ({}),
+    reason: 'Void invoice requested — irreversible, queued for approval',
+  },
+  {
+    // Canonical handler is billing.invoice_status with payload.status='paid'.
+    pattern: /\b(mark|record|log)\b.{0,20}(invoice|payment).{0,20}(paid|received|settled)/i,
+    actionId: 'billing.invoice_status',
+    risk: 'medium',
+    category: 'billing',
+    extract: () => ({ status: 'paid' }),
+    reason: 'Mark invoice paid requested',
+  },
+  {
+    // Resend = re-send the same invoice email. Same handler as new send.
+    pattern: /\b(resend|re-send|send again)\b.{0,20}invoice/i,
+    actionId: 'billing.invoice_send',
+    risk: 'low',
+    category: 'billing',
+    extract: () => ({ resend: true }),
+    reason: 'Resend invoice requested',
+  },
+  {
+    pattern: /\b(send|email|issue|deliver)\b.{0,20}invoice/i,
     actionId: 'billing.invoice_send',
     risk: 'medium',
     category: 'billing',
@@ -171,7 +201,7 @@ const ACTION_INTENT_PATTERNS: Array<{
     reason: 'Send invoice requested',
   },
   {
-    pattern: /\b(create|generate|make)\b.{0,20}invoice/i,
+    pattern: /\b(create|generate|make|draft)\b.{0,20}invoice/i,
     actionId: 'billing.invoice_create',
     risk: 'medium',
     category: 'billing',

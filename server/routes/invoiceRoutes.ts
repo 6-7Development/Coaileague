@@ -2858,7 +2858,13 @@ router.post('/portal/:accessToken/invoice/:invoiceId/create-payment-intent', asy
         clientId: portal.clientId,
         source: 'client_portal',
       },
-    });
+      // Idempotency key scoped to the invoice + amount + 6h window.
+      // - invoiceId binds the intent to one invoice.
+      // - amountCents prevents collision if balance was paid down between calls.
+      // - 6h bucket lets clients legitimately retry within the same window
+      //   (browser refresh, network drop) without spawning duplicate intents,
+      //   while still allowing a fresh intent if Stripe's stored one expires.
+    }, { idempotencyKey: `pi-portal-${invoiceId}-${amountCents}-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}` });
 
     // Store the paymentIntentId on the invoice so the webhook can match and mark paid
     await db.update(invoices)

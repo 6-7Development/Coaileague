@@ -2960,6 +2960,39 @@ self.addEventListener('activate', async () => {
       log.error('Failed to start CoveragePipeline', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
     }
 
+    // PHASE 10: Overdue Invoice Collections Sweep
+    // Daily cron at 09:00 server time runs the 3-tier escalation against any
+    // invoice in `sent` status past its dueDate. Tier1 (1-6d) reminder email,
+    // Tier2 (7-29d) escalation + owner alert, Tier3 (30+d) demand letter draft.
+    // 24h debounce per invoice/tier is enforced via universalAuditTrail lookup.
+    try {
+      const { runOverdueCollectionsSweep } = await import('./services/billing/overdueCollectionsService');
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      const runSweep = async () => {
+        try {
+          const result = await runOverdueCollectionsSweep();
+          log.info('Overdue collections sweep complete', {
+            workspacesScanned: result.workspacesScanned,
+            tier1Sent: result.tier1Sent,
+            tier2Sent: result.tier2Sent,
+            tier3Sent: result.tier3Sent,
+            errors: result.errors.length,
+          });
+        } catch (e) {
+          log.error('Overdue collections sweep failed', { error: e instanceof Error ? e.message : String(e) });
+        }
+      };
+      // First run after 60s grace period (avoid blocking startup), then every 24h.
+      const collectionsKickoff = setTimeout(runSweep, 60_000);
+      const collectionsTimer = setInterval(runSweep, ONE_DAY_MS);
+      collectionsKickoff.unref();
+      collectionsTimer.unref();
+      registerDaemon('OverdueCollectionsSweep', () => { clearTimeout(collectionsKickoff); clearInterval(collectionsTimer); });
+      log.info('Overdue collections daemon started — sweep every 24h (3-tier escalation, 24h dedup)');
+    } catch (error) {
+      log.error('Failed to start OverdueCollectionsSweep', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
+    }
+
     // PHASE 8: Notification Delivery Retry Daemon
     // Processes retryable notifications every 60 seconds and checks WebSocket ACKs every 35 seconds.
     try {

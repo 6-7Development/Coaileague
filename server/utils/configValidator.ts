@@ -63,6 +63,34 @@ const PRODUCTION_REQUIRED_CONFIGS: ConfigValidation[] = [
   },
 ];
 
+// Conditional production-required configs — only enforced if the parent service
+// is configured. (e.g. PLAID_WEBHOOK_SECRET only matters when PLAID_CLIENT_ID
+// is set, ENCRYPTION_KEY for Plaid tokens only matters when Plaid is wired.)
+const CONDITIONAL_PRODUCTION_CONFIGS: Array<{
+  name: string;
+  required: boolean;
+  value: string | undefined;
+  validate?: (value: string) => boolean;
+  errorMessage?: string;
+  enabledIf: () => boolean;
+}> = [
+  {
+    name: 'PLAID_WEBHOOK_SECRET',
+    required: true,
+    value: process.env.PLAID_WEBHOOK_SECRET,
+    enabledIf: () => !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET),
+    errorMessage: 'PLAID_WEBHOOK_SECRET required when Plaid is configured — webhook JWT verification will reject all events without it. Get from Plaid Dashboard → Team Settings → Keys.',
+  },
+  {
+    name: 'PLAID_ENCRYPTION_KEY',
+    required: true,
+    value: process.env.PLAID_ENCRYPTION_KEY || process.env.FIELD_ENCRYPTION_KEY,
+    validate: (v) => v.length >= 64,
+    enabledIf: () => !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET),
+    errorMessage: 'PLAID_ENCRYPTION_KEY (or FIELD_ENCRYPTION_KEY) must be a 64-char hex string when Plaid is configured. Plaid access tokens are AES-256-GCM encrypted at rest; without a strong key the service falls back to a hard-coded dev key.',
+  },
+];
+
 const RECOMMENDED_CONFIGS: ConfigValidation[] = [
   {
     name: 'GEMINI_API_KEY',
@@ -183,10 +211,25 @@ export function validateConfiguration(): ConfigValidationResult {
         errors.push(`[CRITICAL] Invalid ${config.name}: ${config.errorMessage}`);
       }
     }
+    // Conditional production-required: only enforced when the parent service is wired.
+    for (const config of CONDITIONAL_PRODUCTION_CONFIGS) {
+      if (!config.enabledIf()) continue;
+      if (!config.value) {
+        errors.push(`[CRITICAL] Missing ${config.name}: ${config.errorMessage || 'required in production'}`);
+      } else if (config.validate && !config.validate(config.value)) {
+        errors.push(`[CRITICAL] Invalid ${config.name}: ${config.errorMessage || ''}`);
+      }
+    }
   } else {
     for (const config of PRODUCTION_REQUIRED_CONFIGS) {
       if (!config.value) {
         warnings.push(`[WARNING] Missing ${config.name} — required in production. ${config.errorMessage || ''}`);
+      }
+    }
+    for (const config of CONDITIONAL_PRODUCTION_CONFIGS) {
+      if (!config.enabledIf()) continue;
+      if (!config.value) {
+        warnings.push(`[WARNING] Missing ${config.name} (Plaid is configured) — required in production. ${config.errorMessage || ''}`);
       }
     }
   }
