@@ -1732,6 +1732,13 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       const { shiftId } = req.params;
       const userId = req.user?.id;
       const workspaceId = req.workspaceId;
+      // Override flag — accepted from query OR body. Allows authorized roles
+      // (org_owner / co_owner / admin / branch_manager / dept_manager / manager,
+      // or platform staff) to bypass the compliance block. The bypass is logged
+      // and a compliance penalty marker is returned so the client can warn.
+      // In NODE_ENV=development the override is allowed for any user (the user
+      // requested this for testing flows without paperwork) and still penalised.
+      const overrideRequested = req.query.override === 'true' || (req.body && req.body.override === true);
 
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -1760,11 +1767,41 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       }
 
       const eligibility = await employeeDocumentOnboardingService.checkWorkEligibility(employee.id);
+      let bypassedCompliance = false;
       if (!eligibility.eligible) {
-        return res.status(422).json({
-          message: 'You cannot pick up shifts — your compliance documents are incomplete',
-          reasons: eligibility.reasons,
-          code: 'COMPLIANCE_BLOCK',
+        // Determine if caller is permitted to bypass the block.
+        const isDev = process.env.NODE_ENV === 'development';
+        const role = (employee.workspaceRole || '').toLowerCase();
+        const platformRole = (req.platformRole || '').toLowerCase();
+        const PRIVILEGED_ROLES = new Set([
+          'org_owner', 'co_owner', 'org_admin',
+          'branch_manager', 'department_manager', 'manager',
+        ]);
+        const PRIVILEGED_PLATFORM = new Set([
+          'root_admin', 'deputy_admin', 'sysop', 'compliance_officer',
+        ]);
+        const canOverride = isDev || PRIVILEGED_ROLES.has(role) || PRIVILEGED_PLATFORM.has(platformRole);
+
+        if (!overrideRequested || !canOverride) {
+          return res.status(422).json({
+            message: 'You cannot pick up shifts — your compliance documents are incomplete',
+            reasons: eligibility.reasons,
+            code: 'COMPLIANCE_BLOCK',
+            // Lets the client decide whether to render an "override" action
+            canOverride,
+          });
+        }
+
+        bypassedCompliance = true;
+        log.warn('[Shift Marketplace] Compliance bypass on pickup', {
+          shiftId,
+          employeeId: employee.id,
+          userId,
+          workspaceId,
+          role,
+          platformRole,
+          isDev,
+          missingReasons: eligibility.reasons,
         });
       }
 
@@ -1794,7 +1831,17 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         return updated;
       });
 
-      res.json(updatedShift);
+      res.json({
+        ...updatedShift,
+        complianceWarning: bypassedCompliance
+          ? {
+              penaltyApplied: true,
+              missingReasons: eligibility.reasons,
+              message:
+                'Shift claimed under compliance override. This is recorded against the officer and tenant compliance score until paperwork is completed.',
+            }
+          : undefined,
+      });
     } catch (error: unknown) {
       log.error('[Shift Marketplace] Pickup error:', error);
       res.status(500).json({ message: sanitizeError(error) || 'Failed to pick up shift' });

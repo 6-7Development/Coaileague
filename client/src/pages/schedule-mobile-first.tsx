@@ -45,6 +45,7 @@ import { TrinityLoadingSpinner } from '@/components/trinity-loading-overlay';
 import { useSimpleMode } from '@/contexts/SimpleModeContext';
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 import { ShiftCardSkeleton } from '@/components/ui/skeleton-loaders';
+import { parseShiftError } from '@/lib/shiftErrors';
 import type { Shift, Employee, Client } from '@shared/schema';
 import { getShiftStatus, SHIFT_STATUS, type ShiftStatusConfig } from '@/constants/scheduling';
 
@@ -425,27 +426,58 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
     }
   };
   
-  const handleClaimShift = async (shift: Shift) => {
+  const claimShiftRequest = async (shift: Shift, override = false) => {
+    const url = override
+      ? `/api/shifts/${shift.id}/pickup?override=true`
+      : `/api/shifts/${shift.id}/pickup`;
+    const res = await apiRequest('POST', url);
+    return res.json();
+  };
+
+  const handleClaimShift = async (shift: Shift, override = false) => {
     if (!currentEmployee?.id) {
-      toast({ 
-        title: "Unable to claim shift", 
+      toast({
+        title: "Unable to claim shift",
         description: "Please wait for your profile to load",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
     try {
-      await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
-        employeeId: currentEmployee.id 
-      });
+      const result = await claimShiftRequest(shift, override);
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
       setDetailSheetOpen(false);
-      toast({ title: "Shift claimed successfully" });
+      if (result?.complianceWarning?.penaltyApplied) {
+        toast({
+          title: "Shift claimed — compliance flagged",
+          description:
+            result.complianceWarning.message ||
+            "Recorded against your compliance score until paperwork is completed.",
+          variant: "warning",
+        });
+      } else {
+        toast({ title: "Shift claimed successfully", variant: "success" });
+      }
     } catch (error) {
-      toast({ 
-        title: "Failed to claim shift", 
-        variant: "destructive" 
-      });
+      const parsed = parseShiftError(error);
+      if (parsed.code === 'COMPLIANCE_BLOCK' && parsed.canOverride && !override) {
+        toast({
+          title: parsed.title,
+          description: `${parsed.description}\n\nYou can take this shift anyway — it will be marked against your compliance score.`,
+          variant: "destructive",
+          action: (
+            <button
+              onClick={() => handleClaimShift(shift, true)}
+              className="text-xs font-semibold underline"
+              data-testid="button-override-claim"
+            >
+              Take anyway
+            </button>
+          ),
+        });
+        return;
+      }
+      toast({ title: parsed.title, description: parsed.description, variant: "destructive" });
     }
   };
 

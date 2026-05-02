@@ -29,6 +29,7 @@ import {
   CalendarDays, Zap, AlertTriangle
 } from 'lucide-react';
 import { UniversalEmptyState } from "@/components/universal";
+import { parseShiftError } from '@/lib/shiftErrors';
 import type { Shift, Employee, Client } from '@shared/schema';
 
 const pageConfig: CanvasPageConfig = {
@@ -168,16 +169,47 @@ function OpenShiftsTab({ shifts, clients, employees, isLoading }: {
   }, [openShifts]);
 
   const pickupMutation = useMutation({
-    mutationFn: async (shiftId: string) => {
-      const res = await apiRequest('POST', `/api/shifts/${shiftId}/pickup`);
+    mutationFn: async ({ shiftId, override }: { shiftId: string; override?: boolean }) => {
+      const url = override
+        ? `/api/shifts/${shiftId}/pickup?override=true`
+        : `/api/shifts/${shiftId}/pickup`;
+      const res = await apiRequest('POST', url);
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: 'Shift picked up successfully' });
+    onSuccess: (data) => {
+      if (data?.complianceWarning?.penaltyApplied) {
+        toast({
+          title: 'Shift claimed — compliance flagged',
+          description:
+            data.complianceWarning.message ||
+            'Recorded against your compliance score until paperwork is completed.',
+          variant: 'warning',
+        });
+      } else {
+        toast({ title: 'Shift picked up successfully', variant: 'success' });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
     },
-    onError: (error: any) => {
-      toast({ title: 'Failed to pick up shift', description: error.message, variant: 'destructive' });
+    onError: (error: unknown, variables) => {
+      const parsed = parseShiftError(error);
+      if (parsed.code === 'COMPLIANCE_BLOCK' && parsed.canOverride && !variables.override) {
+        toast({
+          title: parsed.title,
+          description: `${parsed.description}\n\nYou can take this shift anyway — it will be marked against your compliance score.`,
+          variant: 'destructive',
+          action: (
+            <button
+              onClick={() => pickupMutation.mutate({ shiftId: variables.shiftId, override: true })}
+              className="text-xs font-semibold underline"
+              data-testid="button-override-pickup"
+            >
+              Take anyway
+            </button>
+          ),
+        });
+        return;
+      }
+      toast({ title: parsed.title, description: parsed.description, variant: 'destructive' });
     },
   });
 
@@ -261,7 +293,7 @@ function OpenShiftsTab({ shifts, clients, employees, isLoading }: {
                 <CardFooter className="p-4 pt-0 flex justify-end gap-2 flex-wrap">
                   <Button
                     size="sm"
-                    onClick={() => pickupMutation.mutate(shift.id)}
+                    onClick={() => pickupMutation.mutate({ shiftId: shift.id })}
                     disabled={pickupMutation.isPending || !currentEmployee?.id}
                     data-testid={`button-pickup-shift-${shift.id}`}
                   >

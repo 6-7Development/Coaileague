@@ -67,22 +67,12 @@ export function useChatroomNotifications() {
         queryClient.invalidateQueries({ queryKey: ['/api/chat/rooms'] });
       }
 
-      if (data.type === 'notification_new' && data.notification) {
-        const notification = data.notification;
-        
-        const key = `notification-${notification.id}`;
-        const lastTime = lastNotificationRef.current.get(key);
-        if (lastTime && Date.now() - lastTime < 2000) return;
-        lastNotificationRef.current.set(key, Date.now());
-
-        toastRef.current({
-          title: notification.title,
-          description: notification.message,
-        });
-
-        if (notification.actionUrl) {
-          setTimeout(() => window.location.href = notification.actionUrl!, 1500);
-        }
+      // NOTE: We intentionally do NOT toast `notification_new` events here.
+      // `useNotificationWebSocket` (mounted by NotificationsPopover) is the
+      // single source of truth for general notification toasts and applies a
+      // 30s cross-instance dedup window. Toasting from this hook as well was
+      // the cause of every notification announcing twice.
+      if (data.type === 'notification_new') {
         return;
       }
 
@@ -124,7 +114,7 @@ export function useChatroomNotifications() {
       bus.subscribe('new_chatroom_message', (data: any) => handleNotification(data)),
       bus.subscribe('user_added_to_chatroom', (data: any) => handleNotification(data)),
       bus.subscribe('chatroom_invitation', (data: any) => handleNotification(data)),
-      bus.subscribe('notification_new', (data: any) => handleNotification(data)),
+      // Do NOT subscribe to `notification_new` here — see handleNotification.
     ];
 
     return () => {
