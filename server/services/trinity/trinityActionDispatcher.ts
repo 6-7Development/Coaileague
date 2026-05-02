@@ -164,8 +164,7 @@ const ACTION_INTENT_PATTERNS: Array<{
   // Billing — order matters: most specific verbs first so "void invoice" wins
   // over "invoice" alone, and "mark paid" wins over "invoice" alone.
   // Each actionId below MUST have a registered handler (see actionRegistry.ts
-  // and trinityInvoiceEmailActions.ts). Refund is NOT yet implemented — see
-  // SYSTEM_MAP "Known Debt" before adding a refund pattern here.
+  // and trinityInvoiceEmailActions.ts).
   {
     pattern: /\b(void|cancel|nullify)\b.{0,20}invoice/i,
     actionId: 'billing.invoice_void',
@@ -173,6 +172,17 @@ const ACTION_INTENT_PATTERNS: Array<{
     category: 'billing',
     extract: () => ({}),
     reason: 'Void invoice requested — irreversible, queued for approval',
+  },
+  {
+    // Refund moves money back to the payer's card via stripe.refunds.create.
+    // High-risk: dual-AI gate enforced inside the handler. Handler at
+    // server/services/ai-brain/actionRegistry.ts billing.invoice_refund.
+    pattern: /\b(refund|reverse\s+payment)\b.{0,20}(?:invoice|payment|charge)/i,
+    actionId: 'billing.invoice_refund',
+    risk: 'high',
+    category: 'billing',
+    extract: () => ({}),
+    reason: 'Refund invoice requested — moves funds back to payer, queued for approval',
   },
   {
     // Canonical handler is billing.invoice_status with payload.status='paid'.

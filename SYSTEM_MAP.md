@@ -717,15 +717,16 @@ These are documented gaps where code is *intentionally* incomplete or where a do
 
 | ID | Debt | Severity | Location | Notes |
 |---|---|---|---|---|
-| VD-01 | `billing.invoice_refund` has no handler | MEDIUM | dispatcher pattern was deliberately NOT added; refund handler must call `stripe.refunds.create` + reverse `invoicePayments` + ledger entry within a DB transaction | Pattern omitted on purpose so Trinity doesn't promise something she can't do. Add pattern only after handler ships. |
+| VD-01 | ~~`billing.invoice_refund` has no handler~~ | RESOLVED 2026-05-02 | `actionRegistry.ts` `refundInvoiceAction` wraps existing `refundInvoice()` from `invoiceAdjustmentService.ts:283` (Stripe refund + ledger reversal + DB transaction). Dispatcher pattern restored. |
 | VD-02 | Scheduling actions not in `trinityServiceRegistry` | LOW | `shared/config/trinityEditableRegistry.ts` lists protected/editable modules but no machine-readable scheduling-action surface | Cosmetic — actions still execute via dispatcher regex. |
-| VD-03 | Cron-only workflows (missed_clockin, shift_reminder, payroll_anomaly) | LOW | `workflows/*.ts` register as actions but their cron triggers live in `autonomousScheduler` | If autonomousScheduler crashes they stall until restart. Add event subscriptions as defense-in-depth. |
+| VD-03 | ~~Cron-only workflows~~ (payroll_anomaly portion) | RESOLVED 2026-05-02 | `trinityEventSubscriptions.ts:payroll_run_created` now triggers `executePayrollAnomalyWorkflow` in real time (defense-in-depth alongside cron sweep). 6h `hasRecentScan` dedup prevents double-trigger. `missed_clockin` and `shift_reminder` remain cron-only — lower urgency. |
 | VD-04 | `taxDeadlineMonitor` cron at 06:00 only | LOW | `proactiveOrchestrator.ts` schedule | If boot is after 06:00 on a deadline day the alert misses. Acceptable for v1. |
 | VD-05 | ~~`tests/security/` not in vitest workspace~~ | RESOLVED 2026-05-02 | `vitest.workspace.ts` now has a `security` project — run via `npx vitest run --project security`. |
 | VD-06 | Plaid 429 exhaustion → silent `payment_held` | MEDIUM | `plaidService.ts:239-262` after 3 retries | `payrollTransferMonitor` alerts owner after 3 consecutive Plaid API failures, but resolution is manual. |
-| VD-07 | `payrollAnomalyWorkflow` 45s timeout fails OPEN | MEDIUM | `payrollAnomalyWorkflow.ts` | On timeout the workflow returns `blocked:false, success:false` — payroll is NOT auto-blocked. The summary string explicitly recommends manual review; UI must surface this. |
-| VD-08 | `bank-status` endpoint returns any employee in same workspace | LOW | `plaidRoutes.ts:348-383` | Only returns last4 + institution name (no full account #) but is a same-workspace privacy leak. Add `isSelf || isManagerOrAbove` guard. |
+| VD-07 | ~~`payrollAnomalyWorkflow` 45s timeout fails OPEN~~ | RESOLVED 2026-05-02 | Timeout still fails OPEN by design (don't block payroll on subagent hang) but now publishes a `payroll_anomaly_response` event with `timedOut: true` so the UI banner can surface "manual review recommended". |
+| VD-08 | ~~`bank-status` endpoint returns any employee in same workspace~~ | RESOLVED 2026-05-02 | `plaidRoutes.ts:/employee/:id/bank-status` now requires `isSelf \|\| isManagerOrAbove`. 4 new tests cover self/cross-employee/manager/cross-workspace. |
 | VD-09 | Stripe API version pinned to `2025-09-30.clover` | LOW | `stripeClient.ts:19` | No fallback path if Stripe deprecates. Acceptable until Stripe announces breaking change. |
+| VD-10 | `missed_clockin` + `shift_reminder` workflows still cron-only | LOW | `autonomousScheduler.ts` | Lower-urgency than payroll. Add event subscriptions on `shift.started_minus_15min` and `shift.upcoming_4hr` if the autonomousScheduler reliability becomes a concern. |
 
 ---
 

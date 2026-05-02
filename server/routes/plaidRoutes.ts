@@ -345,10 +345,31 @@ router.post('/exchange/employee/:employeeId', requireAuth, async (req, res) => {
   }
 });
 
-router.get('/employee/:employeeId/bank-status', requireAuth, async (req, res) => {
+router.get('/employee/:employeeId/bank-status', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = getWorkspaceId(req);
+    const userId = getUserId(req);
     const { employeeId } = req.params;
+    const workspaceRole = req.workspaceRole || req.user?.workspaceRole || '';
+    const isManagerOrAbove = ['org_owner', 'co_owner', 'manager', 'supervisor'].includes(workspaceRole);
+
+    // VD-08: ownership guard — same-workspace check alone is insufficient. An
+    // employee querying another employee's bank-status would still see the
+    // institution name + last4, which is a privacy leak. Allow only:
+    //   (a) the employee's own record, or
+    //   (b) a manager+ in the same workspace (payroll authority).
+    const ownerCheck = await db
+      .select({ id: employees.id, userId: employees.userId })
+      .from(employees)
+      .where(and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId)))
+      .limit(1);
+    if (ownerCheck.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+    const isSelf = ownerCheck[0].userId === userId;
+    if (!isSelf && !isManagerOrAbove) {
+      return res.status(403).json({ error: 'You can only view your own bank account status' });
+    }
 
     const accounts = await db
       .select({

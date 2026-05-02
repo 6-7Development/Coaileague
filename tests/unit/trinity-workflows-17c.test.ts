@@ -15,12 +15,21 @@
  * with simulated payloads.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   requiresFinancialApproval,
   actorMeetsApprovalRequirement,
   DEFAULT_FINANCIAL_THRESHOLDS,
 } from '../../server/services/ai-brain/financialApprovalThresholds';
+
+// Trinity action handlers register lazily via aiBrainActionRegistry.initialize().
+// Importing the module is NOT enough — the registry only registers handlers
+// when initialize() is awaited. Run it once for the whole file so the
+// invoice-workflow-shape suite below can resolve handlers by ID.
+beforeAll(async () => {
+  const { aiBrainActionRegistry } = await import('../../server/services/ai-brain/actionRegistry');
+  await aiBrainActionRegistry.initialize();
+});
 
 // ─── Audit 3 — Amount-threshold approval gate ────────────────────────────────
 

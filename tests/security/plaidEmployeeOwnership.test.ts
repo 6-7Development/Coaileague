@@ -52,20 +52,31 @@ const captured: { inserts: unknown[]; updates: unknown[]; events: unknown[] } = 
 
 // ── Module mocks ─────────────────────────────────────────────────────────────
 vi.mock('../../server/db', () => {
-  // Returns a chainable query builder whose terminal `.limit()` resolves to
-  // the matching employee row from the fixture (or [] if no match).
+  // Returns a chainable query builder. Resolves the same way whether the
+  // caller terminates with `.limit()` (employee lookup) or awaits `.where()`
+  // directly (bank-account list query). Reads from `employeesFixture` for
+  // the `employees` table; returns `[]` for any other table since we don't
+  // need fixture data for bank accounts in these tests.
   const buildSelect = () => {
     const state: { table?: string; where?: Record<string, unknown> } = {};
-    const chain: Record<string, unknown> = {};
-    chain.from = (t: unknown) => { state.table = String((t as { __name?: string })?.__name || ''); return chain; };
-    chain.where = (cond: unknown) => { state.where = (cond as { __resolved?: Record<string, unknown> })?.__resolved || {}; return chain; };
-    chain.limit = async () => {
+    const resolve = async () => {
       const where = state.where || {};
       const id = where.id as string | undefined;
       const workspaceId = where.workspaceId as string | undefined;
+      // Only `employees` is fixture-backed. Other tables (e.g. employeeBankAccounts)
+      // resolve to [] which matches the route's "no accounts" response shape.
+      if (state.table !== 'employees') return [];
       const row = employeesFixture.find((e) => (!id || e.id === id) && (!workspaceId || e.workspaceId === workspaceId));
       return row ? [row] : [];
     };
+    const chain: Record<string, unknown> = {};
+    chain.from = (t: unknown) => { state.table = String((t as { __name?: string })?.__name || ''); return chain; };
+    chain.where = (cond: unknown) => { state.where = (cond as { __resolved?: Record<string, unknown> })?.__resolved || {}; return chain; };
+    chain.limit = resolve;
+    // Make the chain itself awaitable so callers that don't append .limit()
+    // (e.g. `await db.select().from().where(...)`) still resolve.
+    chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+      resolve().then(onFulfilled, onRejected);
     return chain;
   };
   const insertChain = () => ({
@@ -127,21 +138,31 @@ vi.mock('drizzle-orm', async () => {
   };
 });
 
-// Schema columns get `.__name` so the eq() mock can read them.
+// Schema columns get `.__name` so the eq() mock can read them. Tables also
+// carry a `__name` so the buildSelect() chain can route the resolver.
 vi.mock('@shared/schema', () => {
   const col = (name: string) => ({ __name: name });
+  const table = (name: string, cols: Record<string, unknown>) =>
+    Object.assign({ __name: name }, cols);
   return {
-    employees: { id: col('id'), workspaceId: col('workspaceId'), userId: col('userId') },
-    employeeBankAccounts: {
+    employees: table('employees', { id: col('id'), workspaceId: col('workspaceId'), userId: col('userId') }),
+    employeeBankAccounts: table('employeeBankAccounts', {
       id: col('id'),
       workspaceId: col('workspaceId'),
       employeeId: col('employeeId'),
       isPrimary: col('isPrimary'),
       isActive: col('isActive'),
-    },
-    payStubs: {},
-    orgFinanceSettings: {},
-    workspaces: { id: col('id') },
+      bankName: col('bankName'),
+      accountType: col('accountType'),
+      accountNumberLast4: col('accountNumberLast4'),
+      plaidItemId: col('plaidItemId'),
+      plaidMask: col('plaidMask'),
+      plaidInstitutionName: col('plaidInstitutionName'),
+      isVerified: col('isVerified'),
+    }),
+    payStubs: table('payStubs', {}),
+    orgFinanceSettings: table('orgFinanceSettings', {}),
+    workspaces: table('workspaces', { id: col('id') }),
   };
 });
 
@@ -247,5 +268,32 @@ describe('Plaid employee ownership guard', () => {
       if (payload.employeeId !== undefined) expect(payload.employeeId).toBe(EMP_ALICE);
       if (payload.workspaceId !== undefined) expect(payload.workspaceId).toBe(WS_A);
     }
+  });
+
+  // ── VD-08: bank-status read guard ──────────────────────────────────────────
+  it('employee CANNOT read another employee\'s bank-status (403)', async () => {
+    const app = await makeApp({ userId: USER_ALICE, workspaceId: WS_A, workspaceRole: 'employee' });
+    const res = await request(app).get(`/api/plaid/employee/${EMP_BOB}/bank-status`);
+    expect(res.status).toBe(403);
+    expect(String(res.body.error || '')).toMatch(/your own/i);
+  });
+
+  it('employee CAN read their own bank-status (200)', async () => {
+    const app = await makeApp({ userId: USER_ALICE, workspaceId: WS_A, workspaceRole: 'employee' });
+    const res = await request(app).get(`/api/plaid/employee/${EMP_ALICE}/bank-status`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('connected');
+  });
+
+  it('manager CAN read any employee\'s bank-status in their own workspace (200)', async () => {
+    const app = await makeApp({ userId: USER_MGR_A, workspaceId: WS_A, workspaceRole: 'manager' });
+    const res = await request(app).get(`/api/plaid/employee/${EMP_BOB}/bank-status`);
+    expect(res.status).toBe(200);
+  });
+
+  it('cross-workspace bank-status read returns 404 (no leak)', async () => {
+    const app = await makeApp({ userId: USER_MGR_A, workspaceId: WS_A, workspaceRole: 'manager' });
+    const res = await request(app).get(`/api/plaid/employee/${EMP_IN_B}/bank-status`);
+    expect(res.status).toBe(404);
   });
 });

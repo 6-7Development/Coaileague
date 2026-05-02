@@ -154,6 +154,34 @@ export async function executePayrollAnomalyWorkflow(
       errorMessage: (err as Error)?.message,
       summary: isTimeout ? 'Anomaly detection timed out — payroll NOT auto-blocked. Manual review recommended.' : 'Anomaly detection failed',
     });
+
+    // VD-07: surface the timeout to UI listeners so the org owner sees an
+    // explicit "manual review recommended" banner instead of silent success.
+    // The event carries the same payrollRunId so the UI can correlate it
+    // with the run row that's still sitting in `pending` state.
+    if (isTimeout) {
+      try {
+        await platformEventBus.publish({
+          type: 'payroll_anomaly_response',
+          workspaceId: params.workspaceId,
+          title: 'Payroll anomaly scan timed out — manual review needed',
+          description:
+            `Trinity\'s anomaly detector did not respond within 45s for payroll ` +
+            `run ${params.payrollRunId}. The run is NOT auto-blocked. ` +
+            `Recommended: review variance manually before approving.`,
+          metadata: {
+            payrollRunId: params.payrollRunId,
+            highestSeverity: 'unknown',
+            blocked: false,
+            timedOut: true,
+            workflowId: record.id,
+          },
+        } as unknown);
+      } catch (pubErr: unknown) {
+        log.warn('[payroll-anomaly] timeout event publish failed:', (pubErr as Error)?.message);
+      }
+    }
+
     return {
       success: false,
       workflowId: record.id,

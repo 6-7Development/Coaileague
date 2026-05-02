@@ -2758,6 +2758,124 @@ class AIBrainActionRegistry {
       },
     };
 
+    // ⚠️ DUAL-AI REQUIRED — refunds actually move money. Wraps the
+    // already-implemented refundInvoice() service which handles
+    // stripe.refunds.create() + ledger reversal + DB transaction (see
+    // server/services/invoiceAdjustmentService.ts:283). The action handler
+    // here adds Trinity-side guards: dual-AI consensus, audit log, and
+    // workspace-scoped resolution.
+    const refundInvoiceAction: ActionHandler = {
+      actionId: 'billing.invoice_refund',
+      name: 'Refund Invoice',
+      category: 'billing',
+      description:
+        'Issue a partial or full refund against a paid invoice. Calls Stripe ' +
+        'refunds.create when a paymentIntentId is on file (money returns to ' +
+        'the payer\'s card) and writes the AR reversal ledger entry. Requires ' +
+        'dual-AI deliberation and a written reason. Closes debt VD-01.',
+      requiredRoles: ['system', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { invoiceId, refundAmount, reason } = request.payload || {};
+        const workspaceId = request.workspaceId;
+
+        if (!invoiceId) return createResult(request.actionId, false, 'invoiceId required', null, start);
+        if (!workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+        if (!reason || String(reason).trim().length < 5) {
+          return createResult(request.actionId, false, 'reason required (min 5 chars)', null, start);
+        }
+        const amt = Number(refundAmount);
+        if (!Number.isFinite(amt) || amt <= 0) {
+          return createResult(request.actionId, false, 'refundAmount must be a positive number', null, start);
+        }
+
+        // Workspace-scoped resolve so a refund cannot touch another tenant's invoice.
+        const [existing] = await db.select()
+          .from(invoices)
+          .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)))
+          .limit(1);
+        if (!existing) return createResult(request.actionId, false, 'Invoice not found', null, start);
+        if (existing.status !== 'paid' && existing.status !== 'partial') {
+          return createResult(
+            request.actionId,
+            false,
+            `Cannot refund invoice with status "${existing.status}" — only paid/partial invoices.`,
+            null,
+            start,
+          );
+        }
+
+        // ⚠️ DUAL-AI GATE — non-negotiable for financial mutations
+        const gate = await requireDeliberationConsensus({
+          actionId: request.actionId,
+          workspaceId,
+          description: `Refund $${amt.toFixed(2)} against invoice ${existing.invoiceNumber}. Reason: ${reason}`,
+          userId: request.userId,
+        });
+        if (!gate.allowed) {
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            entityType: 'invoice', entityId: invoiceId, success: false,
+            errorMessage: gate.reason,
+            payload: { invoiceId, refundAmount: amt, reason, deliberationId: gate.deliberationId },
+            durationMs: Date.now() - start,
+          });
+          return createResult(request.actionId, false, gate.reason, { deliberationId: gate.deliberationId }, start);
+        }
+
+        try {
+          const { refundInvoice } = await import('../invoiceAdjustmentService');
+          const result = await refundInvoice(
+            invoiceId,
+            amt,
+            String(reason).trim(),
+            request.userId ?? 'trinity',
+          );
+
+          await logActionAudit({
+            actionId: request.actionId,
+            workspaceId,
+            userId: request.userId,
+            userRole: request.userRole,
+            platformRole: request.platformRole,
+            entityType: 'invoice',
+            entityId: invoiceId,
+            success: true,
+            message: `Invoice refunded $${amt.toFixed(2)} via dual-AI gate`,
+            changesBefore: existing as Record<string, unknown>,
+            changesAfter: result.invoice as unknown as Record<string, unknown>,
+            payload: { refundAmount: amt, reason, deliberationId: gate.deliberationId },
+            durationMs: Date.now() - start,
+          });
+
+          broadcastToWorkspace(workspaceId, {
+            type: 'invoice_refunded',
+            invoiceId,
+            invoiceNumber: existing.invoiceNumber,
+            refundAmount: amt,
+            reason,
+          });
+
+          return createResult(
+            request.actionId,
+            true,
+            `Refunded $${amt.toFixed(2)} on invoice ${existing.invoiceNumber}`,
+            result,
+            start,
+          );
+        } catch (err: unknown) {
+          const errMsg = (err instanceof Error ? err.message : String(err)) || 'refund failed';
+          await logActionAudit({
+            actionId: request.actionId, workspaceId, userId: request.userId,
+            entityType: 'invoice', entityId: invoiceId, success: false,
+            errorMessage: errMsg, payload: { refundAmount: amt, reason },
+            durationMs: Date.now() - start,
+          });
+          return createResult(request.actionId, false, errMsg, null, start);
+        }
+      },
+    };
+
     const cancelInvoice: ActionHandler = {
       actionId: 'billing.invoice_cancel',
       name: 'Cancel Invoice',
@@ -2957,6 +3075,7 @@ class AIBrainActionRegistry {
     // helpaiOrchestrator.registerAction(sendInvoice);
     helpaiOrchestrator.registerAction(withAuditWrap(updateInvoice, 'invoice'));
     helpaiOrchestrator.registerAction(voidInvoice); // explicit audit + dual-AI inside handler
+    helpaiOrchestrator.registerAction(refundInvoiceAction); // explicit audit + dual-AI inside handler — VD-01
     helpaiOrchestrator.registerAction(withAuditWrap(cancelInvoice, 'invoice'));
     helpaiOrchestrator.registerAction(withAuditWrap(duplicateInvoice, 'invoice'));
     helpaiOrchestrator.registerAction(withAuditWrap(applyPayment, 'invoice'));

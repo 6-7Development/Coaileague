@@ -1070,7 +1070,13 @@ export function initializeTrinityEventSubscriptions(): void {
     },
   });
 
-  // ── payroll_run_created → Trinity registers new payroll run for readiness monitoring ──
+  // ── payroll_run_created → Trinity registers new payroll run for readiness monitoring
+  //    AND kicks off anomaly detection in real-time (VD-03 defense-in-depth).
+  //    Previously the anomaly workflow ran only via cron. If autonomousScheduler
+  //    crashed, anomaly checks stalled until restart. Subscribing to the
+  //    creation event ensures real-time coverage; the workflow's own
+  //    hasRecentScan() dedup (6h window) prevents double-trigger when both
+  //    paths fire.
   platformEventBus.subscribe('payroll_run_created', {
     name: 'TrinityPayrollRunCreatedWatcher',
     handler: async (event) => {
@@ -1078,6 +1084,23 @@ export function initializeTrinityEventSubscriptions(): void {
       if (!workspaceId) return;
       const { payrollRunId, periodStart, periodEnd, createdBy } = metadata || {};
       log.info(`[TrinityEvents] payroll_run_created — run=${payrollRunId}, period=${periodStart}–${periodEnd}, by=${createdBy}`);
+      if (!payrollRunId) return;
+      try {
+        const { executePayrollAnomalyWorkflow } = await import('./trinity/workflows/payrollAnomalyWorkflow');
+        // Fire-and-forget: anomaly detection has its own audit trail and
+        // 45s timeout (see payrollAnomalyWorkflow.ts). Errors here must not
+        // break the create path.
+        executePayrollAnomalyWorkflow({
+          workspaceId,
+          payrollRunId: String(payrollRunId),
+          triggerSource: 'payroll_submit',
+          userId: typeof createdBy === 'string' ? createdBy : null,
+        }).catch((err: unknown) => {
+          log.warn('[TrinityEvents] event-driven anomaly workflow failed (non-fatal):', (err as Error)?.message);
+        });
+      } catch (err: unknown) {
+        log.warn('[TrinityEvents] anomaly workflow import failed (non-fatal):', (err as Error)?.message);
+      }
     },
   });
 

@@ -99,10 +99,8 @@ HelpAI = only bot field workers see
 | ENV | APP_BASE_URL must be set for auditor token URL composition | MEDIUM |
 | ENV | PLAID_WEBHOOK_SECRET + PLAID_ENCRYPTION_KEY (≥64 hex) required in prod when Plaid is wired | HIGH |
 | TS-DEBT | Remaining 2124 combined any (deep Trinity AI + Drizzle internals) | LOW |
-| VD-01 | `billing.invoice_refund` action handler missing (Stripe refund + ledger reversal) | MEDIUM |
 | VD-06 | Plaid 429 exhaustion → `payment_held` resolves only via manual owner action | MEDIUM |
-| VD-07 | `payrollAnomalyWorkflow` 45s timeout fails OPEN (returns blocked:false) — UI must surface | MEDIUM |
-| VD-08 | `/api/plaid/employee/:employeeId/bank-status` lacks self/manager guard within workspace | LOW |
+| VD-10 | `missed_clockin` + `shift_reminder` workflows still cron-only (no event hook) | LOW |
 
 ---
 
@@ -231,3 +229,34 @@ Existing infrastructure was already aligned (no rewrites required):
 - `stateRegulatoryKnowledgeBase.ts` — per-state `prohibitedLanguage` lists already enumerate "Never say 'we guarantee your safety'."
 - `smsService.ts:25` already declares "Autonomous 911 contact removed by design."
 - `bots/shiftRoomBotOrchestrator.ts:1240` and `compliance/stateRegulatoryKnowledgeBase.ts` instruct the human to call 911 — that's approved phrasing, not Trinity claiming dispatch.
+
+---
+
+## SESSION 2026-05-02 (later) — Pre-existing debt fixes + Class-A polish
+
+After the safety boundary landed I went back and closed the documented debt. **Five debt items resolved (VD-01, VD-03, VD-05, VD-07, VD-08), 5 unit-test failures fixed, plus polish.**
+
+### Pre-existing failures fixed
+- **trinity-workflows-17c.test.ts** — 5 failures: tests called `await import('actionRegistry')` expecting side-effect registration, but actions register lazily via `aiBrainActionRegistry.initialize()`. Added `beforeAll` that awaits initialize(). All 30 tests now pass.
+
+### Debt closed
+- **VD-01** (`billing.invoice_refund` handler) — added `refundInvoiceAction` in `actionRegistry.ts` wrapping the existing `refundInvoice()` service (`stripe.refunds.create` + ledger reversal + DB transaction). Dual-AI gate enforced inside the handler. Dispatcher pattern restored. Replaces previous "intentionally omitted to avoid promising what we can't do" stance.
+- **VD-03 (partial)** — `payroll_run_created` event subscription now triggers `executePayrollAnomalyWorkflow` in real time. The workflow's own 6h `hasRecentScan` dedup prevents double-fire when both event-driven and cron-sweep paths run. `missed_clockin` + `shift_reminder` remain cron-only (downgraded to VD-10).
+- **VD-07** (anomaly timeout silent) — on 45s timeout, the workflow now publishes `payroll_anomaly_response` event with `timedOut: true` so the UI banner surfaces "manual review recommended". Failure semantics still OPEN by design (don't block payroll on subagent hang).
+- **VD-08** (bank-status workspace leak) — `/api/plaid/employee/:id/bank-status` now requires `isSelf || isManagerOrAbove`. Cross-workspace returns 404 (no leak). Added 4 new tests.
+- **VD-05** (security suite not in workspace) — `vitest.workspace.ts` adds a `security` project. Closed in the prior commit but documented here for completeness.
+
+### Class-A polish
+- **`GET /api/trinity/action-surface`** (new endpoint) — exposes which Trinity actions are currently registered, grouped by category, with the registry consolidation report and an explicit `spine` checklist of the 14 Schedule → Payroll → Invoice critical actions. Returns `spineHealthy: true` only when every spine action has a registered handler. Includes the public-safety boundary enforcement-layer manifest. Auth-gated.
+
+### Verification
+- `npx tsc --noEmit -p tsconfig.server.json`: zero genuinely-new errors. Unique-error count went 19,933 → 19,948 — but all 15 deltas are byte-for-byte the same `req: unknown` errors that existed before, just at line numbers shifted by +73 (the new endpoint inserted 73 lines into `index.ts`).
+- `npx vitest run --project security --project unit --project integration`: **251 pass, 0 fail, 55 skipped, 15 todo.** Up from 191/5fail/55skip in the prior pass — same suite count, all 5 prior failures now passing, plus the 4 new bank-status assertions and 6 new conscience principle 8 assertions.
+- `npx vitest run --project security`: 55/55 pass (publicSafetyGuard 30 + trinityConsciencePublicSafety 9 + plaidEmployeeOwnership 10 + 6 prior).
+
+### Known remaining debt (carried forward)
+- **VD-02** (cosmetic: scheduling actions not in trinityServiceRegistry).
+- **VD-04** (taxDeadlineMonitor cron at 06:00 only — minor).
+- **VD-06** (Plaid 429 exhaustion → manual recovery — needs ops runbook, not code).
+- **VD-09** (Stripe API version pinned — handle when Stripe announces deprecation).
+- **VD-10** (missed_clockin + shift_reminder workflows still cron-only — defer until autonomousScheduler reliability becomes a concern).

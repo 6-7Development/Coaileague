@@ -2226,6 +2226,82 @@ self.addEventListener('activate', async () => {
       }
     });
 
+    // Trinity action-surface health endpoint — exposes which actions Trinity
+    // can actually execute right now (handlers registered + governance state),
+    // grouped by category, with the registry consolidation report. Useful for
+    // ops dashboards and for confirming a deploy didn't drop a category. Read-
+    // only and workspace-agnostic, but auth-gated to keep the action catalog
+    // out of public reach (it lists internal capabilities).
+    // Uses (req: unknown, res: unknown) to match the surrounding file
+    // convention; explicit Express types here would mismatch the rest.
+    app.get('/api/trinity/action-surface', requireAuth, async (req: unknown, res: unknown) => {
+      try {
+        const r = req as { user?: { workspaceRole?: string; platformRole?: string }; workspaceRole?: string };
+        const re = res as { json: (b: unknown) => unknown; status: (n: number) => { json: (b: unknown) => unknown } };
+        const { platformActionHub } = await import('./services/helpai/platformActionHub');
+        const userRole = r.user?.workspaceRole || r.workspaceRole || 'manager';
+        const platformRole = r.user?.platformRole || null;
+        const actions = platformActionHub.getRegisteredActions() ?? [];
+        const catalogForCaller = platformActionHub.getTrinityActionCatalog(userRole) ?? [];
+        const report = platformActionHub.getRegistryConsolidationReport();
+
+        const byCategory = actions.reduce<Record<string, number>>((acc, a: { category?: string }) => {
+          if (a?.category) acc[a.category] = (acc[a.category] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Surface a small set of "spine-critical" actions explicitly so
+        // operators can see at a glance whether the Schedule → Payroll →
+        // Invoice chain is intact.
+        const spineActionIds = [
+          'scheduling.fill_open_shift',
+          'scheduling.create_shift',
+          'payroll.run_payroll',
+          'billing.invoice_create',
+          'billing.invoice_send',
+          'billing.invoice_status',
+          'billing.invoice_void',
+          'billing.invoice_refund',
+          'trinity.run_invoice_lifecycle',
+          'trinity.process_payroll_anomalies',
+          'trinity.execute_calloff_coverage',
+          'trinity.verify_tops_screenshot',
+          'trinity.run_pre_shift_intel',
+          'trinity.run_revenue_scan',
+        ];
+        const spine = spineActionIds.map((id) => ({
+          actionId: id,
+          registered: actions.some((a: { actionId?: string } | undefined) => a?.actionId === id),
+        }));
+        const spineMissing = spine.filter((s) => !s.registered).map((s) => s.actionId);
+
+        re.json({
+          totalRegistered: actions.length,
+          callableForRole: { role: platformRole || userRole, count: catalogForCaller.length },
+          maxCatalogActions: report?.maxCatalogActions ?? 280,
+          duplicateActionIds: report?.duplicateActionIds ?? [],
+          legacyAliasActions: report?.legacyAliasActions ?? 0,
+          internalActions: report?.internalActions ?? 0,
+          byCategory,
+          byOwnerDomain: report?.byOwnerDomain ?? {},
+          spine,
+          spineMissing,
+          spineHealthy: spineMissing.length === 0,
+          publicSafetyBoundary: {
+            enforced: true,
+            layers: [
+              'trinityConscience.ts Principle 8',
+              'trinityActionDispatcher.ts PUBLIC_SAFETY_REFUSAL_PATTERNS',
+              'publicSafetyGuard.ts guardOutbound()',
+            ],
+          },
+        });
+      } catch (err: unknown) {
+        log.error('[Route] /api/trinity/action-surface failed', { error: err instanceof Error ? err.message : String(err) });
+        (res as { status: (n: number) => { json: (b: unknown) => unknown } }).status(500).json({ error: 'Internal server error' });
+      }
+    });
+
     // Compliance dashboard alias
     app.get('/api/compliance/dashboard', requireAuth, ensureWorkspaceAccess, async (req: unknown, res: unknown) => {
       const wid = req.workspaceId || req.query.workspaceId;
