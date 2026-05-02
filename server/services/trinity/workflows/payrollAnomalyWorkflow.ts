@@ -118,13 +118,25 @@ export async function executePayrollAnomalyWorkflow(
     suggestedAction: string;
   }> = [];
   let aiInsights = '';
+  // Hard timeout — a hung subagent must NOT block payroll approval forever.
+  // 45s gives the LLM-backed detector room for a slow response while still
+  // failing fast enough that an org owner gets a real answer.
+  const DETECTION_TIMEOUT_MS = 45_000;
   try {
     const { payrollSubagent } = await import('../../ai-brain/subagents/payrollSubagent');
-    const detection = await payrollSubagent.detectAnomalies(
+    const detectionPromise = payrollSubagent.detectAnomalies(
       params.workspaceId,
       run.periodStart as Date,
       run.periodEnd as Date,
     );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const t = setTimeout(() => reject(new Error(`payrollSubagent.detectAnomalies timed out after ${DETECTION_TIMEOUT_MS}ms`)), DETECTION_TIMEOUT_MS);
+      // Allow process exit without waiting on this timer.
+      if (typeof (t as unknown as { unref?: () => void }).unref === 'function') {
+        (t as unknown as { unref: () => void }).unref();
+      }
+    });
+    const detection = await Promise.race([detectionPromise, timeoutPromise]);
     anomalies = detection.anomalies;
     aiInsights = detection.aiInsights;
     await logWorkflowStep(
@@ -135,11 +147,12 @@ export async function executePayrollAnomalyWorkflow(
       { count: anomalies.length, severities: anomalies.map((a) => a.severity) },
     );
   } catch (err: unknown) {
-    await logWorkflowStep(record, 'process', false, `detection failed: ${err?.message}`);
+    const isTimeout = /timed out after/.test((err as Error)?.message || '');
+    await logWorkflowStep(record, 'process', false, `detection ${isTimeout ? 'timed out' : 'failed'}: ${(err as Error)?.message}`);
     await logWorkflowComplete(record, {
       success: false,
-      errorMessage: err?.message,
-      summary: 'Anomaly detection failed',
+      errorMessage: (err as Error)?.message,
+      summary: isTimeout ? 'Anomaly detection timed out — payroll NOT auto-blocked. Manual review recommended.' : 'Anomaly detection failed',
     });
     return {
       success: false,
@@ -147,7 +160,7 @@ export async function executePayrollAnomalyWorkflow(
       anomalyCount: 0,
       highestSeverity: 'none',
       blocked: false,
-      summary: 'Anomaly detection failed',
+      summary: isTimeout ? 'Anomaly detection timed out (>45s). Manual review recommended before approval.' : 'Anomaly detection failed',
     };
   }
 

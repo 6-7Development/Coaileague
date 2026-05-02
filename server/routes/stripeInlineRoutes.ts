@@ -488,7 +488,19 @@ router.post('/webhook', async (req: AuthenticatedRequest, res) => {
     if (!sig || typeof sig !== 'string') {
       return res.status(401).send('Unauthorized - Invalid signature');
     }
-    const payload = req.rawBody || JSON.stringify(req.body);
+    // Stripe signature verification requires the EXACT bytes Stripe sent.
+    // express.json's `verify` hook captures rawBody for /api/stripe/webhook
+    // (see server/index.ts ~line 451). If rawBody is missing here it means the
+    // verify hook didn't run (route mounted before the parser, or the path was
+    // not in `webhookPathsNeedingRawBody`). Re-stringifying req.body would
+    // silently corrupt the payload (key reordering, whitespace) and every
+    // signature check below would fail or, worse, succeed by coincidence on a
+    // forged event. Reject loudly instead.
+    if (!req.rawBody) {
+      log.error('[Stripe Webhook] rawBody not captured — express.json verify hook is misconfigured. Refusing to verify against re-serialized body.');
+      return res.status(500).send('Webhook misconfigured: rawBody required for signature verification');
+    }
+    const payload = req.rawBody;
 
     // Try test webhook secret first, then live — same endpoint handles both environments.
     const testSecret = process.env.STRIPE_WEBHOOK_SECRET;

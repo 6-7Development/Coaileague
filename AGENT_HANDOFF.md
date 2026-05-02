@@ -133,7 +133,12 @@ HelpAI = only bot field workers see
 | KI-008 | Durable per-room message sequencing (chatDockMessageStore.ts ready) | HIGH |
 | ENV | FIELD_ENCRYPTION_KEY must be set before PII encryption activates | HIGH |
 | ENV | APP_BASE_URL must be set for auditor token URL composition | MEDIUM |
+| ENV | PLAID_WEBHOOK_SECRET + PLAID_ENCRYPTION_KEY (≥64 hex) required in prod when Plaid is wired | HIGH |
 | TS-DEBT | Remaining 2124 combined any (deep Trinity AI + Drizzle internals) | LOW |
+| VD-01 | `billing.invoice_refund` action handler missing (Stripe refund + ledger reversal) | MEDIUM |
+| VD-06 | Plaid 429 exhaustion → `payment_held` resolves only via manual owner action | MEDIUM |
+| VD-07 | `payrollAnomalyWorkflow` 45s timeout fails OPEN (returns blocked:false) — UI must surface | MEDIUM |
+| VD-08 | `/api/plaid/employee/:employeeId/bank-status` lacks self/manager guard within workspace | LOW |
 
 ---
 
@@ -199,3 +204,43 @@ Build: 0 server + 0 client errors      ✅
 - **Current:** ~2,127 (75.1% eliminated)
 - **Zero error categories:** catch(e:any), res:any, .values(as any), middleware as any
 - **esbuild:** 0 errors — platform will run cleanly
+
+---
+
+## SESSION 2026-05-02 — Schedule → Payroll → Invoice Spine Verification
+**Branch:** `claude/verify-workflow-billing-FGdaj`
+
+### What was verified (audit-only, no edits)
+1. **Scheduling spine** — front (`universal-schedule.tsx` + 13 mutations) → routes (`/api/trinity/scheduling/*` + `/api/trinity-staffing/*` with `requireAuth` + `ensureWorkspaceAccess`) → `trinityAutonomousScheduler` → `shifts` schema. Daemons all booted in `index.ts`.
+2. **Payroll + Plaid** — UI (4 pages) → 50 endpoints in `payrollRoutes.ts` (`pg_advisory_lock` on approve, `idempotencyMiddleware` on create-run) → `payrollAutomation` → Plaid (RSA-JWT webhook signature, AES-256-GCM token storage, 429 backoff with idempotency key) → `payrollTransferMonitor` (5-min poll). State machine in `payrollStatus.ts`. Atomic locks via `atomicFinancialLockService`.
+3. **Invoice + Stripe** — Atomic numbering via `pg_advisory_xact_lock` (`trinityInvoiceNumbering.ts` — no collisions). Stripe webhook with dual-secret verification, in-memory + DB dedup. `invoiceLifecycleWorkflow` triggered on `time_entry.approved`. Stripe Connect for payouts.
+4. **Trinity orchestration** — 8 workflows registered, 4 proactive monitors (cron via `proactiveOrchestrator` wired through `autonomousScheduler:4667`), pre-execution validator (5 hard gates), append-only audit logs.
+
+### What was fixed in this branch (10 changes)
+
+| File | Change |
+|---|---|
+| `server/index.ts` (~2964) | Wired `runOverdueCollectionsSweep()` daemon — first run after 60s, then every 24h. Registered in shutdown via `registerDaemon`. |
+| `server/utils/configValidator.ts` | Added `CONDITIONAL_PRODUCTION_CONFIGS` — `PLAID_WEBHOOK_SECRET` + `PLAID_ENCRYPTION_KEY` (≥64 hex) become hard prod errors when Plaid is configured. |
+| `server/routes/stripeInlineRoutes.ts:491` | Replaced silent `JSON.stringify(req.body)` fallback with **500 error + log** when `req.rawBody` is missing. Refuses to verify against re-serialized body. |
+| `server/routes/invoiceRoutes.ts:2849` | Added idempotency key `pi-portal-${invoiceId}-${amountCents}-${6h-bucket}` to client-portal `paymentIntents.create`. |
+| `server/stripe-config-updated.ts` | DELETED — zero references; canonical is `stripe-config.ts`. |
+| `server/services/trinity/workflows/workflowOrchestrator.ts` | Added `trinity.verify_tops_screenshot` action handler wrapping `verifyTOPSScreenshot()`. Brings Trinity workflow action count from 7 → 8. |
+| `server/routes/trinitySchedulingRoutes.ts` | (a) Added Zod `autoFillBodySchema` (replaces raw `req.body` destructure). (b) SLA-gate probe before AI scheduling — returns 409 `sla_urgent_blackout` if any urgent ticket is at SLA risk. |
+| `server/services/trinity/workflows/payrollAnomalyWorkflow.ts` | Wrapped `payrollSubagent.detectAnomalies()` in 45s `Promise.race` timeout. On timeout returns `success:false, blocked:false` with summary that explicitly says "Manual review recommended" — fails OPEN by design (don't block payroll on subagent hang). |
+| `server/services/trinity/trinityActionDispatcher.ts` | Added 3 invoice patterns: `void/cancel`→`billing.invoice_void` (high), `mark…paid`→`billing.invoice_status` (medium), `resend`→`billing.invoice_send` (low, payload.resend=true). All map to existing canonical handlers — no orphan action IDs. |
+| `tests/security/plaidEmployeeOwnership.test.ts` | Implemented all 6 `.todo` tests as supertest+vitest harness. Note: `tests/security/` is not in the workspace projects yet — run via `npx vitest run tests/security`. |
+
+### Files NOT touched but verified working as designed
+- Raw-body parser (`server/index.ts:451-459`) is correctly mounted with `verify` hook for `/api/stripe/webhook` and the 6 other webhook paths. The new assertion in `stripeInlineRoutes.ts` is defense-in-depth.
+- `proactiveOrchestrator.registerProactiveMonitors` is wired through `autonomousScheduler.ts:4667`. `registerProactiveActions` is called from `actionRegistry.ts:271`. Both already start at boot.
+- Stripe `paymentIntents.create` calls in `stripeInlineRoutes.ts:196`, `invoiceRoutes.ts:2029`, `billing-api.ts:696` already have idempotency keys.
+
+### Cannot run locally
+- `node_modules` only contains `typescript` — no `@types/node`, no project deps. Typecheck would need `npm install` first.
+- Tests likewise require deps.
+
+### Next agent
+- Run `npm install && npx tsc --noEmit -p tsconfig.server.json` to confirm zero TS regression.
+- Run `npx vitest run tests/security` to confirm Plaid ownership tests pass.
+- Consider adding `tests/security` as a project in `vitest.workspace.ts` so these tests run by default.

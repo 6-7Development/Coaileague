@@ -1,6 +1,5 @@
 # CoAIleague — Complete System Map
-**Last updated:** 2026-05-02 · **Author:** Architect Claude · **HEAD:** 5c8f43b2
-**Last verified:** 2026-05-02 — Middleware + Auth wiring audit + full deps/build/test pass (claude/verify-middleware-auth-YwwmJ)
+**Last updated:** 2026-05-02 · **Author:** Architect Claude · **HEAD:** claude/verify-workflow-billing-FGdaj
 
 > **PURPOSE:** Single source of truth for all routes, mounts, middleware, services, and client pages.
 > Before adding ANY new code — route, component, service, or hook — check this map first.
@@ -231,18 +230,75 @@ All routes prefixed `/api/`. `requireAuth` applied at top-level mount.
 
 ## Active Issues Fixed This Session
 
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| Production server crash | `spsFormsRoutes.ts` module-level throw | Lazy `getEncKey()` function |
-| `React is not defined` on schedule | `React.useState` without `import React` in 45 files | Import added to all 186 affected files |
-| Login broken on Railway dev | Cookie domain `.coaileague.com` rejected on `.railway.app` | `APP_BASE_URL` detection in `authCookieOptions` |
-| Schedule 403 on cold session | `shiftsQuery` fired before `workspaceId` loaded | `enabled: !!workspaceId` guard + explicit param |
-| Duplicate notifications / Chrome spam | `Date.now()` idempotency keys | 6-hour window keys in 72 files |
-| Push notification Chrome spam | Relative icon paths in push payload | Absolute HTTPS via `absoluteIconUrl()` |
-| Test failure: action registry | `initialize()` not called at import time | Sync `_registerSync()` in constructor |
-| `e?.message` on unknown | `catch (e: unknown)` — optional chaining on unknown | `instanceof Error` narrowing |
-| `err.response?.json()` on unknown | `useMutation onError` receives unknown | Typed cast to HTTP error shape |
-| hireos workflow builder `: any` | Props typed as `Record<string, unknown>` | `WorkflowStep` interface with 8 fields |
+| ID | Item | Code Status | Env Required |
+|---|---|---|---|
+| KI-001 | ChatDock Redis pub/sub | ✅ WIRED — `initChatDockPubSub()` in startup | `REDIS_URL` on Railway (auto-falls back to local if missing) |
+| KI-007 | Web Push offline delivery | ✅ WIRED — `pushNotificationService.ts` | `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` on Railway |
+| KI-008 | ChatDock message store | ✅ WIRED — imported in `dockChatRoutes.ts` | Needs full per-message save/read wiring in next phase |
+| ENV-1 | PII field encryption | ✅ SELF-PROTECTING — hard-crashes if missing key in prod | `FIELD_ENCRYPTION_KEY` on Railway (32-char random secret) |
+| ENV-2 | Auditor token URLs | ✅ HAS FALLBACKS — all callers have `|| ''` fallback | `APP_BASE_URL` on Railway (e.g. `https://coaileague-development.up.railway.app`) |
+| ENV-3 | Plaid encryption + webhook | ✅ SELF-PROTECTING — `configValidator` errors at boot in prod when Plaid is configured but secrets missing | `PLAID_WEBHOOK_SECRET` + `PLAID_ENCRYPTION_KEY` (or `FIELD_ENCRYPTION_KEY` ≥ 64 hex) when `PLAID_CLIENT_ID`/`PLAID_SECRET` set |
+
+---
+
+## Trinity Schedule → Payroll → Invoice Spine (verified 2026-05-02)
+
+End-to-end autonomy chain. Every node is wired and started at boot.
+
+```
+[shifts]                                    Daemons started in server/index.ts
+  ↓ shiftMonitoringService               2945  ShiftMonitoringService
+  ↓ coveragePipeline                     2955  CoveragePipeline
+  ↓ trinityAutonomousScheduler           routes/trinitySchedulingRoutes (Zod-validated, SLA-gated)
+  ↓ shiftCompletionBridge                automation/shiftCompletionBridge
+[time_entries]
+  ↓ trinity.run_invoice_lifecycle        workflowOrchestrator (event: time_entry.approved)
+[invoices]
+  ↓ weeklyBillingRunService              1572  Weekly Billing Run
+  ↓ overdueCollectionsService            2964  OverdueCollectionsSweep   ← NEW (was missing)
+  ↓ Stripe webhook handler               /api/stripe/webhook (rawBody asserted)
+[payroll_runs]
+  ↓ payrollAutoCloseService              automationTriggerService daily
+  ↓ payrollReadinessScanner              48h pre-deadline
+  ↓ trinity.process_payroll_anomalies    workflowOrchestrator (45s subagent timeout)
+  ↓ atomicFinancialLockService           pg_advisory_xact_lock
+  ↓ achTransferService → Plaid           idempotency-keyed
+  ↓ payrollTransferMonitor               2933  poll every 5 min
+[paid_to_employee]
+```
+
+### Trinity action surface — financial verbs (after this verification pass)
+
+Dispatcher patterns in `server/services/trinity/trinityActionDispatcher.ts`:
+
+| Verb | actionId | Risk | Handler location |
+|---|---|---|---|
+| "send / email invoice" | `billing.invoice_send` | medium | `trinityInvoiceEmailActions.ts:54` |
+| "resend invoice" | `billing.invoice_send` (resend:true) | low | same |
+| "create / draft invoice" | `billing.invoice_create` | medium | `actionRegistry.ts:2208` |
+| "void / cancel invoice" | `billing.invoice_void` | high | `actionRegistry.ts:2654` |
+| "mark invoice paid" | `billing.invoice_status` (status:'paid') | medium | `trinityInvoiceEmailActions.ts:294` |
+| "run payroll" | `payroll.run_payroll` | high | `actionRegistry` (queues) |
+| "fill / cover shift" | `scheduling.fill_open_shift` | low | scheduling action set |
+| "verify TOPS screenshot" | `trinity.verify_tops_screenshot` | — | `workflowOrchestrator.ts` ← NEW |
+
+---
+
+## Known Debt — Verification Pass 2026-05-02
+
+These are documented gaps where code is *intentionally* incomplete or where a downstream system is missing. Address before marking the spine 100%.
+
+| ID | Debt | Severity | Location | Notes |
+|---|---|---|---|---|
+| VD-01 | `billing.invoice_refund` has no handler | MEDIUM | dispatcher pattern was deliberately NOT added; refund handler must call `stripe.refunds.create` + reverse `invoicePayments` + ledger entry within a DB transaction | Pattern omitted on purpose so Trinity doesn't promise something she can't do. Add pattern only after handler ships. |
+| VD-02 | Scheduling actions not in `trinityServiceRegistry` | LOW | `shared/config/trinityEditableRegistry.ts` lists protected/editable modules but no machine-readable scheduling-action surface | Cosmetic — actions still execute via dispatcher regex. |
+| VD-03 | Cron-only workflows (missed_clockin, shift_reminder, payroll_anomaly) | LOW | `workflows/*.ts` register as actions but their cron triggers live in `autonomousScheduler` | If autonomousScheduler crashes they stall until restart. Add event subscriptions as defense-in-depth. |
+| VD-04 | `taxDeadlineMonitor` cron at 06:00 only | LOW | `proactiveOrchestrator.ts` schedule | If boot is after 06:00 on a deadline day the alert misses. Acceptable for v1. |
+| VD-05 | `tests/security/` not in vitest workspace | LOW | `vitest.workspace.ts` projects: unit, integration | New Plaid ownership tests must be run via `npx vitest run tests/security` until added to a project. |
+| VD-06 | Plaid 429 exhaustion → silent `payment_held` | MEDIUM | `plaidService.ts:239-262` after 3 retries | `payrollTransferMonitor` alerts owner after 3 consecutive Plaid API failures, but resolution is manual. |
+| VD-07 | `payrollAnomalyWorkflow` 45s timeout fails OPEN | MEDIUM | `payrollAnomalyWorkflow.ts` | On timeout the workflow returns `blocked:false, success:false` — payroll is NOT auto-blocked. The summary string explicitly recommends manual review; UI must surface this. |
+| VD-08 | `bank-status` endpoint returns any employee in same workspace | LOW | `plaidRoutes.ts:348-383` | Only returns last4 + institution name (no full account #) but is a same-workspace privacy leak. Add `isSelf || isManagerOrAbove` guard. |
+| VD-09 | Stripe API version pinned to `2025-09-30.clover` | LOW | `stripeClient.ts:19` | No fallback path if Stripe deprecates. Acceptable until Stripe announces breaking change. |
 
 ---
 
