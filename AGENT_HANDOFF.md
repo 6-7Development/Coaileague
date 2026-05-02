@@ -13,18 +13,17 @@
 | `npm run build` | ✅ vite 4670 modules, server build complete |
 | `npx vitest run` | ✅ **196/196 passed** (8 files / 55 tests skipped — need real DB/server) |
 | `npx tsx tests/integration/platform.test.ts` | ✅ **31/31 passing** |
-| `npx tsc --noEmit` | ⚠️ 23,954 errors (was 24,115 — **-161 fixed**) |
+| `npx tsc --noEmit` | ⚠️ 23,940 errors (was 24,115 — **-175 fixed**) |
 
 ### TS-Error Reduction by Category
 | Code | Before | After | Δ |
 |---|---|---|---|
-| TS2300 (duplicate identifier) | 124 | 12 | **-112** |
-| TS2304 (cannot find name) | 550 | 373 | **-177** |
-| TS18046 (X is unknown) | 7144 | 7152 | +8 |
-| TS2339 (no such property) | 5028 | 5078 | +50 |
-| TS2322 (not assignable) | 3053 | 3067 | +14 |
-| Other shifts | — | — | smaller drift |
-| **TOTAL** | **24,115** | **23,954** | **-161** |
+| TS2300 (duplicate identifier) | 124 | **0** | **-124 (cleared)** |
+| TS2304 (cannot find name) | 550 | 372 | **-178** |
+| TS18046 (X is unknown) | 7144 | ~7150 | +6 (drift) |
+| TS2339 (no such property) | 5028 | ~5075 | +47 (drift) |
+| Other categories | — | — | small drift, net negative overall |
+| **TOTAL** | **24,115** | **23,940** | **-175** |
 
 ### Mechanical Fixes Landed
 | # | Pattern | Files | Impact |

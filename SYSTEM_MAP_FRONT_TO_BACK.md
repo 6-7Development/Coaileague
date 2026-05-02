@@ -425,7 +425,7 @@ Railway:
 | `npm run build` (vite + esbuild) | ✅ 4670 modules transformed, 23.99s; server+client bundles emitted |
 | `npx vitest run` (full workspace) | ✅ **196/196 passed** (8 files / 55 tests skipped — need real DB/server) |
 | `npx tsx tests/integration/platform.test.ts` | ✅ **31/31 passing** (was 28/31) |
-| `npx tsc --noEmit` | ⚠️ **23,954 errors** (was 24,115 — **-161** in this pass) |
+| `npx tsc --noEmit` | ⚠️ **23,940 errors** (was 24,115 — **-175** in this pass; TS2300 eliminated entirely 124→0) |
 | Frontend audit (orphans/handlers/forms/mutations/nav) | ✅ all clean (4 wiring fixes shipped) |
 | esbuild structural check (App.tsx + main.tsx) | ✅ 0 errors, 0 warnings |
 
