@@ -4,7 +4,7 @@
 // THE LAW: No new tables without Bryan's explicit approval. Zero DROP TABLE ever.
 // Tables: 23
 
-import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, decimal, time, doublePrecision, index, uniqueIndex, primaryKey, unique } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, varchar, text, integer, boolean, timestamp, jsonb, decimal, time, doublePrecision, index, uniqueIndex, primaryKey, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import {
   actorTypeEnum,
@@ -20,28 +20,6 @@ import {
   tokenTypeEnum,
 } from '../../enums';
 
-export const apiKeys = pgTable("api_keys", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-
-  name: varchar("name").notNull(),
-  keyHash: varchar("key_hash").notNull().unique(), // Hashed API key
-  keyPrefix: varchar("key_prefix").notNull(), // First 8 chars for display
-
-  scopes: text("scopes").array(), // ['read:employees', 'write:shifts', etc.]
-  isActive: boolean("is_active").default(true),
-
-  lastUsedAt: timestamp("last_used_at"),
-  expiresAt: timestamp("expires_at"),
-
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  revokedAt: timestamp("revoked_at"),
-
-  keyType: varchar("key_type"),
-  usageData: jsonb("usage_data").default('{}'),
-});
 
 export const platformRoles = pgTable("platform_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -111,44 +89,6 @@ export const roleTemplates = pgTable("role_templates", {
   levelIndex: index("role_templates_level_idx").on(table.roleLevel),
 }));
 
-export const integrationApiKeys = pgTable("integration_api_keys", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-
-  // Key identity
-  name: varchar("name").notNull(), // "Production API Key", "Mobile App Key"
-  description: text("description"),
-  keyPrefix: varchar("key_prefix").notNull(), // "wfos_prod_" for display
-  keyHash: text("key_hash").notNull(), // Hashed full key for verification
-
-  // Permissions
-  scopes: jsonb("scopes").$type<string[]>().default(sql`'[]'`), // ['read:employees', 'write:shifts', 'webhooks:manage']
-  ipWhitelist: jsonb("ip_whitelist").$type<string[]>().default(sql`'[]'`),
-
-  // Rate limiting
-  rateLimit: integer("rate_limit").default(1000), // Requests per hour
-  rateLimitWindow: varchar("rate_limit_window").default('hour'), // 'minute', 'hour', 'day'
-
-  // Usage tracking
-  lastUsedAt: timestamp("last_used_at"),
-  totalRequests: integer("total_requests").default(0),
-  totalErrors: integer("total_errors").default(0),
-
-  // Status
-  isActive: boolean("is_active").default(true),
-  expiresAt: timestamp("expires_at"),
-
-  // Audit
-  createdByUserId: varchar("created_by_user_id"),
-  ipAddress: varchar("ip_address"),
-  userAgent: text("user_agent"),
-
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  workspaceActiveIndex: index("integration_api_keys_workspace_active_idx").on(table.workspaceId, table.isActive),
-  keyHashIndex: uniqueIndex("integration_api_keys_key_hash_idx").on(table.keyHash),
-}));
 
 export const idempotencyKeys = pgTable("idempotency_keys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -308,83 +248,8 @@ export const userDeviceProfiles = pgTable("user_device_profiles", {
   index("device_profiles_type_idx").on(table.deviceType),
   index("device_profiles_fingerprint_idx").on(table.deviceFingerprint),
 ]);
-
-export const sessionCheckpoints = pgTable("session_checkpoints", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
-  workspaceId: varchar("workspace_id"),
-  sessionId: varchar("session_id").notNull(), // Browser session fingerprint
-  
-  // Phase tracking
-  phaseKey: varchar("phase_key", { length: 100 }).notNull(), // e.g., 'form_editing', 'report_building', 'data_entry'
-  phaseNumber: integer("phase_number").default(1),
-  
-  // State payload (encrypted for sensitive data)
-  payload: jsonb("payload").notNull(), // Current user state/form data
-  payloadChecksum: varchar("payload_checksum", { length: 64 }), // SHA-256 for integrity verification
-  payloadVersion: integer("payload_version").default(1),
-  
-  // Context for Trinity AI Brain
-  contextSummary: text("context_summary"), // AI-readable summary of what user was doing
-  pageRoute: varchar("page_route", { length: 255 }), // Current page/route
-  actionHistory: jsonb("action_history"), // Recent user actions for context
-  
-  // AI Sync State
-  aiSyncState: checkpointSyncStateEnum("ai_sync_state").default("pending"),
-  aiSyncedAt: timestamp("ai_synced_at"),
-  trinityContextId: varchar("trinity_context_id", { length: 100 }), // Reference ID in Trinity's context
-  
-  // Lifecycle
-  isFinal: boolean("is_final").default(false), // True when session ended gracefully
-  isRecovered: boolean("is_recovered").default(false), // True if this was used for recovery
-  expiresAt: timestamp("expires_at"), // Auto-cleanup after this time
-  
-  // Folded audit trail (from session_checkpoint_events)
-  checkpointEvents: jsonb("checkpoint_events").default([]),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  savedAt: timestamp("saved_at").defaultNow(),
-}, (table) => [
-  index("session_checkpoints_user_idx").on(table.userId),
-  index("session_checkpoints_workspace_idx").on(table.workspaceId),
-  index("session_checkpoints_session_idx").on(table.sessionId),
-  index("session_checkpoints_phase_idx").on(table.phaseKey),
-  index("session_checkpoints_final_idx").on(table.isFinal),
-  index("session_checkpoints_expires_idx").on(table.expiresAt),
-]);
-
-export const sessionRecoveryRequests = pgTable("session_recovery_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id"),
-  userId: varchar("user_id").notNull(),
-  checkpointId: varchar("checkpoint_id").notNull(),
-  sessionId: varchar("session_id").notNull(), // Original session that was lost
-  newSessionId: varchar("new_session_id"), // New session where recovery happened
-  
-  // Request details
-  requestSource: varchar("request_source", { length: 50 }).notNull(), // 'auto_prompt', 'user_initiated', 'trinity_suggested'
-  status: varchar("status", { length: 30 }).default("pending"), // 'pending', 'accepted', 'declined', 'expired', 'completed'
-  
-  // Recovery outcome
-  recoveredData: jsonb("recovered_data"), // What was restored
-  recoveryNotes: text("recovery_notes"), // AI-generated summary of recovery
-  userFeedback: varchar("user_feedback", { length: 30 }), // 'helpful', 'partial', 'not_needed'
-  
-  // Timing
-  promptedAt: timestamp("prompted_at").defaultNow(),
-  respondedAt: timestamp("responded_at"),
-  completedAt: timestamp("completed_at"),
-  expiresAt: timestamp("expires_at"), // Recovery offer expires after this
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("recovery_requests_user_idx").on(table.userId),
-  index("recovery_requests_checkpoint_idx").on(table.checkpointId),
-  index("recovery_requests_status_idx").on(table.status),
-  index("recovery_requests_created_idx").on(table.createdAt),
-]);
+;
+;
 
 export const userAutomationConsents = pgTable("user_automation_consents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -502,26 +367,6 @@ export const accessControlEvents = pgTable("access_control_events", {
   index("access_control_events_created_idx").on(table.createdAt),
 ]);
 
-export const workspaceApiKeys = pgTable("workspace_api_keys", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  name: varchar("name").notNull(),
-  keyHash: varchar("key_hash").notNull(),
-  keyPrefix: varchar("key_prefix", { length: 8 }).notNull(),
-  permissions: text("permissions").array(),
-  rateLimit: integer("rate_limit").default(1000),
-  rateLimitWindow: varchar("rate_limit_window").default("hour"),
-  totalRequests: integer("total_requests").default(0),
-  lastUsedAt: timestamp("last_used_at"),
-  expiresAt: timestamp("expires_at"),
-  isActive: boolean("is_active").default(true),
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("api_key_ws_idx").on(table.workspaceId),
-  index("api_key_hash_idx").on(table.keyHash),
-]);
 
 export const apiKeyUsageLogs = pgTable("api_key_usage_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -540,27 +385,6 @@ export const apiKeyUsageLogs = pgTable("api_key_usage_logs", {
   index("api_usage_ws_idx").on(table.workspaceId),
 ]);
 
-export const managedApiKeys = pgTable("managed_api_keys", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  keyName: varchar("key_name").notNull(),
-  keyHash: varchar("key_hash").notNull(),
-  keyPrefix: varchar("key_prefix"),
-  scopes: text("scopes").array(),
-  isActive: boolean("is_active").default(true),
-  lastUsedAt: timestamp("last_used_at"),
-  expiresAt: timestamp("expires_at"),
-  createdBy: varchar("created_by"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-
-  name: varchar("name"),
-  keyType: varchar("key_type"),
-  status: varchar("status"),
-  rotationCount: integer("rotation_count").default(0),
-  lastRotatedAt: timestamp("last_rotated_at", { withTimezone: true }),
-});
 
 export const sessions = pgTable(
   "sessions",
@@ -714,3 +538,40 @@ export const keyRotationHistory = pgTable("key_rotation_history", {
   index("key_rotation_history_created_idx").on(table.createdAt),
 ]);
 
+
+// Re-exported from Orgs domain (moved in Wave 1 cleanup)
+export { sessionCheckpoints, sessionRecoveryRequests } from '../orgs';
+export { checkpointSyncStateEnum } from '../../enums';
+
+// ─── Unified API Keys (consolidated from 4 tables in Wave 1 cleanup) ─────────
+export const apiKeyScope = pgEnum('api_key_scope', [
+  'integration',   // Third-party integration API keys
+  'workspace',     // Workspace-scoped API keys (with rate limits)
+  'managed',       // Platform-managed API keys
+  'platform',      // Root platform keys
+]);
+
+export const apiKeys = pgTable('api_keys', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: varchar('workspace_id', { length: 255 }).notNull(),
+  scope: apiKeyScope('scope').notNull().default('workspace'),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  keyHash: varchar('key_hash', { length: 255 }).notNull(),
+  keyPrefix: varchar('key_prefix', { length: 20 }).notNull(),
+  scopes: jsonb('scopes').$type<string[]>().default([]),
+  permissions: jsonb('permissions').$type<string[]>().default([]),
+  rateLimit: integer('rate_limit'),
+  rateLimitWindow: integer('rate_limit_window'),
+  totalRequests: integer('total_requests').default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  createdBy: varchar('created_by', { length: 36 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('api_keys_workspace_idx').on(table.workspaceId),
+  index('api_keys_scope_idx').on(table.scope),
+  index('api_keys_prefix_idx').on(table.keyPrefix),
+]);
