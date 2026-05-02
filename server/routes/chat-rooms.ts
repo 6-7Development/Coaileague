@@ -1,6 +1,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
+import { storage } from "../storage";
 import { summonHelpAIForConversation } from '../services/botSummonService';
 import { broadcastToWorkspace } from "../services/chat/broadcaster";
 import { roomPresence } from "../services/ircEventRegistry";
@@ -51,9 +52,9 @@ async function handleRoomLifecycleAction(
 
     // Resolve the room
     const [room] = await db
-      .select({ id: chatRooms.id, createdBy: chatRooms.createdBy, workspaceId: chatRooms.workspaceId })
-      .from(chatRooms)
-      .where(eq(chatRooms.id, roomId))
+      .select({ id: organizationChatRooms.id, createdBy: organizationChatRooms.createdBy, workspaceId: organizationChatRooms.workspaceId })
+      .from(organizationChatRooms)
+      .where(eq(organizationChatRooms.id, roomId))
       .limit(1);
 
     if (!room) {
@@ -70,9 +71,9 @@ async function handleRoomLifecycleAction(
 
     const newStatus = action === 'close' ? 'archived' : 'active';
     await db
-      .update(chatRooms)
+      .update(organizationChatRooms)
       .set({ status: newStatus as unknown, updatedAt: new Date() })
-      .where(eq(chatRooms.id, roomId));
+      .where(eq(organizationChatRooms.id, roomId));
 
     res.json({ success: true, roomId, status: newStatus, action });
   } catch (err: unknown) {
@@ -339,9 +340,7 @@ router.post(
       // [chatPolicyService] Use centralized policy — not route-local lists
       // isReservedRoomName() and isReservedRoomNameExempt() imported from chatPolicyService
       const requestedName = (subject || '').trim().toLowerCase();
-      const isReservedName = RESERVED_ROOM_NAMES.some(
-        r => requestedName === r || requestedName.startsWith(r)
-      );
+      const isReservedName = isReservedRoomName(requestedName);
       const _userPlatformRole = (authReq.user)?.platformRole || (authReq.user)?.role || '';
       const isSupportExempt = isSupportStaffRole(authReq.workspaceRole || '') ||
                               isSupportStaffRole(_userPlatformRole);
