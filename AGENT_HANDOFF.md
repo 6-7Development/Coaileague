@@ -1,6 +1,6 @@
 # COAILEAGUE — MASTER AGENT HANDOFF
 # ONE FILE — update in place.
-# Last updated: 2026-05-01 — Claude (architect, continuous session monitoring)
+# Last updated: 2026-05-02 — Claude (workspace + sub-tenant + workflow page audit pass)
 
 ---
 
@@ -13,39 +13,45 @@ TS debt: 8,566 → 2124 combined (-75.2% from baseline)
 
 ---
 
-## LAST VERIFICATION — Middleware + Auth + Full Build/Test Pass (2026-05-02)
+## 2026-05-02 — workspace / sub-tenant / workflow audit pass
+Branch: `claude/fix-workspace-pages-ZyETl`
+Scope: workspace tools, login, fetch/query wiring, cross-platform tenant /
+sub-tenant / end-user / client pages, action + workflow CRUD, activate /
+deactivate. Audited 18 in-scope pages; esbuild parse exit=0 across all.
 
-**Branch:** `claude/verify-middleware-auth-YwwmJ`
-**Scope:** middleware mount order, auth chain, RBAC guards, route mounts, front↔back coherence; PLUS fresh `npm install`, server build, server boot smoke, full vitest suite.
-**Result:** ✅ **ZERO ERRORS · ZERO GAPS · ZERO BUGS**
+### Fixed
+| Page | Issue | Fix |
+|------|-------|-----|
+| `client/src/App.tsx` | `pages/sub-orgs.tsx` existed but had **no route** — page unreachable | Added `lazy(() => import('@/pages/sub-orgs'))` and `Route path="/sub-orgs"` in both desktop and mobile router branches |
+| `pages/sub-orgs.tsx` | `createMut`/`switchMut` mutations returned raw `Response`, then `data?.workspaceName` was read on a Response object — switch-toast always showed "undefined". `err?.message` / `err?.response?.json()` accessed unknown without narrowing | Mutations now `await res.json()`; `onError` narrows `err instanceof Error` and casts `response?.json` access through a typed shape |
+| `pages/workspace.tsx` | `iconMap: Record<string, unknown>` made `<Icon className=… />` un-renderable (`unknown` is not a JSX element type) | Imported `LucideIcon` from `lucide-react`, retyped `iconMap: Record<string, LucideIcon>` |
+| `pages/workflow-approvals.tsx` | `useState<null>(null)` for `selectedProposal` broke `selectedProposal.id` access; `proposal: unknown` parameters in `handleApprove/handleReject` blocked typed property reads downstream | Imported `ScheduleProposal \| InvoiceProposal \| PayrollProposal` from the hook, declared local `AnyProposal` union, retyped the state and handlers |
 
-### Live Verification Pipeline (this session)
+### Verified routed + reachable
+`/workspace`, `/workspace-onboarding`, `/workspace-sales` (also `/sales`,
+`/platform/sales`), `/workflow-approvals`, `/owner/hireos/workflow-builder`,
+`/clients`, `/sub-orgs` (newly added), `/end-user-controls`, `/client/portal`,
+`/client-portal/setup`, `/client-portal/:tempCode`, `/client-signup`,
+`/client-status-lookup`, `/client-communications`, `/client-satisfaction`,
+`/client-profitability`, `/sps-client-pipeline`, `/login`, `/auditor/login`,
+`/co-auditor/login`, `/regulatory-audit/login`.
 
-| Step | Result | Notes |
-|---|---|---|
-| `npm install` | ✅ 1101 packages added | First attempt hit a transient registry blip on `playwright@1.59.1`; retry succeeded clean |
-| `node build.mjs` (server esbuild) | ✅ 0 errors | `dist/index.js` 38 MB |
-| Server boot smoke (dist/index.js + dummy DATABASE_URL) | ✅ Boots through all middleware + 15 domain mounts + AI Brain registry without error | DB-dependent calls fail later in async background, as expected with no real DB; exercised the full route-assembly path |
-| Full `vitest run` suite | ✅ 196 passed, 0 failed, 55 skipped (21 files) | Was 5 failed before the fix below |
-| `tsc --noEmit` | ⚠ 24,150 strict-mode errors | Pre-existing TS debt baseline; **not** a build gate (handoff has always said "esbuild: 0 errors") |
+### Verified CRUD / activate / deactivate endpoints (server)
+- `clientRoutes.ts`: `POST /:id/deactivate`, `POST /:id/reactivate`
+- `deactivateRoutes.ts`: workspace + employee deactivate/reactivate
+- `workspaceInlineRoutes.ts`: full sub-orgs CRUD + attach/detach/batch
+- `platformRoutes.ts`: staff suspend/unsuspend
+- `service-control.ts`: per-workspace service suspend
+- `workOrderRoutes.ts`, `scheduleosRoutes.ts`, `enterpriseOnboardingRoutes.ts`,
+  `onboardingPipelineRoutes.ts`: activate flows
+All endpoints have a UI consumer in the audited pages.
 
-### Bug fixed in this pass
-
-**File:** `tests/unit/trinity-workflows-17c.test.ts`
-**Problem:** 5/30 tests failed with `expected undefined not to be undefined` on `helpaiOrchestrator.getAction('billing.invoice_create' | 'billing.invoice_add_line_items')`. The test imports `actionRegistry` for its side effects, but registration was previously refactored out of the constructor into the async `initialize()` method (called from `server/index.ts:1607` at server boot). The test setup never awaited `initialize()`, so `ACTION_REGISTRY` was empty when the assertions ran.
-**Fix:** Added a top-level `beforeAll(async () => { const { aiBrainActionRegistry } = await import('.../actionRegistry'); await aiBrainActionRegistry.initialize(); })`. `initialize()` is idempotent (guarded by both `this.initialized` and a global flag), so this is safe alongside any caller that also initializes (e.g. server boot during integration tests).
-**Verified:** All 30 tests in the file pass; full suite goes from 5 failed → 0 failed.
-
-| Layer | Verdict | Notes |
-|---|---|---|
-| `server/routes.ts` mount order | ✅ matches SYSTEM_MAP exactly | featureStubRouter LAST at line 1155, global error handler at 1157 |
-| `server/index.ts` startup chain | ✅ matches SYSTEM_MAP | setupAuth runs inside registerRoutes BEFORE any route mount |
-| 15 domain orchestrators | ✅ all wired | Auth domain login/register/forgot-password public; Trinity uses requireTrinityAccess except documented bypasses |
-| Middleware exports vs routes.ts imports | ✅ all resolve | csrf, audit, platformStaffAudit, dataAttribution, subscriptionGuard, terminatedEmployeeGuard, rateLimiter, requestTimeout, trinityGuard, requireLegalAcceptance, workspaceScope |
-| Front-end coherence | ✅ coherent | queryClient.ts `credentials: "include"`; csrf.ts injects X-CSRF-Token; useAuth → /api/auth/me; login/logout canonical; 401 → /login |
-| Architecture rules #1, #10 | ✅ honored | Only justified inline routes in routes.ts (csrf util, sms-consent legal, sms webhook aliases, marketing funnel) |
-
-No code changes were made — verification only. SYSTEM_MAP.md was annotated with the verified-on date and a verification status table.
+### Out-of-scope but observed (not fixed — flag for follow-up)
+- `pages/auditor-login.tsx`: `err.response?.json()` in `onError` accesses a
+  property not on `Error` (TanStack v5 default). esbuild compiles, but strict
+  `tsc` would flag. Same pattern in `co-auditor-login.tsx` (`e?.message`).
+- `pages/hireos-workflow-builder.tsx` lines 34, 117: `: any` on two
+  internal sub-components. Listed under TS-DEBT.
 
 ---
 
