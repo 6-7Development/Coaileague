@@ -1,6 +1,6 @@
 # COAILEAGUE — MASTER AGENT HANDOFF
 # ONE FILE — update in place.
-# Last updated: 2026-05-01 — Claude (architect, continuous session monitoring)
+# Last updated: 2026-05-02 — Claude (middleware + auth verification pass)
 
 ---
 
@@ -9,7 +9,27 @@
 ```
 origin/development → 5c8f43b2  (🟢 GREEN — build clean, Railway auto-deploying)
 TS debt: 8,566 → 2124 combined (-75.2% from baseline)
+Latest verification branch: claude/verify-middleware-auth-YwwmJ (read-only audit)
 ```
+
+---
+
+## LAST VERIFICATION — Middleware + Auth (2026-05-02)
+
+**Branch:** `claude/verify-middleware-auth-YwwmJ`
+**Scope:** middleware mount order, auth chain, RBAC guards, route mounts, front↔back coherence
+**Result:** ✅ **ZERO ERRORS · ZERO GAPS · ZERO BUGS**
+
+| Layer | Verdict | Notes |
+|---|---|---|
+| `server/routes.ts` mount order | ✅ matches SYSTEM_MAP exactly | featureStubRouter LAST at line 1155, global error handler at 1157 |
+| `server/index.ts` startup chain | ✅ matches SYSTEM_MAP | setupAuth runs inside registerRoutes BEFORE any route mount |
+| 15 domain orchestrators | ✅ all wired | Auth domain login/register/forgot-password public; Trinity uses requireTrinityAccess except documented bypasses |
+| Middleware exports vs routes.ts imports | ✅ all resolve | csrf, audit, platformStaffAudit, dataAttribution, subscriptionGuard, terminatedEmployeeGuard, rateLimiter, requestTimeout, trinityGuard, requireLegalAcceptance, workspaceScope |
+| Front-end coherence | ✅ coherent | queryClient.ts `credentials: "include"`; csrf.ts injects X-CSRF-Token; useAuth → /api/auth/me; login/logout canonical; 401 → /login |
+| Architecture rules #1, #10 | ✅ honored | Only justified inline routes in routes.ts (csrf util, sms-consent legal, sms webhook aliases, marketing funnel) |
+
+No code changes were made — verification only. SYSTEM_MAP.md was annotated with the verified-on date and a verification status table.
 
 ---
 

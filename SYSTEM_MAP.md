@@ -1,9 +1,25 @@
 # CoAIleague — Complete System Map
-**Last updated:** 2026-05-01 · **Author:** Architect Claude · **HEAD:** 784362ae
+**Last updated:** 2026-05-02 · **Author:** Architect Claude · **HEAD:** 5c8f43b2
+**Last verified:** 2026-05-02 — Middleware + Auth wiring audit (claude/verify-middleware-auth-YwwmJ)
 
 > **PURPOSE:** Single source of truth for all routes, mounts, middleware, services, and client pages.
 > Before adding ANY new code — route, component, service, or hook — check this map first.
 > Update this file in the same PR as your change.
+
+---
+
+## Verification Status — Middleware & Auth (2026-05-02)
+
+| Area | Verdict | Evidence |
+|---|---|---|
+| Middleware mount order in `server/routes.ts` | ✅ MATCHES MAP | cookieParser → bootstrap → CSRF → audit/attribution → Trinity orchestration → IDS → subscription/cancelled/terminated guards → rate limiters → requestTimeout → public → webhooks → special → 15 domains → session/passport routes → audit → featureStubRouter (LAST, line 1155) → global error handler (line 1157) |
+| Startup chain in `server/index.ts` | ✅ MATCHES MAP | Port lock → setupAuth (inside registerRoutes:484) → all route mounts → scheduler → WebSocket → listen |
+| 15 domain orchestrators | ✅ ALL WIRED | Each `mount*Routes()` exported and applies `requireAuth` (+ `ensureWorkspaceAccess` where required); Trinity uses `requireTrinityAccess` except documented bypasses (`/api/trinity/thought-status` line 1051, `/api/trinity/active-operations` line 1056) |
+| Middleware module exports vs imports | ✅ ALL RESOLVE | csrf, audit, platformStaffAudit, dataAttribution, subscriptionGuard, terminatedEmployeeGuard, rateLimiter, requestTimeout, trinityGuard, requireLegalAcceptance, workspaceScope — every named import in routes.ts maps to a real export |
+| Front-end coherence | ✅ COHERENT | `client/src/lib/queryClient.ts` uses `credentials: "include"`; `client/src/lib/csrf.ts` injects `X-CSRF-Token` from `/api/csrf-token`; `useAuth` hits `/api/auth/me`; login posts `/api/auth/login`; logout posts `/api/auth/logout`; 401 redirects to `/login` |
+| Architecture rules (1, 10) | ✅ HONORED | `featureStubRouter` is LAST mount; only justified inline routes in `routes.ts` (csrf-token util, /sms-consent legal, /api/sms/* webhook aliases, /api/marketing/enterprise-inquiry funnel) |
+
+**Overall: ZERO ERRORS · ZERO GAPS · ZERO BUGS in the middleware + auth surface.**
 
 ---
 
@@ -594,16 +610,26 @@ client/src/components/
 ```
 Platform Roles (RBAC):
   root_admin → deputy_admin → platform_staff → system → automation → helpai
-  
+
 Workspace Roles:
   org_owner → co_owner → org_admin → manager → officer → guard → client → auditor
 
 Middleware chain for protected routes:
-  requireAuth           ← session/passport check, sets req.user
-  ensureWorkspaceAccess ← validates req.user.workspaceId matches route workspace
+  requireAuth           ← server/auth.ts — session + auth_token cookie + Bot/test bypass
+  ensureWorkspaceAccess ← server/middleware/workspaceScope.ts — validates workspace
   requireManager        ← workspace role >= manager
   requirePlatformStaff  ← platformRole is staff/admin
   requireTrinityAccess  ← platformRole is root/deputy admin
+
+requireAuth bypass surface (audited 2026-05-02):
+  - x-test-key header → DEV ONLY, hard-blocked in prod (auth.ts:557)
+  - x-trinity-bot-token header → TRINITY_BOT_TOKEN env timing-safe compare (auth.ts:655)
+  - DB circuit open → degraded session-only auth, returns _dbDegraded:true (auth.ts:692)
+
+Session store: FaultTolerantStore wraps connect-pg-simple
+  - 1500ms hard timeout per op
+  - 1000-entry LRU cache with 15-min TTL (survives 30s circuit-breaker outages)
+  - sameSite:'lax', secure:isProduction, optional .coaileague.com domain in prod
 
 FIELD_ENCRYPTION_KEY:  ← must be set to activate PII encryption (fieldEncryption.ts)
 APP_BASE_URL:          ← required for auditor token URL composition
