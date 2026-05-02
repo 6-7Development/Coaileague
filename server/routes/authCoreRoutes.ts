@@ -7,6 +7,7 @@ import { users, platformRoles, employees, workspaces, expenseCategories, clients
 import { eq, and, sql, desc } from "drizzle-orm";
 ;
 import { isProduction } from '../lib/isProduction';
+import { verifyPersisted, PersistenceVerificationError } from '../utils/persistenceHandshake';
 
 /**
  * Canonical cookie options for the auth_token cookie. Centralized so the
@@ -168,6 +169,24 @@ router.post("/api/auth/register", async (req, res) => {
         // currentWorkspaceId is left null - user needs to create org first
       })
       .returning();
+
+    // Persistence handshake: confirm the user row + password hash are queryable
+    // on a fresh read before we treat the registration as durable. If the row
+    // is missing the client gets a retryable 503 instead of a phantom "success".
+    try {
+      await verifyPersisted(
+        users,
+        and(eq(users.id, newUser.id), eq(users.email, data.email), eq(users.passwordHash, passwordHash))!,
+        { label: 'user', description: `id=${newUser.id} email=${data.email}` },
+      );
+    } catch (verifyErr) {
+      log.error(`[Registration] Persistence handshake failed for user ${newUser.id}:`, verifyErr instanceof Error ? verifyErr.message : String(verifyErr));
+      return res.status(503).json({
+        message: 'Registration could not be confirmed in the database. Please try again in a few seconds.',
+        error: 'PERSISTENCE_VERIFICATION_FAILED',
+        retryable: verifyErr instanceof PersistenceVerificationError ? verifyErr.retryable : true,
+      });
+    }
 
     log.info(`[Registration] Created user ${newUser.id} (${newUser.email}) - needs org setup`);
 

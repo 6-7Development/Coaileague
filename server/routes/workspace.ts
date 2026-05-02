@@ -22,6 +22,7 @@ import { sendWorkspaceWelcomeEmail } from '../services/emailCore';
 import { sendWelcomeOrgNotification } from '../services/notificationService';
 import { createLogger } from '../lib/logger';
 import { z } from 'zod';
+import { verifyPersisted, PersistenceVerificationError } from '../utils/persistenceHandshake';
 const log = createLogger('Workspace');
 
 
@@ -121,6 +122,23 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       trialEndsAt,
     });
 
+    // Persistence handshake: confirm the workspace row is queryable with the
+    // expected owner before we wire up employee/user/billing state on top of it.
+    try {
+      await verifyPersisted(
+        workspaces,
+        and(eq(workspaces.id, workspace.id), eq(workspaces.ownerId, userId))!,
+        { label: 'workspace', description: `id=${workspace.id} owner=${userId}` },
+      );
+    } catch (verifyErr) {
+      log.error(`[Workspace Create] Persistence handshake failed for workspace ${workspace.id}:`, verifyErr instanceof Error ? verifyErr.message : String(verifyErr));
+      return res.status(503).json({
+        message: 'Organization could not be confirmed in the database. Please try again in a few seconds.',
+        error: 'PERSISTENCE_VERIFICATION_FAILED',
+        retryable: verifyErr instanceof PersistenceVerificationError ? verifyErr.retryable : true,
+      });
+    }
+
     // Persist email_slug on the workspace row so email provisioning can find it.
     // Slug is derived from orgCode (lowercased) or auto-generated from company name initials.
     try {
@@ -169,6 +187,28 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       await tx.update(users).set({ currentWorkspaceId: workspace.id }).where(eq(users.id, userId));
       return emp;
     });
+
+    // Persistence handshake: confirm both halves of the transaction are visible
+    // — the owner employee row AND the user's currentWorkspaceId pointer.
+    try {
+      await verifyPersisted(
+        employees,
+        and(eq(employees.id, employee.id), eq(employees.workspaceId, workspace.id), eq(employees.userId, userId))!,
+        { label: 'org_owner_employee', description: `id=${employee.id} workspace=${workspace.id}` },
+      );
+      await verifyPersisted(
+        users,
+        and(eq(users.id, userId), eq(users.currentWorkspaceId, workspace.id))!,
+        { label: 'user_workspace_link', description: `user=${userId} workspace=${workspace.id}` },
+      );
+    } catch (verifyErr) {
+      log.error(`[Workspace Create] Owner-link handshake failed for workspace ${workspace.id}:`, verifyErr instanceof Error ? verifyErr.message : String(verifyErr));
+      return res.status(503).json({
+        message: 'Organization owner link could not be confirmed in the database. Please try again in a few seconds.',
+        error: 'PERSISTENCE_VERIFICATION_FAILED',
+        retryable: verifyErr instanceof PersistenceVerificationError ? verifyErr.retryable : true,
+      });
+    }
 
     if (req.session) {
       req.session.workspaceId = workspace.id;
