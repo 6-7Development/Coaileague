@@ -242,7 +242,8 @@ export const AtomicFinancialLockService = {
         throw new FinancialStageError(`Invoice ${invoiceId} is ${invoice.status}; only draft invoices accept staging`, uniqueIds.length);
 
       // Lock candidate time_entries before reading — prevents races with a
-      // concurrent stage call.
+      // concurrent stage call. Use ANY($1::text[]) to keep it a single param
+      // regardless of array size (avoids the 100-arg Postgres limit).
       await tx.execute(sql`
         SELECT id FROM time_entries
         WHERE workspace_id = ${workspaceId}
@@ -250,20 +251,30 @@ export const AtomicFinancialLockService = {
         FOR UPDATE
       `);
 
-      const claimed = await tx
-        .update(timeEntries)
-        .set({ invoiceId, billedAt: new Date(), updatedAt: new Date() })
-        .where(
-          and(
-            eq(timeEntries.workspaceId, workspaceId),
-            eq(timeEntries.clientId, clientId),
-            eq(timeEntries.status, 'approved'),
-            isNull(timeEntries.invoiceId),
-            isNull(timeEntries.billedAt),
-            inArray(timeEntries.id, uniqueIds),
-          ),
-        )
-        .returning({ id: timeEntries.id });
+      // PERMANENT FIX: Drizzle inArray() generates IN ($1,$2,...,$N) which can
+      // exceed Postgres's limit when uniqueIds is large. Chunk to 100 per batch
+      // and collect results across all chunks — the FOR UPDATE above already
+      // locked all rows so there is no race window between chunks.
+      const CHUNK_SIZE = 100;
+      const claimed: { id: string }[] = [];
+      for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+        const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
+        const batch = await tx
+          .update(timeEntries)
+          .set({ invoiceId, billedAt: new Date(), updatedAt: new Date() })
+          .where(
+            and(
+              eq(timeEntries.workspaceId, workspaceId),
+              eq(timeEntries.clientId, clientId),
+              eq(timeEntries.status, 'approved'),
+              isNull(timeEntries.invoiceId),
+              isNull(timeEntries.billedAt),
+              inArray(timeEntries.id, chunk),
+            ),
+          )
+          .returning({ id: timeEntries.id });
+        claimed.push(...batch);
+      }
 
       if (claimed.length !== uniqueIds.length) {
         throw new FinancialStageError(

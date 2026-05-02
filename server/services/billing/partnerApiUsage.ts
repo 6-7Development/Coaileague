@@ -84,11 +84,11 @@ export class PartnerApiUsageService {
       
       // Check for duplicate event (deduplication)
       const existingEvent = await db.select()
-        .from(partnerApiUsageEvents)
+        .from(apiUsageEvents)
         .where(
           and(
-            eq(partnerApiUsageEvents.workspaceId, input.workspaceId),
-            sql`${partnerApiUsageEvents.metadata}->>'idempotencyKey' = ${idempotencyKey}`
+            eq(apiUsageEvents.workspaceId, input.workspaceId),
+            sql`${apiUsageEvents.metadata}->>'idempotencyKey' = ${idempotencyKey}`
           )
         )
         .limit(1);
@@ -105,7 +105,7 @@ export class PartnerApiUsageService {
       const totalCost = unitPrice * usageAmount;
       
       // Create usage event (only if not duplicate)
-      const [event] = await db.insert(partnerApiUsageEvents).values({
+      const [event] = await db.insert(apiUsageEvents).values({
         workspaceId: input.workspaceId,
         userId: input.userId,
         partnerConnectionId: input.partnerConnectionId,
@@ -359,15 +359,15 @@ export class PartnerApiUsageService {
     endDate: Date
   ): Promise<PartnerApiMetrics> {
     const events = await db.select()
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       )
-      .orderBy(desc(partnerApiUsageEvents.createdAt));
+      .orderBy(desc(apiUsageEvents.createdAt));
     
     // Calculate metrics
     const metrics: PartnerApiMetrics = {
@@ -442,16 +442,16 @@ export class PartnerApiUsageService {
     endDate: Date
   ): Promise<PartnerApiUsageEvent[]> {
     return db.select()
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          sql`${partnerApiUsageEvents.partnerType} = ${partnerType}`,
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          sql`${apiUsageEvents.partnerType} = ${partnerType}`,
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       )
-      .orderBy(desc(partnerApiUsageEvents.createdAt));
+      .orderBy(desc(apiUsageEvents.createdAt));
   }
   
   /**
@@ -462,9 +462,9 @@ export class PartnerApiUsageService {
     limit: number = 100
   ): Promise<PartnerApiUsageEvent[]> {
     return db.select()
-      .from(partnerApiUsageEvents)
-      .where(eq(partnerApiUsageEvents.workspaceId, workspaceId))
-      .orderBy(desc(partnerApiUsageEvents.createdAt))
+      .from(apiUsageEvents)
+      .where(eq(apiUsageEvents.workspaceId, workspaceId))
+      .orderBy(desc(apiUsageEvents.createdAt))
       .limit(limit);
   }
   
@@ -477,16 +477,16 @@ export class PartnerApiUsageService {
     endDate: Date
   ): Promise<PartnerApiUsageEvent[]> {
     return db.select()
-      .from(partnerApiUsageEvents)
+      .from(apiUsageEvents)
       .where(
         and(
-          eq(partnerApiUsageEvents.workspaceId, workspaceId),
-          eq(partnerApiUsageEvents.success, false),
-          gte(partnerApiUsageEvents.createdAt, startDate),
-          lte(partnerApiUsageEvents.createdAt, endDate)
+          eq(apiUsageEvents.workspaceId, workspaceId),
+          eq(apiUsageEvents.success, false),
+          gte(apiUsageEvents.createdAt, startDate),
+          lte(apiUsageEvents.createdAt, endDate)
         )
       )
-      .orderBy(desc(partnerApiUsageEvents.createdAt));
+      .orderBy(desc(apiUsageEvents.createdAt));
   }
 }
 

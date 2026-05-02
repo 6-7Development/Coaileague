@@ -442,14 +442,14 @@ class TrinityMemoryOptimizer {
     try {
       const countResult = await db
         .select({ count: sql<number>`count(*)::int` })
-        .from(aiBrainJobQueue)
+        .from(durableJobQueue)
         .where(
           and(
-            lt(aiBrainJobQueue.createdAt, cutoff),
+            lt(durableJobQueue.createdAt, cutoff),
             or(
-              eq(aiBrainJobQueue.status, 'completed'),
-              eq(aiBrainJobQueue.status, 'failed'),
-              eq(aiBrainJobQueue.status, 'cancelled')
+              eq(durableJobQueue.status, 'completed'),
+              eq(durableJobQueue.status, 'failed'),
+              eq(durableJobQueue.status, 'cancelled')
             )
           )
         );
@@ -460,18 +460,18 @@ class TrinityMemoryOptimizer {
       }
 
       const result = await db
-        .delete(aiBrainJobQueue)
+        .delete(durableJobQueue)
         .where(
           and(
-            lt(aiBrainJobQueue.createdAt, cutoff),
+            lt(durableJobQueue.createdAt, cutoff),
             or(
-              eq(aiBrainJobQueue.status, 'completed'),
-              eq(aiBrainJobQueue.status, 'failed'),
-              eq(aiBrainJobQueue.status, 'cancelled')
+              eq(durableJobQueue.status, 'completed'),
+              eq(durableJobQueue.status, 'failed'),
+              eq(durableJobQueue.status, 'cancelled')
             )
           )
         )
-        .returning({ id: aiBrainJobQueue.id });
+        .returning({ id: durableJobQueue.id });
 
       log.info(`[MemoryOptimizer] Cleaned ${result.length} completed/failed AI brain jobs older than 14 days`);
       return this.makeResult('ai_brain_job_queue', staleCount, 0, result.length, 0, 0, Date.now() - startTime, true);

@@ -359,7 +359,7 @@ class ContractPipelineService {
    */
   async createTemplate(input: InsertClientContractTemplate): Promise<ClientContractTemplate> {
     const [template] = await db
-      .insert(clientContractTemplates)
+      .insert(contractDocuments)
       .values(input)
       .returning();
     
@@ -370,16 +370,16 @@ class ContractPipelineService {
    * Get all templates for a workspace
    */
   async getTemplates(workspaceId: string, category?: string): Promise<ClientContractTemplate[]> {
-    const conditions = [eq(clientContractTemplates.workspaceId, workspaceId)];
+    const conditions = [eq(contractDocuments.workspaceId, workspaceId)];
     if (category) {
-      conditions.push(eq(clientContractTemplates.category, category));
+      conditions.push(eq(contractDocuments.category, category));
     }
     
     return db
       .select()
-      .from(clientContractTemplates)
+      .from(contractDocuments)
       .where(and(...conditions))
-      .orderBy(desc(clientContractTemplates.createdAt));
+      .orderBy(desc(contractDocuments.createdAt));
   }
   
   /**
@@ -388,8 +388,8 @@ class ContractPipelineService {
   async getTemplate(templateId: string): Promise<ClientContractTemplate | null> {
     const [template] = await db
       .select()
-      .from(clientContractTemplates)
-      .where(eq(clientContractTemplates.id, templateId));
+      .from(contractDocuments)
+      .where(eq(contractDocuments.id, templateId));
     return template || null;
   }
   
@@ -398,9 +398,9 @@ class ContractPipelineService {
    */
   async updateTemplate(templateId: string, updates: Partial<InsertClientContractTemplate>): Promise<ClientContractTemplate | null> {
     const [template] = await db
-      .update(clientContractTemplates)
+      .update(contractDocuments)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(clientContractTemplates.id, templateId))
+      .where(eq(contractDocuments.id, templateId))
       .returning();
     return template || null;
   }
@@ -410,9 +410,9 @@ class ContractPipelineService {
    */
   async deleteTemplate(templateId: string): Promise<boolean> {
     const [template] = await db
-      .update(clientContractTemplates)
+      .update(contractDocuments)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(clientContractTemplates.id, templateId))
+      .where(eq(contractDocuments.id, templateId))
       .returning();
     return !!template;
   }
@@ -471,9 +471,9 @@ class ContractPipelineService {
     // Increment template usage if using a template
     if (input.templateId) {
       await db
-        .update(clientContractTemplates)
+        .update(contractDocuments)
         .set({ usageCount: sql`usage_count + 1` })
-        .where(eq(clientContractTemplates.id, input.templateId));
+        .where(eq(contractDocuments.id, input.templateId));
     }
     
     return { contract, overageCredits: usageResult.overageCredits };
