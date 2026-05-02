@@ -2898,7 +2898,6 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedShiftForAction(shift);
-                                  // @ts-expect-error — TS migration: fix in refactoring sprint
                                   setConfirmDeleteDialogOpen(true);
                                 }}
                               >
