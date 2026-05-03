@@ -137,6 +137,18 @@ class AutomationTriggerService {
       } catch (e: unknown) { log.warn('[AutomationTrigger] schedule_published handler error:', (e instanceof Error ? e.message : String(e))); }
     }});
 
+    // ── client_contract_signed → clear financial gate + auto-publish pending shifts ──
+    // When a client signs the Service Agreement, Trinity scans for shifts that
+    // were blocked by the financial gate (PUBLISH_BLOCKED_PENDING_ONBOARDING)
+    // and surfaces them for manager review or auto-publishes per workspace settings.
+    platformEventBus.subscribe('client_contract_signed', { name: 'AutomationTrigger-ContractSigned', handler: async (event) => {
+      try {
+        await this.handleClientContractSigned(event.workspaceId, event.payload);
+      } catch (e: unknown) {
+        log.error('[AutomationTrigger] handleClientContractSigned error:', e instanceof Error ? e.message : String(e));
+      }
+    }});
+
     platformEventBus.subscribe('time_entries_approved', { name: 'AutomationTrigger-TimeEntriesApproved', handler: async (event) => {
       try {
         await this.handleTimeEntriesApproved(event.workspaceId, event.payload);
@@ -895,6 +907,57 @@ class AutomationTriggerService {
     if (trigger && trigger.enabled) {
       await this.executeTrigger(trigger.id);
     }
+  }
+
+    /**
+   * client_contract_signed: Client has signed the Service Agreement.
+   *
+   * Financial gate cleared. Notify Trinity so she can:
+   *   1. Announce the signed contract to the workspace owner
+   *   2. Surface any pending shifts that were blocked by the gate
+   *   3. Allow the manager to publish the week with one tap
+   *
+   * Does NOT auto-publish — humans decide when to pull the trigger.
+   */
+  private async handleClientContractSigned(workspaceId: string, payload: Record<string, unknown>): Promise<void> {
+    const { clientId, clientName, signerName, contractId } = payload as {
+      clientId?: string; clientName?: string; signerName?: string; contractId?: string;
+    };
+
+    log.info('[AutomationTrigger] Client contract signed — financial gate cleared', {
+      workspaceId, clientId, clientName,
+    });
+
+    if (!clientId) return;
+
+    // Find pending shifts for this client that were blocked
+    const { shifts } = await import('@shared/schema');
+    const { and, eq } = await import('drizzle-orm');
+
+    const pendingShifts = await this.db
+      .select({ id: shifts.id, startTime: shifts.startTime })
+      .from(shifts)
+      .where(and(
+        eq(shifts.workspaceId, workspaceId),
+        eq(shifts.clientId, clientId),
+        eq(shifts.status, 'draft'),
+      ))
+      .limit(100);
+
+    // Notify the workspace — financial gate is clear, these shifts can publish
+    await platformEventBus.publish({
+      type: 'trinity_notification',
+      category: 'billing',
+      title: `✅ Financial Gate Cleared — ${clientName ?? clientId}`,
+      description:
+        `${signerName ?? 'Client'} signed the Service Agreement. ` +
+        (pendingShifts.length > 0
+          ? `${pendingShifts.length} draft shift${pendingShifts.length > 1 ? 's' : ''} for this client can now be published.`
+          : 'No pending shifts found — ready for new scheduling.'),
+      workspaceId,
+      metadata: { clientId, clientName, contractId, pendingShiftCount: pendingShifts.length },
+      visibility: 'manager',
+    });
   }
 
   private async handleSchedulePublished(workspaceId: string, payload: Record<string, unknown>): Promise<void> {

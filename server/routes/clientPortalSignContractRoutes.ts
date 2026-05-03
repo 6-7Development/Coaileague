@@ -220,6 +220,7 @@ router.post('/:clientId/sign-contract', requireAuth, ensureWorkspaceAccess, asyn
     await db.update(clients)
       .set({
         clientOnboardingStatus: 'active',
+        clientLifecycleStatus: 'active',   // ← financial gate cleared (Task 4/5 wave-3)
         isActive: true,
         updatedAt: new Date(),
       })
