@@ -39,11 +39,7 @@ export {
   type InboundEmailLog,
   type InsertInboundEmailLog,
 } from './domains/comms';
-export {
-  type HiringPipeline,
-  insertHiringPipelineSchema,
-  type,
-} from './domains/workforce';
+
 export {
   performanceNotes,
   insertPerformanceNoteSchema,

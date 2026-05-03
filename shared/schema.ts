@@ -634,13 +634,11 @@ export type {
 export {
   insertWorkspaceSchema,
   insertEmployeeSchema,
-  insertWorkspaceThemeSchema,
   insertWorkspaceInviteSchema,
 } from './schema/core';
 export type {
   Workspace, InsertWorkspace,
   Employee, InsertEmployee,
-  WorkspaceTheme, InsertWorkspaceTheme,
   WorkspaceInvite, InsertWorkspaceInvite,
 } from './schema/core';
 
