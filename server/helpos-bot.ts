@@ -1,3 +1,4 @@
+import { recordTokenUsageBuffered } from './services/billing/tokenUsageService';
 import { db } from './db';
 import { supportTickets, helposFaqs, users } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -223,6 +224,16 @@ async function searchFaqsForBot(
           model: 'text-embedding-3-small',
           queryLength: query.length,
         }
+      });
+      // Wave 8.2: Also write to token_usage_log via buffer so Stripe metering captures this
+      recordTokenUsageBuffered({
+        workspaceId,
+        userId: userId ?? null,
+        modelUsed: 'text-embedding-3-small',
+        tokensInput: tokensUsed,
+        tokensOutput: 0,
+        actionType: 'faq_semantic_search',
+        featureName: 'helpdesk_ai_embedding',
       });
       console.log(`[HelpAI] FAQ Search - Embedding generated (${tokensUsed} tokens) - Billed to workspace: ${workspaceId}`);
     }

@@ -1,6 +1,7 @@
 // Help Bot AI Service
 // Using Replit AI Integrations (OpenAI-compatible API)
 // CRITICAL: All token usage is tracked and billed to customer workspaces
+import { recordTokenUsageBuffered } from '../services/billing/tokenUsageService';
 import OpenAI from "openai";
 import { usageMeteringService } from '../services/billing/usageMetering';
 
@@ -60,6 +61,16 @@ Be friendly, professional, and helpful. Do NOT use any emojis.`;
             model: 'gpt-5',
             customerName: context.customerName,
           }
+        });
+        // Wave 8.2: Also write to token_usage_log via buffer so Stripe metering captures this
+        recordTokenUsageBuffered({
+          workspaceId: context.workspaceId,
+          userId: context.userId ?? null,
+          modelUsed: 'gpt-5',
+          tokensInput: completion.usage?.prompt_tokens || 0,
+          tokensOutput: completion.usage?.completion_tokens || 0,
+          actionType: 'help_bot_greeting',
+          featureName: 'helpdesk_ai_greeting',
         });
         console.log(`💰 Help Bot - Greeting generated (${tokensUsed} tokens) - Billed to workspace: ${context.workspaceId}`);
       }

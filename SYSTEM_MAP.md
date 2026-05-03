@@ -12,7 +12,60 @@
 | 1 | Infrastructure, Auth, RBAC, Orgs, Notifications | ✅ | Auth pipeline, WS, rate limiting, dedup |
 | 2 | Onboarding, Workforce, Compliance, Training, Documents | ✅ | HR forms, DPS license compliance, PDF generation |
 | 3 | Scheduling, Time, Ops, FieldOps, Auditor | ✅ | Anti-spoofing, storage typing, panic chain, contracts |
-| 4 | Billing, Payroll, Finance, Clients, Sales | 🔲 NEXT | Revenue domain audit |
+| 4 | Billing, Payroll, Finance, Clients, Sales | ✅ | Revenue domain, ACH dispatch, FinancialCalculator |
+| 5 | Comms, ChatDock, Gemini Live, Redis buffer, Omni-Inbox | ✅ | ChatDock, seqNum, Resend inbound, token metering |
+| 6 | Trinity Agency, ATS, Episodic Memory | ✅ | AI interview rubric, vision verification, memory loop |
+| 6.5 | Schema Consolidation | ✅ | 30 dead tables dropped, 4 composite indexes, pgView |
+| 6.7 | Zombie Code Purge | ✅ | 23 dead services deleted, 6.5MB assets purged |
+| 7 | Frontend Bridge | ✅ | Action Blocks, seqNum replay, ChatDockErrorBoundary |
+| 8 Part 1 | Zero-Defect Sweep | ✅ | Stuck buttons, mutex locks, 11 error boundaries |
+| 8 Part 2 | Re-Auth Safety Net | ✅ | ReAuthModal — managers never lose in-progress work |
+| 8.1 | SPS Production Migration | ✅ | Diagnostic route, PLAID_WEBHOOK_SECRET warnOnly |
+| 8.2 | Financial Integrity & Billing Audit | ✅ | Token pipe unified, Stripe IDs to env vars |
+| 9 | Native Financial Polish | 🔲 | 941/940 PDF rendering, YTD wage accumulator |
+| 10 | Client Value & Analytics Engine | 🔲 | Trinity financial simulator (Action Blocks) |
+| 11 | DPS Auditor Portal & Compliance Sandbox | 🔲 | Wave 11 stubs preserved |
+
+---
+
+
+
+---
+
+## NATIVE FINANCIAL STACK (built in-house — no third-party payroll API)
+
+**Tax Engine:** `server/services/tax/taxRulesRegistry.ts` (v2025.1)
+- IRS Pub 15-T federal brackets for all 4 filing statuses (2025 rates)
+- All 50 states + DC income tax (flat and progressive)
+- FICA: SS 6.2% (wage base $176,100), Medicare 1.45% + 0.9% additional
+- FUTA 6.0% gross / 0.6% net, SUTA new-employer rates all 50 states
+
+**Calculation Engine:** `server/services/payrollAutomation.ts` (2,378 lines)
+- Gross → net: pre-tax deductions → FICA → federal/state brackets → post-tax → garnishments
+- YTD SS wage base tracking (stops at $176,100)
+- 1099 contractors: zero withholding, straight gross pay
+- Decimal-safe via FinancialCalculator (decimal.js — no float drift)
+- Full calculation audit trail stored in payroll_entries.calculationInputs
+
+**Form Generation:** `server/services/taxFormGeneratorService.ts` (1,068 lines)
+- W-2: Real PDFKit layout with IRS box coordinates (Box a–12)
+- 1099-NEC: Full form with payer EIN, recipient TIN, Box 1
+- Form 941 (quarterly): All IRS line items calculated (PDF layout pending Wave 9)
+- Form 940 (annual FUTA): Data complete (PDF layout pending Wave 9)
+- Saves to tenant document vault + writes employee_tax_forms record
+
+**ACH Dispatch:** netPay (not grossPay) flows to `achTransferService.initiatePayrollAchTransfer()`
+- Plaid ACH: tenant bank → employee bank (platform never touched)
+- Stripe Connect: alternative payout method when Plaid unavailable
+
+**Middleware Fees (passive income):**
+- Payroll: $3.50/employee/run (tier discounts: Pro -10%, Enterprise -20%)
+- Invoice: 2.9% + $0.25 flat per payment processed
+- Stripe Connect payouts: 0.75% (our cost 0.25%)
+- W-2: $5.00/form | 1099-NEC: $3.00/form | 941/940: included
+
+**NOT built (intentional):**
+- IRS e-filing: requires IRS authorization — tenants file manually with the generated PDF
 
 ---
 

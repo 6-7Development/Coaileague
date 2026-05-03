@@ -1,5 +1,6 @@
 // AI Bot service for HelpAI - greets and assists customers until human help arrives
 // CRITICAL: Client-pays-all model - All AI usage is tracked and billed via UsageMeteringService
+import { recordTokenUsageBuffered } from './billing/tokenUsageService';
 import OpenAI from "openai";
 import { storage } from '../storage';
 import { usageMeteringService } from '../services/billing/usageMetering';
@@ -181,6 +182,16 @@ If unsure, direct to human support team.`
         completionTokens,
         isSubscriber,
       }
+    });
+    // Wave 8.2: Also write to token_usage_log via buffer so Stripe metering captures this
+    recordTokenUsageBuffered({
+      workspaceId,
+      userId: userId ?? null,
+      modelUsed: AI_MODEL,
+      tokensInput: promptTokens,
+      tokensOutput: completionTokens,
+      actionType: 'helpos_ai_question',
+      featureName: 'helpdesk_ai_question',
     });
     console.log(`💰 HelpAI - Question answered (${totalTokens} tokens) - Billed to workspace: ${workspaceId}`);
     

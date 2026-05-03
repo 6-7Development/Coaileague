@@ -1474,8 +1474,9 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     price: 9.99,
     bonusCredits: 0,
     popular: false,
-    stripeProductId: "prod_credits_50",
-    stripePriceId: "price_credits_50",
+    // Wave 8.2: Use env vars so test/live keys stay separate
+    stripeProductId: process.env.STRIPE_PRODUCT_ID_STARTER || "prod_credits_50",
+    stripePriceId: process.env.STRIPE_CREDITS_STARTER_PRICE_ID || "price_credits_50",
   },
   {
     id: "credits_200",
@@ -1484,8 +1485,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     price: 29.99,
     bonusCredits: 20,
     popular: true,
-    stripeProductId: "prod_credits_200",
-    stripePriceId: "price_credits_200",
+    stripeProductId: process.env.STRIPE_PRODUCT_ID_PROFESSIONAL || "prod_credits_200",
+    stripePriceId: process.env.STRIPE_CREDITS_STANDARD_PRICE_ID || "price_credits_200",
   },
   {
     id: "credits_500",
@@ -1494,8 +1495,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     price: 59.99,
     bonusCredits: 75,
     popular: false,
-    stripeProductId: "prod_credits_500",
-    stripePriceId: "price_credits_500",
+    stripeProductId: process.env.STRIPE_PRODUCT_ID_BUSINESS || "prod_credits_500",
+    stripePriceId: process.env.STRIPE_CREDITS_PROFESSIONAL_PRICE_ID || "price_credits_500",
   },
   {
     id: "credits_1000",
@@ -1504,8 +1505,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     price: 99.99,
     bonusCredits: 200,
     popular: false,
-    stripeProductId: "prod_credits_1000",
-    stripePriceId: "price_credits_1000",
+    stripeProductId: process.env.STRIPE_PRODUCT_ID_ENTERPRISE || "prod_credits_1000",
+    stripePriceId: process.env.STRIPE_CREDITS_ENTERPRISE_PRICE_ID || "price_credits_1000",
   },
 ];
 
