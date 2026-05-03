@@ -32,6 +32,7 @@ import {
   checkMfaStatus,
 } from "../services/auth/mfa";
 import type { AuthenticatedRequest } from "../rbac";
+import { requireAuth } from "../auth";
 import { authLimiter, passwordResetLimiter, mutationLimiter } from "../middleware/rateLimiter";
 import { createLogger } from '../lib/logger';
 const log = createLogger('AuthRoutes');
