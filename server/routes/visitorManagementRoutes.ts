@@ -350,116 +350,76 @@ visitorManagementRouter.get('/overstay', requireAuth, async (req: AuthenticatedR
 });
 
 // =============================================================================
-// PRE-REGISTRATION ENDPOINTS
+// PRE-REGISTRATION ENDPOINTS — DISABLED (Wave 6.5)
 // =============================================================================
+// visitor_pre_registrations table removed in schema consolidation.
+// Will be rebuilt in Wave 11 Compliance Engine.
+// Returning 410 Gone for all three endpoints to prevent 500 crashes.
 
-// GET /api/visitor-management/pre-registrations — list pre-registrations
-visitorManagementRouter.get('/pre-registrations', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = wid(req);
-    if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
+const PRE_REG_DISABLED_RESPONSE = {
+  error: 'FEATURE_DISABLED',
+  message: 'Pre-registration feature is currently disabled.',
+  code: 'PRE_REGISTRATION_DISABLED',
+};
 
-    const status = getQueryString(req.query.status);
-    const clientId = getQueryString(req.query.clientId);
-    const siteId = getQueryString(req.query.siteId);
-    const limit = Number.parseInt(getQueryString(req.query.limit) || '50', 10);
-    const offset = Number.parseInt(getQueryString(req.query.offset) || '0', 10);
-
-    const conditions = ['workspace_id = $1'];
-    const params: Record<string, unknown>[] = [workspaceId];
-    let p = 2;
-
-    if (status) { conditions.push(`status = $${p++}`); params.push(status); }
-    if (clientId) { conditions.push(`client_id = $${p++}`); params.push(clientId); }
-    if (siteId) { conditions.push(`site_id = $${p++}`); params.push(siteId); }
-
-    const where = conditions.join(' AND ');
-    const { rows } = await pool.query(
-      `SELECT * FROM visitor_pre_registrations WHERE ${where} ORDER BY expected_arrival ASC LIMIT $${p} OFFSET $${p + 1}`,
-      [...params, limit, offset]
-    );
-    const { rows: countRows } = await pool.query(`SELECT COUNT(*) FROM visitor_pre_registrations WHERE ${where}`, params);
-
-    res.json({ preRegistrations: rows, total: parseInt(countRows[0].count) });
-  } catch (err: unknown) {
-    res.status(500).json({ error: sanitizeError(err) });
-  }
+visitorManagementRouter.get('/pre-registrations', requireAuth, (_req, res) => {
+  return res.status(410).json(PRE_REG_DISABLED_RESPONSE);
 });
 
-// POST /api/visitor-management/pre-registrations — create pre-registration
-visitorManagementRouter.post('/pre-registrations', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = wid(req);
-    if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
-
-    const {
-      siteName, siteId, clientId,
-      expectedVisitorName, expectedVisitorCompany,
-      visitorType = 'guest',
-      expectedArrival, expectedDeparture,
-      hostName, hostContact,
-      reason, notes,
-    } = req.body;
-
-    if (!expectedVisitorName) return res.status(400).json({ error: 'expectedVisitorName required' });
-    if (!siteName) return res.status(400).json({ error: 'siteName required' });
-    if (!expectedArrival) return res.status(400).json({ error: 'expectedArrival required' });
-    if (visitorType && !VISITOR_TYPES.includes(visitorType)) {
-      return res.status(400).json({ error: `Invalid visitorType. Valid: ${VISITOR_TYPES.join(', ')}` });
-    }
-
-    const submittedBy = req.user?.id || 'unknown';
-    const submittedByName = req.user?.name || null;
-
-    const { rows } = await pool.query(
-      `INSERT INTO visitor_pre_registrations
-         (workspace_id, client_id, site_id, site_name, expected_visitor_name,
-          expected_visitor_company, visitor_type, expected_arrival, expected_departure,
-          host_name, host_contact, reason, notes, submitted_by, submitted_by_name, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending')
-       RETURNING *`,
-      [
-        workspaceId, clientId || null, siteId || null, siteName,
-        expectedVisitorName, expectedVisitorCompany || null,
-        visitorType, expectedArrival, expectedDeparture || null,
-        hostName || null, hostContact || null,
-        reason || null, notes || null,
-        submittedBy, submittedByName,
-      ]
-    );
-
-    res.status(201).json(rows[0]);
-  } catch (err: unknown) {
-    res.status(400).json({ error: sanitizeError(err) });
-  }
+visitorManagementRouter.post('/pre-registrations', requireAuth, (_req, res) => {
+  return res.status(410).json(PRE_REG_DISABLED_RESPONSE);
 });
 
-// PATCH /api/visitor-management/pre-registrations/:id — update status
-visitorManagementRouter.patch('/pre-registrations/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const workspaceId = wid(req);
-    if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
-
-    const { status } = req.body;
-    if (!status || !PRE_REG_STATUSES.includes(status)) {
-      return res.status(400).json({ error: `Invalid status. Valid: ${PRE_REG_STATUSES.join(', ')}` });
-    }
-
-    const { rows } = await pool.query(
-      `UPDATE visitor_pre_registrations SET status=$1, updated_at=NOW()
-       WHERE id=$2 AND workspace_id=$3 RETURNING *`,
-      [status, req.params.id, workspaceId]
-    );
-    if (!rows[0]) return res.status(404).json({ error: 'Pre-registration not found' });
-    res.json(rows[0]);
-  } catch (err: unknown) {
-    res.status(500).json({ error: sanitizeError(err) });
-  }
+visitorManagementRouter.patch('/pre-registrations/:id', requireAuth, (_req, res) => {
+  return res.status(410).json(PRE_REG_DISABLED_RESPONSE);
 });
 
-// =============================================================================
-// TRINITY ACTIONS: visitor.active & visitor.overstay
-// =============================================================================
+export async function ensureVisitorTables(): Promise<void> {
+  try {
+    await pool.query(`
+      ALTER TABLE visitor_logs
+        ADD COLUMN IF NOT EXISTS visitor_type VARCHAR DEFAULT 'guest',
+        ADD COLUMN IF NOT EXISTS host_contact VARCHAR,
+        ADD COLUMN IF NOT EXISTS pre_registration_id VARCHAR,
+        ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS is_fast_track BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS visitor_pre_registrations (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id VARCHAR NOT NULL,
+        client_id VARCHAR,
+        site_id VARCHAR,
+        site_name VARCHAR NOT NULL,
+        expected_visitor_name VARCHAR NOT NULL,
+        expected_visitor_company VARCHAR,
+        visitor_type VARCHAR DEFAULT 'guest',
+        expected_arrival TIMESTAMP NOT NULL,
+        expected_departure TIMESTAMP,
+        host_name VARCHAR,
+        host_contact VARCHAR,
+        reason TEXT,
+        status VARCHAR NOT NULL DEFAULT 'pending',
+        notes TEXT,
+        submitted_by VARCHAR,
+        submitted_by_name VARCHAR,
+        checked_in_log_id VARCHAR,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_workspace_idx ON visitor_pre_registrations(workspace_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_status_idx ON visitor_pre_registrations(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_arrival_idx ON visitor_pre_registrations(expected_arrival)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_logs_active_idx ON visitor_logs(workspace_id, checked_out_at)`);
+  } catch (err: unknown) {
+    log.error('[VisitorMgmt] Table ensure failed (non-blocking):', (err instanceof Error ? err.message : String(err)));
+  }
+}
+
+
 export function registerVisitorActions(): void {
   import('../services/helpai/platformActionHub').then(({ platformActionHub }) => {
 
@@ -612,6 +572,7 @@ async function runOverstayScanner(workspaceIds?: string[]): Promise<void> {
 }
 
 let _overstayMonitorStarted = false;
+
 export function startOverstayMonitor(): void {
   if (_overstayMonitorStarted) {
     log.info('[VisitorMgmt] Overstay monitor already running — skipping duplicate start');
@@ -626,47 +587,3 @@ export function startOverstayMonitor(): void {
 }
 
 // ─── Ensure tables exist at startup (idempotent) ──────────────────────────────
-export async function ensureVisitorTables(): Promise<void> {
-  try {
-    await pool.query(`
-      ALTER TABLE visitor_logs
-        ADD COLUMN IF NOT EXISTS visitor_type VARCHAR DEFAULT 'guest',
-        ADD COLUMN IF NOT EXISTS host_contact VARCHAR,
-        ADD COLUMN IF NOT EXISTS pre_registration_id VARCHAR,
-        ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false,
-        ADD COLUMN IF NOT EXISTS is_fast_track BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS visitor_pre_registrations (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        workspace_id VARCHAR NOT NULL,
-        client_id VARCHAR,
-        site_id VARCHAR,
-        site_name VARCHAR NOT NULL,
-        expected_visitor_name VARCHAR NOT NULL,
-        expected_visitor_company VARCHAR,
-        visitor_type VARCHAR DEFAULT 'guest',
-        expected_arrival TIMESTAMP NOT NULL,
-        expected_departure TIMESTAMP,
-        host_name VARCHAR,
-        host_contact VARCHAR,
-        reason TEXT,
-        status VARCHAR NOT NULL DEFAULT 'pending',
-        notes TEXT,
-        submitted_by VARCHAR,
-        submitted_by_name VARCHAR,
-        checked_in_log_id VARCHAR,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-
-    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_workspace_idx ON visitor_pre_registrations(workspace_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_status_idx ON visitor_pre_registrations(status)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_pre_reg_arrival_idx ON visitor_pre_registrations(expected_arrival)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS visitor_logs_active_idx ON visitor_logs(workspace_id, checked_out_at)`);
-  } catch (err: unknown) {
-    log.error('[VisitorMgmt] Table ensure failed (non-blocking):', (err instanceof Error ? err.message : String(err)));
-  }
-}

@@ -730,8 +730,11 @@ export default function ClientPortal() {
     hostName: '', hostContact: '', reason: '',
   });
   const setPreReg = (k: string, v: string) => setPreRegForm(p => ({ ...p, [k]: v }));
+  // Wave 6.7: pre-registration disabled — visitor_pre_registrations table removed
+  // Returns empty data without calling the 410 endpoint
   const { data: preRegData, isLoading: preRegLoading } = useQuery<any>({
     queryKey: ['/api/visitor-management/pre-registrations'],
+    enabled: false,  // disabled until Wave 11 Compliance Engine rebuild
     enabled: activeTab === 'visitor-log',
   });
   const preRegistrations: unknown[] = preRegData?.preRegistrations || [];
@@ -1788,29 +1791,19 @@ export default function ClientPortal() {
             {/* Phase 35I: Pre-Registration Card */}
             <Card className="mt-4">
               <CardHeader>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarPlus className="h-5 w-5" />
-                      Pre-Register a Visitor
-                    </CardTitle>
-                    <CardDescription>Schedule expected visitors for fast-track check-in at your site</CardDescription>
-                  </div>
-                  <Button size="sm" onClick={() => setShowPreRegForm(true)} data-testid="button-open-prereg-form">
-                    <CalendarPlus className="h-4 w-4 mr-1.5" /> Pre-Register
-                  </Button>
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarPlus className="h-5 w-5" />
+                  Pre-Register a Visitor
+                </CardTitle>
+                <CardDescription>Coming soon — client visitor pre-registration</CardDescription>
               </CardHeader>
               <CardContent>
-                {preRegLoading ? (
-                  <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-12 rounded-md bg-muted animate-pulse" />)}</div>
-                ) : preRegistrations.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground" data-testid="empty-client-pre-registrations">
-                    <CalendarPlus className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm font-medium">No upcoming pre-registrations</p>
-                    <p className="text-xs mt-1">Pre-register expected visitors to speed up on-site check-in</p>
-                  </div>
-                ) : (
+                <div className="text-center py-8 text-muted-foreground" data-testid="empty-client-pre-registrations">
+                  <CalendarPlus className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-medium">Pre-Registration Coming Soon</p>
+                  <p className="text-xs mt-1">This feature will be available in an upcoming release.</p>
+                </div>
+                {false ? (
                   <div className="space-y-2" data-testid="client-pre-registrations-list">
                     {preRegistrations.map((p: unknown) => (
                       <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-md border flex-wrap" data-testid={`card-client-prereg-${p.id}`}>

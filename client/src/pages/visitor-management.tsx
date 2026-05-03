@@ -755,8 +755,9 @@ export default function VisitorManagement() {
             <TabsTrigger value="checkin" data-testid="tab-checkin">
               <UserPlus className="h-4 w-4 mr-2" /> Check In
             </TabsTrigger>
-            <TabsTrigger value="pre-registrations" data-testid="tab-pre-registrations">
+            <TabsTrigger value="pre-registrations" data-testid="tab-pre-registrations" disabled className="opacity-50 cursor-not-allowed">
               <ClipboardList className="h-4 w-4 mr-2" /> Pre-Registrations
+              <span className="ml-1 text-[9px] bg-muted text-muted-foreground px-1 rounded">Soon</span>
             </TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-visitor-history">
               <History className="h-4 w-4 mr-2" /> Log History
@@ -793,14 +794,12 @@ export default function VisitorManagement() {
 
           <TabsContent value="pre-registrations" className="mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-purple-500" /> Pre-Registrations
-                </CardTitle>
-                <CardDescription>Expected visitors pre-registered by clients or staff</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PreRegistrationList />
+              <CardContent className="py-12 text-center">
+                <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="font-medium text-foreground/70">Pre-Registration Coming Soon</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+                  Client-driven visitor pre-registration will be available in an upcoming release.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
