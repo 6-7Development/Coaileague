@@ -1436,6 +1436,44 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         });
       }
       
+      // ── D-1: Application-layer cascade — nullify shiftId on linked ops records ──
+      // Wave 3 enterprise hardening: DAR, incident, and patrol records are NOT
+      // deleted when a shift is deleted. They are preserved for audit purposes
+      // with shiftId set to NULL (soft-detach). An auditor can still see them.
+      const shiftIdToDelete = req.params.id;
+      await Promise.allSettled([
+        // Nullify on Daily Activity Reports
+        db.execute(
+          `UPDATE daily_activity_reports SET shift_id = NULL, updated_at = NOW()
+           WHERE shift_id = $1 AND workspace_id = $2`,
+          [shiftIdToDelete, workspaceId]
+        ),
+        // Nullify on Incident Reports
+        db.execute(
+          `UPDATE incident_reports SET related_shift_id = NULL, updated_at = NOW()
+           WHERE related_shift_id = $1 AND workspace_id = $2`,
+          [shiftIdToDelete, workspaceId]
+        ),
+        // Nullify on Guard Tour Logs
+        db.execute(
+          `UPDATE guard_tour_logs SET shift_id = NULL, updated_at = NOW()
+           WHERE shift_id = $1 AND workspace_id = $2`,
+          [shiftIdToDelete, workspaceId]
+        ),
+        // Nullify on Patrol Checkpoints
+        db.execute(
+          `UPDATE officer_checkpoints SET shift_id = NULL, updated_at = NOW()
+           WHERE shift_id = $1 AND workspace_id = $2`,
+          [shiftIdToDelete, workspaceId]
+        ),
+      ]).then(results => {
+        results.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            log.warn(`[ShiftDelete] Cascade nullify step ${i} failed (non-fatal):`, r.reason);
+          }
+        });
+      });
+
       const deleted = await storage.deleteShift(req.params.id, workspaceId);
       if (!deleted) {
         return res.status(404).json({ message: "Shift not found" });

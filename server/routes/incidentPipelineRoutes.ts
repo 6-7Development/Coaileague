@@ -366,3 +366,56 @@ const activitySchema = z.object({
   performedByRole: z.string().optional().default("user"),
 });
 
+
+// ── D-2: Workspace-namespaced incident photo upload ──────────────────────────
+// Wave 3 enterprise hardening: All incident/DAR photos MUST go through
+// uploadFileToObjectStorage() with a workspaceId-namespaced path.
+// External URLs or un-namespaced paths are rejected by the compiler.
+//
+// POST /api/incident-pipeline/:id/photos
+// Accepts: multipart/form-data, field: "photo" (image/jpeg, image/png, image/webp)
+// Returns: { photoUrl: string } — the GCS-hosted, workspace-namespaced URL
+incidentPipelineRouter.post('/:id/photos', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const incidentId = req.params.id;
+    const multer = await import('multer');
+    const upload = multer.default({ storage: multer.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+    upload.single('photo')(req as any, res as any, async (err: unknown) => {
+      if (err) return res.status(400).json({ error: 'Photo upload failed', detail: String(err) });
+      const file = (req as any).file;
+      if (!file) return res.status(400).json({ error: 'No photo provided. Send a multipart/form-data request with field: photo' });
+
+      const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+      if (!ALLOWED_TYPES.has(file.mimetype)) {
+        return res.status(400).json({ error: 'Only JPEG, PNG, and WebP photos are allowed' });
+      }
+
+      const { uploadFileToObjectStorage, buildStoragePath, StorageDirectory } = await import('../objectStorage');
+      const { randomUUID } = await import('crypto');
+      const path = await import('path');
+
+      const ext = file.mimetype === 'image/jpeg' ? 'jpg' : file.mimetype.split('/')[1];
+      const filename = `${randomUUID()}.${ext}`;
+      const objectPath = buildStoragePath(workspaceId, StorageDirectory.INCIDENTS, incidentId, filename);
+
+      await uploadFileToObjectStorage({
+        objectPath,
+        buffer: file.buffer,
+        workspaceId,
+        storageCategory: 'media',
+        metadata: { contentType: file.mimetype, metadata: { workspaceId, incidentId, uploadedBy: req.user?.id ?? 'unknown' } },
+      });
+
+      const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+      const objectName = objectPath.replace(/^objects\//, '');
+      const photoUrl = `https://storage.googleapis.com/${bucketId}/${objectName}`;
+
+      res.json({ success: true, photoUrl, objectPath });
+    });
+  } catch (e: unknown) {
+    log.error('[IncidentPipeline] Photo upload error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

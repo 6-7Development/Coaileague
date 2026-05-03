@@ -299,6 +299,58 @@ async function signObjectURL({
  * Omitting workspaceId/storageCategory skips quota enforcement (system-generated files,
  * DAR PDFs, pay stubs, etc. that are already gated elsewhere).
  */
+/**
+ * StorageDirectory — Strict typed enum for all platform storage paths.
+ *
+ * ── ARCHITECTURAL RULE (Wave 3 enterprise hardening) ──────────────────────
+ * Every upload MUST declare its directory. The TypeScript compiler enforces
+ * that no developer can call uploadFileToObjectStorage() with an ad-hoc
+ * path string. Every directory maps to a canonical path structure:
+ *
+ *   workspaces/{workspaceId}/{directory}/{entityId}/{filename}
+ *
+ * Adding a new storage category = adding it here first. Audit this enum
+ * in every code review — it is the authoritative manifest of what we store.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+export const StorageDirectory = {
+  INCIDENTS:        'incidents',          // Incident report photos + evidence
+  CONTRACTS:        'contracts',          // Signed client service agreements
+  CHAT:             'chat',               // Chat attachments (routed via chat-uploads.ts)
+  DPS_LICENSES:     'dps-licenses',       // Officer DPS license scans
+  TIME_PHOTOS:      'time-photos',        // Clock-in/clock-out selfies
+  DAR_ATTACHMENTS:  'dar-attachments',    // Daily Activity Report media
+  PAYROLL:          'payroll',            // Pay stubs, direct deposit confirmations
+  TAX_FORMS:        'tax-forms',          // W-2, 1099, 941 documents
+  COMPLIANCE_DOCS:  'compliance-docs',    // Compliance certificates, training certs
+  AUDIT_EXPORTS:    'audit-exports',      // Exported audit trail PDFs
+  CLIENT_DOCS:      'client-docs',        // Client-facing documents
+} as const;
+
+export type StorageDirectory = typeof StorageDirectory[keyof typeof StorageDirectory];
+
+/**
+ * Build a canonical, workspace-namespaced storage path.
+ * Forces every upload to be scoped to a tenant.
+ *
+ * Output: workspaces/{workspaceId}/{directory}/{entityId}/{filename}
+ */
+export function buildStoragePath(
+  workspaceId: string,
+  directory: StorageDirectory,
+  entityId: string,
+  filename: string,
+): string {
+  if (!workspaceId?.trim()) throw new Error('buildStoragePath: workspaceId is required');
+  if (!entityId?.trim())    throw new Error('buildStoragePath: entityId is required');
+  if (!filename?.trim())    throw new Error('buildStoragePath: filename is required');
+
+  // Sanitize filename — strip path traversal attempts
+  const safe = filename.replace(/[^a-zA-Z0-9._\-]/g, '_').replace(/\.{2,}/g, '_');
+
+  return `objects/workspaces/${workspaceId}/${directory}/${entityId}/${safe}`;
+}
+
 export type StorageCategory = 'email' | 'documents' | 'media' | 'audit_reserve';
 
 export const STORAGE_CATEGORY_MAP: Record<string, StorageCategory> = {
