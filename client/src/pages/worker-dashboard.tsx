@@ -738,7 +738,7 @@ function WorkerDashboardInner() {
   const queryClient = useQueryClient();
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [clockingIn, setClockingIn] = useState(false);
+  // clockingIn state removed — using clockMutation.isPending (Wave 8 fix)
   const [showLateConfirm, setShowLateConfirm] = useState(false);
 
   // Monitor online status
@@ -814,7 +814,6 @@ function WorkerDashboardInner() {
   // Clock mutation
   const clockMutation = useMutation({
     mutationFn: async (action: "in" | "out") => {
-      setClockingIn(true);
       let location = null;
       if (navigator.geolocation) {
         try {
@@ -862,7 +861,7 @@ function WorkerDashboardInner() {
     onError: (error) => {
       toast({ title: "Error", description: error instanceof Error ? error.message : String(error) || "Failed to clock in/out", variant: "destructive" });
     },
-    onSettled: () => setClockingIn(false),
+    // onSettled removed — clockMutation.isPending handles loading state automatically
   });
 
   // Phase 26E — Shift accept/deny.
@@ -1230,7 +1229,7 @@ function WorkerDashboardInner() {
             <QuickActionStrip
               isClockedIn={!!clockStatus?.isClockedIn}
               onClockAction={handleClockAction}
-              clockingIn={clockingIn}
+              clockingIn={clockMutation.isPending}
               navigate={setLocation}
               onPhotoCapture={handleQuickPhotoClick}
               eligibility={clockStatus?.shiftEligibility}
@@ -1476,11 +1475,11 @@ function WorkerDashboardInner() {
             </Button>
             <Button
               onClick={() => { setShowLateConfirm(false); clockMutation.mutate("in"); }}
-              disabled={clockingIn}
+              disabled={clockMutation.isPending}
               data-testid="button-late-confirm-dash"
               className="bg-warning text-white border-0"
             >
-              {clockingIn ? 'Clocking In...' : 'Clock In (Pending Approval)'}
+              {clockMutation.isPending ? 'Clocking In...' : 'Clock In (Pending Approval)'}
             </Button>
           </DialogFooter>
         </DialogContent>

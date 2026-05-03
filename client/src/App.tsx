@@ -790,15 +790,15 @@ function AppContent() {
             <Switch>
               <Route path="/" component={Homepage} />
               <Route path="/login" component={CustomLogin} />
-              <Route path="/auditor/login" component={AuditorLogin} />
+              <Route path="/auditor/login"><ErrorBoundary><AuditorLogin /></ErrorBoundary></Route>
               {/* Phase 18C/D — Trinity Compliance Concierge auditor portal */}
-              <Route path="/co-auditor/login" component={CoAuditorLogin} />
-              <Route path="/co-auditor/claim" component={CoAuditorClaim} />
-              <Route path="/co-auditor/dashboard" component={CoAuditorDashboard} />
+              <Route path="/co-auditor/login"><ErrorBoundary><CoAuditorLogin /></ErrorBoundary></Route>
+              <Route path="/co-auditor/claim"><ErrorBoundary><CoAuditorClaim /></ErrorBoundary></Route>
+              <Route path="/co-auditor/dashboard"><ErrorBoundary><CoAuditorDashboard /></ErrorBoundary></Route>
               {/* AI Regulatory Audit Suite — Phases 2–6 */}
-              <Route path="/visual-compliance" component={ApplicantVisualCompliance} />
-              <Route path="/audit-verify/:auditId" component={AuditVerificationPortal} />
-              <Route path="/audit-chatdock/:auditId" component={AuditChatdock} />
+              <Route path="/visual-compliance"><ErrorBoundary><ApplicantVisualCompliance /></ErrorBoundary></Route>
+              <Route path="/audit-verify/:auditId"><ErrorBoundary><AuditVerificationPortal /></ErrorBoundary></Route>
+              <Route path="/audit-chatdock/:auditId"><ErrorBoundary><AuditChatdock /></ErrorBoundary></Route>
               <Route path="/citation-resolve/:citationId" component={CitationResolve} />
               <Route path="/admin/security"><RBACRoute require="platform_staff"><ErrorBoundary><AdminSecurity /></ErrorBoundary></RBACRoute></Route>
               {/* Phase 33 — SRA Partner Portal (government blue, outside main auth) */}
@@ -809,10 +809,10 @@ function AppContent() {
               <Route path="/regulatory-audit/portal/report-builder" component={SRAReportBuilder} />
               <Route path="/regulatory-audit/portal" component={SRAPortalDashboard} />
               <Route path="/regulatory" component={RegulatoryPortalPage} />
-              <Route path="/regulatory/dashboard" component={RegulatoryDashboardPage} />
-              <Route path="/regulator-portal/:token" component={RegulatorPortal} />
-              <Route path="/shift-accept" component={ShiftAcceptPage} />
-              <Route path="/org-unavailable" component={OrgSuspendedPage} />
+              <Route path="/regulatory/dashboard"><ErrorBoundary><RegulatoryDashboardPage /></ErrorBoundary></Route>
+              <Route path="/regulator-portal/:token"><ErrorBoundary><RegulatorPortal /></ErrorBoundary></Route>
+              <Route path="/shift-accept"><ErrorBoundary><ShiftAcceptPage /></ErrorBoundary></Route>
+              <Route path="/org-unavailable"><ErrorBoundary><OrgSuspendedPage /></ErrorBoundary></Route>
               <Route path="/register" component={CustomRegister} />
               <Route path="/forgot-password" component={ForgotPassword} />
               <Route path="/reset-password" component={ResetPassword} />

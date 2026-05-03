@@ -166,18 +166,21 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
   const [dots, setDots] = useState('');
 
   useEffect(() => {
+    // Wave 8 / Task 2: Both intervals share a single cleanup return.
+    // The early guard (return;) exits before any intervals are created — no leak.
+    // When intervals ARE created, clearInterval() for BOTH runs on unmount or dep change.
     if (!isLoading || status !== 'loading') return;
 
     const messageInterval = setInterval(() => {
       setMessageIndex(i => (i + 1) % LOADING_MESSAGES.length);
-    }, 3000);
+    }, 3000); // message cycling — cleared below
 
     const dotsInterval = setInterval(() => {
       setDots(d => d.length >= 3 ? '' : d + '.');
-    }, 500);
+    }, 500); // dot animation — cleared below
 
     return () => {
-      clearInterval(messageInterval);
+      clearInterval(messageInterval); // prevents "state update on unmounted component"
       clearInterval(dotsInterval);
     };
   }, [isLoading, status]);

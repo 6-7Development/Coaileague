@@ -79,7 +79,7 @@ export default function WorkerIncidents() {
   const [description, setDescription] = useState('');
   const [location, setLocationData] = useState<{ lat: number; lng: number } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  // submitting state removed — using submitMutation.isPending (Wave 8 fix)
 
   // Get recent incidents
   const { data: recentIncidents, isLoading } = useQuery<RecentIncident[]>({
@@ -110,7 +110,6 @@ export default function WorkerIncidents() {
   // Submit incident
   const submitMutation = useMutation({
     mutationFn: async () => {
-      setSubmitting(true);
       const payload = {
         type: selectedType,
         severity,
@@ -153,9 +152,7 @@ export default function WorkerIncidents() {
         variant: 'destructive',
       });
     },
-    onSettled: () => {
-      setSubmitting(false);
-    },
+    // onSettled removed — isPending is managed by React Query automatically
   });
 
   const resetForm = () => {
@@ -323,7 +320,7 @@ export default function WorkerIncidents() {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!selectedType || submitting}
+            disabled={!selectedType || submitMutation.isPending}
             className={cn(
               "w-full h-14 text-lg font-semibold",
               severity === 'critical' 
@@ -333,7 +330,7 @@ export default function WorkerIncidents() {
             data-testid="button-submit-incident"
           >
             <Send className="w-5 h-5 mr-2" />
-            {submitting ? 'Submitting...' : 'Submit Report'}
+            {submitMutation.isPending ? 'Submitting...' : 'Submit Report'}
           </Button>
         </div>
       </CanvasHubPage>
