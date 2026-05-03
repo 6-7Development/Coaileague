@@ -66,6 +66,13 @@ const PRODUCTION_REQUIRED_CONFIGS: ConfigValidation[] = [
 // Conditional production-required configs — only enforced if the parent service
 // is configured. (e.g. PLAID_WEBHOOK_SECRET only matters when PLAID_CLIENT_ID
 // is set, ENCRYPTION_KEY for Plaid tokens only matters when Plaid is wired.)
+//
+// warnOnly: true  → missing value logs [WARNING] and server continues to start.
+//                   Use this when the absence degrades one feature (webhooks)
+//                   rather than causing a total security failure.
+// warnOnly: false → missing value logs [CRITICAL] and server refuses to start.
+//                   Use this for data-at-rest encryption keys where a bad
+//                   fallback would silently corrupt stored secrets.
 const CONDITIONAL_PRODUCTION_CONFIGS: Array<{
   name: string;
   required: boolean;
@@ -73,13 +80,18 @@ const CONDITIONAL_PRODUCTION_CONFIGS: Array<{
   validate?: (value: string) => boolean;
   errorMessage?: string;
   enabledIf: () => boolean;
+  warnOnly?: boolean;
 }> = [
   {
     name: 'PLAID_WEBHOOK_SECRET',
     required: true,
     value: process.env.PLAID_WEBHOOK_SECRET,
     enabledIf: () => !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET),
-    errorMessage: 'PLAID_WEBHOOK_SECRET required when Plaid is configured — webhook JWT verification will reject all events without it. Get from Plaid Dashboard → Team Settings → Keys.',
+    // warnOnly: server starts — the /plaid/webhook endpoint already returns 500
+    // per-request when secret is missing. A missing secret degrades one feature
+    // (payment status callbacks) rather than blocking all services.
+    warnOnly: true,
+    errorMessage: 'PLAID_WEBHOOK_SECRET missing — Plaid webhook events will be rejected (500). Get from Plaid Dashboard → Team Settings → Keys → Webhook secret.',
   },
   {
     name: 'PLAID_ENCRYPTION_KEY',
@@ -87,7 +99,10 @@ const CONDITIONAL_PRODUCTION_CONFIGS: Array<{
     value: process.env.PLAID_ENCRYPTION_KEY || process.env.FIELD_ENCRYPTION_KEY,
     validate: (v) => v.length >= 64,
     enabledIf: () => !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET),
-    errorMessage: 'PLAID_ENCRYPTION_KEY (or FIELD_ENCRYPTION_KEY) must be a 64-char hex string when Plaid is configured. Plaid access tokens are AES-256-GCM encrypted at rest; without a strong key the service falls back to a hard-coded dev key.',
+    // Hard error: without a real key, access tokens fall back to a dev key and
+    // stored bank credentials are compromised. Never allow this silently.
+    warnOnly: false,
+    errorMessage: 'PLAID_ENCRYPTION_KEY (or FIELD_ENCRYPTION_KEY) must be a 64-char hex string when Plaid is configured. Generate: openssl rand -hex 32',
   },
 ];
 
@@ -212,12 +227,24 @@ export function validateConfiguration(): ConfigValidationResult {
       }
     }
     // Conditional production-required: only enforced when the parent service is wired.
+    // warnOnly:true → degrades one feature gracefully (server keeps running)
+    // warnOnly:false → hard fatal error (data security cannot be compromised)
     for (const config of CONDITIONAL_PRODUCTION_CONFIGS) {
       if (!config.enabledIf()) continue;
       if (!config.value) {
-        errors.push(`[CRITICAL] Missing ${config.name}: ${config.errorMessage || 'required in production'}`);
+        const msg = `Missing \${config.name}: \${config.errorMessage || 'required in production'}`;
+        if (config.warnOnly) {
+          warnings.push(`[WARNING] \${msg}`);
+        } else {
+          errors.push(`[CRITICAL] \${msg}`);
+        }
       } else if (config.validate && !config.validate(config.value)) {
-        errors.push(`[CRITICAL] Invalid ${config.name}: ${config.errorMessage || ''}`);
+        const msg = `Invalid \${config.name}: \${config.errorMessage || ''}`;
+        if (config.warnOnly) {
+          warnings.push(`[WARNING] \${msg}`);
+        } else {
+          errors.push(`[CRITICAL] \${msg}`);
+        }
       }
     }
   } else {
