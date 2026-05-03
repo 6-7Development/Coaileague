@@ -32,6 +32,7 @@ import { UniversalToastProvider } from "@/components/universal";
 import { CookieBanner } from "@/components/consent-manager";
 import { TermsAcceptanceGate } from "@/components/terms-acceptance-gate";
 import { GlobalMutationErrorHandler } from "@/components/GlobalMutationErrorHandler";
+import { ReAuthModal } from "@/components/re-auth-modal";
 import { TrinityAnnouncementDisplay } from "@/components/trinity-announcement";
 import { TrinityTrademarkStrip } from "@/components/trinity-trademark-strip";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -1964,6 +1965,9 @@ export default function App() {
       <GlobalErrorBoundary>
         <UniversalToastProvider>
         <GlobalMutationErrorHandler />
+      {/* Wave 8 Part 2: Re-Auth Modal — catches expired JWT sessions globally.
+          Renders above everything (z-9999). User re-auths inline without losing work. */}
+      <ReAuthModal />
         <ServiceHealthProvider>
           <WebSocketProvider>
           <UniversalConfigProvider>

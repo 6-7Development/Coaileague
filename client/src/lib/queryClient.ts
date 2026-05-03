@@ -79,6 +79,8 @@ export function deepToCamel(value: unknown): unknown {
 }
 
 // Custom error class that includes HTTP status for better error handling
+import { sessionExpiredBus } from "@/lib/sessionExpiredBus";
+
 export class ApiError extends Error {
   status: number;
   statusText: string;
@@ -184,7 +186,13 @@ export async function apiRequest(
         path.startsWith("/client-portal/") || path.startsWith("/forms/") ||
         path.startsWith("/jobs/") || path.startsWith("/pay-invoice/");
       if (typeof window !== "undefined" && !isOnPublicOrAuthPage) {
-        window.location.href = "/login";
+        // Wave 8 Part 2: Instead of hard redirect (which destroys all React state
+        // and loses the manager's in-progress schedule/work), trigger the Re-Auth
+        // Modal. The user re-authenticates inline and returns to exactly where they
+        // were. Their mutations can be retried without page navigation.
+        const cachedAuth = queryClient.getQueryData<{ user?: { email?: string } }>(['/api/auth/me']);
+        const userEmail = cachedAuth?.user?.email || '';
+        sessionExpiredBus.trigger(userEmail);
       }
     }
 
@@ -276,7 +284,13 @@ export const getQueryFn: <T>(options: {
         path.startsWith("/client-portal/") || path.startsWith("/forms/") ||
         path.startsWith("/jobs/") || path.startsWith("/pay-invoice/");
       if (typeof window !== "undefined" && !isOnPublicOrAuthPage) {
-        window.location.href = "/login";
+        // Wave 8 Part 2: Instead of hard redirect (which destroys all React state
+        // and loses the manager's in-progress schedule/work), trigger the Re-Auth
+        // Modal. The user re-authenticates inline and returns to exactly where they
+        // were. Their mutations can be retried without page navigation.
+        const cachedAuth = queryClient.getQueryData<{ user?: { email?: string } }>(['/api/auth/me']);
+        const userEmail = cachedAuth?.user?.email || '';
+        sessionExpiredBus.trigger(userEmail);
       }
     }
 
