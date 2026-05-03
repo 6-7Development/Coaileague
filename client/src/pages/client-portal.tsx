@@ -1803,31 +1803,6 @@ export default function ClientPortal() {
                   <p className="text-sm font-medium">Pre-Registration Coming Soon</p>
                   <p className="text-xs mt-1">This feature will be available in an upcoming release.</p>
                 </div>
-                {false ? (
-                  <div className="space-y-2" data-testid="client-pre-registrations-list">
-                    {preRegistrations.map((p: unknown) => (
-                      <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-md border flex-wrap" data-testid={`card-client-prereg-${p.id}`}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-sm">{p.expected_visitor_name}</p>
-                            {p.expected_visitor_company && <p className="text-xs text-muted-foreground">{p.expected_visitor_company}</p>}
-                            <Badge variant="secondary" className={['text-xs border-0', p.status === 'pending' ? 'bg-blue-500/10 text-blue-600' : p.status === 'checked_in' ? 'bg-green-500/10 text-green-600' : ''].join(' ')}>
-                              {p.status.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {p.site_name} · Expected: {new Date(p.expected_arrival).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        {p.status === 'pending' && (
-                          <Badge variant="outline" className="text-xs border-green-400 text-green-600">
-                            <UserCheck className="h-3 w-3 mr-1" /> Fast-Track Ready
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
