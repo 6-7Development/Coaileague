@@ -132,6 +132,54 @@ router.post('/publish', requireManager, async (req: AuthenticatedRequest, res) =
       return res.status(400).json({ message: "No shifts found to publish for this week" });
     }
 
+    // ── TASK 4B: Financial Gate — Block publish for un-onboarded clients ───
+    // Enforce: client must have signed Service Agreement (clientOnboardingStatus='active')
+    // before their shifts can be published. Trinity clears this gate via
+    // POST /api/client-portal/:clientId/sign-contract (Task 5).
+    {
+      const { clients: clientsTable } = await import('@shared/schema');
+      const { isNotNull } = await import('drizzle-orm');
+      const clientsOnShifts = await db
+        .selectDistinct({ clientId: shifts.clientId })
+        .from(shifts)
+        .where(
+          and(
+            eq(shifts.workspaceId, workspace.id),
+            inArray(shifts.id, resolvedShiftIds),
+            isNotNull(shifts.clientId),
+          )
+        );
+
+      const blockedClients: { id: string; name: string; status: string }[] = [];
+      for (const { clientId } of clientsOnShifts) {
+        if (!clientId) continue;
+        const [client] = await db.select({
+          id: clientsTable.id, name: clientsTable.name,
+          onboardingStatus: clientsTable.clientOnboardingStatus,
+          isActive: clientsTable.isActive,
+        }).from(clientsTable)
+          .where(and(eq(clientsTable.id, clientId), eq(clientsTable.workspaceId, workspace.id)))
+          .limit(1);
+
+        if (client && (client.onboardingStatus !== 'active' || !client.isActive)) {
+          blockedClients.push({
+            id: client.id,
+            name: client.name || clientId,
+            status: client.onboardingStatus ?? 'unknown',
+          });
+        }
+      }
+
+      if (blockedClients.length > 0) {
+        return res.status(422).json({
+          error: 'PUBLISH_BLOCKED_PENDING_ONBOARDING',
+          message: 'Cannot publish — client(s) have not completed onboarding (Service Agreement not signed):',
+          blockedClients,
+          resolution: 'Client must sign the Service Agreement. Trinity clears this gate automatically upon signature.',
+        });
+      }
+    }
+
     const { published, shiftsData } = await db.transaction(async (tx) => {
       const shiftsData = await tx.select().from(shifts).where(and(eq(shifts.workspaceId, workspace.id), inArray(shifts.id, resolvedShiftIds)));
       

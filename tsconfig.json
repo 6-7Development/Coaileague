@@ -22,7 +22,7 @@
       "dom",
       "dom.iterable"
     ],
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
@@ -49,6 +49,12 @@
     "typeRoots": [
       "./node_modules/@types",
       "./server/types"
-    ]
+    ],
+    "types": [
+      "react",
+      "react-dom",
+      "node"
+    ],
+    "jsxImportSource": "react"
   }
 }

@@ -1779,6 +1779,14 @@ export const relationshipTypeEnum = pgEnum('relationship_type', [
   'extends', 'modifies', 'depends_on', 'related_to'
 ]);
 
+// Client onboarding / financial status for the publish gate
+export const clientOnboardingStatusEnum = pgEnum('client_onboarding_status_enum', [
+  'incomplete',          // Not started — cannot publish shifts
+  'pending_signature',   // Contract sent, not signed — cannot publish shifts
+  'active',              // Contract signed, financially cleared — can publish
+  'suspended',           // Account suspended — cannot publish shifts
+]);
+
 export const rlOutcomeEnum = pgEnum('rl_outcome', [
   'success', 'partial_success', 'failure', 'timeout', 'skipped'
 ]);

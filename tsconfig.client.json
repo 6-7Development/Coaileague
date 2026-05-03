@@ -1,21 +1,23 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "tsBuildInfoFile": "./node_modules/typescript/client.tsbuildinfo",
-    "lib": [
-      "ES2020",
-      "dom",
-      "dom.iterable"
-    ]
-  },
+  "extends": "./tsconfig.json",
   "include": [
-    "client/src/**/*"
+    "client/src/**/*",
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",
     "build",
     "dist",
+    "server/**/*",
     "**/*.test.ts"
-  ]
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "lib": [
+      "ES2020",
+      "dom",
+      "dom.iterable"
+    ]
+  }
 }

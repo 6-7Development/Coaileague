@@ -2220,19 +2220,58 @@ router.post('/:id/accept', requireEmployee, async (req: AuthenticatedRequest, re
   try {
     const { id: shiftId } = req.params;
     const workspaceId = req.workspaceId;
+    const employeeId = req.employeeId;
     if (!workspaceId) return res.status(401).json({ message: 'Workspace required' });
-    // Delegate to acknowledge flow — same business logic
-    const [updated] = await db.update(shifts)
-      .set({ status: 'confirmed', updatedAt: new Date() })
-      .where(and(
-        eq(shifts.id, shiftId),
-        eq(shifts.workspaceId, workspaceId),
-        sql`${shifts.status} IN ('published','assigned','open')`,
-      ))
-      .returning();
-    if (!updated) return res.status(404).json({ message: 'Shift not found or cannot be accepted' });
-    broadcastShiftUpdate(workspaceId, 'shift_updated', updated);
-    res.json({ success: true, shift: updated });
+
+    // ── TASK 4C: Atomic Shift Claim — SELECT FOR UPDATE SKIP LOCKED ──────────
+    // Wave 3 enterprise hardening: Two officers accepting simultaneously would
+    // both pass a plain WHERE check on the same 'open' shift row.
+    // SKIP LOCKED means: if another transaction already locked this row (another
+    // officer is mid-accept), skip it immediately → 409 Conflict instead of
+    // double-booking. This is the correct pattern for job-queue / shift-claim
+    // race conditions in PostgreSQL.
+    const accepted = await db.transaction(async (tx) => {
+      // 1. Lock the row — SKIP LOCKED bails out if another accept is in flight
+      const locked = await tx.execute(sql`
+        SELECT id, status, employee_id, workspace_id
+        FROM shifts
+        WHERE id = ${shiftId}
+          AND workspace_id = ${workspaceId}
+          AND status IN ('published', 'assigned', 'open')
+        FOR UPDATE SKIP LOCKED
+      `);
+
+      if (!locked.rows || locked.rows.length === 0) {
+        // Either the row doesn't exist, has wrong status, OR another transaction
+        // holds the lock (SKIP LOCKED) — both map to "unavailable"
+        return null;
+      }
+
+      // 2. Row is locked — safe to update
+      const [updated] = await tx.update(shifts)
+        .set({
+          status: 'confirmed',
+          employeeId: employeeId || undefined,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(shifts.id, shiftId),
+          eq(shifts.workspaceId, workspaceId),
+        ))
+        .returning();
+
+      return updated;
+    });
+
+    if (!accepted) {
+      return res.status(409).json({
+        message: 'This shift was just accepted by another officer or is no longer available.',
+        code: 'SHIFT_CLAIM_CONFLICT',
+      });
+    }
+
+    broadcastShiftUpdate(workspaceId, 'shift_updated', accepted);
+    res.json({ success: true, shift: accepted });
   } catch (err: unknown) {
     log.error('[ShiftRoutes] Accept shift failed:', (err instanceof Error ? err.message : String(err)));
     res.status(500).json({ message: sanitizeError(err) || 'Failed to accept shift' });
