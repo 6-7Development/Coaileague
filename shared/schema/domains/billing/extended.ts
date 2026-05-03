@@ -217,55 +217,6 @@ export const insertSeatCostBreakdownSchema = createInsertSchema(seatCostBreakdow
 export type InsertSeatCostBreakdown = z.infer<typeof insertSeatCostBreakdownSchema>;
 export type SeatCostBreakdown = typeof seatCostBreakdown.$inferSelect;
 
-export const voiceUsage = pgTable("voice_usage", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  userId: varchar("user_id"),
-  sessionId: varchar("session_id"),
-  charactersUsed: integer("characters_used").notNull().default(0),
-  voiceId: varchar("voice_id"),
-  modelId: varchar("model_id"),
-  costUsd: decimal("cost_usd").default('0'),
-  creditsDeducted: integer("credits_deducted").default(0),
-  callType: varchar("call_type").default('tts'),
-  audioDurationSeconds: decimal("audio_duration_seconds"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
-
-export const insertVoiceUsageSchema = createInsertSchema(voiceUsage).omit({ id: true });
-export type InsertVoiceUsage = z.infer<typeof insertVoiceUsageSchema>;
-export type VoiceUsage = typeof voiceUsage.$inferSelect;
-
-
-
-// ============================================================================
-// INVOICE PROPOSALS — Pre-invoice draft proposals for client approval
-// ============================================================================
-export const invoiceProposals = pgTable("invoice_proposals", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  invoiceId: varchar("invoice_id"),
-  clientId: varchar("client_id").notNull(),
-  status: varchar("status", { length: 30 }).default("draft"), // draft | sent | accepted | rejected | expired
-  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }),
-  proposalData: jsonb("proposal_data"),
-  sentAt: timestamp("sent_at", { withTimezone: true }),
-  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
-  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (table) => [
-  index("inv_proposal_workspace_idx").on(table.workspaceId),
-  index("inv_proposal_client_idx").on(table.clientId),
-  index("inv_proposal_status_idx").on(table.status),
-]);
-export const insertInvoiceProposalSchema = createInsertSchema(invoiceProposals).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertInvoiceProposal = z.infer<typeof insertInvoiceProposalSchema>;
-export type InvoiceProposal = typeof invoiceProposals.$inferSelect;
-
 // ============================================================================
 // TRINITY TOKEN LEDGER — Phase 16A
 // Every Trinity AI token consumed by a billable tenant is recorded here.

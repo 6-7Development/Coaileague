@@ -144,7 +144,6 @@ import {
   achievements,
   employeeAchievements,
   employeePoints,
-  leaderboardCache,
   coaileagueEmployeeProfiles,
   employeeEventLog,
   personalityTagsCatalog,
@@ -161,8 +160,6 @@ import {
   employeeInvitations,
   trainingScenarios,
   trainingRuns,
-  trainingCourses,
-  trainingEnrollments,
   engagementScoreHistory,
 } from './schema/domains/workforce';
 
@@ -177,9 +174,7 @@ import {
   shiftSwapRequests,
   scheduleTemplates,
   shiftAcknowledgments,
-  serviceCoverageRequests,
   publishedSchedules,
-  scheduleSnapshots,
   scheduleProposals,
   shiftTemplates,
   smartScheduleUsage,
@@ -190,7 +185,6 @@ import {
   capacityAlerts,
   shiftActions,
   shiftAcceptanceRecords,
-  schedulerNotificationEvents,
   calendarSubscriptions,
   calendarImports,
   shiftChatrooms,
@@ -201,7 +195,6 @@ import {
   stagedShifts,
   automatedShiftOffers,
   staffingClaimTokens,
-  shiftCoverageClaims,
 } from './schema/domains/scheduling';
 
 // time tables (used in insert schema definitions below)
@@ -290,7 +283,6 @@ import {
   financialProcessingFees,
   platformInvoices,
   usageCaps,
-  platformCreditPool,
   pointsTransactions,
 } from './schema/domains/billing';
 
@@ -727,7 +719,6 @@ export type LeaderAction = typeof leaderActions.$inferSelect;
 // Escalation tickets (Leaders → Platform Support)
 
 
-
 export const insertEscalationTicketSchema = createInsertSchema(escalationTickets).omit({
   id: true,
   createdAt: true,
@@ -826,7 +817,6 @@ export type InsertShiftOffer = z.infer<typeof insertShiftOfferSchema>;
 export type ShiftOffer = typeof shiftOffers.$inferSelect;
 
 // Employee Benefits (Insurance, 401k, PTO, etc.)
-
 
 
 export const insertEmployeeBenefitSchema = createInsertSchema(employeeBenefits).omit({
@@ -971,8 +961,6 @@ export type Shift = typeof shifts.$inferSelect;
 // ============================================================================
 
 
-
-
 export const insertTrainingScenarioSchema = createInsertSchema(trainingScenarios).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTrainingRunSchema = createInsertSchema(trainingRuns).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -984,7 +972,6 @@ export type TrainingRun = typeof trainingRuns.$inferSelect;
 // ============================================================================
 // RECURRING SHIFT PATTERNS - Phase 2B Advanced Scheduling
 // ============================================================================
-
 
 
 export const insertRecurringShiftPatternSchema = createInsertSchema(recurringShiftPatterns).omit({
@@ -1001,7 +988,6 @@ export type RecurringShiftPattern = typeof recurringShiftPatterns.$inferSelect;
 // ============================================================================
 // SHIFT SWAP REQUESTS - Phase 2B Advanced Scheduling
 // ============================================================================
-
 
 
 export const insertShiftSwapRequestSchema = createInsertSchema(shiftSwapRequests).omit({
@@ -1045,18 +1031,6 @@ export type ShiftAcknowledgment = typeof shiftAcknowledgments.$inferSelect;
 
 // Service Coverage Requests - AI-powered on-demand staffing
 
-export const insertServiceCoverageRequestSchema = createInsertSchema(serviceCoverageRequests).omit({
-  id: true,
-  requestNumber: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  startTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
-  endTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
-});
-
-export type InsertServiceCoverageRequest = z.infer<typeof insertServiceCoverageRequestSchema>;
-export type ServiceCoverageRequest = typeof serviceCoverageRequests.$inferSelect;
 
 // Published Schedules - Track when schedules go live
 
@@ -1070,13 +1044,8 @@ export type PublishedSchedule = typeof publishedSchedules.$inferSelect;
 
 // Schedule Snapshots - For rollback capability when Trinity makes scheduling mistakes
 
-export const insertScheduleSnapshotSchema = createInsertSchema(scheduleSnapshots).omit({
-  id: true,
-  createdAt: true,
-});
 
 export type InsertScheduleSnapshot = z.infer<typeof insertScheduleSnapshotSchema>;
-export type ScheduleSnapshot = typeof scheduleSnapshots.$inferSelect;
 
 // Schedule Proposals - AI-generated schedules awaiting approval (99% AI, 1% Human Governance)
 
@@ -1171,9 +1140,6 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 // ============================================================================
 // SECURITY INCIDENTS - Mobile Worker Incident Reporting
 // ============================================================================
-
-
-
 
 
 export const insertSecurityIncidentSchema = createInsertSchema(securityIncidents).omit({
@@ -1354,7 +1320,6 @@ export const insertWorkspaceCurrencySettingsSchema = z.object({
 });
 
 
-
 // Employee Tax Forms (W-4, W-2, 1099 for ESS)
 
 export const insertEmployeeTaxFormSchema = z.object({});
@@ -1394,19 +1359,6 @@ export type ManagerAssignment = typeof managerAssignments.$inferSelect;
 // ============================================================================
 // RELATIONS
 // ============================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // ============================================================================
@@ -1549,7 +1501,6 @@ export type OnboardingWorkflowTemplate = typeof onboardingWorkflowTemplates.$inf
 // Employee Documents (Permanent Digital File Cabinet)
 
 
-
 export const insertEmployeeDocumentSchema = createInsertSchema(employeeDocuments).omit({
   id: true,
   createdAt: true,
@@ -1583,7 +1534,6 @@ export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
 // ============================================================================
 // ENTERPRISE FEATURES - Audit Trail System
 // ============================================================================
-
 
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
@@ -1625,7 +1575,6 @@ export type GpsLocation = typeof gpsLocations.$inferSelect;
 // ============================================================================
 // ENTERPRISE FEATURES - Payroll Automation
 // ============================================================================
-
 
 
 export const insertPayrollRunSchema = createInsertSchema(payrollRuns).omit({
@@ -1698,7 +1647,6 @@ export const systemAuditLogs = auditLogs;
 // ============================================================================
 
 
-
 export const insertGovernanceApprovalSchema = createInsertSchema(governanceApprovals).omit({
   id: true,
   createdAt: true,
@@ -1715,7 +1663,6 @@ export type GovernanceApproval = typeof governanceApprovals.$inferSelect;
 // ============================================================================
 // ENTERPRISE FEATURES - Subscription & Billing Management
 // ============================================================================
-
 
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
@@ -2389,7 +2336,6 @@ export type CostVariancePrediction = typeof costVariancePredictions.$inferSelect
 // ============================================================================
 
 
-
 export const insertCustomRuleSchema = createInsertSchema(customRules).omit({
   id: true,
   createdAt: true,
@@ -2693,7 +2639,6 @@ export type AutoReport = typeof autoReports.$inferSelect;
 // Active onboarding sessions for new hires
 
 
-
 // ============================================================================
 // OFFBOARDING SYSTEM - EXIT INTERVIEWS & OFFBOARDING WORKFLOWS
 // ============================================================================
@@ -2721,8 +2666,6 @@ export type ExitInterviewResponse = typeof exitInterviewResponses.$inferSelect;
 // ============================================================================
 // EXPENSE MANAGEMENT - EXPENSE TRACKING & REIMBURSEMENTS
 // ============================================================================
-
-
 
 
 export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
@@ -2800,17 +2743,6 @@ export type BudgetVariance = typeof budgetVariances.$inferSelect;
 
 // Training certifications/credentials
 
-export const insertTrainingCourseSchema = createInsertSchema(trainingCourses).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertTrainingEnrollmentSchema = createInsertSchema(trainingEnrollments).omit({
-  id: true,
-  enrolledAt: true,
-  updatedAt: true,
-});
 
 export const insertTrainingCertificationSchema = createInsertSchema(trainingCertifications).omit({
   id: true,
@@ -2819,9 +2751,7 @@ export const insertTrainingCertificationSchema = createInsertSchema(trainingCert
 });
 
 export type InsertTrainingCourse = z.infer<typeof insertTrainingCourseSchema>;
-export type TrainingCourse = typeof trainingCourses.$inferSelect;
 export type InsertTrainingEnrollment = z.infer<typeof insertTrainingEnrollmentSchema>;
-export type TrainingEnrollment = typeof trainingEnrollments.$inferSelect;
 export type InsertTrainingCertification = z.infer<typeof insertTrainingCertificationSchema>;
 export type TrainingCertification = typeof trainingCertifications.$inferSelect;
 
@@ -2922,7 +2852,6 @@ export type MetricsSnapshot = typeof metricsSnapshots.$inferSelect;
 // ============================================================================
 
 
-
 // ============================================================================
 // EMPLOYEE PAYROLL INFORMATION - TAX FORMS & DIRECT DEPOSIT
 // ============================================================================
@@ -2943,7 +2872,6 @@ export type EmployeePayrollInfo = typeof employeePayrollInfo.$inferSelect;
 // ============================================================================
 
 
-
 // MERGED: payrollPayouts → payrollEntries (table dropped, Mar 2026)
 export const payrollPayouts = payrollEntries;
 export type PayrollPayout = typeof payrollEntries.$inferSelect;
@@ -2951,8 +2879,6 @@ export type PayrollPayout = typeof payrollEntries.$inferSelect;
 // ============================================================================
 // PAYMENT REMINDERS - Systematic overdue invoice follow-up tracking
 // ============================================================================
-
-
 
 
 export const insertPaymentReminderSchema = createInsertSchema(paymentReminders).omit({
@@ -2966,7 +2892,6 @@ export type PaymentReminder = typeof paymentReminders.$inferSelect;
 // ============================================================================
 // EMPLOYEE AVAILABILITY - AI SCHEDULING INTEGRATION
 // ============================================================================
-
 
 
 export const insertEmployeeAvailabilitySchema = createInsertSchema(employeeAvailability).omit({
@@ -2994,8 +2919,6 @@ export type TimeOffRequest = typeof timeOffRequests.$inferSelect;
 // ============================================================================
 
 
-
-
 export const insertShiftActionSchema = createInsertSchema(shiftActions).omit({
   id: true,
   createdAt: true,
@@ -3008,7 +2931,6 @@ export type ShiftAction = typeof shiftActions.$inferSelect;
 // ============================================================================
 // TIMESHEET EDIT PERMISSIONS - EMPLOYEE REQUESTS ONLY
 // ============================================================================
-
 
 
 export const insertTimesheetEditRequestSchema = createInsertSchema(timesheetEditRequests).omit({
@@ -3466,7 +3388,6 @@ export type DispatchLog = typeof dispatchLogs.$inferSelect;
 // Idempotency Keys - Prevent duplicate operations (invoice generation, payroll runs, timesheet ingestion)
 
 
-
 export const insertIdempotencyKeySchema = createInsertSchema(idempotencyKeys).omit({
   id: true,
   createdAt: true,
@@ -3816,12 +3737,6 @@ export type FeatureUpdateReceipt = typeof featureUpdateReceipts.$inferSelect;
 // Monitoring & Alerting Enums
 
 
-
-
-
-
-
-
 // AI Brain Jobs - All AI task requests across the platform
 
 export const insertAiBrainJobSchema = createInsertSchema(aiBrainJobs).omit({
@@ -4063,13 +3978,6 @@ export type PointsTransaction = typeof pointsTransactions.$inferSelect;
 
 // Leaderboard cache (refreshed periodically)
 
-export const insertLeaderboardCacheSchema = createInsertSchema(leaderboardCache).omit({
-  id: true,
-  calculatedAt: true,
-});
-
-export type InsertLeaderboardCache = z.infer<typeof insertLeaderboardCacheSchema>;
-export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
 
 // ============================================================================
 // COAILEAGUE AUTONOMOUS SCHEDULER - PHASE 1 (Gap Analysis Implementation)
@@ -4143,13 +4051,8 @@ export type ShiftAcceptanceRecord = typeof shiftAcceptanceRecords.$inferSelect;
 
 // AI Decision Audit (Gemini decision logging)
 
-export const insertSchedulerNotificationEventSchema = createInsertSchema(schedulerNotificationEvents).omit({
-  id: true,
-  createdAt: true,
-});
 
 export type InsertSchedulerNotificationEvent = z.infer<typeof insertSchedulerNotificationEventSchema>;
-export type SchedulerNotificationEvent = typeof schedulerNotificationEvents.$inferSelect;
 
 // ============================================================================
 // SALES/ONBOARDING PIPELINE WITH PROGRESS & GAMIFICATION
@@ -4422,9 +4325,6 @@ export type AlertHistory = typeof alertHistory.$inferSelect;
 // ============================================================================
 // USER FEEDBACK PORTAL - Feature Requests, Bug Reports, and Suggestions
 // ============================================================================
-
-
-
 
 
 export const insertUserFeedbackSchema = createInsertSchema(userFeedback).omit({
@@ -5114,7 +5014,6 @@ export type AiBrainActionLog = InsertAiBrainActionLog & { id: string; createdAt:
 // successful/failed automations to improve decision-making over time.
 
 
-
 export const insertAutomationGovernanceSchema = createInsertSchema(automationGovernance).omit({
   id: true,
   createdAt: true,
@@ -5516,8 +5415,6 @@ export type InsertAutomationExecution = typeof automationExecutions.$inferInsert
 // ============================================================================
 
 
-
-
 export const insertComplianceReportSchema = createInsertSchema(complianceReports).omit({
   id: true,
   createdAt: true,
@@ -5809,8 +5706,6 @@ export type FlexGigRating = typeof flexGigRatings.$inferSelect;
 // ============================================================================
 // EQUIPMENT TRACKING SYSTEM
 // ============================================================================
-
-
 
 
 export const insertEquipmentItemSchema = createInsertSchema(equipmentItems).omit({
@@ -6133,7 +6028,6 @@ export type WorkerTaxClassificationHistory = typeof workerTaxClassificationHisto
  */
 
 
-
 export const insertFinancialSnapshotSchema = createInsertSchema(financialSnapshots).omit({
   id: true,
   createdAt: true,
@@ -6163,7 +6057,6 @@ export type ClientProfitability = typeof clientProfitability.$inferSelect;
  * Financial Alerts - Trinity-generated financial insights and warnings
  * Stores AI-detected issues and recommendations for dashboard display
  */
-
 
 
 export const insertFinancialAlertSchema = createInsertSchema(financialAlerts).omit({
@@ -6779,8 +6672,6 @@ export type BackupRecord = typeof backupRecords.$inferSelect;
 // ============================================================================
 
 
-
-
 export const insertGuardTourSchema = createInsertSchema(guardTours).omit({
   id: true, createdAt: true, updatedAt: true,
 });
@@ -6804,9 +6695,6 @@ export type GuardTourScan = typeof guardTourScans.$inferSelect;
 // ============================================================================
 // CLIENT PORTAL HELPAI REPORTS
 // ============================================================================
-
-
-
 
 
 export const insertClientPortalReportSchema = createInsertSchema(clientPortalReports).omit({
@@ -6890,11 +6778,6 @@ export type TrinityEmailConversation = typeof trinityEmailConversations.$inferSe
 // ── New enums unique to enforcement system ────────────────────────────────
 
 
-
-
-
-
-
 // ── compliance_windows: 14-day clock per org / officer ────────────────────
 
 export const insertComplianceWindowSchema = createInsertSchema(complianceWindows).omit({ id: true, createdAt: true, updatedAt: true });
@@ -6968,7 +6851,6 @@ export type StateLicenseVerification = typeof stateLicenseVerifications.$inferSe
 export const insertMultiStateComplianceWindowSchema = createInsertSchema(multiStateComplianceWindows).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertMultiStateComplianceWindow = z.infer<typeof insertMultiStateComplianceWindowSchema>;
 export type MultiStateComplianceWindow = typeof multiStateComplianceWindows.$inferSelect;
-
 
 
 export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, createdAt: true, updatedAt: true });
@@ -7057,9 +6939,6 @@ export type PlatformInvoice = typeof platformInvoices.$inferSelect;
 export const insertUsageCapSchema = createInsertSchema(usageCaps).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertUsageCap = z.infer<typeof insertUsageCapSchema>;
 export type UsageCap = typeof usageCaps.$inferSelect;
-export const insertPlatformCreditPoolSchema = createInsertSchema(platformCreditPool).omit({ id: true, createdAt: true });
-export type InsertPlatformCreditPool = z.infer<typeof insertPlatformCreditPoolSchema>;
-export type PlatformCreditPool = typeof platformCreditPool.$inferSelect;
 
 // ============================================================================
 // DOCUMENT SIGNING & VAULT (Feature 1)
@@ -7154,7 +7033,6 @@ export type RfpDocument = typeof rfpDocuments.$inferSelect;
 // ============================================================================
 // SHIFT COVERAGE CLAIMS TABLE
 // ============================================================================
-export type ShiftCoverageClaim = typeof shiftCoverageClaims.$inferSelect;
 
 // ============================================================================
 // RMS (Records Management System) TABLES
@@ -7281,8 +7159,6 @@ export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
 // PHASE 48 — ONBOARDING TASK MANAGEMENT
 // ============================================================================
 export {
-  onboardingTaskTemplates,
-  employeeOnboardingCompletions,
   type OnboardingTaskTemplate,
   type EmployeeOnboardingCompletion,
 } from './schema/domains/onboarding-tasks';

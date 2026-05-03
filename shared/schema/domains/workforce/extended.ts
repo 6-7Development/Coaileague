@@ -2,26 +2,6 @@ import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, decimal, da
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-
-export const applicantInterviews = pgTable("applicant_interviews", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  applicantId: varchar("applicant_id").notNull(),
-  scheduledAt: timestamp("scheduled_at"),
-  completedAt: timestamp("completed_at"),
-  interviewerId: varchar("interviewer_id"),
-  interviewType: varchar("interview_type").default('in_person'),
-  notes: text("notes"),
-  rating: integer("rating"),
-  recommendation: varchar("recommendation"),
-  status: varchar("status").default('scheduled'),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const insertApplicantInterviewsSchema = createInsertSchema(applicantInterviews).omit({ id: true });
-export type InsertApplicantInterviews = z.infer<typeof insertApplicantInterviewsSchema>;
-export type ApplicantInterviews = typeof applicantInterviews.$inferSelect;
-
 export const applicants = pgTable("applicants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -105,52 +85,6 @@ export const employeeOnboardingProgress = pgTable("employee_onboarding_progress"
 export const insertEmployeeOnboardingProgressSchema = createInsertSchema(employeeOnboardingProgress).omit({ id: true });
 export type InsertEmployeeOnboardingProgress = z.infer<typeof insertEmployeeOnboardingProgressSchema>;
 export type EmployeeOnboardingProgress = typeof employeeOnboardingProgress.$inferSelect;
-
-export const employeeOnboardingSteps = pgTable("employee_onboarding_steps", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  stepKey: varchar("step_key").notNull(),
-  stepNumber: integer("step_number").notNull(),
-  title: varchar("title").notNull(),
-  description: text("description"),
-  required: boolean("required").notNull().default(true),
-  category: varchar("category").notNull(),
-  documentType: varchar("document_type"),
-  uploadRequired: boolean("upload_required").default(false),
-  signatureRequired: boolean("signature_required").default(false),
-  acknowledgmentRequired: boolean("acknowledgment_required").default(false),
-  trinityPromptTemplate: text("trinity_prompt_template"),
-  estimatedMinutes: integer("estimated_minutes").default(5),
-  dependsOnStep: varchar("depends_on_step"),
-});
-
-export const insertEmployeeOnboardingStepsSchema = createInsertSchema(employeeOnboardingSteps).omit({ id: true });
-export type InsertEmployeeOnboardingSteps = z.infer<typeof insertEmployeeOnboardingStepsSchema>;
-export type EmployeeOnboardingSteps = typeof employeeOnboardingSteps.$inferSelect;
-
-export const employeeTrainingRecords = pgTable("employee_training_records", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  employeeId: varchar("employee_id").notNull(),
-  requirementId: varchar("requirement_id"),
-  trainingName: varchar("training_name").notNull(),
-  completionDate: date("completion_date"),
-  expirationDate: date("expiration_date"),
-  hoursCompleted: decimal("hours_completed"),
-  providerName: varchar("provider_name"),
-  certificateNumber: varchar("certificate_number"),
-  certificateFilePath: text("certificate_file_path"),
-  verified: boolean("verified").default(false),
-  verifiedBy: varchar("verified_by"),
-  verifiedAt: timestamp("verified_at"),
-  status: varchar("status").default('current'),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const insertEmployeeTrainingRecordsSchema = createInsertSchema(employeeTrainingRecords).omit({ id: true });
-export type InsertEmployeeTrainingRecords = z.infer<typeof insertEmployeeTrainingRecordsSchema>;
-export type EmployeeTrainingRecords = typeof employeeTrainingRecords.$inferSelect;
-
 export const interviewQuestionSets = pgTable("interview_question_sets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -164,27 +98,6 @@ export const interviewQuestionSets = pgTable("interview_question_sets", {
 export const insertInterviewQuestionSetsSchema = createInsertSchema(interviewQuestionSets).omit({ id: true });
 export type InsertInterviewQuestionSets = z.infer<typeof insertInterviewQuestionSetsSchema>;
 export type InterviewQuestionSets = typeof interviewQuestionSets.$inferSelect;
-
-export const interviewSessions = pgTable("interview_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  applicantId: varchar("applicant_id").notNull(),
-  jobPostingId: varchar("job_posting_id"),
-  conversationId: varchar("conversation_id"),
-  sessionType: varchar("session_type").default('async'),
-  status: varchar("status").default('pending'),
-  questionSetId: varchar("question_set_id"),
-  transcript: jsonb("transcript").default('[]'),
-  scoreBreakdown: jsonb("score_breakdown").default('{}'),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-  overallScore: integer("overall_score"),
-  transcriptSummary: text("transcript_summary"),
-});
-
-export const insertInterviewSessionsSchema = createInsertSchema(interviewSessions).omit({ id: true });
-export type InsertInterviewSessions = z.infer<typeof insertInterviewSessionsSchema>;
-export type InterviewSessions = typeof interviewSessions.$inferSelect;
 
 export const jobPostings = pgTable("job_postings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -336,71 +249,6 @@ export const trainingAttempts = pgTable("training_attempts", {
 export const insertTrainingAttemptsSchema = createInsertSchema(trainingAttempts).omit({ id: true });
 export type InsertTrainingAttempts = z.infer<typeof insertTrainingAttemptsSchema>;
 export type TrainingAttempts = typeof trainingAttempts.$inferSelect;
-
-export const trainingCertificates = pgTable("training_certificates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  employeeId: varchar("employee_id").notNull(),
-  moduleId: varchar("module_id").notNull(),
-  attemptId: varchar("attempt_id").notNull(),
-  certificateNumber: varchar("certificate_number").notNull(),
-  issuedAt: timestamp("issued_at").default(sql`now()`),
-  expiresAt: timestamp("expires_at").notNull(),
-  overallScore: integer("overall_score").notNull(),
-  isValid: boolean("is_valid").default(true),
-  pdfUrl: text("pdf_url"),
-  documentId: varchar("document_id"),
-});
-
-export const insertTrainingCertificatesSchema = createInsertSchema(trainingCertificates).omit({ id: true });
-export type InsertTrainingCertificates = z.infer<typeof insertTrainingCertificatesSchema>;
-export type TrainingCertificates = typeof trainingCertificates.$inferSelect;
-
-export const trainingRequirements = pgTable("training_requirements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id"),
-  requirementName: varchar("requirement_name").notNull(),
-  requirementType: varchar("requirement_type").notNull(),
-  appliesToRoles: jsonb("applies_to_roles").default('[]'),
-  appliesToPositions: jsonb("applies_to_positions").default('[]'),
-  appliesToSites: jsonb("applies_to_sites").default('[]'),
-  frequency: varchar("frequency").default('annual'),
-  frequencyMonths: integer("frequency_months"),
-  requiredHours: integer("required_hours"),
-  providerRequired: boolean("provider_required").default(false),
-  approvedProviders: jsonb("approved_providers").default('[]'),
-  consequenceOfExpiry: varchar("consequence_of_expiry").default('warning'),
-  stateRequired: boolean("state_required").default(false),
-  stateCode: varchar("state_code"),
-  regulatoryReference: text("regulatory_reference"),
-  createdBy: varchar("created_by"),
-  active: boolean("active").default(true),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const insertTrainingRequirementsSchema = createInsertSchema(trainingRequirements).omit({ id: true });
-export type InsertTrainingRequirements = z.infer<typeof insertTrainingRequirementsSchema>;
-export type TrainingRequirements = typeof trainingRequirements.$inferSelect;
-
-export const trainingScheduledSessions = pgTable("training_scheduled_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  employeeId: varchar("employee_id").notNull(),
-  requirementId: varchar("requirement_id"),
-  scheduledDate: date("scheduled_date").notNull(),
-  provider: varchar("provider"),
-  location: text("location"),
-  status: varchar("status").default('scheduled'),
-  reminderSent_7Day: boolean("reminder_sent_7_day").default(false),
-  reminderSent_1Day: boolean("reminder_sent_1_day").default(false),
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const insertTrainingScheduledSessionsSchema = createInsertSchema(trainingScheduledSessions).omit({ id: true });
-export type InsertTrainingScheduledSessions = z.infer<typeof insertTrainingScheduledSessionsSchema>;
-export type TrainingScheduledSessions = typeof trainingScheduledSessions.$inferSelect;
-
 export const employeeProfiles = pgTable("employee_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().unique(),

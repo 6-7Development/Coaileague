@@ -344,109 +344,6 @@ export const shiftAcknowledgments = pgTable("shift_acknowledgments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const serviceCoverageRequests = pgTable("service_coverage_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  clientId: varchar("client_id"),
-  
-  // Request details
-  requestNumber: varchar("request_number").notNull().unique(), // AUTO-GENERATED: REQ-2024-001
-  title: varchar("title").notNull(),
-  description: text("description").notNull(),
-  
-  // Schedule requirements
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  date: varchar("date", { length: 10 }), // YYYY-MM-DD format for quick date lookups
-  numberOfEmployeesNeeded: integer("number_of_employees_needed").notNull().default(1),
-  
-  // Location data (for AI distance calculation)
-  jobSiteAddress: text("job_site_address"),
-  jobSiteCity: varchar("job_site_city"),
-  jobSiteState: varchar("job_site_state"),
-  jobSiteZipCode: varchar("job_site_zip_code"),
-  jobSiteLatitude: decimal("job_site_latitude", { precision: 10, scale: 6 }),
-  jobSiteLongitude: decimal("job_site_longitude", { precision: 10, scale: 6 }),
-  
-  // Skill/license requirements
-  requiredSkills: text("required_skills").array(), // ['forklift', 'cdl', 'first_aid']
-  requiredCertifications: text("required_certifications").array(),
-  
-  // AI Processing
-  aiProcessed: boolean("ai_processed").default(false),
-  aiProcessedAt: timestamp("ai_processed_at"),
-  aiSuggestedEmployees: jsonb("ai_suggested_employees"), // Array of employee matches with scores
-  aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }),
-  
-  // Status workflow
-  status: varchar("status").default('pending'), // 'pending', 'processing', 'matched', 'assigned', 'cancelled'
-  assignedEmployeeIds: text("assigned_employee_ids").array(), // Final assignments
-  
-  // Billing tracking (AI usage charge)
-  aiUsageLogId: varchar("ai_usage_log_id"),
-  
-  // Request metadata
-  requestedBy: varchar("requested_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const publishedSchedules = pgTable("published_schedules", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  
-  // Schedule period
-  weekStartDate: timestamp("week_start_date").notNull(),
-  weekEndDate: timestamp("week_end_date").notNull(),
-  title: varchar("title"), // e.g., "Week of Nov 6-12, 2024"
-  
-  // Publishing details
-  publishedBy: varchar("published_by").notNull(),
-  publishedAt: timestamp("published_at").notNull().defaultNow(),
-  
-  // Shift tracking
-  totalShifts: integer("total_shifts").default(0),
-  employeesAffected: integer("employees_affected").default(0),
-  shiftIds: text("shift_ids").array(), // All shifts in this published schedule
-  
-  // Notification tracking
-  notificationsSent: boolean("notifications_sent").default(false),
-  notificationsSentAt: timestamp("notifications_sent_at"),
-  
-  // Version control
-  version: integer("version").default(1),
-  replacesScheduleId: varchar("replaces_schedule_id"), // If republishing
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const scheduleSnapshots = pgTable("schedule_snapshots", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  publishedScheduleId: varchar("published_schedule_id").notNull(),
-  
-  // Snapshot data - complete state of all shifts at publish time
-  snapshotData: jsonb("snapshot_data").notNull(), // Array of shift objects with all fields
-  
-  // Metadata
-  shiftCount: integer("shift_count").default(0),
-  employeesAffected: integer("employees_affected").default(0),
-  
-  // Rollback tracking
-  isRolledBack: boolean("is_rolled_back").default(false),
-  rolledBackAt: timestamp("rolled_back_at"),
-  rolledBackBy: varchar("rolled_back_by"),
-  rollbackReason: text("rollback_reason"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("schedule_snapshots_workspace_idx").on(table.workspaceId),
-  index("schedule_snapshots_published_schedule_idx").on(table.publishedScheduleId),
-  index("schedule_snapshots_created_at_idx").on(table.createdAt),
-]);
-
 export const scheduleProposals = pgTable("schedule_proposals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -781,49 +678,6 @@ export const shiftAcceptanceRecords = pgTable("shift_acceptance_records", {
   index("acceptance_records_employee_idx").on(table.employeeId),
   index("acceptance_records_action_idx").on(table.action),
   index("acceptance_records_created_idx").on(table.createdAt),
-]);
-
-export const schedulerNotificationEvents = pgTable("scheduler_notification_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  
-  // Event details
-  eventType: varchar("event_type").notNull(), // 'shift_offered', 'shift_accepted', 'shift_unfilled', 'calloff_received', 'reassignment_needed'
-  severity: varchar("severity").notNull().default("info"), // 'info', 'warning', 'critical'
-  
-  // Related entities
-  shiftId: varchar("shift_id"),
-  employeeId: varchar("employee_id"),
-  clientId: varchar("client_id"),
-  
-  // Recipients (who should be notified)
-  recipientType: varchar("recipient_type").notNull(), // 'employee', 'co_owner', 'client', 'dispatcher'
-  recipientUserId: varchar("recipient_user_id"),
-  
-  // Notification content
-  title: text("title").notNull(),
-  message: text("message").notNull(),
-  actionUrl: text("action_url"),
-  
-  // Delivery status
-  channels: text("channels").array().default(sql`ARRAY[]::text[]`), // ['websocket', 'email', 'sms', 'push']
-  deliveredVia: text("delivered_via").array().default(sql`ARRAY[]::text[]`),
-  deliveredAt: timestamp("delivered_at"),
-  readAt: timestamp("read_at"),
-  
-  // Escalation
-  requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  escalatedAt: timestamp("escalated_at"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("scheduler_notif_workspace_idx").on(table.workspaceId),
-  index("scheduler_notif_event_type_idx").on(table.eventType),
-  index("scheduler_notif_severity_idx").on(table.severity),
-  index("scheduler_notif_recipient_idx").on(table.recipientUserId),
-  index("scheduler_notif_shift_idx").on(table.shiftId),
 ]);
 
 export const calendarSubscriptions = pgTable("calendar_subscriptions", {
@@ -1310,43 +1164,6 @@ export const staffingClaimTokens = pgTable("staffing_claim_tokens", {
   index("idx_staffing_claims_client").on(table.clientEmail, table.status),
 ]);
 
-export const shiftCoverageClaims = pgTable("shift_coverage_claims", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  shiftId: varchar("shift_id"),
-  employeeId: varchar("employee_id"),
-  claimType: varchar("claim_type").default('volunteer'),
-  status: varchar("status").default('pending'),
-  respondedAt: timestamp("responded_at"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// ── shift_coverage_offers ───────────────────────────────────────────────────
-// Tracks per-employee offers dispatched for shift coverage requests.
-// Created by coveragePipeline.ts; first-accept-wins atomic logic.
-export const shiftCoverageOffers = pgTable("shift_coverage_offers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  coverageRequestId: varchar("coverage_request_id").notNull(),
-  employeeId: varchar("employee_id").notNull(),
-  workspaceId: varchar("workspace_id").notNull(),
-  status: varchar("status", { length: 30 }).notNull().default('pending'),
-  tier: integer("tier").default(1),
-  aiScore: varchar("ai_score", { length: 20 }),
-  aiReason: text("ai_reason"),
-  notificationId: varchar("notification_id"),
-  respondedAt: timestamp("responded_at"),
-  declineReason: varchar("decline_reason", { length: 500 }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("sco_coverage_request_idx").on(table.coverageRequestId),
-  index("sco_employee_idx").on(table.employeeId),
-  index("sco_workspace_idx").on(table.workspaceId),
-  index("sco_status_idx").on(table.status),
-]);
-
 // ═══════════════════════════════════════════════════════════════
 // PHASE D — On-Call Schedule Enforcement (Bryan-approved, 2026 sprint)
 // ═══════════════════════════════════════════════════════════════
@@ -1442,3 +1259,55 @@ export const replacementCascadeLogs = pgTable("replacement_cascade_logs", {
 export type ReplacementCascadeLog = typeof replacementCascadeLogs.$inferSelect;
 
 export * from './extended';
+
+export const publishedSchedules = pgTable("published_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  
+  // Schedule period
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
+  title: varchar("title"), // e.g., "Week of Nov 6-12, 2024"
+  
+  // Publishing details
+  publishedBy: varchar("published_by").notNull(),
+  publishedAt: timestamp("published_at").notNull().defaultNow(),
+  
+  // Shift tracking
+  totalShifts: integer("total_shifts").default(0),
+  employeesAffected: integer("employees_affected").default(0),
+  shiftIds: text("shift_ids").array(), // All shifts in this published schedule
+  
+  // Notification tracking
+  notificationsSent: boolean("notifications_sent").default(false),
+  notificationsSentAt: timestamp("notifications_sent_at"),
+  
+  // Version control
+  version: integer("version").default(1),
+  replacesScheduleId: varchar("replaces_schedule_id"), // If republishing
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const shiftCoverageOffers = pgTable("shift_coverage_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coverageRequestId: varchar("coverage_request_id").notNull(),
+  employeeId: varchar("employee_id").notNull(),
+  workspaceId: varchar("workspace_id").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default('pending'),
+  tier: integer("tier").default(1),
+  aiScore: varchar("ai_score", { length: 20 }),
+  aiReason: text("ai_reason"),
+  notificationId: varchar("notification_id"),
+  respondedAt: timestamp("responded_at"),
+  declineReason: varchar("decline_reason", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("sco_coverage_request_idx").on(table.coverageRequestId),
+  index("sco_employee_idx").on(table.employeeId),
+  index("sco_workspace_idx").on(table.workspaceId),
+  index("sco_status_idx").on(table.status),
+]);
+

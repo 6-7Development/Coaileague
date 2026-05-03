@@ -215,6 +215,8 @@ export const chatMessages = pgTable("chat_messages", {
 }, (table) => [
   // Existing indexes
   index("chat_messages_conversation_idx").on(table.conversationId),
+  // Wave 6.5 / Directive B: reconnect replay index — listMessagesSince() query
+  index("idx_chat_messages_conv_seq").on(table.conversationId, table.seqNum),
   index("chat_messages_thread_idx").on(table.threadId),
   index("chat_messages_parent_idx").on(table.parentMessageId),
   
@@ -226,7 +228,11 @@ export const chatMessages = pgTable("chat_messages", {
   
   // Sentiment analysis indexes
   index("chat_messages_sentiment_idx").on(table.sentiment), // Query by sentiment
-  index("chat_messages_should_escalate_idx").on(table.shouldEscalate), // Query urgent messages
+  index("chat_messages_should_escalate_idx").on(table.shouldEscalate),
+  // Wave 6.5 / Directive B: Reconnect replay (listMessagesSince) composite index
+  index("chat_messages_workspace_conv_seq_idx").on(table.workspaceId, table.conversationId, table.seqNum),
+  // Wave 6.5 / Directive B: Standard room history load (workspaceId + conv + deleted + time)
+  index("chat_messages_conv_deleted_created_idx").on(table.conversationId, table.isDeletedForEveryone, table.createdAt), // Query urgent messages
 ]);
 
 export const messageReactions = pgTable("message_reactions", {

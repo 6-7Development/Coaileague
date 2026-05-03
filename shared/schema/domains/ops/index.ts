@@ -964,35 +964,6 @@ export const visitorLogs = pgTable("visitor_logs", {
 export type VisitorLog = typeof visitorLogs.$inferSelect;
 
 // ─── PHASE 35I: VISITOR PRE-REGISTRATIONS ────────────────────────────────────
-export const visitorPreRegistrations = pgTable("visitor_pre_registrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  clientId: varchar("client_id"),
-  siteId: varchar("site_id"),
-  siteName: varchar("site_name").notNull(),
-  expectedVisitorName: varchar("expected_visitor_name").notNull(),
-  expectedVisitorCompany: varchar("expected_visitor_company"),
-  // visitor_type: guest|vendor|contractor|employee|delivery|law_enforcement|other
-  visitorType: varchar("visitor_type").default("guest"),
-  expectedArrival: timestamp("expected_arrival").notNull(),
-  expectedDeparture: timestamp("expected_departure"),
-  hostName: varchar("host_name"),
-  hostContact: varchar("host_contact"),
-  reason: text("reason"),
-  // status: pending|checked_in|completed|cancelled
-  status: varchar("status").default("pending").notNull(),
-  notes: text("notes"),
-  submittedBy: varchar("submitted_by"),
-  submittedByName: varchar("submitted_by_name"),
-  checkedInLogId: varchar("checked_in_log_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("visitor_pre_reg_workspace_idx").on(table.workspaceId),
-  index("visitor_pre_reg_client_idx").on(table.clientId),
-  index("visitor_pre_reg_status_idx").on(table.status),
-  index("visitor_pre_reg_arrival_idx").on(table.expectedArrival),
-]);
 
 export type VisitorPreRegistration = typeof visitorPreRegistrations.$inferSelect;
 

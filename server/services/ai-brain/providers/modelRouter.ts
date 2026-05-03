@@ -26,7 +26,7 @@
 
 import { db } from '../../../db';
 import { sql } from 'drizzle-orm';
-import { trinityAiUsageLog } from '@shared/schema/domains/trinity/extended';
+// trinityAiUsageLog removed Wave 6.5 — writes now go to tokenUsageService buffer
 import { platformEventBus } from '../../platformEventBus';
 import { aiMeteringService } from '../../billing/aiMeteringService';
 import { createLogger } from '../../../lib/logger';
@@ -433,21 +433,18 @@ class ModelRouter {
   }): Promise<void> {
     try {
       // Converted to Drizzle ORM
-      await db.insert(trinityAiUsageLog).values({
+      // Wave 6.5: Redirect from dropped trinityAiUsageLog → token_usage_log via buffer
+      // The redisTokenBuffer (Wave 5) handles batching — non-blocking, never delays AI calls
+      const { recordTokenUsageBuffered } = await import('../../billing/tokenUsageService');
+      recordTokenUsageBuffered({
         workspaceId: params.workspaceId,
         userId: params.userId || null,
+        sessionId: null,
         modelUsed: params.modelId,
-        modelTier: params.role,
-        callType: params.featureKey,
-        inputTokens: params.inputTokens,
-        outputTokens: params.outputTokens,
-        totalTokens: params.inputTokens + params.outputTokens,
-        costBasisUsd: params.rawCostUsd.toFixed(6),
-        markupRate: '1.2',
-        billedAmountUsd: (params.rawCostUsd * 1.2).toFixed(6),
-        creditsDeducted: 0,
-        responseTimeMs: params.durationMs,
-        calledAt: sql`now()`,
+        tokensInput: params.inputTokens,
+        tokensOutput: params.outputTokens,
+        actionType: params.featureKey || `trinity_${params.role}`,
+        featureName: params.featureKey || null,
       });
       aiMeteringService.recordAiCall({
         workspaceId: params.workspaceId,

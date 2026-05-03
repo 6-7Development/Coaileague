@@ -1270,8 +1270,25 @@ export const aiLearningEvents = pgTable("ai_learning_events", {
   index("idx_ale_event_type").on(table.eventType),
   index("idx_ale_agent_id").on(table.agentId),
   index("idx_ale_workspace").on(table.workspaceId),
+  // Wave 6.5 / Directive B: episodic memory retrieval in buildSystemPrompt
+  // WHERE workspace_id = ? AND event_type = 'human_override' AND human_intervention = true
+  // ORDER BY created_at DESC LIMIT 5
+  index("idx_ai_learning_workspace_override").on(
+    table.workspaceId, table.eventType, table.humanIntervention, table.createdAt
+  ),
   index("idx_ale_outcome").on(table.outcome),
   index("idx_ale_created_at").on(table.createdAt),
+  // Wave 6.5 / Directive B: Trinity episodic memory retrieval (buildSystemPrompt)
+  // CRITICAL: without this, every chat turn does a full table scan as override count grows
+  index("idx_ale_ws_override_ts").on(table.workspaceId, table.eventType, table.humanIntervention, table.createdAt),
+  // Wave 6.5 / Directive B: Trinity memory retrieval composite index
+  // Powers buildSystemPrompt() historical preferences query:
+  //   WHERE workspace_id = ? AND event_type = 'human_override' AND human_intervention = true
+  //   ORDER BY created_at DESC LIMIT 5
+  // Without this, every AI chat call does a full table scan.
+  index("idx_ale_ws_type_intervention_ts").on(
+    table.workspaceId, table.eventType, table.humanIntervention, table.createdAt
+  ),
 ]);
 
 export const llmJudgeEvaluations = pgTable("llm_judge_evaluations", {

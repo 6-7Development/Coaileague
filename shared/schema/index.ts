@@ -40,10 +40,9 @@ export {
   type InsertInboundEmailLog,
 } from './domains/comms';
 export {
-  hiringPipeline,
   type HiringPipeline,
   insertHiringPipelineSchema,
-  type InsertHiringPipeline,
+  type,
 } from './domains/workforce';
 export {
   performanceNotes,

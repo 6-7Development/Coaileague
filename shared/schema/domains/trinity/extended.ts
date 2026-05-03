@@ -170,23 +170,6 @@ export const socialEntities = pgTable("social_entities", {
 export const insertSocialEntitiesSchema = createInsertSchema(socialEntities).omit({ id: true });
 export type InsertSocialEntities = z.infer<typeof insertSocialEntitiesSchema>;
 export type SocialEntities = typeof socialEntities.$inferSelect;
-
-export const socialRelationships = pgTable("social_relationships", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  workspaceId: varchar("workspace_id").notNull(),
-  fromEntity: varchar("from_entity").notNull(),
-  toEntity: varchar("to_entity").notNull(),
-  relationshipStrength: integer("relationship_strength").default(50),
-  relationshipType: varchar("relationship_type").default('peer'),
-  interactionFrequencyWeekly: decimal("interaction_frequency_weekly").default('0'),
-  sentimentScore: integer("sentiment_score").default(50),
-  trustLevel: integer("trust_level").default(50),
-  lastInteractionAt: timestamp("last_interaction_at"),
-});
-export const insertSocialRelationshipsSchema = createInsertSchema(socialRelationships).omit({ id: true });
-export type InsertSocialRelationships = z.infer<typeof insertSocialRelationshipsSchema>;
-export type SocialRelationships = typeof socialRelationships.$inferSelect;
-
 export const somaticPatternLibrary = pgTable("somatic_pattern_library", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   workspaceId: varchar("workspace_id"),
@@ -222,33 +205,6 @@ export const insertTemporalEntityArcsSchema = createInsertSchema(temporalEntityA
 export type InsertTemporalEntityArcs = z.infer<typeof insertTemporalEntityArcsSchema>;
 export type TemporalEntityArcs = typeof temporalEntityArcs.$inferSelect;
 
-export const trinityAiUsageLog = pgTable("trinity_ai_usage_log", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id"),
-  userId: varchar("user_id"),
-  userRole: varchar("user_role"),
-  sessionId: varchar("session_id"),
-  conversationId: varchar("conversation_id"),
-  modelUsed: varchar("model_used"),
-  modelTier: varchar("model_tier"),
-  callType: varchar("call_type").notNull(),
-  inputTokens: integer("input_tokens").default(0),
-  outputTokens: integer("output_tokens").default(0),
-  totalTokens: integer("total_tokens").default(0),
-  costBasisUsd: decimal("cost_basis_usd").default('0'),
-  markupRate: decimal("markup_rate").default('0'),
-  billedAmountUsd: decimal("billed_amount_usd").default('0'),
-  creditsDeducted: integer("credits_deducted").default(0),
-  responseTimeMs: integer("response_time_ms").default(0),
-  taskId: varchar("task_id"),
-  wasBlocked: boolean("was_blocked").default(false),
-  blockReason: text("block_reason"),
-  calledAt: timestamp("called_at").default(sql`now()`),
-});
-
-export const insertTrinityAiUsageLogSchema = createInsertSchema(trinityAiUsageLog).omit({ id: true });
-export type InsertTrinityAiUsageLog = z.infer<typeof insertTrinityAiUsageLogSchema>;
-export type TrinityAiUsageLog = typeof trinityAiUsageLog.$inferSelect;
 
 export const trinityAutonomousTasks = pgTable("trinity_autonomous_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -316,17 +272,6 @@ export const insertTrinityHypothesisSessionsSchema = createInsertSchema(trinityH
 export type InsertTrinityHypothesisSessions = z.infer<typeof insertTrinityHypothesisSessionsSchema>;
 export type TrinityHypothesisSessions = typeof trinityHypothesisSessions.$inferSelect;
 
-export const trinityMemoryService = pgTable("trinity_memory_service", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  workspaceId: varchar("workspace_id").notNull(),
-  entityId: varchar("entity_id").notNull(),
-  memoryKey: varchar("memory_key").notNull(),
-  memoryValue: text("memory_value").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
-export const insertTrinityMemoryServiceSchema = createInsertSchema(trinityMemoryService).omit({ id: true });
-export type InsertTrinityMemoryService = z.infer<typeof insertTrinityMemoryServiceSchema>;
-export type TrinityMemoryService = typeof trinityMemoryService.$inferSelect;
 
 export const trinityNarrative = pgTable("trinity_narrative", {
   workspaceId: varchar("workspace_id").notNull(),
@@ -355,29 +300,6 @@ export const trinityPeripheralSurfaced = pgTable("trinity_peripheral_surfaced", 
 export const insertTrinityPeripheralSurfacedSchema = createInsertSchema(trinityPeripheralSurfaced).omit({ id: true });
 export type InsertTrinityPeripheralSurfaced = z.infer<typeof insertTrinityPeripheralSurfacedSchema>;
 export type TrinityPeripheralSurfaced = typeof trinityPeripheralSurfaced.$inferSelect;
-
-export const trinityThinkingSessions = pgTable("trinity_thinking_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id"),
-  sessionId: varchar("session_id"),
-  triggerType: varchar("trigger_type").default('complex_request'),
-  problemStatement: text("problem_statement").notNull(),
-  approachCandidates: jsonb("approach_candidates").default('[]'),
-  selectedApproach: text("selected_approach"),
-  approachScore: integer("approach_score").default(0),
-  executionPlan: jsonb("execution_plan").default('[]'),
-  failureModes: jsonb("failure_modes").default('[]'),
-  thinkingTokensUsed: integer("thinking_tokens_used").default(0),
-  thinkingTimeMs: integer("thinking_time_ms").default(0),
-  phasesCompleted: jsonb("phases_completed").default('[]'),
-  outcome: varchar("outcome").default('pending'),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const insertTrinityThinkingSessionsSchema = createInsertSchema(trinityThinkingSessions).omit({ id: true });
-export type InsertTrinityThinkingSessions = z.infer<typeof insertTrinityThinkingSessionsSchema>;
-export type TrinityThinkingSessions = typeof trinityThinkingSessions.$inferSelect;
-
 // ── Phase 10-4: Trinity API Execution Cost Tracking ─────────────────────────
 export const trinityExecutionCosts = pgTable("trinity_execution_costs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -583,3 +505,16 @@ export const helpaiOfficerProfiles = pgTable("helpai_officer_profiles", {
 export const insertHelpaiOfficerProfileSchema = createInsertSchema(helpaiOfficerProfiles).omit({ id: true });
 export type InsertHelpaiOfficerProfile = z.infer<typeof insertHelpaiOfficerProfileSchema>;
 export type HelpaiOfficerProfile = typeof helpaiOfficerProfiles.$inferSelect;
+
+// Restored — Wave 6.5 correction (active in modelRouter.ts)// Restored — Wave 6.5 correction (active in trinityConversationalWarmthService.ts)
+export const trinityMemoryService = pgTable("trinity_memory_service", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  workspaceId: varchar("workspace_id").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  memoryKey: varchar("memory_key").notNull(),
+  memoryValue: text("memory_value").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+export const insertTrinityMemoryServiceSchema = createInsertSchema(trinityMemoryService).omit({ id: true });
+export type InsertTrinityMemoryService = z.infer<typeof insertTrinityMemoryServiceSchema>;
+export type TrinityMemoryService = typeof trinityMemoryService.$inferSelect;

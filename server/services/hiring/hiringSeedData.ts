@@ -1,7 +1,7 @@
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { typedPool, typedPoolExec } from '../../lib/typedSql';
-import { interviewQuestionSets, chatConversations, chatMessages, interviewSessions } from '@shared/schema';
+import { interviewQuestionSets, chatConversations, chatMessages } from '@shared/schema';
 
 const WS = 'dev-acme-security-ws';
 
@@ -425,49 +425,6 @@ Thank you again for your time. You represented yourself very well today.
     }).onConflictDoNothing();
   }
 
-  // =========================================================================
-  // 5. INTERVIEW SESSIONS
-  // =========================================================================
-  // Converted to Drizzle ORM: ON CONFLICT
-  await db.insert(interviewSessions).values([
-    {
-      id: 'isess-acme-001',
-      workspaceId: WS,
-      applicantId: 'app-acme-003',
-      jobPostingId: 'jp-acme-002',
-      conversationId: 'conv-interview-jordan-001',
-      sessionType: 'async',
-      status: 'in_progress',
-      questionSetId: 'iqs-unarmed-001',
-      transcript: { questions_answered: 6, questions_total: 10, last_question: 7 },
-      scoreBreakdown: { availability: 10, experience: 13, employment_history: 9, situational_1: 17, situational_2: 13, compliance: 14 },
-      overallScore: null,
-      transcriptSummary: null,
-      completedAt: null,
-      createdAt: new Date(d(2)),
-    },
-    {
-      id: 'isess-acme-002',
-      workspaceId: WS,
-      applicantId: 'app-acme-004',
-      jobPostingId: 'jp-acme-002',
-      conversationId: 'conv-interview-samantha-001',
-      sessionType: 'async',
-      status: 'complete',
-      questionSetId: 'iqs-unarmed-001',
-      transcript: { questions_answered: 10, questions_total: 10 },
-      scoreBreakdown: {
-        availability: 10, experience: 15, employment_history: 10,
-        situational_1: 19, situational_2: 17, compliance: 14,
-        physical: 5, employment_clean: 15, chain_of_command: 9, logistics: 5,
-        total: 82
-      },
-      overallScore: '82',
-      transcriptSummary: 'Samantha Cruz completed all 10 interview questions. De-escalation protocol: Excellent. Healthcare compliance awareness: Outstanding. Employment history: Clean — no terminations. License verified at 97% confidence. Full availability including evenings and overnights. Trinity recommends for offer.',
-      completedAt: new Date(d(5, 10)),
-      createdAt: new Date(d(6, 3)),
-    },
-  ]).onConflictDoNothing();
 
   console.log('[HiringSeed] Acme hiring stress test data seeded successfully');
   return { success: true, message: 'Hiring seed data inserted: 3 job postings, 8 applicants, 2 interview sessions, 34 ChatDock messages' };

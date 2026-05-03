@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // Domain: Officer Training Certification
-// ═══════════════════════════════════════════════════════════════
 // Tables: training_modules, training_sections, training_questions,
 //         training_attempts, training_certificates, training_interventions,
 //         training_sessions, training_attendance, training_providers
@@ -11,7 +9,6 @@ import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
-// ── training_modules ──────────────────────────────────────────
 export const trainingModules = pgTable('training_modules', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id'),
@@ -34,7 +31,6 @@ export const insertTrainingModuleSchema = createInsertSchema(trainingModules).om
 export type InsertTrainingModule = z.infer<typeof insertTrainingModuleSchema>;
 export type TrainingModule = typeof trainingModules.$inferSelect;
 
-// ── training_sections ─────────────────────────────────────────
 export const trainingSections = pgTable('training_sections', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   moduleId: varchar('module_id').notNull().references(() => trainingModules.id, { onDelete: 'cascade' }),
@@ -49,7 +45,6 @@ export const insertTrainingSectionSchema = createInsertSchema(trainingSections).
 export type InsertTrainingSection = z.infer<typeof insertTrainingSectionSchema>;
 export type TrainingSection = typeof trainingSections.$inferSelect;
 
-// ── training_questions ────────────────────────────────────────
 export const trainingQuestions = pgTable('training_questions', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   moduleId: varchar('module_id').notNull().references(() => trainingModules.id, { onDelete: 'cascade' }),
@@ -66,7 +61,6 @@ export const insertTrainingQuestionSchema = createInsertSchema(trainingQuestions
 export type InsertTrainingQuestion = z.infer<typeof insertTrainingQuestionSchema>;
 export type TrainingQuestion = typeof trainingQuestions.$inferSelect;
 
-// ── training_attempts ─────────────────────────────────────────
 export const officerTrainingAttempts = pgTable('training_attempts', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id').notNull(),
@@ -96,7 +90,6 @@ export const insertOfficerTrainingAttemptSchema = createInsertSchema(officerTrai
 export type InsertOfficerTrainingAttempt = z.infer<typeof insertOfficerTrainingAttemptSchema>;
 export type OfficerTrainingAttempt = typeof officerTrainingAttempts.$inferSelect;
 
-// ── training_certificates ─────────────────────────────────────
 export const officerTrainingCertificates = pgTable('training_certificates', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id').notNull(),
@@ -120,7 +113,6 @@ export const insertOfficerTrainingCertificateSchema = createInsertSchema(officer
 export type InsertOfficerTrainingCertificate = z.infer<typeof insertOfficerTrainingCertificateSchema>;
 export type OfficerTrainingCertificate = typeof officerTrainingCertificates.$inferSelect;
 
-// ── training_interventions ────────────────────────────────────
 export const trainingInterventions = pgTable('training_interventions', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id').notNull(),
@@ -146,28 +138,8 @@ export const insertTrainingInterventionSchema = createInsertSchema(trainingInter
 export type InsertTrainingIntervention = z.infer<typeof insertTrainingInterventionSchema>;
 export type TrainingIntervention = typeof trainingInterventions.$inferSelect;
 
-// ── training_providers ────────────────────────────────────────
-export const trainingProviders = pgTable('training_providers', {
-  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar('workspace_id').notNull(),
-  name: varchar('name', { length: 255 }).notNull(),
-  contactName: varchar('contact_name', { length: 255 }),
-  contactEmail: varchar('contact_email', { length: 255 }),
-  contactPhone: varchar('contact_phone', { length: 50 }),
-  address: text('address'),
-  website: text('website'),
-  approved: boolean('approved').default(false),
-  tcoleApproved: boolean('tcole_approved').default(false),
-  specialties: jsonb('specialties').$type<string[]>(),
-  notes: text('notes'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
 
-export const insertTrainingProviderSchema = createInsertSchema(trainingProviders).omit({ id: true, createdAt: true });
-export type InsertTrainingProvider = z.infer<typeof insertTrainingProviderSchema>;
-export type TrainingProvider = typeof trainingProviders.$inferSelect;
 
-// ── training_sessions ─────────────────────────────────────────
 export const trainingSessions = pgTable('training_sessions', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id').notNull(),
@@ -198,7 +170,6 @@ export const insertTrainingSessionSchema = createInsertSchema(trainingSessions).
 export type InsertTrainingSession = z.infer<typeof insertTrainingSessionSchema>;
 export type TrainingSession = typeof trainingSessions.$inferSelect;
 
-// ── training_attendance ───────────────────────────────────────
 export const trainingAttendance = pgTable('training_attendance', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar('workspace_id').notNull(),
@@ -279,89 +250,13 @@ export const trainingRuns = pgTable("training_runs", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 })
+// Domain: Officer Training Certification
+// Tables: training_modules, training_sections, training_questions,
+//         training_attempts, training_certificates, training_interventions,
+//         training_sessions, training_attendance, training_providers
+import { trainingDifficultyEnum } from '../../enums';
 
-
-export const trainingCourses = pgTable("training_courses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-
-  // Course details
-  title: varchar("title").notNull(),
-  description: text("description"),
-  category: varchar("category"), // 'compliance', 'technical', 'leadership', 'soft_skills', 'safety'
-
-  // Content
-  courseType: varchar("course_type").notNull(), // 'online', 'in_person', 'hybrid', 'self_paced'
-  duration: integer("duration"), // Minutes
-  contentUrl: varchar("content_url"), // Link to course materials
-  videoUrl: varchar("video_url"),
-
-  // Requirements
-  isRequired: boolean("is_required").default(false),
-  expiresAfterDays: integer("expires_after_days"), // Requires renewal (e.g., 365 for annual training)
-  passingScore: integer("passing_score"), // Minimum % to pass
-
-  // Access
-  requiresApproval: boolean("requires_approval").default(false),
-  maxEnrollments: integer("max_enrollments"),
-
-  // Instructor
-  instructorId: varchar("instructor_id"),
-  instructorName: varchar("instructor_name"),
-
-  // Status
-  isActive: boolean("is_active").default(true),
-  publishedAt: timestamp("published_at"),
-
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-
-  durationHours: decimal("duration_hours"),
-  content: jsonb("content"),
-  scenarioData: jsonb("scenario_data").default('{}'),
-})
-
-
-export const trainingEnrollments = pgTable("training_enrollments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  courseId: varchar("course_id").notNull(),
-  employeeId: varchar("employee_id").notNull(),
-  workspaceId: varchar("workspace_id"),
-
-  // Enrollment details
-  enrolledAt: timestamp("enrolled_at").defaultNow(),
-  enrolledBy: varchar("enrolled_by"), // Manager or self
-
-  // Progress
-  status: varchar("status").default('enrolled'), // 'enrolled', 'in_progress', 'completed', 'failed', 'expired'
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  expiresAt: timestamp("expires_at"),
-
-  // Assessment
-  assessmentScore: integer("assessment_score"), // Percentage
-  attempts: integer("attempts").default(0),
-  maxAttempts: integer("max_attempts").default(3),
-
-  // Certification
-  certificateUrl: varchar("certificate_url"),
-  certificateIssuedAt: timestamp("certificate_issued_at"),
-
-  // Feedback
-  rating: integer("rating"), // 1-5 stars
-  feedback: text("feedback"),
-
-  updatedAt: timestamp("updated_at").defaultNow(),
-
-  progressPercentage: integer("progress_percentage").default(0),
-  score: decimal("score"),
-  enrollmentType: varchar("enrollment_type"),
-  attemptData: jsonb("attempt_data").default('{}'),
-  certificationData: jsonb("certification_data").default('{}'),
-}, (table) => ({
-  employeeIdx: index("training_enrollments_employee_idx").on(table.employeeId),
-  statusIdx: index("training_enrollments_status_idx").on(table.status),
-  expiresIdx: index("training_enrollments_expires_idx").on(table.expiresAt),
-  workspaceIdx: index("training_enrollments_workspace_idx").on(table.workspaceId),
-}))
+import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, decimal, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { createInsertSchema } from 'drizzle-zod';
+import { z } from 'zod';

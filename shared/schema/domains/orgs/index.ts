@@ -1325,43 +1325,6 @@ export const workspaces = pgTable("workspaces", {
   billingCycle: varchar("billing_cycle"),
 });
 
-export const workspaceThemes = pgTable("workspace_themes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull().unique(),
-
-  // Theming tier - determines what can be customized
-  tier: varchar("tier").default("standard"), // 'standard', 'professional', 'white_label'
-
-  // Color customization (HSL format: "H S% L%")
-  primaryColor: varchar("primary_color"),
-  secondaryColor: varchar("secondary_color"),
-  successColor: varchar("success_color"),
-  warningColor: varchar("warning_color"),
-  errorColor: varchar("error_color"),
-
-  // Logo & branding assets
-  logoUrl: text("logo_url"),
-  logoUrlInverted: text("logo_url_inverted"),
-  faviconUrl: text("favicon_url"),
-  loginBackgroundUrl: text("login_background_url"),
-
-  // Typography
-  fontFamily: varchar("font_family"),
-
-  // Domain settings (Enterprise tier only)
-  customDomain: varchar("custom_domain"),
-  customEmailDomain: varchar("custom_email_domain"),
-
-  // Branding removals (Enterprise tier only)
-  removePoweredBy: boolean("remove_powered_by").default(false),
-  removeClockworkLogo: boolean("remove_clockwork_logo").default(false),
-  removeWatermarks: boolean("remove_watermarks").default(false),
-
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const workspaceInvites = pgTable("workspace_invites", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -1737,3 +1700,5 @@ export const onboardingStep = pgTable('onboarding_steps', {
   index('onboarding_steps_workspace_idx').on(table.workspaceId),
   index('onboarding_steps_key_idx').on(table.stepKey),
 ]);
+
+// Restored — Wave 6.5 correction (active in storage.ts + ThemeContext)

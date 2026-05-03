@@ -1,13 +1,13 @@
 // Core insert schemas and types
 // Tables have been moved to domain files — this file is kept for backwards-compatible re-exports only.
 // DO NOT add pgTable definitions here — domain files are the source of truth.
-//   workspaces / workspaceThemes / workspaceInvites → shared/schema/domains/orgs/index.ts
+//   workspaces / workspaceInvites → shared/schema/domains/orgs/index.ts
 //   employees                                        → shared/schema/domains/workforce/index.ts
 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-import { workspaces, workspaceThemes, workspaceInvites } from './domains/orgs';
+import { workspaces, workspaceInvites } from './domains/orgs';
 import { employees } from './domains/workforce';
 
 export const insertWorkspaceSchema = createInsertSchema(workspaces).omit({
@@ -45,18 +45,7 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
 });
 
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
-export type Employee = typeof employees.$inferSelect;
-
-export const insertWorkspaceThemeSchema = createInsertSchema(workspaceThemes).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertWorkspaceTheme = z.infer<typeof insertWorkspaceThemeSchema>;
-export type WorkspaceTheme = typeof workspaceThemes.$inferSelect;
-
-export const insertWorkspaceInviteSchema = createInsertSchema(workspaceInvites).omit({
+export type Employee = typeof employees.$inferSelect;export const insertWorkspaceInviteSchema = createInsertSchema(workspaceInvites).omit({
   id: true,
   createdAt: true,
   acceptedAt: true,

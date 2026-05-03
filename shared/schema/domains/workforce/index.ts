@@ -29,7 +29,7 @@ import {
 } from '../../enums';
 
 // ─── Cross-domain re-exports (moved to correct schemas in Wave 2) ─────────────
-export { trainingScenarios, trainingRuns, trainingCourses, trainingEnrollments } from '../training';
+export { trainingScenarios, trainingRuns } from '../training';
 
 
 export const employeeSkills = pgTable("employee_skills", {
@@ -753,27 +753,6 @@ export const employeeAchievements = pgTable("employee_achievements", {
   index("employee_achievements_earned_idx").on(table.earnedAt),
 ]);
 
-export const leaderboardCache = pgTable("leaderboard_cache", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  
-  // Period
-  period: varchar("period").notNull(), // 'daily', 'weekly', 'monthly', 'all_time'
-  periodStart: timestamp("period_start"),
-  periodEnd: timestamp("period_end"),
-  
-  // Rankings (JSON array of {employeeId, rank, points, name})
-  rankings: jsonb("rankings").notNull(),
-  
-  // Cache metadata
-  calculatedAt: timestamp("calculated_at").defaultNow(),
-  expiresAt: timestamp("expires_at"),
-}, (table) => [
-  index("leaderboard_cache_workspace_idx").on(table.workspaceId),
-  index("leaderboard_cache_period_idx").on(table.period),
-  index("leaderboard_cache_expires_idx").on(table.expiresAt),
-]);
-
 export const coaileagueEmployeeProfiles = pgTable("coaileague_employee_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -953,25 +932,6 @@ export const employeeScoreSnapshots = pgTable("employee_score_snapshots", {
   index("score_snapshots_workspace_idx").on(table.workspaceId),
   index("score_snapshots_employee_idx").on(table.employeeId),
   index("score_snapshots_period_idx").on(table.periodType, table.periodStart),
-]);
-
-export const aiDecisionAudit = pgTable("ai_decision_audit", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  decisionType: varchar("decision_type").notNull(), // 'ASSIGN_GUARD', 'FILL_SHIFT', 'SWAP_APPROVE', etc.
-  selectedEmployeeId: varchar("selected_employee_id"),
-  shiftId: varchar("shift_id"),
-  reasoning: text("reasoning"),
-  score: decimal("score", { precision: 5, scale: 4 }),
-  alternativesConsidered: integer("alternatives_considered").default(0),
-  metadata: jsonb("metadata"),
-  triggeredBy: varchar("triggered_by"), // 'trinity', 'scheduler', 'manual'
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("ai_decision_audit_workspace_idx").on(table.workspaceId),
-  index("ai_decision_audit_type_idx").on(table.decisionType),
-  index("ai_decision_audit_employee_idx").on(table.selectedEmployeeId),
-  index("ai_decision_audit_created_idx").on(table.createdAt),
 ]);
 
 export const personalityTagsCatalog = pgTable("personality_tags_catalog", {
@@ -1776,42 +1736,6 @@ export type EmployeeBankAccount = typeof employeeBankAccounts.$inferSelect;
 // hiring_pipeline
 // Applicant tracking for open positions — feeds into employee onboarding.
 // ─────────────────────────────────────────────────────────────────────────────
-export const hiringPipeline = pgTable("hiring_pipeline", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  applicantName: varchar("applicant_name").notNull(),
-  applicantEmail: varchar("applicant_email"),
-  applicantPhone: varchar("applicant_phone"),
-  positionApplied: varchar("position_applied"),
-  source: varchar("source").default("direct"), // direct, referral, job_board, platform_pool
-  status: varchar("status").notNull().default("new"), // new, screening, interview, offer, hired, rejected
-  stage: varchar("stage").notNull().default("application"), // application, phone_screen, interview, background_check, offer, onboarding
-  resumeUrl: text("resume_url"),
-  coverLetterUrl: text("cover_letter_url"),
-  notes: text("notes"),
-  assignedTo: varchar("assigned_to"), // user_id of recruiter/manager
-  interviewScheduledAt: timestamp("interview_scheduled_at", { withTimezone: true }),
-  offerSentAt: timestamp("offer_sent_at", { withTimezone: true }),
-  offerAcceptedAt: timestamp("offer_accepted_at", { withTimezone: true }),
-  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
-  rejectionReason: text("rejection_reason"),
-  hiredAt: timestamp("hired_at", { withTimezone: true }),
-  employeeId: varchar("employee_id"), // links to employees.id after hire
-  metadata: jsonb("metadata").default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-
-  // Wave 6 / Task 1: ATS Unification — FK to canonical interviewCandidates record
-  canonicalApplicantId: varchar("canonical_applicant_id"), // FK → interview_candidates.id
-}, (table) => [
-  index("idx_hiring_pipeline_workspace").on(table.workspaceId),
-  index("idx_hiring_pipeline_status").on(table.status),
-  index("idx_hiring_pipeline_stage").on(table.stage),
-]);
-export type HiringPipeline = typeof hiringPipeline.$inferSelect;
-export const insertHiringPipelineSchema = createInsertSchema(hiringPipeline).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertHiringPipeline = z.infer<typeof insertHiringPipelineSchema>;
-
 // NOTE: engagementScoreHistory is defined earlier in this file (line ~1505).
 // Do not re-declare it here.
 

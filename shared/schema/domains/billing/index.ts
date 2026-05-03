@@ -1806,17 +1806,6 @@ export const usageCaps = pgTable("usage_caps", {
   index("usage_caps_workspace_cycle_idx").on(table.workspaceId, table.billingCycle),
 ]);
 
-export const platformCreditPool = pgTable("platform_credit_pool", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  amount: integer("amount").notNull(),
-  poolType: varchar("pool_type", { length: 50 }).notNull(),
-  sourceWorkspaceId: varchar("source_workspace_id"),
-  description: text("description"),
-}, (table) => [
-  index("platform_credit_pool_type_idx").on(table.poolType),
-  index("platform_credit_pool_source_idx").on(table.sourceWorkspaceId),
-]);
-
 // ─── Recovered unmapped tables ─────────────────────────────────────────────
 
 export const pointsTransactions = pgTable("points_transactions", {
@@ -2091,6 +2080,8 @@ export const tokenUsageLog = pgTable("token_usage_log", {
   index("idx_token_usage_log_workspace_ts").on(table.workspaceId, table.timestamp),
   index("idx_token_usage_log_model").on(table.modelUsed),
   index("idx_token_usage_log_action").on(table.actionType),
+  // Wave 6.5 / Directive B: Stripe sync flush + monthly rollup (uses timestamp not createdAt)
+  index("idx_token_usage_log_ws_action_ts").on(table.workspaceId, table.actionType, table.timestamp),
 ]);
 
 export type TokenUsageLog = typeof tokenUsageLog.$inferSelect;

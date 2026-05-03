@@ -2,27 +2,6 @@ import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, decimal, da
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
-
-export const faqEntries = pgTable("faq_entries", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id"),
-  category: varchar("category").notNull(),
-  question: text("question").notNull(),
-  answer: text("answer").notNull(),
-  status: varchar("status").default('published'),
-  createdBy: varchar("created_by").default('system'),
-  reviewRequired: boolean("review_required").default(false),
-  version: integer("version").default(1),
-  isActive: boolean("is_active").default(true),
-  tags: text("tags"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
-
-export const insertFaqEntriesSchema = createInsertSchema(faqEntries).omit({ id: true });
-export type InsertFaqEntries = z.infer<typeof insertFaqEntriesSchema>;
-export type FaqEntries = typeof faqEntries.$inferSelect;
-
 export const faqNotifications = pgTable("faq_notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id"),
