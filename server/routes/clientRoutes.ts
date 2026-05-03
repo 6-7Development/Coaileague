@@ -1427,4 +1427,94 @@ router.get('/my-portal-token', requireAuth, async (req: AuthenticatedRequest, re
   }
 });
 
+// ── GET /api/clients/:id/email-timeline ─────────────────────────────────────
+// Wave 5 / Task 4 (G-8): Unified email conversation timeline for a client.
+// Returns inbound emails (from client) + outbound emails (to client) ordered
+// by timestamp — the single source of truth for client email history.
+router.get('/:id/email-timeline', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const clientId = req.params.id;
+    const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 200);
+    const offset = parseInt(String(req.query.offset || '0'), 10);
+
+    // Verify client belongs to this workspace
+    const [client] = await db
+      .select({ id: clients.id, name: clients.name, email: clients.email })
+      .from(clients)
+      .where(and(eq(clients.id, clientId), eq(clients.workspaceId, workspaceId)))
+      .limit(1);
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+
+    // Inbound emails (client → us)
+    const { inboundEmailLog } = await import('@shared/schema');
+    const inbound = await db
+      .select({
+        id: inboundEmailLog.id,
+        direction: sql<string>`'inbound'`,
+        subject: inboundEmailLog.subject,
+        fromEmail: inboundEmailLog.fromEmail,
+        fromName: inboundEmailLog.fromName,
+        toEmail: inboundEmailLog.toEmail,
+        bodyPreview: inboundEmailLog.bodyPreview,
+        hasAttachments: inboundEmailLog.hasAttachments,
+        category: inboundEmailLog.category,
+        createdAt: inboundEmailLog.receivedAt,
+      })
+      .from(inboundEmailLog)
+      .where(
+        and(
+          eq(inboundEmailLog.workspaceId, workspaceId),
+          eq(inboundEmailLog.clientId, clientId),
+        )
+      )
+      .orderBy(desc(inboundEmailLog.receivedAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Outbound emails (us → client) from emailSends/externalEmailsSent
+    // Fetched via raw SQL for flexibility across two table shapes
+    const { pool } = await import('../db');
+    const outboundResult = await pool.query(
+      `SELECT id, 'outbound' AS direction, subject, $1 AS from_email,
+              recipient_email AS to_email, body_preview,
+              false AS has_attachments, 'outbound' AS category, sent_at AS created_at
+       FROM external_emails_sent
+       WHERE workspace_id = $2 AND (
+         recipient_email ILIKE $3 OR client_id = $4
+       )
+       ORDER BY sent_at DESC
+       LIMIT $5 OFFSET $6`,
+      [workspaceId + '@mail.coaileague.com', workspaceId, client.email || '', clientId, limit, offset]
+    ).catch(() => ({ rows: [] }));
+
+    // Merge and sort by date
+    const combined = [
+      ...inbound.map(e => ({ ...e, createdAt: e.createdAt?.toISOString() })),
+      ...outboundResult.rows.map((r: Record<string, unknown>) => ({
+        id: r.id,
+        direction: r.direction,
+        subject: r.subject,
+        fromEmail: r.from_email,
+        toEmail: r.to_email,
+        bodyPreview: r.body_preview,
+        hasAttachments: r.has_attachments,
+        category: r.category,
+        createdAt: r.created_at,
+      })),
+    ].sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
+
+    return res.json({
+      clientId,
+      clientName: client.name,
+      clientEmail: client.email,
+      timeline: combined,
+      count: combined.length,
+    });
+  } catch (err: unknown) {
+    log.error('[ClientEmailTimeline] Error:', err);
+    return res.status(500).json({ error: 'Failed to load email timeline' });
+  }
+});
+
 export default router;

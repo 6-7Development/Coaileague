@@ -1307,14 +1307,18 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
 
   let workspaceId = sender?.workspaceId;
 
-  // Update log with sender info
+  // Update log with sender info + entity FK stamping (Wave 5 / Task 4)
+  // When sender is identified as a client, stamp clientId so the omni-inbox
+  // timeline at GET /api/clients/:id/email-timeline can surface this email.
   await db.update(inboundEmailLog)
     .set({
       workspaceId: workspaceId || null,
       identifiedSenderId: sender?.id || null,
       identifiedSenderType: sender?.type || null,
       unverifiedSender,
-    })
+      clientId: sender?.type === 'client' ? sender.id : null,
+      applicantId: sender?.type === 'applicant' ? sender.id : null,
+    } as Record<string, unknown>)
     .where(eq(inboundEmailLog.id, logId));
 
   // ── STEP 4: Handle unidentified senders ──────────────────────────────────

@@ -71,3 +71,82 @@ export async function transcribeVoiceMessage(audioUrl: string): Promise<string |
     }
   }
 }
+
+// ── Wave 5 / Task 5: Gemini Live streaming transcription path (G-9) ──────────
+// Parallel transcription path using Gemini for real-time or near-real-time
+// voice note transcription. Used as primary when GEMINI_API_KEY is set;
+// Whisper above is the fallback.
+//
+// For ChatDock voice notes (stored files), Gemini Flash is used for fast
+// single-shot transcription. For the Twilio Media Stream live bridge,
+// the full Gemini Live session in geminiLiveBridge.ts handles the audio.
+
+export async function transcribeWithGemini(audioUrl: string): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    // Fetch the audio file
+    const response = await fetch(audioUrl);
+    if (!response.ok) return null;
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0 || buffer.length > 20 * 1024 * 1024) return null;
+
+    const extMatch = audioUrl.match(/\.(webm|mp3|wav|m4a|ogg|opus)(?:\?|$)/i);
+    const ext = extMatch?.[1]?.toLowerCase() || 'webm';
+
+    // Gemini Flash transcription via REST API
+    const base64Audio = buffer.toString('base64');
+    const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: 'Transcribe this audio exactly. Return only the transcript text, nothing else.' },
+              { inline_data: { mime_type: mimeType, data: base64Audio } },
+            ],
+          }],
+        }),
+      }
+    );
+
+    if (!geminiRes.ok) return null;
+
+    const data = await geminiRes.json() as Record<string, unknown>;
+    const text = (
+      ((data.candidates as unknown[])?.[0] as Record<string, unknown>)
+        ?.content as Record<string, unknown>
+    )?.parts;
+
+    if (Array.isArray(text) && text.length > 0) {
+      const transcript = (text[0] as Record<string, unknown>)?.text as string | undefined;
+      return transcript?.trim() || null;
+    }
+
+    return null;
+  } catch (err: unknown) {
+    log.warn('[Transcription/Gemini] Error:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
+/**
+ * transcribeVoiceMessageAuto — smart transcription router.
+ * Uses Gemini if GEMINI_API_KEY is set (faster, multimodal).
+ * Falls back to Whisper if OPENAI_API_KEY is set.
+ * Returns null if neither is configured.
+ */
+export async function transcribeVoiceMessageAuto(audioUrl: string): Promise<string | null> {
+  if (process.env.GEMINI_API_KEY) {
+    const geminiResult = await transcribeWithGemini(audioUrl);
+    if (geminiResult) return geminiResult;
+  }
+  // Whisper fallback
+  return transcribeVoiceMessage(audioUrl);
+}

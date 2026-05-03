@@ -5103,5 +5103,35 @@ voiceRouter.post('/outbound-response', twilioSignatureMiddleware, async (req: Re
   ));
 });
 
+// ── Wave 5 / Task 5: AI Voice Stream Initiator ────────────────────────────────
+// Called when a caller chooses Trinity free-talk (digit 0) and GEMINI_API_KEY
+// is configured. Returns <Connect><Stream> TwiML that upgrades the call to a
+// Gemini Live bidirectional audio session via /ws/voice/media-stream.
+//
+// If GEMINI_API_KEY is absent, falls through to the standard trinity-talk IVR.
+// Twilio signature verified — same pattern as all other voice endpoints.
+voiceRouter.post('/ai-stream', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const baseUrl = getBaseUrl(req);
+    const lang = getLang(req) as 'en' | 'es';
+    const workspaceId = (req.query.workspaceId as string) || (req.body.workspaceId as string) || '';
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+
+    if (!process.env.GEMINI_API_KEY) {
+      // Gemini not configured — fall through to text-based Trinity IVR
+      const qs = `sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/trinity-talk?${qs}`)));
+    }
+
+    const { buildAIVoiceStream } = await import('../services/trinityVoice/voiceOrchestrator');
+    return xmlResponse(res, buildAIVoiceStream({ baseUrl, workspaceId, callSid: req.body.CallSid, lang }));
+  } catch (err: unknown) {
+    log.error('[VoiceRoutes] /ai-stream error:', err instanceof Error ? err.message : String(err));
+    return xmlResponse(res, twiml('<Say>Unable to connect to Trinity AI. Returning to the main menu.</Say>' +
+      redirect(`${getBaseUrl(req)}/api/voice/main-menu`)));
+  }
+});
+
+
 // Mount the authenticated management sub-router onto the main voice router
 voiceRouter.use(mgmtRouter);

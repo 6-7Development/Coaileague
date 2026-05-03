@@ -168,4 +168,10 @@ export {
 export {
   trinityFinancialDrafts,
 } from './domains/trinity';
+export {
+  roomSequenceNumbers,
+} from './domains/comms';
+export {
+  temporalChatSessions,
+} from './domains/comms';
 

@@ -26,6 +26,11 @@ import { PLATFORM_WORKSPACE_ID } from './billingConstants';
 
 const log = createLogger('tokenUsageService');
 
+// Wave 5 / Task 1: Buffer import — non-blocking buffered write path
+// recordTokenUsageBuffered() is the preferred call site for high-frequency AI actions.
+// The buffer flushes to Postgres every 60s or 100 events, preventing DB lock storms.
+export { recordTokenUsageBuffered } from './redisTokenBuffer';
+
 export interface RecordTokenUsageParams {
   workspaceId: string;
   userId?: string | null;
@@ -187,16 +192,18 @@ export async function recordTokenUsage(params: RecordTokenUsageParams): Promise<
 
   const tokensTotal = (tokensInput || 0) + (tokensOutput || 0);
 
-  // STEP 1: Append to token_usage_log (append-only)
+  // STEP 1: Append to token_usage_log via Redis buffer (Wave 5 / Task 1)
+  // Non-blocking: push to in-memory buffer, flushed in batch every 60s or 100 events.
+  // Falls back to direct Postgres write if buffer is unavailable.
   try {
-    await db.insert(tokenUsageLog).values({
+    const { recordTokenUsageBuffered } = await import('./redisTokenBuffer');
+    recordTokenUsageBuffered({
       workspaceId,
-      sessionId: sessionId ?? null,
       userId: userId ?? null,
+      sessionId: sessionId ?? null,
       modelUsed,
       tokensInput: tokensInput || 0,
       tokensOutput: tokensOutput || 0,
-      tokensTotal,
       actionType,
       featureName: featureName ?? null,
     });

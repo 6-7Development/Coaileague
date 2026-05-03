@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, lt, sql } from 'drizzle-orm';
-import { chatConversations, chatMessages, messageReadReceipts } from '@shared/schema';
+import { chatConversations, chatMessages, messageReadReceipts, roomSequenceNumbers } from '@shared/schema';
+import { gt } from 'drizzle-orm';
 import type {
   ChatDockActorType,
   ChatDockAttachment,
@@ -23,6 +24,11 @@ export interface ChatDockMessageDraft {
   isPrivateMessage?: boolean;
   isSystemMessage?: boolean;
   visibleToStaffOnly?: boolean;
+  uiComponent?: {
+    type: string;
+    props: Record<string, unknown>;
+    version: number;
+  } | null;
 }
 
 export interface ChatDockMessageQuery {
@@ -32,6 +38,7 @@ export interface ChatDockMessageQuery {
   limit?: number;
   includeDeleted?: boolean;
   sort?: 'asc' | 'desc';
+  afterSeqNum?: number; // Wave 5: reconnect replay — fetch messages after this seq
 }
 
 export interface ChatDockReadReceiptInput {
@@ -77,6 +84,7 @@ export class DrizzleChatDockMessageStore implements ChatDockMessageStore {
         mentions: draft.mentions ?? [],
         attachmentUrl: draft.attachment?.url ?? null,
         attachmentName: draft.attachment?.name ?? null,
+        uiComponent: draft.uiComponent ?? null,
         attachmentType: draft.attachment?.type ?? null,
         attachmentSize: draft.attachment?.size ?? null,
         attachmentThumbnail: draft.attachment?.thumbnailUrl ?? null,
@@ -231,4 +239,62 @@ function toChatDockMessageEnvelope(row: typeof chatMessages.$inferSelect): ChatD
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(row.updatedAt),
   };
+}
+
+// ── Wave 5 / Task 2: Sequence-number-based reconnect replay ──────────────────
+
+/**
+ * listMessagesSince — returns messages in a conversation with seqNum > afterSeqNum.
+ * Used by ChatDock clients to catch up after a WebSocket reconnection (e.g.,
+ * after a guard walks into an elevator and loses 5G for 30 seconds).
+ *
+ * The client stores its last-seen seqNum in localStorage. On reconnect it sends:
+ *   { type: 'catch_up', conversationId, afterSeqNum: lastSeenSeqNum }
+ * The server calls listMessagesSince() and delivers the gap.
+ */
+export async function listMessagesSince(
+  db: ChatDockDrizzleDb,
+  conversationId: string,
+  afterSeqNum: number,
+  limit = 200,
+): Promise<import('@shared/schema').ChatMessage[]> {
+  const { gt: gtFn, and: andFn, eq: eqFn, asc: ascFn } = await import('drizzle-orm');
+  const { chatMessages: cm } = await import('@shared/schema');
+
+  return db
+    .select()
+    .from(cm)
+    .where(
+      andFn(
+        eqFn(cm.conversationId, conversationId),
+        gtFn(cm.seqNum as unknown as import('drizzle-orm').Column, afterSeqNum),
+        eqFn(cm.isDeletedForEveryone, false),
+      )
+    )
+    .orderBy(ascFn(cm.seqNum as unknown as import('drizzle-orm').Column))
+    .limit(limit) as unknown as Promise<import('@shared/schema').ChatMessage[]>;
+}
+
+/**
+ * incrementRoomSeq — atomically increments the per-room sequence counter
+ * and returns the new seqNum. Call this inside the same transaction as the
+ * message insert, then stamp the returned value onto the message row.
+ *
+ * Uses Postgres upsert: INSERT ... ON CONFLICT (conversation_id) DO UPDATE
+ * so the first message in a new room automatically creates the counter row.
+ */
+export async function incrementRoomSeq(
+  db: ChatDockDrizzleDb,
+  conversationId: string,
+): Promise<number> {
+  const { pool } = await import('../../db');
+  const result = await pool.query<{ seq_num: string }>(
+    `INSERT INTO room_sequence_numbers (conversation_id, seq_num, updated_at)
+     VALUES ($1, 1, NOW())
+     ON CONFLICT (conversation_id)
+     DO UPDATE SET seq_num = room_sequence_numbers.seq_num + 1, updated_at = NOW()
+     RETURNING seq_num`,
+    [conversationId],
+  );
+  return parseInt(result.rows[0]?.seq_num ?? '1', 10);
 }

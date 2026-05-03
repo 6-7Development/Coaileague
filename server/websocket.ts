@@ -8893,5 +8893,40 @@ Available commands include: /help, /who, /assign, /transfer, /close, /lock, /unl
   });
   log.info('Trinity thought broadcast listener registered');
 
+  // ── Wave 5 / Task 5: Twilio Media Streams WebSocket (G-5) ─────────────────
+  // Twilio's <Connect><Stream> verb opens a raw WebSocket connection (not HTTP).
+  // It must be registered on the same http.Server, NOT via Express routing.
+  // Path: /ws/voice/media-stream
+  //
+  // When a call reaches AI-mode in the IVR, voiceOrchestrator generates:
+  //   <Connect><Stream url="wss://your-domain/ws/voice/media-stream?workspaceId=..." /></Connect>
+  // Twilio sends mulaw audio chunks → this handler → geminiLiveBridge → back to Twilio.
+  const mediaStreamWss = new WebSocketServer({
+    server,
+    path: '/ws/voice/media-stream',
+    clientTracking: false,   // No need to track — each call manages its own session
+  });
+
+  mediaStreamWss.on('connection', (twilioWs: WebSocket, req: import('http').IncomingMessage) => {
+    const rawQuery = req.url?.split('?')[1] || '';
+    const query: Record<string, string> = {};
+    for (const part of rawQuery.split('&')) {
+      const [k, v] = part.split('=');
+      if (k) query[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    }
+
+    log.info('[MediaStream] Twilio connected', { workspaceId: query.workspaceId });
+
+    // Dynamic import — avoids loading Gemini SDK at boot when unused
+    import('./services/trinityVoice/geminiLiveBridge')
+      .then(({ handleMediaStreamConnection }) => handleMediaStreamConnection(twilioWs, query))
+      .catch((err: unknown) => {
+        log.error('[MediaStream] Bridge failed to load:', err instanceof Error ? err.message : String(err));
+        twilioWs.close();
+      });
+  });
+
+  log.info('[MediaStream] /ws/voice/media-stream endpoint registered');
+
   return broadcaster;
 }

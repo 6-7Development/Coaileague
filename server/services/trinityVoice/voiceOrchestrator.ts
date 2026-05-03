@@ -440,3 +440,41 @@ export const identifyCaller = resolveWorkspaceFromPhoneNumber;
 
 /** Build the main IVR menu for the given language and extension config. */
 export const buildMainMenu = buildMainIVR;
+
+// ── Wave 5 / Task 5: AI Voice Stream TwiML ─────────────────────────────────
+// Generates TwiML that upgrades the call to a Gemini Live bidirectional audio
+// session via Twilio Media Streams. Called when the caller presses 0 (free talk)
+// or is routed to an AI-level conversation handler.
+//
+// Twilio will open a WebSocket to /ws/voice/media-stream on our server,
+// which the geminiLiveBridge.ts handler will receive and pipe to Gemini Live.
+//
+// Fallback: if Gemini is unavailable, the bridge closes the WS and Twilio
+// falls back to the TwiML <Say> tag that redirects to the standard IVR.
+export function buildAIVoiceStream(params: {
+  baseUrl: string;
+  workspaceId: string;
+  callSid?: string;
+  lang?: 'en' | 'es';
+}): string {
+  const { baseUrl, workspaceId, lang = 'en' } = params;
+
+  // Convert http(s):// base URL to wss:// for the media stream
+  const wsBaseUrl = baseUrl.replace(/^http/, 'ws');
+  const streamUrl = `${wsBaseUrl}/ws/voice/media-stream?workspaceId=${encodeURIComponent(workspaceId)}`;
+
+  const greeting = lang === 'es'
+    ? 'Conectando con Trinity, nuestra IA de operaciones. Un momento por favor.'
+    : "Connecting you with Trinity, our operations AI. Please hold for just a moment.";
+
+  return twiml(
+    say(greeting) +
+    `<Connect>` +
+    `<Stream url="${streamUrl}" track="inbound_track">` +
+    `<Parameter name="workspaceId" value="${workspaceId}" />` +
+    `</Stream>` +
+    `</Connect>` +
+    // Fallback if stream ends unexpectedly — redirect back to main menu
+    redirect(`${baseUrl}/api/voice/main-menu?lang=${lang}`)
+  );
+}

@@ -1,10 +1,11 @@
-// ═══════════════════════════════════════════════════════════════
+//
+
 // Domain 9 of 15: Communications
 // ═══════════════════════════════════════════════════════════════
 // THE LAW: No new tables without Bryan's explicit approval. Zero DROP TABLE ever.
 // Tables: 52
 
-import { pgTable, varchar, text, integer, boolean, timestamp, jsonb, decimal, time, doublePrecision, index, uniqueIndex, primaryKey, unique, foreignKey, serial } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, text, integer, boolean, timestamp, jsonb, decimal, time, doublePrecision, index, uniqueIndex, primaryKey, unique, foreignKey, serial } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -185,6 +186,30 @@ export const chatMessages = pgTable("chat_messages", {
   shouldEscalate: boolean("should_escalate").default(false), // Flag for urgent/negative messages
   sentimentAnalyzedAt: timestamp("sentiment_analyzed_at"), // When sentiment was analyzed
 
+  // ── Wave 5 / Task 2: Generative UI Action Blocks (G-3) ───────────────────
+  // uiComponent: optional JSONB payload for rendering interactive Action Blocks
+  // natively inside ChatDock messages. Trinity or managers can post messages
+  // that render as live UI widgets (forms, buttons, approval cards, polls).
+  //
+  // Shape: { type: string, props: Record<string, unknown>, version: number }
+  // Types: document_upload | approval_button | shift_offer | coi_request | poll
+  //
+// Null on plain text messages  no UI overhead for normal chat.
+  uiComponent: jsonb("ui_component").$type<{
+    type: 'document_upload' | 'approval_button' | 'shift_offer' | 'coi_request' | 'poll' | string;
+    props: Record<string, unknown>;
+    version: number;
+    respondedAt?: string;
+    respondedBy?: string;
+    response?: unknown;
+  }>(),
+
+  // ── Room sequence number for reconnect replay (G-6) ──────────────────────
+  // Stamped atomically on insert from roomSequenceNumbers table.
+  // Clients store their last-seen seqNum; on reconnect they call
+  // GET /messages?after=<seqNum> to catch up without full history reload.
+  seqNum: bigint("seq_num", { mode: "number" }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -247,6 +272,15 @@ export const chatMacros = pgTable("chat_macros", {
   index("chat_macros_category_idx").on(table.category),
   uniqueIndex("chat_macros_shortcut_unique").on(table.workspaceId, table.shortcut),
 ]);
+
+// ── Room Sequence Numbers (Wave 5 / Task 2 G-6) ─────────────────────────────
+// One row per conversation. seqNum is atomically incremented on every message
+// insert. Clients track last-seen seqNum and request missed messages on reconnect.
+export const roomSequenceNumbers = pgTable("room_sequence_numbers", {
+  conversationId: varchar("conversation_id").primaryKey(),
+  seqNum: bigint("seq_num", { mode: "number" }).notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const typingIndicators = pgTable("typing_indicators", {
   conversationId: varchar("conversation_id").notNull(),
@@ -1568,7 +1602,7 @@ export const inboundEmailLog = pgTable("inbound_email_log", {
   // Workspace resolved after sender match; null if sender unknown
   workspaceId: varchar("workspace_id"),
 
-  // Idempotency — Resend occasionally delivers twice; message_id is the dedup key
+// Idempotency  Resend occasionally delivers twice; message_id is the dedup key
   messageId: varchar("message_id", { length: 255 }).unique(),
 
   // Email envelope
@@ -1586,9 +1620,15 @@ export const inboundEmailLog = pgTable("inbound_email_log", {
     filename: string; contentType: string; size?: number; url?: string;
   }>>().default(sql`'[]'::jsonb`),
 
-  // Routing — which pipeline handled this email
+// Routing  which pipeline handled this email
   category: varchar("category", { length: 30 }),
   // 'calloff' | 'incident' | 'docs' | 'support' | 'unknown'
+
+  // ── Wave 5 / Task 4: Entity linking for Omni-Inbox surface ───────────────
+  // When the sender's email matches a client or applicant, stamp the FK here.
+  // Enables GET /api/clients/:id/email-timeline to surface a unified thread.
+clientId: varchar("client_id"),       // FK  clients.id (nullable)
+applicantId: varchar("applicant_id"), // FK  interview_candidates.id (nullable)
 
   // Sender identity resolution
   identifiedSenderId: varchar("identified_sender_id"),
@@ -2003,3 +2043,57 @@ export const chatBotCommands = pgTable("chat_bot_commands", {
 export type ChatBotCommand = typeof chatBotCommands.$inferSelect;
 
 export * from './extended';
+
+// ── Temporal Chat Sessions (Wave 5 / Task 3 G-4) ─────────────────────────────
+// General-purpose time-locked guest chat rooms. No permanent user row required.
+// Replaces the ATS-specific interview_chatrooms model as the canonical backing
+// for all guest access scenarios.
+//
+// Purposes: interview | client_preview | vendor | auditor
+// Access: guest exchanges accessToken at GET /api/temporal-sessions/:token/join
+//         and receives a time-scoped WS auth ticket — zero permanent user row needed.
+export const temporalChatSessions = pgTable("temporal_chat_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+
+  // What type of guest session this is
+  purpose: varchar("purpose", { length: 30 }).notNull().default("interview"),
+    // 'interview' | 'client_preview' | 'vendor' | 'auditor'
+
+  // Secure token the guest uses to join without a user account
+  accessToken: varchar("access_token", { length: 128 }).notNull().unique(),
+
+  // Time gate
+  expiresAt: timestamp("expires_at").notNull(),       // Session auto-closes
+  startedAt: timestamp("started_at"),                  // When guest first joined
+  endedAt: timestamp("ended_at"),                      // When session was closed
+
+  // Limits
+  maxMessages: integer("max_messages").default(500),   // Soft cap per session
+  messageCount: integer("message_count").default(0),   // Running count
+
+  // Host (manager who created the session)
+  hostUserId: varchar("host_user_id").notNull(),
+
+  // Guest identity (not a users row)
+  guestName: varchar("guest_name", { length: 200 }),
+  guestEmail: varchar("guest_email", { length: 255 }),
+  guestMetadata: jsonb("guest_metadata"),              // Any extra context (candidateId, clientId, etc.)
+
+  // The underlying conversation
+conversationId: varchar("conversation_id"),           // FK  chatConversations.id
+
+  // Status
+  status: varchar("status", { length: 20 }).default("active"),
+    // 'active' | 'expired' | 'ended' | 'cancelled'
+
+  // Audit
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("temporal_chat_sessions_workspace_idx").on(table.workspaceId),
+  index("temporal_chat_sessions_token_idx").on(table.accessToken),
+  index("temporal_chat_sessions_host_idx").on(table.hostUserId),
+  index("temporal_chat_sessions_expires_idx").on(table.expiresAt),
+]);
+

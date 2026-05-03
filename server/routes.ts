@@ -24,6 +24,7 @@ import { trinityGuardMiddleware } from "./middleware/trinityGuard";
 import { requestTimeout } from "./middleware/requestTimeout";
 import { notificationStateManager } from "./services/notificationStateManager";
 import { setupWebSocket } from "./websocket";
+import { redisTokenBuffer } from "./services/billing/redisTokenBuffer";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -106,6 +107,7 @@ import legalRouter from "./routes/legalRoutes";
 import platformFormsRouter from "./routes/platformFormsRoutes";
 import formBuilderRouter from "./routes/formBuilderRoutes";
 import interviewChatroomRouter from "./routes/interviewChatroomRoutes";
+import temporalSessionRouter from "./routes/temporalSessionRoutes";
 import onboardingPipelineRouter from "./routes/onboardingPipelineRoutes";
 import { requireLegalAcceptance } from "./middleware/requireLegalAcceptance";
 
@@ -145,6 +147,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // the first route invocation — prevents the "Global broadcaster not
   // initialized for workspace broadcast" warning on every WS call.
   setupWebSocket(server);
+
+  // Wave 5 / Task 1: Start Redis token buffer — batches AI token writes
+  // to Postgres (60s or 100-event flush) instead of one insert per AI call.
+  redisTokenBuffer.start();
 
   // ============================================================================
   // STARTUP: SEED ROOT USER AND PLATFORM WORKSPACE (background, non-blocking)
@@ -976,6 +982,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mega Phase: Interview chatrooms (manager management + candidate token-based room)
   // requireLegalAcceptance enforces legal gate for authenticated users; passes through for public token routes
   app.use("/api/interview", requireLegalAcceptance, interviewChatroomRouter);
+  // Wave 5 / Task 3: General-purpose temporal (guest) chat sessions
+  // GET /temporal-sessions/:token/join is unauthenticated (guest access by design)
+  app.use("/api/temporal-sessions", temporalSessionRouter);
   // Mega Phase: Employee onboarding pipeline (staff + public self-service)
   app.use("/api/onboarding-pipeline", requireLegalAcceptance, onboardingPipelineRouter);
 
