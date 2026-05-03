@@ -893,6 +893,15 @@ export const invoiceLifecycleStateEnum = pgEnum('invoice_lifecycle_state', [
   'failed',             // Terminal failure state
   'cancelled',          // Manually cancelled
 ]);
+
+// ─── Client Lifecycle Status ────────────────────────────────────────────────
+// Financial gate for shift publishing. pending_onboarding = no signed contract,
+// shifts cannot publish. active = contract signed. suspended = account paused.
+export const clientLifecycleStatusEnum = pgEnum('client_lifecycle_status', [
+  'pending_onboarding',
+  'active',
+  'suspended',
+]);
 export const oversightEntityTypeEnum = pgEnum('oversight_entity_type', [
   'invoice',
   'expense',

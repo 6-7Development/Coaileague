@@ -9,6 +9,7 @@ import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import {
+  clientLifecycleStatusEnum,
   clientContractAuditActionEnum,
   clientContractDocTypeEnum,
   clientContractStatusEnum,
@@ -276,6 +277,12 @@ export const clients = pgTable("clients", {
 
   // Client onboarding pipeline status
   clientOnboardingStatus: varchar("client_onboarding_status").default("incomplete"), // 'incomplete' | 'pending_signature' | 'active'
+
+  // Client lifecycle status — financial gate for shift publishing (Task 4, Wave 3)
+  // pending_onboarding: contract not signed → shifts blocked from publishing
+  // active: contract signed → shifts may publish → invoices/payroll flow
+  // suspended: account paused → shifts blocked until resolved
+  clientLifecycleStatus: clientLifecycleStatusEnum('client_lifecycle_status').default('pending_onboarding'),
 
   // Client portal self-service access
   portalAccessEnabled: boolean("portal_access_enabled").default(false),

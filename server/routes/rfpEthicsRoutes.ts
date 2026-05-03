@@ -205,13 +205,45 @@ rfpEthicsRouter.post("/coverage-marketplace", requireAuth, ensureWorkspaceAccess
 rfpEthicsRouter.post("/coverage-marketplace/:id/claim", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { claimedByEmployeeId, claimedByName } = req.body;
-    const existing = await q(`SELECT * FROM shift_coverage_claims WHERE id=$1 AND workspace_id=$2`, [req.params.id, wid(req)]);
-    if (!existing.length) return res.status(404).json({ error: "Not found" });
-    if ((existing[0] as unknown).status !== "open") return res.status(409).json({ error: "Shift already claimed" });
-    await q(`UPDATE shift_coverage_claims SET status='claimed', claimed_by_employee_id=$1, claimed_by_name=$2, claimed_at=NOW(), updated_at=NOW() WHERE id=$3`,
-      [claimedByEmployeeId||null, claimedByName||null, req.params.id]);
-    const rows = await q(`SELECT * FROM shift_coverage_claims WHERE id=$1`, [req.params.id]);
-    res.json(rows[0]);
+    const workspaceId = wid(req);
+
+    // ── Atomic claim — SELECT FOR UPDATE SKIP LOCKED ──────────────────────
+    // Two officers tapping "Accept" simultaneously would both pass a plain
+    // SELECT then UPDATE. SKIP LOCKED means the second transaction bails
+    // out immediately → 409 instead of double-booking.
+    const { pool } = await import('../db');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const lock = await client.query(
+        `SELECT id, status FROM shift_coverage_claims
+         WHERE id=$1 AND workspace_id=$2 AND status='open'
+         FOR UPDATE SKIP LOCKED`,
+        [req.params.id, workspaceId]
+      );
+      if (!lock.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          error: 'Shift already claimed or no longer available.',
+          code: 'CLAIM_CONFLICT',
+        });
+      }
+      await client.query(
+        `UPDATE shift_coverage_claims
+         SET status='claimed', claimed_by_employee_id=$1, claimed_by_name=$2,
+             claimed_at=NOW(), updated_at=NOW()
+         WHERE id=$3`,
+        [claimedByEmployeeId || null, claimedByName || null, req.params.id]
+      );
+      await client.query('COMMIT');
+      const rows = await client.query('SELECT * FROM shift_coverage_claims WHERE id=$1', [req.params.id]);
+      res.json(rows.rows[0]);
+    } catch (txErr: unknown) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
 
