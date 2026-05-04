@@ -376,46 +376,36 @@ export async function handleInbound(params: {
   // 1. Resolve workspace from the dialed number
   const workspace = await resolveWorkspaceFromPhoneNumber(to);
 
-  // If no tenant-specific number matches, treat as the master CoAIleague line.
-  // All guests, prospects, and multi-tenant callers are routed through the guest flow.
+  // No tenant-specific number matched — route to master CoAIleague guest IVR.
+  // This is the normal production path: one Twilio number serves all tenants.
+  // Guests identify their tenant by license number or company name.
   if (!workspace) {
-    log.info(`[VoiceOrchestrator] Master number call from ${from} — routing to guest flow`);
-
-    // Create a minimal session for tracking
-    // Guest call — no workspace yet. Log with null workspace, skip FK-constrained insert.
-    // The session will be updated when the caller identifies their tenant.
-
-    // Route to the main CoAIleague IVR (handles guests, prospects, tenant lookup)
+    log.info(`[VoiceOrchestrator] Master line call from ${from} — routing to guest IVR`);
     return twiml(
-      gather(
-        { action: `${baseUrl}/api/voice/caller-identify?lang=en`, numDigits: 1,
-          timeout: 12, speechTimeout: 'auto', language: 'en-US',
-          hints: 'one,two,three,employee,officer,guard,client,sales,Statewide,help,emergency,ayuda' },
-        say(
-          'Hi! Thank you for calling CoAIleague — intelligent workforce management. ' +
-          'If you are a guard or employee, press 1. ' +
-          'If you are calling about a security company, press 2. ' +
-          'To learn about CoAIleague, press 3. ' +
-          'Or simply tell me what you need.'
-        )
+      `<Gather input="speech dtmf" action="${baseUrl}/api/voice/caller-identify?lang=en" method="POST" numDigits="1" timeout="15" speechTimeout="auto" language="en-US" hints="one,two,three,employee,officer,guard,client,Statewide,help,emergency,ayuda">` +
+      say(
+        'Hi, and thank you for calling CoAIleague. I am Trinity, your intelligent assistant. ' +
+        'If you are a guard or platform employee, press 1. ' +
+        'If you are calling about a specific security company, press 2. ' +
+        'To learn about CoAIleague, press 3. ' +
+        'Or simply tell me what you need.'
       ) +
+      `</Gather>` +
       redirect(`${baseUrl}/api/voice/caller-identify?lang=en`)
     );
   }
 
-  const { workspaceId, phoneRecord } = workspace;
+  const { workspaceId } = workspace;
 
-  // 2. Create call session
-  await createCallSession({
+  // 2. Create call session (non-blocking — call proceeds even if this fails)
+  createCallSession({
     workspaceId,
     twilioCallSid: callSid,
-    phoneNumberId: phoneRecord.id,
     callerNumber: from,
     language: 'en',
-  });
+  }).catch((e: unknown) => log.warn('[VoiceOrchestrator] Session create (non-fatal):', e instanceof Error ? e.message : String(e)));
 
-  // 3.5 Start call recording for ALL inbound calls so every session has a
-  // recording URL and transcript available for review/audit (Phase 56 req).
+  // 3. Start call recording (non-blocking)
   const recordingCallbackUrl = `${baseUrl}/api/voice/recording-done`;
   void (async () => {
     try {
@@ -428,25 +418,18 @@ export async function handleInbound(params: {
           recordingStatusCallback: recordingCallbackUrl,
           recordingStatusCallbackMethod: 'POST',
         });
-        log.info(`[VoiceOrchestrator] Recording started for call ${callSid}`);
       }
     } catch (err: unknown) {
-      // Non-fatal — call proceeds even if recording fails (e.g. dev env with no Twilio creds)
-      log.warn(`[VoiceOrchestrator] Could not start recording for ${callSid}: ${err instanceof Error ? err.message : String(err)}`);
+      log.warn(`[VoiceOrchestrator] Recording start failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
     }
   })();
 
-  // 4. Build greeting + language select (Phase 18B — warm branded greeting).
-  // If the workspace overrides greetingScript we still play it first, then the
-  // language prompt, so per-tenant branding still works.
-  const customGreeting = phoneRecord.greetingScript || '';
+  // 4. Build greeting — single language="en-US" (Twilio rejects comma-separated values)
+  const customGreeting = workspace.greetingScript || '';
   const brandedGreeting =
     'Hi! Thank you for calling Co-League — where intelligent workforce management meets real results. ' +
     'Press 1 for English. Marque 2 para Español.';
 
-  // Wave 16: Duress detection is handled inside /language-select via speech hints.
-  // A separate pre-gather caused 3-second silence for every caller — removed.
-  // If caller says "code red" at ANY menu level, /duress-check handles it.
   return twiml(
     gather(
       { action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 8,
@@ -459,27 +442,7 @@ export async function handleInbound(params: {
   );
 }
 
-// ─── Semantic Aliases ─────────────────────────────────────────────────────────
-// These provide the canonical named API for callers that use the documented
-// orchestrator interface (identifyCaller, buildMainMenu) which map to the
-// underlying implementations above.
 
-/** Identify the workspace associated with the dialed phone number. */
-export const identifyCaller = resolveWorkspaceFromPhoneNumber;
-
-/** Build the main IVR menu for the given language and extension config. */
-export const buildMainMenu = buildMainIVR;
-
-// ── Wave 5 / Task 5: AI Voice Stream TwiML ─────────────────────────────────
-// Generates TwiML that upgrades the call to a Gemini Live bidirectional audio
-// session via Twilio Media Streams. Called when the caller presses 0 (free talk)
-// or is routed to an AI-level conversation handler.
-//
-// Twilio will open a WebSocket to /ws/voice/media-stream on our server,
-// which the geminiLiveBridge.ts handler will receive and pipe to Gemini Live.
-//
-// Fallback: if Gemini is unavailable, the bridge closes the WS and Twilio
-// falls back to the TwiML <Say> tag that redirects to the standard IVR.
 export function buildAIVoiceStream(params: {
   baseUrl: string;
   workspaceId: string;
