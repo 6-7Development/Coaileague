@@ -26,8 +26,8 @@ export interface UniversalSpinnerProps {
 const SIZE_PX: Record<UniversalSpinnerSize, number> = { sm: 40, md: 72, lg: 128 };
 
 /* Ring thickness scales with size */
-const RING_INSET: Record<UniversalSpinnerSize, number> = { sm: 5, md: 9, lg: 16 };
-const RING_THICK: Record<UniversalSpinnerSize, number> = { sm: 2, md: 3, lg: 5 };
+const RING_INSET: Record<UniversalSpinnerSize, number> = { sm: 3, md: 5, lg: 8 };
+const RING_THICK: Record<UniversalSpinnerSize, number> = { sm: 2, md: 3, lg: 4 };
 
 const LABEL_SIZE_CLASS: Record<UniversalSpinnerSize, string> = {
   sm: "text-[10px]",

@@ -601,7 +601,7 @@ function TrinityIcon({
             WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), white 100%)",
           }}
         />
-        <TrinityOrbitalAvatar size={36} state={trinityState} />
+        <TrinityOrbitalAvatar size={36} state={trinityState} noAnimation={trinityState === "idle"} />
         <style>{`
           @keyframes haloSpin {
             from { transform: rotate(0deg); }

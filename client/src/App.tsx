@@ -890,7 +890,17 @@ function AppContent() {
 
   // If the HTML pre-React splash already ran this session, suppress the
   // React LoadingScreen — the splash covered the loading state visually.
-  const htmlSplashRan = (() => { try { return !!sessionStorage.getItem('coai_html_splash_done'); } catch { return false; } })();
+  // Suppress React LoadingScreen if HTML pre-React splash is still visible OR already ran.
+  // This closes the race window where sessionStorage isn't set yet but HTML splash is active.
+  const htmlSplashRan = (() => {
+    try {
+      if (sessionStorage.getItem('coai_html_splash_done')) return true;
+      // Also check if the HTML loader is still in the DOM (not yet .gone)
+      const el = document.getElementById('html-loader');
+      if (el && !el.classList.contains('gone')) return true; // HTML splash still showing
+      return false;
+    } catch { return false; }
+  })();
   if (authLoading && !loadingTimedOut && !isPublicRoute && !htmlSplashRan) {
     return <LoadingScreen />;
   }

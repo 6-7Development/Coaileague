@@ -96,22 +96,6 @@ export function TrinityAnimatedLogo({
         </filter>
       </defs>
 
-      {/* ── Outer orbital ring — SMIL spin CW ── */}
-      <g>
-        <animateTransform attributeName="transform" type="rotate"
-          from="0 60 60" to="360 60 60" dur={sp.ring1} repeatCount="indefinite"/>
-        <circle cx="60" cy="60" r="53" fill="none" stroke={c.arm1}
-          strokeWidth="1" strokeDasharray="7 22 2 22" opacity="0.3"/>
-      </g>
-
-      {/* ── Inner orbital ring — SMIL spin CCW ── */}
-      <g>
-        <animateTransform attributeName="transform" type="rotate"
-          from="360 60 60" to="0 60 60" dur={sp.ring2} repeatCount="indefinite"/>
-        <circle cx="60" cy="60" r="45" fill="none" stroke={c.arm2}
-          strokeWidth="0.7" strokeDasharray="4 16" opacity="0.2"/>
-      </g>
-
       {/* ── Trifecta: all 3 arms spin as one unit ── */}
       <g>
         {alwaysAnimate && (
@@ -215,9 +199,11 @@ interface TrinityOrbitalAvatarProps {
   size?: number;
   state?: TrinityState;
   className?: string;
+  /** When true: zero animation — just the static arms. For header/chrome use. */
+  noAnimation?: boolean;
 }
 
-export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className }: TrinityOrbitalAvatarProps) {
+export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className, noAnimation = false }: TrinityOrbitalAvatarProps) {
   const uid  = useId().replace(/:/g, "");
   const auto = useTrinityGlobalState("idle");
   const state = stateProp ?? auto;
@@ -227,7 +213,8 @@ export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className }:
   // IDLE: one soft comet arc sweeps ~180° and fades — Gemini-style. No constant spin.
   // ACTIVE states (thinking/speaking/loading/listening/focused): arcs animate to show activity.
   // SUCCESS/WARNING/ERROR: brief burst.
-  const isActive = state !== "idle";
+  // noAnimation overrides everything — pure static mark for header
+  const isActive = noAnimation ? false : state !== "idle";
 
   return (
     <div
@@ -245,11 +232,11 @@ export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className }:
         </defs>
 
         {/* IDLE: single comet arc — sweeps around once and fades. Barely perceptible. */}
-        {!isActive && (
+        {!isActive && !noAnimation && (
           <g>
             <animateTransform attributeName="transform" type="rotate"
               from="0 50 50" to="360 50 50" dur="6s" repeatCount="indefinite"/>
-            <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm1}
+            <circle cx="50" cy="50" r="46" fill="none" stroke={c.arm1}
               strokeWidth="2" strokeDasharray="30 90" strokeLinecap="round"
               opacity="0">
               <animate attributeName="opacity" values="0;0.55;0.55;0" dur="6s" repeatCount="indefinite"/>
@@ -262,7 +249,7 @@ export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className }:
           <g>
             <animateTransform attributeName="transform" type="rotate"
               from="0 50 50" to="360 50 50" dur={sp.ring1} repeatCount="indefinite"/>
-            <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm1}
+            <circle cx="50" cy="50" r="46" fill="none" stroke={c.arm1}
               strokeWidth="2.2" strokeDasharray="24 56" strokeLinecap="round"
               opacity="0.85" filter={`url(#av-glow-${uid})`}/>
           </g>
@@ -273,91 +260,65 @@ export function TrinityOrbitalAvatar({ size = 36, state: stateProp, className }:
           <g>
             <animateTransform attributeName="transform" type="rotate"
               from="360 50 50" to="0 50 50" dur={sp.ring2} repeatCount="indefinite"/>
-            <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm2}
+            <circle cx="50" cy="50" r="46" fill="none" stroke={c.arm2}
               strokeWidth="1.4" strokeDasharray="10 70" strokeLinecap="round" opacity="0.55"/>
           </g>
         )}
       </svg>
 
-      {/* ── Avatar circle — no glass box border, just the inner glow ── */}
+      {/* ── Arms — transparent, no background box ── */}
       <div
-        className="relative z-10 flex items-center justify-center rounded-full overflow-hidden"
         style={{
-          width:  Math.round(size * 0.76),
+          position: "relative", zIndex: 10,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: Math.round(size * 0.76),
           height: Math.round(size * 0.76),
-          background: `radial-gradient(circle at 33% 33%, ${c.core}55, ${c.glow}dd)`,
-          boxShadow: `0 0 ${Math.round(size * 0.4)}px ${c.glow}50, inset 0 1px 1px rgba(255,255,255,0.2)`,
-          // No explicit box border — the radial gradient provides visual boundary
         }}
       >
         {/* TrinityAnimatedLogo spins its trifecta independently */}
         <TrinityAnimatedLogo
           size={Math.round(size * 0.52)}
           state={state}
-          alwaysAnimate={isActive}
+          alwaysAnimate={!noAnimation && isActive}
         />
       </div>
     </div>
   );
 
-  return (
-    <div className={cn("relative inline-flex items-center justify-center shrink-0", className)}
-      style={{ width: size, height: size }} aria-hidden="true">
-
-      {/* SVG orbital rings layer */}
-      <svg className="absolute inset-0" width={size} height={size} viewBox="0 0 100 100" fill="none">
-        <defs>
-          <filter id={`av-g-${uid}`} x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="4" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-
-        {/* Pulsing halo */}
-        <circle cx="50" cy="50" r="48" fill="none" stroke={c.glow} strokeWidth="1.5" opacity="0.2">
-          <animate attributeName="opacity" values="0.08;0.3;0.08" dur={sp.core} repeatCount="indefinite"/>
-          <animate attributeName="r"       values="45;49;45"       dur={sp.core} repeatCount="indefinite"/>
-        </circle>
-
-        {/* Primary spinning arc */}
-        <g>
-          <animateTransform attributeName="transform" type="rotate"
-            from="0 50 50" to="360 50 50" dur={sp.ring1} repeatCount="indefinite"/>
-          <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm1}
-            strokeWidth="2" strokeDasharray="22 58" strokeLinecap="round"
-            opacity="0.8" filter={`url(#av-g-${uid})`}/>
-        </g>
-
-        {/* Counter arc */}
-        <g>
-          <animateTransform attributeName="transform" type="rotate"
-            from="360 50 50" to="0 50 50" dur={sp.ring2} repeatCount="indefinite"/>
-          <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm2}
-            strokeWidth="1.2" strokeDasharray="9 71" strokeLinecap="round" opacity="0.5"/>
-        </g>
-
-        {/* Third arc fragment */}
-        <g>
-          <animateTransform attributeName="transform" type="rotate"
-            from="90 50 50" to="450 50 50"
-            dur={`${parseFloat(sp.ring1) * 1.7}s`} repeatCount="indefinite"/>
-          <circle cx="50" cy="50" r="44" fill="none" stroke={c.arm3}
-            strokeWidth="0.8" strokeDasharray="5 75" strokeLinecap="round" opacity="0.35"/>
-        </g>
-      </svg>
-
-      {/* Glass avatar circle */}
-      <div className="relative z-10 flex items-center justify-center rounded-full"
-        style={{
-          width: size * 0.78, height: size * 0.78,
-          background: `radial-gradient(circle at 35% 35%, ${c.core}50, ${c.glow}cc)`,
-          boxShadow: `0 0 ${size * 0.35}px ${c.glow}55, inset 0 1px 1px rgba(255,255,255,0.25)`,
-          border: `1px solid ${c.arm1}40`,
-        }}>
-        <TrinityAnimatedLogo size={Math.round(size * 0.48)} state={state} alwaysAnimate={true}/>
-      </div>
-    </div>
-  );
 }
 
-export default TrinityAnimatedLogo;
+// ── TrinityStaticMark ─────────────────────────────────────────────────────────
+// Zero-animation Trinity orbital arms. Header/chrome/favicon contexts.
+// Same arm paths as TrinityAnimatedLogo — no breathing, no halo, no spin.
+// THREE logos total in the system:
+//   1. TrinityAnimatedLogo  — animated arms + breathing (chatdock, loading)
+//   2. TrinityOrbitalAvatar — animated + Gemini halo (ThoughtBar, spinners)
+//   3. TrinityStaticMark    — static arms only (header, favicon contexts)
+export function TrinityStaticMark({ size = 28, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size} height={size}
+      viewBox="0 0 120 120" fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("shrink-0 select-none", className)}
+      aria-hidden="true"
+    >
+      {/* Arm 1 — 12 o'clock — blue */}
+      <path d={ARM} fill="#93C5FD" opacity="0.92"/>
+      <circle cx="60" cy="6" r="3.5" fill="#93C5FD" opacity="0.85"/>
+      {/* Arm 2 — 4 o'clock — gold */}
+      <g transform="rotate(120 60 60)">
+        <path d={ARM} fill="#FED7AA" opacity="0.92"/>
+        <circle cx="60" cy="6" r="3.5" fill="#FED7AA" opacity="0.85"/>
+      </g>
+      {/* Arm 3 — 8 o'clock — purple */}
+      <g transform="rotate(240 60 60)">
+        <path d={ARM} fill="#C4B5FD" opacity="0.92"/>
+        <circle cx="60" cy="6" r="3.5" fill="#C4B5FD" opacity="0.85"/>
+      </g>
+      {/* Core */}
+      <circle cx="60" cy="60" r="9" fill="white" opacity="0.93"/>
+      <circle cx="57" cy="57" r="3" fill="white" opacity="0.75"/>
+    </svg>
+  );
+}

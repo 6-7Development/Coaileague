@@ -65,7 +65,7 @@ export function LoadingScreen() {
       >
         {/* Outer Gemini arc — conic-gradient ring, slow rotation */}
         <div style={{
-          position: "absolute", inset: -16, borderRadius: "50%",
+          position: "absolute", inset: -6, borderRadius: "50%",
           background: "conic-gradient(from 0deg, transparent 0deg, #7C3AED 40deg, #2563EB 100deg, #0D9488 170deg, #F59E0B 230deg, rgba(245,158,11,0.3) 270deg, transparent 300deg)",
           animation: "geminiSpin 2.4s linear infinite",
           // Punch a hole — ring thickness ≈ 4px
@@ -76,7 +76,7 @@ export function LoadingScreen() {
 
         {/* Inner Gemini arc — tighter ring, counter-rotation, offset phase */}
         <div style={{
-          position: "absolute", inset: 2, borderRadius: "50%",
+          position: "absolute", inset: 0, borderRadius: "50%",
           background: "conic-gradient(from 180deg, transparent 0deg, #0D9488 50deg, #F59E0B 120deg, #7C3AED 190deg, rgba(124,58,237,0.2) 240deg, transparent 270deg)",
           animation: "geminiSpinCCW 3.6s linear infinite",
           mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), white calc(100% - 3px))",
