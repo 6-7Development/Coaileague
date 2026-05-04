@@ -2459,6 +2459,7 @@ export class UnifiedGeminiClient {
   private model: GenerativeModel | null;
   private toolsModel: GenerativeModel | null;
   private jsonModel: GenerativeModel | null;
+  private searchModel: GenerativeModel | null;  // Google Search grounding
 
   constructor() {
     // Use HELLOS tier for general chat/conversation - HUMANIZED
@@ -2497,6 +2498,19 @@ export class UnifiedGeminiClient {
         topP: ANTI_YAP_PRESETS.supervisor.topP,
         topK: HUMANIZED_GENERATION_CONFIG.topK,
       }
+    }) : null;
+
+    // Google Search grounding model — enables live web search via Gemini
+    // Cannot be combined with functionDeclarations (Google API restriction).
+    // Used when Trinity detects a knowledge gap question.
+    this.searchModel = genAI ? genAI.getGenerativeModel({
+      model: GEMINI_MODELS.ORCHESTRATOR,
+      systemInstruction: PERSONA_SYSTEM_INSTRUCTION,
+      tools: [{ googleSearch: {} }],
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.orchestrator.maxOutputTokens ?? 2048,
+        temperature: 0.3,   // Lower temp for factual search answers
+      },
     }) : null;
     
     log.info('[AI Brain] UnifiedGeminiClient initialized with tiered architecture + humanized persona');
@@ -3468,7 +3482,40 @@ Generate ONE thought for ${greeting}:`;
       return null;
     }
   }
+
+  /**
+   * generateWithSearch — uses Gemini's built-in Google Search grounding.
+   * Gemini automatically searches Google when it needs current information.
+   * Returns the answer with inline citations from real sources.
+   * No external API keys needed — included in the Gemini API subscription.
+   */
+  async generateWithSearch(prompt: string): Promise<{ text: string; citations: string[] }> {
+    if (!this.searchModel) {
+      return { text: "", citations: [] };
+    }
+    try {
+      const result = await this.searchModel.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+
+      // Extract grounding metadata (source URLs Gemini cited)
+      const groundingMetadata = (response as { candidates?: Array<{
+        groundingMetadata?: { groundingChunks?: Array<{ web?: { uri: string; title: string } }> }
+      }> }).candidates?.[0]?.groundingMetadata;
+
+      const citations = (groundingMetadata?.groundingChunks || [])
+        .map(chunk => chunk.web?.uri)
+        .filter((uri): uri is string => !!uri);
+
+      return { text, citations };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.warn(`[UnifiedGeminiClient] generateWithSearch failed: ${msg}`);
+      return { text: "", citations: [] };
+    }
+  }
 }
 
 // Export singleton instance - ONE brain for all features
 export const geminiClient = new UnifiedGeminiClient();
+
