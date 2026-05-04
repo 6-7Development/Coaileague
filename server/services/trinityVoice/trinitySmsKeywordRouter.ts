@@ -333,8 +333,8 @@ async function handleEmergency(args: string[], body: string, fromPhone: string):
     } catch { /* table/column variance — not critical */ }
 
     return (
-      `Trinity: Your emergency alert is received. Case ${sc.case_number} is active and the on-call team has been paged. ` +
-      `If you are in immediate danger, call 9-1-1 now. Reply SAFE when you're no longer in danger.`
+      `Trinity: Alert received. Case ${sc.case_number} is active. Your on-call supervisor and management have been paged immediately. ` +
+      `Stay safe and reply SAFE when you are no longer in danger.`
     );
   } catch (err: unknown) {
     log.error('[KeywordRouter] emergency handler failed:', (err instanceof Error ? err.message : String(err)));

@@ -185,12 +185,12 @@ export function buildMainIVR(
 
   if (lang === 'es') {
     const greeting =
-      'Hola, gracias por llamar. Soy Trinity, la asistente de inteligencia artificial de CoAIleague. ' +
-      'Estoy aquí para ayudarle — tome todo el tiempo que necesite. ' +
-      'Si es guardia, oficial, o usuario de la plataforma, marque 1. ' +
-      'Si desea comunicarse con una empresa de seguridad específica — para presentar una queja, hablar con un gerente, o necesita sus servicios — marque 2. ' +
+      'Gracias por llamar a CoAIleague. Soy Trinity. ' +
+      'Estoy aquí para ayudarle — ya sea guardia, cliente, o llamando sobre una empresa de seguridad. ' +
+      'Si es guardia o usuario de la plataforma, marque 1. ' +
+      'Para comunicarse con una empresa de seguridad o hablar con un gerente, marque 2. ' +
       'Para conocer CoAIleague o hablar con nuestro equipo, marque 3. ' +
-      'O simplemente dígame en qué puedo ayudarle.';
+      'O simplemente dígame qué necesita y me encargo de inmediato.';
 
     return twiml(
       `<Gather input="speech dtmf" action="${baseUrl}/api/voice/caller-identify?lang=es" method="POST" numDigits="1" timeout="15" speechTimeout="auto" hints="${hintsEs}">` +
@@ -232,17 +232,17 @@ export function buildGeneralMenu(
   const hintsEs = 'ventas,cliente,soporte,empleo,personal,ausencia,emergencia,carreras,trabajo,caso,llamada,trinity,ayuda,unirme';
 
   if (lang === 'es') {
-    const parts: string[] = ['Aquí están sus opciones. '];
-    if (enabled('sales'))                   parts.push('Para consultas de ventas y nuevos servicios, marque 1. ');
+    const parts: string[] = ['¿En qué puedo ayudarle hoy? '];
+    if (enabled('sales'))                   parts.push('Para nuevos servicios o precios, marque 1. ');
     if (enabled('client_support'))          parts.push('Para soporte al cliente, marque 2. ');
-    if (enabled('employment_verification')) parts.push('Para verificación de empleo, marque 3. ');
-    if (enabled('staff'))                   parts.push('Para empleados: reloj de entrada, reportar ausencia o soporte, marque 4. ');
-    if (enabled('emergency'))               parts.push('Para emergencias, marque 5. ');
-    if (enabled('careers'))                 parts.push('Para oportunidades de empleo, marque 6. ');
-    parts.push('Para verificar el estado de un caso de soporte, marque 7. ');
-    parts.push('Para programar una llamada con un humano, marque 8. ');
-    parts.push('Para hablar conmigo libremente sobre cualquier tema, marque 0. ');
-    parts.push('Recuerde que también puede simplemente decirme lo que necesita, o enviarnos un mensaje de texto a este número en cualquier momento. ');
+    if (enabled('employment_verification')) parts.push('Para verificar empleo, marque 3. ');
+    if (enabled('staff'))                   parts.push('Para guardias y oficiales — entrada, ausencia o preguntas — marque 4. ');
+    if (enabled('emergency'))               parts.push('Para situaciones urgentes, marque 5. ');
+    if (enabled('careers'))                 parts.push('Para solicitar un puesto de trabajo, marque 6. ');
+    parts.push('Para revisar un caso de soporte abierto, marque 7. ');
+    parts.push('Para solicitar una llamada de nuestro equipo, marque 8. ');
+    parts.push('O marque 0 para hablar conmigo directamente sobre cualquier tema. ');
+    parts.push('También puede enviarnos un mensaje de texto a este número en cualquier momento. ');
     parts.push('Para inglés, marque 9.');
 
     return twiml(
@@ -396,11 +396,11 @@ export async function handleInbound(params: {
     return twiml(
       `<Gather input="speech dtmf" action="${baseUrl}/api/voice/caller-identify?lang=en" method="POST" numDigits="1" timeout="15" speechTimeout="auto" language="en-US" hints="one,two,three,employee,officer,guard,client,Statewide,help,emergency,ayuda">` +
       say(
-        'Hi, and thank you for calling CoAIleague. I am Trinity, your intelligent assistant. ' +
+        'Thank you for calling CoAIleague. My name is Trinity. ' +
         'If you are a guard or platform employee, press 1. ' +
-        'If you are calling about a specific security company, press 2. ' +
+        'To reach a specific security company, press 2. ' +
         'To learn about CoAIleague, press 3. ' +
-        'Or simply tell me what you need.'
+        'Or just tell me what you need.'
       ) +
       `</Gather>` +
       redirect(`${baseUrl}/api/voice/caller-identify?lang=en`)

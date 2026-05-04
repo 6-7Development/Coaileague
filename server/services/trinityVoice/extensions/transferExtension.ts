@@ -32,11 +32,11 @@ export function handleTransfer(params: {
   }).catch((err) => log.warn('[transferExtension] Fire-and-forget failed:', err));
 
   const connectingMsg = lang === 'es'
-    ? 'Conectando con un agente ahora mismo. Por favor espere.'
-    : 'Connecting you to an agent now. Please hold.';
+    ? 'Le conecto ahora mismo. Por favor espere un momento.'
+    : 'I am connecting you now. Please hold for just a moment.';
   const failMsg = lang === 'es'
-    ? 'Lo sentimos, no fue posible conectar con un agente en este momento. Por favor llame nuevamente o deje un mensaje.'
-    : 'We were unable to connect you with an agent at this time. Please call back or leave a message.';
+    ? 'Lo sentimos, no pude conectarle en este momento. Por favor llame de nuevo o deje un mensaje y alguien le contactará pronto.'
+    : 'I was not able to connect you just now. Please try calling back or leave a message and someone will follow up with you shortly.';
 
   return twiml(
     say(connectingMsg, lang) +

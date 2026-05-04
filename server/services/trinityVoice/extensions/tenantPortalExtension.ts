@@ -103,31 +103,31 @@ export async function buildTenantPortalMenu(params: {
   } catch { /* non-fatal */ }
 
   const greetingEn =
-    `${personalGreeting ? personalGreeting + ' ' : ''}Hi, you have reached ${companyName}. ` +
-    `I am Trinity, your intelligent assistant. I am here to help in English or in Spanish — just speak naturally and I will take care of you. ` +
-    `For guards and officers, press or say 1. ` +
-    `For clients and site contacts, press 2. ` +
+    `${personalGreeting ? personalGreeting + ' ' : ''}Thank you for calling ${companyName}. My name is Trinity. ` +
+    `I am here to help — in English or in Spanish. Just tell me what you need, or use the menu below. ` +
+    `For guards and officers, press 1. ` +
+    `For clients or site contacts, press 2. ` +
     `For an urgent situation, press 3. ` +
-    `To report a complaint or concern, press 4. ` +
-    `For employment or hiring information, press 5. ` +
-    `To verify employment, press 6. ` +
+    `To report a complaint, press 4. ` +
+    `For hiring or employment information, press 5. ` +
+    `For employment verification, press 6. ` +
     `For pay or timesheet questions, press 7. ` +
-    `To speak with a manager directly, press 8. ` +
-    `To speak freely with Trinity AI, press 0. ` +
+    `To speak with a manager, press 8. ` +
+    `To speak freely with me, press 0. ` +
     `Or simply tell me what you need.`;
 
   const greetingEs =
-    `${lang === 'es' && personalGreeting ? personalGreeting + ' ' : ''}Hola, ha llamado a ${companyName}. ` +
-    `Soy Trinity, su asistente inteligente. Estoy aquí para ayudarle en español o en inglés — hable con naturalidad y le atenderé. ` +
+    `${lang === 'es' && personalGreeting ? personalGreeting + ' ' : ''}Gracias por llamar a ${companyName}. Soy Trinity. ` +
+    `Estoy aquí para ayudarle — en español o en inglés. Solo dígame qué necesita, o use el menú a continuación. ` +
     `Para guardias y oficiales, marque 1. ` +
-    `Para clientes y contactos del sitio, marque 2. ` +
+    `Para clientes o contactos del sitio, marque 2. ` +
     `Para una situación urgente, marque 3. ` +
     `Para reportar una queja, marque 4. ` +
     `Para información de empleo o contratación, marque 5. ` +
     `Para verificar empleo, marque 6. ` +
     `Para preguntas de pago, marque 7. ` +
     `Para hablar con un gerente, marque 8. ` +
-    `Para hablar libremente con Trinity, marque 0.`;
+    `Para hablar libremente conmigo, marque 0.`;
 
   const hintsEn = 'one,two,three,four,five,six,seven,eight,zero,guard,officer,client,urgent,complaint,hiring,employment,apply,verification,pay,paycheck,schedule,clock in,clock out,calloff,manager,help';
   const hintsEs = 'uno,dos,tres,cuatro,cinco,seis,siete,ocho,cero,guardia,oficial,cliente,urgente,queja,empleo,contratación,verificación,pago,horario,gerente';
@@ -199,21 +199,21 @@ async function buildGuardMenu(params: {
   const name = guard?.firstName || '';
 
   const menuEn =
-    `${name ? name + ', ' : ''}I can help you with several things. ` +
+    `${name ? 'Hi ' + name + ', good to hear from you. ' : ''}How can I help you today? ` +
     `Press 1 to check your schedule. ` +
     `Press 2 to clock in or clock out. ` +
-    `Press 3 to report a calloff or absence. ` +
+    `Press 3 to report a calloff. ` +
     `Press 4 for pay or timesheet questions. ` +
-    `Press 5 to reach your on-duty supervisor. ` +
-    `Or tell me what you need.`;
+    `Press 5 to reach your supervisor. ` +
+    `Or just tell me what you need.`;
 
   const menuEs =
-    `${name ? name + ', ' : ''}Puedo ayudarle con varias cosas. ` +
+    `${name ? 'Hola ' + name + ', qué bueno escucharle. ' : ''}¿En qué puedo ayudarle hoy? ` +
     `Marque 1 para ver su horario. ` +
     `Marque 2 para marcar entrada o salida. ` +
     `Marque 3 para reportar una ausencia. ` +
     `Marque 4 para preguntas de pago. ` +
-    `Marque 5 para contactar a su supervisor de turno. ` +
+    `Marque 5 para contactar a su supervisor. ` +
     `O simplemente dígame qué necesita.`;
 
   const qp = `lang=${lang}&workspaceId=${encodeURIComponent(workspaceId)}&company=${encodeURIComponent(companyName)}&sessionId=${encodeURIComponent(sessionId)}&caller=${encodeURIComponent(callerNumber)}&menu=guard`;
@@ -323,7 +323,7 @@ export async function routeGuardMenu(params: {
       const qp = `lang=${lang}&workspaceId=${encodeURIComponent(workspaceId)}&company=${encodeURIComponent(companyName)}&sessionId=${encodeURIComponent(sessionId)}&caller=${encodeURIComponent(callerNumber)}&intent=calloff`;
       return twiml(
         sayBoth(
-          'I am sorry to hear you will not be able to make your shift. Please state your name and the reason for your absence after the tone. Press pound when finished.',
+          'No problem, I will take care of this. After the tone, please say your name and the reason you will be missing your shift. Press pound when you are done.',
           'Lamento que no pueda asistir a su turno. Por favor diga su nombre y el motivo de su ausencia después del tono. Presione numeral cuando termine.',
           lang
         ) +
@@ -447,7 +447,7 @@ export async function routeClientMenu(params: {
         `Estoy anotando su solicitud de cobertura adicional. Por favor deje un mensaje con su nombre, ubicación y fechas o tiempos necesarios.`,
         lang
       ) + `<Record action="${baseUrl}/api/voice/recording-done?workspaceId=${encodeURIComponent(workspaceId)}&sessionId=${encodeURIComponent(sessionId)}" maxLength="120" finishOnKey="#" playBeep="true" />` +
-      sayBoth('Thank you. Your request has been recorded and your account manager will be in touch shortly. Have a great day.', 'Gracias. Su solicitud ha sido registrada. Que tenga un buen día.', lang) +
+      sayBoth('Thank you. Your coverage request has been logged and your account manager will follow up shortly. Have a great day.', 'Gracias. Su solicitud ha sido registrada. Que tenga un buen día.', lang) +
       `<Hangup/>`);
 
     case '5': // Account manager transfer

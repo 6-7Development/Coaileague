@@ -123,7 +123,7 @@ export function handleStaff(params: {
     if (lang === 'es') {
       return twiml(
         gather({ action: `${baseUrl}/api/voice/staff-menu?${qs}`, numDigits: 1 },
-          say('Menú de Personal. Para registrar su entrada, marque 1. ' +
+          say('Bienvenido. Puedo ayudarle con varias cosas. Para registrar su entrada, marque 1. ' +
             'Para reportar una ausencia, marque 2. ' +
             'Para soporte de personal, marque 3. ' +
             'Para registrar su salida, marque 4.', 'es')
@@ -134,7 +134,7 @@ export function handleStaff(params: {
 
     return twiml(
       gather({ action: `${baseUrl}/api/voice/staff-menu?${qs}`, numDigits: 1 },
-        say('Staff Menu. To clock in, press 1. ' +
+        say('Welcome. I can help you with several things. To clock in, press 1. ' +
           'To report a call-off, press 2. ' +
           'For staff support, press 3. ' +
           'To clock out, press 4.')
@@ -143,7 +143,7 @@ export function handleStaff(params: {
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleStaff] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -169,9 +169,9 @@ export function handleClockInStep1(params: {
           input: 'dtmf speech',
           speechTimeout: 'auto',
         },
-          say('Por favor ingrese o diga su número de empleado seguido del numeral.', 'es')
+          say('Por favor diga o ingrese su número de empleado, luego presione numeral.', 'es')
         ) +
-        say('No se recibió ninguna entrada. Adiós.', 'es')
+        say('No escuché nada. Por favor intente de nuevo o contacte a su supervisor. Adiós.', 'es')
       );
     }
 
@@ -183,13 +183,13 @@ export function handleClockInStep1(params: {
         input: 'dtmf speech',
         speechTimeout: 'auto',
       },
-        say('Please enter or say your employee number followed by the pound key.')
+        say('Please say or enter your employee number, then press pound.')
       ) +
-      say('No entry received. Goodbye.')
+      say('I did not catch that. Please try again or contact your supervisor. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleClockInStep1] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -210,21 +210,21 @@ export function handleCollectPin(params: {
     if (lang === 'es') {
       return twiml(
         gather({ action: `${baseUrl}/api/voice/clock-in-verify?${qs}`, numDigits: 6, timeout: 15 },
-          say('Ingrese su PIN de 6 dígitos.', 'es')
+          say('Y su PIN de 6 dígitos, por favor.', 'es')
         ) +
-        say('No se recibió el PIN. Adiós.', 'es')
+        say('No recibí su PIN. Por favor intente de nuevo. Adiós.', 'es')
       );
     }
 
     return twiml(
       gather({ action: `${baseUrl}/api/voice/clock-in-verify?${qs}`, numDigits: 6, timeout: 15 },
-        say('Please enter your 6-digit clock-in PIN.')
+        say('And your 6-digit PIN, please.')
       ) +
-      say('No PIN received. Goodbye.')
+      say('I did not receive your PIN. Please try again. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleCollectPin] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -279,15 +279,15 @@ export async function processClockIn(params: {
   if (pinResult.reason === 'no_employee') {
     await logVerification(null, 'no_employee_found');
     return lang === 'es'
-      ? twiml(say('No se encontró ningún empleado con ese número. Por favor verifique e intente nuevamente. Adiós.', 'es'))
-      : twiml(say('No employee found with that number. Please verify and try again. Goodbye.'));
+      ? twiml(say('No encontré ese número de empleado. Por favor verifique e intente de nuevo, o contacte a su supervisor. Adiós.', 'es'))
+      : twiml(say('I was not able to find that employee number. Please double-check and try again, or contact your supervisor. Goodbye.'));
   }
 
   if (pinResult.reason === 'no_pin') {
     await logVerification(pinResult.employee?.id ?? null, 'no_pin_set');
     return lang === 'es'
       ? twiml(say('No tiene un PIN configurado. Por favor contacte a su supervisor para configurar su PIN de voz. Adiós.', 'es'))
-      : twiml(say('You do not have a clock-in PIN set. Please contact your supervisor to set up your voice PIN. Goodbye.'));
+      : twiml(say('It looks like you do not have a voice PIN set up yet. Please reach out to your supervisor to get that configured. Goodbye.'));
   }
 
   if (!pinResult.valid) {
@@ -316,7 +316,7 @@ export async function processClockIn(params: {
         gather({ action: `${baseUrl}/api/voice/clock-in-verify?${qs}`, numDigits: 6, timeout: 15 },
           say(retryPrompt, lang)
         ) +
-        say(lang === 'es' ? 'No se recibió PIN. Adiós.' : 'No PIN received. Goodbye.', lang)
+        say(lang === 'es' ? 'No se recibió PIN. Adiós.' : 'I did not receive your PIN. Please try again. Goodbye.', lang)
       );
     }
 
@@ -353,7 +353,7 @@ export async function processClockIn(params: {
     await logVerification(null, 'no_employee_found');
     return lang === 'es'
       ? twiml(say('No se encontró el empleado. Adiós.', 'es'))
-      : twiml(say('Employee record not found. Goodbye.'));
+      : twiml(say('I was not able to locate that employee record. Please contact your supervisor for assistance. Goodbye.'));
   }
 
   // 3.5 License expiry check — block clock-in if guard card is expired
@@ -434,7 +434,7 @@ export async function processClockIn(params: {
     const ref = openEntry.referenceId || openEntry.id.slice(-6).toUpperCase();
     return lang === 'es'
       ? twiml(say(`Usted ya está registrado en el sistema. Su referencia es ${ref.split('').join(' ')}. Adiós.`, 'es'))
-      : twiml(say(`You are already clocked in. Your reference is ${ref.split('').join(' ')}. Goodbye.`));
+      : twiml(say(`You are already clocked in. Your reference number is ${ref.split('').join(' ')}. Have a safe shift. Goodbye.`));
   }
 
   // 6. Generate reference ID: CLK-YYYYMMDD-NNNNN
@@ -546,7 +546,7 @@ export async function processClockIn(params: {
   }
 
   return twiml(
-    say(`Clock-in successful. Welcome ${nameForVoice}. ` +
+    say(`You are clocked in. Welcome, ${nameForVoice}. ` +
       `Your reference number is ${refForVoice}. ` +
       `Please note this number. Have a great shift. Goodbye.`)
   );
@@ -578,7 +578,7 @@ export function handleClockOutStep1(params: {
         },
           say('Para registrar su salida, por favor ingrese o diga su número de empleado.', 'es')
         ) +
-        say('No se recibió ninguna entrada. Adiós.', 'es')
+        say('No escuché nada. Por favor intente de nuevo o contacte a su supervisor. Adiós.', 'es')
       );
     }
 
@@ -592,11 +592,11 @@ export function handleClockOutStep1(params: {
       },
         say('To clock out, please enter or say your employee number.')
       ) +
-      say('No entry received. Goodbye.')
+      say('I did not catch that. Please try again or contact your supervisor. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleClockOutStep1] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -617,7 +617,7 @@ export function handleCollectClockOutPin(params: {
         gather({ action: `${baseUrl}/api/voice/clock-out-verify?${qs}`, numDigits: 6, timeout: 15 },
           say('Ingrese su PIN de 6 dígitos para registrar su salida.', 'es')
         ) +
-        say('No se recibió el PIN. Adiós.', 'es')
+        say('No recibí su PIN. Por favor intente de nuevo. Adiós.', 'es')
       );
     }
 
@@ -625,11 +625,11 @@ export function handleCollectClockOutPin(params: {
       gather({ action: `${baseUrl}/api/voice/clock-out-verify?${qs}`, numDigits: 6, timeout: 15 },
         say('Please enter your 6-digit clock-in PIN to clock out.')
       ) +
-      say('No PIN received. Goodbye.')
+      say('I did not receive your PIN. Please try again. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleCollectClockOutPin] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -672,7 +672,7 @@ export async function processClockOut(params: {
     if ((updated.rowCount ?? 0) === 0) {
       return lang === 'es'
         ? twiml(say(`Hola ${emp.firstName}. No encontramos un registro de entrada abierto. Adiós.`, 'es'))
-        : twiml(say(`Hi ${emp.firstName}. I don't see an open clock-in for you. Goodbye.`));
+        : twiml(say(`Hi ${emp.firstName}. I do not see an active clock-in for you right now. If you think this is an error, please contact your supervisor. Goodbye.`));
     }
 
     const ref = (updated.rows[0]?.reference_id || emp.id.slice(-6)).toString().toUpperCase();
@@ -687,10 +687,10 @@ export async function processClockOut(params: {
 
     return lang === 'es'
       ? twiml(say(`Salida registrada, ${emp.firstName}. Referencia ${ref.split('').join(' ')}. Gracias por su turno. Adiós.`, 'es'))
-      : twiml(say(`Clocked out, ${emp.firstName}. Reference ${ref.split('').join(' ')}. Thanks for your shift. Goodbye.`));
+      : twiml(say(`All done, ${emp.firstName}. Clock-out confirmed. Reference ${ref.split('').join(' ')}. Thank you for your shift. Stay safe. Goodbye.`));
   } catch (err: unknown) {
     log.error('[staffExtension/processClockOut] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error processing your clock-out. Please try again. Goodbye.'));
+    return twiml(say('I had trouble processing that clock-out. Please try once more or let your supervisor know. Goodbye.'));
   }
 }
 
@@ -723,13 +723,13 @@ export function handleCallOff(params: {
     }
 
     return twiml(
-      say('To report a call-off, please leave your name, employee number, and the date of the shift you cannot work after the tone.') +
+      say('Of course. After the tone, please say your name, your employee number, and the date of the shift you will be missing. Take your time.') +
       `<Record action="${baseUrl}/api/voice/recording-done?ext=calloff&lang=en" maxLength="120" playBeep="true" />` +
-      say('Your call-off has been recorded. A supervisor has been notified. Goodbye.')
+      say('Got it. Your call-off has been recorded and your supervisor has been notified. Feel better soon. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleCallOff] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }
 
@@ -762,12 +762,12 @@ export function handleStaffSupport(params: {
     }
 
     return twiml(
-      say('You have selected Staff Support. Please leave your name, employee number, and your question after the tone.') +
+      say('Of course. After the tone, please leave your name, employee number, and a brief description of what you need help with.') +
       `<Record action="${baseUrl}/api/voice/recording-done?ext=staff-support&lang=en" maxLength="180" playBeep="true" />` +
-      say('Your message has been received. We will follow up with you shortly. Goodbye.')
+      say('Thank you. Your message has been received and someone will follow up with you as soon as possible. Goodbye.')
     );
   } catch (err: unknown) {
     log.error('[staffExtension/handleStaffSupport] Error:', (err instanceof Error ? err.message : String(err)));
-    return twiml(say('We encountered an error. Please try again or press 0 to return to the main menu.'));
+    return twiml(say('I ran into an issue on my end. Please try again, or press 0 to go back to the main menu.'));
   }
 }

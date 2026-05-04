@@ -527,7 +527,7 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
       `<Dial callerId="${twilioNumber}" timeout="30">` +
       `<Number>${fallbackPhone}</Number>` +
       `</Dial>` +
-      '<Say voice="Polly.Joanna-Neural">We are sorry we could not connect you. Please call back shortly or send us a text message and we will respond immediately. Thank you for your patience.</Say>'
+      '<Say voice="Polly.Joanna-Neural">We are sorry about that. Please call back in a moment or send us a text and we will respond right away. Thank you for your patience.</Say>'
     );
     xmlResponse(res, safetyXml);
   }
@@ -562,7 +562,7 @@ voiceRouter.post('/language-select', twilioSignatureMiddleware, async (req: Requ
     xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Language-select error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -714,7 +714,7 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
 
   } catch (err: unknown) {
     log.error('[VoiceRoutes] caller-identify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Please try again.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Something went wrong on my end. Please try again in a moment.</Say>'));
   }
 });
 
@@ -779,7 +779,7 @@ voiceRouter.post('/staff-identify', twilioSignatureMiddleware, async (req: Reque
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] staff-identify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -883,7 +883,7 @@ voiceRouter.post('/owner-pin-verify', twilioSignatureMiddleware, async (req: Req
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] owner-pin-verify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -982,7 +982,7 @@ voiceRouter.post('/client-identify', twilioSignatureMiddleware, async (req: Requ
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] client-identify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1004,7 +1004,7 @@ voiceRouter.post('/general-menu', twilioSignatureMiddleware, async (req: Request
     return xmlResponse(res, buildGeneralMenu(lang, baseUrl, extEnabled));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] general-menu error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1174,7 +1174,7 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
     }
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Main-menu-route error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1214,7 +1214,7 @@ voiceRouter.post('/staff-menu', twilioSignatureMiddleware, async (req: Request, 
     }
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Staff-menu error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1238,7 +1238,7 @@ voiceRouter.post('/clock-out-pin', twilioSignatureMiddleware, async (req: Reques
     if (!employeeNumber || employeeNumber.length < 3) {
       const msg = lang === 'es'
         ? twiml('<Say voice="Polly.Lupe-Neural" language="es-US">Número inválido. Adiós.</Say>')
-        : twiml('<Say>Invalid employee number. Goodbye.</Say>');
+        : twiml('<Say voice="Polly.Joanna-Neural">I did not recognize that employee number. Please try again or contact your supervisor. Goodbye.</Say>');
       return xmlResponse(res, msg);
     }
 
@@ -1247,7 +1247,7 @@ voiceRouter.post('/clock-out-pin', twilioSignatureMiddleware, async (req: Reques
     }));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Clock-out-pin error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1263,7 +1263,7 @@ voiceRouter.post('/clock-out-verify', twilioSignatureMiddleware, async (req: Req
     if (!Digits || Digits.length !== 6) {
       const msg = lang === 'es'
         ? twiml('<Say voice="Polly.Lupe-Neural" language="es-US">PIN inválido. Adiós.</Say>')
-        : twiml('<Say>Invalid PIN. Goodbye.</Say>');
+        : twiml('<Say voice="Polly.Joanna-Neural">That PIN did not match. Please try again. Goodbye.</Say>');
       return xmlResponse(res, msg);
     }
 
@@ -1273,7 +1273,7 @@ voiceRouter.post('/clock-out-verify', twilioSignatureMiddleware, async (req: Req
     xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Clock-out-verify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred processing your clock-out. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I had trouble processing that clock-out. Please try once more or contact your supervisor. Goodbye.</Say>'));
   }
 });
 
@@ -1310,7 +1310,7 @@ voiceRouter.post('/clock-in-pin', twilioSignatureMiddleware, async (req: Request
     }));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Clock-in-pin error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -1326,7 +1326,7 @@ voiceRouter.post('/clock-in-verify', twilioSignatureMiddleware, async (req: Requ
     if (!Digits || Digits.length !== 6) {
       const msg = lang === 'es'
         ? twiml('<Say voice="Polly.Penelope" language="es-US">PIN inválido. Adiós.</Say>')
-        : twiml('<Say>Invalid PIN. Goodbye.</Say>');
+        : twiml('<Say voice="Polly.Joanna-Neural">That PIN did not match. Please try again. Goodbye.</Say>');
       return xmlResponse(res, msg);
     }
 
@@ -1337,7 +1337,7 @@ voiceRouter.post('/clock-in-verify', twilioSignatureMiddleware, async (req: Requ
     xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Clock-in-verify error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred processing your clock-in. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I had trouble processing that clock-in. Please try once more or contact your supervisor. Goodbye.</Say>'));
   }
 });
 
@@ -1463,7 +1463,7 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
       });
     }
 
-    xmlResponse(res, twiml('<Say>Thank you. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Thank you for calling. Have a wonderful day. Goodbye.</Say>'));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] Recording-done error:', err instanceof Error ? err.message : String(err));
     xmlResponse(res, twiml('<Say>Goodbye.</Say>'));
@@ -1897,7 +1897,7 @@ voiceRouter.post('/support-resolve', twilioSignatureMiddleware, async (req: Requ
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] support-resolve error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>We encountered a technical issue. Please call back. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a technical issue. Please call back shortly and I will be ready to help. Goodbye.</Say>'));
   }
 });
 
@@ -1966,7 +1966,7 @@ voiceRouter.post('/support-confirm', twilioSignatureMiddleware, async (req: Requ
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] support-confirm error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2021,7 +2021,7 @@ voiceRouter.post('/support-gather-name', twilioSignatureMiddleware, async (req: 
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] support-gather-name error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2112,7 +2112,7 @@ voiceRouter.post('/support-create-case', twilioSignatureMiddleware, async (req: 
   } catch (err: unknown) {
     log.error('[VoiceRoutes] support-create-case error:', err instanceof Error ? err.message : String(err));
     xmlResponse(res, twiml(
-      '<Say>I was unable to create a support case at this time. Please call back or reach out by email. Goodbye.</Say>'
+      '<Say voice="Polly.Joanna-Neural">I was not able to create your support case just now. Please call back or send us a text and we will take care of it. Goodbye.</Say>'
     ));
   }
 });
@@ -2179,7 +2179,7 @@ voiceRouter.post('/case-check', twilioSignatureMiddleware, async (req: Request, 
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] case-check error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2295,7 +2295,7 @@ voiceRouter.post('/agent-clear', twilioSignatureMiddleware, async (req: Request,
     xmlResponse(res, twiml(sayEn('Invalid step. Goodbye.')));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] agent-clear error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2651,7 +2651,7 @@ voiceRouter.post('/send-verification', twilioSignatureMiddleware, async (req: Re
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] send-verification error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2729,7 +2729,7 @@ voiceRouter.post('/verify-code', twilioSignatureMiddleware, async (req: Request,
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] verify-code error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -2915,7 +2915,7 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
       if (ws) workspaceId = ws.workspaceId;
     }
     if (!workspaceId) {
-      return xmlResponse(res, twiml('<Say>Configuration error. Goodbye.</Say>'));
+      return xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a configuration issue. Please call back in a moment. Goodbye.</Say>'));
     }
 
     const issue = (SpeechResult || '').trim();
@@ -3015,7 +3015,7 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
     xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[VoiceRoutes] trinity-talk error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -3034,7 +3034,7 @@ voiceRouter.post('/trinity-talk-confirm', twilioSignatureMiddleware, async (req:
     const langCode = lang === 'es' ? 'es-US' : 'en-US';
 
     if (!workspaceId) {
-      return xmlResponse(res, twiml('<Say>Configuration error. Goodbye.</Say>'));
+      return xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a configuration issue. Please call back in a moment. Goodbye.</Say>'));
     }
 
     if (Digits === '1') {
@@ -3069,7 +3069,7 @@ voiceRouter.post('/trinity-talk-confirm', twilioSignatureMiddleware, async (req:
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] trinity-talk-confirm error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -3169,7 +3169,7 @@ voiceRouter.post('/sales-choice', twilioSignatureMiddleware, async (req: Request
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] sales-choice error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -3460,7 +3460,7 @@ voiceRouter.post('/verify-employee-id-channel', twilioSignatureMiddleware, async
     return xmlResponse(res, twiml(say(msg, voice, langCode)));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /verify-employee-id-channel error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -3517,7 +3517,7 @@ voiceRouter.post('/guest-identify', twilioSignatureMiddleware, async (req: Reque
     const session = await getSession(CallSid);
     const sessionId = session?.id || CallSid;
     xmlResponse(res, handleGuestIdentify({ callSid: CallSid, sessionId, workspaceId, lang, baseUrl }));
-  } catch (err: unknown) { log.error('[Wave16] guest-identify:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say>An error occurred. Please try again.</Say>')); }
+  } catch (err: unknown) { log.error('[Wave16] guest-identify:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Something went wrong on my end. Please try again in a moment.</Say>')); }
 });
 
 voiceRouter.post('/tenant-lookup', twilioSignatureMiddleware, async (req: Request, res: Response) => {
@@ -3545,7 +3545,7 @@ voiceRouter.post('/tenant-menu', twilioSignatureMiddleware, async (req: Request,
     const company = decodeURIComponent((req.query.company as string) || 'the company');
     const intent = (req.query.intent as string) || 'general_help';
     xmlResponse(res, handleTenantMenu({ sessionId, tenantWorkspaceId, companyName: company, lang, baseUrl, digits, speechResult: SpeechResult || '', intent }));
-  } catch (err: unknown) { log.error('[Wave16] tenant-menu:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say>Something went wrong. Please call back.</Say>')); }
+  } catch (err: unknown) { log.error('[Wave16] tenant-menu:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Something went wrong on my end. Please call back and I will be ready to help. Goodbye.</Say>')); }
 });
 
 voiceRouter.post('/collect-caller-info', twilioSignatureMiddleware, async (req: Request, res: Response) => {
@@ -3560,7 +3560,7 @@ voiceRouter.post('/collect-caller-info', twilioSignatureMiddleware, async (req: 
     const skipInfo = req.query.skipInfo === 'true';
     const xml = await handleCollectCallerInfo({ callSid: CallSid, sessionId, tenantWorkspaceId, companyName: company, lang, baseUrl, intent, speechResult: SpeechResult || '', skipInfo });
     xmlResponse(res, xml);
-  } catch (err: unknown) { log.error('[Wave16] collect-caller-info:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say>Let me connect you now.</Say>')); }
+  } catch (err: unknown) { log.error('[Wave16] collect-caller-info:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Please hold just a moment while I connect you.</Say>')); }
 });
 
 voiceRouter.post('/smart-transfer', twilioSignatureMiddleware, async (req: Request, res: Response) => {
@@ -3575,7 +3575,7 @@ voiceRouter.post('/smart-transfer', twilioSignatureMiddleware, async (req: Reque
     const callerInfo = decodeURIComponent((req.query.callerInfo as string) || '');
     const xml = await handleSmartTransfer({ callSid: CallSid, sessionId, tenantWorkspaceId, companyName: company, lang, baseUrl, intent, callerInfo });
     xmlResponse(res, xml);
-  } catch (err: unknown) { log.error('[Wave16] smart-transfer:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say>I could not complete the transfer. Please call back.</Say>')); }
+  } catch (err: unknown) { log.error('[Wave16] smart-transfer:', err instanceof Error ? err.message : String(err)); xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I was not able to complete that transfer. Please call back and I will try again. Goodbye.</Say>')); }
 });
 
 voiceRouter.get('/announce-caller', async (req: Request, res: Response) => {
@@ -3834,7 +3834,7 @@ voiceRouter.post('/client-or-guest', twilioSignatureMiddleware, async (req: Requ
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /client-or-guest error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4024,7 +4024,7 @@ voiceRouter.post('/client-provider-lookup', twilioSignatureMiddleware, async (re
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /client-provider-lookup error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4083,7 +4083,7 @@ voiceRouter.post('/guest-intake', twilioSignatureMiddleware, async (req: Request
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /guest-intake error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4180,7 +4180,7 @@ voiceRouter.post('/guest-complaint-intake', twilioSignatureMiddleware, async (re
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /guest-complaint-intake error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4293,7 +4293,7 @@ voiceRouter.post('/guest-employment-verify', twilioSignatureMiddleware, async (r
 
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /guest-employment-verify error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4392,7 +4392,7 @@ voiceRouter.post('/provider-branded-menu', twilioSignatureMiddleware, async (req
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /provider-branded-menu error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4532,7 +4532,7 @@ voiceRouter.post('/provider-menu-route', twilioSignatureMiddleware, async (req: 
     }
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /provider-menu-route error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4607,7 +4607,7 @@ voiceRouter.post('/client-complaint-intake', twilioSignatureMiddleware, async (r
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /client-complaint-intake error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4729,7 +4729,7 @@ voiceRouter.post('/sra-identify', twilioSignatureMiddleware, async (req: Request
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /sra-identify error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4761,7 +4761,7 @@ voiceRouter.post('/provider-schedule-record', twilioSignatureMiddleware, async (
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /provider-schedule-record error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -4909,7 +4909,7 @@ voiceRouter.post('/client-pin-gate', twilioSignatureMiddleware, async (req: Requ
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /client-pin-gate error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -5125,7 +5125,7 @@ voiceRouter.post('/owner-menu', twilioSignatureMiddleware, async (req: Request, 
     ));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /owner-menu error:', (err instanceof Error ? err.message : String(err)));
-    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I ran into a brief technical issue. Please try again, or press 0 to return to the main menu.</Say>'));
   }
 });
 
@@ -5218,7 +5218,7 @@ voiceRouter.post('/ai-stream', twilioSignatureMiddleware, async (req: Request, r
     return xmlResponse(res, buildAIVoiceStream({ baseUrl, workspaceId, callSid: req.body.CallSid, lang }));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] /ai-stream error:', err instanceof Error ? err.message : String(err));
-    return xmlResponse(res, twiml('<Say>Unable to connect to Trinity AI. Returning to the main menu.</Say>' +
+    return xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I had trouble connecting just now. Taking you back to the main menu.</Say>' +
       redirect(`${getBaseUrl(req)}/api/voice/main-menu`)));
   }
 });
@@ -5361,7 +5361,7 @@ voiceRouter.post('/tenant-portal', twilioSignatureMiddleware, async (req: Reques
     return xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[TenantPortal] Error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>I am sorry, there was an issue loading the portal. Please try again.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I am sorry, something went wrong loading that. Please try again in a moment.</Say>'));
   }
 });
 
@@ -5382,7 +5382,7 @@ voiceRouter.post('/tenant-portal-route', twilioSignatureMiddleware, async (req: 
     return xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[TenantPortal] Route error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>I am sorry, I had trouble with that. Let me transfer you now.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">I am sorry, I had a small issue there. Let me connect you directly now.</Say>'));
   }
 });
 
@@ -5403,7 +5403,7 @@ voiceRouter.post('/tenant-portal-guard', twilioSignatureMiddleware, async (req: 
     return xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[TenantPortal] Guard menu error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>I am sorry, please hold while I connect you.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Please hold for just a moment while I connect you.</Say>'));
   }
 });
 
@@ -5424,7 +5424,7 @@ voiceRouter.post('/tenant-portal-client', twilioSignatureMiddleware, async (req:
     return xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[TenantPortal] Client menu error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>I am sorry, let me connect you with someone directly.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Let me connect you with someone directly. Please hold.</Say>'));
   }
 });
 
@@ -5454,7 +5454,7 @@ voiceRouter.post('/tenant-transfer-ready', twilioSignatureMiddleware, async (req
     return xmlResponse(res, xml);
   } catch (err: unknown) {
     log.error('[TenantPortal] Transfer ready error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>Connecting you now. Please hold.</Say>'));
+    xmlResponse(res, twiml('<Say voice="Polly.Joanna-Neural">Connecting you now. Please hold for just a moment.</Say>'));
   }
 });
 

@@ -87,9 +87,9 @@ export function handleGuestIdentify(params: {
         or if you have it, their state license number. 
         For example, you can say "Statewide Protective Services" 
         or "license C one one six zero eight five zero one".
-        Take your time — I am listening.`) +
+        Take your time — I am right here with you.`) +
     `<Gather input="speech" action="${action}&intent=general_help" method="POST" timeout="20" speechTimeout="auto" language="en-US" hints="statewide,protective,security,license,company,services">` +
-    say("Whenever you are ready, say the company name or license number.") +
+    say("Take your time. Say the name of the security company, or their state license number if you have it.") +
     `</Gather>` +
     `<Redirect method="POST">${action}&intent=general_help</Redirect>`
   );
@@ -256,7 +256,7 @@ export function handleTenantMenu(params: {
           For pay or timesheet questions, press 3.
           To speak with your supervisor, press 4.`) +
       `<Gather input="speech dtmf" numDigits="1" action="${collectUrl("guard_issue")}&submenu=1" method="POST" timeout="12" speechTimeout="auto" language="en-US">` +
-      say("How can I help you today?") +
+      say("Of course. I am here to help. Just tell me what you need.") +
       `</Gather>` +
       `<Redirect method="POST">${collectUrl("guard_issue")}&submenu=1</Redirect>`
     );
@@ -312,11 +312,10 @@ export function handleTenantMenu(params: {
       );
     }
     return twiml(
-      say(`I am sorry to hear you have a concern, and I want to make sure it gets to the right person.
-          Before I connect you, could you please tell me your name and briefly describe the situation?
+      say(`I am sorry to hear you have a concern. Before I connect you, could you share your name and briefly describe the situation? That way the manager is fully prepared to help you.
           Take all the time you need — I am listening carefully.`) +
       `<Gather input="speech" action="${collectUrl("complaint")}" method="POST" timeout="25" speechTimeout="auto" language="en-US">` +
-      say("Go ahead whenever you are ready.") +
+      say("Take your time and go ahead whenever you are ready.") +
       `</Gather>` +
       `<Redirect method="POST">${collectUrl("complaint")}</Redirect>`
     );

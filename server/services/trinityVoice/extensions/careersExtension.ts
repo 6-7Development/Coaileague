@@ -38,7 +38,7 @@ export function handleCareers(params: {
           'y el tipo de puesto que le interesa después del tono. Ya sea que sea un oficial con licencia, ' +
           'supervisor, o esté empezando una carrera en seguridad, queremos conocerle.', 'es') +
         `<Record action="${baseUrl}/api/voice/recording-done?ext=careers&lang=es" maxLength="120" playBeep="true" />` +
-        say('Gracias. Nos pondremos en contacto con usted pronto.', 'es')
+        say('Gracias por su interés. Alguien de nuestro equipo se comunicará con usted pronto. Apreciamos su tiempo.', 'es')
       );
     }
 
@@ -48,7 +48,7 @@ export function handleCareers(params: {
         'of position you\'re interested in after the tone. Whether you\'re a licensed officer, ' +
         'supervisor, or looking to start a career in security, we want to hear from you!') +
       `<Record action="${baseUrl}/api/voice/recording-done?ext=careers&lang=en" maxLength="120" playBeep="true" />` +
-      say('Thank you. We\'ll be in touch soon.')
+      say('Thank you for your interest. Someone from our team will be in touch with you soon. We appreciate you taking the time to reach out.')
     );
   } catch (err: unknown) {
     log.error('[careersExtension] Error:', (err instanceof Error ? err.message : String(err)));

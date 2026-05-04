@@ -59,9 +59,9 @@ export function handleSales(params: {
         'Press 3 to learn more about Co-League before speaking with someone.') +
       `</Gather>` +
       // No input → record voicemail directly so the caller is never stranded
-      say('Please leave your name, the best number to reach you, and a brief description of your needs after the tone.') +
+      say('Please leave your name, the best number to reach you, and a brief description of what you are looking for. We typically follow up within one business day.') +
       `<Record action="${baseUrl}/api/voice/recording-done?ext=sales&lang=en" maxLength="120" playBeep="true" />` +
-      say('Thank you. Have a great day.')
+      say('Thank you for your interest in CoAIleague. We look forward to connecting with you soon. Have a wonderful day.')
     );
   } catch (err: unknown) {
     log.error('[salesExtension] Error:', (err instanceof Error ? err.message : String(err)));
