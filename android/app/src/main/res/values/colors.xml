@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CoAIleague purple — applied as tint to monochrome notification icon -->
+    <color name="purple_brand">#7C3AED</color>
+    <!-- Status bar background matches app dark navy -->
+    <color name="dark_navy">#0F172A</color>
+</resources>

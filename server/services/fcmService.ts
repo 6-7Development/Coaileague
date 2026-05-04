@@ -119,7 +119,18 @@ export async function sendFCMToToken(
         data: notification.data || {},
         android: {
           priority: notification.priority === "high" ? "high" : "normal",
-          notification: { channel_id: "coaileague_alerts" },
+          notification: {
+            channel_id: "coaileague_alerts",
+            // SmallIcon: monochrome drawable — white-on-transparent Trinity arms
+            // References android/app/src/main/res/drawable-*/ic_stat_coaileague.png
+            // No path prefix, no file extension — Android resolves via @drawable/
+            icon: "ic_stat_coaileague",
+            // Brand purple tint applied to the monochrome status bar icon
+            color: "#7C3AED",
+            // LargeIcon: full-color Trinity arms shown in notification shade
+            // HTTPS required — Firebase fetches and caches this URL
+            image: "https://coaileague.com/icons/trinity-notification-192.png",
+          },
         },
         apns: {
           headers: { "apns-priority": notification.priority === "high" ? "10" : "5" },
@@ -127,6 +138,12 @@ export async function sendFCMToToken(
         },
         webpush: {
           headers: { Urgency: notification.priority === "high" ? "high" : "normal" },
+          notification: {
+            // Full-color icon for PWA/browser push (shown in notification shade on desktop/Android Chrome)
+            icon: notification.imageUrl || "https://coaileague.com/icons/notification-icon-192x192.png",
+            // Monochrome badge for Chrome on Android status bar (must be white-on-transparent)
+            badge: "https://coaileague.com/icons/badge-72.png",
+          },
         },
       },
     };

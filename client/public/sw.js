@@ -486,6 +486,15 @@ async function syncIncidents() {
   });
 }
 
+// ── Wave 21A Notification Icon Architecture ────────────────────────────────────
+// SmallIcon (status bar, Android native): ic_stat_coaileague drawable
+//   White-on-transparent Trinity orbital arm — set via FCM payload android.notification.icon
+//   Tinted #7C3AED (brand purple) by Android OS
+// Badge (status bar, PWA/Chrome): /icons/badge-72.png
+//   Same Trinity arm silhouette, white-on-transparent, 72×72
+// LargeIcon (pull-down shade): /icons/notification-icon-192x192.png
+//   Full-color Trinity logo shown beside notification body
+// ───────────────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
   console.log('[SW] Push notification received');
   
@@ -501,7 +510,9 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body || data.message,
-    icon: data.icon || '/icons/notification-icon-192x192.png',
+    // Full-color Trinity arms icon — shown in notification shade LargeIcon
+    icon: data.icon || '/icons/trinity-notification-192.png',
+    // Monochrome white-on-transparent — shown in Android status bar (small badge dot)
     badge: data.badge || '/icons/badge-72.png',
     image: data.image || undefined,
     vibrate: data.vibrate || getVibrationPattern(data.type),

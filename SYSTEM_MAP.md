@@ -1,6 +1,97 @@
 
 ---
 
+## NOTIFICATION ICON ARCHITECTURE (confirmed 2026-05-04)
+
+### Android Status Bar SmallIcon — ic_stat_coaileague.png
+Material Design 3 hard requirement: **white-on-transparent monochrome only**.
+Any color pixels become a solid white blob at Android 5+.
+
+Asset: Three Trinity teardrop arms — NO orbital rings, NO halo, NO core glow.
+Just the three arms + centre dot. Clean silhouette at 24px.
+
+Stored at all 5 density buckets:
+  android/app/src/main/res/drawable-mdpi/ic_stat_coaileague.png      24×24
+  android/app/src/main/res/drawable-hdpi/ic_stat_coaileague.png      36×36
+  android/app/src/main/res/drawable-xhdpi/ic_stat_coaileague.png     48×48
+  android/app/src/main/res/drawable-xxhdpi/ic_stat_coaileague.png    72×72
+  android/app/src/main/res/drawable-xxxhdpi/ic_stat_coaileague.png   96×96
+
+AndroidManifest.xml FCM defaults (apply to all notifications automatically):
+  com.google.firebase.messaging.default_notification_icon  → @drawable/ic_stat_coaileague
+  com.google.firebase.messaging.default_notification_color → @color/fcm_notification_color (#7C3AED)
+  com.google.firebase.messaging.default_notification_channel_id → coaileague_alerts
+
+### Android LargeIcon / Notification Shade
+Full-color Trinity arms (blue #93C5FD + gold #FED7AA + purple #C4B5FD + white core).
+No orbital rings in this version either — arms only, clean on any background.
+Served from: https://coaileague.com/icons/trinity-notification-192.png (192×192)
+
+### FCM HTTP v1 Payload — android.notification block
+  icon:  "ic_stat_coaileague"          ← drawable name, no path/extension
+  color: "#7C3AED"                     ← purple tint on monochrome icon
+  image: "https://coaileague.com/icons/trinity-notification-192.png"  ← LargeIcon
+
+### PWA / Web Push (sw.js + manifest.json)
+  badge: /icons/badge-72.png           ← 72×72 monochrome (was 0KB empty — now real)
+  icon:  /icons/trinity-notification-192.png  ← full-color in notification shade
+  manifest.json: monochrome purpose icon added (ic_stat_coaileague-96.png, 96×96)
+
+### App Logo Usage (in-app, NOT notifications)
+  Trinity arms animate with color + glow + breathing — NO orbital rings anywhere.
+  Orbital rings were removed from TrinityOrbitalAvatar (fixed Wave 19).
+  Idle: soft comet arc sweeps and fades (Gemini-style). Active states: full animation.
+
+### Regenerating Icons
+  node scripts/generateNotificationIcons.js
+  Reads: client/public/favicon.svg arm path
+  Outputs: all drawable-* PNGs + badge-72.png + trinity-notification-192.png
+
+---
+
+---
+
+## BRANDING LAW — Trinity Orbital Arm (permanent, added 2026-05-04)
+
+**ONLY LOGO:** The Trinity orbital arm — three teardrop arms at 0°/120°/240° radiating from a glowing core, with two orbital rings. This is the sole brand mark for CoAIleague.
+
+**DEPRECATED / FORBIDDEN:** Any reference to a "Celtic knot" or any other legacy logo design. These must never appear in code, comments, documentation, or assets. If you see this term in context, treat it as a reference to the legacy deprecated design and do not use it.
+
+**CANONICAL SOURCE:** `client/public/favicon.svg` — the Trinity orbital arm vector. This is the authoritative source file for all icon derivatives.
+
+**ARM PATH (SVG):** `M60 43 C55 34,53 19,60 6 C67 19,65 34,60 43 Z` in a 120×120 viewbox.
+Three instances at rotations 0°, 120°, 240°.
+
+**NOTIFICATION ICON ARCHITECTURE:**
+  - Android SmallIcon (status bar native): `ic_stat_coaileague` drawable
+    - White-on-transparent monochrome orbital arm
+    - Stored in `android/app/src/main/res/drawable-{mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi}/`
+    - 24/36/48/72/96px respectively
+    - Tinted #7C3AED (brand purple) by Android OS via `@color/purple_brand`
+  - Badge (PWA/Chrome status bar): `/icons/badge-72.png` (72×72, white-on-transparent)
+  - LargeIcon (notification shade): `/icons/notification-icon-192x192.png` (full-color)
+  - PWA manifest monochrome: `/icons/ic_stat_coaileague_96.png` (96×96, purpose: monochrome)
+
+**FCM PAYLOAD (canonical):**
+```typescript
+android: {
+  notification: {
+    icon: "ic_stat_coaileague",   // drawable name — no path, no extension
+    color: "#7C3AED",             // brand purple tint
+    image: "https://coaileague.com/icons/icon-192x192.png",  // LargeIcon
+    channel_id: "coaileague_alerts",
+  }
+}
+```
+
+**GENERATION SCRIPT:** `node scripts/generate-notification-icons.js`
+Regenerates all 5 Android density PNGs from `favicon.svg` using Sharp.
+Run any time the orbital arm design updates. Never hand-edit the PNGs.
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Drizzle Schema Index Pattern (added 2026-05-04)
 
 **ROOT CAUSE OF WAVE 21C CRASH:**

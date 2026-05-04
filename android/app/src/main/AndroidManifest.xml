@@ -9,6 +9,19 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- FCM: monochrome Trinity orbital arm for status bar (Android 5+) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_coaileague" />
+        <!-- FCM: CoAIleague purple brand tint for the status bar icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/purple_brand" />
+        <!-- FCM: default notification channel for Android 8+ -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="coaileague_alerts" />
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
             android:name=".MainActivity"
@@ -33,6 +46,22 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+        <!-- FCM: default notification icon (monochrome white-on-transparent) -->
+        <!-- References android/app/src/main/res/drawable-*/ic_stat_coaileague.png -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_coaileague" />
+
+        <!-- FCM: CoAIleague purple brand tint for the status bar icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/fcm_notification_color" />
+
+        <!-- FCM: default channel for Android 8.0+ (Oreo and above) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="coaileague_alerts" />
+
     </application>
 
     <!-- Permissions -->
