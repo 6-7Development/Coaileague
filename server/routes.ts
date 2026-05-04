@@ -30,6 +30,10 @@ import productionDiagnosticRouter from "./routes/productionDiagnosticRoute";
 import { generateEvidenceBundle } from "./services/auditor/evidenceBundleService";
 import handshakeQrRouter from "./routes/handshakeQrRoutes";
 import workspaceRepairRouter from "./routes/workspaceRepairRoutes";
+import { checkTokenGate } from "./services/billing/tokenVelocitySentinel";
+import { calculateSafeToSpend } from "./services/finance/safeToSpendService";
+import { answerPostOrderQuestion } from "./services/fieldOperations/postOrderRagService";
+import { runGhostExpenseAudit } from "./services/finance/ghostExpenseAuditor";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -161,6 +165,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Wave 10: Bio-Link Rapid Invite QR Handshake
   app.use('/api/workspace/handshake-qr', handshakeQrRouter);
+
+  // ── Wave 11: CFO Brain & Margin Protection Endpoints ──────────────────────
+
+  // Task 1: Token gate check (used by AI routes — 402 if over limit)
+  app.get('/api/billing/token-gate', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    const result = await checkTokenGate(req.workspaceId!);
+    return res.json(result);
+  });
+
+  // Task 3: Safe-to-Spend balance (CFO widget)
+  app.get('/api/financial/safe-to-spend', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { stateCode, bufferPct } = req.query as { stateCode?: string; bufferPct?: string };
+      const snapshot = await calculateSafeToSpend(req.workspaceId!, {
+        stateCode: stateCode || 'TX',
+        operatingBufferPct: bufferPct ? parseFloat(bufferPct) / 100 : 0.10,
+      });
+      return res.json(snapshot);
+    } catch (err: unknown) {
+      return res.status(500).json({ error: err instanceof Error ? err.message : 'Calculation failed' });
+    }
+  });
+
+  // Task 4: Post Order RAG — site-scoped question answering
+  app.post('/api/post-orders/ask', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    const { question, siteId } = req.body as { question: string; siteId?: string };
+    if (!question) return res.status(400).json({ error: 'question required' });
+    try {
+      const answer = await answerPostOrderQuestion({
+        workspaceId: req.workspaceId!,
+        employeeId: req.user?.id || '',
+        question,
+        overrideSiteId: siteId,
+      });
+      return res.json(answer);
+    } catch (err: unknown) {
+      return res.status(500).json({ error: err instanceof Error ? err.message : 'RAG query failed' });
+    }
+  });
+
+  // Task 5: Ghost Expense Auditor
+  app.get('/api/financial/ghost-expenses', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const report = await runGhostExpenseAudit(req.workspaceId!);
+      return res.json(report);
+    } catch (err: unknown) {
+      return res.status(500).json({ error: err instanceof Error ? err.message : 'Audit failed' });
+    }
+  });
 
   // Wave 10: Workspace Identity Repair + Orphan Audit (root admin only, DIAG_BYPASS_SECRET)
   // GET  /api/admin/workspace/orphan-audit         — find incomplete workspaces

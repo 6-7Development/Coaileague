@@ -168,6 +168,11 @@ class RedisTokenBuffer {
           identifier: `${workspaceId}_${Math.floor(Date.now() / 60000)}`, // idempotency: 1 per minute per workspace
         }).catch(() => null); // non-fatal — meter events have their own retry logic
 
+        // Wave 11: Velocity spike detection (async, non-blocking — never delays flush)
+        import('./tokenVelocitySentinel').then(({ detectVelocitySpike }) =>
+          detectVelocitySpike(workspaceId, tokensUsed)
+        ).catch(() => null);
+
       } catch {
         // Non-fatal per workspace — continue with next
       }
