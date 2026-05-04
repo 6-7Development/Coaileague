@@ -5,6 +5,58 @@
 
 ---
 
+## VOICE INFINITE REDIRECT LOOP — Post-Mortem
+
+**Symptom:** Application error on first 3 calls. Worked on 4th-5th ring.
+**Root cause:** Infinite redirect loop + Railway rolling deploy overlap.
+
+### Why it appeared intermittent
+
+Railway rolling deploy keeps the old container alive for ~2 minutes while
+spinning up the new one. First 3 calls hit old container (pre-fix) → error.
+Calls 4-5 hit new container → works. Appeared to "fix itself."
+
+### The actual code bug (would persist after deploy)
+
+Every voice route called `resolveWorkspaceFromPhoneNumber(To)`. For the
+master Twilio number (not in `workspaces.twilio_phone_number`), it returns null.
+
+Routes handled null like this:
+```
+if (!workspace) {
+  return redirect(`/api/voice/caller-identify?lang=${lang}`)  ← self-redirect
+}
+```
+
+`caller-identify` → redirects to `caller-identify` → Twilio follows 5-10
+redirects → "application error". Every route had this same loop.
+
+**Also:** `workspace.phoneRecord.extensionConfig` accessed on routes where
+`phoneRecord` doesn't exist on the new return type → TypeError on any
+non-null workspace match (future tenant with twilio_phone_number set).
+
+### Fixes Applied
+
+1. All 6 infinite self-redirects changed to `/guest-identify` (Wave 16 guest flow)
+2. All `workspace.phoneRecord.extensionConfig` replaced with `{}: Record<string, boolean>`
+   (extension config defaults to all-enabled for the master line)
+
+### Pre-Commit Rule Added
+
+```bash
+# Check for self-redirect patterns
+grep -n "redirect.*caller-identify" server/routes/voiceRoutes.ts | head -10
+# None should be inside an "if (!workspace)" block
+
+# Check for phoneRecord access
+grep -rn "workspace\.phoneRecord" server/
+# Must return: nothing
+```
+
+---
+
+---
+
 ## VOICE SYSTEM CRASH POST-MORTEM — May 2026
 
 **Symptom:** "Application error" on all calls + SMS down simultaneously.

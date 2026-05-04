@@ -555,9 +555,9 @@ voiceRouter.post('/language-select', twilioSignatureMiddleware, async (req: Requ
     }
 
     // Master number — workspace may be null. Build IVR with empty extension config.
-    const extEnabled = workspace
-      ? ((workspace.phoneRecord.extensionConfig as Record<string, boolean>) || {})
-      : {};
+    // Master number — workspace always null (no per-tenant number registered).
+    // Extension config comes from the workspace record itself when available.
+    const extEnabled: Record<string, boolean> = {};
     const xml = buildMainIVR(lang, baseUrl, extEnabled);
     xmlResponse(res, xml);
   } catch (err: unknown) {
@@ -582,7 +582,7 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
       // Master number — no tenant-specific record. Route to guest IVR.
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
     const { workspaceId } = workspace;
@@ -709,7 +709,7 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
       return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}&sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}`)));
     }
     // Press 3, 0, or no input → general menu
-    const extEnabled = (workspace.phoneRecord.extensionConfig as Record<string, boolean>) || {};
+    const extEnabled: Record<string, boolean> = {};
     return xmlResponse(res, buildGeneralMenu(lang, baseUrl, extEnabled));
 
   } catch (err: unknown) {
@@ -731,7 +731,7 @@ voiceRouter.post('/staff-identify', twilioSignatureMiddleware, async (req: Reque
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
       // Master number — no tenant-specific record. Route to guest IVR.
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
     const { workspaceId } = workspace;
@@ -801,7 +801,7 @@ voiceRouter.post('/owner-pin-verify', twilioSignatureMiddleware, async (req: Req
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
       // Master number — no tenant-specific record. Route to guest IVR.
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
     const { workspaceId } = workspace;
@@ -900,7 +900,7 @@ voiceRouter.post('/client-identify', twilioSignatureMiddleware, async (req: Requ
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
       // Master number — no tenant-specific record. Route to guest IVR.
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
     const session = await getSession(CallSid);
@@ -997,10 +997,10 @@ voiceRouter.post('/general-menu', twilioSignatureMiddleware, async (req: Request
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
       // Master number — no tenant-specific record. Route to guest IVR.
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
-    const extEnabled = (workspace.phoneRecord.extensionConfig as Record<string, boolean>) || {};
+    const extEnabled: Record<string, boolean> = {};
     return xmlResponse(res, buildGeneralMenu(lang, baseUrl, extEnabled));
   } catch (err: unknown) {
     log.error('[VoiceRoutes] general-menu error:', err instanceof Error ? err.message : String(err));
@@ -1063,11 +1063,11 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     // Master number — workspace may be null. Use empty string for workspaceId.
     if (!workspace) {
-      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/caller-identify?lang=${lang}`)));
+      return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/guest-identify?lang=${lang}`)));
     }
 
     const { workspaceId } = workspace;
-    const extEnabled = (workspace.phoneRecord.extensionConfig as Record<string, boolean>) || {};
+    const extEnabled: Record<string, boolean> = {};
     const isExtEnabled = (key: string) => extEnabled[key] !== false;
 
     const DIGIT_TO_EXT: Record<string, string> = {
