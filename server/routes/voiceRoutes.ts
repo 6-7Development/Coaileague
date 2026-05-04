@@ -3601,56 +3601,16 @@ voiceRouter.post('/transfer-complete', twilioSignatureMiddleware, async (req: Re
 
 // GET /api/voice/numbers — list phone numbers for workspace
 mgmtRouter.get('/numbers', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const workspaceId = req.workspaceId!;
-    const numbers = await db.select()
-      .from(workspacePhoneNumbers)
-      .where(eq(workspacePhoneNumbers.workspaceId, workspaceId))
-      .orderBy(desc(workspacePhoneNumbers.createdAt));
-    res.json({ numbers });
-  } catch (err: unknown) {
-    log.error('[Route] Internal error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-  }
+  // Directive 2: workspace_phone_numbers table eliminated.
+  // Tenant phone numbers are stored in workspaces.twilio_phone_number.
+  // This endpoint is a stub — phone management moved to workspace settings.
+  res.json({ numbers: [], message: 'Phone number management is available in workspace settings.' });
 });
 
-// PATCH /api/voice/numbers/:id — update extension config and persona script for a phone number
-mgmtRouter.patch('/numbers/:id', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const workspaceId = req.workspaceId!;
-    const { id } = req.params;
-    const { extensionConfig, greetingScript, greetingScriptEs, isActive } = req.body;
-
-    const [existing] = await db.select()
-      .from(workspacePhoneNumbers)
-      .where(and(
-        eq(workspacePhoneNumbers.id, id),
-        eq(workspacePhoneNumbers.workspaceId, workspaceId),
-      ));
-    if (!existing) return res.status(404).json({ error: 'Phone number not found' });
-
-    const updateData: Partial<typeof workspacePhoneNumbers.$inferInsert> = {
-      updatedAt: new Date(),
-    };
-    if (extensionConfig !== undefined) updateData.extensionConfig = extensionConfig;
-    if (greetingScript !== undefined) updateData.greetingScript = greetingScript;
-    if (greetingScriptEs !== undefined) updateData.greetingScriptEs = greetingScriptEs;
-    if (isActive !== undefined) updateData.isActive = isActive;
-
-    const [updated] = await db.update(workspacePhoneNumbers)
-      .set(updateData)
-      .where(and(
-        eq(workspacePhoneNumbers.id, id),
-        eq(workspacePhoneNumbers.workspaceId, workspaceId),
-      ))
-      .returning();
-
-    res.json({ number: updated });
-  } catch (err: unknown) {
-    log.error('[Route] Internal error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-  }
+mgmtRouter.put('/numbers/:id', async (req: AuthenticatedRequest, res: Response) => {
+  res.status(410).json({ error: 'Phone number management moved to workspace settings.' });
 });
+
 
 // GET /api/voice/calls — call history for workspace
 mgmtRouter.get('/calls', async (req: AuthenticatedRequest, res: Response) => {

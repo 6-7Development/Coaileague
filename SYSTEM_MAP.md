@@ -5,6 +5,58 @@
 
 ---
 
+## VOICE SYSTEM CRASH POST-MORTEM — May 2026
+
+**Symptom:** "Application error" on all calls + SMS down simultaneously.
+**Root cause:** Module-level startup crash taking down the entire Express server.
+
+### Three-Part Root Cause
+
+**1. `workspacePhoneNumbers` imported but not defined correctly**
+File: `server/routes/voiceRoutes.ts` and `server/services/trinityVoice/voiceOrchestrator.ts`
+After Directive 2 eliminated the table, the import remained. esbuild hoisted it above
+`const` declarations — creating a syntax error on load. Server never started.
+
+**2. `workspaces.isGrandfathered` queried — column does not exist**
+File: `server/services/trinityVoice/voiceOrchestrator.ts` (new resolveWorkspaceFromPhoneNumber)
+The rewritten function selected `isGrandfathered` from the workspaces table.
+That column is not in the schema. Drizzle ORM type error at module evaluation.
+
+**3. `acmeSeed.ts` still imported `workspacePhoneNumbers`**
+A dev seed file retained the old import. Even seed files in the import graph crash the server.
+
+### Permanent Fixes Applied
+
+| File | Fix |
+|------|-----|
+| `voiceOrchestrator.ts` | Removed `workspacePhoneNumbers` import; replaced `isGrandfathered` with `founderExemption` (exists in schema) |
+| `voiceRoutes.ts` | Removed `workspacePhoneNumbers` import; stubbed management routes; removed INSERT in initializeVoiceTables |
+| `acmeSeed.ts` | Completely stubbed — no-op with comment explaining Directive 2 |
+
+### Pre-Commit Rule (Added to Railway Mirror Protocol)
+
+```bash
+# Check for dead schema references before every commit
+grep -rn 'workspacePhoneNumbers' server/ | grep -v '//'
+# Must return: nothing
+
+# Verify every import reference maps to an existing schema export
+node build.mjs
+# Must return: ✅ Server build complete
+```
+
+### Voice System State After Fix
+
+- `resolveWorkspaceFromPhoneNumber`: queries `workspaces.twilio_phone_number` (single column, existing table)
+- When no tenant match (master number): routes to guest IVR — never returns "not configured"
+- TwiML Safety Net: catch block returns `<Dial>` to `VOICE_FALLBACK_PHONE` — no dead lines
+- All `<Gather language="">`: single value `en-US` only — Twilio rejects comma-separated values
+- `workspacePhoneNumbers`: 0 references anywhere in server code
+
+---
+
+---
+
 ## RAILWAY MIRROR PROTOCOL (MANDATORY — NEVER SKIP)
 
 **Established after Wave 16 deployment failures. Permanent law.**
