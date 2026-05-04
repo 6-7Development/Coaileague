@@ -437,6 +437,76 @@ Owners can click one button → professional PDF ready in ~2 seconds.
 
 ---
 
+## Wave 21B — Production Hardening (Complete)
+
+**Status: THE PLATFORM IS PRODUCTION READY.**
+
+### Task 1 — Redis Pub/Sub Backplane (Multi-Replica WebSocket)
+
+**Problem:** With 2+ Railway replicas, guard connects to Server A, supervisor connects to Server B — they can't see each other's events.
+
+**Solution:** `broadcastToWorkspace()` now does two things on every call:
+1. **Local broadcast** — clients on THIS replica receive immediately via `globalBroadcaster`
+2. **Redis publish** — `publishBroadcast()` fires to `chat:broadcast` channel — other replicas receive via subscription
+
+**Cross-replica subscription:** On server startup, `subscribeToRoomBroadcasts()` is registered. Events published by other Railway replicas arrive here and are delivered to locally-connected clients via `globalBroadcaster`.
+
+**Fallback:** If `REDIS_URL` is not set, `publishBroadcast()` is a no-op (local delivery only). Railway starts in single-replica mode, scales to multi-replica as load grows — zero code change required.
+
+**Files:**
+- `server/websocket.ts` — `broadcastToWorkspace()` wired to publish + subscribe
+- `server/services/chat/chatDurabilityAdapter.ts` — already had full Redis pub/sub, now fully activated
+
+**Env var to enable:** `REDIS_URL` — add a Railway Redis plugin to the project, Railway auto-sets this.
+
+### Task 2 — FCM Push Notification Pipeline
+
+**Problem:** WebSocket sessions die when the app is backgrounded on mobile. Panic alerts and PTT dispatcher responses go undelivered.
+
+**Solution:** FCM HTTP v1 API — no firebase-admin SDK (saves 40MB+ from bundle). Uses JWT auth with service account credentials.
+
+**Files:**
+- `server/services/fcmService.ts` (245 lines) — Full FCM HTTP v1 implementation
+  - `sendFCMToToken()` — single device
+  - `sendFCMToUser()` — all devices for a user
+  - `sendFCMToWorkspace()` — all active devices in workspace (panic/Code Red)
+  - JWT caching — 1 hour tokens, 5-minute renewal buffer
+  - Auto-invalidates stale tokens (`UNREGISTERED` → `is_active=false`)
+  - `ensureDeviceTokenSchema()` — idempotent boot
+- `shared/schema/domains/orgs/index.ts` — `user_device_tokens` table
+  - Unique index on `fcm_token` — prevents duplicate registrations
+  - Supports web, iOS, Android device types
+- `server/routes/notifications.ts` — `POST /api/notifications/register-device`
+  - Upsert — same token refreshes `last_seen_at`, new token creates row
+  - `DELETE /api/notifications/register-device` — logout deregistration
+- `server/services/notificationDeliveryService.ts` — `triggerFCMForCritical()`
+  - Called after WS broadcast for panic/PTT events
+  - Routes to single user (PTT response) or full workspace (panic alert)
+
+**Env vars to enable:** `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+
+**Fallback:** If Firebase env vars are missing, all FCM calls return 0 silently. WS delivery still works normally.
+
+### Task 3 — Stripe Spend Cap Reset
+
+**Problem:** `resetMonthlyOverage()` was built in Wave 19.5 but never wired to the Stripe invoice webhook. Tenants who hit 100% cap would remain blocked even after paying.
+
+**Fix:** `stripeWebhooks.ts → handleInvoicePaymentSucceeded()` now calls `resetMonthlyOverage(workspaceId)` immediately after marking workspace `active`. New billing cycle starts with clean counters:
+- `current_month_overage_cents → 0`
+- `overage_alert_sent_at → NULL`
+- `overage_blocked_at → NULL`
+
+Non-fatal: if reset fails, workspace recovers on next cycle. Logged as warning.
+
+### Tests: 18/18 passing (tests/unit/wave21b-hardening.test.ts)
+- Redis backplane (URL gating, event enrichment, channel naming, buffer trimming, reconnect backoff)
+- FCM pipeline (token validation, URL format, graceful degradation, device types, JWT caching, batch limit)
+- Stripe overage reset (counter values, billing cycle boundary, Enterprise opt-out)
+
+---
+
+---
+
 ## Wave 21A — NFC/QR Patrol Engine + CAD Integration (Complete)
 
 **Philosophy:** Guard scans a checkpoint → everything updates automatically.

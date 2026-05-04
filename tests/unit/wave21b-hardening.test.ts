@@ -46,7 +46,7 @@ describe("Redis Pub/Sub Backplane", () => {
 
 describe("FCM Push Pipeline", () => {
   it("FCM token registration requires minimum token length", () => {
-    const isValidToken = (t: string) => t && t.length >= 20;
+    const isValidToken = (t: string) => Boolean(t && t.length >= 20);
     expect(isValidToken("")).toBe(false);
     expect(isValidToken("short")).toBe(false);
     expect(isValidToken("a".repeat(100))).toBe(true);
