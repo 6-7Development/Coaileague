@@ -313,6 +313,23 @@ async function seedProducts() {
   );
   envVars['STRIPE_ADDON_CLAUDE_PREMIUM_PRICE_ID'] = claudePriceId;
 
+  // ── PTT Radio (Push-to-Talk) — $3.00/seat/month ────────────────────────────
+  // Per-seat recurring addon. Immediate activation on purchase.
+  // Replaces Zello for security companies. Professional+ required.
+  const pttProductId = await findOrCreateProduct(
+    'CoAIleague Radio (PTT)',
+    'Push-to-talk radio inside shift rooms with AI dispatcher, auto-transcription, plate extraction, and real-time CAD integration. Replaces Zello.',
+    { type: 'addon', addon_id: 'ptt_radio', pricing_model: 'per_seat' }
+  );
+  const pttPriceId = await findOrCreatePrice(
+    pttProductId,
+    300,          // $3.00/seat/month in cents
+    'month',
+    'CoAIleague Radio PTT ($3/seat/month)',
+    { per_seat: true }
+  );
+  envVars['STRIPE_ADDON_PTT_RADIO_PRICE_ID'] = pttPriceId;
+
   // AI CFO Insights — $799/mo
   const cfoProductId = await findOrCreateProduct(
     'AI CFO Insights',

@@ -704,6 +704,7 @@ const STATIC_TIERS = [
       "Scheduling, GPS timekeeping, incident reporting",
       "Trinity for every officer 24/7",
       "ChatDock messaging",
+      "Radio (PTT) — AI dispatcher add-on",
       "Home state compliance monitoring",
     ],
   },

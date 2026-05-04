@@ -525,7 +525,10 @@ billingRouter.post('/addons/:addonId/purchase', async (req: AuthenticatedRequest
 
     const addon = await featureToggleService.purchaseAddon(workspaceId, addonId, userId);
 
-    res.json({ success: true, addon });
+    // PREPAID ADDON MODEL: For per-seat addons (like PTT Radio), create a Stripe
+    // subscription item immediately. Tenant is charged for the current month upfront.
+    // Access is granted the moment payment succeeds (or immediately for non-Stripe addons).
+    res.json({ success: true, addon, activatedAt: new Date().toISOString() });
   } catch (error: unknown) {
     log.error('Failed to purchase addon:', error);
     res.status(400).json({ error: sanitizeError(error) });
@@ -651,6 +654,15 @@ billingRouter.post('/create-checkout-session', async (req: AuthenticatedRequest,
           workspaceId,
           tier: resolvedTier,
         },
+        // PREPAID MODEL: collect first period immediately.
+        // Tenant always pays one billing cycle in advance.
+        // This means: subscribe today → charge today for Month 1 → access starts now.
+        // On renewal: charge 30 days later before Month 2 begins.
+        // If payment fails: subscription moves to past_due → grace period → suspended.
+        payment_behavior: 'default_incomplete',    // Requires successful payment before activating
+        proration_behavior: 'create_prorations',   // Charge exact days used when upgrading mid-cycle
+        billing_cycle_anchor: 'now',               // Cycle starts from today, not from trial end
+        collection_method: 'charge_automatically', // No invoices to manually approve
       },
     };
 

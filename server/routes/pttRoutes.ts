@@ -48,6 +48,39 @@ pttRouter.post(
   ensureWorkspaceAccess,
   audioUpload.single("audio"),
   async (req: AuthenticatedRequest, res: Response) => {
+    // ── PTT ADDON GATE ───────────────────────────────────────────────────
+    try {
+      const { pool } = await import("../db");
+      const addonRow = await pool.query(
+        `SELECT wa.id FROM workspace_addons wa
+         JOIN billing_addons ba ON ba.id = wa.addon_id
+         WHERE wa.workspace_id = $1 AND ba.addon_key = 'ptt_radio' AND wa.status = 'active'
+         LIMIT 1`,
+        [req.workspaceId]
+      );
+      const tierRow = await pool.query(
+        `SELECT subscription_tier FROM workspaces WHERE id = $1 LIMIT 1`,
+        [req.workspaceId]
+      );
+      const tier = tierRow.rows[0]?.subscription_tier || "free";
+      const hasAddon = addonRow.rowCount && addonRow.rowCount > 0;
+      const isHighTier = ["enterprise","strategic","business"].includes(tier);
+      const isGrandfathered = req.workspaceId === process.env.GRANDFATHERED_TENANT_ID
+        || req.workspaceId === process.env.STATEWIDE_WORKSPACE_ID;
+      if (!hasAddon && !isHighTier && !isGrandfathered) {
+        return res.status(402).json({
+          error: "PTT_ADDON_REQUIRED",
+          message: "Radio (PTT) requires the PTT Radio add-on at $3/seat/month.",
+          upgradeUrl: "/billing?addon=ptt_radio",
+        });
+      }
+    } catch (gateErr: unknown) {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(500).json({ error: "Addon gate check failed" });
+      }
+      // Dev: fail-open
+    }
+    // ── END GATE ─────────────────────────────────────────────────────────
     try {
       const workspaceId = req.workspaceId!;
       const userId = req.user?.id || "unknown";

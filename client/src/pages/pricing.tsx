@@ -1308,6 +1308,117 @@ export default function PricingPage() {
           </div>
         </section>
 
+        {/* ── POWER-UP ADD-ONS ──────────────────────────────────────────────────── */}
+        <section className="border-t border-border py-16 bg-card/30" id="addons">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-10">
+              <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-2">Optional Add-Ons</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Power Up Your Plan</h2>
+              <p className="text-muted-foreground text-sm max-w-xl mx-auto">
+                Available on Professional and above. Toggle on instantly. Billed monthly alongside your subscription — always one cycle in advance so your service is never interrupted.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* PTT Radio */}
+              <div className="border border-border rounded-2xl p-6 bg-card hover:border-purple-500/40 transition-colors relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">NEW</div>
+                <div className="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center mb-4">
+                  <Radio className="w-5 h-5 text-purple-500" />
+                </div>
+                <h3 className="font-bold text-foreground mb-1">Radio (PTT)</h3>
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-2xl font-bold text-foreground">$3</span>
+                  <span className="text-muted-foreground text-sm">/seat/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                  Push-to-talk radio inside shift rooms. HelpAI acts as AI dispatcher — auto-transcribes every transmission, extracts license plates, logs incidents to the CAD board in real time.
+                </p>
+                <ul className="space-y-1.5 mb-5">
+                  {[
+                    "Live waveform + radio crackle sound",
+                    "HelpAI dispatcher responds every call",
+                    "Auto plate & incident extraction",
+                    "GPS stamp on every transmission",
+                    "Real-time CAD board integration",
+                    "End-of-shift full radio transcript",
+                    "Replaces Zello ($8–10/user/month)",
+                  ].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/billing?addon=ptt_radio" data-testid="button-addon-ptt-radio">
+                  <button className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                    Add Radio — $3/seat/mo
+                  </button>
+                </a>
+                <p className="text-center text-[10px] text-muted-foreground mt-2">Professional+ · Billed in advance · Cancel anytime</p>
+              </div>
+
+              {/* Trinity Pro */}
+              <div className="border border-border rounded-2xl p-6 bg-card hover:border-blue-500/40 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center mb-4">
+                  <Brain className="w-5 h-5 text-blue-500" />
+                </div>
+                <h3 className="font-bold text-foreground mb-1">Trinity Pro</h3>
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-2xl font-bold text-foreground">$29</span>
+                  <span className="text-muted-foreground text-sm">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                  Advanced AI insights, executive briefings, proactive business intelligence, and 100K bonus tokens monthly.
+                </p>
+                <ul className="space-y-1.5 mb-5">
+                  {["Morning executive briefings", "100K bonus AI tokens/month", "Predictive scheduling insights", "Priority support access"].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/billing?addon=trinity_pro" data-testid="button-addon-trinity-pro">
+                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                    Add Trinity Pro — $29/mo
+                  </button>
+                </a>
+                <p className="text-center text-[10px] text-muted-foreground mt-2">Starter+ · Billed in advance · Cancel anytime</p>
+              </div>
+
+              {/* Smart Scheduling */}
+              <div className="border border-border rounded-2xl p-6 bg-card hover:border-green-500/40 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-green-600/10 flex items-center justify-center mb-4">
+                  <Calendar className="w-5 h-5 text-green-500" />
+                </div>
+                <h3 className="font-bold text-foreground mb-1">Smart Scheduling</h3>
+                <div className="flex items-baseline gap-1 mb-3">
+                  <span className="text-2xl font-bold text-foreground">$49</span>
+                  <span className="text-muted-foreground text-sm">/month</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                  AI auto-schedules your entire roster. Predicts callouts, optimizes coverage, learns officer preferences over time.
+                </p>
+                <ul className="space-y-1.5 mb-5">
+                  {["Auto-fill open shifts instantly", "Callout risk prediction", "200K bonus AI tokens/month", "Coverage gap alerts"].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/billing?addon=scheduleos_ai" data-testid="button-addon-scheduleos">
+                  <button className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                    Add Smart Scheduling — $49/mo
+                  </button>
+                </a>
+                <p className="text-center text-[10px] text-muted-foreground mt-2">Professional+ · Billed in advance · Cancel anytime</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ROI Calculator */}
         <section className="border-t border-border py-16" ref={roiRef} id="roi-calculator">
           <div className="max-w-6xl mx-auto px-4">
@@ -1368,7 +1479,7 @@ export default function PricingPage() {
                 </Button>
               </Link>
             </div>
-            <p className="text-xs text-muted-foreground mb-8">14-day trial. No credit card. Cancel monthly plans anytime.</p>
+            <p className="text-xs text-muted-foreground mb-8">14-day trial. No credit card. Billed one cycle in advance. Cancel anytime — no refunds on advance payments.</p>
             <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary" /><span>Bank-grade security</span></div>
               <div className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-primary" /><span>Built for US security companies</span></div>
