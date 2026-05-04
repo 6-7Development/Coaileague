@@ -1553,6 +1553,9 @@ async function initializeBackgroundServices(): Promise<void> {
       const { ensureArchivalSchema, scheduleArchivalCron } = await import('./services/storageArchival');
       await ensureArchivalSchema();
       scheduleArchivalCron();
+      // PTT tables (ptt_transmissions, ptt_plate_log, cad_event_log)
+      const { ensurePTTSchema } = await import('./services/ptt/pttDispatcherService');
+      await ensurePTTSchema();
     }),
 
     deferredTimedInit('Document Engine Schema', 9500, async () => {
