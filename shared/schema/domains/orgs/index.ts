@@ -836,6 +836,7 @@ export const workspaces = pgTable("workspaces", {
 
   // Wave 16: Voice portal auto-provisioning
   // Set at workspace creation. Drives the phone portal without manual config.
+  twilioPhoneNumber: varchar("twilio_phone_number"),      // Dedicated Twilio number for this workspace (optional)
   voiceHiringLink: varchar("voice_hiring_link"),          // URL texted to applicants who press Hiring
   voiceCustomGreeting: text("voice_custom_greeting"),     // EN greeting override (default: company name)
   voiceCustomGreetingEs: text("voice_custom_greeting_es"), // ES greeting override

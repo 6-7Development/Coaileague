@@ -5,6 +5,126 @@
 
 ---
 
+## RAILWAY MIRROR PROTOCOL (MANDATORY — NEVER SKIP)
+
+**Established after Wave 16 deployment failures. Permanent law.**
+
+### Root Cause of Past Failures
+1. Node.js OOM during TSC — 1.1M lines of TS exceeds default 1.5GB heap
+2. Python string injection wrote `\`` (escaped backtick) into JSX files
+3. Mixed import paths passed local TSC but crashed esbuild on Railway
+4. `language="en-US,es-US"` invalid TwiML attribute caused Twilio errors
+
+### The Protocol — Before Every Commit
+
+```bash
+# Step 1: Full Vite build (catches duplicate keys, bad imports, esbuild errors)
+node build.mjs
+
+# Step 2: Tests
+npx vitest run
+
+# Step 3: Grep for escaped backticks in client files (Python injection artifact)
+grep -r '\\`' client/src/ --include='*.tsx' --include='*.ts'
+# Must return: nothing
+
+# Step 4: Grep for comma-separated Twilio language values (invalid TwiML)
+grep -r 'language="[a-z][a-z]-[A-Z][A-Z],[a-z]' server/
+# Must return: nothing
+```
+
+### Hard Rules
+- `NODE_OPTIONS='--max-old-space-size=4096'` is set in `nixpacks.toml [variables]` — covers ALL Railway build phases
+- All fetch URLs in JSX use string concatenation, not template literals, when injected via Python scripts
+- smsService import from `extensions/`: always `../../smsService` 
+- Twilio `<Gather language="">` always ONE language code — never comma-separated
+- TwiML Safety Net: `/api/voice/inbound` catch block dials owner — never returns "application error"
+
+---
+
+## Wave 14 — Smart RMS (Complete)
+
+**Files:** `server/services/rms/smartRmsService.ts`, `server/routes/rms/`
+**Schema:** `site_pass_down_log`, `banned_entities`, `incident_report_client_copies`
+**DAR extensions:** `auto_aggregated`, `event_timeline`, `nfc_tap_count`, `is_client_approved`
+
+Key services:
+- Auto-DAR aggregation (shift events → chronological timeline, guard reviews then submits)
+- Trinity Narrative Translator (raw guard text → formal third-person, approval gate)
+- Pass-down log (BOLO + site notes, 24h TTL, mandatory clock-in acknowledgment)
+- Banned entities registry (unified BOLO + trespass, queried at every clock-in)
+- Client copy pipeline (sanitize → supervisor approve → client portal sync)
+
+5 Trinity/HelpAI RMS actions registered in `trinityComplianceIncidentActions.ts`
+
+---
+
+## Wave 14.5 — RMS Frontend Bridge (Complete)
+
+**Files:** `client/src/pages/worker-dashboard.tsx`, `client/src/pages/rms-hub.tsx`, `client/src/pages/worker-incidents.tsx`
+
+Key components:
+- **Shift Brief intercept modal** — fires at clock-in, shows BOLOs + pass-downs. Mandatory acknowledge if `hasCritical=true`. Lives INSIDE `WorkerDashboardInner` (not outside ErrorBoundary).
+- **Auto-DAR timeline UI** — rms-hub Incidents tab. Enter Shift ID → Auto-generate → Review timeline → Submit
+- **Trinity Narrative Translator UI** — "Draft with Trinity" button → approval block with manager gate
+- **"Approve for Client"** button on incident rows → sanitized copy → client portal sync
+
+⚠️ Known injection artifact: Python scripts must use string concatenation for fetch URLs in JSX, not template literals. Escaped backtick `\`` breaks TSC and esbuild.
+
+---
+
+## Wave 16 — Trinity 360 Omni-Channel SOC Telephony (Complete)
+
+**Architecture:** One master Twilio number. Trinity answers all calls. Tenants identified by `workspaces.state_license_number` or `workspaces.twilio_phone_number`. Guest flow handles prospects, law enforcement, complainants.
+
+**Key Files:**
+- `server/services/trinityVoice/voiceOrchestrator.ts` — handleInbound, resolveWorkspaceFromPhoneNumber
+- `server/services/trinityVoice/tenantLookupService.ts` — lookupByLicenseNumber, lookupByCompanyName, resolveOnDutyContact
+- `server/services/trinityVoice/extensions/guestExtension.ts` — guest IVR, tenant lookup, smart transfer
+- `server/services/trinityVoice/extensions/tenantPortalExtension.ts` — full 9-option portal per tenant
+- `server/routes/voiceRoutes.ts` — all webhook endpoints
+
+**Database:** NO workspace_phone_numbers table (eliminated as bloat).
+`workspaces.twilio_phone_number` column handles dedicated per-tenant numbers.
+`workspaces.state_license_number` is the public lookup key for guest callers.
+
+**Priority Waterfall:** Supervisor on shift → Manager on shift → Co-Owner → Owner → Voicemail+SMS
+
+**Tenant Portal Menu (auto-provisioned at registration):**
+1. Guards/Officers → schedule, clock in/out, calloff, pay
+2. Clients/Site Contacts → coverage check, concerns, billing
+3. Urgent → blast SMS all contacts + immediate Dial
+4. Complaint → collect name+purpose → on-duty manager
+5. Hiring → texts application link instantly
+6. Employment Verification → platform query
+7. Pay/Timesheet → platform query
+8. Speak with Manager → collect + Dial waterfall
+0. Trinity AI → Gemini Live free-talk
+
+**TwiML Safety Net (Directive 3):**
+`/api/voice/inbound` catch block returns valid TwiML with `<Dial>` to owner.
+Env var: `VOICE_FALLBACK_PHONE` (defaults to `OWNER_PHONE`, then `8302134562`).
+Caller NEVER gets a dead line.
+
+**911 Liability Rule — Enforced:**
+Zero "911" in any TTS string. Trinity says "urgent" not "emergency dispatch."
+No duty to public safety created for CoAIleague, tenants, or Trinity.
+
+**Env Vars (all already in Railway):**
+- `TWILIO_PHONE_NUMBER` — master number
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — Twilio auth
+- `GEMINI_API_KEY` — Gemini Live
+- `VOICE_FALLBACK_PHONE` — safety net fallback (optional, defaults to owner phone)
+
+**Statewide (C11608501) — First Tenant:**
+- Bryan's phone from `users.phone` (owner record) is the transfer target
+- All transfers waterfall to Bryan until supervisors/managers are added
+- No manual config needed — shift schedule drives routing automatically
+
+---
+
+---
+
 ## WAVE COMPLETION STATUS
 
 | Wave | Domains | Status | Key Deliverables |
@@ -374,3 +494,314 @@ Only `executeApprovedDraft()` after human APPROVE click moves money.
 
 ---
 
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# RAILWAY MIRROR PROTOCOL — MANDATORY PRE-COMMIT GATE (v2.0)
+# Effective after Wave 16 deployment failures. NEVER SKIP THIS.
+# ══════════════════════════════════════════════════════════════════
+
+## THE FOUR FAILURE MODES THAT HAVE BURNED PRODUCTION
+
+| Failure | Symptom | Missed by | Caught by |
+|---|---|---|---|
+| `await` in non-async callback | `esbuild: await can only be used inside async` | TSC (OOM) | `vite build` |
+| Duplicate object key | `esbuild: Duplicate key "enabled"` | TSC (OOM) | `vite build` |
+| JSX outside component return | `esbuild: Expected ) but found {` | TSC (OOM) | `vite build` |
+| Escaped template literal `\${var}` | `esbuild: Syntax error backtick` | TSC (OOM) | `vite build` |
+| Duplicate schema column | Drizzle OOM on boot → Railway crash | build.mjs | manual grep |
+
+## THE MANDATORY COMMAND SEQUENCE (run in this exact order)
+
+```bash
+# STEP 1 — Client build (catches all esbuild/JSX/syntax errors exactly as Railway does)
+npx vite build
+
+# STEP 2 — Server build (catches import errors, missing exports)
+node build.mjs
+
+# STEP 3 — Tests
+npx vitest run
+
+# STEP 4 — Schema duplicate check (run after any schema edit)
+grep -rn "^\s\+\(\w\+\):" shared/schema/domains/orgs/index.ts | sort | uniq -d
+
+# ALL FOUR MUST BE GREEN BEFORE git commit. NO EXCEPTIONS.
+```
+
+## WHY TSC --noEmit IS NOT SUFFICIENT
+
+The full codebase (1.1M+ lines) causes Node.js heap exhaustion during TSC's
+type-checking phase. TSC crashes with OOM and exits 0 (no error reported) —
+giving a FALSE POSITIVE. The build appears green. It is not.
+
+**Resolution:** `vite build` uses esbuild which is written in Go — no heap
+limit, no OOM. It is the exact tool Railway uses. TSC is useful for type
+checking individual modules during development but MUST NOT be the sole
+gate before a production commit.
+
+## PYTHON INJECTION RULES (after multiple escaped-literal failures)
+
+When injecting TypeScript/TSX via Python heredocs or string manipulation:
+- Template literals: `${var}` NOT `\${var}` — Python escaping bleeds through
+- Backticks in strings: use raw strings `r"""..."""` to prevent escaping
+- JSX placement: always confirm modal/overlay JSX is INSIDE the component
+  return statement, not after the closing tag
+- After ANY Python injection: run `npx vite build` immediately, not just build.mjs
+- Check injected file with: `grep -n '\\$\|\\`' client/src/pages/[modified-file].tsx`
+
+## SCHEMA DUPLICATE PREVENTION
+
+Before adding any column to an existing table:
+```bash
+grep -n "columnName" shared/schema/domains/*/index.ts
+```
+Zero results required before proceeding. One duplicate = Drizzle OOM at boot = Railway crash.
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# WAVE COMPLETION STATUS — UPDATED (Waves 9–16)
+# ══════════════════════════════════════════════════════════════════
+
+| Wave | Name | Status | Key Files |
+|---|---|---|---|
+| 9 | Armor Plate — Financial & Legal Compliance | ✅ | `evidenceBundleService.ts`, `taxFormGeneratorService.ts` |
+| 10 | Migration Concierge & ChatDock Action Middleware | ✅ | `migration.ts` (487L), `importRoutes.ts` (706L), `chatActionBlockRoutes.ts` |
+| 11 | CFO Brain & Margin Protection | ✅ | `tokenVelocitySentinel.ts`, `safeToSpendService.ts`, `ghostExpenseAuditor.ts` |
+| 12 | NFC Physical Integrity & Office/Asset Verification | ✅ | `nfcIntegrityService.ts`, `officeAuditService.ts`, `patrolWatcherService.ts` |
+| 13 | Revenue & Stability | ✅ | `liveIntegrityFeed.ts`, `morningBriefService.ts`, `rfpLibraryService.ts`, `sb140ComplianceGate.ts` |
+| 14 | Smart RMS | ✅ | `smartRmsService.ts`, `sitePassDownLog`, `bannedEntities`, `incidentReportClientCopies` |
+| 14.5 | RMS Frontend Bridge | ✅ | `worker-dashboard.tsx` (shift brief modal), `rms-hub.tsx`, `worker-incidents.tsx` |
+| 15 | Strategic Pricing Restructure | ✅ | `billingConfig.ts`, `pricing.tsx` |
+| 16 | Trinity 360 Omni-Channel SOC Telephony | ✅ | `tenantLookupService.ts`, `guestExtension.ts` (603L), `tenantPortalExtension.ts` (695L), `voiceRoutes.ts` (5300L+) |
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# WAVE 14 — SMART RMS (COMPLETE ✅)
+# ══════════════════════════════════════════════════════════════════
+
+## Schema Additions (ops domain)
+- `sitePassDownLog` — priority/category/24h TTL/acknowledged_by
+- `bannedEntities` — unified BOLO + trespass, queried at clock-in
+- `incidentReportClientCopies` — sanitized pipeline: strips PII, supervisor approves, client portal sync
+- `dailyActivityReports` extended: autoAggregated, eventTimeline, nfcTapCount, clientApprovedNarrative
+
+## Service: server/services/rms/smartRmsService.ts
+- `generateAutoDar()` — shift events → chronological timeline
+- `translateNarrative()` — raw guard notes → formal third-person (Trinity drafts, guard approves)
+- `approveNarrativeDraft()` — guard approval step before DAR submission
+- `generateShiftBrief()` — BOLOs + pass-downs injected at clock-in
+- `createClientCopy()` — PII-stripped incident report → client portal
+
+## Routes
+- `GET /api/rms/dars/auto-generate?shiftId=X`
+- `POST /api/rms/dars/auto-submit`
+- `POST /api/rms/narrative/translate`
+- `POST /api/rms/narrative/approve`
+- `GET /api/rms/shift-brief?siteId=X`
+- `POST /api/rms/incidents/:id/client-copy`
+
+## Trinity Actions (trinityComplianceIncidentActions.ts)
+- `rms.translate_narrative`, `rms.approve_narrative`, `rms.generate_dar`,
+  `rms.shift_brief`, `rms.create_client_copy`
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# WAVE 14.5 — RMS FRONTEND BRIDGE (COMPLETE ✅)
+# ══════════════════════════════════════════════════════════════════
+
+## Modified Files
+- `client/src/pages/worker-dashboard.tsx`
+  - Shift Brief intercept modal (hasCritical → mandatory acknowledge)
+  - `handleClockAction` MUST be `async` — it contains `await fetch()`
+  - Modal JSX MUST be INSIDE `WorkerDashboardInner` return, INSIDE `CanvasHubPage`
+  - NEVER place modal after `</CanvasHubPage>` or outside the component function
+
+- `client/src/pages/rms-hub.tsx`
+  - Auto-DAR panel in Create DAR modal
+  - "Approve for Client" button with clientCopySynced Set state
+
+- `client/src/pages/worker-incidents.tsx`
+  - "Draft with Trinity" button + trinityDraft state
+  - Approval block before final submission
+
+## Hard Rules for worker-dashboard.tsx
+```typescript
+// ✅ CORRECT
+const handleClockAction = useCallback(async () => {
+  const briefRes = await fetch(`/api/rms/shift-brief?siteId=${siteId}`...);
+});
+
+// ❌ BROKEN — await in non-async = vite build failure
+const handleClockAction = useCallback(() => {
+  const briefRes = await fetch(...);  // esbuild rejects this
+});
+```
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# WAVE 16 — TRINITY 360 OMNI-CHANNEL SOC TELEPHONY (COMPLETE ✅)
+# ══════════════════════════════════════════════════════════════════
+
+## Architecture Decision: ONE master Twilio number
+- All calls → single TWILIO_PHONE_NUMBER env var
+- Trinity identifies tenant from spoken license # or company name
+- No per-tenant Twilio numbers needed
+- Twilio webhook: POST https://www.coaileague.com/api/voice/inbound ← ALREADY CONFIGURED
+
+## Key Files
+| File | Lines | Purpose |
+|---|---|---|
+| `server/routes/voiceRoutes.ts` | 5300+ | All IVR routes, duress, missed call SMS, ChatDock sync |
+| `server/services/trinityVoice/voiceOrchestrator.ts` | 482 | handleInbound, buildMainIVR, resolveWorkspaceFromPhoneNumber |
+| `server/services/trinityVoice/tenantLookupService.ts` | 187 | lookupByLicenseNumber, lookupByCompanyName, resolveOnDutyContact |
+| `server/services/trinityVoice/extensions/guestExtension.ts` | 603 | handleGuestIdentify, handleTenantLookup, handleSmartTransfer, handleAnnounceCaller |
+| `server/services/trinityVoice/extensions/tenantPortalExtension.ts` | 695 | Full 9-option tenant phone portal |
+| `server/services/trinityVoice/geminiLiveBridge.ts` | 264 | Twilio Media Streams → Gemini Live bidirectional audio |
+
+## Priority Waterfall (resolveOnDutyContact)
+```
+1st → Supervisor on active shift (workspace_role = supervisor / shift_leader)
+2nd → Manager / Dept Manager on active shift
+3rd → Co-Owner (if phone on file)
+4th → Owner (always has phone — fallback of last resort)
+5th → Voicemail → SMS notification to owner
+```
+Statewide Protective Services (C11608501): Steps 1-3 return empty → Bryan 830-213-4562 gets all calls.
+When supervisors/managers are added: they get calls first automatically. Zero config change needed.
+
+## Tenant Portal Menu (all tenants — identical structure, isolated data)
+```
+1 → Guards/Officers (schedule, clock in/out, calloff, pay, supervisor)
+2 → Clients/Site Contacts (coverage check, concerns, billing, coverage request)
+3 → Urgent Situation (blast SMS all contacts + immediate Dial)
+4 → Complaint (collect name + purpose → Dial on-duty manager)
+5 → Hiring/Employment (text application link from workspace.voice_hiring_link)
+6 → Employment Verification (platform query → response)
+7 → Pay/Timesheet (platform query → weekly hours + OT)
+8 → Speak with Manager (collect name + purpose → Dial waterfall)
+0 → Trinity AI free-talk (Gemini Live + tenant context)
+```
+
+## SOC Features
+- **Duress bypass**: POST /api/voice/duress-check — first 3 seconds every call
+  Phrases: "code red", "officer needs assistance", "mayday" + Spanish equivalents
+  → blast SMS ALL contacts simultaneously + immediate Dial (no whisper, no menu)
+- **Missed call SMS**: POST /api/voice/missed-call-sms — fires when caller hangs up during hold
+- **ChatDock live card**: POST /api/voice/call-chatdock-sync — call_start + call_end events
+- **Caller identity**: lookupCallerByPhone(From, workspaceId) → personalized greeting
+
+## Auto-Provisioning (workspace.ts createWorkspace)
+Every new tenant registration automatically gets:
+- voice_hiring_link = https://coaileague.com/apply/{orgCode}
+- voice_portal_enabled = true
+No manual setup. License number in workspaces.state_license_number is the public routing key.
+
+## 911 Hard Rule (NON-NEGOTIABLE — ZERO EXCEPTIONS)
+Trinity NEVER says "call 911" or implies she dispatches public safety resources.
+No "911" in ANY voice TTS string. Duress → "Connecting your supervisor immediately."
+Emergency → "I am notifying management now."
+Violations create legal duty and liability for CoAIleague and all tenants.
+Enforced in: publicSafetyGuard.ts, trinityConscience.ts, trinityActionDispatcher.ts,
+panicAlertService.ts, AND all tenantPortalExtension.ts voice strings.
+
+## Schema Additions (workspaces table — orgs domain)
+```typescript
+voiceHiringLink: varchar("voice_hiring_link")
+voiceCustomGreeting: text("voice_custom_greeting")
+voiceCustomGreetingEs: text("voice_custom_greeting_es")
+voicePortalEnabled: boolean("voice_portal_enabled").default(true)
+// stateLicenseState already existed at L835 — DO NOT ADD AGAIN
+```
+
+## Do Not Duplicate / Conflict Rules
+- DO NOT add a second stateLicenseState to orgs schema — already at line 835
+- DO NOT add per-tenant Twilio numbers — one master number is the architecture
+- DO NOT add 911 to any voice TTS string — hard liability rule
+- DO NOT call resolveOnDutyContact without a workspaceId — will query wrong tenant
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# REACT / FRONTEND HARD RULES (permanent — from Wave 8)
+# ══════════════════════════════════════════════════════════════════
+
+```typescript
+// ✅ CORRECT — use TanStack Query's isPending
+<button disabled={mutation.isPending}>Submit</button>
+
+// ❌ FORBIDDEN — local loading state with mutation
+const [isSubmitting, setIsSubmitting] = useState(false); // never do this
+
+// ✅ CORRECT — async callback when using await inside
+const handleAction = useCallback(async () => {
+  const res = await fetch('/api/...');
+}, [dep]);
+
+// ❌ BROKEN — vite build fails
+const handleAction = useCallback(() => {
+  const res = await fetch('/api/...'); // ERROR: await in non-async
+}, [dep]);
+
+// ✅ CORRECT — single key per object in useQuery
+useQuery({ queryKey: [...], enabled: someCondition });
+
+// ❌ BROKEN — duplicate key, vite build fails
+useQuery({ queryKey: [...], enabled: false, enabled: someCondition });
+
+// ✅ CORRECT — JSX modal/overlay inside the component's return
+function MyComponent() {
+  return (
+    <CanvasHubPage>
+      {/* all content */}
+      {modalOpen && <Modal />}  {/* ← INSIDE CanvasHubPage */}
+    </CanvasHubPage>
+  );
+}
+
+// ❌ BROKEN — JSX outside return scope
+function MyComponent() {
+  return (<CanvasHubPage>{/* content */}</CanvasHubPage>);
+}
+{modalOpen && <Modal />}  {/* ← OUTSIDE — esbuild parse failure */}
+```
+
+---
+
+# ══════════════════════════════════════════════════════════════════
+# ENV VAR REGISTRY (production Railway — complete list)
+# ══════════════════════════════════════════════════════════════════
+
+| Var | Purpose | Required |
+|---|---|---|
+| DATABASE_URL | Neon PostgreSQL connection string | ✅ |
+| TWILIO_ACCOUNT_SID | Twilio auth | ✅ |
+| TWILIO_AUTH_TOKEN | Twilio auth | ✅ |
+| TWILIO_PHONE_NUMBER | Master voice number | ✅ |
+| GEMINI_API_KEY | Gemini Flash + Gemini Live | ✅ |
+| OPENAI_API_KEY | GPT fallback + Whisper | ✅ |
+| ANTHROPIC_API_KEY | Claude (Trinity triad) | ✅ |
+| RESEND_API_KEY | Transactional email | ✅ |
+| RESEND_WEBHOOK_SECRET | Inbound email verification | ✅ |
+| STRIPE_SECRET_KEY | Billing | ✅ |
+| STRIPE_WEBHOOK_SECRET | Stripe events | ✅ |
+| PLAID_CLIENT_ID | ACH payroll | ✅ |
+| PLAID_SECRET | ACH payroll | ✅ |
+| SESSION_SECRET | Express sessions | ✅ |
+| ENCRYPTION_KEY | PII field encryption | ✅ |
+| QUICKBOOKS_CLIENT_ID | QB integration | optional |
+| QUICKBOOKS_CLIENT_SECRET | QB integration | optional |
+| ENABLE_PATROL_WATCHER | Wave 12 crons | optional |
+| ENABLE_MORNING_BRIEF | Wave 13 6AM cron | optional |
+
+No new env vars needed for Wave 16. All voice routing is code-driven from the database.
+
+---
+
+# NEXT: WAVE 17 — Zero-Friction Migration Engine
+# THEN: WAVE 18 — CAD Infrastructure

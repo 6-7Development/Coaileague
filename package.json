@@ -24,7 +24,9 @@
     "check:server-core": "tsc -p tsconfig.server-core.json --pretty false",
     "check:client": "tsc -p tsconfig.client.json --pretty false",
     "check:strict-routes": "tsc -p tsconfig.strict-routes.json --pretty false",
-    "check:all": "npm run check"
+    "check:all": "npm run check",
+    "railway-mirror": "npx vite build && node build.mjs",
+    "preflight": "npx vite build && node build.mjs && npx vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

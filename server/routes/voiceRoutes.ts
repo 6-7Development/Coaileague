@@ -514,8 +514,23 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
     const xml = await handleInbound({ to: To, from: From, callSid: CallSid, baseUrl });
     xmlResponse(res, xml);
   } catch (err: unknown) {
-    log.error('[VoiceRoutes] Inbound error:', err instanceof Error ? err.message : String(err));
-    xmlResponse(res, twiml('<Say>We are experiencing technical difficulties. Please try again. Goodbye.</Say>'));
+    // ── TWIML SAFETY NET ─────────────────────────────────────────────────────
+    // Something crashed before we could build a real response.
+    // Instead of Twilio's generic "application error", we return valid TwiML
+    // that apologises warmly and immediately dials the owner.
+    // The caller NEVER gets a dead line.
+    log.error('[VoiceRoutes] Inbound CRITICAL error — activating TwiML Safety Net:', err instanceof Error ? err.message : String(err));
+    const fallbackPhone = process.env.VOICE_FALLBACK_PHONE ||
+      process.env.OWNER_PHONE || '8302134562';
+    const twilioNumber = process.env.TWILIO_PHONE_NUMBER || '';
+    const safetyXml = twiml(
+      '<Say voice="Polly.Joanna-Neural">Thank you for calling. We are experiencing a brief technical issue. I am transferring you to our team right now. Please hold for just a moment.</Say>' +
+      `<Dial callerId="${twilioNumber}" timeout="30">` +
+      `<Number>${fallbackPhone}</Number>` +
+      `</Dial>` +
+      '<Say voice="Polly.Joanna-Neural">We are sorry we could not connect you. Please call back shortly or send us a text message and we will respond immediately. Thank you for your patience.</Say>'
+    );
+    xmlResponse(res, safetyXml);
   }
 });
 
