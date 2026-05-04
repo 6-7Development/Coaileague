@@ -177,6 +177,76 @@ Key components:
 
 ---
 
+## WAVE NUMBERING CORRECTION (Bryan confirmed 2026-05-04)
+
+The original session transcript compressed Wave 18 and Wave 19 into
+one git commit tagged wave19. Correct canonical roadmap:
+
+  Wave 16 — Trinity 360 Omni-Channel Voice [COMPLETE]
+  Wave 17 — Zero-Friction Migration Engine [COMPLETE — git: feat(wave17)]
+  Wave 18 — Intelligent CAD & NFC Patrol Engine [COMPLETE — git: feat(wave19) partial]
+  Wave 19 — PTT Radio + CAD Event Stream [COMPLETE — git: feat(wave19-complete)]
+
+Wave 18 CAD work included in the wave19 commits:
+  - cadRoutes.ts broadcastToWorkspace fires cad:new_call AND helpai_cad_alert
+  - CAD → ChatDock bridge: new calls auto-post to shift rooms as HelpAI messages
+  - cad_event_log table (created by PTT service)
+  - GPS pipeline audit (gps-ping writes to time_entries.lastGpsPingLat/Lng)
+  - Stale dot detection, breadcrumb polylines, NFC flash on map — PENDING Wave 20
+
+---
+
+## BILLING MODEL — CANONICAL STRUCTURE (confirmed 2026-05-04)
+
+### Prepaid Subscription (1 month in advance — always)
+  Tenant subscribes → charged immediately for Month 1 → access starts now
+  Day 30 → charged again before Month 2 begins
+  Non-payment → past_due → grace period → suspended → workspace purged
+  Tenant NEVER uses service they haven't pre-paid for
+
+### Tier Base Price (all platform features included)
+  Starter:      $XXX/month — up to 15 seats
+  Professional: $1,499/month — up to 50 seats ($32/seat overage)
+  Business:     custom — up to 200 seats
+  Enterprise:   custom — "unlimited" (still soft-capped, overages for truly extreme use)
+
+  INCLUDED in tier (soft-capped, overage charged):
+    Scheduling, compliance, incident reports, ChatDock, voice IVR, CAD console,
+    RFPs, document generation, payroll dashboard, HelpAI, Trinity AI brain,
+    NFC patrol, guard tours, client portal, analytics, shift offers, all core features
+
+### Per-Seat Add-Ons (billed with monthly subscription, in advance)
+  Email (activated addresses):
+    Each unique sending email address activated costs per-seat per-month
+    Metered via platformServicesMeter.trackEmail()
+    Resend transactional: per send (3x margin applied)
+    Resend inbound processing: per inbound email received
+
+  PTT Radio:
+    $3/seat/month per officer with PTT access
+    Addon key: 'ptt_radio'
+    Requires Professional+
+    Gated at /api/ptt/transmit — 402 if addon not active
+    AI cost: ~$0.0011/transmission (Whisper + Gemini Flash)
+    98% margin at $3/seat
+
+### Middleware/Processing Usage (per-event billing)
+  Invoicing: per invoice generated/sent (Stripe processing pass-through + margin)
+  Payroll:   per payroll run processed (ACH/Plaid middleware cost + margin)
+  Storage:   tier includes X GB, overage charged per GB above limit
+  AI tokens: tier includes monthly allowance, $0.10/1K over quota (Professional)
+
+### Key Principle
+  Platform NEVER absorbs costs. Every service consumed is metered and
+  charged back with appropriate margin via platformServicesMeter.
+  3x margin applied to all infrastructure pass-throughs (email, SMS).
+  AI token overages: charged at cost + margin to subscription invoice.
+
+---
+
+
+---
+
 ## Wave 19 — PTT Radio + CAD Event Stream (Complete)
 
 **Goal:** Push-to-talk radio inside ChatDock shift rooms. HelpAI acts as dispatcher. Every transmission becomes a CAD event.
