@@ -617,7 +617,47 @@ class DocumentSigningService {
         await this.saveFinalCopyToParties(documentId);
       }
 
-      return { success: true };
+      
+      // ── Wave 10: clock_in_blocked gate ───────────────────────────────────
+      // Hard-stop: Required-for-Duty docs must be signed before clock-in.
+      // Only lifts the block when ALL required docs for this user are signed.
+      // Non-fatal — signature saved regardless of gate check outcome.
+      try {
+        const isRequiredForDuty = Boolean(
+          (doc as Record<string,unknown>).requiredForDuty ||
+          ((doc as Record<string,unknown>).metadata as Record<string,unknown>)?.requiredForDuty
+        );
+        if (isRequiredForDuty) {
+          const { pool } = await import('../db');
+          const unsignedRes = await pool.query(
+            `SELECT COUNT(*) AS cnt
+             FROM org_document_signatures ods
+             JOIN org_documents od ON ods.document_id = od.id
+             WHERE ods.signer_user_id = $1
+               AND (od.metadata->>'requiredForDuty')::boolean = true
+               AND (ods.signature_data IS NULL OR ods.verified_at IS NULL)`,
+            [userId]
+          );
+          const unsignedCount = parseInt(unsignedRes.rows[0]?.cnt || '1', 10);
+          if (unsignedCount === 0) {
+            await pool.query(
+              `UPDATE users SET clock_in_blocked = false, clock_in_block_reason = NULL WHERE id = $1`,
+              [userId]
+            ).catch(() => {});
+            log.info(`[DocumentSigning] clock_in_blocked lifted for user ${userId} — all required docs signed`);
+            platformEventBus.publish({
+              type: 'compliance_gate_cleared', category: 'compliance',
+              title: 'Clock-In Gate Cleared',
+              description: 'User signed all required documents and may now clock in.',
+              metadata: { userId, documentId },
+            }).catch(() => {});
+          }
+        }
+      } catch (gateErr: unknown) {
+        log.warn('[DocumentSigning] clock_in gate check (non-blocking):', gateErr instanceof Error ? gateErr.message : String(gateErr));
+      }
+
+return { success: true };
     } catch (err: unknown) {
       log.error(`[DocumentSigning] Error processing internal signature: \${err instanceof Error ? err.message : String(err)}`);
       return { success: false, error: err instanceof Error ? err.message : String(err) };

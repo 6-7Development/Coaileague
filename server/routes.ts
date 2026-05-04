@@ -28,6 +28,7 @@ import { redisTokenBuffer } from "./services/billing/redisTokenBuffer";
 import { registerEpisodicMemoryListeners } from "./services/ai-brain/episodicMemoryListeners";
 import productionDiagnosticRouter from "./routes/productionDiagnosticRoute";
 import { generateEvidenceBundle } from "./services/auditor/evidenceBundleService";
+import handshakeQrRouter from "./routes/handshakeQrRoutes";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -156,6 +157,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   redisTokenBuffer.start();
   // Wave 8.1: Production health diagnostic (secured by DIAG_BYPASS_SECRET)
   app.use("/api/system/diagnostic", productionDiagnosticRouter);
+
+  // Wave 10: Bio-Link Rapid Invite QR Handshake
+  app.use('/api/workspace/handshake-qr', handshakeQrRouter);
 
   // Wave 9: DPS 30-day Evidence Bundle (org_owner or platform staff only)
   app.post('/api/compliance/evidence-bundle', requireAuth, async (req: AuthenticatedRequest, res) => {

@@ -60,6 +60,8 @@ export function mountCommsRoutes(app: Express): void {
 
   // Wave 7 / Task 4: Action Block respond endpoint — mounted via static import
   app.use("/api/chat/messages", chatActionBlockRouter);
+  // Wave 10: Clean /api/chatdock/execute alias (same router, canonical Wave 10 URL)
+  app.use("/api/chatdock", chatActionBlockRouter);
   app.use("/api/email-attachments", requireAuth, ensureWorkspaceAccess, emailAttachmentsRouter);
   app.use("/api/chat/rooms", requireAuth, attachWorkspaceIdOptional, chatRoomsRouter);
   app.use("/api/chat/manage", requireAuth, attachWorkspaceIdOptional, chatManagementRouter);

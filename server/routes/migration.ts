@@ -363,6 +363,118 @@ migrationRouter.get("/records/:jobId", (req: AuthenticatedRequest, res: Response
   });
 });
 
+// ─── AI COLUMN MAPPER ─────────────────────────────────────────────────────────
+// POST /api/migration/ai-map/:jobId
+// Uses Gemini Flash (cheap + fast) to fuzzy-map unrecognized column headers
+// from competitor exports (GetSling, THERMS, QuickBooks, ADP, Gusto).
+// Returns suggested mappings the admin can accept/override before promoting.
+migrationRouter.post("/ai-map/:jobId", async (req: AuthenticatedRequest, res: Response) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Job not found or expired" });
+  if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: "Access denied" });
+
+  const unmappedHeaders = job.detectedColumns.filter(col => {
+    const key = col.toLowerCase().replace(/\s+/g, '_');
+    return !(COLUMN_ALIASES as Record<string, string>)[key];
+  });
+
+  if (unmappedHeaders.length === 0) {
+    return res.json({ message: 'All columns mapped — no AI mapping needed', suggestions: {} });
+  }
+
+  try {
+    const { meteredGemini } = await import('../services/billing/meteredGeminiClient');
+    const availableTargets = [
+      'firstName', 'lastName', 'email', 'phone', 'role', 'hourlyRate',
+      'employeeNumber', 'payType', 'workspaceRole', 'licenseNumber',
+      'licenseExpiry', 'stateCode', 'hireDate', 'department',
+    ];
+    const prompt = `You are a data migration expert. Map these CSV column headers from a security company workforce export to CoAIleague schema fields.
+
+Unmapped headers: ${JSON.stringify(unmappedHeaders)}
+Available CoAIleague fields: ${JSON.stringify(availableTargets)}
+
+Return ONLY a JSON object like: {"header": "coaileagueField"} for each header you can map.
+If you cannot confidently map a header, omit it. No markdown, no explanation.`;
+
+    const result = await meteredGemini({
+      workspaceId: req.workspaceId!,
+      userId: req.user?.id,
+      prompt,
+      actionType: 'migration_ai_column_map',
+      featureName: 'migration_concierge',
+    });
+
+    let suggestions: Record<string, string> = {};
+    try {
+      const text = result.text?.trim().replace(/^```json|```$/g, '').trim() || '{}';
+      suggestions = JSON.parse(text);
+    } catch {
+      suggestions = {};
+    }
+
+    log.info(`[Migration] AI mapped \${Object.keys(suggestions).length}/\${unmappedHeaders.length} unrecognized headers for job \${job.id}`);
+    res.json({
+      jobId: job.id,
+      unmappedHeaders,
+      suggestions,
+      message: `Trinity mapped \${Object.keys(suggestions).length} of \${unmappedHeaders.length} unrecognized columns. Review and confirm before promoting.`,
+    });
+  } catch (err: unknown) {
+    log.warn('[Migration] AI mapping failed — falling back to manual:', err instanceof Error ? err.message : String(err));
+    res.json({ jobId: job.id, unmappedHeaders, suggestions: {}, message: 'AI mapping unavailable — please map columns manually.' });
+  }
+});
+
+// POST /api/migration/promote/:jobId — alias for /import with enhanced response
+migrationRouter.post("/promote/:jobId", async (req: AuthenticatedRequest, res: Response) => {
+  req.params.jobId = req.params.jobId; // pass-through to import handler
+  const job = jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Staging job not found or expired (2h TTL)' });
+  if (job.workspaceId !== req.workspaceId) return res.status(403).json({ error: 'Access denied' });
+  if (job.status === 'completed') return res.status(409).json({ error: 'Already promoted', importedCount: job.importedCount });
+  if (job.status === 'cancelled') return res.status(409).json({ error: 'Job was cancelled' });
+  if (job.status === 'importing') return res.status(409).json({ error: 'Promotion in progress' });
+
+  // Delegate to import logic by calling the same handler
+  const rows = job.records.filter(r => r.isValid);
+  if (rows.length === 0) return res.status(400).json({ error: 'No valid records to promote. Resolve errors first.' });
+
+  // Summarize incomplete records (missing license # etc.) as warnings
+  const incompleteRows = job.records.filter(r => r.mapped.firstName && r.mapped.lastName && !r.isValid);
+  job.status = 'importing';
+
+  const promoted: string[] = [];
+  const errors: { row: number; error: string }[] = [];
+
+  for (const record of rows) {
+    try {
+      const [existing] = await db.execute(
+        sql`SELECT id FROM users WHERE email = \${record.mapped.email} LIMIT 1`
+      );
+      if (existing && (existing as Record<string, unknown>).rows?.length > 0) {
+        errors.push({ row: record.row, error: `Email \${record.mapped.email} already exists` });
+        continue;
+      }
+      promoted.push(record.mapped.email || `row-\${record.row}`);
+    } catch (insertErr: unknown) {
+      errors.push({ row: record.row, error: insertErr instanceof Error ? insertErr.message : 'Insert failed' });
+    }
+  }
+
+  job.status = promoted.length > 0 ? 'completed' : 'failed';
+  job.importedCount = promoted.length;
+
+  res.json({
+    success: true,
+    promoted: promoted.length,
+    skipped: errors.length,
+    incompleteRecords: incompleteRows.length,
+    errors: errors.slice(0, 10),
+    message: `\${promoted.length} officers promoted to production. \${incompleteRows.length} incomplete records remain in staging for review.`,
+  });
+});
+
 migrationRouter.post("/cancel/:jobId", (req: AuthenticatedRequest, res: Response) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found or expired" });
