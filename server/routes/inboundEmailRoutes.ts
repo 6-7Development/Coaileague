@@ -330,33 +330,116 @@ function buildForwardHtml(opts: {
   fromEmail: string;
   toEmail: string;
   subject: string;
-  bodyHtml?: string;
-  bodyText?: string;
+  bodyHtml?: string | null;
+  bodyText?: string | null;
 }): string {
   const { bannerLabel, fromName, fromEmail, toEmail, subject, bodyHtml, bodyText } = opts;
   const originalDate = new Date().toUTCString();
-  const bodySection = bodyHtml && bodyHtml.trim().length > 0
-    ? bodyHtml
-    : bodyText && bodyText.trim().length > 0
-      ? `<pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;margin:0;">${escapeHtml(bodyText)}</pre>`
-      : `<p style="color:#a16207;font-style:italic;">(Original message had no text or HTML body — only headers and attachments.)</p>`;
-  return `
-<div style="font-family:Arial,sans-serif;max-width:700px;color:#222;">
-  <p style="color:#555;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">
-    -------- ${escapeHtml(bannerLabel)} --------<br>
-    <strong>From:</strong> ${fromName ? `${escapeHtml(fromName)} &lt;${escapeHtml(fromEmail)}&gt;` : escapeHtml(fromEmail)}<br>
-    <strong>To:</strong> ${escapeHtml(toEmail)}<br>
-    <strong>Date:</strong> ${escapeHtml(originalDate)}<br>
-    <strong>Subject:</strong> ${escapeHtml(subject)}
-  </p>
-  ${bodySection}
-</div>`;
+
+  // ── Body extraction ────────────────────────────────────────────────────────
+  // Some senders (Instagram, Notion, marketing platforms) deliver a complete
+  // <html>…<body>…</body></html> document. Embedding that inside another
+  // wrapper div breaks rendering — links appear but buttons may lose styles,
+  // and some email clients will double-render the body tag.
+  //
+  // Strategy:
+  //   1. If bodyHtml contains <body …> ... </body>, extract only the body
+  //      content so it embeds cleanly. Inline styles, images, and buttons
+  //      all survive because we never escape or strip any HTML inside body.
+  //   2. If bodyHtml is a fragment (no <body> tag), use it directly.
+  //   3. If only plaintext, wrap in <pre> (which preserves URLs as-is).
+  //   4. Empty → fallback notice.
+  //
+  // CRITICAL: NEVER run escapeHtml() on bodyHtml or bodyText body content.
+  // That would convert <a href="..."> into &lt;a href=... destroying links.
+  // Only header metadata (from/to/subject) goes through escapeHtml().
+  let bodySection: string;
+  if (bodyHtml && bodyHtml.trim().length > 0) {
+    // Extract inner body content if a full document was delivered
+    const bodyTagMatch = bodyHtml.match(/<body[^>]*>([\\s\\S]*?)<\/body>/i);
+    const extracted = bodyTagMatch ? bodyTagMatch[1].trim() : bodyHtml.trim();
+    bodySection = extracted.length > 0
+      ? extracted
+      : `<p style="color:#a16207;font-style:italic;">(HTML body was present but empty after extraction.)</p>`;
+  } else if (bodyText && bodyText.trim().length > 0) {
+    // Plain text: preserve formatting and URLs verbatim
+    // URLs in plain text won't be clickable — that is intentional and safe
+    bodySection = `<pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;margin:0;line-height:1.6;">${escapeHtml(bodyText)}</pre>`;
+  } else {
+    bodySection = `<p style="color:#a16207;font-style:italic;">(Original message had no text or HTML body — only headers and attachments.)</p>`;
+  }
+
+  const fromDisplay = fromName
+    ? `${escapeHtml(fromName)} &lt;${escapeHtml(fromEmail)}&gt;`
+    : escapeHtml(fromEmail);
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:16px 0;">
+    <tr><td align="center">
+      <table width="680" cellpadding="0" cellspacing="0" style="max-width:680px;width:100%;">
+        <!-- CoAIleague forward banner -->
+        <tr>
+          <td style="background:#1e293b;border-radius:8px 8px 0 0;padding:14px 20px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;">
+                    ${escapeHtml(bannerLabel)}
+                  </span>
+                </td>
+                <td align="right">
+                  <span style="font-size:11px;color:#64748b;">${escapeHtml(originalDate)}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Email metadata row -->
+        <tr>
+          <td style="background:#0f172a;padding:12px 20px;border-bottom:1px solid #334155;">
+            <table cellpadding="0" cellspacing="0" style="font-size:12px;color:#94a3b8;line-height:1.8;">
+              <tr><td style="padding-right:12px;font-weight:600;color:#64748b;">From</td><td style="color:#e2e8f0;">${fromDisplay}</td></tr>
+              <tr><td style="font-weight:600;color:#64748b;">To</td><td style="color:#e2e8f0;">${escapeHtml(toEmail)}</td></tr>
+              <tr><td style="font-weight:600;color:#64748b;">Subject</td><td style="color:#e2e8f0;">${escapeHtml(subject)}</td></tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Original email body — all links, buttons, images preserved -->
+        <tr>
+          <td style="background:#ffffff;padding:24px 20px;border-radius:0 0 8px 8px;">
+            ${bodySection}
+          </td>
+        </tr>
+        <!-- Footer note -->
+        <tr>
+          <td style="padding:10px 0;text-align:center;">
+            <span style="font-size:10px;color:#94a3b8;">
+              Forwarded by CoAIleague inbound email router · trinity@coaileague.com
+            </span>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ─── Canonical Platform Addresses ────────────────────────────────────────────
 // Addresses routed to the platform workspace when they are not explicitly
 // registered in email_routing. auto_process drives Trinity category handling.
 const CANONICAL_PLATFORM_LOCALPARTS: Record<string, { processAs: string; routeType: string }> = {
+  // ── General / master inbox — all route to support inbox ──────────────────
+  // info@, contact@, hello@ are master-inbox aliases. They share the
+  // support inbox so root admin and the team see every inbound message.
+  info:        { processAs: 'support',     routeType: 'platform_inbox' },
+  contact:     { processAs: 'support',     routeType: 'platform_inbox' },
+  hello:       { processAs: 'support',     routeType: 'platform_inbox' },
+  hi:          { processAs: 'support',     routeType: 'platform_inbox' },
+  // ── Dedicated support ─────────────────────────────────────────────────────
   support:     { processAs: 'support',     routeType: 'platform_inbox' },
   calloffs:    { processAs: 'calloff',     routeType: 'platform_inbox' },
   calloff:     { processAs: 'calloff',     routeType: 'platform_inbox' },
