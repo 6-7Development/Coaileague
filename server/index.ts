@@ -3073,5 +3073,25 @@ self.addEventListener('activate', async () => {
       setInterval(() => runLoneWorkerCheck().catch(() => {}), 2 * 60 * 1000);    // every 2 min
       log.info('🛡️  [Wave12] PatrolWatcher + LoneWorker Dead Man Switch active (5min/2min intervals)');
     }
+
+    // Wave 13: Trinity Morning Brief — 6 AM CST daily cron
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_MORNING_BRIEF === 'true') {
+      const { runMorningBriefCron } = await import('./services/reporting/morningBriefService');
+      const scheduleMorningBrief = () => {
+        const now = new Date();
+        // Calculate ms until next 6 AM CST (UTC-6 = 12:00 UTC)
+        const next6am = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+        if (next6am <= now) next6am.setUTCDate(next6am.getUTCDate() + 1);
+        const msUntil6am = next6am.getTime() - now.getTime();
+        setTimeout(async () => {
+          const result = await runMorningBriefCron().catch(() => ({ sent: 0, failed: 0 }));
+          log.info(`[MorningBrief] Cron fired: sent=${result.sent} failed=${result.failed}`);
+          scheduleMorningBrief(); // re-schedule for next day
+        }, msUntil6am);
+        log.info(`[MorningBrief] Next brief scheduled in ${Math.round(msUntil6am / 60000)} minutes`);
+      };
+      scheduleMorningBrief();
+      log.info('☀️  [Wave13] Morning Brief cron scheduled (6AM CST daily)');
+    }
   })();
 })();

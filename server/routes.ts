@@ -38,6 +38,11 @@ import { submitCompliancePhoto, getOfficeAuditStatus, checkRecertificationDue } 
 import { verifyNFCScan } from "./services/ops/nfcIntegrityService";
 import { processEquipmentTap, checkClockOutGate, generateEquipmentComplianceLog } from "./services/ops/equipmentLedgerService";
 import { runPatrolWatcherCheck, runLoneWorkerCheck, recordLoneWorkerCheckin } from "./services/ops/patrolWatcherService";
+import { getRecentIntegrityTicks, streamIntegrityFeed } from "./services/clientPortal/liveIntegrityFeed";
+import { generateRFPLibrary } from "./services/sales/rfpLibraryService";
+import { generateROIPopup, recordPopupShown, wasPopupShown } from "./services/sales/roiConciergeService";
+import { checkOutboundCompliance, recordOptIn, recordOptOut } from "./services/sales/sb140ComplianceGate";
+import { sendMorningBrief } from "./services/reporting/morningBriefService";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -268,6 +273,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await recordLoneWorkerCheckin({ workspaceId: req.workspaceId!, employeeId: req.user!.id, ...req.body });
       return res.json(result);
     } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Check-in failed' }); }
+  });
+
+  // ── Wave 13: Revenue & Stability Suite ──────────────────────────────────
+
+  // Task 1: Live Integrity Feed — SSE stream for client portal
+  app.get('/api/client-portal/live-feed', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { clientId } = req.query as { clientId?: string };
+    if (!clientId) return res.status(400).json({ error: 'clientId required' });
+    streamIntegrityFeed({ workspaceId: req.workspaceId!, clientId, res });
+  });
+
+  app.get('/api/client-portal/integrity-ticks', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    const { clientId } = req.query as { clientId?: string };
+    if (!clientId) return res.status(400).json({ error: 'clientId required' });
+    try {
+      const ticks = await getRecentIntegrityTicks({ workspaceId: req.workspaceId!, clientId, limit: 30 });
+      return res.json({ ticks });
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Feed error' }); }
+  });
+
+  // Task 2: Morning Brief — manual trigger + diagnostic
+  app.post('/api/reporting/morning-brief/send', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const ok = await sendMorningBrief(req.workspaceId!);
+      return res.json({ success: ok, message: ok ? 'Morning brief sent' : 'Brief failed — check logs' });
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Brief failed' }); }
+  });
+
+  // Task 3: RFP Technical Library — generate bid-ready paragraphs
+  app.get('/api/sales/rfp-library', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const library = await generateRFPLibrary(req.workspaceId!);
+      return res.json(library);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'RFP generation failed' }); }
+  });
+
+  // Task 4: ROI Concierge — sandbox popup calculation
+  app.get('/api/sales/roi-popup', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { page, teamSize = '10', sessionId } = req.query as { page?: string; teamSize?: string; sessionId?: string };
+    if (!page) return res.status(400).json({ error: 'page required' });
+    const popup = generateROIPopup({ triggerPage: page, teamSize: parseInt(teamSize), workspaceName: 'Your Company' });
+    if (!popup) return res.json({ popup: null });
+    const alreadyShown = sessionId ? await wasPopupShown({ workspaceId: req.workspaceId!, sessionId, popupId: popup.id }) : false;
+    if (alreadyShown) return res.json({ popup: null });
+    return res.json({ popup });
+  });
+
+  app.post('/api/sales/roi-popup/shown', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { popupId, sessionId } = req.body as { popupId: string; sessionId: string };
+    if (!popupId || !sessionId) return res.status(400).json({ error: 'popupId and sessionId required' });
+    await recordPopupShown({ workspaceId: req.workspaceId!, sessionId, popupId });
+    return res.json({ success: true });
+  });
+
+  // Task 5: SB140 Compliance Gate — opt-in management
+  app.post('/api/compliance/outbound-check', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await checkOutboundCompliance({ workspaceId: req.workspaceId!, ...req.body });
+      return res.json(result);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Gate check failed' }); }
+  });
+
+  app.post('/api/compliance/opt-in', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try { return res.json({ success: await recordOptIn({ workspaceId: req.workspaceId!, ...req.body }) }); }
+    catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Opt-in failed' }); }
+  });
+
+  app.post('/api/compliance/opt-out', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try { return res.json({ success: await recordOptOut({ workspaceId: req.workspaceId!, ...req.body }) }); }
+    catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Opt-out failed' }); }
   });
 
   // Task 5: Admin: manual patrol watcher run (diagnostic)
