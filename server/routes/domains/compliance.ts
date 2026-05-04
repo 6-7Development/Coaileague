@@ -6,6 +6,7 @@
 //   /api/compliance, /api/compliance/*, /api/training-compliance
 import type { Express } from "express";
 import { preAuditRouter } from "../preAuditRoutes";
+import { pdfRouter } from "../pdfRoutes";
 import { regulatoryPublicRouter } from "../regulatoryPublicRoutes";
 import { requireAuth } from "../../auth";
 import { ensureWorkspaceAccess } from "../../middleware/workspaceScope";
@@ -101,4 +102,6 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/compliance", requireAuth, ensureWorkspaceAccess, preAuditRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);
+
+  app.use("/api/documents", requireAuth, ensureWorkspaceAccess, pdfRouter);
 }

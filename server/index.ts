@@ -1547,6 +1547,44 @@ async function initializeBackgroundServices(): Promise<void> {
       initializeVoiceSessionCleanup();
     }),
     
+    deferredTimedInit('Wave 19.5 Schema', 8000, async () => {
+      const { ensureSpendCapSchema } = await import('./services/billing/platformServicesMeter');
+      await ensureSpendCapSchema();
+      const { ensureArchivalSchema, scheduleArchivalCron } = await import('./services/storageArchival');
+      await ensureArchivalSchema();
+      scheduleArchivalCron();
+    }),
+
+    deferredTimedInit('Document Engine Schema', 9500, async () => {
+      const { pool: dbPool } = await import('./db');
+      await dbPool.query(`
+        CREATE TABLE IF NOT EXISTS generated_documents (
+          id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          workspace_id VARCHAR NOT NULL,
+          document_type VARCHAR(80) NOT NULL,
+          reference_id VARCHAR(200),
+          doc_id VARCHAR(80) NOT NULL UNIQUE,
+          file_size_bytes INTEGER,
+          page_count INTEGER,
+          storage_path TEXT,
+          generated_by VARCHAR,
+          generated_by_name VARCHAR(200),
+          snapshot_json JSONB,
+          regulatory_citations TEXT[] DEFAULT ARRAY[]::text[],
+          status VARCHAR(20) DEFAULT 'generated',
+          sent_to_client_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS gendoc_ws_type_idx ON generated_documents(workspace_id, document_type);
+        CREATE INDEX IF NOT EXISTS gendoc_docid_idx ON generated_documents(doc_id);
+      `);
+    }),
+
+    deferredTimedInit('Regulatory Knowledge Schema', 9000, async () => {
+      const { ensureRegulatoryKnowledgeSchema } = await import('./services/regulatoryKnowledgeService');
+      await ensureRegulatoryKnowledgeSchema();
+    }),
+
     deferredTimedInit('Stripe Event Bridge', 11000, async () => {
       const { initializeStripeEventBridge } = await import('./services/billing/stripeEventBridge');
       await initializeStripeEventBridge();

@@ -271,6 +271,75 @@ Wave 18 CAD work included in the wave19 commits:
 
 ---
 
+## Wave 21C — Elite PDF Document Engine (Complete)
+
+**Built on:** pdfkit + pdfTemplateBase.ts (navy/gold design system, existing)
+**Storage:** Stream directly to HTTP response. No GCS dependency. Audit-logged to generated_documents.
+**Auto-starts:** generated_documents schema bootstrap runs at server startup (idempotent).
+
+### New Files
+- `server/services/pdfEngine.ts` — 700-line unified PDF engine, 3 outputs
+- `server/routes/pdfRoutes.ts` — 163-line route layer, mounted at `/api/documents`
+
+### Task 1 — generated_documents Table
+Logged on every PDF generation for legal retention:
+  doc_id (e.g. UOF-20260504-A3F7), workspace_id, document_type, reference_id,
+  file_size_bytes, page_count, generated_by_name, regulatory_citations[], status, created_at
+Indexes: workspace+type, reference_id, doc_id (unique)
+Bootstrap: idempotent CREATE TABLE IF NOT EXISTS at server startup (9500ms deferred)
+
+### Task 2 — PDF Engine Core
+All three outputs share:
+  - Tenant logo in header (loadTenantLogo() → workspace.logo_url)
+  - Navy/gold CoAIleague design system (pdfTemplateBase.ts)
+  - Doc ID in footer: `UOF-20260504-A3F7` format for verification
+  - Page N of M in footer
+  - Exact timestamp (America/Chicago) in header
+  - Cryptographic uniqueness: 4 random bytes (8 hex chars) per doc
+
+### Task 3 — Three Outputs
+
+**Output 1 — Use of Force Report** (`POST /api/documents/uof-report/:incidentId`)
+  - Section 1: Incident overview (type, severity, GPS, site)
+  - Section 2: Reporting officer (name, guard card #, license classification, shift times)
+  - Section 3: Trinity AI narrative (polished_description with source note)
+  - Section 4: Graham v. Connor 3-factor analysis form (fillable fields)
+  - Section 5: Witnesses
+  - Section 6: Trinity legal flags (critical/warning with recommendations)
+  - Section 7: RKE citations — actual statutes from regulatory_knowledge_base
+               (Graham v. Connor, state penal code, UoF guidelines)
+  - Section 8: Supervisor signature block (4 signature lines)
+
+**Output 2 — Daily Activity Report** (`POST /api/documents/dar/:darId`)
+  - Assignment details (client, site, officer, license, shift times, weather)
+  - Activity summary (full text)
+  - Patrol statistics (round count, vehicle checks, incidents flag)
+  - Additional notes
+  - Officer certification signature block
+
+**Output 3 — DPS Audit Packet** (`POST /api/documents/dps-audit-packet`)
+  Body: `{ auditLabel?: string }` — Manager+ only
+  - Cover page: entity info, license number, officer/incident/shift counts
+    Red alert box if expired armed officers found
+  - Table of contents
+  - Exhibit A: Full roster with license status (color coded ACTIVE/EXPIRED/UNVERIFIED)
+  - Exhibit B: All UoF incidents (12 months), polished narratives
+  - Exhibit C: Armed shift logs (12 months), officer + guard card + site + status
+  - Dynamic: regulatory body name from state_regulatory_config, not hardcoded
+  - Redacted: no billing rates, no SSNs, no internal notes (same middleware as auditor portal)
+
+**GET /api/documents/history** — Last 50 generated docs for workspace
+
+### Revenue Connection
+Every PDF has the CoAIleague brand in header and footer.
+Every court submission, every client delivery, every DPS audit = brand impression.
+Owners can click one button → professional PDF ready in ~2 seconds.
+"Turn a 3-day DPS audit panic into one button press."
+
+---
+
+---
+
 ## BILLING MODEL — CANONICAL STRUCTURE (confirmed 2026-05-04)
 
 ### Prepaid Subscription (1 month in advance — always)
