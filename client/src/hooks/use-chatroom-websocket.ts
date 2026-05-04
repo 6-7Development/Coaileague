@@ -376,8 +376,7 @@ export function useChatroomWebSocket(
             cadData.siteName ? `📍 ${cadData.siteName}` : "",
             cadData.incidentDescription ? `ℹ️ ${cadData.incidentDescription}` : "",
             "All units: acknowledge this call in the shift room.",
-          ].filter(Boolean).join("
-");
+          ].filter(Boolean).join("\n");
 
           const cadMsg = {
             id: `cad-${Date.now()}`,
