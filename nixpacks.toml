@@ -11,6 +11,16 @@ cmds = ["npm run build"]
 NPM_CONFIG_PRODUCTION = "false"
 # Increase Node.js heap for the build — 1.1M lines of TS requires 4GB
 NODE_OPTIONS = "--max-old-space-size=4096"
+# ── Skip browser downloads at build time ───────────────────────────────────
+# Puppeteer and Playwright each try to download ~200MB Chromium during npm ci.
+# Railway doesn't need Chromium at build time — only at runtime if Trinity's
+# browser automation tools are invoked (lazy-loaded).
+# Without these flags: builds take 25-30 min. With them: 2-3 min.
+PUPPETEER_SKIP_DOWNLOAD = "1"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "1"
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+# Prevent nixpacks from auto-detecting puppeteer and adding system Chromium libs
+NIXPACKS_NO_MUSL = "1"
 
 [start]
 cmd = "npm run start"
