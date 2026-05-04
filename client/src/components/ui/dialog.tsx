@@ -44,7 +44,7 @@ const dialogContentVariants = cva(
     "grid gap-0",
     // Solid elevated surface — NO transparency, NO backdrop-blur
     // bg-[hsl(var(--modal-bg))] resolves to white (light) or elevated navy (dark)
-    "border-[hsl(var(--modal-border))] bg-[hsl(var(--modal-bg))]",
+    "border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111827]",
     "border",
     // Depth stack: outer shadow + subtle top-edge highlight ring
     "shadow-2xl shadow-black/25 dark:shadow-black/60",
