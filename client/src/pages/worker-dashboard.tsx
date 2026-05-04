@@ -942,7 +942,7 @@ function WorkerDashboardInner() {
     const siteId = clockStatus?.currentSiteId?.toString() || todayShift?.siteId?.toString();
     if (siteId && !shiftBriefData) {
       try {
-        const briefRes = await fetch(\`/api/rms/shift-brief?siteId=\${siteId}\`, { credentials: "include" });
+        const briefRes = await fetch(`/api/rms/shift-brief?siteId=${siteId}`, { credentials: "include" });
         if (briefRes.ok) {
           const brief = await briefRes.json();
           setShiftBriefData({ ...brief, pendingClockInAction: () => clockMutation.mutate("in") });
@@ -1506,15 +1506,6 @@ function WorkerDashboardInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </CanvasHubPage>
-  );
-}
-
-export default function WorkerDashboard() {
-  return (
-    <ErrorBoundary componentName="WorkerDashboard">
-      <WorkerDashboardInner />
-    </ErrorBoundary>
 
       {/* Wave 14.5: Shift Brief Modal */}
       {shiftBriefData && (
@@ -1622,5 +1613,15 @@ export default function WorkerDashboard() {
           </div>
         </div>
       )}
+
+    </CanvasHubPage>
+  );
+}
+
+export default function WorkerDashboard() {
+  return (
+    <ErrorBoundary componentName="WorkerDashboard">
+      <WorkerDashboardInner />
+    </ErrorBoundary>
   );
 }

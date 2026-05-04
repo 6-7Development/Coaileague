@@ -1451,7 +1451,7 @@ export default function RMSHub() {
                                       e.stopPropagation();
                                       setClientCopyLoading(inc.id);
                                       try {
-                                        const res = await fetch(\`/api/rms/incidents/\${inc.id}/client-copy\`, {
+                                        const res = await fetch("/api/rms/incidents/" + inc.id + "/client-copy", {
                                           method: "POST", credentials: "include",
                                           headers: { "Content-Type": "application/json" },
                                           body: JSON.stringify({ workspaceId }),
@@ -1594,7 +1594,7 @@ export default function RMSHub() {
                 onClick={async () => {
                   setAutoDarLoading(true);
                   try {
-                    const res = await fetch(\`/api/rms/dars/auto-generate?shiftId=\${autoDarShiftId}\`, { credentials: "include" });
+                    const res = await fetch("/api/rms/dars/auto-generate?shiftId=" + encodeURIComponent(autoDarShiftId), { credentials: "include" });
                     if (res.ok) { const d = await res.json(); setAutoDarData(d); setShowCreateDAR(false); }
                     else toast({ title: "No shift data found", variant: "destructive" });
                   } catch { toast({ title: "Auto-generate failed", variant: "destructive" }); }
