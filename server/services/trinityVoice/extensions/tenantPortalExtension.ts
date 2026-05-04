@@ -599,7 +599,7 @@ async function buildEmergencyRoute(params: {
   ).catch(() => ({ rows: [] }));
 
   for (const c of contacts) {
-    const { sendSMS } = await import('../../../services/smsService');
+    const { sendSMS } = await import('../../smsService');
     sendSMS({
       to: c.phone,
       body: `🚨 EMERGENCY CALL — ${companyName}\nAn emergency call is incoming from ${callerNumber}. Please respond immediately.`,

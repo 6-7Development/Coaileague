@@ -376,9 +376,31 @@ export async function handleInbound(params: {
   // 1. Resolve workspace from the dialed number
   const workspace = await resolveWorkspaceFromPhoneNumber(to);
 
+  // If no tenant-specific number matches, treat as the master CoAIleague line.
+  // All guests, prospects, and multi-tenant callers are routed through the guest flow.
   if (!workspace) {
-    log.warn(`[VoiceOrchestrator] Unknown phone number: ${to}`);
-    return twiml(say('This number is not configured. Goodbye.'));
+    log.info(`[VoiceOrchestrator] Master number call from ${from} — routing to guest flow`);
+
+    // Create a minimal session for tracking
+    // Guest call — no workspace yet. Log with null workspace, skip FK-constrained insert.
+    // The session will be updated when the caller identifies their tenant.
+
+    // Route to the main CoAIleague IVR (handles guests, prospects, tenant lookup)
+    return twiml(
+      gather(
+        { action: `${baseUrl}/api/voice/caller-identify?lang=en`, numDigits: 1,
+          timeout: 12, speechTimeout: 'auto', language: 'en-US',
+          hints: 'one,two,three,employee,officer,guard,client,sales,Statewide,help,emergency,ayuda' },
+        say(
+          'Hi! Thank you for calling CoAIleague — intelligent workforce management. ' +
+          'If you are a guard or employee, press 1. ' +
+          'If you are calling about a security company, press 2. ' +
+          'To learn about CoAIleague, press 3. ' +
+          'Or simply tell me what you need.'
+        )
+      ) +
+      redirect(`${baseUrl}/api/voice/caller-identify?lang=en`)
+    );
   }
 
   const { workspaceId, phoneRecord } = workspace;
@@ -422,14 +444,17 @@ export async function handleInbound(params: {
     'Hi! Thank you for calling Co-League — where intelligent workforce management meets real results. ' +
     'Press 1 for English. Marque 2 para Español.';
 
-  // Wave 16: Duress bypass — if call metadata already has duress flag, skip all menus
-  // (Duress phrase is detected in the live speech stream by /api/voice/duress-check)
+  // Wave 16: Duress detection is handled inside /language-select via speech hints.
+  // A separate pre-gather caused 3-second silence for every caller — removed.
+  // If caller says "code red" at ANY menu level, /duress-check handles it.
   return twiml(
-    // Immediately gather speech for duress detection — 3 second window before menu
-    `<Gather input="speech" action="${baseUrl}/api/voice/duress-check?workspaceId=${encodeURIComponent(workspaceId)}&callSid=${encodeURIComponent(callSid)}" method="POST" timeout="3" speechTimeout="1" language="en-US,es-US" hints="code red,officer needs assistance,help me,emergency,mayday,ayuda,emergencia,código rojo">` +
-    (customGreeting ? say(customGreeting) : '') +
-    say(brandedGreeting) +
-    `</Gather>` +
+    gather(
+      { action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 8,
+        speechTimeout: 'auto', language: 'en-US',
+        hints: 'English,Spanish,one,two,code red,emergency,ayuda,help' },
+      (customGreeting ? say(customGreeting) : '') +
+      say(brandedGreeting)
+    ) +
     redirect(`${baseUrl}/api/voice/language-select`)
   );
 }
