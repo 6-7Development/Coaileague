@@ -1,5 +1,6 @@
 import { NOTIFICATION_DEDUP_WINDOW_MS } from '@shared/config/notificationConfig';
 import { createLogger } from '../lib/logger';
+import { sendFCMToWorkspace, sendFCMToUser } from './fcmService';
 const log = createLogger('NDS');
 
 /**
@@ -792,5 +793,43 @@ export class NotificationDeliveryService {
       },
     });
     log.info(`[NDS] sendEmailReply → ${params.toAddress} from ${params.fromAddress}`);
+  }
+}
+
+// ── Wave 21B: FCM Push Fallback for Critical + PTT Events ─────────────────────
+// Called alongside WebSocket broadcast for events that must reach offline devices.
+// PTT dispatcher responses and panic alerts use this to wake backgrounded apps.
+
+export async function triggerFCMForCritical(
+  workspaceId: string,
+  params: {
+    userId?: string;           // Target single user (for PTT response)
+    title: string;
+    body: string;
+    eventType: string;        // 'ptt_response' | 'panic_alert' | 'patrol_missed' etc.
+    data?: Record<string, string>;
+  }
+): Promise<void> {
+  try {
+    const { sendFCMToUser, sendFCMToWorkspace } = await import('./fcmService');
+
+    const notification = {
+      title: params.title,
+      body: params.body,
+      priority: "high" as const,
+      data: {
+        eventType: params.eventType,
+        workspaceId,
+        ...(params.data || {}),
+      },
+    };
+
+    if (params.userId) {
+      await sendFCMToUser(params.userId, workspaceId, notification);
+    } else {
+      await sendFCMToWorkspace(workspaceId, notification);
+    }
+  } catch (err: unknown) {
+    // Non-fatal — WS delivery already succeeded
   }
 }

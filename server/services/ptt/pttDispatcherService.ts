@@ -18,6 +18,7 @@
 import { randomUUID } from "crypto";
 import { pool } from "../../db";
 import { broadcastToWorkspace } from "../../websocket";
+import { triggerFCMForCritical } from "../notificationDeliveryService";
 import { createLogger } from "../../lib/logger";
 import { scheduleNonBlocking } from "../../lib/scheduleNonBlocking";
 

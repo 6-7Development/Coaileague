@@ -1671,4 +1671,58 @@ router.post('/api/notifications/send', requireManager, async (req: Authenticated
   }
 });
 
+
+// ── Wave 21B: FCM Device Token Registration ──────────────────────────────────
+// Called from PWA install flow or on app startup to register/refresh FCM token.
+// Upserts the token — same token updates last_seen_at, new token creates row.
+router.post("/register-device", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId!;
+    const { fcmToken, deviceType, deviceLabel } = req.body as {
+      fcmToken: string;
+      deviceType?: string;
+      deviceLabel?: string;
+    };
+
+    if (!fcmToken || fcmToken.length < 20) {
+      return res.status(400).json({ error: "Valid FCM token required" });
+    }
+
+    const { pool } = await import("../db");
+    await pool.query(
+      `INSERT INTO user_device_tokens (user_id, workspace_id, fcm_token, device_type, device_label, last_seen_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (fcm_token) DO UPDATE
+         SET user_id = EXCLUDED.user_id,
+             workspace_id = EXCLUDED.workspace_id,
+             device_type = EXCLUDED.device_type,
+             device_label = EXCLUDED.device_label,
+             last_seen_at = NOW(),
+             is_active = TRUE`,
+      [userId, workspaceId, fcmToken, deviceType || "web", deviceLabel || null]
+    );
+
+    return res.json({ success: true, registered: true });
+  } catch (err: unknown) {
+    return res.status(500).json({ error: "Device registration failed" });
+  }
+});
+
+// ── Deregister device on logout ───────────────────────────────────────────────
+router.delete("/register-device", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { fcmToken } = req.body as { fcmToken: string };
+    if (!fcmToken) return res.status(400).json({ error: "fcmToken required" });
+    const { pool } = await import("../db");
+    await pool.query(
+      "UPDATE user_device_tokens SET is_active = FALSE WHERE fcm_token = $1 AND user_id = $2",
+      [fcmToken, req.user?.id]
+    );
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ error: "Deregistration failed" });
+  }
+});
+
 export default router;

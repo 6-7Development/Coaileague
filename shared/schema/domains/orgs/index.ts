@@ -1697,6 +1697,25 @@ export const onboardingFlow = pgTable('onboarding_flows', {
   index('onboarding_flows_status_idx').on(table.status),
 ]);
 
+
+// ── Wave 21B: FCM Device Token Registry ──────────────────────────────────────
+// Stores FCM push tokens per user+device. One user can have multiple devices.
+// Tokens are updated on each app open (FCM rotates them periodically).
+export const userDeviceTokens = pgTable("user_device_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  workspaceId: varchar("workspace_id").notNull(),
+  fcmToken: varchar("fcm_token", { length: 512 }).notNull(),
+  deviceType: varchar("device_type", { length: 20 }).default("web"), // "web" | "ios" | "android"
+  deviceLabel: varchar("device_label", { length: 100 }),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  index("udt_user_workspace_idx").on(t.userId, t.workspaceId),
+  index("udt_token_idx").on(t.fcmToken),
+]);
+
 export const onboardingStep = pgTable('onboarding_steps', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   flowId: varchar('flow_id', { length: 36 }).notNull().references(() => onboardingFlow.id, { onDelete: 'cascade' }),

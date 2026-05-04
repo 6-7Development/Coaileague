@@ -515,6 +515,15 @@ export class StripeWebhookService {
     log.info('Subscription invoice payment succeeded', { workspaceId, amountPaid, invoiceNumber: invoice.number });
 
     // 1. Ensure workspace is marked active (catches past_due recovery)
+    // Also reset spend cap overage counters — tenant paid, new cycle starts clean.
+    // Wave 19.5: Overage counters must reset on each successful invoice payment.
+    try {
+      const { resetMonthlyOverage } = await import('./platformServicesMeter');
+      await resetMonthlyOverage(workspaceId);
+      log.info('[SpendCap] Monthly overage reset on invoice payment', { workspaceId });
+    } catch (resetErr: unknown) {
+      log.warn('[SpendCap] Overage reset failed (non-fatal):', resetErr instanceof Error ? resetErr.message : String(resetErr));
+    }
     await db.update(workspaces)
       .set({ subscriptionStatus: 'active', updatedAt: new Date() })
       .where(eq(workspaces.id, workspaceId));

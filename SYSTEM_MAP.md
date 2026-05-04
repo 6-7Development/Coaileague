@@ -1,3 +1,49 @@
+
+---
+
+## DEPLOYMENT CRASH LAW — Drizzle Schema Index Pattern (added 2026-05-04)
+
+**ROOT CAUSE OF WAVE 21C CRASH:**
+Indexes defined as standalone exports outside `pgTable()` crash at Node.js startup.
+Drizzle's `IndexBuilderOn2.on()` calls `JSON.parse()` on column metadata.
+When called outside a table definition, column metadata is `undefined`.
+Result: `SyntaxError: "undefined" is not valid JSON` — instant crash loop.
+
+**THE BAD PATTERN (NEVER DO THIS):**
+```ts
+export const myTable = pgTable("my_table", { ... });
+
+// ❌ WRONG — standalone index outside pgTable crashes at runtime
+export const myTableIndexes = {
+  idx: index("my_idx").on(myTable.someColumn),
+};
+```
+
+**THE CORRECT PATTERN (ALWAYS DO THIS):**
+```ts
+export const myTable = pgTable("my_table", {
+  id: varchar("id").primaryKey(),
+  someColumn: varchar("some_column"),
+}, (t) => [
+  // ✅ CORRECT — indexes inside pgTable third argument
+  index("my_idx").on(t.someColumn),
+  uniqueIndex("my_unique_idx").on(t.someColumn),
+]);
+```
+
+**PRE-PUSH SCHEMA CHECK (add to Railway Mirror Protocol):**
+```bash
+grep -rn 'export const.*Indexes.*=' shared/schema/ | grep -v '//' 
+# Must return ZERO results — no standalone index exports
+```
+
+This crash is silent at build time (Vite/esbuild pass clean).
+It only appears at Node.js startup when Drizzle initializes the schema module.
+The Railway Mirror Protocol `node build.mjs` does NOT catch this.
+The only reliable check is: `grep` for standalone index exports before every push.
+
+---
+
 # COAILEAGUE SYSTEM MAP v5.0
 # Last updated: 2026-05-03
 # Purpose: Canonical map of what exists, where it lives, and how it connects.

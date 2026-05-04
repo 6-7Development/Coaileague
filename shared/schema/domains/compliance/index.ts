@@ -2022,12 +2022,10 @@ export const auditorLinks = pgTable("auditor_links", {
   isRevoked: boolean("is_revoked").default(false),
   allowedExhibits: text("allowed_exhibits").array().default(sql`ARRAY['A','B','C']::text[]`),
   createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const auditorLinksIndexes = {
-  tokenIdx: index("auditor_links_token_idx").on(auditorLinks.token),
-  workspaceIdx: index("auditor_links_workspace_idx").on(auditorLinks.workspaceId),
-};
+}, (t) => [
+  index("auditor_links_token_idx").on(t.token),
+  index("auditor_links_workspace_idx").on(t.workspaceId),
+]);
 
 export const equipmentCheckinLog = pgTable("equipment_checkin_log", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -957,7 +957,22 @@ function pushEventToBuffer(workspaceId: string, data: WsPayload): string {
 }
 
 // Initialize durability on startup (async, non-blocking)
-initChatDurability().catch(() => null);
+// Also subscribe to Redis pub/sub so events from OTHER Railway replicas
+// are delivered to WebSocket clients connected to THIS replica.
+initChatDurability().then(() => {
+  subscribeToRoomBroadcasts((event: Record<string, unknown>) => {
+    // Deliver cross-replica events to local clients only
+    // (the originating replica already delivered to its own clients)
+    if (globalBroadcaster && event.workspaceId) {
+      try {
+        globalBroadcaster.broadcastToWorkspace(
+          event.workspaceId as string,
+          event as WsPayload
+        );
+      } catch { /* non-fatal */ }
+    }
+  });
+}).catch(() => null);
 
 export function broadcastToWorkspace(workspaceId: string, data: WsPayload) {
   if (!globalBroadcaster) {
@@ -966,14 +981,24 @@ export function broadcastToWorkspace(workspaceId: string, data: WsPayload) {
   }
   
   try {
-    // Push to replay buffer so reconnecting clients can catch up
+    // Push to replay buffer (Redis-backed if REDIS_URL set, in-memory fallback)
     const eventId = pushEventToBuffer(workspaceId, data);
     const enrichedData = { ...data, eventId };
+
+    // 1. Local broadcast — clients on THIS replica receive immediately
     globalBroadcaster.broadcastToWorkspace(workspaceId, enrichedData);
+
+    // 2. Redis pub/sub — clients on OTHER Railway replicas receive via subscription
+    // Non-blocking: publish failure never breaks local delivery
+    publishBroadcast(workspaceId, enrichedData as Record<string, unknown>).catch((err: unknown) => {
+      log.debug('[WS] Redis publish failed (non-fatal, local delivery succeeded):',
+        err instanceof Error ? err.message : String(err));
+    });
+
     log.debug('Workspace broadcast sent', { workspaceId, eventId });
     return 1;
   } catch (err) {
-    log.warn('Failed to broadcast to workspace', { error: err });
+    log.warn('Failed to broadcast to workspace', { workspaceId, error: err instanceof Error ? err.message : String(err) });
     return 0;
   }
 }
