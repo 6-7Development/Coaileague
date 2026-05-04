@@ -27,6 +27,7 @@ import { setupWebSocket } from "./websocket";
 import { redisTokenBuffer } from "./services/billing/redisTokenBuffer";
 import { registerEpisodicMemoryListeners } from "./services/ai-brain/episodicMemoryListeners";
 import productionDiagnosticRouter from "./routes/productionDiagnosticRoute";
+import { generateEvidenceBundle } from "./services/auditor/evidenceBundleService";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -155,6 +156,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   redisTokenBuffer.start();
   // Wave 8.1: Production health diagnostic (secured by DIAG_BYPASS_SECRET)
   app.use("/api/system/diagnostic", productionDiagnosticRouter);
+
+  // Wave 9: DPS 30-day Evidence Bundle (org_owner or platform staff only)
+  app.post('/api/compliance/evidence-bundle', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId;
+      if (!workspaceId) return res.status(400).json({ error: 'workspaceId required' });
+
+      const { windowDays = 30, endDate } = req.body as { windowDays?: number; endDate?: string };
+      const result = await generateEvidenceBundle({
+        workspaceId,
+        windowDays: Math.min(Number(windowDays) || 30, 90), // max 90-day window
+        endDate: endDate ? new Date(endDate) : new Date(),
+        requestedBy: req.user?.email || req.user?.id || 'unknown',
+      });
+
+      if (!result.success) return res.status(500).json({ error: result.error });
+
+      res.json({
+        success: true,
+        fingerprint: result.fingerprint,
+        vaultId: result.vaultId,
+        documentNumber: result.documentNumber,
+        windowStart: result.windowStart,
+        windowEnd: result.windowEnd,
+        message: 'Evidence bundle generated and saved to tenant vault',
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Bundle generation failed' });
+    }
+  });
 
   // Wave 6 / Task 3: Register override → aiLearningEvents listeners
   // Captures human manager overrides so Trinity learns from disagreements.

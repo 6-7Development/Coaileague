@@ -96,6 +96,7 @@ interface W2Data {
   employeeName: string;
   employeeAddress: string;
   taxYear: number;
+  employerLicenseNumber?: string | null; // DPS/PSB license (e.g. C11608501)
   wages: number;
   federalTaxWithheld: number;
   socialSecurityWages: number;
@@ -153,6 +154,7 @@ interface Form941Data {
   employerEIN: string;
   employerName: string;
   employerAddress: string;
+  employerLicenseNumber?: string | null; // DPS/PSB license
   quarter: number;
   taxYear: number;
   line1_numberOfEmployees: number;
@@ -446,7 +448,21 @@ export class TaxFormGeneratorService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      doc.fontSize(16).font('Helvetica-Bold').text(`Form W-2 Wage and Tax Statement`, { align: 'center' });
+      // ── CoAIleague platform header bar ─────────────────────────────────
+      // Shows company name and DPS/PSB license number for instant audit ID.
+      // data.employerName comes from workspace.companyName or workspace.name.
+      // License number from workspace.stateLicenseNumber (e.g. C11608501).
+      const pageW = doc.page.width;
+      const marg = 40;
+      const headerBarH = 28;
+      doc.rect(marg, 30, pageW - marg * 2, headerBarH).fillColor('#1e293b').fill();
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#f59e0b')
+        .text(data.employerName || 'Employer', marg + 8, 39, { continued: true });
+      doc.fontSize(8).font('Helvetica').fillColor('#94a3b8')
+        .text(data.employerLicenseNumber ? `  ·  License # ${data.employerLicenseNumber}` : '', { continued: false });
+      doc.moveDown(0.5);
+      // ── IRS form title ────────────────────────────────────────────────────
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('black').text(`Form W-2 Wage and Tax Statement`, { align: 'center' });
       doc.fontSize(10).font('Helvetica').text(`Tax Year ${data.taxYear}`, { align: 'center' });
       doc.moveDown(1.5);
 
@@ -896,6 +912,7 @@ export class TaxFormGeneratorService {
         employerEIN: (workspace as Record<string, unknown>).taxId || (workspace as Record<string, unknown>).ein || 'XX-XXXXXXX',
         employerName: (workspace as Record<string, unknown>).companyName || workspace.name || 'Employer',
         employerAddress: (workspace as Record<string, string>).address || '',
+        employerLicenseNumber: (workspace as Record<string, unknown>).stateLicenseNumber || null,
         quarter,
         taxYear: year,
         line1_numberOfEmployees: numberOfEmployees,
@@ -989,11 +1006,20 @@ export class TaxFormGeneratorService {
 
       const quarterNames = ['', 'January - March', 'April - June', 'July - September', 'October - December'];
 
-      doc.fontSize(16).font('Helvetica-Bold').text('Form 941', { align: 'center' });
+      // ── CoAIleague platform header bar ───────────────────────────────
+      const pw941 = doc.page.width;
+      const mg941 = 40;
+      doc.rect(mg941, 30, pw941 - mg941 * 2, 28).fillColor('#1e293b').fill();
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#f59e0b')
+        .text(data.employerName || 'Employer', mg941 + 8, 39, { continued: true });
+      doc.fontSize(8).font('Helvetica').fillColor('#94a3b8')
+        .text(data.employerLicenseNumber ? `  ·  License # ${data.employerLicenseNumber}` : '', { continued: false });
+      doc.moveDown(0.5);
+      // ── IRS form title ────────────────────────────────────────────────
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('black').text('Form 941', { align: 'center' });
       doc.fontSize(11).font('Helvetica').text("Employer's QUARTERLY Federal Tax Return", { align: 'center' });
       doc.fontSize(10).text(`Quarter ${data.quarter} (${quarterNames[data.quarter]}) - Tax Year ${data.taxYear}`, { align: 'center' });
       doc.moveDown(1);
-
       doc.fontSize(9).font('Helvetica-Bold').text('Department of the Treasury - Internal Revenue Service', { align: 'center' });
       doc.moveDown(1);
 
