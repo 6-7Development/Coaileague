@@ -36,6 +36,7 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { chatManager } from "@/services/chatConnectionManager";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { dispatchTrinityState } from "@/lib/trinityState";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { apiFetch, AnyResponse } from "@/lib/apiError";
 import { useToast } from "@/hooks/use-toast";
@@ -1038,6 +1039,17 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
     onlineUsers,
   } = useChatroomWebSocket(user?.id, userName, roomId);
 
+  // Sync Trinity logo state with bot typing activity
+  useEffect(() => {
+    if (typingUserInfo) {
+      dispatchTrinityState("speaking");
+    } else {
+      // Small delay before idle — avoids flicker when bot finishes typing
+      const t = setTimeout(() => dispatchTrinityState("idle"), 500);
+      return () => clearTimeout(t);
+    }
+  }, [typingUserInfo]);
+
   useEffect(() => {
     if (wsError === "Conversation not found" && autoRetryCount.current < 3) {
       const timer = setTimeout(() => {
@@ -1248,6 +1260,9 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
   const handleSend = useCallback(() => {
     const text = input.trim();
     if (!text || !isConnected) return;
+
+    // Signal Trinity logo: user sent → waiting for AI response
+    dispatchTrinityState("thinking");
 
     // Native-feel send confirmation: haptic + brief send-button pop animation.
     haptics.light();

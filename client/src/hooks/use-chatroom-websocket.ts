@@ -1,3 +1,4 @@
+import { dispatchTrinityState } from '@/lib/trinityState';
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { ChatMessage } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -274,6 +275,11 @@ export function useChatroomWebSocket(
               break;
             }
             const newMsg = data.message as ChatMessage;
+            // Sync Trinity logo: bot/HelpAI/Trinity message arriving → speaking → idle
+            if ((newMsg as ChatMessage & { isBot?: boolean }).isBot) {
+              dispatchTrinityState("speaking");
+              setTimeout(() => dispatchTrinityState("idle"), 1800);
+            }
             setMessages((prev) => {
               if (newMsg.id && prev.some(m => m.id === newMsg.id)) return prev;
               return [...prev, newMsg];
@@ -349,8 +355,17 @@ export function useChatroomWebSocket(
           }
           break;
 
+        case 'ptt_dispatcher_response':
+          // PTT: HelpAI dispatcher responded → briefly show speaking state
+          dispatchTrinityState("speaking");
+          setTimeout(() => dispatchTrinityState("idle"), 2000);
+          break;
+
         case 'user_typing':
           if (data.userId && data.userId !== userIdRef.current && data.isTyping !== undefined) {
+            // If a bot is typing → Trinity logo goes to thinking
+            if (data.isBot && data.isTyping) dispatchTrinityState("thinking");
+            if (data.isBot && !data.isTyping) setTimeout(() => dispatchTrinityState("idle"), 400);
             if (!isForActiveConversation(resolvedConversationIdRef.current, requestedConversationIdRef.current, joinedConversationIdRef.current, data)) {
               break;
             }
