@@ -1860,3 +1860,101 @@ export const complianceEnrollments = pgTable("compliance_enrollments", {
   index("ce_status_idx").on(table.status),
   uniqueIndex("ce_workspace_employee_idx").on(table.workspaceId, table.employeeId),
 ])
+
+// ─── Wave 12: Physical Office Compliance Audit ─────────────────────────────
+// GPS-locked photo evidence for DPS OC 1702 office/signage compliance.
+// Every photo is verified: EXIF GPS must match workspace address within 200m.
+
+export const officeCompliancePhotos = pgTable("office_compliance_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+
+  // Photo category
+  photoType: varchar("photo_type").notNull(), // 'wall_license' | 'labor_law_poster' | 'exterior_signage' | 'vehicle_marking' | 'uniform_front' | 'uniform_back'
+  category: varchar("category").notNull(),    // 'office' | 'vehicle' | 'uniform'
+
+  // Storage
+  fileUrl: text("file_url").notNull(),
+  fileName: varchar("file_name"),
+  fileSizeBytes: integer("file_size_bytes"),
+
+  // EXIF extracted data
+  exifGpsLat: doublePrecision("exif_gps_lat"),
+  exifGpsLng: doublePrecision("exif_gps_lng"),
+  exifDateTaken: timestamp("exif_date_taken", { withTimezone: true }),
+  exifDevice: varchar("exif_device"),         // Camera/phone model for audit trail
+  exifRaw: jsonb("exif_raw"),                 // Full EXIF blob for DPS review
+
+  // GPS verification result
+  registeredAddressLat: doublePrecision("registered_address_lat"),
+  registeredAddressLng: doublePrecision("registered_address_lng"),
+  distanceFromAddressMeters: doublePrecision("distance_from_address_meters"),
+  gpsVerified: boolean("gps_verified").default(false),
+  gpsRejectionReason: varchar("gps_rejection_reason"), // 'distance_exceeded' | 'no_exif_gps' | 'stale_timestamp' | 'future_timestamp'
+
+  // AI Vision verification (Gemini Flash)
+  visionVerified: boolean("vision_verified"),
+  visionConfidence: doublePrecision("vision_confidence"), // 0.0 – 1.0
+  visionLabels: jsonb("vision_labels"),       // ['company_name', 'psb_license', 'labor_law_poster']
+  visionNotes: text("vision_notes"),
+
+  // Compliance status
+  status: varchar("status").notNull().default('pending'), // 'pending' | 'verified' | 'rejected' | 'expired'
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verifiedBy: varchar("verified_by"),          // 'system' | userId
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // 365 days from upload for vehicles/uniforms
+  rejectionNotes: text("rejection_notes"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Wave 12: Asset Registry (Vehicles & Uniforms) ─────────────────────────
+export const assetRegistry = pgTable("asset_registry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+
+  assetType: varchar("asset_type").notNull(),  // 'vehicle' | 'uniform' | 'radio' | 'key' | 'badge'
+  assetName: varchar("asset_name").notNull(),  // 'Unit 101', 'Standard Duty Uniform'
+  identifier: varchar("identifier"),           // VIN, plate number, badge number, serial
+
+  // NFC tag (for equipment check-in)
+  nfcTagId: varchar("nfc_tag_id").unique(),
+
+  // Current compliance photo
+  currentPhotoId: varchar("current_photo_id"), // FK → officeCompliancePhotos.id
+  lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+  recertDueAt: timestamp("recert_due_at", { withTimezone: true }), // lastVerified + 365 days
+  complianceStatus: varchar("compliance_status").notNull().default('unverified'),
+  // 'unverified' | 'compliant' | 'expiring_soon' | 'non_compliant'
+
+  // For radio/key/badge: clock-out gate tracking
+  currentlyAssignedTo: varchar("currently_assigned_to"), // employeeId
+  checkedOutAt: timestamp("checked_out_at", { withTimezone: true }),
+  mustReturnBy: timestamp("must_return_by", { withTimezone: true }),
+
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Wave 12: Equipment Check-In/Out Log ───────────────────────────────────
+export const equipmentCheckinLog = pgTable("equipment_checkin_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  assetId: varchar("asset_id").notNull(),      // FK → assetRegistry.id
+  employeeId: varchar("employee_id").notNull(),
+  shiftId: varchar("shift_id"),
+
+  eventType: varchar("event_type").notNull(),  // 'checkout' | 'checkin' | 'nfc_tap'
+  nfcTagId: varchar("nfc_tag_id"),
+  deviceGpsLat: doublePrecision("device_gps_lat"),
+  deviceGpsLng: doublePrecision("device_gps_lng"),
+
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  serverTimestamp: timestamp("server_timestamp").notNull().defaultNow(),
+  notes: text("notes"),
+});
+

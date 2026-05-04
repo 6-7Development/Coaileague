@@ -3065,5 +3065,13 @@ self.addEventListener('activate', async () => {
         log.warn('[Startup] Failed to log Trinity action surface', err);
       }
     }, 15000);
+
+    // Wave 12: Patrol Watcher + Lone Worker Dead Man Switch — production crons
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_PATROL_WATCHER === 'true') {
+      const { runPatrolWatcherCheck, runLoneWorkerCheck } = await import('./services/ops/patrolWatcherService');
+      setInterval(() => runPatrolWatcherCheck().catch(() => {}), 5 * 60 * 1000); // every 5 min
+      setInterval(() => runLoneWorkerCheck().catch(() => {}), 2 * 60 * 1000);    // every 2 min
+      log.info('🛡️  [Wave12] PatrolWatcher + LoneWorker Dead Man Switch active (5min/2min intervals)');
+    }
   })();
 })();

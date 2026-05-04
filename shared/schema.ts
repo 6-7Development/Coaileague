@@ -50,7 +50,7 @@ export * from './schema/domains/billing';
 export * from './schema/domains/trinity';
 export * from './schema/domains/comms';
 export * from './schema/domains/clients';
-export * from './schema/domains/compliance';
+export * from './schema/domains/compliance'; // Wave 12: officeCompliancePhotos, assetRegistry, equipmentCheckinLog
 export * from './schema/domains/audit';
 export * from './schema/domains/support';
 export * from './schema/domains/sales';

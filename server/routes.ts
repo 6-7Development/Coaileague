@@ -34,6 +34,10 @@ import { checkTokenGate } from "./services/billing/tokenVelocitySentinel";
 import { calculateSafeToSpend } from "./services/finance/safeToSpendService";
 import { answerPostOrderQuestion } from "./services/fieldOperations/postOrderRagService";
 import { runGhostExpenseAudit } from "./services/finance/ghostExpenseAuditor";
+import { submitCompliancePhoto, getOfficeAuditStatus, checkRecertificationDue } from "./services/compliance/officeAuditService";
+import { verifyNFCScan } from "./services/ops/nfcIntegrityService";
+import { processEquipmentTap, checkClockOutGate, generateEquipmentComplianceLog } from "./services/ops/equipmentLedgerService";
+import { runPatrolWatcherCheck, runLoneWorkerCheck, recordLoneWorkerCheckin } from "./services/ops/patrolWatcherService";
 import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./services/billing/stripeClient";
 
@@ -203,6 +207,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: unknown) {
       return res.status(500).json({ error: err instanceof Error ? err.message : 'RAG query failed' });
     }
+  });
+
+  // ── Wave 12: NFC Physical Integrity & Office/Asset Verification ─────────
+
+  // Task 1: Office compliance photo upload + GPS verification
+  app.post('/api/compliance/office-audit/photo', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await submitCompliancePhoto({ workspaceId: req.workspaceId!, uploadedBy: req.user!.id, ...req.body });
+      return res.status(result.success ? 200 : 422).json(result);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Verification failed' }); }
+  });
+
+  app.get('/api/compliance/office-audit/status', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try { return res.json(await getOfficeAuditStatus(req.workspaceId!)); }
+    catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Status check failed' }); }
+  });
+
+  // Task 2: Asset recertification status
+  app.get('/api/compliance/assets/recert-status', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try { return res.json(await checkRecertificationDue(req.workspaceId!)); }
+    catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Recert check failed' }); }
+  });
+
+  // Task 3: NFC anti-spoof scan verification
+  app.post('/api/guard-tours/scan-verify', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await verifyNFCScan({ workspaceId: req.workspaceId!, employeeId: req.user!.id, ...req.body });
+      return res.status(result.allowed ? 200 : 403).json(result);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Scan verification failed' }); }
+  });
+
+  // Task 4: Equipment tap (check-in/check-out)
+  app.post('/api/equipment/tap', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await processEquipmentTap({ workspaceId: req.workspaceId!, employeeId: req.user!.id, ...req.body });
+      return res.status(result.success ? 200 : 404).json(result);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Equipment tap failed' }); }
+  });
+
+  // Task 4: Clock-out gate check
+  app.get('/api/equipment/clock-out-gate', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try { return res.json(await checkClockOutGate({ workspaceId: req.workspaceId!, employeeId: req.user!.id })); }
+    catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Gate check failed' }); }
+  });
+
+  // Task 4: Equipment compliance log (for DPS evidence bundle)
+  app.get('/api/equipment/compliance-log', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const windowDays = parseInt(String(req.query.days || '30'), 10);
+      const windowEnd = new Date();
+      const windowStart = new Date(windowEnd.getTime() - windowDays * 24 * 60 * 60 * 1000);
+      return res.json(await generateEquipmentComplianceLog({ workspaceId: req.workspaceId!, windowStart, windowEnd }));
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Log generation failed' }); }
+  });
+
+  // Task 5: Lone-worker safety check-in
+  app.post('/api/safety/lone-worker/checkin', requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await recordLoneWorkerCheckin({ workspaceId: req.workspaceId!, employeeId: req.user!.id, ...req.body });
+      return res.json(result);
+    } catch (err: unknown) { return res.status(500).json({ error: err instanceof Error ? err.message : 'Check-in failed' }); }
+  });
+
+  // Task 5: Admin: manual patrol watcher run (diagnostic)
+  app.post('/api/admin/patrol-watcher/run', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const result = await runPatrolWatcherCheck();
+    const loneResult = await runLoneWorkerCheck();
+    return res.json({ patrol: result, loneWorker: loneResult });
   });
 
   // Task 5: Ghost Expense Auditor

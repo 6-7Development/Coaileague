@@ -759,6 +759,16 @@ export const guardTourScans = pgTable("guard_tour_scans", {
   scannedAt: timestamp("scanned_at").notNull().defaultNow(),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  // Wave 12: NFC Anti-Spoof fields
+  nfcTagId: varchar("nfc_tag_id"),            // The physical NFC tag UUID read by the device
+  deviceGpsLat: doublePrecision("device_gps_lat"),
+  deviceGpsLng: doublePrecision("device_gps_lng"),
+  serverTimestamp: timestamp("server_timestamp", { withTimezone: true }).defaultNow(),
+  timeDriftSeconds: integer("time_drift_seconds"),   // |serverTime - deviceTime|
+  distanceFromCheckpointM: doublePrecision("distance_from_checkpoint_m"),
+  integrityVerified: boolean("integrity_verified").default(false),
+  integrityFlags: jsonb("integrity_flags"),           // ['gps_out_of_radius', 'time_drift', 'nfc_mismatch']
+  spoofDetected: boolean("spoof_detected").default(false),
   status: guardTourScanStatusEnum("status").default("completed"),
   notes: text("notes"),
   photoUrl: text("photo_url"),
