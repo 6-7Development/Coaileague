@@ -621,11 +621,24 @@ export class AIBrainService {
       platformCapabilitiesContext = buildPlatformCapabilitiesContext();
     } catch { /* non-blocking */ }
 
+    // Dynamic context injection — semantic routing injects the right doc sections
+    let dynamicDocContext = "";
+    try {
+      const { buildContextInjection } = await import("./trinityContextEngine");
+      const wsStateRow = await import("../../db").then(m => m.pool.query(
+        "SELECT state FROM workspaces WHERE id = $1 LIMIT 1", [workspaceId]
+      )).catch(() => ({ rows: [] }));
+      const wsState = wsStateRow.rows[0]?.state || "TX";
+      const injection = buildContextInjection(message, wsState);
+      dynamicDocContext = injection.sections.join("\n\n");
+    } catch { /* non-blocking */ }
+
     const enrichedSystemPrompt = [
       systemPrompt,
       regulatoryContextBlock,
       webSearchContext,
       platformCapabilitiesContext,
+      dynamicDocContext,
     ].filter(Boolean).join("\n\n");
 
     // ── Web Search — live knowledge when Trinity is uncertain ────────────────

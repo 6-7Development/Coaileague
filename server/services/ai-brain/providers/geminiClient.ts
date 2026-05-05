@@ -675,7 +675,51 @@ const AI_BRAIN_TOOLS: FunctionDeclaration[] = [
       required: []
     }
   }
-];
+,
+  {
+    name: "dispatch_action_card",
+    description: "Drop an interactive ChatActionBlock card into a ChatDock room. Use when you want to give a user a one-tap action button (e.g., approve a schedule, verify a license, acknowledge a compliance alert). Choose the most specific card type for the situation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        roomId: {
+          type: SchemaType.STRING,
+          description: "The ChatDock conversation/room ID to post the card into"
+        },
+        actionType: {
+          type: SchemaType.STRING,
+          description: "Card type: approval_button | shift_offer | document_upload | coi_request | poll | license_verify | shift_fill | schedule_approve | compliance_alert"
+        },
+        body: {
+          type: SchemaType.STRING,
+          description: "The explanatory text shown on the card"
+        },
+        props: {
+          type: SchemaType.STRING,
+          description: "JSON string of additional props specific to the card type (e.g., links array for license_verify, flags array for compliance_alert)"
+        }
+      },
+      required: ["roomId", "actionType", "body"]
+    }
+  },
+  {
+    name: "read_system_documentation",
+    description: "Query Trinity's own operational documentation for specific rules, workflows, or permissions. Use when uncertain about a platform rule, permission boundary, workflow step, or error state. This is Trinity's self-reference tool.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        document: {
+          type: SchemaType.STRING,
+          description: "Which doc to search: workflow | rbac | system | cognitive"
+        },
+        query: {
+          type: SchemaType.STRING,
+          description: "What you're looking for — e.g. 'schedule approval', 'manager permissions', '3-strike rule', 'calloff pipeline'"
+        }
+      },
+      required: ["document", "query"]
+    }
+  },];
 
 // ============================================================================
 // TOOL EXECUTION HANDLERS - Step 4 of 8-Step Workflow
@@ -859,6 +903,39 @@ async function executeToolCall(
       case 'get_temporal_trends':
         return await executeGetTemporalTrends(args, context);
       
+      case 'dispatch_action_card': {
+        const { roomId, actionType, body, props } = args as {
+          roomId: string; actionType: string; body: string; props?: string;
+        };
+        let parsedProps: Record<string, unknown> = { body };
+        try { if (props) parsedProps = { ...JSON.parse(props), body }; } catch { parsedProps = { body }; }
+        // Broadcast action card to the target ChatDock room
+        try {
+          const { broadcastToWorkspace } = await import('../../websocket');
+          await broadcastToWorkspace(context.workspaceId!, {
+            type: 'chatdock_action_card',
+            data: { roomId, actionType, props: parsedProps, sentBy: 'trinity' },
+          });
+          return { success: true, data: { roomId, actionType, dispatched: true },
+            message: `${actionType} card dispatched to room ${roomId}` };
+        } catch (err: unknown) {
+          return { success: false, data: null, error: err instanceof Error ? err.message : 'Dispatch failed' };
+        }
+      }
+
+      case 'read_system_documentation': {
+        const { document, query } = args as { document: string; query: string };
+        try {
+          const { queryDocumentation } = await import('../trinityContextEngine');
+          const docKey = (document || 'workflow') as 'workflow' | 'rbac' | 'system' | 'cognitive';
+          const content = queryDocumentation(docKey, query);
+          return { success: true, data: { document: docKey, query, content },
+            message: `Found documentation for: ${query}` };
+        } catch (err: unknown) {
+          return { success: false, data: null, error: err instanceof Error ? err.message : 'Doc read failed' };
+        }
+      }
+
       default:
         return {
           success: false,
