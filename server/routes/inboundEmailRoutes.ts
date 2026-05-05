@@ -801,6 +801,26 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     }
 
     // Step 6: INSERT into platform_emails — return 200 immediately after
+    // Guard: ensure email bootstrap tables exist (in case registerLegacyBootstrap
+    // ran before this route file was imported on first deploy)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS platform_emails (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id VARCHAR, resend_email_id VARCHAR(255) UNIQUE,
+          message_id VARCHAR(500), in_reply_to VARCHAR(500),
+          references_header TEXT, direction VARCHAR(20) NOT NULL,
+          from_address VARCHAR(320) NOT NULL, from_name VARCHAR(255),
+          to_addresses TEXT[] NOT NULL, subject TEXT,
+          body_html TEXT, body_text TEXT, snippet TEXT,
+          owner_user_id VARCHAR, folder VARCHAR(50) DEFAULT 'inbox',
+          trinity_processed BOOLEAN DEFAULT false,
+          trinity_processed_at TIMESTAMPTZ, trinity_action_taken VARCHAR(100),
+          received_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+    } catch (_tableErr) { /* already exists */ }
+
     const insertResult = await pool.query(`
       INSERT INTO platform_emails (
         workspace_id, resend_email_id, message_id, in_reply_to, references_header,
@@ -992,10 +1012,12 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     }
 
   } catch (err: unknown) {
-    log.error('[InboundEmail/root] Unhandled error:', err instanceof Error ? err.message : String(err));
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? err.stack : '';
+    log.error('[InboundEmail/root] Unhandled error:', errMsg, errStack?.slice(0, 500));
     // Still return 200 — never 5xx to Resend
     if (!res.headersSent) {
-      res.status(200).json({ received: true, error: 'internal_processing_error' });
+      res.status(200).json({ received: true, error: 'internal_processing_error', detail: errMsg.slice(0, 100) });
     }
   }
 });
