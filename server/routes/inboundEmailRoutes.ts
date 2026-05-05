@@ -432,9 +432,12 @@ function buildForwardHtml(opts: {
 // Addresses routed to the platform workspace when they are not explicitly
 // registered in email_routing. auto_process drives Trinity category handling.
 const CANONICAL_PLATFORM_LOCALPARTS: Record<string, { processAs: string; routeType: string }> = {
-  // ── General / master inbox — all route to support inbox ──────────────────
-  // info@, contact@, hello@ are master-inbox aliases. They share the
-  // support inbox so root admin and the team see every inbound message.
+  // ── Platform master inbox — root_admin and support team see all ──────────
+  // All of these land in the unified platform inbox, RBAC-gated by platform_role.
+  // root_admin sees everything. support_agent sees their category. etc.
+  root:        { processAs: 'support',     routeType: 'platform_inbox' },
+  admin:       { processAs: 'support',     routeType: 'platform_inbox' },
+  noreply:     { processAs: 'support',     routeType: 'platform_inbox' },
   info:        { processAs: 'support',     routeType: 'platform_inbox' },
   contact:     { processAs: 'support',     routeType: 'platform_inbox' },
   hello:       { processAs: 'support',     routeType: 'platform_inbox' },
@@ -667,15 +670,12 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
   const attachments = payload.attachments || [];
 
   try {
-    // Step 3a: Platform root/noreply address forwarding.
-    // Both root@ and noreply@ are forwarded to ROOT_EMAIL_FORWARD_TO when
-    // configured. Previously noreply@ was silently discarded, which caused
-    // operators to lose inbound replies and auto-response bounces that still
-    // contained actionable context. Forwarding preserves the body in all
-    // cases via buildForwardHtml().
+    // Step 3a: root@ and noreply@ now go through the normal platform inbox flow.
+    // They are in CANONICAL_PLATFORM_LOCALPARTS → platform_inbox → RBAC-gated.
+    // Optional: also forward to ROOT_EMAIL_FORWARD_TO as a CC-style notification.
     const isRootAddress = toEmail === 'root@coaileague.com';
     const isNoreplyAddress = toEmail === 'noreply@coaileague.com';
-    if (isRootAddress || isNoreplyAddress) {
+    if ((isRootAddress || isNoreplyAddress) && false) { // disabled — now routes through normal flow
       if (!ROOT_EMAIL_FORWARD_TO) {
         const reason = isNoreplyAddress ? 'noreply_forward_unconfigured' : 'root_forward_unconfigured';
         log.warn(`[InboundEmail/root] ROOT_EMAIL_FORWARD_TO not configured — dropping ${toEmail} email`);
@@ -874,10 +874,13 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     });
 
     // Step 8: Trinity auto-process (deferred via scheduleNonBlocking)
-    if (route.auto_process && route.process_as && workspaceId) {
+    // For platform_inbox emails (workspaceId=null), use the process_as category
+    // to route to Trinity's platform inbox processor instead of tenant processor.
+    const trinityWorkspace = workspaceId || (route.route_type === 'platform_inbox' ? 'platform' : null);
+    if (route.auto_process && route.process_as && trinityWorkspace) {
       scheduleNonBlocking('inbound-email.trinity-auto-process', async () => {
         const { trinityEmailProcessor } = await import('../services/trinityEmailProcessor');
-        await trinityEmailProcessor.processInbound({
+        await trinityEmailProcessor.processInbound({  // trinityWorkspace may be 'platform' for inbox emails
           to: toEmail,
           from: fromEmail,
           subject,
