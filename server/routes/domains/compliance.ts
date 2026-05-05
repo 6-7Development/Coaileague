@@ -1,3 +1,4 @@
+import { vmsWebhookRouter } from "../vmsWebhookRoutes";
 import { surgeEventRouter } from "../surgeEventRoutes";
 // Domain Compliance & Documents — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
@@ -111,6 +112,7 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/compliance/verify/id-photo", idPhotoRouter);
   app.use("/api/schedule-approval", scheduleApprovalRouter);
   app.use("/api/webhooks", railwayWebhookRouter);
+  app.use("/api/webhooks/vms", vmsWebhookRouter);
   app.use("/api/support/shadow", shadowModeRouter);
   app.use("/api/billing/ptt-seats", pttSeatRouter);
   app.use("/api/surge-events", surgeEventRouter);

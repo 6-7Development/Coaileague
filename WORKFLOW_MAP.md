@@ -1936,3 +1936,122 @@ On failure: plaidTransferFailureReason populated
   pay_stubs.plaidTransferStatus = 'failed'
   pay_stubs row NOT re-attempted automatically — human must re-approve
 ```
+
+---
+
+## PIPELINE 20 — HARDWARE-AGNOSTIC VMS BRIDGE (Wave 29C)
+
+### Overview
+VMS fires webhook → Trinity validates + parses → GPS cross-reference for nearest guard →
+SARGE dispatches alarm card to guard's ChatDock → Guard acknowledges →
+Trinity auto-writes to client DAR.
+
+### What's Built
+```
+vmsWebhookRoutes.ts (392 lines)
+  POST /api/webhooks/vms/:orgCode/:cameraId         — main event receiver
+  POST /api/webhooks/vms/:orgCode/:cameraId/acknowledge — guard ack + DAR write
+  POST /api/webhooks/vms/register                   — camera registration
+
+DB tables (in migrate-wave-23d-25.js):
+  camera_registrations  — per-camera webhook secrets, GPS coords, zone names
+  vms_events            — every event with severity, ack status, response time
+  dar_entries.vms_event_id — FK linking DAR entries to VMS events
+```
+
+### 7-Step Pipeline
+
+**STEP 1 — TRIGGER: VMS fires webhook**
+```
+Any VMS vendor (Verkada, Avigilon, Eagle Eye, Milestone, generic)
+POST /api/webhooks/vms/{orgCode}/{cameraId}
+Payload: { event_type, zone, timestamp, latitude?, longitude?, ...vendor_fields }
+```
+
+**STEP 2 — VALIDATE: Security check**
+```
+Camera registration lookup: camera_registrations WHERE camera_id=$1 AND org_code=$2 AND is_active=true
+HMAC-SHA256 verification: X-VMS-Signature header vs per-camera secret
+  Secret: 32-byte random hex, unique per camera — stored in camera_registrations.webhook_secret
+  If unknown camera or invalid signature: return 200 silently (never reveal registration status)
+Event normalization: CANONICAL_EVENT_MAP maps vendor event names to canonical types
+  motion_detected → motion_alert | person_detected → person_alert | etc.
+```
+
+**STEP 3 — PROCESS: Trinity GPS cross-reference**
+```
+If camera has GPS coords (latitude/longitude):
+  Haversine formula: find clocked-in guard with GPS ping in last 15 minutes
+  SELECT FROM employees JOIN time_entries WHERE clock_out_time IS NULL
+  ORDER BY distance_meters ASC — nearest guard wins
+If no GPS: fall back to any clocked-in guard in workspace
+
+Severity mapping:
+  alarm_active, door_breach, person_alert → CRITICAL (immediate FCM push + 5min SLA)
+  motion_alert, door_held, crowd_alert   → WARNING (ChatDock only)
+  all others                             → INFO (log only)
+```
+
+**STEP 4 — PERSIST: Log to vms_events**
+```
+INSERT INTO vms_events: workspace_id, camera_id, event_type, zone_name,
+  severity, event_timestamp, payload, created_at
+Returns: vmsEventId for tracking
+Response 200 sent to VMS HERE — processing continues async via setImmediate
+```
+
+**STEP 5 — PROPAGATE: SARGE dispatches to nearest guard**
+```
+SARGE drops compliance_alert ChatActionBlock in guard's shift room:
+  🚨 ALARM: {event_type} detected at {zone_name} — Camera {camera_name}
+  Nearest officer: {guard_name}. Proceed to investigate and acknowledge when clear.
+  Flags: VMS_EVENT (camera + zone) | RESPONSE_REQUIRED (tap Acknowledge)
+
+If no guard GPS found:
+  Broadcast to #ops room with NO_GPS flag — manual dispatch required
+```
+
+**STEP 6 — NOTIFY: Supervisor escalation**
+```
+CRITICAL events only:
+  FCM push to supervisor/manager/org_owner: '[emoji] VMS ALARM: {zone}'
+  setTimeout(5min): if vms_events.acknowledged_at IS NULL:
+    Broadcast ESCALATION card: 'No response after 5 minutes. Immediate action required.'
+```
+
+**STEP 7 — CONFIRM: Guard acknowledges + Trinity writes DAR**
+```
+POST /api/webhooks/vms/:orgCode/:cameraId/acknowledge
+Body: { vmsEventId, employeeId, notes }
+
+UPDATE vms_events SET acknowledged_at=NOW(), response_time_seconds=...
+INSERT INTO dar_entries:
+  activity_type: 'vms_response'
+  description: 'VMS Alert Response: {event_type} at {zone}. {notes}'
+  source: 'vms_auto'
+  vms_event_id: {vmsEventId}
+
+Guard never touches a form — full DAR entry generated from the acknowledgment.
+```
+
+### Camera Registration Flow
+```
+Tenant owner: POST /api/webhooks/vms/register
+Body: { workspaceId, cameraId, cameraName, zoneName, latitude, longitude, vmsVendor }
+Returns: {
+  webhookUrl: 'https://coaileague.com/api/webhooks/vms/{orgCode}/{cameraId}',
+  signingSecret: 'hex-string-32-bytes',
+  instructions: 'Configure your VMS to POST events to this URL...'
+}
+One registration per camera. Each camera has its own unique secret.
+```
+
+### Supported VMS Vendors
+```
+Verkada:    motion_detected, person_detected, door_forced_open, crowd_detected
+Avigilon:   MOTION_DETECTED, CLASSIFIED_OBJECT, ALARM_TRIGGERED
+Eagle Eye:  een.motionDetection, een.analytics.event
+Milestone:  MotionDetected, AlarmActivated
+Generic:    alarm, motion, breach (any JSON payload)
+Adding new vendor: extend CANONICAL_EVENT_MAP in vmsWebhookRoutes.ts
+```

@@ -258,6 +258,54 @@ async function migrate() {
       ON billing_action_log (workspace_id, action_type, created_at DESC)
     `);
 
+    
+    // ── VMS tables (Wave 29C — Hardware-Agnostic VMS Bridge) ──────────────────
+    console.log('\nCreating VMS tables...');
+    await run('camera_registrations table', `
+      CREATE TABLE IF NOT EXISTS camera_registrations (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id      TEXT NOT NULL,
+        camera_id         TEXT NOT NULL,
+        camera_name       TEXT,
+        zone_name         TEXT,
+        latitude          NUMERIC(10,6),
+        longitude         NUMERIC(10,6),
+        vms_vendor        TEXT DEFAULT 'generic',
+        webhook_secret    TEXT NOT NULL,
+        is_active         BOOLEAN NOT NULL DEFAULT true,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ,
+        UNIQUE (workspace_id, camera_id)
+      )
+    `);
+    await run('vms_events table', `
+      CREATE TABLE IF NOT EXISTS vms_events (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id            TEXT NOT NULL,
+        camera_id               TEXT NOT NULL,
+        camera_name             TEXT,
+        org_code                TEXT NOT NULL,
+        event_type              TEXT NOT NULL,
+        raw_event_type          TEXT,
+        zone_name               TEXT,
+        severity                TEXT NOT NULL DEFAULT 'info',
+        event_timestamp         TEXT,
+        payload                 JSONB DEFAULT '{}'::jsonb,
+        acknowledged_at         TIMESTAMPTZ,
+        acknowledged_by         TEXT,
+        resolution_notes        TEXT,
+        response_time_seconds   NUMERIC(10,2),
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run('vms_events: idx_workspace', `
+      CREATE INDEX IF NOT EXISTS idx_vms_events_workspace
+      ON vms_events (workspace_id, severity, created_at DESC)
+    `);
+    await run('dar_entries: vms_event_id column', `
+      ALTER TABLE dar_entries ADD COLUMN IF NOT EXISTS vms_event_id UUID
+    `);
+
         await pool.query('COMMIT');
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('  Migration complete ✅');
