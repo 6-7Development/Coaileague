@@ -392,7 +392,30 @@ export const BILLING = {
         "Cost per vehicle analytics",
       ],
     },
-    ai_tokens: {
+
+    vms_bridge: {
+      id: "addon_vms_bridge",
+      name: "VMS Intelligence Bridge",
+      description: "Connect your existing camera system (Verkada, Avigilon, Eagle Eye, Milestone) to CoAIleague. SARGE dispatches guards autonomously on motion/alarm events. Auto-writes incident activity to client DARs.",
+      monthlyPrice: 4900,     // $49/month per VMS vendor connection
+      isRecurring: true,
+      isMetered: false,       // Flat fee — AI usage on webhooks is deterministic, not generative
+      perAdditionalVendor: 4900,  // $49 per additional VMS vendor connection
+      stripePriceEnvVar: "STRIPE_PRICE_ADDON_VMS_BRIDGE",
+      availableTiers: ["professional", "business", "enterprise", "strategic"],
+      trinityFeatureFlag: "vms_bridge",
+      valueProp: "Security companies can offer clients AI-monitored camera integration without replacing existing hardware.",
+      features: [
+        "Hardware-agnostic — works with any VMS that sends webhooks",
+        "Supported out of box: Verkada, Avigilon, Eagle Eye, Milestone",
+        "SARGE auto-dispatches nearest GPS-tracked guard on alarm",
+        "5-minute response SLA with supervisor escalation",
+        "Auto-generates DAR entry when guard acknowledges",
+        "Per-camera HMAC-signed secrets — enterprise security",
+        "Live response time analytics per camera zone",
+      ],
+    },
+        ai_tokens: {
       id: "addon_ai_tokens_5000",
       name: "Additional AI Tokens Pack",
       description: "5,000 tokens added immediately to account balance",
@@ -696,7 +719,30 @@ export const BILLING = {
     // Intentionally priced at $0.0118/credit — above the $0.01 overage rate
     // to incentivize tier upgrades over repeated pack purchases.
     // =========================================================================
-    ai_tokens: {
+
+    vms_bridge: {
+      id: "addon_vms_bridge",
+      name: "VMS Intelligence Bridge",
+      description: "Connect your existing camera system (Verkada, Avigilon, Eagle Eye, Milestone) to CoAIleague. SARGE dispatches guards autonomously on motion/alarm events. Auto-writes incident activity to client DARs.",
+      monthlyPrice: 4900,     // $49/month per VMS vendor connection
+      isRecurring: true,
+      isMetered: false,       // Flat fee — AI usage on webhooks is deterministic, not generative
+      perAdditionalVendor: 4900,  // $49 per additional VMS vendor connection
+      stripePriceEnvVar: "STRIPE_PRICE_ADDON_VMS_BRIDGE",
+      availableTiers: ["professional", "business", "enterprise", "strategic"],
+      trinityFeatureFlag: "vms_bridge",
+      valueProp: "Security companies can offer clients AI-monitored camera integration without replacing existing hardware.",
+      features: [
+        "Hardware-agnostic — works with any VMS that sends webhooks",
+        "Supported out of box: Verkada, Avigilon, Eagle Eye, Milestone",
+        "SARGE auto-dispatches nearest GPS-tracked guard on alarm",
+        "5-minute response SLA with supervisor escalation",
+        "Auto-generates DAR entry when guard acknowledges",
+        "Per-camera HMAC-signed secrets — enterprise security",
+        "Live response time analytics per camera zone",
+      ],
+    },
+        ai_tokens: {
       id: "credits_ai_5000",
       name: "AI Tokens Pack",
       tokens: 5000,

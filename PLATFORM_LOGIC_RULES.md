@@ -238,6 +238,8 @@ RULE-T05 | Trinity | MEDIUM | Trinity deliberation on hard-escalation topics mus
 
 ## REVISION HISTORY
 - v1.0 — Initial rules from billing + auth + operational audit (all waves)
+- v1.1 — Wave 29C+ continued audit: +13 rules (storage, compliance, security sections)
+- Total: 38 rules | 9 sections | Run: grep 'RULE-' PLATFORM_LOGIC_RULES.md
 - Run: grep 'RULE-' PLATFORM_LOGIC_RULES.md to list all active rules
 - Count: 25 rules across 5 categories
 

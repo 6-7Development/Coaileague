@@ -408,6 +408,84 @@ simulateAcmeStripe.ts     → Dev-only script. Not mounted in prod routes. Keep 
 
 ---
 
+## Wave 29C — VMS Intelligence Bridge
+
+### VMS Bridge Addon
+`shared/billingConfig.ts`: vms_bridge addon added
+  $49/month per VMS vendor connection
+  Available: professional, business, enterprise, strategic
+  STRIPE_PRICE_ADDON_VMS_BRIDGE env var required
+  Feature flag: vms_bridge (checked by requireBillingFeature)
+
+### Routes
+`server/routes/vmsWebhookRoutes.ts` (392 lines)
+  POST /api/webhooks/vms/:orgCode/:cameraId → event ingestion
+  POST /api/webhooks/vms/:orgCode/:cameraId/acknowledge → guard ack + DAR write
+  POST /api/webhooks/vms/register → camera registration + secret generation
+
+### DB Tables (in migrate-wave-23d-25.js)
+  camera_registrations: workspace_id, camera_id, zone_name, lat/lng, webhook_secret
+  vms_events: event_type, severity, acknowledged_at, response_time_seconds
+  dar_entries.vms_event_id column added
+
+### Supported VMS Vendors
+  Verkada, Avigilon, Eagle Eye, Milestone, generic (any JSON payload)
+  CANONICAL_EVENT_MAP in vmsWebhookRoutes.ts — add new vendors in one place
+
+### Security
+  Per-camera HMAC-SHA256 secrets (32-byte random hex per registration)
+  Unique webhook URL per tenant × per camera
+  Silently acks unknown cameras (never reveals registration status)
+
+---
+
+## Platform Logic Rules — Active Rule Set
+
+`PLATFORM_LOGIC_RULES.md` (38 rules across 9 sections)
+Trinity reads this to detect broken states. CS reads to diagnose complaints.
+
+Sections:
+  1. Billing Integrity (B01–B08): feature gates, per-action charges, addon billing
+  2. Financial Safety (F01–F05): ACH auth, payroll close, Decimal math
+  3. Access Control (A01–A05): auditor tokens, Shadow Mode, employee cascade
+  4. Operations (O01–O05): calloff SLA, VMS 5-min SLA, NFC drift
+  5. Data Integrity (D01–D05): workspace_id scope, simulation expiry
+  6. Trinity Cognitive (T01–T05): no autonomous ACH, Zero Liability Protocol
+  7. Document & Storage (S01–S03): PDF-to-GCS, ICS-214 persistence
+  8. Compliance & Regulatory (C01–C05): license expiry, surge SMS cap
+  9. Security & Isolation (SEC01–SEC04): client data scoping, VMS secrets
+
+Critical open gaps (require sprint):
+  RULE-SEC01: Client portal reads need client_id scope enforcement
+  RULE-S01: PDF-to-GCS pipeline (pdfEngine returns Buffer only)
+  RULE-C01/C02: Guard license expiry alerts + shift assignment block
+
+---
+
+## Public Marketing Pages (Updated)
+
+`client/src/pages/homepage.tsx` (rewritten — 425 lines)
+  Hero: Biological AI Brain narrative — Trinity + SARGE as permanent AI co-founders
+  Sections: dual-agent introduction, ChatDock screenshot, schedule screenshot,
+    VMS Bridge $49/month, Officer of Month/Hero Badge, premium features grid
+  SARGE now mentioned prominently (was 0 references in original)
+
+`client/src/components/scoring/HeroBadge.tsx` (new — 122 lines)
+  HeroBadge: officer_of_month (violet gradient) + officer_of_year (amber gradient)
+  HeroShield: compact variant for ChatDock shift room headers
+  Tooltip shows period label, officer name, and meritocracy explanation
+  Sizes: xs, sm, md, lg
+
+Honor Roll system (already built, now surfaced in homepage):
+  honorRollService.ts: selectHonorRollPick(), getCurrentHonorRoll()
+  Score floor: 85 (favorable+) for 6 months (monthly) / 12 months (yearly)
+  No nominations, no voting — pure score-based meritocracy
+  Displayed: officer profile, ChatDock shift room, honor-roll.tsx page
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Missing Middleware Imports (added 2026-05-04)
 
 **ROOT CAUSE OF requireAuth CRASH LOOP:**
