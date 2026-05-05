@@ -54,6 +54,25 @@ REDIS_URL             redis://... or rediss://... (Redis Cloud or Railway Redis)
             Copy the REDIS_URL from the Redis service's Variables tab
 ```
 
+
+### Google Cloud Storage (Document Vault — PDFs, Attachments)
+```
+GOOGLE_APPLICATION_CREDENTIALS  Path to service account JSON, OR the JSON string itself
+DEFAULT_OBJECT_STORAGE_BUCKET_ID  GCS bucket name (e.g. coaileague-tenant-docs)
+
+  WHERE TO GET:
+    1. Google Cloud Console → IAM → Service Accounts → Create Service Account
+    2. Role: Storage Object Creator + Storage Object Viewer
+    3. Keys tab → Add Key → JSON → download file
+    4. Railway: set GOOGLE_APPLICATION_CREDENTIALS to the full JSON content (stringify it)
+       OR upload file to Railway volume and set path
+
+  WITHOUT THIS: PDFs generated in memory only — not persisted after request
+                ICS-214 FEMA documents, pay stubs, UoF reports all lost on server restart
+  WITH THIS:    All generated documents stored in GCS, retrievable by URL
+                Tenant vault: each workspace has isolated path: gs://bucket/{workspaceId}/
+```
+
 ### Firebase / FCM (push notifications for field officers)
 ```
 FIREBASE_PROJECT_ID       your-firebase-project-id

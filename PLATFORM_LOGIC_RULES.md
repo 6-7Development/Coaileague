@@ -240,3 +240,101 @@ RULE-T05 | Trinity | MEDIUM | Trinity deliberation on hard-escalation topics mus
 - v1.0 — Initial rules from billing + auth + operational audit (all waves)
 - Run: grep 'RULE-' PLATFORM_LOGIC_RULES.md to list all active rules
 - Count: 25 rules across 5 categories
+
+---
+
+## SECTION 7 — DOCUMENT & STORAGE RULES
+
+RULE-S01 | Storage | HIGH | All generated PDFs must be saved to tenant vault (GCS)
+  DETECT:  pdfEngine.generateDAR/generateUoF/generateICS214 returns Buffer
+           AND no corresponding row in document_vault with pdf_url populated
+           AND no call to objectStorage.upload() in the generation handler
+  CORRECT: After pdfEngine.generate*(), call objectStorage.upload(buffer, path)
+           Store returned URL in document_vault table with entity_id + doc_type
+  AUDIT:   document_vault: entity_id, doc_type, gcs_url, generated_at, workspace_id
+
+RULE-S02 | Storage | HIGH | GCS credentials must be set in production
+  DETECT:  objectStorage.ts cannot initialize (GOOGLE_APPLICATION_CREDENTIALS missing)
+           All PDF uploads silently fail — PDFs exist only in memory for request lifetime
+  CORRECT: Railway env vars: GOOGLE_APPLICATION_CREDENTIALS (path or JSON string)
+           DEFAULT_OBJECT_STORAGE_BUCKET_ID (GCS bucket name)
+  AUDIT:   objectStorage health check on startup — log warn if unconfigured
+
+RULE-S03 | Storage | MEDIUM | ICS-214 PDFs must be stored with surge_deployments record
+  DETECT:  POST /api/surge-events/:id/generate-ics214 returns PDF buffer
+           AND surge_deployments has no ics214_pdf_url column populated
+  CORRECT: Store GCS URL in surge_deployments.ics214_pdf_url after upload
+           This is the FEMA reimbursement record — loss = potential $10k+ claim failure
+  AUDIT:   surge_deployments.ics214_pdf_url must be non-null for completed deployments
+
+---
+
+## SECTION 8 — COMPLIANCE & REGULATORY RULES
+
+RULE-C01 | Compliance | HIGH | Guard license expiry must generate proactive alerts
+  DETECT:  employees.license_expiry_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+           AND no notification_log row for 'license_expiring' + employee_id in last 7 days
+  CORRECT: Weekly cron: scan employees for 30-day expiry window
+           Fire SARGE ChatDock alert + supervisor FCM push
+           Proactive: 30-day warning, 7-day warning, day-of suspension flag
+  AUDIT:   employee_license_alerts: employee_id, expiry_date, alert_sent_at, notified_manager
+
+RULE-C02 | Compliance | HIGH | Guard with expired license must be flagged before shift assignment
+  DETECT:  shifts.assigned_employee_id = employee.id
+           AND employees.license_expiry_date < shift.start_time
+           AND no override flag on shift
+  CORRECT: Shift assignment validates license expiry — block with 400 if expired
+           Manager can override with explicit reason (logged to audit trail)
+  AUDIT:   shift_assignment_violations: shift_id, employee_id, violation_type, override_by
+
+RULE-C03 | Compliance | MEDIUM | FEMA surge SMS must not exceed 200 recipients per activation
+  DETECT:  surge_deployments COUNT for single surge_event_id > 200
+           AND all offers sent in single batch (TCPA class action risk)
+  CORRECT: Surge activation batches SMS in groups of 50 with 30s delay between batches
+           Hard ceiling: 200 total per surge event (current Twilio rate limit safety)
+  AUDIT:   surge_events.total_offers_sent, surge_events.last_sms_batch_at
+
+RULE-C04 | Compliance | MEDIUM | NFC patrol scan completeness must be tracked per tour
+  DETECT:  guard_tours with status='completed' WHERE checkpoints_scanned < checkpoints_required
+  CORRECT: Tour close validates all required checkpoints scanned
+           Incomplete tours: status='incomplete' with missing_checkpoint_ids array
+           Client-facing: tours show completion percentage
+  AUDIT:   guard_tours: checkpoints_required, checkpoints_scanned, completion_pct
+
+RULE-C05 | Compliance | LOW | Shift reports must be supervisor-verified before client delivery
+  DETECT:  POST /api/rms/shift-reports/:id/send-to-client called
+           WHERE shift_reports.status NOT IN ('verified', 'approved')
+  CORRECT: Route validates status === 'verified' || 'approved' before allowing send
+           (Currently enforced for DARs — verify shift_reports have same gate)
+  AUDIT:   shift_reports.sent_to_client_at + sent_by + recipient_email logged
+
+---
+
+## SECTION 9 — SECURITY & DATA ISOLATION RULES
+
+RULE-SEC01 | Security | CRITICAL | Client portal reads must be scoped to client_id
+  DETECT:  GET /api/clients/:id/portal returns data for client without WHERE client_id = $clientId
+           Client A can query client B's invoices/reports by changing the ID parameter
+  CORRECT: All client portal routes: WHERE workspace_id = $workspaceId AND client_id = $clientId
+           Validate requesting user is linked to that client_id via client_portal_users
+  AUDIT:   Log cross-client access attempts to security_audit_log
+
+RULE-SEC02 | Security | HIGH | VMS camera secrets must be unique per camera
+  DETECT:  camera_registrations where webhook_secret appears more than once
+  CORRECT: camera_registrations.webhook_secret generated with randomBytes(32) per registration
+           One compromised camera cannot forge events for another camera
+  AUDIT:   camera_registrations: created_at + last_event_at + total_events_received
+
+RULE-SEC03 | Security | HIGH | Shadow Mode session must notify tenant within 60 seconds
+  DETECT:  support_sessions.started_at + 60 seconds has passed
+           AND support_sessions.tenant_notified_at IS NULL
+  CORRECT: shadowModeService notifies workspace via broadcastToWorkspace on session start
+           Notification: '[Support Agent] accessed your workspace. Reason: [justification]'
+  AUDIT:   support_sessions.tenant_notified_at must be populated within 60s
+
+RULE-SEC04 | Security | MEDIUM | Plaid ACH must be in database transaction
+  DETECT:  plaidRoutes POST /disburse-batch creates plaid_transfers without BEGIN/COMMIT
+           If Stripe record created but Plaid fails: money debited, no transfer record
+  CORRECT: Wrap in pool.connect() transaction: BEGIN → create transfer record → 
+           initiateTransfer() → COMMIT (or ROLLBACK on Plaid failure)
+  AUDIT:   plaid_transfers.transaction_id must match a committed DB transaction

@@ -591,6 +591,20 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ message: "Employee is already deactivated" });
     }
 
+    // RULE-A03: When deactivating employee, cascade to future unstarted shifts
+    const becomingInactive = (validated as unknown).isActive === false && oldEmployee.isActive !== false;
+    if (becomingInactive) {
+      const cascadeResult = await db.execute(
+        sql`UPDATE shifts
+            SET status = 'open', assigned_employee_id = NULL, updated_at = NOW()
+            WHERE workspace_id = ${workspaceId}
+              AND assigned_employee_id = ${req.params.id}
+              AND start_time > NOW()
+              AND status NOT IN ('completed', 'cancelled', 'calloff')`
+      );
+      log.info(`[EmployeeDeactivate] Cascaded deactivation to future shifts for employee ${req.params.id}`);
+    }
+
     const oldOrgTitle = (oldEmployee as unknown)?.organizationalTitle;
     const oldWorkspaceRole = oldEmployee?.workspaceRole;
     const oldPosition = oldEmployee?.position;
