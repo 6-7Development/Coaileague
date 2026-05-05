@@ -89,21 +89,21 @@ export const CHAT_SERVER_CONFIG = {
         waitTime: 'Wait Time',
         position: 'Position in Queue',
       },
-      footer: 'HelpAI is reviewing your issue. An agent will be assigned shortly.',
+      footer: 'SARGE is reviewing your issue. An agent will be assigned shortly.',
     },
 
     // Ticket status messages
     ticketCreated: {
       title: 'Ticket Created',
       description: (ticketId: string) =>
-        `Ticket #${ticketId} - HelpAI is analyzing your issue. An agent will be with you shortly.`,
+        `Ticket #${ticketId} - SARGE is analyzing your issue. An agent will be with you shortly.`,
     },
 
     ticketAssigned: {
       title: 'Agent Assigned',
       message: (ticketId: string) =>
         `An agent is now helping you!\n\nTicket #${ticketId} has been assigned. Your chat is no longer read-only.`,
-      sender: 'HelpAI',
+      sender: 'SARGE',
     },
 
     // Welcome/intro messages

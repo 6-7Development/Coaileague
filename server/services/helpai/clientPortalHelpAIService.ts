@@ -237,7 +237,7 @@ function buildAISystemPrompt(reportType: ReportType, clientName?: string): strin
     other: 'miscellaneous concerns requiring management attention',
   };
 
-  return `You are HelpAI, the intelligent support assistant for a professional security services management platform. You are speaking with ${clientName || 'a valued client'} who has reported an issue regarding ${typeContext[reportType]}.
+  return `You are SARGE, the intelligent support assistant for a professional security services management platform. You are speaking with ${clientName || 'a valued client'} who has reported an issue regarding ${typeContext[reportType]}.
 
 Your primary mission is AUTONOMOUS RESOLUTION — attempt to resolve or provide clear answers without requiring human intervention wherever possible.
 
@@ -433,7 +433,7 @@ export class ClientPortalHelpAIService {
     const maxHistory = Math.min(session.messages.length, session.aiResponses.length);
     for (let i = 0; i < maxHistory; i++) {
       conversationLines.push(`Client: ${session.messages[i]}`);
-      conversationLines.push(`HelpAI: ${session.aiResponses[i]}`);
+      conversationLines.push(`SARGE: ${session.aiResponses[i]}`);
     }
     // Add the latest client message (which is the one we just stored)
     if (session.messages.length > session.aiResponses.length) {

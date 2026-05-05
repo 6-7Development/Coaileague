@@ -1095,7 +1095,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       
       const usersData = [
         { id: 'root-user-00000000', email: SENTINEL_EMAIL, firstName: 'Root', lastName: 'Administrator', passwordHash: '$2b$10$wN0UMmTiGuG0wEi/04xywOqwnLUILRxQmFTjuTfgovPv1kBS.T3ei', role: 'root_admin', emailVerified: false, currentWorkspaceId: PLATFORM_WORKSPACE_ID },
-        { id: 'helpai-bot', email: 'helpai@coaileague.ai', firstName: 'HelpAI', lastName: 'Bot', passwordHash: null, role: 'user', emailVerified: false },
+        { id: 'helpai-bot', email: 'sarge@coaileague.ai', firstName: 'SARGE', lastName: 'Field Intelligence', passwordHash: null, role: 'user', emailVerified: false },
       ];
       
       for (const user of usersData) {
@@ -1149,7 +1149,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       
       const employeesData = [
         { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-00000000', workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Root', lastName: 'Administrator', email: SENTINEL_EMAIL, hourlyRate: '0.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-COAI-00001' },
-        { id: 'helpai-employee', userId: null, workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'HelpAI', lastName: 'Bot', email: 'helpai@coaileague.support', hourlyRate: null, role: 'AI Support Assistant', workspaceRole: null, employeeNumber: 'EMP-HELP-00001' },
+        { id: 'helpai-employee', userId: null, workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'SARGE', lastName: 'Bot', email: 'helpai@coaileague.support', hourlyRate: null, role: 'AI Support Assistant', workspaceRole: null, employeeNumber: 'EMP-HELP-00001' },
         { id: 'trinity-employee', userId: null, workspaceId: PLATFORM_WORKSPACE_ID, firstName: 'Trinity', lastName: 'AI', email: 'trinity@coaileague.support', hourlyRate: null, role: 'AI Platform Guide', workspaceRole: null, employeeNumber: 'EMP-TRIN-00001' },
       ];
       

@@ -655,7 +655,7 @@ supportCommandRouter.post('/mascot/business-advice', requireSupportRole, async (
     
     const businessFocus = focus || mascotState.businessFocus || 'general';
     
-    const systemPrompt = `You are HelpAI, the AI Brain for CoAIleague workforce management platform.
+    const systemPrompt = `You are SARGE, the AI Brain for CoAIleague workforce management platform.
 You are a business buddy who helps business owners grow their businesses.
 Current focus area: ${businessFocus.toUpperCase()}
 
@@ -1259,7 +1259,7 @@ supportCommandRouter.get('/status', requireSupportRole, async (req: Authenticate
 supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRole, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Identify the sender - HelpAI bot or support staff
-    const senderName = req.user?.email?.includes('helpai') || req.platformRole === 'Bot' ? 'HelpAI' : 'Support';
+    const senderName = req.user?.email?.includes('helpai') || req.platformRole === 'Bot' ? 'SARGE' : 'Support';
     
     // Send initial system message about platform going down
     broadcastForceRefresh('system_message', {
@@ -1271,7 +1271,7 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
       countdown: 30,
       timestamp: new Date().toISOString(),
       sender: senderName,
-      senderBrand: 'HelpAI',
+      senderBrand: 'SARGE',
     });
 
     // Get all users and create notifications
@@ -1301,7 +1301,7 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
           pushedBy: req.user?.id,
           countdownSeconds: 30,
           sender: senderName,
-          brand: 'HelpAI',
+          brand: 'SARGE',
         },
       }));
       
@@ -1317,7 +1317,7 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
     broadcastForceRefresh('notifications', {
       action: 'platform_downtime',
       count: allUsers.length,
-      sender: 'HelpAI',
+      sender: 'SARGE',
     });
 
     // Start the countdown simulation - send updates every second for 30 seconds
@@ -1331,8 +1331,8 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
         severity: 'error',
         countdown: secondsRemaining,
         timestamp: new Date().toISOString(),
-        sender: 'HelpAI',
-        senderBrand: 'HelpAI',
+        sender: 'SARGE',
+        senderBrand: 'SARGE',
       });
 
       log.info(`[HelpAI Maintenance] Seconds remaining: ${secondsRemaining}`);
@@ -1348,8 +1348,8 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
           duration: 0,
           dismissible: false,
           timestamp: new Date().toISOString(),
-          sender: 'HelpAI',
-          senderBrand: 'HelpAI',
+          sender: 'SARGE',
+          senderBrand: 'SARGE',
         });
 
         log.info('[HelpAI Maintenance] Countdown complete - platform down');

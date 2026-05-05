@@ -245,7 +245,7 @@ export class HelpAIActionExecutor {
   }> {
     try {
       // STEP 1: TRIGGER - User requested history lookup
-      log.info(`[HelpAI] TRIGGER: Searching chat history for user ${userId}`);
+      log.info(`[SARGE] TRIGGER: Searching chat history for user ${userId}`);
       
       // STEP 2: FETCH - Get messages from database
       const messages = await storage.getChatMessagesByUserId(userId);
@@ -272,7 +272,7 @@ export class HelpAIActionExecutor {
         lastVisit: lastVisit ? new Date(lastVisit) : undefined,
       };
     } catch (error) {
-      log.error('[HelpAI] Chat history search failed:', error);
+      log.error('[SARGE] Chat history search failed:', error);
       return { found: false, messageCount: 0, recentTopics: [] };
     }
   }
@@ -404,7 +404,7 @@ export class HelpAIActionExecutor {
         ? `\n\nCONTEXT: This user has contacted support ${pastHistory.messageCount} times before. Recent topics: ${pastHistory.recentTopics.join(', ') || 'general inquiries'}. Use this context to provide more personalized help.`
         : '\n\nCONTEXT: This appears to be a new user. Be welcoming and helpful.';
 
-      const systemPrompt = `You are HelpAI, Trinity's intelligent support assistant for CoAIleague workforce management platform.
+      const systemPrompt = `You are SARGE, Trinity's intelligent support assistant for CoAIleague workforce management platform.
 
 YOUR CAPABILITIES:
 ${Object.values(HELPAI_CAPABILITIES.lookups).map(c => `- ${c.description}`).join('\n')}
@@ -448,7 +448,7 @@ Remember: You're a capable assistant who takes action. Users should feel like yo
         escalationReason: escCheck.reason,
       };
     } catch (error) {
-      log.error('[HelpAI] Dynamic response generation failed:', error);
+      log.error('[SARGE] Dynamic response generation failed:', error);
       return {
         message: await this.getDynamicFallback(userId),
         shouldEscalate: false,

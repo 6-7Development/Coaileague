@@ -52,7 +52,7 @@ router.post('/escalate', async (req, res) => {
       success: true
     });
   } catch (error) {
-    log.error('[HelpAI] Escalation error:', error);
+    log.error('[SARGE] Escalation error:', error);
     res.status(500).json({
       error: 'Failed to complete escalation',
       details: error instanceof Error ? sanitizeError(error) : 'Unknown error'
@@ -180,7 +180,7 @@ router.post('/helpos-chat', async (req, res) => {
       const existingSession = await storage.getHelposSession(sessionId, workspaceId);
       if (existingSession) {
         if (existingSession.userId !== userId) {
-          log.error('[HelpAI] Session hijacking attempt:', {
+          log.error('[SARGE] Session hijacking attempt:', {
             sessionId,
             expectedUserId: userId,
             actualUserId: existingSession.userId,

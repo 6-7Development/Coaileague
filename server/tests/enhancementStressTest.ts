@@ -511,7 +511,7 @@ async function phase9_bot_ecosystem() {
     botSrc = fs.readFileSync(existingBotFile, 'utf-8');
   }
   
-  const bots = ['HelpAI', 'MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot'];
+  const bots = ['SARGE', 'MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot'];
   const foundBots = bots.filter(b => botSrc.includes(b));
   
   record({

@@ -11,7 +11,7 @@
  *   - Common requests and struggles
  *
  * This 200-token context packet makes every interaction personal.
- * She adapts to introverts, Spanish speakers, officers who prefer
+ * He adapts to introverts, Spanish speakers, officers who prefer
  * short answers — not because she's pretending, but because she
  * actually built that model of the person over time.
  *

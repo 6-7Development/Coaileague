@@ -140,7 +140,7 @@ export interface OrchestratorResponse {
 
 export interface BotSummonRequest {
   sessionId: string;
-  botName: 'MeetingBot' | 'ReportBot' | 'ClockBot' | 'CleanupBot' | 'HelpAI';
+  botName: 'MeetingBot' | 'ReportBot' | 'ClockBot' | 'CleanupBot' | 'SARGE';
   command: string;
   instructions: string;
   workspaceId?: string;
@@ -460,7 +460,7 @@ class HelpAIOrchestrator {
 
     const delegation = this.detectBotDelegation(message);
     if (delegation && delegation.confidence >= 0.75 && params.workspaceId && params.userId) {
-      log.info(`[HelpAI] Autonomous delegation detected: ${delegation.botName} (confidence: ${delegation.confidence}) for message: "${message.substring(0, 80)}"`);
+      log.info(`[SARGE] Autonomous delegation detected: ${delegation.botName} (confidence: ${delegation.confidence}) for message: "${message.substring(0, 80)}"`);
       const summonResult = await this.summonBot({
         sessionId: session.id,
         botName: delegation.botName,
@@ -725,6 +725,20 @@ class HelpAIOrchestrator {
       agentSummary = `User issue: ${userMessage.substring(0, 300)}. Escalation reason: ${reason}. Conversation turns: ${conversationHistory.length}.`;
     }
 
+    // Broadcast "Deliberating with Trinity..." to chatdock
+    try {
+      const { broadcastToWorkspace } = await import('../websocket');
+      if (session.workspaceId) {
+        await broadcastToWorkspace(session.workspaceId, {
+          type: 'sarge_deliberating',
+          data: {
+            conversationId: session.conversationId,
+            reason: reason.replace(/_/g, ' '),
+          },
+        });
+      }
+    } catch { /* non-blocking — never block escalation for broadcast failure */ }
+
     // Create or update the support ticket with the Trinity summary
     let ticketId = session.supportTicketId;
     if (!ticketId) {
@@ -830,7 +844,7 @@ class HelpAIOrchestrator {
       db.update(helpaiSessions)
         .set({ queuePosition: entry.position, updatedAt: new Date() })
         .where(eq(helpaiSessions.id, sessionId))
-        .catch(err => log.warn(`[HelpAI] Queue position update failed for session ${sessionId}:`, (err instanceof Error ? err.message : String(err))));
+        .catch(err => log.warn(`[SARGE] Queue position update failed for session ${sessionId}:`, (err instanceof Error ? err.message : String(err))));
     }
   }
 
@@ -954,7 +968,7 @@ class HelpAIOrchestrator {
       ReportBot: ['/report', '/incident', '/endreport', '/analyzereports'],
       ClockBot: ['/clockme', '/forceclock', '/clockstatus'],
       CleanupBot: ['/cleanup'],
-      HelpAI: ['/helpai', '/ask'],
+      SARGE: ['/helpai', '/ask'],
     };
 
     const allowedCmds = botCommands[request.botName] || [];
@@ -984,7 +998,7 @@ class HelpAIOrchestrator {
             command: cmdUsed,
             instructions: request.instructions,
             sessionId: request.sessionId,
-            delegatedBy: 'HelpAI',
+            delegatedBy: 'SARGE',
           },
         });
 
@@ -1013,7 +1027,7 @@ class HelpAIOrchestrator {
       });
 
     } catch (err: unknown) {
-      log.error(`[HelpAI] Bot execution error for ${request.botName}:`, (err instanceof Error ? err.message : String(err)));
+      log.error(`[SARGE] Bot execution error for ${request.botName}:`, (err instanceof Error ? err.message : String(err)));
       executionResult = {
         success: false,
         message: `${request.botName} encountered an error: ${(err instanceof Error ? err.message : String(err))}`,
@@ -1066,7 +1080,7 @@ class HelpAIOrchestrator {
     const botName = parts[0] as BotSummonRequest['botName'];
     const instructions = parts.slice(1).join(' ');
 
-    const validBots: BotSummonRequest['botName'][] = ['MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot', 'HelpAI'];
+    const validBots: BotSummonRequest['botName'][] = ['MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot', 'SARGE'];
 
     if (!validBots.includes(botName)) {
       return this.makeResponse(session, session.state as HelpAIState, {
@@ -1526,7 +1540,7 @@ Return ONLY valid JSON:
       workspaceId,
       featureKey: `helpai_escalated_eval_${agentKey}`,
       prompt: reviewPrompt,
-      systemInstruction: 'You are HelpAI, a QA supervisor for the CoAIleague platform. Evaluate agent outputs and return ONLY valid JSON as instructed.',
+      systemInstruction: 'You are SARGE, a QA supervisor for the CoAIleague platform. Evaluate agent outputs and return ONLY valid JSON as instructed.',
       model: 'gemini-2.5-flash',
       temperature: 0.2,
       maxOutputTokens: 512,
@@ -1544,7 +1558,7 @@ Return ONLY valid JSON:
       adjustedScore = typeof parsed.adjusted_score === 'number' ? parsed.adjusted_score : adjustedScore;
     }
   } catch (aiErr) {
-    log.error('[HelpAI] Escalated payload evaluation AI error:', aiErr);
+    log.error('[SARGE] Escalated payload evaluation AI error:', aiErr);
   }
 
   // CATEGORY C — Raw SQL retained: HelpAI evaluation logging INSERT | Tables: agent_task_logs | Verified: 2026-03-23
@@ -1624,7 +1638,7 @@ Return ONLY valid JSON:
         relatedEntityType: row.related_entity_type as string | undefined,
         relatedEntityId: row.related_entity_id as string | undefined,
         spawnedBy: row.spawned_by as string,
-      }).catch((err: unknown) => log.error('[HelpAI] Retry spawn error:', err));
+      }).catch((err: unknown) => log.error('[SARGE] Retry spawn error:', err));
     } else {
       // Escalate to management
       await universalNotificationEngine.sendNotification({

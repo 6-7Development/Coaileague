@@ -701,7 +701,7 @@ class ChatServerHubClass {
   private async seedHelpDeskRoom(): Promise<void> {
     const HELPDESK_SLUG = 'helpdesk';
     const HELPAI_BOT_ID = 'helpai-bot';
-    const HELPAI_BOT_NAME = 'HelpAI';
+    const HELPAI_BOT_NAME = 'SARGE';
 
     log.info('[ChatServerHub] Seeding HelpDesk room with HelpAI bot...');
     
@@ -856,7 +856,7 @@ class ChatServerHubClass {
         await db.insert(users).values({
           id: HELPAI_BOT_ID,
           email: 'helpai@coaileague.ai',
-          firstName: 'HelpAI',
+          firstName: 'SARGE',
           lastName: 'Bot',
           role: 'system',
           currentWorkspaceId: PLATFORM_WORKSPACE_ID,

@@ -120,7 +120,7 @@ helpaiRouter.get(
         apis,
       });
     } catch (error: unknown) {
-      log.error('[HelpAI] Registry error:', error);
+      log.error('[SARGE] Registry error:', error);
 
       await helpaiAuditService.logAuditEvent({
         workspaceId: req.user?.currentWorkspaceId || 'unknown',
@@ -209,7 +209,7 @@ helpaiRouter.post(
         durationMs,
       });
     } catch (error: unknown) {
-      log.error('[HelpAI] Integration config error:', error);
+      log.error('[SARGE] Integration config error:', error);
 
       await helpaiAuditService.logAuditEvent({
         workspaceId: req.user?.currentWorkspaceId || 'unknown',
@@ -306,7 +306,7 @@ helpaiRouter.get(
         logs,
       });
     } catch (error: unknown) {
-      log.error('[HelpAI] Audit log error:', error);
+      log.error('[SARGE] Audit log error:', error);
       res.status(500).json({
         error: 'Failed to retrieve audit logs',
         message: sanitizeError(error),
@@ -641,7 +641,7 @@ helpaiRouter.post('/chat', async (req: Request, res: Response) => {
       confidenceScore: AI.defaultConfidenceScore
     });
   } catch (error: unknown) {
-    log.error('[HelpAI] Chat error:', error);
+    log.error('[SARGE] Chat error:', error);
     res.status(500).json({ 
       error: 'Failed to process chat message',
       message: sanitizeError(error) || 'Internal server error'
@@ -924,7 +924,7 @@ helpaiRouter.get('/session/:sessionId', requireAuth, async (req: AuthenticatedRe
       .orderBy(asc(helpaiActionLog.createdAt));
     res.json({ session, actions });
   } catch (error: unknown) {
-    log.error("[HelpAI] session GET error:", error);
+    log.error("[SARGE] session GET error:", error);
     res.status(500).json({ message: "Failed to fetch session" });
   }
 });
@@ -958,7 +958,7 @@ helpaiRouter.get('/admin/action-log', requireAuth, async (req: AuthenticatedRequ
 
     res.json({ logs, total: logs.length });
   } catch (error: unknown) {
-    log.error("[HelpAI] admin/action-log error:", error);
+    log.error("[SARGE] admin/action-log error:", error);
     res.status(500).json({ message: "Failed to fetch action logs" });
   }
 });
@@ -1163,7 +1163,7 @@ helpaiRouter.get('/auditor/brief', requireAuth, async (req: AuthenticatedRequest
 
     res.json({ brief, greeting });
   } catch (err: unknown) {
-    log.error('[HelpAI] Auditor brief error:', (err instanceof Error ? err.message : String(err)));
+    log.error('[SARGE] Auditor brief error:', (err instanceof Error ? err.message : String(err)));
     res.status(500).json({ error: 'Failed to generate audit brief' });
   }
 });

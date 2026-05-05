@@ -342,7 +342,7 @@ export async function triggerEmergencyProtocol(ctx: EmergencyContext): Promise<{
     });
     commandBusAlertId = busEntry?.id || null;
   } catch (err) {
-    log.error('[HelpAI:Emergency] Command bus alert failed:', err);
+    log.error('[SARGE:Emergency] Command bus alert failed:', err);
   }
 
   try {
@@ -359,10 +359,10 @@ export async function triggerEmergencyProtocol(ctx: EmergencyContext): Promise<{
       } as unknown);
     }
   } catch (err) {
-    log.error('[HelpAI:Emergency] Notification failed:', err);
+    log.error('[SARGE:Emergency] Notification failed:', err);
   }
 
-  log.info(`[HelpAI:Emergency] Protocol triggered — conversation: ${ctx.conversationId}`);
+  log.info(`[SARGE:Emergency] Protocol triggered — conversation: ${ctx.conversationId}`);
 
   return { immediateAck: ack, commandBusAlertId };
 }
@@ -407,7 +407,7 @@ export async function recordSlaFirstResponse(
       })
       .where(eq(helpaiConversations.id, conversationId));
   } catch (err) {
-    log.error('[HelpAI:SLA] Failed to record first response:', err);
+    log.error('[SARGE:SLA] Failed to record first response:', err);
   }
 }
 
@@ -460,7 +460,7 @@ export async function recordSlaResolution(
       })
       .where(eq(helpaiConversations.id, conversationId));
   } catch (err) {
-    log.error('[HelpAI:SLA] Failed to record resolution:', err);
+    log.error('[SARGE:SLA] Failed to record resolution:', err);
   }
 }
 
@@ -474,7 +474,7 @@ export async function collectSatisfactionFeedback(
       .set({ satisfactionResponse: response, updatedAt: new Date() })
       .where(eq(helpaiConversations.id, conversationId));
   } catch (err) {
-    log.error('[HelpAI:SLA] Failed to record satisfaction:', err);
+    log.error('[SARGE:SLA] Failed to record satisfaction:', err);
   }
 }
 
@@ -534,7 +534,7 @@ export async function recordHelpAIMessage(params: {
       processingCompletedAt: params.processingCompletedAt,
     });
   } catch (err) {
-    log.error('[HelpAI:Message] Failed to record message:', err);
+    log.error('[SARGE:Message] Failed to record message:', err);
   }
 }
 
@@ -555,7 +555,7 @@ export async function flagFaqGap(params: {
       flaggedForFaqCreation: !params.wasAnswered,
     });
   } catch (err) {
-    log.error('[HelpAI:FAQ] Failed to flag gap:', err);
+    log.error('[SARGE:FAQ] Failed to flag gap:', err);
   }
 }
 

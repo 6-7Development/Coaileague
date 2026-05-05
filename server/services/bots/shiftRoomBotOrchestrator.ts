@@ -1235,7 +1235,7 @@ class ShiftRoomBotOrchestrator {
         conversationId: params.conversationId,
         workspaceId: params.workspaceId,
         senderId: 'helpai',
-        senderName: 'HelpAI',
+        senderName: 'SARGE',
         content:
           `MEDICAL EMERGENCY RESPONSE:\n\n` +
           `1. Call 911 immediately if not already done.\n` +
@@ -1264,7 +1264,7 @@ class ShiftRoomBotOrchestrator {
         conversationId: params.conversationId,
         workspaceId: params.workspaceId,
         senderId: 'helpai',
-        senderName: 'HelpAI',
+        senderName: 'SARGE',
         content:
           `ACTIVE BOLOs FOR THIS WORKSPACE (${intel.activeAlerts.bolos.length}):\n\n${boloLines}\n\n` +
           `Stay alert and report any sightings immediately via the incident report system or contact your supervisor.`,
@@ -1289,7 +1289,7 @@ class ShiftRoomBotOrchestrator {
         conversationId: params.conversationId,
         workspaceId: params.workspaceId,
         senderId: 'helpai',
-        senderName: 'HelpAI',
+        senderName: 'SARGE',
         content: teamMsg,
         metadata: { botEvent: 'helpai_team_response' },
       });
@@ -1316,7 +1316,7 @@ class ShiftRoomBotOrchestrator {
         conversationId: params.conversationId,
         workspaceId: params.workspaceId,
         senderId: 'helpai',
-        senderName: 'HelpAI',
+        senderName: 'SARGE',
         content: histMsg,
         metadata: { botEvent: 'helpai_history_response' },
       });
@@ -1325,7 +1325,7 @@ class ShiftRoomBotOrchestrator {
 
     // ── Build AI prompt with full field intelligence ───────────────────────────
     const prompt =
-      `You are HelpAI — an AI field intelligence assistant embedded in a shift room for a security officer. ` +
+      `You are SARGE — an AI field intelligence assistant embedded in a shift room for a security officer. ` +
       `You are NOT a generic assistant. You are fully equipped with real-time operational data and act as a ` +
       `knowledgeable partner who helps the officer make better decisions in the field.\n\n` +
       `${intelSummary}\n\n` +
@@ -1354,7 +1354,7 @@ class ShiftRoomBotOrchestrator {
         conversationId: params.conversationId,
         workspaceId: params.workspaceId,
         senderId: 'helpai',
-        senderName: 'HelpAI',
+        senderName: 'SARGE',
         content: aiResp.success
           ? aiResp.text
           : `I am here to help, ${params.senderName}. For this question, please consult your post orders or contact your supervisor directly.`,
@@ -2701,7 +2701,7 @@ class ShiftRoomBotOrchestrator {
             conversationId: room.id,
             workspaceId: room.workspaceId || '',
             senderId: 'helpai',
-            senderName: 'HelpAI',
+            senderName: 'SARGE',
             content: lines.join('\n'),
             metadata: { botEvent: 'overnight_intel_brief', hour: currentHour },
           });

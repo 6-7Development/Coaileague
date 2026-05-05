@@ -361,6 +361,31 @@ export function useChatroomWebSocket(
           setTimeout(() => dispatchTrinityState("idle"), 2000);
           break;
 
+        case 'sarge_deliberating': {
+          // SARGE is consulting Trinity — show deliberating typing bubble
+          const dd = data as { roomId?: string; query?: string };
+          setMessages(prev => [...prev, {
+            id: `delib-${Date.now()}`,
+            message: '',
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            isDeliberating: true,
+            createdAt: new Date().toISOString(),
+            metadata: { deliberating: true },
+          } as ChatMessage]);
+          dispatchTrinityState('thinking');
+          break;
+        }
+
+        case 'sarge_deliberation_complete': {
+          // Remove deliberating bubble — real message arrives via standard message event
+          setMessages(prev => prev.filter(m => !(m as {isDeliberating?: boolean}).isDeliberating));
+          dispatchTrinityState('idle');
+          break;
+        }
+
         case 'patrol_scan': {
           // CAD: officer dot flashes green on patrol scan
           dispatchTrinityState("success");
@@ -375,7 +400,7 @@ export function useChatroomWebSocket(
           const missedMsg = {
             id: `missed-${Date.now()}`,
             message: `⚠️ **Patrol Alert**: ${pm.checkpointName || "checkpoint"} missed by ${pm.minutesMissed || "?"} minutes. Check guard status.`,
-            senderName: "HelpAI",
+            senderName: "SARGE",
             senderId: "helpai-dispatch",
             senderType: "bot" as const,
             isBot: true,
@@ -384,6 +409,41 @@ export function useChatroomWebSocket(
           };
           setMessages((prev) => [...prev, missedMsg as ChatMessage]);
           setTimeout(() => dispatchTrinityState("idle"), 4000);
+          break;
+        }
+
+        case 'sarge_deliberating': {
+          // SARGE is checking with Trinity — show deliberation bubble in chat
+          const dd = data as { roomId?: string; question?: string };
+          dispatchTrinityState("thinking");
+          const delibMsg = {
+            id: `delib-${Date.now()}`,
+            message: 'Deliberating with Trinity',
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            isDeliberation: true,
+            createdAt: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, delibMsg as ChatMessage]);
+          break;
+        }
+
+        case 'sarge_executing': {
+          // SARGE is executing a platform action — show executing dots
+          dispatchTrinityState("speaking");
+          const execMsg = {
+            id: `exec-${Date.now()}`,
+            message: 'Executing',
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            isExecuting: true,
+            createdAt: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, execMsg as ChatMessage]);
           break;
         }
 
@@ -398,7 +458,7 @@ export function useChatroomWebSocket(
             const patrolMsg = {
               id: `patrol-${Date.now()}`,
               message: pd.message,
-              senderName: "HelpAI",
+              senderName: "SARGE",
               senderId: "helpai-dispatch",
               senderType: "bot" as const,
               isBot: true,

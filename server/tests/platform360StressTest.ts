@@ -353,7 +353,7 @@ async function phase5_api_route_mount_coverage() {
     { path: '/api/tickets', name: 'Tickets' },
     { path: '/api/control-tower', name: 'Control Tower' },
     { path: '/api/scheduler', name: 'Scheduler' },
-    { path: '/api/helpai', name: 'HelpAI' },
+    { path: '/api/helpai', name: 'SARGE' },
     { path: '/api/integrations', name: 'Integrations' },
     { path: '/api/subagents', name: 'Subagents' },
   ];

@@ -628,7 +628,7 @@ export default function DockChatWidget({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm">HelpAI</span>
+              <span className="font-semibold text-sm">SARGE</span>
               <div className="flex items-center gap-1 shrink-0">
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-green-400 dockchat-ai-indicator" />
                 <span className="text-[10px] opacity-80">Online</span>

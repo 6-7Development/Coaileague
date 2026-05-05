@@ -1,7 +1,7 @@
 /**
  * trinityState — Global Trinity logo state bridge.
  *
- * Any component that knows Trinity/HelpAI is acting imports this and calls
+ * Any component that knows Trinity/SARGE is acting imports this and calls
  * dispatchTrinityState(). The TrinityOrbitalAvatar in the ThoughtBar listens
  * via useTrinityGlobalState() and reacts immediately.
  *

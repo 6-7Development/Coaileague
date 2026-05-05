@@ -234,7 +234,7 @@ class TrinityHelpAICommandBus {
                 workspaceId: payload.workspace_id,
                 idempotencyKey: `notif-${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`,
           type: 'emergency',
-                title: 'HelpAI: Critical Item Pending — Trinity Offline',
+                title: 'SARGE: Critical Item Pending — Trinity Offline',
                 message: `Critical command bus item requires immediate attention: ${(payload as EscalationPayload).issue_summary || payload.description || 'Review queued items'}`,
                 severity: 'critical',
                 source: 'helpai_command_bus',

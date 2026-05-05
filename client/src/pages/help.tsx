@@ -475,7 +475,7 @@ export default function Help() {
                         placeholder={
                           chatState === "queued"
                             ? "You are in queue..."
-                            : "Ask HelpAI anything..."
+                            : "Ask SARGE anything..."
                         }
                         value={inputMessage}
                         onChange={e => setInputMessage(e.target.value)}

@@ -607,7 +607,7 @@ async function testBotSummonViaSlashCommand(): Promise<void> {
 }
 
 async function testInvalidBotRejected(): Promise<void> {
-  const VALID_BOTS = ['MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot', 'HelpAI'];
+  const VALID_BOTS = ['MeetingBot', 'ReportBot', 'ClockBot', 'CleanupBot', 'SARGE'];
   const requestedBot = 'FakeBot';
   const isValid = VALID_BOTS.includes(requestedBot);
   const response = isValid

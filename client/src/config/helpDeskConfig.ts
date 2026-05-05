@@ -14,13 +14,13 @@ export const HELP_DESK_CONFIG = {
     ticketCreated: {
       title: 'Ticket Created',
       description: (id: string) =>
-        `Ticket #${id} - HelpAI is analyzing your issue. An agent will be with you shortly.`,
+        `Ticket #${id} - SARGE is analyzing your issue. An agent will be with you shortly.`,
     },
     ticketAssigned: {
       title: 'Agent Assigned',
       message: (id: string) =>
         `An agent is now helping you!\n\nTicket #${id} has been assigned. Your chat is no longer read-only.`,
-      sender: 'HelpAI',
+      sender: 'SARGE',
     },
   },
   roles: {

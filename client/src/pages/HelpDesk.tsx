@@ -1006,7 +1006,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
    const isOffline = !navigator.onLine || (err instanceof TypeError && err instanceof Error ? err.message : String(err) === 'Failed to fetch');
    if (isOffline) {
      toast({
-       title: "HelpAI is offline",
+       title: "SARGE is offline",
        description: "You're in a low-signal area. Your ticket was created. HelpAI will reconnect when signal returns.",
      });
    } else {
@@ -2281,7 +2281,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  {!isSelf && !isGrouped && (
  <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 min-w-0 max-w-full">
  <span className={['text-[11px] sm:text-xs font-semibold', isSelf ? 'text-primary-foreground/80' : 'text-primary', 'truncate'].join(' ')}>
- {role === 'bot' ? 'HelpAI' : actualName.split('(')[0].trim()}
+ {role === 'bot' ? 'SARGE' : actualName.split('(')[0].trim()}
  {getRoleIcon(role)}
  </span>
  {role === 'bot' && (

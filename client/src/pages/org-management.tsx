@@ -124,7 +124,7 @@ const PLATFORM_ROLE_LABELS: Record<string, string> = {
 
 const SYSTEM_BOTS = [
   { id: 'trinity-ai', name: 'Trinity AI', role: 'Deputy Admin Authority', authority: 'deputy_admin', description: 'Primary AI orchestrator - scheduling, monitoring, payroll, and platform intelligence', status: 'active' },
-  { id: 'helpai-bot', name: 'HelpAI Bot', role: 'Deputy Admin Authority', authority: 'deputy_admin', description: 'AI support assistant with elevated authority for help desk operations', status: 'active' },
+  { id: 'helpai-bot', name: 'SARGE', role: 'Deputy Admin Authority', authority: 'deputy_admin', description: 'AI support assistant with elevated authority for help desk operations', status: 'active' },
   { id: 'meeting-bot', name: 'MeetingBot', role: 'Scheduling Bot', authority: 'support_agent', description: 'Automated meeting scheduling and reminders', status: 'active' },
   { id: 'report-bot', name: 'ReportBot', role: 'Analytics Bot', authority: 'support_agent', description: 'Automated report generation and distribution', status: 'active' },
   { id: 'clock-bot', name: 'ClockBot', role: 'Time Tracking Bot', authority: 'support_agent', description: 'Automated clock-in/out reminders and tracking', status: 'active' },

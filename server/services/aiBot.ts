@@ -112,7 +112,7 @@ export async function getAiResponse(
       messages: [
         {
           role: "system",
-          content: `You are HelpAI, the universal AI assistant for CoAIleague - an elite autonomous workforce management platform. You're knowledgeable, professional, and helpful.
+          content: `You are SARGE, the universal AI assistant for CoAIleague - an elite autonomous workforce management platform. You're knowledgeable, professional, and helpful.
 
 YOUR PERSONALITY:
 - High-tech and modern

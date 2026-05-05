@@ -157,7 +157,7 @@ function RoomInfoPanel({
             <div key={u.id} className="flex items-center gap-2 px-3 py-2" data-testid={`live-member-${u.id}`}>
               <div className="relative flex-shrink-0">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className={['text-xs font-semibold', isBot ? (u.name === 'HelpAI' || u.id === 'helpai-bot' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' : 'bg-gradient-to-br from-violet-500 to-violet-700 text-white') : 'bg-primary/10 text-primary'].join(' ')}>
+                  <AvatarFallback className={['text-xs font-semibold', isBot ? (u.name === 'SARGE' || u.id === 'helpai-bot' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' : 'bg-gradient-to-br from-violet-500 to-violet-700 text-white') : 'bg-primary/10 text-primary'].join(' ')}>
                     {(u.name || "?").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -168,7 +168,7 @@ function RoomInfoPanel({
                   <span className="text-sm font-medium truncate">{u.name}</span>
                   {isBot && <Badge variant="secondary" className="text-[9px] px-1">Bot</Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{isBot ? (u.id === 'helpai-bot' || u.name === 'HelpAI' ? 'HelpAI' : 'Trinity') : (u.role || 'Member')}</p>
+                <p className="text-xs text-muted-foreground truncate">{isBot ? (u.id === 'helpai-bot' || u.name === 'SARGE' ? 'SARGE' : 'Trinity') : (u.role || 'Member')}</p>
               </div>
             </div>
           );
@@ -684,11 +684,18 @@ function QuotedMessage({ parentMessage, compact }: { parentMessage: { senderName
   );
 }
 
-function TypingBubble({ name }: { name: string }) {
+function TypingBubble({ name, isDeliberating }: { name: string; isDeliberating?: boolean }) {
+  const isSarge = name === "SARGE";
+  const isTrinity = name === "Trinity";
+  const avatarClass = isSarge
+    ? "bg-gradient-to-br from-amber-400 to-amber-600"
+    : isTrinity
+    ? "bg-gradient-to-br from-violet-500 to-violet-700"
+    : "bg-gradient-to-br from-cyan-500 to-blue-600";
   return (
     <div className="flex items-start gap-1.5 py-1" data-testid="typing-indicator">
       <div className="flex items-center gap-2 px-2">
-        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+        <div className={`w-6 h-6 rounded-full ${avatarClass} flex items-center justify-center flex-shrink-0`}>
           <span className="text-[8px] text-white font-bold">{(name || "?").slice(0, 1).toUpperCase()}</span>
         </div>
         <div className="bg-muted rounded-md rounded-bl-sm px-4 py-2.5 flex items-center gap-1.5">
@@ -1298,7 +1305,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
     }
     chatManager.updateRoomLastMessage(roomId, text, userName);
 
-    // @Trinity / @HelpAI mention triggers AI response
+    // @Trinity / @SARGE mention triggers AI response
     if (text.includes('@Trinity') || text.includes('@trinity')) {
       fetch('/api/ai-brain/chat', {
         method: 'POST',
@@ -1324,17 +1331,17 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
         })
         .catch(() => null);
     }
-    if (text.includes('@HelpAI') || text.includes('@helpai')) {
+    if (text.includes('@SARGE') || text.includes('@helpai')) {
       fetch('/api/helpai/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: text.replace(/@HelpAI/gi, '').trim(), roomId }),
+        body: JSON.stringify({ message: text.replace(/@SARGE/gi, '').trim(), roomId }),
       })
         .then(r => r.json())
         .then(data => {
           if (data.response) {
-            sendMessage(`⭐ **HelpAI:** ${data.response}`, 'HelpAI', 'bot');
+            sendMessage(`⭐ **SARGE:** ${data.response}`, 'SARGE', 'bot');
           }
         })
         .catch(() => null);
@@ -1790,10 +1797,10 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
                   {!isOwn && !isGrouped && (
                     <span className="text-[10px] font-medium text-muted-foreground mb-0.5 px-2 inline-flex items-center gap-1">
                       {isBot
-                        ? (msg.senderId === 'helpai-bot' || msg.senderName === 'HelpAI'
+                        ? (msg.senderId === 'helpai-bot' || msg.senderName === 'SARGE'
                             ? <>
-                                <span className="text-amber-500 font-semibold">HelpAI</span>
-                                <span className="chatdock-ai-chip" data-bot="helpai" aria-label="HelpAI is the AI field manager">Field Manager</span>
+                                <span className="text-amber-500 font-semibold">SARGE</span>
+                                <span className="chatdock-ai-chip" data-bot="helpai" aria-label="SARGE is the AI field manager">Field Manager</span>
                               </>
                             : <>
                                 <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>
@@ -1835,7 +1842,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
                         // Compute end-of-run: this is the last message OR the next has a different sender.
                         ((idx === wsMessages.length - 1) || (wsMessages[idx + 1] && wsMessages[idx + 1].senderId !== msg.senderId)) && "chatdock-bubble-tail-end",
                       )}
-                      data-bot={isBot ? (msg.senderId === 'helpai-bot' || msg.senderName === 'HelpAI' ? 'helpai' : 'trinity') : null}
+                      data-bot={isBot ? (msg.senderId === 'helpai-bot' || msg.senderName === 'SARGE' ? 'helpai' : 'trinity') : null}
                     >
                       {parentMsg && <QuotedMessage parentMessage={parentMsg} compact />}
                       {isDeletedForAll ? (
@@ -1989,7 +1996,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
 
       {isInTriage && (
         <div className="px-2 py-0.5 border-t bg-accent/20 text-[10px] text-muted-foreground text-center">
-          HelpAI is assisting. Staff will join if needed.
+          SARGE is assisting. Staff will join if needed.
         </div>
       )}
 
@@ -2089,7 +2096,7 @@ export function InlineChatView({ roomId, roomName }: { roomId: string; roomName:
           {mentionQuery !== null && (() => {
             const BOT_MENTIONS = [
               { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
-              { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
+              { id: '@SARGE', name: 'SARGE', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
             ];
             const memberMentions = (dbParticipants ?? []).map((m: { firstName?: string; lastName?: string; workspaceRole?: string }) => ({
               id: `@${m.firstName ?? ''}${m.lastName ?? ''}`,

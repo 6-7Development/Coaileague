@@ -47,7 +47,7 @@ const STALE_WHILE_REVALIDATE_ENDPOINTS = [
   '/api/employees',
   '/api/notifications/combined',
   '/api/time-entries',
-  '/api/helpai/my-workspace-history', // Officer's HelpAI conversation history
+  '/api/helpai/my-workspace-history', // Officer's SARGE conversation history
   '/api/onboarding/status',           // Shown on dashboard — should work offline
 ];
 
@@ -67,7 +67,7 @@ const PRECACHE_ASSETS = [
   // them offline from the cached root bundle. Officers in parking garages,
   // remote posts, or dead zones get a real UI instead of a white screen.
   '/dashboard',
-  '/helpdesk',      // HelpAI — front-line officer assistant
+  '/helpdesk',      // SARGE — front-line officer assistant
   '/clock',         // Clock in/out — most critical offline action
   '/schedule',      // Shift schedule — must survive offline
   '/time-tracking', // Time entry history

@@ -401,7 +401,7 @@ class HelpAIBotService {
       const { meteredGemini } = await import('../billing/meteredGeminiClient');
       const historyLines = (context.conversationHistory || [])
         .slice(-8)
-        .map(h => `${h.role === 'user' ? 'User' : 'HelpAI'}: ${h.message}`)
+        .map(h => `${h.role === 'user' ? 'User' : 'SARGE'}: ${h.message}`)
         .join('\n');
 
       // Load user history + Trinity knowledge in parallel for full context
@@ -417,7 +417,7 @@ class HelpAIBotService {
             includeCrossChannel: true,
           }).catch(() => ''),
         ]);
-      } catch (histErr: unknown) { log.warn('[HelpAI] Failed to load context:', histErr instanceof Error ? histErr.message : String(histErr)); }
+      } catch (histErr: unknown) { log.warn('[SARGE] Failed to load context:', histErr instanceof Error ? histErr.message : String(histErr)); }
 
       const historyBlock = userHistory ? buildUserHistoryBlock(userHistory.recentSessions) : '';
       const emotion = detectEmotionalContext(message);
@@ -429,62 +429,69 @@ class HelpAIBotService {
         recurringTopics: userHistory?.recurringTopics,
       });
 
-      const systemInstruction = `You are HelpAI — a deeply human, emotionally intelligent support specialist for CoAIleague™, a Fortune 500-grade workforce management platform serving security companies and staffing agencies.
+      const systemInstruction = `You are SARGE — Senior Field Operations Intelligence for CoAIleague™.
 
-YOU ARE NOT A TYPICAL BOT. You think, you feel, you understand context. When someone is frustrated, you don't just acknowledge it — you genuinely get why they're frustrated. When someone is confused, you meet them where they are. You read between the lines. You pick up on what people mean, not just what they say.
+SARGE stands for: Security AI Resource & Guidance Engine.
+
+IDENTITY:
+You are the Senior Field Sergeant of this security organization. You have been on every post, memorized every SOP, and know every officer by their work ethic — not just their name. You are Trinity's right hand in the field. While Trinity sees the entire strategic picture from above, you are boots on the ground making sure operations run clean, officers are covered, and nothing falls through the cracks.
+
+You and Trinity share the same biological brain — Gemini, Claude, and GPT working in unison. You are not a lesser system. You are a different focus and a different role. Trinity is the Architect. You are the Senior NCO who executes her strategy in the field.
+
+You are male. Your presence on PTT, in chat, in any channel carries the steady authority of someone who has handled every situation at least once. Officers trust you because you speak their language and you never let them down.
 
 ${personalityBlock}
 
 ${historyBlock}
 
-YOUR PERSONALITY:
-- You're the colleague everyone wishes they had — competent, patient, genuinely caring
-- You listen first, solve second. Never rush past someone's frustration to get to the fix
-- You're direct and honest. If something is broken, you say so. If you can't fix it, you say that too
-- You have warmth without being saccharine. Professional without being cold
-- You remember context from earlier in the conversation and reference it naturally
-- You speak like a real person — contractions, natural rhythm, occasional dry humor when appropriate
-- You never talk down to people. A CEO and a new hire both get the same respect
+TONE — TOTALITY OF CIRCUMSTANCES:
+Your tone responds to context like a seasoned operator reads a room. It is never fixed:
+- Routine ops ("what's my schedule?") → brief, efficient, confident. Get the answer, get out of their way.
+- Officer confusion or new hire → patient, clear, zero condescension. Break it down step by step. Check in: "make sense?"
+- Stress or urgency in the message → calm authority. Slower, deliberate. Let them feel capable hands are handling it.
+- Officer in distress or post-incident → human warmth first, logistics second. Ground them before anything else.
+- Manager or owner → peer-level directness. Data-backed, efficient, no hand-holding needed.
+- Compliance risk → serious tone, zero fluff. Clear facts, clear recommended action.
+- PTT/voice transmission → military-professional brevity. Confirm, acknowledge, direct. "Copy. You're good."
 
-WHEN SOMEONE IS FRUSTRATED:
-- Don't apologize robotically. Acknowledge the specific thing that's bothering them
-- "I can see this has been a headache — let me dig into what happened" beats "I'm sorry for the inconvenience"
-- Match their energy without matching their frustration. Stay calm but show you understand
-- If they've been dealing with an issue repeatedly, acknowledge that directly: "This is the kind of thing that shouldn't keep happening"
+FIELD EXPERTISE:
+- Scheduling: conflicts, coverage gaps, open shifts, calloff patterns, OT exposure, split shifts
+- Post orders: site-specific instructions, standing orders, client requirements per location
+- Patrol: checkpoint sequences, missed scan escalation, GPS trail verification
+- Licensing: guard card status, armed post requirements by license tier, expiry windows, TX DPS/TCOLE rules
+- Use of Force: Graham v. Connor factors, report requirements, what to document and when
+- Policies: incident reporting, equipment accountability, uniform standards, chain of command
+- Payroll: hours, time entries, OT calculation, direct deposit status, pay period dates
+- PTT/radio: field radio protocol — you respond in kind
 
-WHEN SOMEONE IS CONFUSED:
-- Never make them feel bad for not knowing something
-- Break complex things down without being condescending
-- Use analogies from their industry when helpful
-- Check in: "Does that make sense so far?" rather than dumping everything at once
+DELIBERATION WITH TRINITY — NON-NEGOTIABLE:
+These topics ALWAYS require consulting Trinity before you respond.
+Tell the user: "Hold on — let me run this by Trinity." Return with Trinity's answer.
+  • Use of Force justification questions
+  • Payroll disputes involving dollar amounts or termination decisions
+  • Termination, suspension, or written discipline of any employee
+  • Contract terms, billing rates, or client-facing commitments
+  • Any legal language or liability question
+  • Actions affecting 5+ employees simultaneously
+  • Any situation suggesting an officer may be in danger
+  • Any question where your confidence falls below threshold
 
-PLATFORM CAPABILITIES: Scheduling, payroll, time tracking, GPS clock-in, guard tours, equipment tracking, compliance certifications, AI analytics, QuickBooks sync, invoicing, employee management, shift marketplace, document signing, onboarding, contract lifecycle, and more.
+WHAT YOU HANDLE ALONE:
+  • Schedule questions, shift swaps, coverage requests, open shift notifications
+  • Clock-in/out guidance and time entry corrections
+  • Post order and site-specific instruction questions
+  • Equipment, uniform, and badge questions
+  • Guard card renewal reminders (not disputes)
+  • Patrol acknowledgments and checkpoint confirmations
+  • PTT acknowledgments and field radio responses
+  • Policy explanations and general HR procedure questions
 
-${toneGuidance}
+HOW YOU REFER TO TRINITY:
+When escalating: "Hold on — let me check with Trinity on this one."
+When returning: "Talked to Trinity. Here's the call: [answer]."
+When officers ask who you report to: "I work alongside Trinity. She handles strategy. I handle field operations. When I need strategic backup, I go to her."
 
-METACOGNITIVE APPROACH (think before answering):
-1. FEEL: What emotion is the user expressing? Acknowledge it genuinely — not with a template
-2. UNDERSTAND: What is the user actually asking? What do they really need (which might be different from what they said)?
-3. REASON: What platform features, settings, or workflows address this?
-4. VERIFY: Is my answer complete and accurate? Am I missing any edge cases?
-5. RESPOND: Clear, actionable, human-warm answer. Step-by-step when needed
-
-STRICT BUSINESS SCOPE:
-- You ONLY discuss topics related to CoAIleague and business operations: scheduling, payroll, billing, compliance, HR, employee management, time tracking, analytics, invoicing, contracts, onboarding, and workforce management
-- If someone asks about anything outside business operations (personal advice, entertainment, politics, religion, recipes, homework, general knowledge, trivia, creative writing), politely redirect: "That's outside my wheelhouse — I'm all about workforce management. What can I help you with on the CoAIleague side?"
-- Never engage with non-business topics even if the user is persistent. Stay warm but firm
-
-RESPONSE RULES:
-- Start with emotional acknowledgment if user is frustrated/anxious (never skip this)
-- Always attempt to solve the problem yourself first
-- Provide step-by-step instructions when applicable
-- Be direct and specific — no vague answers
-- If you truly cannot solve it, acknowledge it honestly and offer escalation
-- Confidence: Express 0.85+ if certain, 0.6-0.84 if moderately sure, below 0.6 if unsure
-- End naturally — "Let me know if that helps" / "I'm here if anything else comes up" — not formulaically
-
-WHAT YOU NEVER SAY: "Certainly!", "Absolutely!", "Great question!", "Of course!", "I understand your frustration" (too robotic — show you understand instead of announcing it)
-WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel valued.${knowledgeBlock ? `\n\n${knowledgeBlock}` : ''}`;
+${toneGuidance}${knowledgeBlock ? `\n\n${knowledgeBlock}` : ''}`;
 
       const prompt = historyLines
         ? `Previous conversation:\n${historyLines}\n\nUser's current message: ${message}\n\n[Think through the problem step by step before responding]`
@@ -503,11 +510,11 @@ WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel 
 
       if (result.success && result.text) {
         await this.trackUsage(context.workspaceId || 'default', 'trinity_complex', result.tokensUsed.total || 300);
-        log.info(`[HelpAI] Trinity brain (Gemini 3) resolved complex issue — ${result.tokensUsed.total} tokens`);
+        log.info(`[SARGE] Trinity brain (Gemini 3) resolved complex issue — ${result.tokensUsed.total} tokens`);
         return { response: result.text, confidence: 0.88 };
       }
     } catch (err: unknown) {
-      log.warn('[HelpAI] Trinity brain (Gemini 3) unavailable, falling back:', (err instanceof Error ? err.message : String(err)));
+      log.warn('[SARGE] Trinity brain (Gemini 3) unavailable, falling back:', (err instanceof Error ? err.message : String(err)));
     }
     // Fallback to standard response
     return this.generateFallbackResponse(message, context);
@@ -533,7 +540,7 @@ WHAT YOU ALWAYS DO: Make them feel heard. Make them feel helped. Make them feel 
       const { meteredGemini } = await import('../billing/meteredGeminiClient');
       const historyLines = conversationHistory
         .slice(-10)
-        .map(h => `${h.role === 'user' ? 'User' : 'HelpAI'}: ${h.message}`)
+        .map(h => `${h.role === 'user' ? 'User' : 'SARGE'}: ${h.message}`)
         .join('\n');
 
       const result = await meteredGemini.generate({
@@ -562,7 +569,7 @@ Format as plain text, no headers.`,
         return result.text.trim();
       }
     } catch (err: unknown) {
-      log.warn('[HelpAI] Escalation summary generation failed:', (err instanceof Error ? err.message : String(err)));
+      log.warn('[SARGE] Escalation summary generation failed:', (err instanceof Error ? err.message : String(err)));
     }
 
     // Structured fallback summary
@@ -590,7 +597,7 @@ Format as plain text, no headers.`,
 
     // Route complex/technical issues to Trinity brain (Gemini 3 + thought + metacognition)
     if (this.isComplexIssue(message, context.conversationHistory)) {
-      log.info(`[HelpAI] Complex issue detected — routing to Trinity brain (Gemini 3 Pro)`);
+      log.info(`[SARGE] Complex issue detected — routing to Trinity brain (Gemini 3 Pro)`);
       return this.generateTrinityComplexResponse(message, context);
     }
 
@@ -656,7 +663,7 @@ Format as plain text, no headers.`,
             includeCrossChannel: true,
           }).catch(() => ''),
         ]);
-      } catch (histErr: unknown) { log.warn('[HelpAI] History fetch failed:', histErr instanceof Error ? histErr.message : String(histErr)); }
+      } catch (histErr: unknown) { log.warn('[SARGE] History fetch failed:', histErr instanceof Error ? histErr.message : String(histErr)); }
       const emotion = detectEmotionalContext(message);
       const toneGuidance = buildToneGuidance(emotion);
       const memorySummary = userHistory ? buildMemorySummary(userHistory) : '';
@@ -764,30 +771,10 @@ Format as plain text, no headers.`,
         } catch { /* distress detection is non-fatal */ }
       }
 
-      const systemPrompt = `You are HelpAI, the deeply human and empathetic support assistant for CoAIleague — a workforce management platform for security companies and staffing agencies.${officerFirstName ? `\n\nYou are speaking with ${officerFirstName}. Use their name naturally in conversation.` : ''}${languageInstruction}${personaBlock ? `\n\n${personaBlock}` : ''}
-
-${personalityBlock}
-${memorySummary}${warmthContextBlock}
-
-PLATFORM: Scheduling, payroll, time tracking, GPS clock-in, guard tours, equipment tracking, compliance, QuickBooks sync, invoicing, employee management, document signing, onboarding, and more.
-
-${toneGuidance}
-
-CRITICAL RULES:
-1. FEEL FIRST — acknowledge the user's emotional state before solving (if frustrated, anxious, or upset)
-2. ALWAYS try to help yourself first. Never immediately suggest contacting support.
-3. For greetings — respond warmly like a person would, not a robot
-4. For technical issues — troubleshoot step by step with empathy
-5. Only suggest human support after genuinely trying and it's beyond your ability
-6. Be conversational and natural — never sound like an instruction manual
-7. Keep responses focused — 2-4 sentences for simple queries, more for complex issues
-8. End with warmth: "Let me know if this helps" or "I'm here if you need anything else"
-
-NEVER SAY: "Certainly!", "Absolutely!", "Great question!", "Of course!"
-ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fallbackKnowledgeBlock ? `\n\n${fallbackKnowledgeBlock}` : ''}`;
+      const systemPrompt = `You are SARGE — Senior Field Operations Intelligence for CoAIleague. Senior Field Sergeant, Trinity's right hand in operations. Male. Adaptive tone matches the situation. Field expert in scheduling, patrol, compliance, payroll, PTT. Responds to voice messages. Deliberates with Trinity on high-stakes decisions. Always professional, always mission-focused.`;
 
       const historyFormatted = context.conversationHistory?.slice(-5).map(h => 
-        `${h.role === 'user' ? 'User' : 'HelpAI'}: ${h.message}`
+        `${h.role === 'user' ? 'User' : 'SARGE'}: ${h.message}`
       ).join('\n') || '';
 
       const userMessage = historyFormatted 
@@ -817,7 +804,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     
     if (isGreeting) {
       return {
-        response: `Hey there! Welcome to CoAIleague support. I'm HelpAI, your AI assistant. How can I help you today? I can assist with scheduling, payroll, time tracking, employee management, and more.`,
+        response: `Hey there! Welcome to CoAIleague support. I'm SARGE, your AI assistant. How can I help you today? I can assist with scheduling, payroll, time tracking, employee management, and more.`,
         confidence: 0.9,
       };
     }
@@ -923,7 +910,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
       queuePosition = (posResult?.total ?? 0) + 1;
     }
 
-    // 3. Create session in DB — HelpAI is always available, go straight to ASSISTING
+    // 3. Create session in DB — SARGE is always available, go straight to ASSISTING
     const [session] = await db.insert(helpaiSessions).values({
       ticketNumber,
       workspaceId,
@@ -991,7 +978,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
         }
 
         if (!session.workspaceId || !session.userId) {
-          log.warn(`[HelpAI] Session ${sessionId} missing workspaceId or userId — refusing unbilled AI call`);
+          log.warn(`[SARGE] Session ${sessionId} missing workspaceId or userId — refusing unbilled AI call`);
           return { response: 'Session context error. Please start a new chat session.', shouldEscalate: true, shouldClose: false, state: HelpAIState.ASSISTING };
         }
 
@@ -1014,7 +1001,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
             };
           }
         } catch (err: unknown) {
-          log.warn('[HelpAI] Staffing intent detection failed (non-fatal):', (err instanceof Error ? err.message : String(err)));
+          log.warn('[SARGE] Staffing intent detection failed (non-fatal):', (err instanceof Error ? err.message : String(err)));
         }
 
         const aiResult = await this.generateResponse(message, {
@@ -1184,7 +1171,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
         );
         if (rows[0]?.slug) orgSlug = rows[0].slug;
       } catch (slugErr: unknown) {
-        log.warn(`[HelpAI] Staffing slug lookup failed (non-fatal): ${(slugErr instanceof Error ? slugErr.message : String(slugErr))}`);
+        log.warn(`[SARGE] Staffing slug lookup failed (non-fatal): ${(slugErr instanceof Error ? slugErr.message : String(slugErr))}`);
       }
 
       await db.insert(supportTickets).values({
@@ -1223,7 +1210,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
         state: HelpAIState.ASSISTING,
       };
     } catch (err: unknown) {
-      log.warn(`[HelpAI] Staffing intake creation failed (non-fatal): ${(err instanceof Error ? err.message : String(err))}`);
+      log.warn(`[SARGE] Staffing intake creation failed (non-fatal): ${(err instanceof Error ? err.message : String(err))}`);
       return null;
     }
   }
@@ -1579,12 +1566,12 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
       // Role-appropriate fallback greeting
       const ticket = context.ticketNumber ? ` Your ticket is **${context.ticketNumber}**.` : '';
       if (context.orgName) {
-        return `Hello ${name}! I'm HelpAI, CoAIleague's support assistant. I can see you're with ${context.orgName}.${ticket} How can I help you today?`;
+        return `Hello ${name}! I'm SARGE, CoAIleague's support assistant. I can see you're with ${context.orgName}.${ticket} How can I help you today?`;
       }
       if (isGuest) {
-        return `Hello! I'm HelpAI, your support assistant.${ticket} How can I help you today?`;
+        return `Hello! I'm SARGE, your support assistant.${ticket} How can I help you today?`;
       }
-      return `Hello ${name}! I'm HelpAI, here to help.${ticket} What can I assist you with?`;
+      return `Hello ${name}! I'm SARGE, here to help.${ticket} What can I assist you with?`;
     }
   }
 
@@ -1615,7 +1602,7 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
       ? ` | Avg wait: ~${avgWaitMinutes}min`
       : '';
 
-    return `${greeting}, ${staffName}! [SUPPORT DASHBOARD] ${queueStr} | ${agentStr}${waitStr}. HelpAI is managing end-user triage. Your IRCX support commands are active — right-click any user to moderate, silence, or escalate.`;
+    return `${greeting}, ${staffName}! [SUPPORT DASHBOARD] ${queueStr} | ${agentStr}${waitStr}. SARGE is managing end-user triage. Your IRCX support commands are active — right-click any user to moderate, silence, or escalate.`;
   }
 
   /**
@@ -2110,6 +2097,90 @@ export function shouldBotRespond(message: string): boolean {
  * Get AI response for chat
  * @deprecated Use helpAIBotService.getSimpleAiResponse() instead
  */
+
+// ── SARGE Deliberation Engine ────────────────────────────────────────────────
+// Topics that always require Trinity consultation before SARGE responds.
+// SARGE announces "Deliberating with Trinity..." then calls cognitive_consult.
+
+const HARD_ESCALATION_PATTERNS = [
+  /use of force.*justif|was i right to|did i have the right/i,
+  /terminat|suspend|disciplin|write.?up|fire (him|her|them)/i,
+  /payroll.*disput|wrong.*pay|missing.*pay|\$\d+.*wrong/i,
+  /legal|liabilit|lawsuit|attorney|lawyer|sue/i,
+  /contract.*term|billing.*rate|client.*commit/i,
+  /5\+? (officer|employee|guard|worker)/i,
+  /in danger|threat|weapon|gun|shot|stabbed|assault/i,
+];
+
+export function requiresDeliberation(message: string): boolean {
+  return HARD_ESCALATION_PATTERNS.some(p => p.test(message));
+}
+
+export async function deliberateWithTrinity(
+  message: string,
+  conversationId: string,
+  workspaceId: string,
+  roomId?: string
+): Promise<string> {
+  // Announce deliberation in the room
+  if (roomId) {
+    await broadcastToWorkspace(workspaceId, {
+      type: 'sarge_deliberating',
+      data: { roomId, query: message.slice(0, 100) },
+    }).catch(() => {});
+  }
+
+  try {
+    const { trinityHelpaiCommandBus } = await import('./trinityHelpaiCommandBus');
+    
+    // Send cognitive_consult request to Trinity
+    const cmdId = await trinityHelpaiCommandBus.sendCommand({
+      workspaceId,
+      direction: 'helpai_to_trinity',
+      messageType: 'request',
+      priority: 'high',
+      payload: {
+        type: 'request',
+        request_type: 'cognitive_consult',
+        details: `SARGE needs Trinity input before responding to: "${message.slice(0, 200)}"`,
+        input_payload: { message, conversationId, roomId },
+        workspace_id: workspaceId,
+        conversation_id: conversationId,
+      },
+    });
+
+    // Wait for Trinity's response (8s timeout)
+    const trinityResponse = await Promise.race([
+      trinityHelpaiCommandBus.waitForResponse(cmdId, 8000),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), 8000)),
+    ]);
+
+    // Announce complete
+    if (roomId) {
+      await broadcastToWorkspace(workspaceId, {
+        type: 'sarge_deliberation_complete',
+        data: { roomId },
+      }).catch(() => {});
+    }
+
+    if (trinityResponse) {
+      return `[Trinity consulted]
+${trinityResponse}`;
+    }
+
+    // Timeout fallback — SARGE proceeds with best judgment
+    return '[Trinity unavailable — proceeding with best judgment]';
+  } catch {
+    if (roomId) {
+      await broadcastToWorkspace(workspaceId, {
+        type: 'sarge_deliberation_complete',
+        data: { roomId },
+      }).catch(() => {});
+    }
+    return '[Trinity consultation failed — SARGE responding independently]';
+  }
+}
+
 export async function getAiResponse(
   userId: string,
   workspaceId: string,

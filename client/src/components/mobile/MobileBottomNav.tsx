@@ -145,7 +145,7 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
     { icon: Home,         label: "Home",     href: "/dashboard" },
     { icon: Calendar,     label: "Schedule", href: "/schedule" },
     { icon: Clock,        label: "Clock",    href: "/time-tracking" },
-    { icon: HelpCircle,   label: "HelpAI",   href: "/helpdesk" },
+    { icon: HelpCircle,   label: "SARGE",   href: "/helpdesk" },
   ];
 
   const isActive = (href: string) => {

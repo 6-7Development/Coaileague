@@ -226,7 +226,7 @@ export class HelpaiIntegrationService {
   private deriveKey(keyId: string): Buffer {
     const secret = process.env.SESSION_SECRET;
     if (!secret) {
-      log.error('[HelpAI] WARNING: SESSION_SECRET is not set — credential encryption key is undefined. Configure SESSION_SECRET in Railway env vars.');
+      log.error('[SARGE] WARNING: SESSION_SECRET is not set — credential encryption key is undefined. Configure SESSION_SECRET in Railway env vars.');
       throw new Error('Cannot derive encryption key: SESSION_SECRET is required');
     }
     return crypto.scryptSync(secret, keyId, KEY_LENGTH);
@@ -248,7 +248,7 @@ export class HelpaiIntegrationService {
       const decrypted = this.decryptCredential(cred.encryptedValue, encryptionKey);
       return { value: decrypted, credential: cred };
     } catch (error) {
-      log.error(`[HelpAI] Credential decryption failed for integration ${integrationId}:`, error instanceof Error ? error.message : error);
+      log.error(`[SARGE] Credential decryption failed for integration ${integrationId}:`, error instanceof Error ? error.message : error);
       return null;
     }
   }

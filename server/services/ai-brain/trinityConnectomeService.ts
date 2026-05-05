@@ -92,7 +92,7 @@ const BRAIN_REGION_MAP: Map<BrainRegion, BrainRegionDescriptor> = new Map([
   }],
   ['CEREBELLUM', {
     region: 'CEREBELLUM',
-    services: ['ReportBot', 'ClockBot', 'MeetingBot', 'HelpAI', 'shiftChatroomBotProcessor'],
+    services: ['ReportBot', 'ClockBot', 'MeetingBot', 'SARGE', 'shiftChatroomBotProcessor'],
     role: 'Habit-Based Pattern Execution',
     description: 'Executes practiced, domain-specific workflows without conscious deliberation: incident reports, DAR generation, clock-in/out verification, scheduling. Outputs are broadcast to HIPPOCAMPUS for memory consolidation.',
     activationLevel: 0.0,

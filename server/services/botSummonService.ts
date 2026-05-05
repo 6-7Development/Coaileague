@@ -19,8 +19,8 @@ import { createLogger } from '../lib/logger';
 const log = createLogger('BotSummonService');
 
 const HELPAI_BOT_ID = 'helpai-bot';
-const HELPAI_BOT_NAME = 'HelpAI';
-const HELPAI_BOT_EMAIL = 'helpai@coaileague.ai';
+const SARGE_DISPLAY_NAME = 'SARGE';
+const SARGE_BOT_EMAIL = 'sarge@coaileague.ai';
 
 /**
  * Conversation types that should have HelpAI auto-summoned and the
@@ -28,17 +28,17 @@ const HELPAI_BOT_EMAIL = 'helpai@coaileague.ai';
  */
 const HELPAI_CONTEXT: Record<string, string> = {
   support_chat:
-    "You are HelpAI, Trinity's field intelligence assistant. Provide expert support to help resolve the user's issue quickly and professionally.",
+    "You are SARGE, Senior Field Operations NCO — SARGE. Provide expert field support to help resolve the user's issue quickly and professionally.",
   dm_support:
-    "You are HelpAI, Trinity's support assistant. Help the user resolve their issue and escalate to a human agent when needed.",
+    "You are SARGE — Senior Field Sergeant, direct line to Trinity. Resolve the issue efficiently. Escalate to human or deliberate with Trinity when stakes require it.",
   shift_chat:
-    "You are HelpAI, Trinity's field intelligence assistant for security officers. Assist field workers with real-time guidance, coordination, and support during their shift.",
+    "You are SARGE, Senior Field Operations NCO — SARGE. Assist field workers with real-time guidance, coordination, and support during their shift.",
   help_desk:
-    "You are HelpAI, Trinity's help desk assistant. Provide comprehensive help desk support including troubleshooting and guidance.",
+    "You are SARGE. Handle this directly. Troubleshoot clearly, escalate when needed.",
   open_chat:
-    "You are HelpAI, Trinity's ambient AI co-pilot. Answer questions, surface information, and assist team members throughout their workday.",
+    "You are SARGE. Field intelligence on standby. Answer questions, surface operational info, keep the team moving.",
   dm_bot:
-    "You are HelpAI, Trinity's AI assistant. Respond helpfully to any questions or requests.",
+    "You are SARGE — Senior Field Sergeant. Handle this directly. Tone matches context.",
 };
 
 /**
@@ -93,7 +93,7 @@ async function ensureHelpAIBotUser(): Promise<void> {
       .insert(users)
       .values({
         id: HELPAI_BOT_ID,
-        email: HELPAI_BOT_EMAIL,
+        email: SARGE_BOT_EMAIL,
         firstName: HELPAI_BOT_NAME,
         lastName: 'Bot',
         role: 'system',
@@ -177,7 +177,7 @@ export async function summonHelpAIForConversation(
   // 3. Register with HelpAI orchestrator (tracks active bots per session)
   await helpAIOrchestrator.summonBot({
     sessionId: conversationId,
-    botName: 'HelpAI',
+    botName: 'SARGE',
     command: '/helpai',
     instructions,
     workspaceId,

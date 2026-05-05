@@ -579,7 +579,7 @@ function RoomInfoPanel({
                   <span className="text-sm font-medium truncate">{u.name}</span>
                   {isBot && <Badge variant="secondary" className="text-[9px] px-1">Bot</Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">{isBot ? (u.id === 'helpai-bot' || u.name === 'HelpAI' ? 'HelpAI' : 'Trinity') : (u.role || 'Member')}</p>
+                <p className="text-xs text-muted-foreground truncate">{isBot ? (u.id === 'helpai-bot' || u.name === 'SARGE' ? 'SARGE' : 'Trinity') : (u.role || 'Member')}</p>
               </div>
             </div>
           );
@@ -1918,7 +1918,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
     }
     chatManager.updateRoomLastMessage(roomId, text, userName);
 
-    // @Trinity / @HelpAI mention triggers AI response
+    // @Trinity / @SARGE mention triggers AI response
     if (text.includes('@Trinity') || text.includes('@trinity')) {
       fetch('/api/ai-brain/chat', {
         method: 'POST',
@@ -1944,17 +1944,17 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
         })
         .catch(() => null);
     }
-    if (text.includes('@HelpAI') || text.includes('@helpai')) {
+    if (text.includes('@SARGE') || text.includes('@helpai')) {
       fetch('/api/helpai/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: text.replace(/@HelpAI/gi, '').trim(), roomId }),
+        body: JSON.stringify({ message: text.replace(/@SARGE/gi, '').trim(), roomId }),
       })
         .then(r => r.json())
         .then(data => {
           if (data.response) {
-            sendMessage(`⭐ **HelpAI:** ${data.response}`, 'HelpAI', 'bot');
+            sendMessage(`⭐ **SARGE:** ${data.response}`, 'SARGE', 'bot');
           }
         })
         .catch(() => null);
@@ -2281,8 +2281,8 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
                   {!isOwn && !isGrouped && (
                     <span className="text-[10px] font-medium text-muted-foreground mb-0.5 px-2 inline-flex items-center gap-1">
                       {isBot
-                        ? (msg.senderId === 'helpai-bot' || msg.senderName === 'HelpAI'
-                            ? <span className="text-amber-500 font-semibold">HelpAI</span>
+                        ? (msg.senderId === 'helpai-bot' || msg.senderName === 'SARGE'
+                            ? <span className="text-amber-500 font-semibold">SARGE</span>
                             : <span className="text-violet-500 font-semibold">{msg.senderName || 'Trinity'}</span>)
                         : (msg.senderName || "Unknown")}
                       {(msg as Record<string, unknown>).bridgeChannelType && (
@@ -2469,7 +2469,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
 
       {isInTriage && (
         <div className="px-2 py-0.5 border-t bg-accent/20 text-[10px] text-muted-foreground text-center">
-          HelpAI is assisting. Staff will join if needed.
+          SARGE is assisting. Staff will join if needed.
         </div>
       )}
 
@@ -2569,7 +2569,7 @@ function InlineChatView({ roomId, roomName }: { roomId: string; roomName: string
           {mentionQuery !== null && (() => {
             const BOT_MENTIONS = [
               { id: '@Trinity', name: 'Trinity', role: 'AI Brain', badge: 'AI', color: 'hsl(271 81% 56%)' },
-              { id: '@HelpAI', name: 'HelpAI', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
+              { id: '@SARGE', name: 'SARGE', role: 'Field Supervisor', badge: 'BOT', color: 'hsl(38 92% 50%)' },
             ];
             const memberMentions = (dbParticipants ?? []).map((m: { firstName?: string; lastName?: string; workspaceRole?: string }) => ({
               id: `@${m.firstName ?? ''}${m.lastName ?? ''}`,

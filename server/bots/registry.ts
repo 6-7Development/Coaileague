@@ -154,7 +154,7 @@ export interface BotDefinition {
 export const BOT_REGISTRY: Record<string, BotDefinition> = {
   helpai: {
     id: 'helpai',
-    name: 'HelpAI',
+    name: 'SARGE',
     description: 'AI help assistant, support command bot, and right-hand supervisor of all system bots. Greets end-users, auto-assigns tickets, resolves issues with real AI and Trinity layered intelligence. Executes platform commands for support staff. Deputy Admin bypass authority, soft-delete only. Has platform-wide access like Trinity for cross-org data visibility. All actions audit-tracked with who/why/against-whom. Financial actions require supervisor approval.',
     avatar: '/bots/helpai.png',
     authTier: 'support',

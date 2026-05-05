@@ -183,7 +183,7 @@
     "title": "Trinity",
     "placeholder": "Escriba su mensaje o pregunta...",
     "send": "Enviar",
-    "greeting": "¡Hola! Soy HelpAI. ¿Cómo puedo ayudarle hoy?",
+    "greeting": "¡Hola! Soy SARGE. ¿Cómo puedo ayudarle hoy?",
     "thinking": "Pensando...",
     "errorResponse": "Tengo problemas para responder ahora. Por favor intente de nuevo.",
     "escalate": "Conectar con Soporte",

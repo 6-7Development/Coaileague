@@ -4009,7 +4009,7 @@ export function setupWebSocket(server: Server) {
                         workspaceId: helpaiWorkspace,
                         userId: ws.userId,
                         action: 'response',
-                        prompt: `User "${displayName}" asks: "${helpaiQuestion}"\n\nProvide a helpful, concise answer. You are HelpAI, the support assistant for CoAIleague workforce management platform. You can help with account issues, password resets, platform questions, and connecting with support staff. If you cannot directly solve the issue, suggest relevant slash commands or offer to escalate.`,
+                        prompt: `User "${displayName}" asks: "${helpaiQuestion}"\n\nProvide a helpful, concise answer. You are SARGE, the support assistant for CoAIleague workforce management platform. You can help with account issues, password resets, platform questions, and connecting with support staff. If you cannot directly solve the issue, suggest relevant slash commands or offer to escalate.`,
                         context: { conversationId: ws.conversationId },
                       });
                       helpaiMsg = aiResp.text;

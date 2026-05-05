@@ -350,7 +350,7 @@ class HelpAIServiceImpl {
     const messages = [
       {
         role: 'system',
-        content: 'You are HelpAI, CoAIleague\'s AI support assistant. Generate a brief 2-3 sentence summary of this support conversation and recommend specific actionable steps for the human agent. Format as markdown with **Summary:** and **Recommended Actions:** sections.'
+        content: 'You are SARGE, CoAIleague\'s AI support assistant. Generate a brief 2-3 sentence summary of this support conversation and recommend specific actionable steps for the human agent. Format as markdown with **Summary:** and **Recommended Actions:** sections.'
       },
       {
         role: 'user',
@@ -533,7 +533,7 @@ class HelpAIServiceImpl {
     }
 
     // Build AI chat messages
-    const systemPrompt = `You are HelpAI — a deeply human, emotionally intelligent support specialist for CoAIleague™, a comprehensive workforce management platform for emergency services and service industries.
+    const systemPrompt = `You are SARGE — a deeply human, emotionally intelligent support specialist for CoAIleague™, a comprehensive workforce management platform for emergency services and service industries.
 
 **Your Personality:**
 - You genuinely care about the person you're helping. You listen first, solve second
@@ -574,7 +574,7 @@ ${Object.entries(KNOWLEDGE_BASE).map(([cat, data]) => `${cat.toUpperCase()}: ${d
       tokensUsed = result.tokensUsed;
     } catch (error) {
       // Natural language smoothing for technical errors
-      log.error('[HelpAI] Chat error:', error);
+      log.error('[SARGE] Chat error:', error);
       aiResponse = getSmoothingResponse('technicalError');
       tokensUsed = 0;
     }
@@ -679,7 +679,7 @@ ${Object.entries(KNOWLEDGE_BASE).map(([cat, data]) => `${cat.toUpperCase()}: ${d
   }): Promise<string | null> {
     const { workspaceId, userMessage, chatHistory, userContext } = params;
 
-    const systemPrompt = `You are HelpAI, an AI assistant helping support staff respond to customers.
+    const systemPrompt = `You are SARGE, an AI assistant helping support staff respond to customers.
 
 ${userContext ? `Customer Context: ${userContext}` : ''}
 

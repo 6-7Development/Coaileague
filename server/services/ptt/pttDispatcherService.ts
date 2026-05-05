@@ -111,7 +111,7 @@ async function generateDispatcherResponse(params: {
     ].filter(Boolean).join(". ");
 
     const prompt = [
-      "You are HelpAI, acting as a professional security dispatcher.",
+      "You are SARGE, acting as a professional security dispatcher.",
       "Officer " + senderName + " just transmitted: [" + transcript + "]",
       context ? "Auto-logged: " + context : "",
       "Respond in 1-2 short dispatcher sentences. Acknowledge, confirm what was logged, give guidance if needed.",

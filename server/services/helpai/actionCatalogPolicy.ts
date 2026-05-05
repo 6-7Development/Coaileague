@@ -44,7 +44,7 @@ const DOMAIN_OWNER_BY_PREFIX: Record<string, string> = {
   features: 'Platform Admin',
   forms: 'Forms',
   governance: 'Automation Governance',
-  helpai: 'HelpAI',
+  helpai: 'SARGE',
   hris: 'Integrations',
   inbound: 'Email',
   integrations: 'Integrations',

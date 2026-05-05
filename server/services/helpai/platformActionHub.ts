@@ -4,7 +4,7 @@
  * Central infrastructure that brokers ALL user-triggered actions through the AI Brain (Trinity).
  * Uses an event-driven command bus tied to ChatServerHub and WebSocket layers.
  * 
- * NOTE: This is platform infrastructure, not HelpAI itself. HelpAI is a support bot that
+ * NOTE: This is platform infrastructure, not HelpAI itself. SARGE is a support bot that
  * uses this action hub. Trinity/AI Brain is the true orchestrator.
  * 
  * Responsibilities:
@@ -422,7 +422,7 @@ class PlatformActionHub {
           source: 'platform_action_hub',
           metadata: { 
             ...metadata, 
-            sentViaHelpAI: true, 
+            sentViaSARGE: true, 
             sentBy: request.userId,
             actionUrl: actionUrl || null,
             relatedEntityType: relatedEntityType || null,
@@ -562,7 +562,7 @@ class PlatformActionHub {
             alertsCleared++;
           }
         } catch (e) {
-          log.warn('[HelpAI] Failed to acknowledge maintenance alerts:', e);
+          log.warn('[SARGE] Failed to acknowledge maintenance alerts:', e);
         }
 
         // Broadcast notification cleared event via centralized WebSocket
@@ -587,7 +587,7 @@ class PlatformActionHub {
             result: { success: true, cleared: { notifications: result.length, alerts: alertsCleared } }
           });
         } catch (logError) {
-          log.warn('[HelpAI] Failed to log to AI Brain audit:', logError);
+          log.warn('[SARGE] Failed to log to AI Brain audit:', logError);
         }
 
         return {
@@ -618,7 +618,7 @@ class PlatformActionHub {
             message: message || 'System announcement',
             broadcastType: type || 'info',
             timestamp: new Date().toISOString(),
-            from: 'HelpAI'
+            from: 'SARGE'
           });
         }
 
@@ -1534,7 +1534,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.process_message',
-      name: 'HelpAI: Process Message',
+      name: 'SARGE: Process Message',
       category: 'support',
       description: 'Route and process an incoming HelpAI message through the cognitive layer stack with priority classification and language detection',
       requiredRoles: [],
@@ -1560,7 +1560,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.route_cognitive_layer',
-      name: 'HelpAI: Route Cognitive Layer',
+      name: 'SARGE: Route Cognitive Layer',
       category: 'support',
       description: 'Select the optimal AI model (Claude/GPT/Gemini) for a given HelpAI task type',
       requiredRoles: [],
@@ -1587,7 +1587,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.detect_language',
-      name: 'HelpAI: Detect Language',
+      name: 'SARGE: Detect Language',
       category: 'support',
       description: 'Detect session language (English/Spanish) from first user message and lock the conversation language',
       requiredRoles: [],
@@ -1614,7 +1614,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.set_faith_state',
-      name: 'HelpAI: Set Faith Sensitivity State',
+      name: 'SARGE: Set Faith Sensitivity State',
       category: 'support',
       description: 'Update conversation faith sensitivity state (receptive/neutral/careful) based on user signals',
       requiredRoles: [],
@@ -1641,7 +1641,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.classify_priority',
-      name: 'HelpAI: Classify Message Priority',
+      name: 'SARGE: Classify Message Priority',
       category: 'support',
       description: 'Classify incoming message as critical/high/normal/low — critical triggers emergency protocol immediately',
       requiredRoles: [],
@@ -1665,7 +1665,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.broadcast_status',
-      name: 'HelpAI: Broadcast Status Message',
+      name: 'SARGE: Broadcast Status Message',
       category: 'support',
       description: 'Get the next non-repeating status phrase from the HelpAI or Trinity vocabulary pool for streaming',
       requiredRoles: [],
@@ -1688,7 +1688,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.emergency_protocol',
-      name: 'HelpAI: Trigger Emergency Protocol',
+      name: 'SARGE: Trigger Emergency Protocol',
       category: 'support',
       description: 'Hard-coded behavior tree for safety/life-safety events — immediately acks user, alerts Trinity, fires critical notification',
       requiredRoles: [],
@@ -1719,7 +1719,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.graceful_degrade',
-      name: 'HelpAI: Enter/Exit Graceful Degradation',
+      name: 'SARGE: Enter/Exit Graceful Degradation',
       category: 'support',
       description: 'Switch HelpAI into Limited Autonomous Mode when Trinity is unreachable for >30s, or exit when connection restores',
       requiredRoles: [],
@@ -1745,7 +1745,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.run_proactive_monitor',
-      name: 'HelpAI: Run Proactive Monitor Cycle',
+      name: 'SARGE: Run Proactive Monitor Cycle',
       category: 'support',
       description: 'Trigger an immediate proactive monitoring check across all workspaces outside the normal 5-minute interval',
       requiredRoles: ['org_owner', 'co_owner', 'platform_admin'],
@@ -1768,7 +1768,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.command_bus_send',
-      name: 'HelpAI: Send Command Bus Message',
+      name: 'SARGE: Send Command Bus Message',
       category: 'support',
       description: 'Send a structured typed payload from HelpAI to Trinity via the command bus (escalation/report/request/alert)',
       requiredRoles: [],
@@ -1798,7 +1798,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.command_bus_receive',
-      name: 'HelpAI: Receive Pending Command Bus Messages',
+      name: 'SARGE: Receive Pending Command Bus Messages',
       category: 'support',
       description: 'Poll the command bus for pending messages from Trinity to HelpAI',
       requiredRoles: [],
@@ -1818,7 +1818,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.human_handoff',
-      name: 'HelpAI: Human Handoff',
+      name: 'SARGE: Human Handoff',
       category: 'support',
       description: 'Transfer active conversation to a human agent and pause HelpAI responses in that thread',
       requiredRoles: [],
@@ -1842,7 +1842,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.human_resume',
-      name: 'HelpAI: Resume After Human Handoff',
+      name: 'SARGE: Resume After Human Handoff',
       category: 'support',
       description: 'Resume HelpAI responses after a human agent has finished assisting',
       requiredRoles: [],
@@ -1866,7 +1866,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.sla_track',
-      name: 'HelpAI: Record SLA Event',
+      name: 'SARGE: Record SLA Event',
       category: 'support',
       description: 'Record first-response or resolution SLA events and flag breaches for management review',
       requiredRoles: [],
@@ -1896,7 +1896,7 @@ class PlatformActionHub {
 
     this.registerAction({
       actionId: 'helpai.feedback_collect',
-      name: 'HelpAI: Collect Satisfaction Feedback',
+      name: 'SARGE: Collect Satisfaction Feedback',
       category: 'support',
       description: 'Record end-of-session satisfaction response from user to the conversation record',
       requiredRoles: [],
