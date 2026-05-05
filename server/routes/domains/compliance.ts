@@ -7,6 +7,7 @@
 import type { Express } from "express";
 import { preAuditRouter } from "../preAuditRoutes";
 import { licenseVerificationRouter } from "../licenseVerificationRoutes";
+import { idPhotoRouter } from "../idPhotoVerificationRoutes";
 import { scheduleApprovalRouter } from "../scheduleApprovalRoutes";
 import { pdfRouter } from "../pdfRoutes";
 import { regulatoryPublicRouter } from "../regulatoryPublicRoutes";
@@ -103,6 +104,7 @@ export function mountComplianceRoutes(app: Express): void {
 
   app.use("/api/compliance", requireAuth, ensureWorkspaceAccess, preAuditRouter);
   app.use("/api/compliance/verify", licenseVerificationRouter);
+  app.use("/api/compliance/verify/id-photo", idPhotoRouter);
   app.use("/api/schedule-approval", scheduleApprovalRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);
