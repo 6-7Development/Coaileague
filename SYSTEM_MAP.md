@@ -391,8 +391,15 @@ simulateAcmeStripe.ts     → Dev-only script. Not mounted in prod routes. Keep 
 ☐ npx tsx server/scripts/seedStatewideProduction.ts
 ☐ Railway env: OCTOKIT_GITHUB_TOKEN, RAILWAY_WEBHOOK_SECRET,
                GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+☐ Railway env (FCM push notifications): FIREBASE_PROJECT_ID,
+               FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+☐ Railway env: STATEWIDE_WORKSPACE_ID (production workspace ID,
+               NOT 'dev-anvil-security-ws' — check Neon for the real ID)
 ☐ Railway webhook: coaileague.com/api/webhooks/railway-deploy
 ☐ Resend inbound webhook: coaileague.com/api/inbound-email
+☐ Run: node server/scripts/migrate-wave-27-fema.js (FEMA tables)
+☐ Resend: configure calloffs@, incidents@, docs@, support@ to forward
+          to /api/inbound-email — Trinity routing fires automatically
 ☐ DNS verification: sending domain for Resend
 ☐ RESEND_WEBHOOK_SECRET confirmed in Railway production
 ```

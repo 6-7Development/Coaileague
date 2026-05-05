@@ -151,6 +151,55 @@ async function migrate() {
       ON per_diem_records (workspace_id, employee_id, record_date)
     `);
 
+
+    // ── Resend inbound email routing ──────────────────────────────────────────
+    console.log('\nSeeding Resend inbound email routing...');
+    const PLATFORM_DOMAIN = process.env.PLATFORM_EMAIL_DOMAIN || 'coaileague.ai';
+
+    const inboundRoutes = [
+      {
+        address:           `calloffs@${PLATFORM_DOMAIN}`,
+        route_type:        'platform_calloff',
+        target_inbox_type: 'calloff_inbox',
+        auto_process:      true,
+        process_as:        'calloff_request',
+      },
+      {
+        address:           `incidents@${PLATFORM_DOMAIN}`,
+        route_type:        'platform_incident',
+        target_inbox_type: 'incident_inbox',
+        auto_process:      true,
+        process_as:        'incident_report',
+      },
+      {
+        address:           `support@${PLATFORM_DOMAIN}`,
+        route_type:        'platform_support',
+        target_inbox_type: 'support_inbox',
+        auto_process:      true,
+        process_as:        'support_ticket',
+      },
+      {
+        address:           `docs@${PLATFORM_DOMAIN}`,
+        route_type:        'platform_docs',
+        target_inbox_type: 'docs_inbox',
+        auto_process:      false,
+        process_as:        'document_request',
+      },
+    ];
+
+    for (const route of inboundRoutes) {
+      await run(`email_routing: ${route.address}`,
+        `INSERT INTO email_routing
+           (address, route_type, target_inbox_type, auto_process, process_as, is_active)
+         VALUES ('${route.address}', '${route.route_type}', '${route.target_inbox_type}',
+                 ${route.auto_process}, '${route.process_as}', true)
+         ON CONFLICT (address) DO UPDATE SET
+           route_type = EXCLUDED.route_type,
+           auto_process = EXCLUDED.auto_process,
+           is_active = true`
+      );
+    }
+
     await pool.query('COMMIT');
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('  FEMA Migration complete ✅');

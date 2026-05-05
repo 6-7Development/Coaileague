@@ -96,6 +96,7 @@ import { UnifiedBrandLogo } from "@/components/unified-brand-logo";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { ConnectionStatusBanner } from "@/components/connection-status";
 import { SWUpdateBanner } from "@/components/ui/sw-update-notice";
+import { SeasonalBackground } from "@/components/seasonal-background";
 import { ServiceWorkerMessageListener } from "@/components/sw-notification-listener";
 import { listenForTabEvents } from "@/lib/tabSync";
 import { SessionTimeoutWarning } from "@/components/session-timeout-warning";
@@ -2006,6 +2007,7 @@ export default function App() {
                           <ConnectionStatusBanner />
                           <OfflineIndicator />
                           <SWUpdateBanner />
+                          <SeasonalBackground enabled={true} />
                           <ServiceWorkerMessageListener />
                           <ChatroomNotificationListener />
                           <LanguageSync />
