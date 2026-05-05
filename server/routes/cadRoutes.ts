@@ -117,6 +117,61 @@ cadRouter.post("/calls", requireAuth, ensureWorkspaceAccess, async (req: Authent
 
 // GEOFENCE DEPARTURES
 
+
+// POST /api/cad/geofence-breach — record breach and notify via SARGE
+cadRouter.post("/geofence-breach", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = wid(req);
+    const { employeeId, shiftId, latitude, longitude, postName } = req.body;
+    if (!employeeId || !shiftId) return res.status(400).json({ error: "employeeId and shiftId required" });
+
+    // Log the breach
+    await q(
+      `INSERT INTO geofence_departure_log
+         (workspace_id, employee_id, shift_id, departed_at, latitude, longitude, created_at)
+       VALUES ($1,$2,$3,NOW(),$4,$5,NOW())
+       ON CONFLICT DO NOTHING`,
+      [workspaceId, employeeId, shiftId, latitude || null, longitude || null]
+    );
+
+    // Flag on timesheet
+    await q(
+      `UPDATE time_entries SET geofence_breach=true, geofence_breach_at=NOW()
+       WHERE employee_id=$1 AND shift_id=$2 AND clock_out_time IS NULL`,
+      [employeeId, shiftId]
+    ).catch(() => {});
+
+    // SARGE notification in shift room
+    const { broadcastToWorkspace } = await import("../websocket");
+    await broadcastToWorkspace(workspaceId, {
+      type: "chatdock_action_card",
+      data: {
+        roomId: `${workspaceId}-ops`,
+        actionType: "compliance_alert",
+        senderId: "helpai-bot",
+        senderName: "SARGE",
+        props: {
+          body: `⚠️ GEOFENCE BREACH: Officer #${employeeId} has left the ${postName || "assigned post"} boundary while clocked in. Timesheet flagged.`,
+          flags: [
+            { code: "GEOFENCE_BREACH", description: `Departed at ${new Date().toLocaleTimeString()}`, severity: "critical" as const },
+            { code: "ACTION_REQUIRED", description: "Confirm officer location and update post orders if needed", severity: "warning" as const },
+          ],
+        },
+      },
+    }).catch(() => {});
+
+    // Supervisor push notification
+    const { notificationDeliveryService } = await import("../services/notificationDeliveryService");
+    await notificationDeliveryService.sendWorkspaceAlert(workspaceId,
+      "⚠️ Geofence Breach",
+      `Officer has left their assigned post boundary while clocked in.`,
+      ["supervisor", "manager", "org_owner"]
+    ).catch(() => {});
+
+    res.json({ success: true, breachLogged: true });
+  } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
+});
+
 cadRouter.get("/geofence-departures", requireAuth, ensureWorkspaceAccess, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = wid(req);

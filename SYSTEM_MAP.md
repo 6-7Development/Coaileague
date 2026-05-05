@@ -2357,3 +2357,49 @@ Every new tenant gets on workspace creation (non-blocking):
 ---
 
 # NEXT: WAVE 18 — CAD Infrastructure & NFC Patrol Engine
+
+---
+
+## Wave 29 — Voice Bridge, Geofence, Plaid FinTech
+
+### Existing Services (already built, now documented)
+
+**voiceRoutes.ts** (5,599 lines) — complete telephony engine
+  Inbound routing by caller ID (guard → SARGE, client → Trinity, unknown → menu)
+  Outbound missed-shift auto-dialer (Trinity + Gemini voice)
+  Twilio Media Streams → Gemini real-time audio bridge (digit 0 upgrades)
+  Duress detection: isDuressPhrase() — bilingual EN+ES, 15 trigger phrases
+  NEW Wave 29: duress now auto-creates incident_reports + locks shift room
+
+**cadRoutes.ts** — geofence infrastructure
+  geofence_departure_log table — breach records with lat/lng
+  GET /api/cad/geofence-departures — active breaches
+  NEW Wave 29: POST /api/cad/geofence-breach — SARGE notification + timesheet flag
+
+**plaidService.ts** (392 lines) — Plaid FinTech
+  createLinkToken, exchangePublicToken — officer bank onboarding
+  initiateTransfer, getTransferStatus — ACH execution
+  AES-256 encryption on stored access tokens
+  verifyBankAccount — pre-transfer validation
+
+**plaidRoutes.ts** (538 lines) — Plaid API surface
+  /link-token/employee/:id — Plaid Link token for officer
+  /exchange/employee/:id — public token → encrypted access token
+  /employee/:id/bank-status — check if bank linked
+  /transfers/:payStubId — transfer status check
+  NEW Wave 29: POST /disburse-batch — ACH Disbursal Gate (owner-only)
+
+### Required Railway Env Vars (Wave 29)
+
+```
+PLAID_CLIENT_ID       From Plaid dashboard
+PLAID_SECRET          From Plaid dashboard
+PLAID_ENV             sandbox (dev) | production
+PLAID_ENCRYPTION_KEY  64-char hex string (generate: openssl rand -hex 32)
+
+TWILIO_ACCOUNT_SID    From Twilio dashboard
+TWILIO_AUTH_TOKEN     From Twilio dashboard
+TWILIO_PHONE_NUMBER   Your Twilio phone number
+
+GEMINI_API_KEY        For Twilio Media Streams → Gemini voice bridge (digit 0)
+```

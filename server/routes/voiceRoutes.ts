@@ -5312,6 +5312,31 @@ voiceRouter.post('/duress-check', twilioSignatureMiddleware, async (req: Request
         workspaceId,
         metadata: { callSid: CallSid, callerNumber: From, spokenPhrase: spoken },
       }).catch(() => {});
+
+      // Auto-create incident report for evidence preservation
+      // ICS pipeline: ZLP applies — Trinity documents, does NOT dispatch 911
+      const { pool: dbPool2 } = await import('../db');
+      dbPool2.query(
+        `INSERT INTO incident_reports
+           (workspace_id, incident_type, caller_phone, description, status,
+            call_sid, spoken_phrase, severity, created_at)
+         VALUES ($1,'duress_call',$2,$3,'open',$4,$5,'critical',NOW())
+         ON CONFLICT DO NOTHING`,
+        [workspaceId, From,
+          `CODE RED: Duress phrase detected during voice call. Phrase: "${spoken}". All managers notified via SMS. Officer may need immediate assistance.`,
+          CallSid, spoken]
+      ).catch(() => {});
+
+      // Lock the officer's shift room conversation for evidence preservation
+      // (prevents accidental message deletion during investigation)
+      dbPool2.query(
+        `UPDATE conversations
+         SET is_locked=true, locked_reason='duress_call', locked_at=NOW()
+         WHERE workspace_id=$1
+           AND (slug='ops' OR slug LIKE '%general%')
+         LIMIT 1`,
+        [workspaceId]
+      ).catch(() => {});
     }
 
     // Get owner phone for immediate dial (no whisper — this is an emergency)

@@ -1784,3 +1784,155 @@ Enforced at DB query level in femaDeclarationService.ts
 Not enforced at send level — the record never enters the send queue
 Documentation: RBAC_MATRIX.md § Cross-Cutting Security Rules
 ```
+
+---
+
+## PIPELINE 17 — TWILIO-GEMINI VOICE BRIDGE (Wave 29)
+
+### Already Built (voiceRoutes.ts — 5,599 lines)
+
+```
+Inbound call routing (by caller ID):
+  Guard phones   → Trinity answers → language select → SARGE handoff
+  Client phones  → Trinity answers → client menu
+  Unknown caller → Trinity answers → general routing
+
+Outbound auto-dialer (missed shift):
+  Shift starts, officer not clocked in → Trinity auto-dials officer
+  Gemini voices the reminder → officer presses digit to confirm attendance
+  No answer → SMS fallback → SARGE ChatDock ping
+
+Twilio Media Streams → Gemini API bridge:
+  Digit 0 on any call → upgrades to Gemini free-talk session
+  Audio piped via WebSocket to Gemini in real-time
+  Low-latency conversational AI (requires GEMINI_API_KEY in Railway)
+```
+
+### Duress Code Protocol (updated Wave 29)
+
+```
+Trigger: isDuressPhrase() detects keyword during any call
+  EN: 'code red', 'officer needs assistance', 'mayday', 'i am in danger', etc.
+  ES: 'codigo rojo', 'oficial necesita ayuda', 'peligro', etc.
+
+Trinity maintains calm conversational facade while silently:
+  1. Blasts SMS to ALL supervisor+/owner contacts simultaneously
+  2. Posts 🚨 CODE RED card to ChatDock ops room
+  3. AUTO-CREATES incident report (NEW Wave 29):
+       incident_reports: type='duress_call', severity='critical',
+       spoken_phrase, call_sid, description
+  4. LOCKS shift room conversation (NEW Wave 29):
+       conversations.is_locked=true, locked_reason='duress_call'
+       Prevents evidence deletion during investigation
+  5. Dials owner phone immediately (no whisper — emergency)
+  6. Fires voice_duress_detected to platformEventBus
+
+Zero Liability Protocol: Trinity never offers to call 911 herself.
+Incident report documents her observation. Human decides emergency response.
+```
+
+---
+
+## PIPELINE 18 — GEOFENCE BREACH PROTOCOL (Wave 29)
+
+### Architecture
+
+```
+Post locations stored with polygon coordinates in CAD system
+Guard clocks in → GPS tracking active for shift duration
+GPS strays outside polygon → POST /api/cad/geofence-breach
+
+Server actions (all non-blocking):
+  1. INSERT geofence_departure_log (workspace_id, employee_id, shift_id, lat, lng)
+  2. UPDATE time_entries SET geofence_breach=true, geofence_breach_at=NOW()
+  3. SARGE compliance_alert ChatActionBlock → ops room
+  4. Supervisor push notification (manager+)
+
+SARGE message: "⚠️ GEOFENCE BREACH: Officer #X has left the [post] boundary
+                while clocked in. Timesheet flagged."
+
+Manual resolution: manager marks returned_at in geofence_departure_log
+Status check: GET /api/cad/geofence-departures → active breaches
+```
+
+---
+
+## PIPELINE 19 — IN-HOUSE FINTECH ENGINE (Plaid ACH) (Wave 29)
+
+### Plaid Auth — Officer Onboarding
+
+```
+Step: officer accepts invite → Setup Checklist → "Link Direct Deposit"
+
+Flow:
+  POST /api/plaid/link-token/employee/:employeeId
+    → plaidService.createLinkToken() → Plaid Link UI token
+  Officer opens Plaid Link (bank login — CoAIleague never sees credentials)
+  Officer selects account → public token generated client-side
+  POST /api/plaid/exchange/employee/:employeeId
+    → exchangePublicToken() → access token (AES-256 encrypted)
+    → stored in employees.plaidEncryptedToken (never raw)
+    → employees.plaidAccountLast4, plaidInstitutionName stored for display
+
+Zero raw routing numbers stored: CoAIleague is NOT PCI/banking scope.
+Plaid holds the banking relationship. CoAIleague holds the encrypted access token only.
+```
+
+### The Ledger — Trinity Calculates Pay
+
+```
+Trinity calculates based on geofence-verified time punches:
+  Regular hours: hours ≤ 40/week × base pay rate
+  OT hours:      hours > 40/week × 1.5x (FLSA)
+  Per diem:      per_diem_records (from FEMA module) × deployment days
+  Deductions:    garnishments, tax withholding per employees.taxWithholding
+
+Output: pay_stubs table row (status='draft')
+  gross_pay, overtime_pay, per_diem_total, deductions, net_pay
+Trinity tags each row: trinity_calculated=true, trinity_calculated_at=NOW()
+```
+
+### The ACH Gate — Hard Constraint
+
+```
+ABSOLUTE RULE: Trinity CANNOT execute ACH transfers autonomously.
+She prepares the batch; the owner must click "Approve & Disburse."
+
+Preparation (Trinity):
+  pay_stubs rows with status='draft' → reviewed by owner
+  pay_stubs display: officer name, hours, gross, deductions, net, bank last4
+
+Approval (owner only):
+  POST /api/plaid/disburse-batch (requireAuth + org_owner/co_owner ONLY)
+  Body: { payStubIds: string[], periodLabel?: string }
+
+  For each pay stub:
+    → fetch encrypted Plaid access token for employee
+    → plaidService.initiateTransfer() → Plaid ACH initiated
+    → pay_stubs.plaidTransferId, plaidTransferStatus='pending' set
+    → IMMUTABLE AUDIT TRAIL:
+        pay_stubs.disbursed_by = approver user ID
+        pay_stubs.disbursed_at = timestamp
+        pay_stubs.disbursed_by_ip = approver IP address
+
+  If employee has no linked bank account:
+    → status='no_bank_account' returned
+    → owner must pay manually (paper check or manual ACH)
+
+403 FORBIDDEN if role is not org_owner or co_owner:
+  Message: "Only org_owner or co_owner can approve ACH disbursements.
+            Trinity cannot execute transfers autonomously."
+```
+
+### Plaid Transfer Status Monitoring
+
+```
+GET /api/plaid/transfers/:payStubId
+  → returns plaidTransferId, plaidTransferStatus, plaidTransferFailureReason
+  Status flow: pending → settled | failed | returned
+
+On failure: plaidTransferFailureReason populated
+  Owner notified: "ACH transfer failed for [officer]. Manual disbursal required."
+  pay_stubs.plaidTransferStatus = 'failed'
+  pay_stubs row NOT re-attempted automatically — human must re-approve
+```

@@ -2,6 +2,8 @@ import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from 'express';
 import { requireAuth } from '../auth';
 import { requireOwner, requireManager, type AuthenticatedRequest } from '../rbac';
+import { ensureWorkspaceAccess } from '../middleware/workspaceScope';
+import { getUser, getWorkspaceId } from '../lib/requestHelpers';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { orgFinanceSettings, payStubs, employeeBankAccounts, employees } from '@shared/schema';
@@ -413,6 +415,100 @@ router.get('/transfers/:payStubId', requireAuth, async (req, res) => {
 // Confirms Plaid credentials, environment, and webhook URL are configured.
 // Used to diagnose payroll ACH failures and onboarding issues in production.
 // ══════════════════════════════════════════════════════════════════════════
+
+// ── POST /api/plaid/disburse-batch — ACH Disbursal Gate ────────────────────
+// HARD CONSTRAINT: Trinity prepares payroll batches but CANNOT call this route.
+// Only org_owner / co_owner can approve disbursements.
+// Every approval is logged with disbursed_by, disbursed_at, and approver IP.
+// This creates an immutable audit trail for each ACH transfer.
+router.post('/disburse-batch',
+  requireAuth, ensureWorkspaceAccess,
+  async (req: Request, res: Response) => {
+    try {
+      const user = (req as AuthenticatedRequest).user!;
+      const workspaceId = (req as AuthenticatedRequest).workspaceId!;
+
+      // Role gate — only owners can approve disbursements
+      const ownerRoles = ['org_owner', 'co_owner'];
+      if (!ownerRoles.includes(user.role || '')) {
+        return res.status(403).json({
+          error: 'FORBIDDEN',
+          message: 'Only org_owner or co_owner can approve ACH disbursements. Trinity cannot execute transfers autonomously.',
+        });
+      }
+
+      const { payStubIds, periodLabel } = req.body as { payStubIds: string[]; periodLabel?: string };
+      if (!payStubIds?.length) return res.status(400).json({ error: 'payStubIds required' });
+
+      const approverIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+      const disbursedAt = new Date();
+      const results: Array<{ payStubId: string; transferId?: string; status: string; error?: string }> = [];
+
+      for (const payStubId of payStubIds) {
+        try {
+          // Fetch pay stub + employee Plaid token
+          const [stub] = await db.select({
+            id: payStubs.id, employeeId: payStubs.employeeId,
+            netPay: payStubs.netPay, plaidTransferId: payStubs.plaidTransferId,
+          }).from(payStubs)
+            .where(and(eq(payStubs.id, payStubId), eq(payStubs.workspaceId, workspaceId)))
+            .limit(1);
+
+          if (!stub) { results.push({ payStubId, status: 'not_found' }); continue; }
+          if (stub.plaidTransferId) { results.push({ payStubId, status: 'already_disbursed', transferId: stub.plaidTransferId }); continue; }
+
+          // Fetch encrypted Plaid access token for employee
+          const empToken = await db.select({ plaidEncryptedToken: employees.plaidEncryptedToken })
+            .from(employees)
+            .where(and(eq(employees.id, stub.employeeId), eq(employees.workspaceId, workspaceId)))
+            .limit(1);
+
+          if (!empToken[0]?.plaidEncryptedToken) {
+            results.push({ payStubId, status: 'no_bank_account', error: 'Employee has not linked a bank account via Plaid' });
+            continue;
+          }
+
+          // Initiate Plaid Transfer
+          const transfer = await initiateTransfer({
+            accessToken: empToken[0].plaidEncryptedToken,
+            amount: (Number(stub.netPay) / 100).toFixed(2),
+            description: periodLabel || 'CoAIleague Payroll',
+            employeeId: stub.employeeId,
+            workspaceId,
+          });
+
+          // Log the approval — immutable audit trail
+          await db.update(payStubs).set({
+            plaidTransferId: transfer.transferId,
+            plaidTransferStatus: 'pending',
+            disbursedBy: user.id,
+            disbursedAt,
+            disbursedByIp: String(approverIp).slice(0, 45),
+          } as Record<string, unknown>).where(eq(payStubs.id, payStubId));
+
+          results.push({ payStubId, status: 'initiated', transferId: transfer.transferId });
+        } catch (stubErr: unknown) {
+          results.push({ payStubId, status: 'error', error: stubErr instanceof Error ? stubErr.message : String(stubErr) });
+        }
+      }
+
+      const initiated = results.filter(r => r.status === 'initiated').length;
+      const failed    = results.filter(r => r.status === 'error').length;
+
+      return res.json({
+        success: true,
+        initiated, failed,
+        approvedBy: user.id,
+        approvedByName: ((user.firstName || '') + ' ' + (user.lastName || '')).trim(),
+        disbursedAt: disbursedAt.toISOString(),
+        results,
+      });
+    } catch (err: unknown) {
+      return res.status(500).json({ error: sanitizeError(err) });
+    }
+  }
+);
+
 router.get('/health', requireAuth, async (req, res) => {
   const platformRole = req.platformRole || '';
   const isPlatformStaff = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent']
