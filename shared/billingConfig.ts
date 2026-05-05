@@ -2181,6 +2181,14 @@ export const TWILIO_COST_BASIS = {
   tollFreeNumberMonthlyRentCents: 200,
 } as const;
 
+
+export const PTT_PRICING = {
+  perSeatMonthlyCents: 500,        // $5.00/seat/month
+  minutesIncludedPerSeat: 300,     // 300 min/seat/month (5 hrs)
+  overagePerMinuteCents: 2,        // $0.02/min overage
+  pttChannelsIncluded: 10,         // channels per workspace
+} as const;
+
 export const EMAIL_PRICING = {
   perSeatMonthlyCents: 300,
   fairUseEmailsPerSeatMonthly: 500,

@@ -12,6 +12,7 @@ import { idPhotoRouter } from "../idPhotoVerificationRoutes";
 import { scheduleApprovalRouter } from "../scheduleApprovalRoutes";
 import { railwayWebhookRouter } from "../railwayWebhookRoutes";
 import { shadowModeRouter } from "../shadowModeRoutes";
+import { pttSeatRouter } from "../pttSeatRoutes";
 import { pdfRouter } from "../pdfRoutes";
 import { regulatoryPublicRouter } from "../regulatoryPublicRoutes";
 import { requireAuth } from "../../auth";
@@ -111,6 +112,7 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/schedule-approval", scheduleApprovalRouter);
   app.use("/api/webhooks", railwayWebhookRouter);
   app.use("/api/support/shadow", shadowModeRouter);
+  app.use("/api/billing/ptt-seats", pttSeatRouter);
   app.use("/api/surge-events", surgeEventRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);

@@ -214,6 +214,28 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_surge_deployments_employee ON surge_deployments(employee_id)
     `);
 
+    
+    // ── ptt_seats (PTT per-seat billing) ──────────────────────────────────────
+    console.log('\nCreating ptt_seats table...');
+    await run('ptt_seats table', `
+      CREATE TABLE IF NOT EXISTS ptt_seats (
+        id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id          TEXT NOT NULL,
+        employee_id           TEXT NOT NULL,
+        is_active             BOOLEAN NOT NULL DEFAULT true,
+        activated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        activated_by          TEXT,
+        deactivated_at        TIMESTAMPTZ,
+        stripe_item_id        TEXT,
+        minutes_used_period   INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (workspace_id, employee_id)
+      )
+    `);
+    await run('ptt_seats: idx_workspace', `
+      CREATE INDEX IF NOT EXISTS idx_ptt_seats_workspace
+      ON ptt_seats (workspace_id, is_active)
+    `);
+
         await pool.query('COMMIT');
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('  Migration complete ✅');

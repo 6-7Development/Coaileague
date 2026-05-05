@@ -367,6 +367,71 @@ emailRouter.delete('/:emailId', async (req: AuthenticatedRequest, res) => {
 // MANAGEMENT ROUTES (org owner)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+
+// ─── POST /api/email/addresses/create — tenant creates custom email seat ───────
+// Tenants can create custom addresses like ops@slug.coaileague.com,
+// info@slug.coaileague.com, etc. Address is inactive until activated.
+// Enforced: must be on @{slug}.coaileague.com subdomain only.
+emailRouter.post('/addresses/create', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { workspaceId, id: userId } = req.user;
+    const { localPart, displayName, assignToUserId, assignToClientId } = req.body;
+
+    if (!localPart || typeof localPart !== 'string') {
+      return res.status(400).json({ error: 'localPart required (e.g. "ops" for ops@yourslug.coaileague.com)' });
+    }
+
+    // Get workspace email slug
+    const ws = await pool.query(
+      `SELECT email_slug FROM workspaces WHERE id = $1 AND email_slug IS NOT NULL`,
+      [workspaceId]
+    );
+    if (!ws.rows[0]) {
+      return res.status(400).json({ error: 'Workspace email domain not configured yet. Complete onboarding first.' });
+    }
+    const emailSlug = ws.rows[0].email_slug;
+
+    // Sanitize localPart
+    const safe = localPart.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
+    if (!safe) return res.status(400).json({ error: 'Invalid local part' });
+
+    const address = `${safe}@${emailSlug}.coaileague.com`;
+
+    // Validate not a protected address
+    const { validateTenantEmailAddress } = await import('../../services/email/emailProvisioningService');
+    const validationError = validateTenantEmailAddress(address, emailSlug);
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    // Create the address (inactive until activated)
+    const result = await pool.query(
+      `INSERT INTO platform_email_addresses
+           (workspace_id, user_id, client_id, address, local_part, subdomain,
+            display_name, address_type, is_active, is_protected)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'user_custom', false, false)
+         ON CONFLICT (address) DO NOTHING
+         RETURNING id, address`,
+      [workspaceId, assignToUserId || null, assignToClientId || null,
+       address, safe, emailSlug, displayName || address]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(409).json({ error: 'Address already exists' });
+    }
+
+    log.info(`[EmailRoutes] Custom address created: ${address} in workspace ${workspaceId}`);
+    return res.status(201).json({
+      success: true,
+      id: result.rows[0].id,
+      address: result.rows[0].address,
+      isActive: false,
+      message: `${address} created. Activate it to start billing at $${(EMAIL_PRICING.perSeatMonthlyCents / 100).toFixed(2)}/month.`,
+    });
+  } catch (err: unknown) {
+    log.error('[EmailRoutes] create address error:', err);
+    return res.status(500).json({ error: 'Failed to create email address' });
+  }
+});
+
 // ─── GET /api/email/management ────────────────────────────────────────────────
 emailRouter.get('/management', async (req: AuthenticatedRequest, res) => {
   try {
@@ -400,6 +465,71 @@ emailRouter.get('/management', async (req: AuthenticatedRequest, res) => {
   } catch (err: unknown) {
     log.error('[EmailRoutes] management error:', err);
     return res.status(500).json({ error: 'Failed to fetch email management data' });
+  }
+});
+
+
+// ─── POST /api/email/addresses/create — tenant creates custom email seat ───────
+// Tenants can create custom addresses like ops@slug.coaileague.com,
+// info@slug.coaileague.com, etc. Address is inactive until activated.
+// Enforced: must be on @{slug}.coaileague.com subdomain only.
+emailRouter.post('/addresses/create', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { workspaceId, id: userId } = req.user;
+    const { localPart, displayName, assignToUserId, assignToClientId } = req.body;
+
+    if (!localPart || typeof localPart !== 'string') {
+      return res.status(400).json({ error: 'localPart required (e.g. "ops" for ops@yourslug.coaileague.com)' });
+    }
+
+    // Get workspace email slug
+    const ws = await pool.query(
+      `SELECT email_slug FROM workspaces WHERE id = $1 AND email_slug IS NOT NULL`,
+      [workspaceId]
+    );
+    if (!ws.rows[0]) {
+      return res.status(400).json({ error: 'Workspace email domain not configured yet. Complete onboarding first.' });
+    }
+    const emailSlug = ws.rows[0].email_slug;
+
+    // Sanitize localPart
+    const safe = localPart.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
+    if (!safe) return res.status(400).json({ error: 'Invalid local part' });
+
+    const address = `${safe}@${emailSlug}.coaileague.com`;
+
+    // Validate not a protected address
+    const { validateTenantEmailAddress } = await import('../../services/email/emailProvisioningService');
+    const validationError = validateTenantEmailAddress(address, emailSlug);
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    // Create the address (inactive until activated)
+    const result = await pool.query(
+      `INSERT INTO platform_email_addresses
+           (workspace_id, user_id, client_id, address, local_part, subdomain,
+            display_name, address_type, is_active, is_protected)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'user_custom', false, false)
+         ON CONFLICT (address) DO NOTHING
+         RETURNING id, address`,
+      [workspaceId, assignToUserId || null, assignToClientId || null,
+       address, safe, emailSlug, displayName || address]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(409).json({ error: 'Address already exists' });
+    }
+
+    log.info(`[EmailRoutes] Custom address created: ${address} in workspace ${workspaceId}`);
+    return res.status(201).json({
+      success: true,
+      id: result.rows[0].id,
+      address: result.rows[0].address,
+      isActive: false,
+      message: `${address} created. Activate it to start billing at $${(EMAIL_PRICING.perSeatMonthlyCents / 100).toFixed(2)}/month.`,
+    });
+  } catch (err: unknown) {
+    log.error('[EmailRoutes] create address error:', err);
+    return res.status(500).json({ error: 'Failed to create email address' });
   }
 });
 
@@ -458,7 +588,19 @@ emailRouter.post('/addresses/:id/activate', async (req: AuthenticatedRequest, re
 
     await emailProvisioningService.activateEmailAddress(emailAddressId, userId, stripeItemId);
 
-    return res.json({ success: true, address: check.rows[0].address });
+    // Broadcast immediately — UI updates without page refresh
+    const { broadcastToWorkspace } = await import('../../websocket');
+    await broadcastToWorkspace(workspaceId!, {
+      type: 'email_seat_changed',
+      data: {
+        action: 'activated',
+        emailAddressId,
+        address: check.rows[0].address,
+        monthlyCostCents: EMAIL_PRICING.perSeatMonthlyCents,
+      },
+    }).catch(() => {});
+
+    return res.json({ success: true, address: check.rows[0].address, monthlyCostCents: EMAIL_PRICING.perSeatMonthlyCents });
   } catch (err: unknown) {
     log.error('[EmailRoutes] activate error:', err);
     return res.status(500).json({ error: 'Failed to activate email address' });
@@ -481,6 +623,12 @@ emailRouter.post('/addresses/:id/deactivate', async (req: AuthenticatedRequest, 
     }
 
     await emailProvisioningService.deactivateEmailAddress(emailAddressId, userId);
+
+    const { broadcastToWorkspace: bw } = await import('../../websocket');
+    await bw(workspaceId!, {
+      type: 'email_seat_changed',
+      data: { action: 'deactivated', emailAddressId },
+    }).catch(() => {});
 
     return res.json({ success: true });
   } catch (err: unknown) {
