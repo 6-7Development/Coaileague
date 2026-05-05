@@ -676,6 +676,60 @@ const AI_BRAIN_TOOLS: FunctionDeclaration[] = [
     }
   }
 ,
+
+  // ── Wave 24: Write-Access Operational Tools ──────────────────────────────
+  {
+    name: "execute_calloff_pipeline",
+    description: "SARGE/Trinity: Mark a shift as unassigned/calloff and trigger SMS backfill to available officers. Use when an officer calls off and coverage is needed immediately. Requires shiftId and workspaceId.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        shiftId:     { type: "STRING", description: "The ID of the shift to mark as calloff" },
+        employeeId:  { type: "STRING", description: "The ID of the officer calling off" },
+        reason:      { type: "STRING", description: "Reason for calloff (optional)" },
+        triggerSource: { type: "STRING", description: "Source: chat_calloff | voice_calloff | sms_calloff | manager_mark_absent" },
+      },
+      required: ["shiftId", "employeeId"],
+    },
+  },
+  {
+    name: "provision_tenant_workspace",
+    description: "Trinity: Re-trigger the Wave 23 tenant onboarding provisioning for a workspace. Use when Stripe webhook dropped and the workspace is missing rooms, SARGE, or onboarding checklist. Safe to run multiple times (idempotent).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        workspaceId:  { type: "STRING", description: "The workspace to provision" },
+        companyName:  { type: "STRING", description: "Company display name" },
+      },
+      required: ["workspaceId"],
+    },
+  },
+  {
+    name: "escalate_to_human_supervisor",
+    description: "Hard-coded escalation tool. Flags the current ChatDock thread as high priority and sends a push notification to the workspace manager/supervisor's mobile device via FCM. Use when Trinity or SARGE has reached their RBAC limit or the situation requires human judgment.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        reason:      { type: "STRING", description: "Why escalation is needed" },
+        roomId:      { type: "STRING", description: "The ChatDock room to flag" },
+        priority:    { type: "STRING", description: "urgent | critical" },
+      },
+      required: ["reason"],
+    },
+  },
+  {
+    name: "update_system_map",
+    description: "Trinity: Push a documentation update to WORKFLOW_MAP.md, SYSTEM_MAP.md, RBAC_MATRIX.md, or AI_COGNITIVE_MAP.md on the development GitHub branch. Only .md files allowed. Commit message will be prefixed with [AI-Generated]. Rate limited to 10 commits per 24 hours.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        filePath:      { type: "STRING", description: "Relative path to the .md file (e.g. WORKFLOW_MAP.md)" },
+        content:       { type: "STRING", description: "Complete new file content" },
+        commitMessage: { type: "STRING", description: "Describe what was updated and why" },
+      },
+      required: ["filePath", "content", "commitMessage"],
+    },
+  },
   {
     name: "dispatch_action_card",
     description: "Drop an interactive ChatActionBlock card into a ChatDock room. Use when you want to give a user a one-tap action button (e.g., approve a schedule, verify a license, acknowledge a compliance alert). Choose the most specific card type for the situation.",

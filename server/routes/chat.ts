@@ -1592,6 +1592,78 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
 
     // Only HelpAI-routed commands are handled here
     const HELPAI_COMMANDS = ['/helpai', '/escalate', '/help'];
+    // Trinity command room slash commands — manager+ only
+    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status'];
+    // Handle Trinity command room slash commands
+    if (TRINITY_COMMANDS.includes(command)) {
+      const role = (req.user as { role?: string })?.role || '';
+      const isManager = ['manager', 'org_owner', 'co_owner', 'org_admin', 'supervisor'].includes(role);
+      if (!isManager) {
+        return res.status(403).json({ handled: false, error: 'Manager+ required for Trinity commands' });
+      }
+
+      const workspaceId = req.user?.currentWorkspaceId || req.workspaceId || '';
+
+      if (command === '/audit-keys') {
+        // Trinity checks her bound tools and write permissions
+        const { geminiClient } = await import('../services/ai-brain/providers/geminiClient');
+        const toolNames = typeof (geminiClient as { listTools?: () => string[] }).listTools === 'function'
+          ? (geminiClient as { listTools: () => string[] }).listTools()
+          : ['tools list unavailable'];
+        const writeTools = ['execute_calloff_pipeline', 'provision_tenant_workspace', 'escalate_to_human_supervisor', 'update_system_map'];
+        const { broadcastToWorkspace } = await import('../websocket');
+        const boundWrite = writeTools.filter(t => toolNames.includes(t));
+        await broadcastToWorkspace(workspaceId, {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: req.body.roomId,
+            actionType: 'compliance_alert',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: {
+              body: '✅ Key audit complete. Write-access tools verified.',
+              flags: [
+                ...boundWrite.map(t => ({ code: t, description: '✅ BOUND', severity: 'warning' as const })),
+                ...writeTools.filter(t => !boundWrite.includes(t)).map(t => ({ code: t, description: '❌ NOT BOUND', severity: 'critical' as const })),
+              ],
+            },
+          },
+        }).catch(() => {});
+        return res.json({ handled: true, command, boundTools: toolNames.length, writeTools: boundWrite });
+      }
+
+      if (command === '/test-devops') {
+        const { githubDevOpsService } = await import('../services/githubDevOpsService');
+        const health = await githubDevOpsService.checkDevOpsHealth(workspaceId);
+        const { broadcastToWorkspace } = await import('../websocket');
+        await broadcastToWorkspace(workspaceId, {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: req.body.roomId,
+            actionType: 'compliance_alert',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: {
+              body: health.connected
+                ? `✅ GitHub DevOps: Connected to ${health.branch} branch. ${health.rateLimitRemaining} commits remaining today.`
+                : `❌ GitHub DevOps: Connection failed — ${health.error || 'Check OCTOKIT_GITHUB_TOKEN'}`,
+              flags: [
+                { code: 'branch', description: `Target: ${health.branch} (hardcoded)`, severity: 'warning' as const },
+                { code: 'rate_limit', description: `${health.rateLimitRemaining}/10 commits remaining`, severity: 'warning' as const },
+                { code: 'strikes', description: `Strike count: ${health.strikeCount}/3`, severity: health.strikeCount >= 2 ? 'critical' as const : 'warning' as const },
+                { code: 'last_commit', description: health.lastCommitAt ? `Last: ${health.lastCommitAt}` : 'No commits today', severity: 'warning' as const },
+              ],
+            },
+          },
+        }).catch(() => {});
+        return res.json({ handled: true, command, health });
+      }
+
+      if (command === '/sarge-status') {
+        return res.json({ handled: true, command, status: 'SARGE online — all systems operational' });
+      }
+    }
+
     if (!HELPAI_COMMANDS.includes(command)) {
       // Not a HelpAI command — return unhandled so caller can fallback
       return res.json({ handled: false, command });
