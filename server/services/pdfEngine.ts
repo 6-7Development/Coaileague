@@ -698,3 +698,200 @@ export async function generateDPSAuditPacket(params: {
   log.info(`[PDFEngine] DPS Audit Packet generated: ${docId}, ${pageCount} pages, ${Math.round(buffer.length / 1024)}KB`);
   return { buffer, docId, filename: `DPS-Audit-Packet-${docId}.pdf`, pageCount };
 }
+
+/**
+ * generateICS214 — FEMA ICS-214 Activity Log (Wave 27)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Generates a federally-compliant ICS-214 Activity Log PDF.
+ * Exact FEMA form layout: training.fema.gov/emiweb/is/is700b/assets/ics_forms/ics_214.pdf
+ *
+ * Block 7 (Activity Log) compiled from:
+ *   messages table   — officer field reports posted to SARGE during deployment
+ *   time_entries     — clock-in/clock-out records (localTimestamp honored)
+ *   incident_reports — any incidents during the operational period
+ *
+ * Returns same shape as all other generators: { buffer, docId, filename }
+ */
+export async function generateICS214(params: {
+  workspaceId: string;
+  officerId: string;
+  surgeEventId: string;
+  operationalPeriodStart: Date;
+  operationalPeriodEnd: Date;
+  generatedBy?: string;
+  generatedByName?: string;
+}): Promise<{ buffer: Buffer; docId: string; filename: string }> {
+  const {
+    workspaceId, officerId, surgeEventId,
+    operationalPeriodStart, operationalPeriodEnd,
+    generatedBy, generatedByName,
+  } = params;
+  const docId = generateDocId('ICS214');
+
+  // Fetch officer + event info
+  const [officerRow, eventRow, wsRow] = await Promise.all([
+    pool.query(
+      `SELECT e.first_name, e.last_name, e.guard_card_number, e.license_type
+       FROM employees e WHERE e.id = $1 AND e.workspace_id = $2 LIMIT 1`,
+      [officerId, workspaceId]
+    ),
+    pool.query(
+      `SELECT title, incident_name, fema_disaster_number, state, designated_area
+       FROM surge_events WHERE id = $1 LIMIT 1`,
+      [surgeEventId]
+    ).catch(() => ({ rows: [{}] })),
+    pool.query(
+      `SELECT company_name, org_code FROM workspaces WHERE id = $1 LIMIT 1`,
+      [workspaceId]
+    ),
+  ]);
+
+  const officer  = officerRow.rows[0] ?? {};
+  const event    = eventRow.rows[0]   ?? {};
+  const ws       = wsRow.rows[0]      ?? {};
+  if (!officer.first_name) throw new Error(`Officer ${officerId} not found`);
+
+  // Fetch activity log (messages + clock events ordered by local timestamp)
+  const activityRows = await pool.query(
+    `SELECT
+       COALESCE(m.created_at) as activity_time,
+       LEFT(m.content, 200) as activity_note,
+       'field_report' as source
+     FROM messages m
+     WHERE m.sender_id = $1
+       AND m.workspace_id = $2
+       AND m.created_at BETWEEN $3 AND $4
+       AND m.content NOT LIKE '/%'
+     UNION ALL
+     SELECT
+       COALESCE(te.clock_in_time, te.created_at),
+       CASE WHEN te.clock_out_time IS NULL
+            THEN 'Clock-in: Post duty began'
+            ELSE 'Clock-out: Post duty ended. Hours: ' ||
+                 ROUND(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time))/3600.0, 2)::text
+       END,
+       'time_entry'
+     FROM time_entries te
+     WHERE te.employee_id = $1
+       AND te.workspace_id = $2
+       AND te.clock_in_time BETWEEN $3 AND $4
+     ORDER BY 1 ASC`,
+    [officerId, workspaceId, operationalPeriodStart, operationalPeriodEnd]
+  ).catch(() => ({ rows: [] }));
+
+  const logoBuffer = await loadTenantLogo(workspaceId);
+  const doc = new PDFDocument({ size: 'LETTER', margin: 36, bufferPages: true });
+  const chunks: Buffer[] = [];
+  doc.on('data', (c: Buffer) => chunks.push(c));
+
+  const officerName = `${officer.first_name} ${officer.last_name}`;
+  const periodStart = operationalPeriodStart.toLocaleDateString('en-US');
+  const periodEnd   = operationalPeriodEnd.toLocaleDateString('en-US');
+  const startTime   = `${String(operationalPeriodStart.getHours()).padStart(2,'0')}${String(operationalPeriodStart.getMinutes()).padStart(2,'0')}`;
+  const endTime     = `${String(operationalPeriodEnd.getHours()).padStart(2,'0')}${String(operationalPeriodEnd.getMinutes()).padStart(2,'0')}`;
+  const agency      = `${ws.company_name || 'Security Company'} ${ws.org_code ? '(' + ws.org_code + ')' : ''}`.trim();
+  const incidentName = event.incident_name || event.title || 'FEMA Disaster Response';
+  const drNumber     = event.fema_disaster_number ? `DR-${event.fema_disaster_number}` : '';
+
+  // ── ICS-214 HEADER ────────────────────────────────────────────────────────
+  renderPdfHeader(doc, {
+    title: `ICS-214 ACTIVITY LOG${drNumber ? ' — ' + drNumber : ''}`,
+    subtitle: `${incidentName}${event.designated_area ? ' — ' + event.designated_area : ''}`,
+    workspaceName: ws.company_name ?? 'Security Company',
+    tenantLogoBuffer: logoBuffer ?? undefined,
+    refLabel: `Doc ID: ${docId}`,
+    generatedLabel: `Generated: ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}`,
+  });
+
+  // ── BLOCKS 1-5 ────────────────────────────────────────────────────────────
+  const row = (label: string, value: string, y: number, x = 54) => {
+    doc.fontSize(7).font('Helvetica-Bold').text(label, x, y, { continued: false });
+    doc.fontSize(8).font('Helvetica').text(value, x + 130, y - 8);
+  };
+
+  let y = doc.y + 8;
+  doc.fontSize(7).font('Helvetica-Bold')
+     .text('1. Incident Name:', 54, y)
+     .text('2. Operational Period:', 300, y);
+  doc.fontSize(8).font('Helvetica')
+     .text(incidentName, 54, y + 9, { width: 230 })
+     .text(`${periodStart} ${startTime} — ${periodEnd} ${endTime}`, 300, y + 9, { width: 240 });
+
+  y = doc.y + 12;
+  doc.fontSize(7).font('Helvetica-Bold')
+     .text('3. Name:', 54, y)
+     .text('4. ICS Position:', 250, y)
+     .text('5. Home Agency:', 420, y);
+  doc.fontSize(8).font('Helvetica')
+     .text(officerName, 54, y + 9, { width: 180 })
+     .text(officer.license_type || 'Security Officer', 250, y + 9, { width: 160 })
+     .text(agency, 420, y + 9, { width: 150 });
+
+  // ── BLOCK 7 HEADER ────────────────────────────────────────────────────────
+  y = doc.y + 20;
+  doc.moveTo(54, y).lineTo(558, y).lineWidth(1).stroke();
+  y += 4;
+  doc.fontSize(8).font('Helvetica-Bold').text('7. ACTIVITY LOG:', 54, y);
+  y += 14;
+  doc.fontSize(7).font('Helvetica-Bold')
+     .text('Date / Time', 54, y, { width: 90 })
+     .text('Notable Activities', 150, y, { width: 400 });
+  doc.moveTo(54, y + 11).lineTo(558, y + 11).lineWidth(0.5).stroke();
+  y += 16;
+
+  // ── BLOCK 7 ENTRIES ───────────────────────────────────────────────────────
+  doc.fontSize(7).font('Helvetica');
+  for (const activity of activityRows.rows) {
+    const ts  = new Date(activity.activity_time);
+    const timeStr = ts.toLocaleDateString('en-US') + ' '
+                  + String(ts.getHours()).padStart(2,'0')
+                  + String(ts.getMinutes()).padStart(2,'0');
+    const note = String(activity.activity_note || '');
+
+    if (y > 680) {
+      doc.addPage();
+      y = 54;
+      doc.fontSize(7).font('Helvetica-Bold')
+         .text(`ICS-214 Activity Log (continued) — ${officerName} — ${drNumber}`, 54, y);
+      y += 16;
+    }
+
+    doc.text(timeStr, 54, y, { width: 90 });
+    doc.text(note, 150, y - 8, { width: 400 });
+    doc.moveTo(54, y + 10).lineTo(558, y + 10).lineWidth(0.3).stroke('#cccccc');
+    y += 14;
+  }
+
+  if (!activityRows.rows.length) {
+    doc.text('No field activity records found for this operational period.', 54, y, { width: 500 });
+  }
+
+  // ── BLOCK 8 PREPARED BY ──────────────────────────────────────────────────
+  y = Math.max(y + 30, doc.page.height - 130);
+  doc.moveTo(54, y).lineTo(558, y).lineWidth(1).stroke();
+  y += 8;
+  doc.fontSize(8).font('Helvetica-Bold').text('8. PREPARED BY:', 54, y);
+  doc.fontSize(7).font('Helvetica')
+     .text(`${generatedByName || 'Trinity AI, CoAIleague'} — ${new Date().toLocaleString()}`, 54, y + 12)
+     .text(`Doc ID: ${docId} | AI-Generated from ChatDock field reports, clock records, and incident logs.`, 54, y + 22)
+     .text('Review for accuracy before submission to FEMA.', 54, y + 32, { color: '#666666' } as Parameters<typeof doc.text>[2]);
+
+  await new Promise<void>(resolve => doc.on('end', resolve));
+  doc.end();
+  const buffer = Buffer.concat(chunks);
+
+  await logDocumentGeneration({
+    workspaceId,
+    documentType: 'ics214_activity_log',
+    referenceId: officerId,
+    docId,
+    fileSizeBytes: buffer.length,
+    pageCount: 1,
+    generatedBy,
+    generatedByName,
+    metadata: { surgeEventId, operationalPeriodStart, operationalPeriodEnd, drNumber },
+  });
+
+  const filename = `ICS-214-${officerName.replace(' ', '-')}-${docId}.pdf`;
+  return { buffer, docId, filename };
+}

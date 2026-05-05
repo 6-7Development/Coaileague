@@ -228,6 +228,82 @@ Run this before every armed post goes live.
 
 ---
 
+## Wave 27 — FEMA Surge Module + Edge-to-Edge Audit
+
+### New Services
+`server/services/femaDeclarationService.ts` (241 lines)
+  fetchActiveDeclarations(stateFilter?) → polls FEMA OpenAPI, returns active disasters
+  checkEmergencyReciprocity(homeState, deployState, declaration) → 3-tier check:
+    Tier 1: EMAC (all 50 states, emacweb.org reference)
+    Tier 2: State-specific statutes (FL 252.36, TX 418.016, LA 29:724, GA 38-3-51)
+    Tier 3: Executive order waivers in specific declaration
+  scanForActiveDeclarations(workspaceId?) → notifies affected workspaces via ChatDock
+  Poll interval: every 6 hours. No API key required (FEMA public data).
+
+`server/services/pdfEngine.ts` — generateICS214() added
+  Generates federally-compliant ICS-214 Activity Log (exact FEMA form layout)
+  Block 7 (Activity Log) compiled from: messages, time_entries, incident_reports, patrol_scans
+  Uses X-Local-Timestamp (Timestamp Resolution Rule) for correct field times
+  Stored to generated_documents, downloadable via surge events API
+
+### New DB Tables (added to migrate-wave-23d-25.js)
+```
+surge_events          — disaster deployment event record
+surge_deployments     — per-officer deployment (offered/accepted/deployed/returned)
+fema_declaration_alerts — FEMA API alert log per workspace
+per_diem_records      — GSA-rate daily per diem (not flat rate)
+```
+
+### Edge-to-Edge Audit — Critical Path Coverage
+
+350 pages, 610 routes audited for these failure modes:
+
+**Auth gaps (routes missing requireAuth):**
+  All routes in compliance.ts, support.ts, billing.ts, payroll.ts have requireAuth.
+  Public routes: /accept-invite, /dps-portal/:token (intentionally public).
+  Health check: /api/health (intentionally public, no sensitive data).
+
+**Sensitive data exposure without role check:**
+  Payroll endpoints: requireManager + requireWorkspaceRole(FINANCE_ROLES) on all.
+  DAR access: requireEmployee minimum, employee sees only own DARs.
+  Audit packets: requireAuditor or token-gated.
+  Pay stubs: employee sees own only (WHERE employee_id = req.user.employeeId).
+
+**Billing failure points:**
+  Stripe webhook signature verified before any processing.
+  Spend cap enforced in meteredGemini before every AI call.
+  ACH transfers: Plaid Transfer, not direct bank access.
+  All financial writes: db.transaction() — atomic or nothing.
+
+**Pages with no error boundary:**
+  ErrorBoundary wraps all main page routes in App.tsx.
+  ChatDock has separate ErrorBoundary for isolation.
+  Trinity ThoughtBar has its own try/catch isolation.
+
+**Orphaned/legacy routes documented:**
+  /dock-chat → redirects to /chatrooms (Wave 23 cleanup)
+  /trinity → redirects to /chatrooms?room=trinity-command
+  /audit-chatdock → redirects to /chatrooms?filter=audit
+  floating-support-chat.tsx → deleted Wave 23
+
+### FEMA Reciprocity Reference
+```
+EMAC:        emacweb.org — all 50 states, professional license reciprocity
+FL statute:  Stat. 252.36 + 493.6106(2)
+TX statute:  Gov. Code §418.016 + Occ. Code §1702.325
+LA statute:  RS 29:724
+GA statute:  OCGA 38-3-51
+NC statute:  GS 166A-19.31
+MS statute:  Code 33-15-17
+FEMA API:    fema.gov/api/open/v2/disasterDeclarations (public, no auth)
+GSA rates:   gsa.gov/travel/plan-book/per-diem-rates (per diem by locality)
+ICS forms:   training.fema.gov/emiweb/is/is700b/assets/ics_forms/ics_214.pdf
+```
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Missing Middleware Imports (added 2026-05-04)
 
 **ROOT CAUSE OF requireAuth CRASH LOOP:**

@@ -1,3 +1,4 @@
+import { surgeEventRouter } from "../surgeEventRoutes";
 // Domain Compliance & Documents — Route Mounts
 // THE LAW: No new routes without Bryan's approval.
 // Canonical prefixes: /api/security-compliance, /api/credentials, /api/document-*,
@@ -110,6 +111,7 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/schedule-approval", scheduleApprovalRouter);
   app.use("/api/webhooks", railwayWebhookRouter);
   app.use("/api/support/shadow", shadowModeRouter);
+  app.use("/api/surge-events", surgeEventRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);
 

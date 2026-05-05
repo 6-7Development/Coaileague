@@ -121,7 +121,100 @@ async function migrate() {
       `);
     }
 
-    await pool.query('COMMIT');
+
+    // ── FEMA Surge Module (Wave 27) ───────────────────────────────────────────
+    console.log('\nCreating FEMA Surge Module tables...');
+
+    await run('surge_events table', `
+      CREATE TABLE IF NOT EXISTS surge_events (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id            TEXT NOT NULL,
+        title                   TEXT NOT NULL,
+        incident_name           TEXT,
+        fema_disaster_number    INTEGER,
+        state                   VARCHAR(2) NOT NULL,
+        designated_area         TEXT,
+        incident_type           TEXT,
+        declaration_date        DATE,
+        status                  TEXT NOT NULL DEFAULT 'draft',
+        pay_rate_override       NUMERIC(10,2),
+        per_diem_rate_cents     INTEGER,
+        travel_reimbursement    BOOLEAN DEFAULT TRUE,
+        max_deployment_days     INTEGER DEFAULT 14,
+        created_by              TEXT,
+        activated_at            TIMESTAMPTZ,
+        closed_at               TIMESTAMPTZ,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    await run('surge_deployments table', `
+      CREATE TABLE IF NOT EXISTS surge_deployments (
+        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        surge_event_id          UUID NOT NULL REFERENCES surge_events(id),
+        workspace_id            TEXT NOT NULL,
+        employee_id             TEXT NOT NULL,
+        status                  TEXT NOT NULL DEFAULT 'offered',
+        accepted_at             TIMESTAMPTZ,
+        declined_at             TIMESTAMPTZ,
+        deployed_at             TIMESTAMPTZ,
+        returned_at             TIMESTAMPTZ,
+        hotel_assignment        TEXT,
+        hotel_address           TEXT,
+        travel_mode             TEXT,
+        per_diem_claimed_cents  INTEGER DEFAULT 0,
+        home_state              VARCHAR(2),
+        deployment_state        VARCHAR(2),
+        reciprocity_basis       TEXT,
+        reciprocity_notes       TEXT,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    await run('fema_declaration_alerts table', `
+      CREATE TABLE IF NOT EXISTS fema_declaration_alerts (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id      TEXT NOT NULL,
+        disaster_number   INTEGER NOT NULL,
+        state             VARCHAR(2),
+        declaration_data  JSONB,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (workspace_id, disaster_number)
+      )
+    `);
+
+    await run('per_diem_records table', `
+      CREATE TABLE IF NOT EXISTS per_diem_records (
+        id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        surge_deployment_id   UUID REFERENCES surge_deployments(id),
+        workspace_id          TEXT NOT NULL,
+        employee_id           TEXT NOT NULL,
+        date                  DATE NOT NULL,
+        gsa_locality_code     TEXT,
+        lodging_rate_cents    INTEGER,
+        meals_rate_cents      INTEGER,
+        incidentals_cents     INTEGER,
+        total_cents           INTEGER,
+        receipts_uploaded     BOOLEAN DEFAULT FALSE,
+        approved_by           TEXT,
+        approved_at           TIMESTAMPTZ,
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await run('idx_surge_events_workspace', `
+      CREATE INDEX IF NOT EXISTS idx_surge_events_workspace ON surge_events(workspace_id, status)
+    `);
+    await run('idx_surge_deployments_event', `
+      CREATE INDEX IF NOT EXISTS idx_surge_deployments_event ON surge_deployments(surge_event_id, status)
+    `);
+    await run('idx_surge_deployments_employee', `
+      CREATE INDEX IF NOT EXISTS idx_surge_deployments_employee ON surge_deployments(employee_id)
+    `);
+
+        await pool.query('COMMIT');
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('  Migration complete ✅');
     console.log('═══════════════════════════════════════════════════════\n');

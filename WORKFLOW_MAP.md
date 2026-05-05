@@ -1533,3 +1533,210 @@ When health returns to 'healthy':
   Trinity posts "All systems restored" in #trinity-command rooms
   (Deferred: auto-resolve not yet wired — manual close for now)
 ```
+
+---
+
+## MODULE: FEMA RAPID SURGE (Wave 27 — Premium Enterprise)
+
+> **Billing Tier:** Enterprise Add-on
+> **Target Client:** Security companies with government/FEMA contracts
+> **Value Proposition:** Guaranteed ICS-214 compliance = guaranteed FEMA reimbursement
+
+### DB Schema
+
+```
+surge_events          → Declares a disaster deployment event
+surge_deployments     → Per-officer deployment record (accepted/declined/active/returned)
+fema_declaration_alerts → FEMA API poll results per workspace
+per_diem_records      → GSA-rate per diem tracking per officer per day
+```
+
+---
+
+## PIPELINE 13 — SURGE MOBILIZATION (Wave 27)
+
+### Overview
+Manager triggers Surge Event → Trinity mass-SMS bench with opt-in offers →
+Guards reply DEPLOY → auto-rostered → travel manifests generated → deployed.
+
+### TCPA Compliance Gate (non-negotiable)
+```
+Surge SMS only goes to employees WHERE sms_opt_in = true
+This is enforced at DB query level — not at send level
+Guards must have previously opted in to emergency deployment alerts
+TCPA violations during FEMA deployments do not qualify for federal exemption
+```
+
+### 7-Step Pipeline
+
+**STEP 1 — TRIGGER: Manager creates Surge Event**
+```
+POST /api/surge-events
+Body: { title, state, fema_disaster_number, pay_rate_override, per_diem_rate_cents,
+        max_deployment_days, incident_type }
+Creates: surge_events record, status='draft'
+```
+
+**STEP 2 — FEMA VALIDATION**
+```
+femaDeclarationService.fetchActiveDeclarations([state])
+Verify DR-XXXX is active for the target state
+Attach disaster_number, declaration_date, designated_area to surge event
+```
+
+**STEP 3 — RECIPROCITY CHECK (per officer)**
+```
+For each officer being offered: checkEmergencyReciprocity(homeState, deploymentState, declaration)
+Priority order:
+  1. EMAC — all 50 states, governor request activates cross-state license authority
+  2. State-specific statute (FL 252.36, TX 418.016, etc.)
+  3. Executive Order in the specific declaration
+
+Result stored in surge_deployments.reciprocity_basis + reciprocity_notes
+Trinity includes reciprocity basis in the offer SMS
+```
+
+**STEP 4 — MASS SMS OFFER**
+```
+SELECT employees WHERE workspace_id=$1 AND sms_opt_in=true AND status='active'
+  AND license_type IN (required license types for event)
+  ORDER BY reliability_score DESC
+
+SMS per officer:
+"URGENT: [Company] FEMA Disaster Response DR-[N] in [State].
+ [N]-day deployment. $[rate]/hr + $[perdiem]/day per diem.
+ EMAC reciprocity covers [HomeState] license in [State].
+ Reply DEPLOY to accept. Reply PASS to decline. Offer expires [time]."
+```
+
+**STEP 5 — AUTO-ROSTER**
+```
+Guard replies "DEPLOY" → SMS reply handler fires
+  INSERT surge_deployments (surge_event_id, employee_id, status='accepted')
+  Create shift records for the deployment period
+  Trinity confirms to guard: "Confirmed. Report [date] at [location]. Hotel TBD."
+
+Guard replies "PASS":
+  UPDATE surge_deployments SET status='declined'
+  Try next guard on ranked list
+```
+
+**STEP 6 — LOGISTICS**
+```
+For each accepted deployment:
+  Assign hotel (hotel_assignment, hotel_address fields)
+  Generate travel manifest PDF
+  Create per_diem_records rows for each deployment day
+    GSA rate lookup: gsa.gov/travel/plan-book/per-diem-rates (by county)
+    NOT flat rate — federal reimbursement requires GSA locality rates
+```
+
+**STEP 7 — DEPLOYMENT TRACKING**
+```
+surge_deployments.status lifecycle:
+  offered → accepted/declined → deployed → returned
+
+Clock-in/clock-out records during surge tagged with surge_deployment_id
+All field reports from SARGE during surge tagged for ICS-214 generation
+```
+
+---
+
+## PIPELINE 14 — ICS-214 ACTIVITY LOG GENERATION (Wave 27)
+
+### Overview
+At end of deployment → Trinity compiles field reports + clock records +
+incidents → generates federally-compliant ICS-214 PDF → submitted to FEMA.
+
+### ICS-214 Form Fields (FEMA Required)
+```
+Block 1: Incident Name
+Block 2: Operational Period (Date From/To, Time From/To in 24hr format)
+Block 3: Name (officer full name)
+Block 4: ICS Position (license type → Security Officer / Armed Security Officer)
+Block 5: Home Agency and Unit (company name + org code)
+Block 6: Resources Assigned (officer details)
+Block 7: Activity Log (Time | Notable Activities) — THE CRITICAL SECTION
+Block 8: Prepared By (name, position, signature)
+```
+
+### Activity Log Source Data
+```
+Block 7 is compiled from (all using X-Local-Timestamp for correct times):
+  messages table  → Officer's ChatDock field reports to SARGE during deployment
+  time_entries    → Clock-in/clock-out with post name and GPS coordinates
+  incident_reports → Any incidents during the operational period
+  patrol_scans    → NFC/QR checkpoint completions
+
+Source priority for timestamps:
+  1. message.local_timestamp (device time — Timestamp Resolution Rule)
+  2. message.created_at (server receipt time — fallback)
+```
+
+### Generation Trigger
+```
+POST /api/surge-events/:id/generate-ics214
+Body: { officerId, operationalPeriodStart, operationalPeriodEnd }
+Returns: PDF buffer (stored to generated_documents + downloadable)
+
+Also available via Trinity action:
+  Trinity: "Generate ICS-214 for Officer [Name] for June 3-16 deployment"
+  → dispatch_action_card: { type: 'document_upload', pdfUrl: ... }
+```
+
+### FEMA Compliance Notes
+```
+Time format: HHMM (24-hour) — not AM/PM
+Activity entries: time of observation, not time of report
+Must match personnel roster submitted with FEMA Form 205 (Work Authorization)
+One ICS-214 per operational period per officer
+AI-Generated disclaimer on every form — review before submission
+```
+
+---
+
+## PIPELINE 15 — EMERGENCY LICENSE RECIPROCITY ENGINE (Wave 27)
+
+### Three-Tier Reciprocity Check
+
+```
+TIER 1 — EMAC (Emergency Management Assistance Compact)
+  All 50 states are signatories
+  Activates: when governor formally requests assistance from another state
+  Coverage: licensed professionals may cross state lines during activation
+  Reference: emacweb.org
+  Authority: applies to security personnel under appropriate mutual aid request
+
+TIER 2 — State Emergency Statutes
+  States with explicit security licensing waivers:
+    FL: Stat. 252.36 (Emergency Management Act) + Stat. 493.6106(2)
+    TX: Gov. Code §418.016 + Occ. Code §1702.325
+    LA: RS 29:724
+    GA: OCGA 38-3-51
+    NC: GS 166A-19.31
+    MS: Code 33-15-17
+  
+TIER 3 — Executive Order in Declaration
+  Some declarations explicitly waive licensing
+  Trinity fetches declaration text via web.fetch_url(fema_declaration_url)
+  Gemini extracts: waiver_provisions, effective_date, scope
+  If explicit waiver found: note in surge_deployments.reciprocity_notes
+
+Outcome stored per officer per deployment:
+  reciprocity_basis: 'EMAC' | 'state_statute' | 'executive_order'
+  reciprocity_notes: full citation text
+  Included in ICS-214 Block 5 (Home Agency)
+```
+
+### FEMA API Integration
+```
+URL: https://www.fema.gov/api/open/v2/disasterDeclarations
+Method: GET (public, no auth)
+Poll: every 6 hours (configurable)
+Filter: $filter=closeoutDate eq null (active declarations only)
+
+When new declaration detected for workspace state:
+  → compliance_alert ChatActionBlock in #trinity-command
+  → Workspace owner notified
+  → /surge command available to activate deployment
+```

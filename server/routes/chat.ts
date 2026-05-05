@@ -1593,7 +1593,7 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
     // Only HelpAI-routed commands are handled here
     const HELPAI_COMMANDS = ['/helpai', '/escalate', '/help'];
     // Trinity command room slash commands — manager+ only
-    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote', '/dream-status', '/drill-calloff', '/drill-stripe-drop', '/drill-support-triage', '/drill-incident', '/drill-all'];
+    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote', '/dream-status', '/drill-calloff', '/drill-stripe-drop', '/drill-support-triage', '/drill-incident', '/drill-all', '/surge'];
     // Handle Trinity command room slash commands
     if (TRINITY_COMMANDS.includes(command)) {
       const role = (req.user as { role?: string })?.role || '';
@@ -1699,6 +1699,51 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
           },
         }).catch(() => {});
         return res.json({ handled: true, command, insightCount: insightCount.rows[0]?.count || 0, lastInsight: last || null });
+      }
+
+      if (command === '/surge') {
+        const disasterNum = args.trim();
+        const { pool: dbPool } = await import('../db');
+        const { femaDeclarationService, checkEmergencyReciprocity } = await import('../services/femaDeclarationService');
+        const { broadcastToWorkspace: bw } = await import('../websocket');
+
+        const wsRow = await dbPool.query('SELECT state, name FROM workspaces WHERE id = $1 LIMIT 1', [workspaceId]);
+        const wsState = wsRow.rows[0]?.state || '';
+
+        const decls = await femaDeclarationService.fetchActiveDeclarations(wsState ? [wsState] : []);
+        const targetNum = disasterNum ? parseInt(disasterNum.replace(/DR-/i, '')) : 0;
+        const target = targetNum ? decls.find(d => d.disasterNumber === targetNum) : decls[0];
+
+        if (!target) {
+          await bw(workspaceId, { type: 'bot_message', data: {
+            roomId: req.body.roomId, message: disasterNum
+              ? 'No active FEMA declaration found for ' + disasterNum
+              : 'No active FEMA declarations for ' + (wsState || 'your state') + '. Check fema.gov.',
+            senderName: 'SARGE', senderId: 'helpai-bot', isBot: true,
+          }}).catch(() => {});
+          return res.json({ handled: true, command, found: false });
+        }
+
+        const reciprocity = checkEmergencyReciprocity(wsState, target.state, target);
+        const officers = await dbPool.query(
+          'SELECT COUNT(*) as total FROM employees WHERE workspace_id=$1 AND status=$2', [workspaceId, 'active']
+        ).catch(() => ({ rows: [{ total: 0 }] }));
+
+        await bw(workspaceId, { type: 'chatdock_action_card', data: { roomId: req.body.roomId,
+          actionType: 'schedule_approve', senderId: 'helpai-bot', senderName: 'SARGE',
+          props: {
+            body: 'FEMA DR-' + target.disasterNumber + ': ' + target.incidentType + ' — ' + target.state
+              + '\n' + target.declarationTitle
+              + '\nArea: ' + target.designatedArea
+              + '\nReciprocity: ' + reciprocity.basis.toUpperCase() + ' — officers deploy legally.'
+              + '\nAvailable officers: ' + (officers.rows[0]?.total || 0)
+              + '\n\nCreate surge event → Activate to mass-SMS opt-in bench.',
+            pendingCount: Number(officers.rows[0]?.total || 0),
+            avgConfidence: 0.95, lowConfidenceCount: 0,
+          }
+        }}).catch(() => {});
+
+        return res.json({ handled: true, command, declaration: target, reciprocity });
       }
 
       // ── WAR ROOM DRILL COMMANDS ─────────────────────────────────────────────
