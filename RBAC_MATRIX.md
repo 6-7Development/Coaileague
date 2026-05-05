@@ -319,3 +319,69 @@ They are independent time-limited tokens (`auditor_links` table).
 
 6. **Production error sanitization** — `sanitizeError()` in production always
    returns the generic fallback. Stack traces and DB query text never reach clients.
+
+---
+
+## INTERNAL SUPPORT ORG — Wave 23D
+
+### Platform Role Hierarchy (support staff)
+
+| Role | Level | Access |
+|---|---|---|
+| `root_admin` | 7 | All workspaces, all tools, all inboxes including root@ |
+| `deputy_admin` | 6 | Full ops, no destructive, all support inboxes |
+| `sysop` | 5 | Backend diagnostics, error logs, deployment tools |
+| `support_manager` | 4 | Manages support team, ticket assignment, all inboxes |
+| `support_agent` (tech specialization) | 3 | Tech/bug tickets, error logs, database mutation tools, Shadow Mode |
+| `support_agent` (billing specialization) | 3 | Billing/invoice tickets, Stripe metering, refund controls, subscription caps |
+| `support_agent` (general) | 3 | General tickets, account setup, how-to questions |
+| `compliance_officer` | 2 | Compliance audits, DAR review, AI governance |
+
+### Separation of Duties — RBAC-Gated Tools
+
+**Tech Agents** can see:
+  - Tickets tagged `[Tech]` or `[Compliance]`
+  - Error logs, deployment status, database mutation tools
+  - Shadow Mode (impersonation with Glass Break)
+  - Cannot see: billing tickets, Stripe controls, refund buttons
+
+**Billing Agents** can see:
+  - Tickets tagged `[Billing]`
+  - Stripe metering dashboard, refund controls, subscription caps
+  - Cannot see: tech tickets, error logs, database tools, Shadow Mode
+
+**UI Constraint (non-negotiable):**
+  Tools and action buttons render conditionally based on `platformRole + specialization`.
+  If an agent lacks authority: the tool does NOT render in the DOM at all.
+  A disabled button is NOT sufficient — the element must be absent from the rendered HTML.
+  This eliminates "hands in the cookie jar" risk from client-side inspection.
+
+### Unified RBAC-Gated Inbox
+
+All emails (support@, billing@, info@, root@) land in one `support_tickets` table.
+Trinity classifies each ticket on arrival: `billing_agents | tech_agents | general_agents`.
+Frontend queries filter by `rbac_group` based on the agent's specialization.
+A ticket re-tagged by Trinity (e.g., billing question becomes a tech bug) instantly
+disappears from billing_agents' view and appears in tech_agents' view — no forwarding.
+
+### Shadow Mode RBAC Constraints
+
+Only `support_agent` (tech), `support_manager`, `sysop`, `deputy_admin`, `root_admin`
+can initiate Shadow Mode. Billing agents cannot impersonate users.
+
+Glass Break required for:
+  - Starting a shadow session (entering a tenant workspace)
+  - Any DB mutation in shadow mode
+  - Viewing sensitive DARs, payroll, or billing data belonging to another tenant
+  - Generating or exporting audit packets
+
+### Tenant Notification on Shadow Mode
+
+When a support agent enters a tenant workspace:
+  → broadcastToWorkspace('shadow_session_started') — WebSocket to tenant owner
+  → universal_audit_trail entry
+  → Tenant sees: "A CoAIleague support agent entered your workspace. Reason: [justification]"
+
+When shadow session ends:
+  → broadcastToWorkspace('shadow_session_ended')
+  → Tenant sees: "The CoAIleague support session has ended."

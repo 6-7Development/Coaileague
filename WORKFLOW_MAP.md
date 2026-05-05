@@ -1265,3 +1265,166 @@ Payload: {
   metadata: { icebreaker: true, newUserId: string, role: string }
 }
 ```
+
+---
+
+## PIPELINE 9 — SHADOW MODE & GLASS BREAK PROTOCOL (Wave 23D)
+
+### Overview
+Support agent needs to investigate a tenant issue → Shadow Mode session created →
+Glass Break justification required → all actions immutably logged → tenant notified
+→ session ends → audit trail complete.
+
+### 7-Step Pipeline
+
+**STEP 1 — TRIGGER: Agent initiates Shadow Mode**
+```
+POST /api/support/shadow/start
+Auth: platform role support_agent (tech) | support_manager | sysop | deputy_admin | root_admin
+Body: { targetWorkspaceId, justification }
+Glass Break: justification REQUIRED — 400 JUSTIFICATION_REQUIRED if missing
+```
+
+**STEP 2 — VALIDATE**
+```
+platformRole in allowed list?  → proceed
+justification.trim().length > 0?  → proceed
+Else: 400 JUSTIFICATION_REQUIRED
+```
+
+**STEP 3 — PERSIST: Immutable session record**
+```
+INSERT INTO support_sessions:
+  agent_id, agent_email, target_workspace_id, justification,
+  started_at=NOW(), is_active=true, actions='[]'::jsonb
+Returns: { sessionId }
+```
+
+**STEP 4 — PROPAGATE: Tenant notification**
+```
+broadcastToWorkspace(targetWorkspaceId, 'shadow_session_started')
+Payload: { agentEmail, justification, sessionId, message }
+Tenant owner sees: "A CoAIleague support agent entered your workspace"
+
+universal_audit_trail INSERT:
+  entity_type='support_session', action='shadow_session_started',
+  actor_email=agentEmail, description=justification
+```
+
+**STEP 5 — UI: Orange border activates (client-side)**
+```
+Shadow session response → client stores sessionId in session storage
+UI wrapper reads activeSession → applies orange (#F97316) border
+Banner: "SHADOW MODE — You are acting as support in [Workspace]"
+Any mutation button shows: "Log this action with justification"
+```
+
+**STEP 6 — LOG ACTIONS (Glass Break per action)**
+```
+POST /api/support/shadow/action
+Body: { sessionId, action, entityType, entityId, justification, resultSummary }
+Glass Break: justification required per action
+UPDATE support_sessions SET actions = actions || newAction::jsonb
+```
+
+**STEP 7 — END SESSION**
+```
+POST /api/support/shadow/end
+Body: { sessionId, targetWorkspaceId }
+UPDATE support_sessions SET is_active=false, ended_at=NOW()
+broadcastToWorkspace('shadow_session_ended') → tenant sees session ended
+```
+
+### WebSocket Events
+```
+shadow_session_started → { agentEmail, justification, sessionId, message }
+shadow_session_ended   → { sessionId, endedAt, message }
+support_mutation       → { action, entityType, entityId, agentEmail } (per action)
+```
+
+### Immutability Guarantee
+```
+support_sessions records are never deleted
+actions column is append-only (JSONB array, only appended to)
+universal_audit_trail is immutable by design
+History available via GET /api/support/shadow/history (root/sysop only)
+```
+
+---
+
+## PIPELINE 10 — TRINITY TRIAGE MAILROOM (Wave 23D)
+
+### Overview
+Ticket arrives (email or API) → Trinity classifies immediately → Co-Pilot Diagnostic
+appended for tech tickets → RBAC routing set → agent opens ticket with full context.
+
+### 7-Step Pipeline
+
+**STEP 1 — TRIGGER**
+```
+Support ticket created (from inbound email, API, or ChatDock /ticket command)
+trinityTriageService.triageTicket(ticketId, workspaceId, subject, description)
+Called immediately after INSERT — before any agent notification
+```
+
+**STEP 2 — CLASSIFY**
+```
+Fast keyword classification (no API call for obvious cases):
+  billing keywords → { category: 'billing', confidence: 0.85 }
+  tech keywords    → { category: 'tech',    confidence: 0.85 }
+  compliance       → { category: 'compliance', confidence: 0.80 }
+  hr               → { category: 'hr', confidence: 0.80 }
+  else             → { category: 'general', confidence: 0.60 }
+
+If confidence < 0.80: Gemini refinement call (temperature=0.3, factual mode)
+```
+
+**STEP 3 — CO-PILOT DIAGNOSTIC (tech tickets only)**
+```
+SELECT * FROM error_logs WHERE workspace_id=$1 AND created_at > NOW() - 10min AND http_status >= 500
+Returns last 5 server errors for the workspace
+Appended to ticket.copilot_diagnostic before agent notification
+Agent opens ticket → errors are already there, no manual digging
+```
+
+**STEP 4 — PERSIST**
+```
+UPDATE support_tickets SET:
+  category = 'billing'|'tech'|'compliance'|'hr'|'general'
+  trinity_summary = "Ticket classified as [TECH] with 85% confidence. Co-pilot pulled recent 500 errors."
+  copilot_diagnostic = "2026-05-04T... 500 on /api/shifts/assign: DB timeout"
+  priority = 'low'|'normal'|'high'|'urgent'
+  triage_confidence = 0.85
+  triage_completed_at = NOW()
+  rbac_group = 'billing_agents'|'tech_agents'|'general_agents'
+```
+
+**STEP 5 — RBAC ROUTING**
+```
+rbac_group determines which agents see the ticket in their inbox:
+  billing_agents  → support_agent(billing) + support_manager + root_admin + deputy_admin
+  tech_agents     → support_agent(tech) + sysop + support_manager + root_admin + deputy_admin
+  general_agents  → support_agent(general) + support_manager + root_admin + deputy_admin
+
+If Trinity re-tags a ticket (billing→tech): ticket instantly moves queues, no forwarding
+```
+
+**STEP 6 — AGENT OPENS TICKET**
+```
+Agent sees pre-loaded context:
+  [Trinity Summary] "This appears to be a billing dispute about overage charges..."
+  [Co-Pilot Diagnostic] (tech only) Recent 500 errors for this workspace
+  [Suggested Priority] HIGH
+Agent does NOT need to reproduce the error from scratch
+```
+
+**STEP 7 — TOOLS RENDER BASED ON rbac_group**
+```
+Billing ticket + billing agent:
+  ✅ Renders: Refund button, Stripe portal link, Subscription cap controls
+  ❌ Does not render: Error log viewer, DB mutation tools, Shadow Mode
+
+Tech ticket + tech agent:
+  ✅ Renders: Error log viewer, Shadow Mode button, DB query tool
+  ❌ Does not render: Refund controls, Stripe access, billing portal
+```
