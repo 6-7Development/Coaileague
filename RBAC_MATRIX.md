@@ -385,3 +385,12 @@ When a support agent enters a tenant workspace:
 When shadow session ends:
   → broadcastToWorkspace('shadow_session_ended')
   → Tenant sees: "The CoAIleague support session has ended."
+
+---
+
+### TCPA Compliance (FEMA Surge SMS)
+Surge SMS for disaster response is subject to the Telephone Consumer Protection Act.
+Hard constraint: `employees.smsOptIn = TRUE` is required at the DB query level.
+Officers who have not opted in never receive surge offers, regardless of urgency.
+This is enforced in `femaDeclarationService.ts` via WHERE clause, not application logic.
+A manager cannot override this — the record never enters the send queue.

@@ -20,22 +20,33 @@ const log = createLogger("SurgeEventRoutes");
 export const surgeEventRouter = Router();
 
 // ── Fetch GSA per diem rate by ZIP ────────────────────────────────────────────
-async function fetchGsaPerDiem(state: string, year: number): Promise<{ lodging: number; meals: number } | null> {
+// Federal per diem baseline rates (2024) — used when GSA API is unavailable
+// Source: https://www.gsa.gov/travel/plan-book/per-diem-rates/per-diem-rates-lookup
+const GSA_FALLBACK_RATES = {
+  lodging: 10900,    // $109.00 standard CONUS lodging (cents)
+  meals:    5900,    // $59.00 standard M&IE (cents)
+};
+
+async function fetchGsaPerDiem(
+  state: string, year: number
+): Promise<{ lodging: number; meals: number; isGsaRate: boolean }> {
   try {
     const res = await fetch(
       `https://api.gsa.gov/travel/perdiem/v2/rates/state/${state}/year/${year}`,
       { signal: AbortSignal.timeout(8000) }
     );
-    if (!res.ok) return null;
-    const data = await res.json() as { request?: { State?: unknown[]; year?: string } };
+    if (!res.ok) throw new Error(`GSA API ${res.status}`);
+    const data = await res.json() as { request?: { State?: unknown[] } };
     const rates = data?.request?.State?.[0] as Record<string, unknown> | undefined;
-    if (!rates) return null;
+    if (!rates) throw new Error('GSA returned no rates');
     return {
-      lodging: Math.round(Number(rates.lodging || 100) * 100),  // convert to cents
-      meals: Math.round(Number(rates.meals || 59) * 100),
+      lodging: Math.round(Number(rates.lodging || 109) * 100),
+      meals:   Math.round(Number(rates.meals   || 59)  * 100),
+      isGsaRate: true,
     };
   } catch {
-    return null;
+    // GSA API unavailable — use federal baseline (common during disasters)
+    return { ...GSA_FALLBACK_RATES, isGsaRate: false };
   }
 }
 

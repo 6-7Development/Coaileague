@@ -1740,3 +1740,47 @@ When new declaration detected for workspace state:
   → Workspace owner notified
   → /surge command available to activate deployment
 ```
+
+---
+
+## PIPELINE 16 — GOVERNOR EARLY WARNING (Wave 27 Enhancement)
+
+### Overview
+Governor signs State of Emergency → Trinity detects via web search 24-72hrs
+before FEMA acts → advisory alert posted in #trinity-command → when FEMA API
+confirms federal declaration → full surge activation triggers.
+
+### Two-Stage System
+```
+STAGE 1 — ADVISORY (governor declaration only):
+  trinityWebSearch.generateWithSearch()
+  Query: '"state of emergency" [state] site:governor.[state].gov'
+  On match → broadcastToWorkspace('advisory_alert')
+  Message: "Hurricane Milton: FL governor declared emergency.
+            FEMA declaration likely within 48hrs. Prepare bench."
+  NO surge SMS yet — advisory only.
+
+STAGE 2 — FULL ACTIVATION (FEMA API confirms federal declaration):
+  femaDeclarationService.fetchActiveDeclarations()
+  Poll interval: 6 hours
+  On new declaration → POST /api/surge-events (auto-create)
+  → activate endpoint → mass-SMS to smsOptIn=true officers
+  → surge pipeline fires (Pipeline 13)
+```
+
+### Why Two Stages
+```
+Governor declarations ≠ federal reimbursement
+FEMA declaration = guaranteed reimbursement basis
+Trinity must not trigger full surge until federal declaration exists —
+otherwise officers deploy with no guaranteed per diem or reimbursement.
+Advisory: "Get ready." Activation: "Deploy."
+```
+
+### TCPA Hard Constraint
+```
+Surge SMS ONLY to employees WHERE smsOptIn = TRUE
+Enforced at DB query level in femaDeclarationService.ts
+Not enforced at send level — the record never enters the send queue
+Documentation: RBAC_MATRIX.md § Cross-Cutting Security Rules
+```

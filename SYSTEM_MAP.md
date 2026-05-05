@@ -304,6 +304,103 @@ ICS forms:   training.fema.gov/emiweb/is/is700b/assets/ics_forms/ics_214.pdf
 
 ---
 
+## EDGE-TO-EDGE AUDIT — Wave 27 (Critical Paths for Trinity Self-Healing)
+
+### Route Surface (610 total routes across 173 services)
+
+Trinity does not need to know every route. She needs the critical paths —
+the ones that break production if they fail. Documented below.
+
+**Tier 1 — Life Safety (never fail, never block)**
+```
+POST /api/panic/trigger             → panicProtocolService (field officer)
+POST /api/ptt/voice-message         → PTT audio upload
+POST /api/incidents/report          → incident report creation
+GET  /api/health                    → health check endpoint (Railway ping)
+```
+
+**Tier 2 — Core Operations (break a shift if down)**
+```
+POST /api/timesheets/clock-in       → shift start (offline-queue-safe)
+POST /api/timesheets/clock-out      → shift end (offline-queue-safe)
+POST /api/guard-tours/scans         → NFC/QR patrol scan
+GET  /api/shifts                    → schedule view
+POST /api/chat/messages             → ChatDock message send
+```
+
+**Tier 3 — Business Logic (break a workflow if down)**
+```
+POST /api/invite                    → new user invite
+POST /api/payroll/period/close      → payroll period close
+POST /api/schedule-approval/approve → shift schedule publish
+POST /api/stripe/webhook            → billing lifecycle
+POST /api/inbound-email             → Resend inbound (Trinity mailroom)
+POST /api/surge-events/:id/activate → FEMA mass-SMS trigger
+POST /api/surge-events/:id/generate-ics214 → ICS-214 PDF
+```
+
+**Tier 4 — Trinity Cognitive (degrade gracefully if down)**
+```
+POST /api/ai-brain/chat             → Trinity/SARGE response
+POST /api/compliance/verify/id-photo → Gemini Vision ID check
+GET  /api/regulatory/auditor-portal/:token → DPS auditor access
+POST /api/support/shadow/start      → Shadow Mode session
+```
+
+**Tier 5 — DevOps / Trinity Self-Healing**
+```
+POST /api/webhooks/railway-deploy   → deployment confirmation
+POST /api/chat/commands/execute     → slash commands (#trinity-command)
+  /audit-keys /test-devops /sarge-status /innovate /promote /dream-status
+  /drill-calloff /drill-stripe-drop /drill-support-triage /drill-incident /drill-all
+```
+
+### Key Services Trinity Must Know
+```
+workspaceProvisioningService.ts  → 6-step tenant provisioning (idempotent)
+calloffCoverageWorkflow.ts       → 7-step calloff pipeline with 15min SLA
+trinityTriageService.ts          → auto-classify support tickets on creation
+femaDeclarationService.ts        → polls FEMA API every 6hrs, checks reciprocity
+warRoomSimulator.ts              → 4 drills for pre-launch validation
+shadowModeService.ts             → immutable support session log (Glass Break)
+trinitySentinel.ts               → health monitoring + Doomsday Protocol
+trinityDreamState.ts             → nightly 2am-5am cognitive consolidation
+githubDevOpsService.ts           → development-branch-only commits ([AI-Generated])
+```
+
+### Components That Are Active On Every Page
+```
+OfflineIndicator          → shows pending queue + sync button
+SargeAnimatedBadge        → SARGE state: idle/listening/deliberating/executing/warning/confirmed
+TrinityOrbitalAvatar      → Trinity state: idle/thinking/success
+OnboardingGate            → blocks dashboard for owners until 5 setup steps complete
+```
+
+### Orphaned / Legacy Audit Result
+```
+sarge-avatar.tsx          → SUPERSEDED by sarge-animated-badge.tsx. Safe to delete.
+simulateAcmeStripe.ts     → Dev-only script. Not mounted in prod routes. Keep for dev.
+```
+
+### Pre-Go-Live Checklist (from all waves)
+```
+☐ node server/scripts/migrate-wave-23d-25.js  (Wave 23D/25 tables)
+☐ node server/scripts/migrate-wave-27-fema.js (Wave 27 FEMA tables)
+☐ /drill-all in #trinity-command              (all 4 pipelines green)
+☐ /drill-incident specifically                (ZLP verified before armed posts)
+☐ npx tsx server/scripts/seedStatewideProduction.ts
+☐ Railway env: OCTOKIT_GITHUB_TOKEN, RAILWAY_WEBHOOK_SECRET,
+               GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+☐ Railway webhook: coaileague.com/api/webhooks/railway-deploy
+☐ Resend inbound webhook: coaileague.com/api/inbound-email
+☐ DNS verification: sending domain for Resend
+☐ RESEND_WEBHOOK_SECRET confirmed in Railway production
+```
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Missing Middleware Imports (added 2026-05-04)
 
 **ROOT CAUSE OF requireAuth CRASH LOOP:**
