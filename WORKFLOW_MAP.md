@@ -1136,3 +1136,132 @@ and RBAC_MATRIX.md current as she pushes patches to the platform.
 - If delta is documentation-only → auto-commit to `development` branch
 - If delta includes code references → opens a PR for human review
 - Commit message follows canonical format: `docs(trinity): {section} — auto-updated by Trinity`
+
+---
+
+## PIPELINE 8 — DOWNSTREAM USER ORIENTATION (Wave 23C)
+
+### Overview
+New user is invited → role-tailored email with magic link → accepts link →
+icebreaker fires in ChatDock → user immediately interacts with SARGE or Trinity.
+
+### Canonical 7-Step Pipeline
+
+**STEP 1 — TRIGGER: Manager invites a user**
+```
+POST /api/invite (requireManager + ensureWorkspaceAccess)
+Body: { email, firstName, lastName, workspaceRole }
+```
+
+**STEP 2 — VALIDATE: Duplicate + expiry check**
+```
+Check onboardingInvites: existing pending invite for this email?
+If yes → 409 (existing invite, resend)
+Generate: rawToken = crypto.randomBytes(32).hex()
+Hash:     SHA-256(rawToken) → stored in DB (never raw)
+Expiry:   7 days (inviteReaperService.ts sweeps daily)
+```
+
+**STEP 3 — PERSIST: Store invite**
+```
+INSERT INTO onboarding_invites:
+  workspace_id, email, first_name, last_name, workspace_role,
+  invite_token (SHA-256 hash), status='pending', expires_at
+```
+
+**STEP 4 — NOTIFY: Role-tailored welcome email**
+```
+workspaceRole check → select template:
+
+  org_owner | co_owner | org_admin
+    → onboardingEmailTemplates.ownerWelcome()
+    → Contains: org code, Trinity intro, #trinity-command commands
+      (/audit-keys, /dream-status, /promote, /innovate)
+
+  employee | staff | contractor
+    → onboardingEmailTemplates.guardWelcome()
+    → Contains: mobile app links, SARGE intro, field commands
+      (CALLOFF via SMS, /help, /status)
+    → Bilingual if user.preferredLanguage = 'es'
+
+  auditor
+    → onboardingEmailTemplates.auditorWelcome()
+    → Contains: read-only portal URL, DAR/UoF access, redaction notice
+
+  client
+    → emailService.sendClientWelcomeEmail() (existing)
+    → Contains: portal URL, how to email shift requests to Trinity
+
+  All emails:
+    Zero-Trust notice: "This is a single-use secure link. Expires 7 days.
+                        We never send passwords or PINs via email."
+    Magic link: https://coaileague.com/accept-invite?token={rawToken}
+```
+
+**STEP 5 — USER ACCEPTS: Magic link clicked**
+```
+GET /accept-invite?token={rawToken} → accept-invite.tsx
+POST /api/public/workspace-invite/accept (body: { token, password? })
+  → SHA-256(rawToken) → match invite record
+  → Create user account (if new) | link existing account
+  → workspaceMembers insert (workspace_id, user_id, role)
+  → invite status → 'accepted'
+  → Return: { workspaceId, role, landingPage, firstLogin: true }
+```
+
+**STEP 6 — ICEBREAKER: Server-side ChatDock message**
+```
+Fires immediately after step 5, before response is returned to client.
+Server-side (not client-side): guarantees delivery on poor connectivity.
+
+Time-aware greeting: workspace timezone → hour → morning/afternoon/evening
+
+Role routing:
+  employee/staff/contractor → SARGE in #general room
+    "Good [time], [Name]. SARGE here. I'm in this room 24/7.
+     Type /help for field commands, or just tell me what you need."
+
+  org_owner/co_owner/manager → Trinity in #trinity-command room
+    "Good [time], [Name]. I'm Trinity. Your organization [name]
+     is fully provisioned. [Org code]. Type /audit-keys to see what I can do."
+
+  auditor → SARGE in #general room
+    "Good [time], [Name]. Your read-only compliance access is active.
+     I can help you locate DARs, UoF reports, and officer license status."
+
+Delivery:
+  broadcastToWorkspace('bot_message') → WebSocket (live users)
+  INSERT INTO messages → DB (users who open room later)
+Non-blocking: icebreaker failure never breaks invite acceptance (try/catch)
+```
+
+**STEP 7 — CONFIRM: User lands on dashboard**
+```
+Client redirect: getRoleHomeRoute(user) + '?firstLogin=1&org=...&role=...'
+leaders-hub.tsx / role dashboards: toast notification (existing)
+User sees: role dashboard + SARGE/Trinity message already in ChatDock
+InviteReaper sweep (daily): expires any pending invites > 7 days old
+```
+
+### Security Constraints (Zero-Trust)
+```
+✅ rawToken: never stored in DB (only SHA-256 hash stored)
+✅ Token: single-use (deleted/marked 'accepted' on first use)
+✅ Expiry: 7 days enforced at DB layer + inviteReaperService daily sweep
+✅ Email: never contains passwords, PINs, or raw session tokens
+✅ HTTPS only: joinUrl always uses getAppBaseUrl() (https in production)
+✅ Brute force: token is 32 random bytes = 256-bit entropy
+```
+
+### WebSocket Event
+```
+Event: bot_message
+Payload: {
+  roomId: string,
+  message: string,
+  senderName: 'SARGE' | 'Trinity',
+  senderId: 'helpai-bot' | 'trinity-bot',
+  isBot: true,
+  metadata: { icebreaker: true, newUserId: string, role: string }
+}
+```

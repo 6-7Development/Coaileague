@@ -277,4 +277,127 @@ export const onboardingEmailTemplates = {
         alertBox({ type: 'warning', title: `Link expires on ${data.expiresAt}`, body: 'After claiming, you become the owner with full administrative access. This link can only be used once.' }),
     }),
   }),
+  // ─────────────────────────────────────────────────────────────────────────
+  // Wave 23C: Role-Tailored Welcome Emails (RBAC-aware)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Tenant Owner welcome — org code, billing portal, #trinity-command intro */
+  ownerWelcome: (data: {
+    firstName: string;
+    orgCode: string;
+    companyName: string;
+    joinUrl: string;
+    billingPortalUrl?: string;
+  }) => ({
+    subject: `Your CoAIleague Command Center is Ready — ${data.companyName}`,
+    html: emailLayout({
+      preheader: `Welcome, ${data.firstName}. Your organization code is ${data.orgCode}. Trinity is online.`,
+      header: emailHeader({ title: `Welcome, ${data.firstName}.`, subtitle: 'Your AI-powered command center is live', badge: 'Owner Access', theme: 'purple' }),
+      body:
+        greeting(data.firstName) +
+        para(`Your organization <strong>${data.companyName}</strong> is fully provisioned on CoAIleague. Your org code is <strong>${data.orgCode}</strong> — share this with Trinity or SARGE when you need platform-level assistance.`) +
+        alertBox({
+          type: 'purple',
+          title: 'Meet Trinity — Your AI Chief of Operations',
+          body: 'Trinity is your strategic AI. Open the <strong>#trinity-command</strong> room in ChatDock to get started. She knows your entire platform — schedules, payroll, compliance, and more.',
+        }) +
+        infoCard({ rows: [
+          { label: 'Org Code',       value: data.orgCode,        highlight: true },
+          { label: 'Company',        value: data.companyName },
+          { label: 'Your Role',      value: 'Organization Owner' },
+          { label: 'AI Agents',      value: 'Trinity (strategic) + SARGE (field ops)' },
+        ]}) +
+        sectionHeading('Your first commands in #trinity-command:') +
+        stepList([
+          '<code>/audit-keys</code> — Check Trinity&#39;s active capabilities',
+          '<code>/dream-status</code> — See what Trinity reflected on overnight',
+          '<code>/promote</code> — Review and approve AI-generated code for production',
+          '<code>/innovate</code> — Get Trinity&#39;s latest operational insight',
+        ]) +
+        alertBox({ type: 'blue', title: '🔒 Security Note', body: 'This link is a one-time secure token. It expires in 7 days. We never send passwords or PINs via email.' }) +
+        ctaButton({ text: 'Enter Your Command Center', url: data.joinUrl }) +
+        (data.billingPortalUrl ? para(`<a href="${data.billingPortalUrl}">Manage billing →</a>`, { muted: true, small: true }) : ''),
+    }),
+  }),
+
+  /** Guard/Officer welcome — mobile app, PTT number, field commands */
+  guardWelcome: (data: {
+    firstName: string;
+    workspaceName: string;
+    joinUrl: string;
+    orgCode: string;
+    twilioNumber?: string;
+    appStoreUrl?: string;
+    playStoreUrl?: string;
+    preferredLanguage?: string;
+  }) => {
+    const isSpanish = data.preferredLanguage === 'es';
+    return {
+      subject: isSpanish ? `Bienvenido a CoAIleague, ${data.firstName} — SARGE está listo` : `Welcome to CoAIleague, ${data.firstName} — SARGE is online`,
+      html: emailLayout({
+        preheader: isSpanish ? `SARGE está aquí para ayudarte. Descarga la app y comienza.` : `SARGE is here to help. Download the app and get started.`,
+        header: emailHeader({
+          title: isSpanish ? `Bienvenido, ${data.firstName}.` : `Welcome, ${data.firstName}.`,
+          subtitle: isSpanish ? `Tu asistente de campo SARGE está en línea` : `Your field assistant SARGE is online`,
+          badge: isSpanish ? 'Acceso de Oficial' : 'Officer Access', theme: 'yellow'
+        }),
+        body:
+          greeting(data.firstName) +
+          para(isSpanish
+            ? `Bienvenido al equipo de <strong>${data.workspaceName}</strong>. Soy SARGE — tu Sargento Senior de Inteligencia de Campo. Estoy aquí para ayudarte con tus turnos, órdenes de puesto, y cualquier pregunta de campo.`
+            : `Welcome to the <strong>${data.workspaceName}</strong> team. I'm SARGE — your Senior Field Intelligence Sergeant. I'm here to help with your shifts, post orders, and any field questions.`) +
+          infoCard({ rows: [
+            { label: isSpanish ? 'Tu Organización' : 'Your Org',  value: data.workspaceName },
+            { label: isSpanish ? 'Código de Org'  : 'Org Code',  value: data.orgCode, highlight: true },
+            { label: isSpanish ? 'Tu Asistente'   : 'Your AI',   value: 'SARGE (field) — available 24/7' },
+            ...(data.twilioNumber ? [{ label: isSpanish ? 'SMS a SARGE' : 'Text SARGE', value: data.twilioNumber }] : []),
+          ]}) +
+          sectionHeading(isSpanish ? 'Comandos de campo disponibles:' : 'Your field commands:') +
+          stepList([
+            isSpanish ? '<code>CALLOFF</code> — Enviar SMS a SARGE para reportar ausencia' : '<code>CALLOFF</code> — Text SARGE to report you cannot make a shift',
+            isSpanish ? '<code>/help</code> — Ver comandos disponibles en ChatDock' : '<code>/help</code> — View all available commands in ChatDock',
+            isSpanish ? '<code>/status</code> — Ver tu turno actual y órdenes de puesto' : '<code>/status</code> — Check your current shift and post orders',
+          ]) +
+          (data.appStoreUrl || data.playStoreUrl ? sectionHeading('Download the mobile app:') + stepList([
+            ...(data.appStoreUrl ? [`<a href="${data.appStoreUrl}">Download on the App Store (iOS)</a>`] : []),
+            ...(data.playStoreUrl ? [`<a href="${data.playStoreUrl}">Get it on Google Play (Android)</a>`] : []),
+          ]) : '') +
+          alertBox({ type: 'blue', title: '🔒 ' + (isSpanish ? 'Nota de Seguridad' : 'Security Note'), body: isSpanish ? 'Este enlace es de un solo uso y expira en 7 días. Nunca enviamos contraseñas por correo.' : 'This link is single-use and expires in 7 days. We never send passwords via email.' }) +
+          ctaButton({ text: isSpanish ? 'Acceder a CoAIleague' : 'Access CoAIleague', url: data.joinUrl }),
+      }),
+    };
+  },
+
+  /** Auditor welcome — read-only portal, DAR access, no write commands */
+  auditorWelcome: (data: {
+    firstName: string;
+    workspaceName: string;
+    auditorPortalUrl: string;
+    expiresAt?: string;
+  }) => ({
+    subject: `CoAIleague Compliance Portal Access — ${data.workspaceName}`,
+    html: emailLayout({
+      preheader: `Read-only compliance portal access for ${data.workspaceName}. View DARs, UoF reports, and officer records.`,
+      header: emailHeader({ title: `Auditor Portal Access`, subtitle: `${data.workspaceName} — Compliance Review`, badge: 'Read-Only Access', theme: 'blue' }),
+      body:
+        greeting(data.firstName) +
+        para(`You have been granted read-only compliance portal access for <strong>${data.workspaceName}</strong> on CoAIleague. This access is strictly limited to compliance review.`) +
+        infoCard({ rows: [
+          { label: 'Access Level',    value: 'Read-Only — no write operations', highlight: true },
+          { label: 'Organization',    value: data.workspaceName },
+          { label: 'Available Data',  value: 'DARs, UoF Reports, Officer Records, Armed Shift Logs' },
+          { label: 'Redacted Fields', value: 'Pay rates, SSNs, bank accounts, internal notes' },
+          ...(data.expiresAt ? [{ label: 'Access Expires', value: data.expiresAt }] : []),
+        ]}) +
+        sectionHeading('Available compliance documents:') +
+        checkList([
+          'Daily Activity Reports (DARs) — officer shift timelines',
+          'Use of Force reports — incident documentation with narrative',
+          'Guard card and license status — expiry tracking',
+          'Armed post shift logs — assignment records',
+        ]) +
+        alertBox({ type: 'blue', title: '🔒 Zero-Trust Access Note', body: 'This is a one-time secure link. Financial data, SSNs, and pay rates are automatically redacted. This link expires and access is logged for audit.' }) +
+        ctaButton({ text: 'Access Compliance Portal', url: data.auditorPortalUrl }),
+    }),
+  }),
 };

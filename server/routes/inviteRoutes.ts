@@ -88,6 +88,31 @@ inviteRouter.post('/', requireManager, async (req: AuthenticatedRequest, res) =>
 
     let emailSent = false;
     try {
+      // Role-specific welcome email
+    const { onboardingEmailTemplates } = await import('../services/email/templates/onboarding');
+    const { getAppBaseUrl } = await import('../lib/appUrl');
+    const joinUrlFull = `${getAppBaseUrl()}/accept-invite?token=${rawToken}`;
+
+    const isOwner = ['org_owner', 'co_owner', 'org_admin'].includes(workspaceRole);
+    const isGuard = ['employee', 'staff', 'contractor'].includes(workspaceRole);
+    const isAuditor = workspaceRole === 'auditor';
+
+    if (isOwner) {
+      const wsRow = await db.select({ name: workspaces.name, orgCode: workspaces.orgCode }).from(workspaces).where(eq(workspaces.id, workspaceId!)).limit(1);
+      const orgCode = wsRow[0]?.orgCode || 'N/A';
+      const wsName = wsRow[0]?.name || 'Your Organization';
+      const tpl = onboardingEmailTemplates.ownerWelcome({ firstName, orgCode, companyName: wsName, joinUrl: joinUrlFull });
+      await emailService._deliver(normalizedEmail, tpl.subject, tpl.html, 'owner_welcome', workspaceId!, undefined);
+    } else if (isGuard) {
+      const wsRow = await db.select({ name: workspaces.name, orgCode: workspaces.orgCode }).from(workspaces).where(eq(workspaces.id, workspaceId!)).limit(1);
+      const tpl = onboardingEmailTemplates.guardWelcome({ firstName, workspaceName: wsRow[0]?.name || 'Your Team', joinUrl: joinUrlFull, orgCode: wsRow[0]?.orgCode || '' });
+      await emailService._deliver(normalizedEmail, tpl.subject, tpl.html, 'guard_welcome', workspaceId!, undefined);
+    } else if (isAuditor) {
+      const wsRow = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, workspaceId!)).limit(1);
+      const tpl = onboardingEmailTemplates.auditorWelcome({ firstName, workspaceName: wsRow[0]?.name || 'Organization', auditorPortalUrl: joinUrlFull });
+      await emailService._deliver(normalizedEmail, tpl.subject, tpl.html, 'auditor_welcome', workspaceId!, undefined);
+    } else {
+      // Default: standard employee invitation
       await emailService.sendEmployeeInvitation(workspaceId, normalizedEmail, token, {
         firstName,
         inviterName,
@@ -96,6 +121,7 @@ inviteRouter.post('/', requireManager, async (req: AuthenticatedRequest, res) =>
         expiresInDays: 7,
       });
       emailSent = true;
+    } // end else
     } catch (emailErr: unknown) {
       log.warn('[InviteRoutes] Invite email failed (non-blocking):', (emailErr as Record<string,unknown>)?.message);
     }

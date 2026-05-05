@@ -923,6 +923,82 @@ router.post('/workspace-invite/register', async (req, res) => {
       landingPage,
       firstLogin: true,
     });
+
+    // ── ChatDock Icebreaker — fires server-side on first login ─────────────
+    // Server-side guarantees delivery even on poor connectivity (field officers on 3G).
+    // Uses workspace timezone for time-aware greeting.
+    try {
+      const { broadcastToWorkspace } = await import('../websocket');
+      const { pool: dbPool } = await import('../db');
+
+      // Determine which bot sends the icebreaker based on role
+      const isFieldRole = ['employee', 'staff', 'contractor'].includes(role);
+      const isOwnerRole = ['org_owner', 'co_owner', 'org_admin', 'manager'].includes(role);
+      const isAuditor  = role === 'auditor';
+
+      // Time-aware greeting using workspace timezone
+      const wsRow = await dbPool.query(
+        `SELECT timezone, name, org_code FROM workspaces WHERE id = $1 LIMIT 1`,
+        [workspaceId]
+      );
+      const tz = wsRow.rows[0]?.timezone || 'UTC';
+      const hour = new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: tz });
+      const hourNum = parseInt(hour);
+      const timeGreet = hourNum < 12 ? 'Good morning' : hourNum < 17 ? 'Good afternoon' : 'Good evening';
+      const orgCode = wsRow.rows[0]?.org_code || '';
+
+      // Find the room to post into — shift-room or trinity-command
+      const roomSlug = isOwnerRole ? 'trinity-command' : 'general';
+      const roomRow = await dbPool.query(
+        `SELECT id FROM conversations WHERE workspace_id = $1 AND slug = $2 LIMIT 1`,
+        [workspaceId, roomSlug]
+      );
+      const roomId = roomRow.rows[0]?.id;
+      if (!roomId) throw new Error('Target room not found');
+
+      // Build role-specific message
+      let icebreakerMessage = '';
+      let senderName = 'SARGE';
+      let senderId = 'helpai-bot';
+
+      if (isFieldRole) {
+        icebreakerMessage = `${timeGreet}, ${resolvedFirstName}. SARGE here — your Senior Field Intelligence Sergeant. I'm in this room 24/7. Type /help for field commands, or just tell me what you need. Your shift schedule is live whenever you're ready.`;
+      } else if (isOwnerRole) {
+        senderName = 'Trinity';
+        senderId = 'trinity-bot';
+        icebreakerMessage = `${timeGreet}, ${resolvedFirstName}. I'm Trinity — your AI Chief of Operations. Your organization <strong>${wsRow.rows[0]?.name || ''}</strong> is fully provisioned.${orgCode ? ` Your org code is <strong>${orgCode}</strong>.` : ''} Type /audit-keys to see what I can do, or just ask me anything.`;
+      } else if (isAuditor) {
+        icebreakerMessage = `${timeGreet}, ${resolvedFirstName}. I'm SARGE. Your read-only compliance access is active. I can help you locate DARs, Use of Force reports, and officer license status. What are you looking for?`;
+      } else {
+        icebreakerMessage = `${timeGreet}, ${resolvedFirstName}. Welcome to CoAIleague. I'm SARGE — here to help you get oriented. Ask me anything.`;
+      }
+
+      // Broadcast the icebreaker as a bot message
+      await broadcastToWorkspace(workspaceId, {
+        type: 'bot_message',
+        data: {
+          roomId,
+          message: icebreakerMessage,
+          senderName,
+          senderId,
+          isBot: true,
+          metadata: { icebreaker: true, newUserId: resolvedUserId, role },
+        },
+      });
+
+      // Also persist to DB so it appears when user opens the room
+      await dbPool.query(
+        `INSERT INTO messages (workspace_id, conversation_id, sender_id, content, message_type, created_at)
+         VALUES ($1, $2, $3, $4, 'bot', NOW()) ON CONFLICT DO NOTHING`,
+        [workspaceId, roomId, senderId, icebreakerMessage]
+      );
+
+      log.info(`[Icebreaker] Sent to ${resolvedFirstName} (role: ${role}) in room ${roomSlug}`);
+    } catch (icebreakerErr: unknown) {
+      // Non-blocking — icebreaker failure never breaks the invite acceptance
+      log.warn('[Icebreaker] Failed (non-blocking):', icebreakerErr instanceof Error ? icebreakerErr.message : String(icebreakerErr));
+    }
+
   } catch (error: unknown) {
     log.error('[PublicOnboarding] workspace-invite register error:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Registration failed.' });
