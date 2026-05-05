@@ -1,6 +1,121 @@
 
 ---
 
+## Wave 23 — Enterprise Workflow Matrix (Complete)
+
+### New Server Services
+
+**workspaceProvisioningService.ts** (103 lines)
+`server/services/workspaceProvisioningService.ts`
+- Triggered by: `stripeEventBridge.handleSubscriptionCreated()`
+- Idempotent — all inserts use ON CONFLICT DO NOTHING
+- Provisions in order:
+  1. `workspace.onboarding_status = 'pending_setup'`
+  2. `tenant_onboarding_steps` — 5 rows (4 required, 1 optional)
+  3. `conversations` — 3 rooms: #general, #ops, #trinity-command (private)
+  4. `conversation_participants` — SARGE (helpai-bot) joined to all 3
+  5. `notifications` — welcome notification to workspace owner
+  6. `broadcastToWorkspace('workspace_provisioned')` — dashboard gate refreshes
+
+**clientShiftRequestWorkflow.ts** (125 lines)
+`server/services/trinity/workflows/clientShiftRequestWorkflow.ts`
+- Triggered by: `trinityInboundEmailProcessor` when parsed email confidence >= 0.7
+- Steps: match client → create draft shift → sendShiftOffers() → owner broadcast → owner notification
+- Broadcast: `client_shift_request_received` with shiftId, clientName, offersSent
+- DB writes: `shifts` (status='draft', ai_generated=true), `notifications`
+
+### New Server Routes
+
+**scheduleApprovalRoutes.ts** (115 lines)
+`server/routes/scheduleApprovalRoutes.ts`
+Mounted at: `/api/schedule-approval`
+Auth: `requireAuth + ensureWorkspaceAccess + requireManager` on all endpoints
+
+```
+GET  /api/schedule-approval/pending
+     Response: { pending_count, earliest_shift, avg_confidence, low_confidence_count }
+     Source: shifts WHERE status='draft' AND ai_generated=true
+
+POST /api/schedule-approval/approve
+     Body: { scheduleId?, shiftIds? } — omit both = approve all AI drafts
+     Action: UPDATE shifts SET status='published'
+     Side effect: broadcastToWorkspace('schedule_published', { publishedCount, message })
+     Response: { success, publishedCount }
+
+POST /api/schedule-approval/reject
+     Body: { shiftIds, reason? }
+     Action: UPDATE shifts SET status='cancelled', denial_reason=$3
+     Response: { success, rejectedCount }
+```
+
+### New Frontend Components
+
+**OnboardingGate.tsx**
+`client/src/components/onboarding/OnboardingGate.tsx`
+- Wraps protected dashboard routes
+- Logic: if owner AND any required steps incomplete → render SetupChecklist instead
+- Non-owners always pass through
+- API: GET /api/smart-onboarding/tenant (existing intelligentOnboardingRoutes)
+
+**SetupChecklist.tsx**
+`client/src/pages/onboarding/SetupChecklist.tsx` (163 lines)
+- 5-step wizard rendered by OnboardingGate
+- Steps: state_selection, org_code, license_number, overage_limits, import_data
+- API: POST /api/smart-onboarding/tenant/steps/:key/complete
+- On complete: invalidates onboarding query → gate re-evaluates → dashboard unlocks
+
+### ChatActionBlock — All 9 Types
+`client/src/components/chatdock/ChatActionBlock.tsx`
+
+**Original 5 (pre-Wave 23):**
+  approval_button | shift_offer | document_upload | coi_request | poll
+
+**Added Wave 23 (4 new):**
+  license_verify   → amber card, pre-filled TOPS deep links + warning label
+  shift_fill       → green card, shift coverage confirmation
+  schedule_approve → blue card, Approve All / Review First buttons
+  compliance_alert → red card, flag list + Acknowledge button
+
+### WebSocket Events — Full Map (Wave 23 Additions)
+
+```
+sarge_executing          → Insert executing bubble (isExecuting=true flag)
+                           Payload: { action, message }
+                           Trinity state: 'thinking'
+
+sarge_calloff_handled    → Replace executing bubble in-place with result
+                           Payload: { message, offersSent }
+                           Trinity state: 'success' → 'idle' after 2s
+
+sarge_deliberating       → Insert deliberating bubble (isDeliberating=true)
+                           Payload: { roomId, query }
+                           Shows amber "Deliberating with Trinity···" label
+
+sarge_deliberation_complete → Remove deliberating bubble
+                           Trinity state: 'idle'
+
+schedule_published       → SARGE posts schedule confirmation to shift room
+                           Payload: { publishedCount, message }
+                           Trinity state: 'success' → 'idle' after 2s
+
+workspace_provisioned    → Dashboard gate refreshes
+                           Payload: { workspaceId, companyName, requiresSetup: true }
+
+client_shift_request_received → Owner alerted to new inbound request
+                           Payload: { shiftId, clientName, offersSent, message }
+```
+
+### Trinity Context Enrichment (4 Layers)
+All Trinity responses now build `enrichedSystemPrompt` from:
+1. `systemPrompt` — base SARGE/Trinity personality
+2. `regulatoryContextBlock` — state law (Wave 20 RKE, keyword-gated)
+3. `webSearchContext` — Gemini grounding (keyword-gated)
+4. `platformCapabilitiesContext` — always present, full workflow/action awareness
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Missing Middleware Imports (added 2026-05-04)
 
 **ROOT CAUSE OF requireAuth CRASH LOOP:**

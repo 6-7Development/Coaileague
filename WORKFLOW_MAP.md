@@ -1,501 +1,703 @@
-## WAVE 23 IMPLEMENTATION STATUS (Updated)
+# CoAIleague — Enterprise Workflow Map
+# Waves 22 + 23 · As-Is Audit + Closed-Loop Pipeline Blueprint
 
-| Gap | Status |
-|---|---|
-| Stripe webhook → workspace provisioning | ✅ BUILT — workspaceProvisioningService.ts |
-| Mandatory 5-step onboarding checklist | ✅ BUILT — SetupChecklist.tsx + OnboardingGate.tsx |
-| #trinity-command room auto-creation | ✅ BUILT — provisioned on subscription.created |
-| SARGE auto-joins all rooms | ✅ BUILT — provisioned on subscription.created |
-| Welcome notification to owner | ✅ BUILT — fired by provisioning service |
-| Schedule approval gate (owner reviews AI drafts) | ✅ BUILT — scheduleApprovalRoutes.ts |
-| SARGE ChatDock execution feedback | ✅ BUILT — sarge_executing + sarge_calloff_handled events |
-| schedule_published ChatDock broadcast | ✅ BUILT — WebSocket event + typing bubble |
-| Client shift request → shift creation | ✅ BUILT — clientShiftRequestWorkflow.ts |
-| ChatActionBlock new types | ✅ BUILT — license_verify, shift_fill, schedule_approve, compliance_alert |
-| Monthly scheduling cron trigger | ⏳ Deferred — next sprint |
-| Client confirmation email post-assignment | ⏳ Deferred — wired to invoice_lifecycle workflow |
-
----
-
-# CoAIleague — Enterprise Workflow Matrix
-# Wave 22 · As-Is Audit + Closed-Loop Pipeline Blueprint
-
-> **Classification:** Internal Architecture Document
+> **Classification:** Living Architecture Document — updated every wave
 > **Audience:** Trinity, SARGE, Claude Code agents, CoAIleague engineering
-> **Last Updated:** 2026-05-04
-> **Status:** V1.0 — Production Ready
+> **Purpose:** Trinity reads this to understand what the platform can do and
+>              how every pipeline works end-to-end. SARGE reads his subset.
+> **Rule:** Every new feature gets documented HERE before code is written.
 
 ---
 
-## PART 1 — AS-IS AUDIT (What Exists Today)
+## HOW TO READ THIS DOCUMENT
 
-### 1A. Scheduling / Shifts
+Each pipeline follows the 7-step canonical pattern locked in SYSTEM_MAP.md:
 
-**Schema:** `shifts` table — `shared/schema/domains/scheduling/index.ts`
-
-**Status Enum (shiftStatusEnum):**
 ```
-draft → published → scheduled → in_progress → completed
-                                                   ↑
-draft → calloff ──→ (backfill) → scheduled ────────┘
-      → cancelled
-      → no_show
-      → confirmed | pending | approved | auto_approved
+TRIGGER → VALIDATE → PROCESS → PERSIST → PROPAGATE → NOTIFY → CONFIRM
 ```
 
-**Key fields confirmed present:**
-- `status` — full lifecycle enum above
-- `aiGenerated` (boolean) — Trinity-created shifts flagged
-- `aiConfidenceScore` (decimal 0.00–1.00) — confidence in assignment
-- `riskScore` (decimal 0.00–1.00) — higher = more likely to have issues
-- `riskFactors` (jsonb string[]) — e.g. ['high_tardiness','location_far']
-- `isStaged` (boolean) — shift is in preview/approval state
-- `requiresAcknowledgment` (boolean) — officer must confirm
-- `autoReplacementAttempts` (integer) — backfill retry counter
-- `replacementForShiftId` — links replacement to original calloff shift
-- `isManuallyLocked` (boolean) — prevents AI from modifying
-- `isArmedPost` (boolean) — gates on armed license validation
-
-**Schedules table:** `schedules` — high-level schedule container (name, start/end date, status: active/draft)
-
-**Autonomous Scheduler:** `server/services/scheduling/trinityAutonomousScheduler.ts` (3,250 lines)
-- Generates shifts at `status: 'draft'`
-- Scores officers by risk/reliability
-- Called from: admin routes, scheduling routes, trinity training routes, `server/index.ts`
-- **GAP:** No direct connection to owner approval gate before publishing. Trinity drafts → status stays `draft` — owner must manually publish.
+Every step lists:
+- **What fires it**
+- **What it does**
+- **What it writes to the DB**
+- **What WebSocket event it broadcasts**
+- **What the next step expects**
 
 ---
 
-### 1B. Call-Off / SARGE Handling
+## WAVE 23 IMPLEMENTATION STATUS
 
-**FULLY WIRED.** The most complete pipeline in the platform.
-
-**Trigger sources:**
-```
-SMS keyword "CALLOFF"     → trinityVoice/smsAutoResolver.ts → calloffCoverageWorkflow
-Voice extension 4→2       → trinityVoice/voiceOrchestrator.ts → calloffCoverageWorkflow
-Chat command in SARGE     → helpAIBotService.ts (case 'calloff_shift') → calloffCoverageWorkflow
-Manager marks absent      → shift status update → calloffCoverageWorkflow
-Trinity action            → workflowOrchestrator.ts → calloffCoverageWorkflow
-```
-
-**Pipeline (calloffCoverageWorkflow.ts — 700 lines):**
-```
-1. TRIGGER   → logWorkflowStart()
-2. FETCH     → find shift (explicit shiftId OR officer's next shift ≤6hrs)
-3. VALIDATE  → shift exists, belongs to officer, is schedulable
-4. PROCESS   → trinityShiftOfferService.sendShiftOffers() — shortlists qualified replacements
-5. MUTATE    → shift.status = 'calloff', record to shift_calloffs, fire SMS/in-app offers
-6. CONFIRM   → verify mutation, count outstanding offers
-7. NOTIFY    → supervisor SMS + in-app, client SMS (if client configured), audit trail
-```
-
-**SLA:** 15 minutes to confirmed replacement. `scanStaleCalloffWorkflows()` sweeps every few minutes — escalates supervisor if SLA missed.
-
-**DB state after calloff:**
-- Original shift: `status='calloff'`
-- New replacement shift created: `status='draft'`, `replacementForShiftId=originalId`
-- Offers logged in `shift_offers` table with `status='sent'`
-- On offer accepted: replacement shift → `status='scheduled'`
-
-**GAP:** SARGE's `calloff_shift` command in chat calls the workflow but doesn't broadcast the deliberating state to the room before executing. Officer gets no confirmation message in ChatDock. Fix: wire `broadcastToWorkspace('sarge_executing')` before and `sarge_complete` after.
+| Gap | Status | File |
+|---|---|---|
+| Stripe → workspace provisioning | ✅ BUILT | workspaceProvisioningService.ts |
+| Mandatory 5-step onboarding checklist | ✅ BUILT | SetupChecklist.tsx + OnboardingGate.tsx |
+| #trinity-command room auto-creation | ✅ BUILT | workspaceProvisioningService.ts |
+| SARGE auto-joins all rooms | ✅ BUILT | workspaceProvisioningService.ts |
+| Schedule approval gate | ✅ BUILT | scheduleApprovalRoutes.ts |
+| SARGE ChatDock execution feedback | ✅ BUILT | calloffCoverageWorkflow.ts + websocket |
+| Client shift request → shift creation | ✅ BUILT | clientShiftRequestWorkflow.ts |
+| ChatActionBlock new types (4 added) | ✅ BUILT | ChatActionBlock.tsx |
+| Monthly scheduling cron | ⏳ Deferred | Next sprint |
+| Client confirmation email post-assign | ⏳ Deferred | Wires to invoice_lifecycle |
 
 ---
 
-### 1C. Onboarding — Post-Stripe Subscription
+## PIPELINE 1 — ZERO-TO-LIVE TENANT ONBOARDING
 
-**PARTIAL.** Employee onboarding pipeline exists. Tenant (org) onboarding has gaps.
+### Overview
+New org subscribes via Stripe → platform provisions everything they need
+to go live → mandatory 5-step checklist gates dashboard access until complete.
 
-**What exists:**
-- `employeeOnboardingPipelineService.ts` — handles new employee setup steps
-- `onboardingPipelineRoutes.ts` — CRUD for pipeline records
-- `assistedOnboarding.ts` — AI-assisted employee onboarding
-- `onboardingTaskRoutes.ts` — task management for setup steps
-
-**Stripe webhook:** Lives in `server/index.ts`. Handles:
-- `invoice.paid` → `resetMonthlyOverage()` (billing reset only)
-- No workspace provisioning logic post-subscription confirmed
-
-**GAP — Tenant onboarding post-Stripe:**
-- No mandatory setup checklist enforced after subscription
-- No state selection step gate
-- No Wave 17 migration import prompt
-- No overage limit configuration prompt
-- Dashboard unlocks immediately regardless of setup completion
-- No `#trinity-command` room auto-created for new workspace
-
-**What Statewide needed manually that new orgs would also need:**
-1. `orgCode` set (→ shows "Contact Support" without it)
-2. `licenseNumber` set (→ auditor portal breaks)
-3. `state` set (→ regulatory knowledge engine picks wrong state)
-4. `state_regulatory_config` row for their state
-5. SARGE auto-joined to all rooms
-
----
-
-### 1D. Client Shift Request (Inbound Email)
-
-**EXISTS but not fully closed-loop.**
-
-`workRequestParser.ts` (381 lines) — Gemini-powered email parser:
-- Extracts date/time, guard count, position type, location, urgency
-- Returns `ParsedWorkRequest` with confidence score
-- Called from: `inboundEmailActions.ts`, `trinityInboundEmailProcessor.ts`
-
-**GAP:** No end-to-end wired pipeline from parsed email → draft shift → backfill SMS → assignment confirmation → owner billing flag → client email confirmation. The parser exists. The stitching does not.
-
----
-
-### 1E. Existing Workflow Orchestrator (Phase 20)
-
-**6 workflows registered:**
+### Trigger
 ```
-1. calloff_coverage          ✅ COMPLETE (700 lines, fully wired)
-2. missed_clockin            ✅ COMPLETE (sweep + SMS)
-3. shift_reminder            ✅ COMPLETE (4hr/1hr cadence)
-4. invoice_lifecycle         ✅ COMPLETE (timesheet → invoice → send)
-5. compliance_expiry_monitor ✅ COMPLETE (daily cert/license sweep)
-6. payroll_anomaly_response  ✅ COMPLETE (flag/block anomalous payroll)
+Stripe event: customer.subscription.created
+Handler:      server/services/billing/stripeEventBridge.ts
+              → handleSubscriptionCreated()
+              → workspaceProvisioningService.provisionNewTenant(workspaceId, name)
 ```
 
-All 6 are Trinity-callable via actionRegistry.
+### Step-by-Step Pipeline
 
----
-
-## PART 2 — CLOSED-LOOP PIPELINE MATRIX (To-Be)
-
-### WORKFLOW 1: Predictive Master Scheduling
-
-**Trigger:** Trinity's autonomous scheduler runs (cron or manual trigger)
-**Owner:** Trinity → drafts, Owner → approves, Trinity → publishes + notifies
-
+**STEP 1 — TRIGGER (Stripe webhook)**
 ```
-STEP 1  DRAFT
-  Trinity calls: trinityAutonomousScheduler.generateMonthlyDraft(workspaceId, month)
-  → creates shifts with status='draft', aiGenerated=true, aiConfidenceScore set
-  → groups into schedule container (schedules table, status='draft')
-  → logs to workflow_audit_log
+Input:  Stripe Subscription object { customer, id, status }
+Action: getWorkspaceByStripeCustomer(customerId)
+        db.update(workspaces).set({ subscriptionStatus, stripeSubscriptionId })
+Output: workspace record updated
+Next:   provisionNewTenant() called
+```
 
-STEP 2  FLAG OWNER
-  → broadcastToWorkspace: 'schedule_ready_for_review' event
-  → notification: "Trinity has drafted [N] shifts for [Month]. Review and approve."
-  → Dashboard widget shows pending approval count
-  → Email to owner (if notificationPreferences allows)
+**STEP 2 — VALIDATE & MARK PENDING**
+```
+File:   server/services/workspaceProvisioningService.ts
+Action: UPDATE workspaces SET onboarding_status = 'pending_setup'
+Output: workspace.onboarding_status = 'pending_setup'
+Gate:   OnboardingGate.tsx reads this — dashboard blocked for owners
+```
 
-STEP 3  OWNER REVIEWS
-  → /schedule page shows draft shifts with AI confidence scores
-  → Low confidence shifts (< 0.7) highlighted in amber
-  → Risk factors shown per shift ("officer has 3 late calloffs this month")
-  → Owner can: Approve All | Modify | Reject specific shifts
+**STEP 3 — PROCESS: Create Onboarding Checklist**
+```
+Table:  tenant_onboarding_steps
+Insert: 5 rows (idempotent — ON CONFLICT DO NOTHING)
 
-STEP 4  APPROVE
-  → schedules.status = 'approved'
-  → all shifts in schedule: status 'draft' → 'published'
-  → Trinity action: scheduling.bulk_publish fires
+Step 1: state_selection   | required=true  | 'Select your operating state'
+Step 2: org_code          | required=true  | 'Choose your organization code'
+Step 3: license_number    | required=true  | 'Enter your company license number'
+Step 4: overage_limits    | required=true  | 'Set AI usage overage limits'
+Step 5: import_data       | required=false | 'Import existing employee data (optional)'
 
-STEP 5  NOTIFY GUARDS
-  → notificationDeliveryService sends push + SMS per officer
-  → Message: "Your schedule for [Month] is posted. [N] shifts assigned."
-  → shifts.requiresAcknowledgment = true triggers acknowledgment receipts
-  → SARGE posts schedule summary to each officer's shift room
+Status on create: 'pending' (except import_data → 'skipped')
+```
 
-CURRENT GAP:
-  ❌ No auto-trigger of monthly draft (cron not wired)
-  ❌ No owner approval gate — Trinity publishes directly
-  ❌ No dashboard widget showing pending schedule approval
-  ❌ No acknowledgment tracking in ChatDock
+**STEP 4 — PROCESS: Provision Default Rooms**
+```
+Table:  conversations
+Insert: 3 rooms (idempotent — ON CONFLICT (workspace_id, slug) DO NOTHING)
 
-WIRE:
-  + server/services/scheduling/schedulingCronService.ts (new)
-  + server/routes/scheduling/approvalGate.ts (new) 
-  + Dashboard widget: ScheduleApprovalWidget component
+Room 1: id={workspaceId}-general         | slug=general          | is_private=false
+Room 2: id={workspaceId}-ops             | slug=ops              | is_private=false
+Room 3: id={workspaceId}-trinity-command | slug=trinity-command  | is_private=true
+        → #trinity-command: managers and owners ONLY
+        → SARGE and Trinity are both active here
+```
+
+**STEP 5 — PROCESS: SARGE Auto-Joins All Rooms**
+```
+Table:  conversation_participants
+Insert: 3 rows — one per room (idempotent — ON CONFLICT DO NOTHING)
+        user_id = 'helpai-bot' (SARGE's DB identity)
+Result: SARGE is live in #general, #ops, and #trinity-command from minute one
+```
+
+**STEP 6 — NOTIFY: Welcome Notification to Owner**
+```
+Table:  notifications
+Insert: 1 row targeting workspace owner/super_admin
+        title: 'Welcome to CoAIleague!'
+        message: 'Your workspace is ready. Complete the 5-step setup to unlock your dashboard. SARGE is online and ready to help.'
+        priority: 'high'
+```
+
+**STEP 7 — CONFIRM: Broadcast to Dashboard**
+```
+WebSocket event:  workspace_provisioned
+Payload: {
+  type: 'workspace_provisioned',
+  data: {
+    workspaceId: string,
+    companyName: string,
+    requiresSetup: true
+  }
+}
+Client effect: Dashboard detects requiresSetup → OnboardingGate shows SetupChecklist
+```
+
+### Frontend Gate: OnboardingGate.tsx
+```
+File:    client/src/components/onboarding/OnboardingGate.tsx
+Logic:
+  1. useAuth() → check if user is owner/super_admin/admin
+  2. If NOT owner → render children (pass through, no gate)
+  3. If owner → GET /api/smart-onboarding/tenant → fetch step statuses
+  4. Filter: steps where required=true AND status NOT IN ('completed','skipped')
+  5. If incomplete.length === 0 → render children (dashboard unlocked)
+  6. If incomplete.length > 0  → render <SetupChecklist steps={...} />
+
+API used: GET /api/smart-onboarding/tenant (existing intelligentOnboardingRoutes.ts)
+```
+
+### Frontend Page: SetupChecklist.tsx
+```
+File:   client/src/pages/onboarding/SetupChecklist.tsx
+Route:  Rendered by OnboardingGate — not a direct URL route
+
+UI:
+  Header: TrinityOrbitalAvatar (size=64, state=idle) + progress bar
+  Body:   One Card per step, sorted by step_number
+  Active step: expanded with input control + Complete/Skip buttons
+  Done steps: collapsed, green checkmark
+
+Step controls by type:
+  state_selection → <select> dropdown (US states list)
+  org_code        → <Input> placeholder "e.g. STATEWIDE"
+  license_number  → <Input> placeholder "e.g. C11608501"
+  overage_limits  → <Input> placeholder "e.g. 50" (dollar amount)
+  import_data     → Optional, Skip button only
+
+On complete:
+  POST /api/smart-onboarding/tenant/steps/:stepKey/complete
+  Body: { value: string }
+  On success: invalidate /api/smart-onboarding/tenant query → Gate re-evaluates
+
+On all required complete: Gate passes through → full dashboard renders
+```
+
+### State After Full Onboarding
+```
+workspace.onboarding_status:   'active'
+workspace.state:               'TX' (or selected state)
+workspace.org_code:            'STATEWIDE' (chosen by owner)
+workspace.license_number:      'C11608501' (entered by owner)
+tenant_onboarding_steps:       all 5 rows status='completed'|'skipped'
+state_regulatory_config:       row exists for workspace.state
+regulatory_knowledge_base:     seeded for state + FEDERAL
+rooms:                         #general, #ops, #trinity-command exist
+conversation_participants:     SARGE in all 3 rooms
 ```
 
 ---
 
-### WORKFLOW 2: Autonomous Call-Off & Backfill
+## PIPELINE 2 — PREDICTIVE SCHEDULE APPROVAL
 
-**Status: MOSTLY COMPLETE. Gaps are in ChatDock feedback only.**
+### Overview
+Trinity drafts AI shifts → stays in 'draft' until owner reviews and approves
+→ approval publishes all shifts → officers notified via ChatDock + push.
 
+### Trigger
 ```
-STEP 1  TRIGGER (any source)
-  SMS: "CALLOFF" → smsAutoResolver → calloffCoverageWorkflow  ✅
-  Voice: extension 4→2 → voiceOrchestrator → calloffCoverageWorkflow  ✅
-  Chat: officer tells SARGE "I can't make my shift" → calloff_shift action  ✅
-  Manager: marks absent in UI → calloffCoverageWorkflow  ✅
-
-STEP 2  SHIFT UNASSIGNED
-  shift.status → 'calloff'  ✅
-  replacement shift created → status='draft'  ✅
-
-STEP 3  SUPERVISOR NOTIFIED
-  SMS to supervisor  ✅
-  In-app notification  ✅
-  SARGE posts to supervisor channel  ❌ (GAP — not wired to ChatDock)
-
-STEP 4  AUTO-SMS TO AVAILABLE GUARDS
-  trinityShiftOfferService.sendShiftOffers()  ✅
-  Scores by availability, proximity, reliability  ✅
-  SMS: "Shift available 1400-2200 North Entrance. Reply YES to accept"  ✅
-
-STEP 5  FILLED
-  Guard replies YES → offer accepted → replacement shift status='scheduled'  ✅
-  Shift offer record closed  ✅
-
-STEP 6  CONFIRM ALL PARTIES
-  Replacement guard: SMS confirmation  ✅
-  Supervisor: SMS "Shift filled by [Name]"  ✅
-  Client: SMS (if client.smsNotifications = true)  ✅
-  SARGE in ChatDock: "Shift covered. [Name] confirmed for [time]."  ❌ (GAP)
-
-STEP 7  SLA ESCALATION
-  scanStaleCalloffWorkflows() sweeps every few minutes  ✅
-  Escalates supervisor if unfilled at 15min  ✅
-
-CURRENT GAPS:
-  ❌ SARGE does not post calloff confirmation to shift room ChatDock
-  ❌ No "Executing..." animation in chat when calloff is processing
-  ❌ ChatDock action block for 'shift_fill' not wired to calloff result
-
-WIRE:
-  + broadcastToWorkspace('sarge_executing') before calloff mutation
-  + broadcastToWorkspace('helpai_calloff_filled') after step 5
-  + ChatDock 'shift_fill' action block renders result inline
+Manual:    Owner clicks "Approve All" in dashboard or ChatActionBlock
+Automatic: Will be cron-triggered when schedulingCronService.ts is built
+Current:   Manager calls POST /api/schedule-approval/approve
 ```
 
----
+### Step-by-Step Pipeline
 
-### WORKFLOW 3: Zero-to-Live Tenant Onboarding
-
-**Status: BROKEN. No mandatory gates exist post-Stripe.**
-
+**STEP 1 — TRIGGER: Check Pending**
 ```
-STEP 1  SUBSCRIPTION CONFIRMED (Stripe webhook: customer.subscription.created)
-  CURRENT: only resets monthly overage  ❌
-  NEEDED:
-  → create workspace record with status='provisioning'
-  → create owner user account
-  → send welcome email with login link
-  → trigger onboarding checklist activation
+Endpoint: GET /api/schedule-approval/pending
+Auth:     requireAuth + ensureWorkspaceAccess + requireManager
+Response: {
+  success: true,
+  pending_count: number,       // Total draft AI shifts
+  earliest_shift: timestamp,   // First shift start time
+  latest_shift: timestamp,     // Last shift start time
+  avg_confidence: decimal,     // 0.00-1.00 average AI confidence
+  low_confidence_count: number // Shifts with confidence < 0.7
+}
+Source:   shifts WHERE status='draft' AND ai_generated=true
+```
 
-STEP 2  MANDATORY SETUP CHECKLIST (blocks dashboard access)
-  Item 1: State selection
-    → sets workspace.state
-    → upserts state_regulatory_config row
-    → seeds regulatory_knowledge_base for that state (runs seedRegulatoryKnowledge)
-  
-  Item 2: Org code selection
-    → owner picks a 3-8 char unique code (STATEWIDE, ACME, etc.)
-    → sets workspace.orgCode, validates uniqueness
-    → SARGE and Trinity know the org by this code forever
-  
-  Item 3: Company license number
-    → sets workspace.licenseNumber (e.g. C11608501)
-    → used by auditor portal, SARGE's license verification cards
-  
-  Item 4: Overage limits
-    → sets workspace.maxOverageLimitCents (default $5000)
-    → spend cap configured before any AI usage
+**STEP 2 — VALIDATE: Owner Reviews**
+```
+Dashboard widget / ChatActionBlock type='schedule_approve' shows:
+  - Pending count
+  - Average confidence score
+  - Low confidence count (review these manually)
+  - Approve All button | Review First button
 
-  Item 5: Import existing data (optional — Wave 17)
-    → unifiedMigrationService.ts offered here
-    → import from GetSling, Excel, previous system
-    → confidence scoring for ghost employees
+If avg_confidence >= 0.8: safe to approve all
+If low_confidence_count > 0: owner should review flagged shifts first
+```
 
-STEP 3  WELCOME DASHBOARD UNLOCKS
-  CURRENT: dashboard always accessible  ❌
-  NEEDED:
-  → checklist completion percentage stored in workspace.onboardingStep
-  → dashboard blocked by OnboardingGate component until 100%
-  → SARGE auto-joins all workspace rooms
-  → #trinity-command room auto-created (managers/owners only)
-  → Trinity sends welcome message to owner in trinity-command
+**STEP 3 — PROCESS: Bulk Publish**
+```
+Endpoint: POST /api/schedule-approval/approve
+Body:     { scheduleId?: string, shiftIds?: string[] }
+          (omit both = approve ALL pending AI drafts)
+Auth:     requireAuth + ensureWorkspaceAccess + requireManager
 
-STEP 4  FIRST WEEK GUIDED ACTIONS
-  → SARGE proactively offers: "Ready to add your first officer?"
-  → Trinity surfaces: "I've prepared a compliance checklist for [State]"
-  → Dashboard shows empty-state widgets with action CTAs (not just blank)
+SQL executed:
+  Case A (specific shifts):  UPDATE shifts SET status='published'
+                              WHERE workspace_id=$1 AND id=ANY($2) AND status='draft'
+  Case B (by scheduleId):    UPDATE shifts SET status='published'
+                              WHERE workspace_id=$1 AND schedule_id=$2 AND status='draft'
+  Case C (approve all):      UPDATE shifts SET status='published'
+                              WHERE workspace_id=$1 AND status='draft' AND ai_generated=true
 
-CURRENT GAPS:
-  ❌ Stripe webhook does not trigger workspace provisioning
-  ❌ No mandatory checklist gate on dashboard
-  ❌ No state selection step
-  ❌ No orgCode selection step  
-  ❌ No #trinity-command room auto-creation
-  ❌ Dashboard shows "Contact Support" for missing org code
-  ❌ Regulatory knowledge not seeded at onboarding
+Returns: { success: true, publishedCount: number }
+```
 
-WIRE:
-  + server/routes/stripe-webhook.ts: subscription.created → workspaceProvisioningService
-  + server/services/workspaceProvisioningService.ts (new — full checklist engine)
-  + client/src/components/OnboardingGate.tsx (new — blocks dashboard until checklist done)
-  + client/src/pages/onboarding/SetupChecklist.tsx (new — 5-step mandatory flow)
-  + server/scripts/seedStatewideProduction.ts (exists — run this for Statewide now)
+**STEP 4 — REJECT PATH (if owner rejects)**
+```
+Endpoint: POST /api/schedule-approval/reject
+Body:     { shiftIds: string[], reason?: string }
+SQL:      UPDATE shifts SET status='cancelled', denial_reason=$3
+          WHERE workspace_id=$1 AND id=ANY($2) AND status='draft'
+Returns:  { success: true, rejectedCount: number }
+```
+
+**STEP 5 — PROPAGATE: Broadcast to Workspace**
+```
+WebSocket event:  schedule_published
+Server fires:     broadcastToWorkspace(workspaceId, { type: 'schedule_published', data: {...} })
+Payload: {
+  type: 'schedule_published',
+  data: {
+    publishedCount: number,
+    approvedBy: string,       // user.id of approving manager
+    message: string           // "N shifts published. Officers will be notified."
+  }
+}
+```
+
+**STEP 6 — NOTIFY: ChatDock + Officer Push**
+```
+Client handler (use-chatroom-websocket.ts):
+  case 'schedule_published':
+    → dispatchTrinityState('success')
+    → Insert SARGE message into shift room:
+        { senderName: 'SARGE', message: sp.message, isBot: true }
+    → setTimeout → dispatchTrinityState('idle') after 2s
+
+Next step (deferred — Wave 23B):
+  → notificationDeliveryService sends push + SMS per affected officer
+  → "Your schedule is posted. {N} shifts assigned for {month}."
+```
+
+**STEP 7 — CONFIRM**
+```
+Dashboard widget re-queries GET /api/schedule-approval/pending
+pending_count returns 0 → approval banner clears
+Officers see their schedule in the scheduling view
 ```
 
 ---
 
-### WORKFLOW 4: Client Shift Request (Inbound Email)
+## PIPELINE 3 — CLIENT SHIFT REQUEST (INBOUND EMAIL)
 
-**Status: PARSER EXISTS. End-to-end pipeline does not.**
+### Overview
+Client emails a shift request → Trinity's email processor parses it →
+workflow creates a draft shift → backfill SMS to officers → owner billing alert.
 
+### Trigger
 ```
-STEP 1  CLIENT EMAILS (any format)
-  → Resend inbound webhook (incidents@, docs@, support@, calloffs@)
-  → trinityInboundEmailProcessor.ts receives raw email
-  → workRequestParser.ts classifies: isWorkRequest? confidence?
-  
-  If confidence >= 0.7:
-    → ParsedWorkRequest extracted (date, time, guards, location, position type, urgency)
-  If confidence < 0.7:
-    → Trinity emails client: "Can you confirm these details: [extracted]?"
-    → Waits for reply (human-in-loop for ambiguous requests)
+Inbound email to: incidents@ | support@ | calloffs@ (Resend inbound webhook)
+Handler chain:    Resend webhook → trinityInboundEmailProcessor.ts
+                  → workRequestParser.classifyEmail()
+                  → workRequestParser.parseWorkRequest()
+                  → executeClientShiftRequestWorkflow() [if confidence >= 0.7]
+```
 
-STEP 2  TRINITY DRAFTS SHIFT
-  CURRENT: parser returns ParsedWorkRequest. Nobody acts on it.  ❌
-  NEEDED:
-  → match client email → workspace.clients record
-  → create shift: status='draft', clientId set, aiGenerated=true
-  → check officer availability + armed/unarmed requirement
-  → shortlist 3 candidates by score
+### Step-by-Step Pipeline
 
-STEP 3  BACKFILL SMS TO OFFICERS
-  → trinityShiftOfferService.sendShiftOffers() (same as calloff backfill)
-  → SMS: "New shift available [date/time] [location]. Reply YES to accept."
-  → SLA: 30 minutes for urgent, 4 hours for normal
+**STEP 1 — TRIGGER: Email Arrives**
+```
+Source:   Resend inbound webhook (POST /api/inbound-email)
+Payload:  Raw email { from, subject, body, attachments }
+Action:   workRequestParser.classifyEmail(emailData)
+Returns:  {
+  isWorkRequest: boolean,
+  confidence: number,       // 0.0-1.0
+  requestType: 'new_shift' | 'modification' | 'cancellation' | 'inquiry',
+  suggestedPriority: 'high' | 'medium' | 'low'
+}
+Gate:     confidence >= 0.7 → auto-process
+          confidence < 0.7  → Trinity emails client asking to confirm details
+```
 
-STEP 4  SHIFT ASSIGNED
-  → First YES reply → shift.status = 'scheduled'
-  → Remaining offers auto-cancelled
+**STEP 2 — VALIDATE: Parse Work Request**
+```
+Action:  workRequestParser.parseWorkRequest(emailData)
+Returns: ParsedWorkRequest {
+  success: boolean,
+  confidence: number,
+  requestedDate: Date,
+  startTime: string,        // "14:00"
+  endTime: string,          // "22:00"
+  guardsNeeded: number,
+  positionType: 'armed' | 'unarmed' | 'supervisor' | 'manager',
+  location: {
+    address: string,
+    city: string,
+    state: string,
+    zipCode: string,
+    coordinates?: { lat: number, lng: number }
+  },
+  clientInfo: {
+    name?: string,
+    email: string,
+    phone?: string,
+    companyName?: string
+  },
+  specialRequirements: string[],
+  urgency: 'normal' | 'urgent' | 'critical',
+  notes: string
+}
+```
 
-STEP 5  OWNER FLAGGED FOR BILLING
-  CURRENT: no billing flag on inbound client requests  ❌
-  NEEDED:
-  → notification to owner: "New client shift: [Client] on [Date]. Rate: $[bill_rate]/hr."
-  → owner confirms billing rate (or Trinity uses existing client contract rate)
-  → invoice_lifecycle workflow triggered post-shift-complete
+**STEP 3 — PROCESS: Match Client**
+```
+File:   server/services/trinity/workflows/clientShiftRequestWorkflow.ts
+SQL:    SELECT id, name, billing_rate FROM clients
+        WHERE workspace_id=$1 AND (
+          contact_email ILIKE $2 OR billing_email ILIKE $2 OR name ILIKE $3
+        ) LIMIT 1
 
-STEP 6  CLIENT CONFIRMED
-  → Email reply to client: "Confirmed: [N] officer(s) for [Date/Time] at [Location]"
-  → If named officer: include officer name
-  → Client portal: shift appears in their view
+Result A: Client found → clientId set, billing_rate from contract
+Result B: Client not found → clientId=null, billing_rate=null (owner must confirm)
+```
 
-CURRENT GAPS:
-  ❌ No trigger from parsed email → shift creation
-  ❌ No client email → workspace.clients matching logic
-  ❌ No owner billing flag notification
-  ❌ No client confirmation email after assignment
-  ❌ Client portal does not show inbound request status
+**STEP 4 — PERSIST: Create Draft Shift**
+```
+Table:  shifts
+INSERT: {
+  workspace_id:   workspaceId,
+  client_id:      clientId (may be null),
+  title:          "Armed Security — {clientName}" | "Unarmed Security — {clientName}",
+  start_time:     parsed date + startTime,
+  end_time:       parsed date + endTime,
+  status:         'draft',
+  ai_generated:   true,
+  bill_rate:      clientRow.billing_rate (may be null),
+  description:    parsed notes / special requirements
+}
+Returns: { id: shiftId }
+```
 
-WIRE:
-  + server/services/trinity/workflows/clientShiftRequestWorkflow.ts (new)
-  + Wire into trinityInboundEmailProcessor.ts → clientShiftRequestWorkflow
-  + client/src/components/client-portal: inbound request status view
-  + billingNotificationService.ts: owner flag on new client shift
+**STEP 5 — PROCESS: Send Shift Offers**
+```
+Action:  sendShiftOffers(workspaceId, shiftId, guardsNeeded)
+Source:  server/services/trinityVoice/trinityShiftOfferService.ts (existing)
+Result:  Officers matched by: availability, proximity, license type (armed/unarmed),
+         reliability score, recent calloff history
+SMS sent: "New shift available {date} {time} {location}. Reply YES to accept."
+Tracking: shift_offers table — one row per officer contacted
+Returns: { offersSent: number }
+```
+
+**STEP 6 — PROPAGATE: Owner Billing Alert**
+```
+WebSocket event:  client_shift_request_received
+Payload: {
+  type: 'client_shift_request_received',
+  data: {
+    shiftId: string,
+    clientName: string,
+    clientEmail: string,
+    requestedDate: ISO string,
+    guardsNeeded: number,
+    positionType: string,
+    urgency: 'normal' | 'urgent' | 'critical',
+    offersSent: number,
+    message: "📋 New client request: {client} needs {N} officers on {date}. {N} officers notified."
+  }
+}
+```
+
+**STEP 7 — NOTIFY: Owner Notification**
+```
+Table:    notifications
+Target:   users WHERE workspace_id=$1 AND role IN ('owner','super_admin') LIMIT 1
+Title:    'New Client Shift Request'
+Message:  '{clientName} needs {N} officer(s) on {date}. Review and confirm billing rate.'
+Priority: 'urgent' (if urgency=critical) | 'high' (otherwise)
+Metadata: { shiftId, clientId, billRate }
+```
+
+**DEFERRED — STEP 8: Client Confirmation Email**
+```
+Status:   ⏳ Not yet built
+Trigger:  When first officer accepts shift offer (shift_offers.status = 'accepted')
+Action:   Resend email to client.contact_email
+Content:  "Confirmed: {N} officer(s) for {date} {time} at {location}"
+Wire:     Extend trinityShiftOfferService.onOfferAccepted() → send confirmation
 ```
 
 ---
 
-## PART 3 — TRINITY CAPABILITY INJECTION STRATEGY
+## PIPELINE 4 — SARGE CALLOFF FEEDBACK LOOP
 
-### How WORKFLOW_MAP.md feeds Trinity's brain
+### Overview
+Officer reports calloff → SARGE immediately shows "Executing..." in the shift room
+→ calloff pipeline runs → completion message replaces the bubble.
+Full visibility in ChatDock — no silent processing.
 
-Trinity already uses `buildRegulatoryContextPrompt()` to inject domain knowledge before generating responses. The same pattern works for workflow knowledge.
-
-**Architecture: `platform_capabilities_base` system context**
-
-```typescript
-// server/services/ai-brain/platformCapabilitiesService.ts (new)
-// Called once at startup, cached in memory.
-// Trinity reads this before any response that touches workflows.
-
-export const PLATFORM_CAPABILITIES_BASE = `
-=== CoAIleague Platform Workflow Capabilities ===
-
-AUTONOMOUS WORKFLOWS (Trinity can trigger these directly via action registry):
-  calloff_coverage          — guard calls off → backfill in 15min → supervisor notified
-  missed_clockin            — shift started, officer MIA → SMS chain → escalate
-  shift_reminder            — 4hr/1hr advance notice to officers
-  invoice_lifecycle         — shift complete → timesheet → invoice → send to client
-  compliance_expiry_monitor — daily scan for expiring guard cards, certs, licenses
-  payroll_anomaly_response  — flag/block anomalous payroll runs
-
-ACTION REGISTRY (Trinity can execute via actionId):
-  scheduling.create_shift | scheduling.publish_shift | scheduling.bulk_publish
-  compliance.verify_officer_license | compliance.verify_company_license
-  payroll.get_runs | employees.list | employees.activate | employees.deactivate
-  web.search | web.fetch_url
-  [+ 100 more registered in actionRegistry.ts]
-
-SHIFT LIFECYCLE:
-  draft → published → scheduled → in_progress → completed
-  draft → calloff → (backfill) → scheduled → completed
-  [status changes are mutations Trinity executes via scheduling action handlers]
-
-SARGE HANDLES (no Trinity escalation):
-  Schedule questions, shift swap, clock-in/out, post orders, patrol,
-  equipment, license renewal reminders, PTT acknowledgments
-
-ALWAYS ESCALATE TO TRINITY:
-  UoF justification, termination/discipline, payroll disputes,
-  legal language, 5+ employee actions, officer in danger
-
-DATABASE AWARENESS:
-  workspaceId scoped on all queries — Trinity never cross-contaminates tenants
-  All financial writes: db.transaction() — atomic or nothing
-  Shift overlap: PostgreSQL btree_gist exclusion constraint enforced
-=== END PLATFORM CAPABILITIES ===
-`;
+### Trigger Sources
+```
+Source A: SMS keyword "CALLOFF" → smsAutoResolver → calloffCoverageWorkflow
+Source B: Voice extension 4→2   → voiceOrchestrator → calloffCoverageWorkflow
+Source C: SARGE chat command    → helpAIBotService (case 'calloff_shift') → calloffCoverageWorkflow
+Source D: Manager marks absent  → UI action → calloffCoverageWorkflow
+Source E: Trinity action        → workflowOrchestrator → calloffCoverageWorkflow
 ```
 
-**Injection point:** `aiBrainService.ts` → `handleMessage()` — append alongside `regulatoryContextBlock` and `webSearchContext`. Already wired to inject domain context. Add `platformCapabilitiesBase` as the third block, always present (not keyword-gated like the others — Trinity should always know what she can do).
+### WebSocket Event Chain
 
-**For SARGE:** Same service, subset of capabilities. SARGE gets the workflow awareness but not the admin/financial action registry — he escalates those to Trinity.
+**EVENT 1 — sarge_executing** *(fires before STEP 4 PROCESS)*
+```
+Server fires:  broadcastToWorkspace(workspaceId, {...})
+When:          Immediately after shift is located and validated,
+               BEFORE offers are sent
+Payload: {
+  type: 'sarge_executing',
+  data: {
+    action: 'calloff_coverage',
+    message: 'Processing calloff for shift... Finding coverage.'
+  }
+}
+
+Client handler (use-chatroom-websocket.ts):
+  case 'sarge_executing':
+    → dispatchTrinityState('thinking')
+    → insert into messages: {
+        id: `exec-${Date.now()}`,
+        message: ex.message,       // "Processing calloff..."
+        senderName: 'SARGE',
+        senderId: 'helpai-bot',
+        senderType: 'bot',
+        isBot: true,
+        isExecuting: true,         // FLAG — identifies this bubble for replacement
+        metadata: { executing: true, action: 'calloff_coverage' }
+      }
+
+UI effect: Gold SARGE typing bubble appears with action message
+```
+
+**EVENT 2 — sarge_calloff_handled** *(fires before STEP 7 NOTIFY)*
+```
+Server fires:  broadcastToWorkspace(workspaceId, {...})
+When:          After offers are sent, before supervisor SMS
+Payload: {
+  type: 'sarge_calloff_handled',
+  data: {
+    action: 'calloff_complete',
+    message: '✅ Coverage initiated: 3 officers notified. Supervisor alerted.'
+            | '⚠️ No available officers found. Supervisor escalation triggered.',
+    offersSent: number
+  }
+}
+
+Client handler (use-chatroom-websocket.ts):
+  case 'sarge_calloff_handled':
+    → setMessages(prev => prev.map(m =>
+        m.isExecuting
+          ? { ...m, message: cf.message, isExecuting: false }   // REPLACE bubble
+          : m
+      ))
+    → dispatchTrinityState('success')
+    → setTimeout → dispatchTrinityState('idle') after 2s
+
+UI effect: Executing bubble transforms in-place → result message
+           No disappear/reappear. Same bubble, content replaced.
+```
+
+### Full Calloff Pipeline State Machine
+```
+STEP 1  TRIGGER        → logWorkflowStart()
+STEP 2  FETCH          → locate shift (explicit shiftId OR officer's next ≤6hrs)
+STEP 3  VALIDATE       → shift exists, belongs to officer, is schedulable
+── EVENT: sarge_executing broadcast ──────────────────────────────────
+STEP 4  PROCESS        → sendShiftOffers() → shortlist qualified replacements
+STEP 5  MUTATE         → shift.status = 'calloff'
+                         replacement shift created → status='draft'
+                         shift_offers rows created → status='sent'
+                         SMS sent to each candidate
+STEP 6  CONFIRM        → verify DB mutation, count outstanding offers
+── EVENT: sarge_calloff_handled broadcast ────────────────────────────
+STEP 7  NOTIFY         → supervisor SMS + in-app
+                         client SMS (if client.smsNotifications = true)
+                         audit trail appended to workflow record
+
+SLA:    15 minutes. scanStaleCalloffWorkflows() sweeps every few minutes.
+        At 15min if shift still unfilled → escalate to supervisor.
+```
+
+### SARGE Deliberation Events (separate from execution)
+```
+EVENT: sarge_deliberating
+  When:    SARGE detects hard-escalation topic (UoF, termination, legal, payroll)
+  Payload: { type: 'sarge_deliberating', data: { roomId, query } }
+  Client:  Insert deliberating bubble with amber "Deliberating with Trinity···" label
+  Timeout: 8 seconds max — SARGE proceeds with best judgment if Trinity unreachable
+
+EVENT: sarge_deliberation_complete
+  When:    Trinity responds OR 8s timeout
+  Payload: { type: 'sarge_deliberation_complete', data: { roomId } }
+  Client:  Remove deliberating bubble — real answer arrives via standard message event
+```
 
 ---
 
-## PART 4 — GAP PRIORITY MATRIX
+## CHATACTIONBLOCK — ALL 9 TYPES
 
-| Gap | Severity | Effort | Wave |
+**File:** `client/src/components/chatdock/ChatActionBlock.tsx`
+
+| Type | Color | Description | Actions |
 |---|---|---|---|
-| Tenant onboarding mandatory checklist | CRITICAL | Medium | Wave 23 |
-| Stripe webhook → workspace provisioning | CRITICAL | Small | Wave 23 |
-| #trinity-command room auto-creation | HIGH | Small | Wave 23 |
-| Schedule draft → owner approval gate | HIGH | Medium | Wave 23 |
-| ChatDock SARGE calloff feedback | HIGH | Small | Wave 23 |
-| Client shift request → shift creation | HIGH | Medium | Wave 23 |
-| Monthly scheduling cron trigger | MEDIUM | Small | Wave 23 |
-| Client confirmation email after assignment | MEDIUM | Small | Wave 23 |
-| Platform capabilities injected into Trinity | HIGH | Small | Wave 23 |
-| ChatActionBlock 'shift_fill' result inline | MEDIUM | Small | Wave 23 |
+| `approval_button` | Blue | Generic approve/reject button | approve, reject |
+| `shift_offer` | Green | Shift pickup offer for officer | accept, decline |
+| `document_upload` | Gray | Request document from officer | upload |
+| `coi_request` | Orange | Certificate of Insurance request | submit |
+| `poll` | Purple | Question with multiple choice | select option |
+| `license_verify` | Amber | Pre-filled TOPS deep-link card | open URL |
+| `shift_fill` | Green | Coverage confirmation card | informational |
+| `schedule_approve` | Blue | AI draft schedule review | approve_all, review |
+| `compliance_alert` | Red | Compliance flag with details | acknowledge |
+
+### license_verify Payload Shape
+```typescript
+{
+  type: 'license_verify',
+  props: {
+    body: string,                          // Explanation text
+    links: Array<{ url: string; label: string; note: string }>,
+    warning?: string                       // e.g. "License expired 14 days ago"
+  }
+}
+```
+
+### schedule_approve Payload Shape
+```typescript
+{
+  type: 'schedule_approve',
+  props: {
+    body: string,                         // e.g. "12 shifts drafted for June. Avg confidence: 0.87"
+    pendingCount: number,
+    avgConfidence: number,
+    lowConfidenceCount: number
+  }
+}
+// onAction('approve_all') → POST /api/schedule-approval/approve
+// onAction('review')      → navigate to /schedule?filter=draft
+```
+
+### compliance_alert Payload Shape
+```typescript
+{
+  type: 'compliance_alert',
+  props: {
+    body: string,
+    flags: Array<{
+      code: string,                       // e.g. "ARMED_POST_EXPIRED_LICENSE"
+      description: string,
+      severity: 'critical' | 'warning'
+    }>
+  }
+}
+// onAction('acknowledge') → logs acknowledgment to compliance_documents
+```
 
 ---
 
-## PART 5 — PAGE / BUTTON / LINK AUDIT STATUS
+## ROUTE TOPOLOGY — ALL WAVE 23 ROUTES
 
-### Routes confirmed wired end-to-end:
-- `/chatrooms` → ChatDock → SARGE + Trinity (role-gated) ✅
-- `/api/compliance/verify/officer/:id` → license verification deep links ✅
-- `/api/compliance/pre-audit` → red team engine ✅
-- `/api/guard-tours/tours/:id/print-qr` → QR print sheet ✅
-- `/dps-portal/:token` → auditor portal sandbox ✅
-- `/api/ai-brain/chat` → Trinity direct chat (managers) ✅
-- All PTT routes → CAD bridge → ChatDock ✅
-- Patrol scan → CAD → SARGE shift room message ✅
+### New Server Routes
 
-### Routes that exist but have gaps:
-- `/billing` → addon management (proration preview works, spend cap UI missing)
-- `/guard-tours` → QR print button added, NFC scan CAD bridge wired ✅
-- `/schedule` → draft approval gate missing
-- `/onboarding/*` → employee onboarding wired, tenant onboarding not gated
+```
+POST /api/stripe/webhook → stripeEventBridge.handleEvent()
+                        → case 'customer.subscription.created'
+                        → workspaceProvisioningService.provisionNewTenant()
 
-### Pages confirmed working:
-- Owner Dashboard + IdentityCard widget ✅
-- Worker Dashboard + IdentityCard ✅
-- DPS Auditor Portal (dynamic, all states) ✅
-- Regulatory Knowledge Engine (TX+CA+FL+NY+FEDERAL seeded) ✅
-- PDF Engine (pay stubs, DARs, UoF reports, audit packets) ✅
+GET  /api/schedule-approval/pending    → scheduleApprovalRoutes.ts
+     Auth: requireAuth + ensureWorkspaceAccess + requireManager
+     Response: { pending_count, earliest_shift, avg_confidence, low_confidence_count }
+
+POST /api/schedule-approval/approve    → scheduleApprovalRoutes.ts
+     Auth: requireAuth + ensureWorkspaceAccess + requireManager
+     Body: { scheduleId?, shiftIds? }
+     Response: { success, publishedCount }
+     Side effect: broadcastToWorkspace('schedule_published')
+
+POST /api/schedule-approval/reject     → scheduleApprovalRoutes.ts
+     Auth: requireAuth + ensureWorkspaceAccess + requireManager
+     Body: { shiftIds, reason? }
+     Response: { success, rejectedCount }
+
+[Internal] workspaceProvisioningService.provisionNewTenant(workspaceId, name)
+           Not a public route — called by stripeEventBridge
+```
+
+### New Frontend Routes
+
+```
+/onboarding/setup → client/src/pages/onboarding/SetupChecklist.tsx
+                    Rendered by OnboardingGate when setup incomplete
+                    Not a direct URL — injected by OnboardingGate wrapper
+```
+
+### Existing Routes — Now Fully Connected
+
+```
+GET /api/smart-onboarding/tenant              → intelligentOnboardingRoutes.ts
+    Now consumed by: OnboardingGate.tsx (gating logic)
+
+POST /api/smart-onboarding/tenant/steps/:key/complete
+    Now consumed by: SetupChecklist.tsx (step completion)
+
+POST /api/inbound-email (Resend webhook)      → trinityInboundEmailProcessor.ts
+    Now wires to: clientShiftRequestWorkflow.executeClientShiftRequestWorkflow()
+    When:         parsed email confidence >= 0.7
+
+[All existing calloff workflow routes unchanged]
+[All existing schedule routes unchanged]
+```
 
 ---
 
-*WAVE 22 AUDITED & MATRIX COMPILED.*
+## TRINITY'S CAPABILITY AWARENESS
+
+**File:** `server/services/ai-brain/platformCapabilitiesService.ts`
+
+Injected into every Trinity response as the 4th context block in `enrichedSystemPrompt`:
+
+```
+systemPrompt (base personality)
++ regulatoryContextBlock   (state law — Wave 20 RKE)
++ webSearchContext          (Gemini grounding — Wave 22)
++ platformCapabilitiesContext (this — always present)
+```
+
+Trinity now knows she can trigger all 6 Phase 20 workflows, the full action registry, the shift lifecycle, the SARGE/Trinity escalation boundary, and the data integrity rules. She can trace any operational situation through its full pipeline without being explicitly told each step.
+
+---
+
+## DEPLOYMENT CRASH LAWS (from SYSTEM_MAP.md — summary)
+
+```
+LAW 1: No literal newlines inside double-quoted strings (.join("\n") not .join("↵"))
+LAW 2: No standalone Drizzle index exports — indexes inside pgTable() third arg only
+LAW 3: No middleware (requireAuth, ensureWorkspaceAccess) used without explicit import
+
+PRE-PUSH CHECKLIST:
+  grep -rPln 'join\("[^"]*\n' client/src/         → must return 0 results
+  grep -rn 'export const.*Indexes.*=' shared/schema/ → must return 0 results
+  Scan routes for middleware used without import     → must return 0 results
+  node build.mjs                                    → must show ✅ Server build complete
+  npm run build                                     → must show ✓ built
+  npx vitest run                                    → must show 0 failed
+```
+
+---
+
+*WAVES 22A & 22B SECURED. TRINITY'S BLUEPRINT IS READY FOR INJECTION.*
