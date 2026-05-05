@@ -6,6 +6,7 @@
 //   /api/compliance, /api/compliance/*, /api/training-compliance
 import type { Express } from "express";
 import { preAuditRouter } from "../preAuditRoutes";
+import { licenseVerificationRouter } from "../licenseVerificationRoutes";
 import { pdfRouter } from "../pdfRoutes";
 import { regulatoryPublicRouter } from "../regulatoryPublicRoutes";
 import { requireAuth } from "../../auth";
@@ -100,6 +101,7 @@ export function mountComplianceRoutes(app: Express): void {
   app.use('/api/sps/forms', requireAuth, spsFormsRouter);
 
   app.use("/api/compliance", requireAuth, ensureWorkspaceAccess, preAuditRouter);
+  app.use("/api/compliance/verify", licenseVerificationRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);
 

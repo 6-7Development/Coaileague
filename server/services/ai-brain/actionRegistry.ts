@@ -1,5 +1,49 @@
 /**
- * AI Brain Action Registry
+   {
+    actionId: 'compliance.verify_officer_license',
+    name: 'Verify Officer License',
+    category: 'compliance',
+    description: 'Generate a one-click verification link to check an officer license status on the state regulatory website (TX DPS TOPS, CA BSIS, FL DBPR, NY DOS). Returns pre-filled deep links so the manager only needs to solve the CAPTCHA.',
+    handler: async (request: ActionRequest) => {
+      const start = Date.now();
+      const { employeeId, workspaceId } = request.payload || {};
+      if (!employeeId || !workspaceId) {
+        return createResult(request.actionId, false, 'employeeId and workspaceId required', null, start);
+      }
+      try {
+        const { buildOfficerVerificationCard } = await import('../../licenseVerificationService');
+        const card = await buildOfficerVerificationCard(String(employeeId), String(workspaceId));
+        if (!card) return createResult(request.actionId, false, 'Officer not found', null, start);
+        return createResult(request.actionId, true,
+          card.warningReason
+            ? `${card.warningLevel.toUpperCase()}: ${card.warningReason} — verification links ready`
+            : `Verification links generated for ${card.officerName}`,
+          card, start);
+      } catch (err: unknown) {
+        return createResult(request.actionId, false, err instanceof Error ? err.message : 'Failed', null, start);
+      }
+    },
+  },
+  {
+    actionId: 'compliance.verify_company_license',
+    name: 'Verify Company License',
+    category: 'compliance',
+    description: 'Generate a one-click verification link to check a security company license on the state PSB website. Use to verify a company claiming to have a valid license before subcontracting or referring work.',
+    handler: async (request: ActionRequest) => {
+      const start = Date.now();
+      const { workspaceId } = request.payload || {};
+      if (!workspaceId) return createResult(request.actionId, false, 'workspaceId required', null, start);
+      try {
+        const { buildCompanyVerificationCard } = await import('../../licenseVerificationService');
+        const card = await buildCompanyVerificationCard(String(workspaceId));
+        if (!card) return createResult(request.actionId, false, 'Company not found', null, start);
+        return createResult(request.actionId, true, `Verification links generated for ${card.companyName}`, card, start);
+      } catch (err: unknown) {
+        return createResult(request.actionId, false, err instanceof Error ? err.message : 'Failed', null, start);
+      }
+    },
+  },
+  * AI Brain Action Registry
  * ========================
  * Central registry that wires ALL AI Brain capabilities to executable actions.
  * This enables the orchestrator to execute any platform action through a unified interface.
