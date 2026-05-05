@@ -365,6 +365,17 @@ class StripeEventBridge {
       visibility: 'org_leadership',
     });
 
+    // ── Wave 23: Trigger tenant onboarding checklist ──────────────────────
+    // Fires after every new subscription — creates the mandatory setup gates
+    // that block the dashboard until state/orgCode/license are configured.
+    try {
+      const { workspaceProvisioningService } = await import('../workspaceProvisioningService');
+      await workspaceProvisioningService.provisionNewTenant(workspace.id, workspace.name || '');
+    } catch (provErr: unknown) {
+      log.warn('[StripeEventBridge] Provisioning non-blocking error:',
+        provErr instanceof Error ? provErr.message : String(provErr));
+    }
+
     return {
       success: true,
       eventType: 'customer.subscription.created',

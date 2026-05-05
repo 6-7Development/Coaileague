@@ -325,6 +325,52 @@ export function ChatActionBlock({
         <PollBlock props={uiComponent.props} locked={locked} onAction={handleAction}
           response={uiComponent.response} />
       )}
+      {uiComponent.type === "license_verify" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2 max-w-sm">
+          <p className="text-amber-700 text-xs font-semibold">🛡️ License Verification</p>
+          <p className="text-xs text-muted-foreground">{uiComponent.props?.body}</p>
+          {(uiComponent.props?.links || []).map((link: {url:string;label:string}, i: number) => (
+            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between p-2 rounded border border-amber-300 bg-white dark:bg-background text-xs hover:bg-amber-50 transition-colors gap-2">
+              <span className="font-medium truncate">{link.label}</span>
+              <span className="text-muted-foreground shrink-0">→ Verify</span>
+            </a>
+          ))}
+          {uiComponent.props?.warning && <p className="text-xs text-red-600 font-semibold">⚠️ {uiComponent.props.warning}</p>}
+        </div>
+      )}
+      {uiComponent.type === "shift_fill" && (
+        <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 p-3 space-y-2 max-w-sm">
+          <p className="text-green-700 text-xs font-semibold">✅ Shift Covered</p>
+          <p className="text-xs text-muted-foreground">{uiComponent.props?.body}</p>
+        </div>
+      )}
+      {uiComponent.type === "schedule_approve" && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-3 space-y-2 max-w-sm">
+          <p className="text-blue-700 text-xs font-semibold">📅 Schedule Ready for Review</p>
+          <p className="text-xs text-muted-foreground">{uiComponent.props?.body}</p>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => handleAction("approve_all")}
+              className="flex-1 text-xs py-1.5 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+              Approve All
+            </button>
+            <button onClick={() => handleAction("review")}
+              className="flex-1 text-xs py-1.5 rounded border border-blue-300 text-blue-700 font-medium hover:bg-blue-100 transition-colors">
+              Review First
+            </button>
+          </div>
+        </div>
+      )}
+      {uiComponent.type === "compliance_alert" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-3 space-y-2 max-w-sm">
+          <p className="text-red-700 text-xs font-semibold">🚨 Compliance Alert</p>
+          <p className="text-xs text-muted-foreground">{uiComponent.props?.body}</p>
+          <button onClick={() => handleAction("acknowledge")}
+            className="w-full text-xs py-1.5 rounded border border-red-300 text-red-700 font-medium hover:bg-red-100 transition-colors">
+            Acknowledge
+          </button>
+        </div>
+      )}
       {/* Responded badge for all types */}
       {locked && (
         <RespondedBadge respondedAt={uiComponent.respondedAt} respondedBy={uiComponent.respondedBy} />

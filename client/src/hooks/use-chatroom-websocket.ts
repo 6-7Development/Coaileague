@@ -361,6 +361,55 @@ export function useChatroomWebSocket(
           setTimeout(() => dispatchTrinityState("idle"), 2000);
           break;
 
+        case 'sarge_executing': {
+          // SARGE is processing a platform action — show activity in chat
+          const ex = data as { action?: string; message?: string };
+          dispatchTrinityState('thinking');
+          const execMsg = {
+            id: `exec-${Date.now()}`,
+            message: ex.message || 'Processing...',
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            isExecuting: true,
+            createdAt: new Date().toISOString(),
+            metadata: { executing: true, action: ex.action },
+          };
+          setMessages(prev => [...prev, execMsg as ChatMessage]);
+          break;
+        }
+
+        case 'sarge_calloff_handled': {
+          // Replace executing bubble with completion message
+          const cf = data as { message?: string; offersSent?: number };
+          setMessages(prev => prev.map(m =>
+            (m as { isExecuting?: boolean }).isExecuting
+              ? { ...m, message: cf.message || '✅ Calloff handled.', isExecuting: false }
+              : m
+          ));
+          dispatchTrinityState('success');
+          setTimeout(() => dispatchTrinityState('idle'), 2000);
+          break;
+        }
+
+        case 'schedule_published': {
+          const sp = data as { publishedCount?: number; message?: string };
+          dispatchTrinityState('success');
+          const spMsg = {
+            id: `sched-${Date.now()}`,
+            message: sp.message || `✅ ${sp.publishedCount || 0} shifts published.`,
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            createdAt: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, spMsg as ChatMessage]);
+          setTimeout(() => dispatchTrinityState('idle'), 2000);
+          break;
+        }
+
         case 'sarge_deliberating': {
           // SARGE is consulting Trinity — show deliberating typing bubble
           const dd = data as { roomId?: string; query?: string };
@@ -409,6 +458,55 @@ export function useChatroomWebSocket(
           };
           setMessages((prev) => [...prev, missedMsg as ChatMessage]);
           setTimeout(() => dispatchTrinityState("idle"), 4000);
+          break;
+        }
+
+        case 'sarge_executing': {
+          // SARGE is processing a platform action — show activity in chat
+          const ex = data as { action?: string; message?: string };
+          dispatchTrinityState('thinking');
+          const execMsg = {
+            id: `exec-${Date.now()}`,
+            message: ex.message || 'Processing...',
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            isExecuting: true,
+            createdAt: new Date().toISOString(),
+            metadata: { executing: true, action: ex.action },
+          };
+          setMessages(prev => [...prev, execMsg as ChatMessage]);
+          break;
+        }
+
+        case 'sarge_calloff_handled': {
+          // Replace executing bubble with completion message
+          const cf = data as { message?: string; offersSent?: number };
+          setMessages(prev => prev.map(m =>
+            (m as { isExecuting?: boolean }).isExecuting
+              ? { ...m, message: cf.message || '✅ Calloff handled.', isExecuting: false }
+              : m
+          ));
+          dispatchTrinityState('success');
+          setTimeout(() => dispatchTrinityState('idle'), 2000);
+          break;
+        }
+
+        case 'schedule_published': {
+          const sp = data as { publishedCount?: number; message?: string };
+          dispatchTrinityState('success');
+          const spMsg = {
+            id: `sched-${Date.now()}`,
+            message: sp.message || `✅ ${sp.publishedCount || 0} shifts published.`,
+            senderName: 'SARGE',
+            senderId: 'helpai-bot',
+            senderType: 'bot' as const,
+            isBot: true,
+            createdAt: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, spMsg as ChatMessage]);
+          setTimeout(() => dispatchTrinityState('idle'), 2000);
           break;
         }
 

@@ -1,3 +1,22 @@
+## WAVE 23 IMPLEMENTATION STATUS (Updated)
+
+| Gap | Status |
+|---|---|
+| Stripe webhook → workspace provisioning | ✅ BUILT — workspaceProvisioningService.ts |
+| Mandatory 5-step onboarding checklist | ✅ BUILT — SetupChecklist.tsx + OnboardingGate.tsx |
+| #trinity-command room auto-creation | ✅ BUILT — provisioned on subscription.created |
+| SARGE auto-joins all rooms | ✅ BUILT — provisioned on subscription.created |
+| Welcome notification to owner | ✅ BUILT — fired by provisioning service |
+| Schedule approval gate (owner reviews AI drafts) | ✅ BUILT — scheduleApprovalRoutes.ts |
+| SARGE ChatDock execution feedback | ✅ BUILT — sarge_executing + sarge_calloff_handled events |
+| schedule_published ChatDock broadcast | ✅ BUILT — WebSocket event + typing bubble |
+| Client shift request → shift creation | ✅ BUILT — clientShiftRequestWorkflow.ts |
+| ChatActionBlock new types | ✅ BUILT — license_verify, shift_fill, schedule_approve, compliance_alert |
+| Monthly scheduling cron trigger | ⏳ Deferred — next sprint |
+| Client confirmation email post-assignment | ⏳ Deferred — wired to invoice_lifecycle workflow |
+
+---
+
 # CoAIleague — Enterprise Workflow Matrix
 # Wave 22 · As-Is Audit + Closed-Loop Pipeline Blueprint
 

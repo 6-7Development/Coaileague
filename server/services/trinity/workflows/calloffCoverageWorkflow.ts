@@ -39,6 +39,7 @@ import { NotificationDeliveryService } from '../../notificationDeliveryService';
 import { platformEventBus } from '../../platformEventBus';
 import { logActionAudit } from '../../ai-brain/actionAuditLogger';
 import { createLogger } from '../../../lib/logger';
+import { broadcastToWorkspace } from '../../../websocket';
 import {
   logWorkflowStart,
   logWorkflowStep,
