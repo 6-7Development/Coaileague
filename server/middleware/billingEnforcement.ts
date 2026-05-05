@@ -32,6 +32,38 @@ import { createLogger } from '../lib/logger';
 
 const log = createLogger('billingEnforcementMiddleware');
 
+
+// ─── Active Addons Loader ────────────────────────────────────────────────────
+/**
+ * Fetches active workspace addons and attaches to req.activeAddons.
+ * Wire BEFORE requireBillingFeature on any route that checks addon features.
+ * Or wire globally after auth middleware for workspace-scoped requests.
+ *
+ * GAP FIX: requireBillingFeature was checking req.activeAddons which was always []
+ * because nothing populated it. This middleware fixes that.
+ */
+export function loadActiveAddons(): RequestHandler {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const workspaceId = req.workspaceId || (req.user as unknown)?.workspaceId;
+      if (!workspaceId) return next();
+
+      const { pool: dbPool } = await import('../db');
+      const result = await dbPool.query(
+        `SELECT wa.addon_key
+         FROM workspace_addons wa
+         JOIN billing_addons ba ON ba.id = wa.addon_id
+         WHERE wa.workspace_id = $1 AND wa.status = 'active'`,
+        [workspaceId]
+      );
+      (req as Record<string, unknown>).activeAddons = result.rows.map(r => r.addon_key);
+    } catch {
+      (req as Record<string, unknown>).activeAddons = [];
+    }
+    next();
+  };
+}
+
 // ─── Feature Gate Middleware ──────────────────────────────────────────────────
 
 /**

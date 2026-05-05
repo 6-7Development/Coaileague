@@ -27,6 +27,7 @@
 import { and, eq, gte, lte, isNull } from 'drizzle-orm';
 import { db } from '../../../db';
 import { timeEntries, clients, orgFinanceSettings } from '@shared/schema';
+import { billingActionService } from '../../billing/billingActionService';
 import { createLogger } from '../../../lib/logger';
 import {
   logWorkflowStart,

@@ -1,5 +1,6 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from 'express';
+import { billingActionService } from '../services/billing/billingActionService';
 import { requireAuth } from '../auth';
 import { requireOwner, requireManager, type AuthenticatedRequest } from '../rbac';
 import { ensureWorkspaceAccess } from '../middleware/workspaceScope';

@@ -126,6 +126,36 @@ export interface SubscriptionResult {
   error?: string;
 }
 
+
+/**
+ * Deactivate all email and PTT seats for a workspace.
+ * Called when workspace moves to suspended or cancelled.
+ * Non-blocking — called fire-and-forget.
+ */
+async function deactivateWorkspaceSeats(workspaceId: string): Promise<void> {
+  const { pool: dbPool } = await import('../../db');
+  // Deactivate email seats
+  await dbPool.query(
+    `UPDATE platform_email_addresses
+     SET is_active = false, deactivated_at = NOW()
+     WHERE workspace_id = $1 AND is_active = true AND is_protected = false`,
+    [workspaceId]
+  ).catch(() => {});
+  // Deactivate PTT seats
+  await dbPool.query(
+    `UPDATE ptt_seats SET is_active = false, deactivated_at = NOW()
+     WHERE workspace_id = $1 AND is_active = true`,
+    [workspaceId]
+  ).catch(() => {});
+  // Deactivate addons
+  await dbPool.query(
+    `UPDATE workspace_addons SET status = 'suspended'
+     WHERE workspace_id = $1 AND status = 'active'`,
+    [workspaceId]
+  ).catch(() => {});
+  log.info(`[SubscriptionManager] Seats and addons deactivated for suspended workspace ${workspaceId}`);
+}
+
 export class SubscriptionManager {
   private tokenManager: TokenManager;
 
@@ -705,6 +735,13 @@ export class SubscriptionManager {
           : subscription.status === 'trialing'
             ? 'trial'
             : 'suspended';
+
+        // GAP FIX: Deactivate all email and PTT seats when workspace suspends
+        if (status === 'suspended') {
+          deactivateWorkspaceSeats(workspaceId).catch(err =>
+            log.warn('[SubscriptionManager] Seat deactivation on suspend failed:', err.message)
+          );
+        }
 
         // RC2 (Phase 2): workspace tier + credits allocation must be updated atomically.
         // If the credits update fails the workspace still shows the new tier — making

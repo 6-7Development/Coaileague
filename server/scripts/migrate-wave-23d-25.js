@@ -236,6 +236,28 @@ async function migrate() {
       ON ptt_seats (workspace_id, is_active)
     `);
 
+    
+    // ── billing_action_log (per-action charge recording) ──────────────────────
+    console.log('\nCreating billing_action_log table...');
+    await run('billing_action_log table', `
+      CREATE TABLE IF NOT EXISTS billing_action_log (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id  TEXT NOT NULL,
+        action_type   TEXT NOT NULL,
+        amount_cents  INTEGER NOT NULL DEFAULT 0,
+        entity_id     TEXT,
+        entity_type   TEXT,
+        metadata      JSONB DEFAULT '{}'::jsonb,
+        stripe_item   TEXT,
+        billed_at     TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run('billing_action_log: idx_workspace', `
+      CREATE INDEX IF NOT EXISTS idx_billing_action_log_workspace
+      ON billing_action_log (workspace_id, action_type, created_at DESC)
+    `);
+
         await pool.query('COMMIT');
     console.log('\n═══════════════════════════════════════════════════════');
     console.log('  Migration complete ✅');
