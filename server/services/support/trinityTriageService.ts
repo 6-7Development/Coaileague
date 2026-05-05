@@ -72,8 +72,7 @@ async function pullRecentErrors(workspaceId: string, minutes = 10): Promise<stri
     if (!result.rows.length) return null;
     return result.rows.map(r =>
       `[${new Date(r.created_at).toISOString()}] ${r.http_status || 500} on ${r.route || 'unknown'}: ${r.error_message?.slice(0, 120) || 'No message'}`
-    ).join("
-");
+    ).join("\n");
   } catch {
     return null;
   }
@@ -104,9 +103,8 @@ export async function triageTicket(
       `Subject: ${subject}`,
       `Description: ${description.slice(0, 400)}`,
       `From: ${fromEmail || "unknown"}`,
-      "Respond ONLY in JSON: { "category": string, "confidence": number, "summary": string, "priority": "low"|"normal"|"high"|"urgent" }",
-    ].join("
-");
+      "Respond ONLY in JSON: category, confidence, summary, priority (low/normal/high/urgent).",
+    ].join("\n");
 
     const raw = await (geminiClient as { generateWithSearch?: (p: string) => Promise<{ text: string }> })
       .generateWithSearch?.(prompt).then(r => r.text) || "{}";

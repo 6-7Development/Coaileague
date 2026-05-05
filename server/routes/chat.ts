@@ -1593,7 +1593,7 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
     // Only HelpAI-routed commands are handled here
     const HELPAI_COMMANDS = ['/helpai', '/escalate', '/help'];
     // Trinity command room slash commands — manager+ only
-    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote', '/dream-status'];
+    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote', '/dream-status', '/drill-calloff', '/drill-stripe-drop', '/drill-support-triage', '/drill-incident', '/drill-all'];
     // Handle Trinity command room slash commands
     if (TRINITY_COMMANDS.includes(command)) {
       const role = (req.user as { role?: string })?.role || '';
@@ -1699,6 +1699,68 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
           },
         }).catch(() => {});
         return res.json({ handled: true, command, insightCount: insightCount.rows[0]?.count || 0, lastInsight: last || null });
+      }
+
+      // ── WAR ROOM DRILL COMMANDS ─────────────────────────────────────────────
+      const DRILL_COMMANDS: Record<string, string> = {
+        '/drill-calloff':        'calloff',
+        '/drill-stripe-drop':    'stripeDrop',
+        '/drill-support-triage': 'supportTriage',
+        '/drill-incident':       'incident',
+        '/drill-all':            'all',
+      };
+
+      if (command in DRILL_COMMANDS) {
+        const drillType = DRILL_COMMANDS[command];
+        const { broadcastToWorkspace: bw } = await import('../websocket');
+        const { warRoomSimulator } = await import('../services/warRoomSimulator');
+
+        // Announce drill starting
+        await bw(workspaceId, {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: req.body.roomId,
+            actionType: 'shift_fill',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: { body: `🔴 WAR ROOM: Initiating ${command} drill. Standing by...` },
+          },
+        }).catch(() => {});
+
+        let results: import('../services/warRoomSimulator').DrillResult[];
+
+        if (drillType === 'all') {
+          results = await warRoomSimulator.drillAll(workspaceId, req.body.roomId || '');
+        } else {
+          const drillFn = drillType === 'calloff' ? warRoomSimulator.drillCalloff
+            : drillType === 'stripeDrop' ? warRoomSimulator.drillStripeDrop
+            : drillType === 'supportTriage' ? warRoomSimulator.drillSupportTriage
+            : warRoomSimulator.drillIncident;
+          results = [await drillFn(workspaceId, req.body.roomId || '')];
+        }
+
+        // Post scoreboard to #trinity-command
+        for (const r of results) {
+          await bw(workspaceId, {
+            type: 'chatdock_action_card',
+            data: {
+              roomId: req.body.roomId,
+              actionType: 'compliance_alert',
+              senderId: 'helpai-bot',
+              senderName: 'SARGE',
+              props: {
+                body: `${r.passed ? '✅' : '❌'} ${r.drill.toUpperCase()} — ${r.stepsCompleted}/${r.stepsExpected} steps | ${r.duration_ms}ms`,
+                flags: [
+                  ...r.failures.map((f: string) => ({ code: 'FAIL', description: f.slice(0, 100), severity: 'critical' as const })),
+                  ...(r.passed ? [{ code: 'ALL_CLEAR', description: 'All pipeline steps verified', severity: 'warning' as const }] : []),
+                ],
+              },
+            },
+          }).catch(() => {});
+        }
+
+        const allPassed = results.every(r => r.passed);
+        return res.json({ handled: true, command, drillType, results, allPassed });
       }
 
       if (command === '/innovate') {
