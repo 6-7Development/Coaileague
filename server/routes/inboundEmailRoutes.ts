@@ -545,7 +545,7 @@ async function resolveFallbackRoute(toEmail: string): Promise<ResolvedFallbackRo
           target_workspace_id: PLATFORM_WORKSPACE_ID,
           target_user_id: null,
         },
-        workspaceId: PLATFORM_WORKSPACE_ID,
+        workspaceId: null,   // platform_inbox emails don't belong to a tenant workspace
         targetUserId: null,
         resolution: 'platform_canonical',
       };
@@ -801,6 +801,7 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     }
 
     // Step 6: INSERT into platform_emails — return 200 immediately after
+    // workspaceId may be null for platform-level emails (info@, contact@, etc.)
     // Guard: ensure email bootstrap tables exist (in case registerLegacyBootstrap
     // ran before this route file was imported on first deploy)
     try {
