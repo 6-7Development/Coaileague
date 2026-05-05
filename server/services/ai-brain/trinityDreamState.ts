@@ -469,6 +469,21 @@ class TrinityDreamState {
     };
 
     log.info(`[DreamState] Workspace ${workspaceName}: ${atRiskOfficers.length} at-risk, ${coverageGaps} gaps, brief generated`);
+
+    // ── THE WONDERING SKILL (Stochastic Cross-Reference) ──────────────────────
+    // Pick one random workflow from WORKFLOW_MAP.md + one pattern from today's data.
+    // Ask Gemini to find a non-obvious connection. temperature=0.85 for creative insight.
+    // Output stored to trinity_patch_log as 'dream_insight' for /innovate recall.
+    try {
+      await this.generateWonderInsight(workspaceId, workspaceName, {
+        atRiskOfficers,
+        coverageGaps,
+        openIncidents,
+        expiringLicenses,
+      });
+    } catch (wonderErr: unknown) {
+      log.warn('[DreamState] Wonder insight non-fatal:', wonderErr instanceof Error ? wonderErr.message : String(wonderErr));
+    }
     return result;
   }
 

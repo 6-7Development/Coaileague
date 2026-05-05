@@ -1593,7 +1593,7 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
     // Only HelpAI-routed commands are handled here
     const HELPAI_COMMANDS = ['/helpai', '/escalate', '/help'];
     // Trinity command room slash commands — manager+ only
-    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status'];
+    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote'];
     // Handle Trinity command room slash commands
     if (TRINITY_COMMANDS.includes(command)) {
       const role = (req.user as { role?: string })?.role || '';
@@ -1661,6 +1661,113 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
 
       if (command === '/sarge-status') {
         return res.json({ handled: true, command, status: 'SARGE online — all systems operational' });
+      }
+
+      if (command === '/innovate') {
+        // Pull latest dream insight from trinity_patch_log
+        const { pool: dbPool } = await import('../db');
+        const insight = await dbPool.query(
+          `SELECT root_cause, fix_description, confidence_before, created_at
+           FROM trinity_patch_log
+           WHERE workspace_id = $1 AND error_signature = 'dream_insight'
+           ORDER BY created_at DESC LIMIT 1`,
+          [workspaceId]
+        );
+
+        const { broadcastToWorkspace } = await import('../websocket');
+        if (insight.rows.length === 0) {
+          // No dream insights yet — Trinity explains
+          await broadcastToWorkspace(workspaceId, {
+            type: 'chatdock_action_card',
+            data: {
+              roomId: req.body.roomId,
+              actionType: 'compliance_alert',
+              senderId: 'helpai-bot',
+              senderName: 'SARGE',
+              props: {
+                body: "No dream insights yet. Trinity generates these during the 2am nightly cycle. Run /innovate again after her first overnight cycle.",
+                flags: [{ code: 'next_cycle', description: 'Scheduled: 2:00am UTC', severity: 'warning' as const }],
+              },
+            },
+          }).catch(() => {});
+          return res.json({ handled: true, command, insight: null });
+        }
+
+        const row = insight.rows[0];
+        let parsed: { observation?: string; suggestion?: string; hypothesis?: string; workflowName?: string } = {};
+        try { parsed = JSON.parse(row.fix_description); } catch { parsed = {}; }
+
+        const insightMsg = [
+          `**OVERNIGHT INSIGHT** — ${new Date(row.created_at).toLocaleDateString()}`,
+          `Workflow analyzed: ${parsed.workflowName || 'Unknown'}`,
+          `Confidence: ${Math.round((row.confidence_before || 0) * 100)}%`,
+          ``,
+          `**Observation:** ${parsed.observation || 'No observation recorded'}`,
+          `**Hypothesis:** ${parsed.hypothesis || '—'}`,
+          `**Suggestion:** ${parsed.suggestion || '—'}`,
+        ].join('\n');
+
+        await broadcastToWorkspace(workspaceId, {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: req.body.roomId,
+            actionType: 'approval_button',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: {
+              body: insightMsg,
+              approveLabel: 'Implement This',
+              rejectLabel: 'Discard',
+              context: 'dream_insight',
+            },
+          },
+        }).catch(() => {});
+        return res.json({ handled: true, command, insight: parsed });
+      }
+
+      if (command === '/promote') {
+        // Create PR from development → main via GitHub API
+        const { githubDevOpsService } = await import('../services/githubDevOpsService');
+        const health = await githubDevOpsService.checkDevOpsHealth(workspaceId);
+        if (!health.connected) {
+          return res.status(503).json({ handled: true, command, error: 'GitHub not connected — check OCTOKIT_GITHUB_TOKEN' });
+        }
+        try {
+          const { Octokit } = await import('@octokit/rest');
+          const octokit = new Octokit({ auth: process.env.OCTOKIT_GITHUB_TOKEN });
+          const owner = process.env.GITHUB_REPO_OWNER || 'Coaileague';
+          const repo  = process.env.GITHUB_REPO_NAME  || 'Coaileague';
+
+          const { data: pr } = await octokit.pulls.create({
+            owner, repo,
+            title: `[AI-Generated] Development → Production promotion ${new Date().toISOString().slice(0, 10)}`,
+            head: 'development',
+            base: 'main',
+            body: `Automated PR created by Trinity via /promote command in #trinity-command.\n\nReview all [AI-Generated] commits before merging. Railway auto-deploys on merge to main.`,
+            draft: true,
+          });
+
+          const { broadcastToWorkspace } = await import('../websocket');
+          await broadcastToWorkspace(workspaceId, {
+            type: 'chatdock_action_card',
+            data: {
+              roomId: req.body.roomId,
+              actionType: 'approval_button',
+              senderId: 'helpai-bot',
+              senderName: 'SARGE',
+              props: {
+                body: `📦 Draft PR created: development → main\n\nPR #${pr.number}: ${pr.title}\n${pr.html_url}\n\nReview and merge to trigger Railway deployment.`,
+                approveLabel: 'Open PR on GitHub',
+                rejectLabel: 'Close PR',
+                context: 'github_promotion',
+                url: pr.html_url,
+              },
+            },
+          }).catch(() => {});
+          return res.json({ handled: true, command, pr: { number: pr.number, url: pr.html_url } });
+        } catch (prErr: unknown) {
+          return res.status(500).json({ handled: true, command, error: prErr instanceof Error ? prErr.message : String(prErr) });
+        }
       }
     }
 
