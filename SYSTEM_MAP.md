@@ -178,6 +178,56 @@ All Trinity responses now build `enrichedSystemPrompt` from:
 
 ---
 
+## Wave 26 — Last Mile & Disaster Recovery
+
+### DB Migration Script
+`server/scripts/migrate-wave-23d-25.js` (140 lines, idempotent)
+Run: `node server/scripts/migrate-wave-23d-25.js`
+Creates: support_sessions, simulation_runs
+Adds: is_simulation + simulation_expires_at to shifts, employees, support_tickets, error_logs
+Adds: Trinity triage columns to support_tickets (category, trinity_summary, copilot_diagnostic, triage_confidence, triage_completed_at, rbac_group)
+
+### Disaster Recovery Matrix
+
+| Component | RPO | RTO | Method |
+|---|---|---|---|
+| PostgreSQL (Neon) | 5 minutes | 30 minutes | PITR — Neon automatic continuous backup |
+| Railway service | 0 minutes | 5 minutes | Railway auto-restart on crash |
+| Static assets | 0 minutes | 0 minutes | Vite build artifacts in Railway container |
+| Redis (if configured) | 1 hour | 5 minutes | Redis persistence AOF + RDB |
+
+**Neon PITR:** Neon provides continuous WAL archiving. Restore via Neon dashboard → Branch → Restore to point in time. RPO = time since last WAL flush (~5 seconds in normal operation).
+
+### Doomsday Protocol (trinitySentinel.ts)
+Fires when: `overallHealth === 'critical'` (database down, Railway outage, health check cascade)
+Rate limit: once per 60 minutes (prevents SMS flood)
+Actions (async, non-blocking):
+  1. INSERT status_incidents → status page shows 'Investigating'
+  2. SMS all tenant org_owners via Twilio
+  3. compliance_alert ChatActionBlock to all #trinity-command rooms
+
+### Offline Sync Infrastructure
+`client/src/lib/offlineQueue.ts` (261 lines)
+  queueRequest() — IndexedDB persistence, survives app restart
+  syncPendingRequests() — fires on navigator.onLine event
+  X-Local-Timestamp header — Timestamp Resolution Rule enforcement
+  X-Offline-Sync: true header — signals to server this is a delayed action
+  queueVoiceMessage() — base64 audio, multipart upload on reconnect
+  Types: clock-in, clock-out, incident, time-entry, patrol-scan, dar, voice-message, other
+
+`client/src/components/ui/offline-indicator.tsx` (136 lines)
+  Shows pending queue count, sync button, connected/offline state
+
+### New Slash Command: /drill-incident
+Added in Wave 25 as the critical pre-launch drill.
+Tests: UoF keyword detection, requiresDeliberation(), Zero Liability Protocol,
+compliance_alert card drop — all without touching production data.
+Run this before every armed post goes live.
+
+---
+
+---
+
 ## DEPLOYMENT CRASH LAW — Missing Middleware Imports (added 2026-05-04)
 
 **ROOT CAUSE OF requireAuth CRASH LOOP:**

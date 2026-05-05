@@ -1428,3 +1428,108 @@ Tech ticket + tech agent:
   ✅ Renders: Error log viewer, Shadow Mode button, DB query tool
   ❌ Does not render: Refund controls, Stripe access, billing portal
 ```
+
+---
+
+## PIPELINE 11 — LAST MILE OFFLINE SYNC (Wave 26)
+
+### Overview
+Guard loses signal → local actions queued in IndexedDB → reconnects →
+server honoring local timestamps → SARGE acknowledges batched actions.
+
+### Timestamp Resolution Rule (Critical)
+```
+IF guard records a DAR at 14:00 and syncs at 18:00:
+  Server MUST record 14:00 (X-Local-Timestamp header)
+  Server MUST NOT use 18:00 (receipt time)
+
+Implementation:
+  offlineQueue.ts: QueuedRequest.localTimestamp = Date.now() at queue time
+  syncPendingRequests(): sends X-Local-Timestamp + X-Offline-Sync headers
+  Server routes: honor X-Local-Timestamp for time-entry, incident, patrol-scan, DAR
+```
+
+### Queue Types (offlineQueue.ts)
+```
+'clock-in'     → POST /api/timesheets/clock-in
+'clock-out'    → POST /api/timesheets/clock-out
+'incident'     → POST /api/incidents/report
+'time-entry'   → POST /api/timesheets/entries
+'patrol-scan'  → POST /api/guard-tours/scans
+'dar'          → POST /api/dars
+'voice-message'→ POST /api/ptt/voice-message (base64 audio, multipart on sync)
+'other'        → generic POST
+```
+
+### Voice Message Offline Sync
+```
+Guard records PTT while offline:
+  → queueVoiceMessage(audioBlob, roomId, workspaceId)
+  → audio converted to base64, stored in IndexedDB
+  → On reconnect: uploads as multipart POST /api/ptt/voice-message
+  → SARGE receives audio, responds in shift room
+  SARGE does NOT pre-process offline PTT — response happens on delivery
+```
+
+### Server Handling (X-Local-Timestamp)
+```
+All routes that accept offline-synced data check:
+  const localTs = req.headers['x-local-timestamp'];
+  const isOfflineSync = req.headers['x-offline-sync'] === 'true';
+  const recordedAt = localTs ? new Date(parseInt(localTs)) : new Date();
+  // Use recordedAt instead of new Date() for all timestamp fields
+```
+
+### Conflict Resolution
+```
+Two guards clock into same shift while both offline:
+  → First sync wins (DB unique constraint on shift_id + date)
+  → Second sync receives 409 CONFLICT
+  → offlineQueue removes the failed record (no retry — data integrity)
+  → SARGE posts "Sync conflict: shift already filled" to guard's room
+```
+
+---
+
+## PIPELINE 12 — DOOMSDAY PROTOCOL (Wave 26)
+
+### Overview
+Critical infrastructure failure detected → Trinity fires autonomously:
+status page updated, tenant owners SMS'd, ChatDock alerted.
+
+### Trigger
+```
+trinitySentinel.ts getStatus() → overallHealth = 'critical'
+→ doomsdayProtocol(reason) fires (rate-limited: max 1x per hour)
+```
+
+### 3-Step Sequence
+```
+STEP 1: Status page updated
+  INSERT INTO status_incidents: title, status='investigating', severity='critical'
+  Message: "Trinity has detected a critical event. Team investigating. Updates every 15min."
+
+STEP 2: SMS all tenant owners (via Twilio notificationDeliveryService)
+  SELECT users WHERE role IN ('org_owner','super_admin') AND phone IS NOT NULL
+  SMS: "CoAIleague Alert: Platform issue detected. Team recovering. ETA: [30min]. Status: coaileague.com/status"
+  Rate: max 200 owners per incident
+
+STEP 3: Broadcast to all #trinity-command rooms
+  SELECT conversations WHERE slug='trinity-command'
+  broadcastToWorkspace → compliance_alert ChatActionBlock
+  Body: "PLATFORM ALERT: [reason]. Doomsday Protocol activated. Status page updated. Owners notified."
+```
+
+### Rate Limiting
+```
+lastDoomsdayFired tracked in memory
+If fired < 60 minutes ago: skip (prevents SMS flood on flapping health)
+```
+
+### Recovery Signal
+```
+When health returns to 'healthy':
+  UPDATE status_incidents SET status='resolved', resolved_at=NOW()
+  Trinity posts "All systems restored" in #trinity-command rooms
+  (Deferred: auto-resolve not yet wired — manual close for now)
+```

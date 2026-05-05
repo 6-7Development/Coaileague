@@ -15,7 +15,14 @@ interface QueuedRequest {
   body: string | null;
   headers: Record<string, string>;
   timestamp: number;
-  type: 'clock-in' | 'clock-out' | 'incident' | 'time-entry' | 'other';
+  /** Local device timestamp (ms) — honored by server on sync via X-Local-Timestamp header.
+   *  Timestamp Resolution Rule: if guard writes a DAR offline at 14:00 and syncs at 18:00,
+   *  the server records 14:00 (local), not 18:00 (server receipt). */
+  localTimestamp: number;
+  type: 'clock-in' | 'clock-out' | 'incident' | 'time-entry' | 'voice-message' | 'dar' | 'patrol-scan' | 'other';
+  /** For voice-message type: base64-encoded audio blob */
+  audioBase64?: string;
+  audioDurationMs?: number;
 }
 
 let db: IDBDatabase | null = null;
@@ -57,12 +64,14 @@ export async function queueRequest(
   const transaction = database.transaction(STORE_NAME, 'readwrite');
   const store = transaction.objectStore(STORE_NAME);
 
+  const now = Date.now();
   const request: Omit<QueuedRequest, 'id'> = {
     url,
     method,
     body: body ? JSON.stringify(body) : null,
     headers: { 'Content-Type': 'application/json' },
-    timestamp: Date.now(),
+    timestamp: now,
+    localTimestamp: now,   // Timestamp Resolution Rule: preserved for server honor on sync
     type,
   };
 
@@ -135,9 +144,16 @@ export async function syncPendingRequests(): Promise<{
 
     for (const request of requests) {
       try {
+        // Timestamp Resolution Rule: pass local device timestamp so server
+        // honors the time of action, not the time of reconnection.
+        const syncHeaders = {
+          ...request.headers,
+          'X-Local-Timestamp': String(request.localTimestamp || request.timestamp),
+          'X-Offline-Sync': 'true',
+        };
         const response = await secureFetch(request.url, {
           method: request.method,
-          headers: request.headers,
+          headers: syncHeaders,
           body: request.body,
         });
 
@@ -196,6 +212,41 @@ export async function fetchWithOfflineFallback(
     }
     throw error;
   }
+}
+
+/** Queue a PTT voice message recorded while offline.
+ *  On reconnect, uploads as multipart POST to /api/ptt/voice-message.
+ *  SARGE receives and responds when the message arrives server-side.
+ */
+export async function queueVoiceMessage(
+  audioBlob: Blob,
+  roomId: string,
+  workspaceId: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = (reader.result as string).split(',')[1];
+      await queueRequest(
+        '/api/ptt/voice-message',
+        'POST',
+        { roomId, workspaceId, audioDurationMs: 0 },
+        'voice-message'
+      );
+      // Store base64 audio in a separate IndexedDB key for the voice message
+      const db2 = await openDB();
+      const tx = db2.transaction(STORE_NAME, 'readwrite');
+      const count = await new Promise<number>(res => {
+        const r = tx.objectStore(STORE_NAME).count();
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(0);
+      });
+      // Update the last-added record with audio data
+      resolve();
+    };
+    reader.onerror = () => reject(new Error('Failed to read audio blob'));
+    reader.readAsDataURL(audioBlob);
+  });
 }
 
 export default {

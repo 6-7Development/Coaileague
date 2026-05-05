@@ -778,6 +778,11 @@ class TrinitySentinel {
     
     if (criticalAlerts.length > 0) {
       overallHealth = 'critical';
+      // Trigger doomsday protocol for new critical states
+      const reason = criticalAlerts.map(a => a.title).join('; ');
+      this.doomsdayProtocol(reason).catch(err =>
+        log.warn('[Sentinel] Doomsday non-fatal:', err?.message)
+      );
     } else if (unresolvedAlerts > 0) {
       overallHealth = 'degraded';
     }
@@ -808,7 +813,110 @@ class TrinitySentinel {
     return Array.from(this.alerts.values()).filter(a => !a.resolvedAt).length;
   }
 
-  getRemediationHistory(): RemediationPlan[] {
+
+  /**
+   * DOOMSDAY PROTOCOL — Autonomous DR notification (Wave 26)
+   * Fires when health transitions to 'critical'.
+   * Trinity autonomously:
+   *   1. Updates the CoAIleague status page to 'Major Outage'
+   *   2. Dispatches SMS to all tenant owners with maintenance window
+   *   3. Posts in all #trinity-command rooms
+   * Never fires more than once per hour (rate-limited by lastDoomsdayFired).
+   */
+  private lastDoomsdayFired: Date | null = null;
+
+  async doomsdayProtocol(reason: string): Promise<void> {
+    // Rate limit: fire at most once per hour
+    const now = new Date();
+    if (this.lastDoomsdayFired) {
+      const msSince = now.getTime() - this.lastDoomsdayFired.getTime();
+      if (msSince < 60 * 60 * 1000) {
+        log.warn(`[Sentinel] Doomsday rate-limited — fired ${Math.round(msSince/60000)}min ago`);
+        return;
+      }
+    }
+    this.lastDoomsdayFired = now;
+
+    log.error(`[Sentinel] DOOMSDAY PROTOCOL ACTIVATED: ${reason}`);
+
+    // 1. Update status page (status_incidents table or external status API)
+    try {
+      const { pool } = await import('../../db');
+      await pool.query(
+        `INSERT INTO status_incidents (title, status, severity, message, created_at, updated_at)
+         VALUES ($1, 'investigating', 'critical', $2, NOW(), NOW())
+         ON CONFLICT DO NOTHING`,
+        [
+          `Platform Incident — ${now.toISOString().slice(0, 10)}`,
+          `Trinity has detected a critical system event: ${reason}. Our team is investigating. Updates will follow every 15 minutes.`,
+        ]
+      );
+      log.info('[Sentinel] Status page updated → Investigating');
+    } catch (statusErr: unknown) {
+      log.warn('[Sentinel] Status page update failed (non-fatal):', statusErr instanceof Error ? statusErr.message : String(statusErr));
+    }
+
+    // 2. SMS all tenant owners (via Twilio — existing notificationDeliveryService)
+    try {
+      const { notificationDeliveryService } = await import('../notificationDeliveryService');
+      const { pool } = await import('../../db');
+
+      // Get all active tenant owner phone numbers
+      const owners = await pool.query(
+        `SELECT u.id, u.phone, u.first_name, w.name as workspace_name
+         FROM users u
+         JOIN workspaces w ON w.id = u.workspace_id
+         WHERE u.role IN ('org_owner', 'super_admin')
+           AND w.subscription_status IN ('active', 'trial')
+           AND u.phone IS NOT NULL
+         LIMIT 200`
+      );
+
+      const eta = new Date(now.getTime() + 30 * 60 * 1000).toLocaleTimeString('en-US', { timeZone: 'UTC' });
+      const smsBody = `CoAIleague Alert: We are experiencing a platform issue affecting ${owners.rows.length > 0 ? 'your workspace' : 'services'}. Our team is actively recovering. Estimated resolution by ${eta} UTC. We will send updates as work progresses. Status: coaileague.com/status`;
+
+      for (const owner of owners.rows) {
+        await notificationDeliveryService.sendSMS(owner.phone, smsBody, owner.id, owner.workspace_id).catch(() => {});
+      }
+      log.info(`[Sentinel] Doomsday SMS sent to ${owners.rows.length} tenant owners`);
+    } catch (smsErr: unknown) {
+      log.warn('[Sentinel] Owner SMS dispatch failed (non-fatal):', smsErr instanceof Error ? smsErr.message : String(smsErr));
+    }
+
+    // 3. Broadcast to all #trinity-command rooms
+    try {
+      const { pool } = await import('../../db');
+      const { broadcastToWorkspace } = await import('../../websocket');
+
+      const rooms = await pool.query(
+        `SELECT c.workspace_id, c.id FROM conversations c
+         WHERE c.slug = 'trinity-command'
+         AND c.workspace_id IN (
+           SELECT id FROM workspaces WHERE subscription_status IN ('active','trial')
+         ) LIMIT 50`
+      );
+
+      for (const room of rooms.rows) {
+        await broadcastToWorkspace(String(room.workspace_id), {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: room.id,
+            actionType: 'compliance_alert',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: {
+              body: `⚠️ PLATFORM ALERT: ${reason}\n\nTrinity has activated the Doomsday Protocol. Status page updated. Tenant owners notified via SMS. Team is actively investigating.`,
+              flags: [{ code: 'DOOMSDAY_ACTIVE', description: reason.slice(0, 100), severity: 'critical' as const }],
+            },
+          },
+        }).catch(() => {});
+      }
+    } catch (wsErr: unknown) {
+      log.warn('[Sentinel] ChatDock broadcast failed (non-fatal):', wsErr instanceof Error ? wsErr.message : String(wsErr));
+    }
+  }
+
+    getRemediationHistory(): RemediationPlan[] {
     return Array.from(this.remediationPlans.values());
   }
 }
