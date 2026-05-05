@@ -9,6 +9,7 @@ import { preAuditRouter } from "../preAuditRoutes";
 import { licenseVerificationRouter } from "../licenseVerificationRoutes";
 import { idPhotoRouter } from "../idPhotoVerificationRoutes";
 import { scheduleApprovalRouter } from "../scheduleApprovalRoutes";
+import { railwayWebhookRouter } from "../railwayWebhookRoutes";
 import { pdfRouter } from "../pdfRoutes";
 import { regulatoryPublicRouter } from "../regulatoryPublicRoutes";
 import { requireAuth } from "../../auth";
@@ -106,6 +107,7 @@ export function mountComplianceRoutes(app: Express): void {
   app.use("/api/compliance/verify", licenseVerificationRouter);
   app.use("/api/compliance/verify/id-photo", idPhotoRouter);
   app.use("/api/schedule-approval", scheduleApprovalRouter);
+  app.use("/api/webhooks", railwayWebhookRouter);
 
   app.use("/api/regulatory", regulatoryPublicRouter);
 

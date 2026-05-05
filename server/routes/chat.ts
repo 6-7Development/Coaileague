@@ -1593,7 +1593,7 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
     // Only HelpAI-routed commands are handled here
     const HELPAI_COMMANDS = ['/helpai', '/escalate', '/help'];
     // Trinity command room slash commands — manager+ only
-    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote'];
+    const TRINITY_COMMANDS = ['/audit-keys', '/test-devops', '/sarge-status', '/innovate', '/promote', '/dream-status'];
     // Handle Trinity command room slash commands
     if (TRINITY_COMMANDS.includes(command)) {
       const role = (req.user as { role?: string })?.role || '';
@@ -1663,6 +1663,44 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
         return res.json({ handled: true, command, status: 'SARGE online — all systems operational' });
       }
 
+      if (command === '/dream-status') {
+        const { pool: dbPool } = await import('../db');
+        const [lastDream, insightCount] = await Promise.all([
+          dbPool.query(
+            `SELECT root_cause, created_at, confidence_before FROM trinity_patch_log
+             WHERE workspace_id = $1 AND error_signature = 'dream_insight'
+             ORDER BY created_at DESC LIMIT 1`,
+            [workspaceId]
+          ),
+          dbPool.query(
+            `SELECT COUNT(*) FROM trinity_patch_log
+             WHERE workspace_id = $1 AND error_signature = 'dream_insight'`,
+            [workspaceId]
+          ),
+        ]);
+        const { broadcastToWorkspace } = await import('../websocket');
+        const last = lastDream.rows[0];
+        await broadcastToWorkspace(workspaceId, {
+          type: 'chatdock_action_card',
+          data: {
+            roomId: req.body.roomId,
+            actionType: 'compliance_alert',
+            senderId: 'helpai-bot',
+            senderName: 'SARGE',
+            props: {
+              body: `Trinity Dream State Status — ${insightCount.rows[0]?.count || 0} total insights generated`,
+              flags: [
+                { code: 'last_insight', description: last ? `Last: "${String(last.root_cause).slice(0, 60)}..." (${new Date(last.created_at).toLocaleDateString()})` : 'No insights yet — Dream State runs nightly at 2am UTC', severity: 'warning' as const },
+                { code: 'confidence', description: last ? `Confidence: ${Math.round(parseFloat(last.confidence_before || '0') * 100)}%` : 'N/A', severity: 'warning' as const },
+                { code: 'schedule', description: 'Dream State runs 2am-5am UTC nightly', severity: 'warning' as const },
+                { code: 'min_data', description: 'Requires ≥5 completed shifts to generate insights', severity: 'warning' as const },
+              ],
+            },
+          },
+        }).catch(() => {});
+        return res.json({ handled: true, command, insightCount: insightCount.rows[0]?.count || 0, lastInsight: last || null });
+      }
+
       if (command === '/innovate') {
         // Pull latest dream insight from trinity_patch_log
         const { pool: dbPool } = await import('../db');
@@ -1726,11 +1764,18 @@ router.post("/api/chat/commands/execute", requireAnyAuth, async (req: Authentica
       }
 
       if (command === '/promote') {
-        // Create PR from development → main via GitHub API
+        // Pre-flight check before creating PR
         const { githubDevOpsService } = await import('../services/githubDevOpsService');
         const health = await githubDevOpsService.checkDevOpsHealth(workspaceId);
         if (!health.connected) {
           return res.status(503).json({ handled: true, command, error: 'GitHub not connected — check OCTOKIT_GITHUB_TOKEN' });
+        }
+        // Strike count warning
+        if (health.strikeCount >= 2) {
+          const { broadcastToWorkspace: bw } = await import('../websocket');
+          await bw(workspaceId, { type: 'chatdock_action_card', data: { roomId: req.body.roomId, actionType: 'compliance_alert', senderId: 'helpai-bot', senderName: 'SARGE',
+            props: { body: `⚠️ Pre-flight warning: Trinity has ${health.strikeCount} strike events today. Review trinity_patch_log before promoting to production.`,
+              flags: [{ code: 'strikes', description: `${health.strikeCount}/3 strikes today`, severity: 'critical' as const }] } } }).catch(() => {});
         }
         try {
           const { Octokit } = await import('@octokit/rest');

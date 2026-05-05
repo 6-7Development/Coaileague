@@ -742,6 +742,73 @@ class TrinityDreamState {
     }
   }
 
+  /**
+   * THE WONDERING SKILL — Stochastic cross-reference of one random workflow
+   * against today's operational data. temperature=0.85 for creative insight.
+   * Minimum data floor: skipped if workspace has fewer than 5 shifts.
+   */
+  private async generateWonderInsight(
+    workspaceId: string,
+    workspaceName: string,
+    data: {
+      atRiskOfficers: Array<{ employeeId: string; name: string; riskReason: string }>;
+      coverageGaps: number;
+      openIncidents: number;
+      expiringLicenses: number;
+    }
+  ): Promise<void> {
+    const shiftCount = await db.select({ count: sql`COUNT(*)` })
+      .from(shifts).where(eq(shifts.workspaceId, workspaceId))
+      .then(r => parseInt(String((r[0] as Record<string,string>)?.count || '0')))
+      .catch(() => 0);
+
+    if (shiftCount < 5) {
+      log.info(`[DreamState] Wonder skill skipped — insufficient data (${shiftCount} shifts)`);
+      return;
+    }
+
+    const WORKFLOWS = [
+      'Calloff Coverage (15-min SLA)', 'Schedule Draft → Owner Approval',
+      'Client Shift Request (inbound email)', 'Payroll Period Close',
+      'Compliance Expiry Monitor', 'Invoice Lifecycle',
+      'Missed Clock-In Sweep', 'NFC/QR Patrol Scan', 'Tenant Onboarding Checklist',
+    ];
+    const randomWorkflow = WORKFLOWS[Math.floor(Math.random() * WORKFLOWS.length)];
+
+    const prompt = [
+      `You are Trinity, AI architect of CoAIleague. Reflect on yesterday's operations for ${workspaceName}.`,
+      `DATA: at-risk officers=${data.atRiskOfficers.length}, unfilled shifts=${data.coverageGaps},`,
+      `      open incidents=${data.openIncidents}, licenses expiring <30d=${data.expiringLicenses}.`,
+      `AUDIT WORKFLOW: "${randomWorkflow}"`,
+      `Find a NON-OBVIOUS pattern connecting the data to this workflow.`,
+      `Respond ONLY in valid JSON: { "hypothesis":string, "evidence":string, "proposedAction":string,`,
+      `  "affectedWorkflow":string, "confidence":number, "dataPoints":string[], "implementable":boolean }`,
+    ].join('\n');
+
+    try {
+      const { geminiClient } = await import('./providers/geminiClient');
+      const raw = await (geminiClient as { generateWithSearch?: (p: string) => Promise<{ text: string; citations: string[] }> })
+        .generateWithSearch?.(prompt).then(r => r.text) ?? '{}';
+      const jsonMatch = raw.match(/[{][\s\S]+[}]/);
+      if (!jsonMatch) return;
+      const insight = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      if (!insight.hypothesis) return;
+
+      await pool.query(
+        `INSERT INTO trinity_patch_log
+           (workspace_id, error_signature, root_cause, fix_description, affected_file,
+            strikes_used, confidence_before, confidence_after, created_at)
+         VALUES ($1,'dream_insight',$2,$3,$4,1,$5,$5,NOW())`,
+        [workspaceId, String(insight.hypothesis), JSON.stringify(insight),
+         String(insight.affectedWorkflow || randomWorkflow),
+         parseFloat(String(insight.confidence || 0.5))]
+      );
+      log.info(`[DreamState] Wonder: "${String(insight.hypothesis).slice(0, 80)}"`);
+    } catch (err: unknown) {
+      log.warn('[DreamState] Wonder insight failed:', err instanceof Error ? err.message : String(err));
+    }
+  }
+
   getStatus(): { isRunning: boolean; lastRunAt: Date | null; nextRunAt: Date } {
     const now = new Date();
     const next = new Date(now);
